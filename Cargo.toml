@@ -1,0 +1,28 @@
+[package]
+name = "signalwire"
+version = "1.0.0"
+edition = "2024"
+description = "SignalWire AI Agents SDK for Rust — build AI voice agents, control live calls over WebSocket, and manage resources over REST."
+license = "MIT"
+repository = "https://github.com/signalwire/signalwire-rust"
+keywords = ["signalwire", "ai", "agents", "swml", "voip"]
+categories = ["api-bindings", "web-programming"]
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+hmac = "0.12"
+sha2 = "0.10"
+base64 = "0.22"
+rand = "0.8"
+regex = "1"
+log = "0.4"
+env_logger = "0.11"
+chrono = "0.4"
+
+[dev-dependencies]
+tokio = { version = "1", features = ["full"] }
+
+[[bin]]
+name = "swaig-test"
+path = "src/cli/main.rs"
