@@ -1,0 +1,797 @@
+use std::collections::HashMap;
+use std::env;
+
+use base64::Engine;
+use base64::engine::general_purpose::STANDARD as BASE64;
+use hmac::{Hmac, Mac};
+use rand::Rng;
+use regex::Regex;
+use serde_json::Value;
+use sha2::Sha256;
+
+use crate::logging::Logger;
+use crate::swml::document::Document;
+use crate::swml::schema;
+
+type HmacSha256 = Hmac<Sha256>;
+
+/// Maximum request body size (1 MB).
+const MAX_BODY_SIZE: usize = 1_048_576;
+
+/// Fixed key for HMAC-based timing-safe comparison.
+const HMAC_KEY: &[u8] = b"signalwire-swml-service-auth-compare";
+
+/// Options for constructing a `Service`.
+pub struct ServiceOptions {
+    pub name: String,
+    pub route: Option<String>,
+    pub host: Option<String>,
+    pub port: Option<u16>,
+    pub basic_auth_user: Option<String>,
+    pub basic_auth_password: Option<String>,
+}
+
+/// SWML service: holds a document, auth credentials, and handles HTTP requests.
+pub struct Service {
+    name: String,
+    route: String,
+    host: String,
+    port: u16,
+    document: Document,
+    logger: Logger,
+    basic_auth_user: String,
+    basic_auth_password: String,
+}
+
+impl Service {
+    pub fn new(options: ServiceOptions) -> Self {
+        let route = options
+            .route
+            .map(|r| {
+                let trimmed = r.trim_end_matches('/');
+                if trimmed.is_empty() {
+                    "/".to_string()
+                } else {
+                    trimmed.to_string()
+                }
+            })
+            .unwrap_or_else(|| "/".to_string());
+
+        let host = options.host.unwrap_or_else(|| "0.0.0.0".to_string());
+
+        let port = options.port.unwrap_or_else(|| {
+            env::var("PORT")
+                .ok()
+                .and_then(|s| s.parse::<u16>().ok())
+                .unwrap_or(3000)
+        });
+
+        // Auth: explicit > env > auto-generated
+        let (basic_auth_user, basic_auth_password) =
+            if let (Some(u), Some(p)) = (options.basic_auth_user, options.basic_auth_password) {
+                (u, p)
+            } else if let (Ok(u), Ok(p)) = (
+                env::var("SWML_BASIC_AUTH_USER"),
+                env::var("SWML_BASIC_AUTH_PASSWORD"),
+            ) {
+                (u, p)
+            } else {
+                (random_hex(16), random_hex(32))
+            };
+
+        let logger = Logger::new("swml_service");
+        logger.info(&format!(
+            "Service '{}' initialised (route={}, port={})",
+            options.name, route, port
+        ));
+
+        Service {
+            name: options.name,
+            route,
+            host,
+            port,
+            document: Document::new(),
+            logger,
+            basic_auth_user,
+            basic_auth_password,
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // Accessors
+    // ------------------------------------------------------------------
+
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn route(&self) -> &str {
+        &self.route
+    }
+
+    pub fn host(&self) -> &str {
+        &self.host
+    }
+
+    pub fn port(&self) -> u16 {
+        self.port
+    }
+
+    pub fn document(&self) -> &Document {
+        &self.document
+    }
+
+    pub fn document_mut(&mut self) -> &mut Document {
+        &mut self.document
+    }
+
+    pub fn basic_auth_credentials(&self) -> (&str, &str) {
+        (&self.basic_auth_user, &self.basic_auth_password)
+    }
+
+    pub fn render(&self) -> String {
+        self.document.render()
+    }
+
+    pub fn render_pretty(&self) -> String {
+        self.document.render_pretty()
+    }
+
+    // ------------------------------------------------------------------
+    // Verb helpers
+    // ------------------------------------------------------------------
+
+    /// Add a verb to a section, validating against the schema.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the verb name is not in the schema.
+    pub fn add_verb(&mut self, verb: &str, section: &str, config: Value) {
+        if !schema::is_valid_verb(verb) {
+            panic!("Unknown SWML verb: {}", verb);
+        }
+        self.document.add_verb_to_section(section, verb, config);
+    }
+
+    /// Add a `sleep` verb (integer milliseconds) to a section.
+    pub fn sleep(&mut self, millis: i64, section: &str) {
+        self.document
+            .add_verb_to_section(section, "sleep", Value::Number(millis.into()));
+    }
+
+    // ------------------------------------------------------------------
+    // HTTP handling
+    // ------------------------------------------------------------------
+
+    /// Handle an HTTP request. Returns (status_code, headers, body).
+    pub fn handle_request(
+        &self,
+        method: &str,
+        path: &str,
+        headers: &HashMap<String, String>,
+        body: &str,
+    ) -> (u16, HashMap<String, String>, String) {
+        // Health/ready: no auth
+        if path == "/health" {
+            return self.json_response(200, &serde_json::json!({"status": "healthy"}));
+        }
+        if path == "/ready" {
+            return self.json_response(200, &serde_json::json!({"status": "ready"}));
+        }
+
+        // Determine if path matches our route
+        let sub_path = if self.route == "/" {
+            Some(path.to_string())
+        } else if path == self.route || path.starts_with(&format!("{}/", self.route)) {
+            let rest = &path[self.route.len()..];
+            if rest.is_empty() {
+                Some("/".to_string())
+            } else {
+                Some(rest.to_string())
+            }
+        } else {
+            None
+        };
+
+        let sub_path = match sub_path {
+            Some(p) => p,
+            None => return self.json_response(404, &serde_json::json!({"error": "Not found"})),
+        };
+
+        // Auth required for everything under the route
+        if !self.check_basic_auth(headers) {
+            let mut resp_headers = HashMap::new();
+            resp_headers.insert("Content-Type".to_string(), "text/plain".to_string());
+            resp_headers.insert(
+                "WWW-Authenticate".to_string(),
+                "Basic realm=\"SignalWire SWML Service\"".to_string(),
+            );
+            for (k, v) in security_headers() {
+                resp_headers.insert(k, v);
+            }
+            return (401, resp_headers, "Unauthorized".to_string());
+        }
+
+        // Parse body
+        let request_data: Option<Value> = if !body.is_empty() {
+            if body.len() > MAX_BODY_SIZE {
+                return self
+                    .json_response(413, &serde_json::json!({"error": "Request body too large"}));
+            }
+            serde_json::from_str(body).ok()
+        } else {
+            None
+        };
+
+        // Route dispatch
+        match sub_path.as_str() {
+            "/" | "" => self.handle_swml_request(method, &request_data, headers),
+            "/swaig" => self.handle_swaig_request(&request_data, headers),
+            "/post_prompt" => self.handle_post_prompt(&request_data, headers),
+            _ => self.json_response(404, &serde_json::json!({"error": "Not found"})),
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // SIP username extraction
+    // ------------------------------------------------------------------
+
+    /// Extract SIP username from a request body.
+    /// Validates format: only `[a-zA-Z0-9._-]`, max 64 chars.
+    pub fn extract_sip_username(body: &Value) -> Option<String> {
+        // Look for SIP URI in common locations
+        let sip_uri = body
+            .get("call")
+            .and_then(|c| c.get("to"))
+            .and_then(|v| v.as_str())
+            .or_else(|| body.get("to").and_then(|v| v.as_str()));
+
+        let sip_uri = match sip_uri {
+            Some(s) => s,
+            None => return None,
+        };
+
+        // Extract username from sip:username@host
+        let username = if let Some(caps) = Regex::new(r"^sip:([^@]+)@")
+            .ok()
+            .and_then(|re| re.captures(sip_uri))
+        {
+            caps.get(1).map(|m| m.as_str().to_string())
+        } else {
+            Some(sip_uri.to_string())
+        };
+
+        let username = match username {
+            Some(u) => u,
+            None => return None,
+        };
+
+        // Validate format
+        if username.len() > 64 {
+            return None;
+        }
+        let valid = Regex::new(r"^[a-zA-Z0-9._-]+$").unwrap();
+        if !valid.is_match(&username) {
+            return None;
+        }
+
+        Some(username)
+    }
+
+    // ------------------------------------------------------------------
+    // Proxy URL
+    // ------------------------------------------------------------------
+
+    /// Detect or construct the proxy URL base from request headers.
+    pub fn get_proxy_url_base(&self, headers: &HashMap<String, String>) -> String {
+        // 1. Explicit env var
+        if let Ok(env_proxy) = env::var("SWML_PROXY_URL_BASE") {
+            if !env_proxy.is_empty() {
+                return env_proxy.trim_end_matches('/').to_string();
+            }
+        }
+
+        // 2. X-Forwarded-Proto + X-Forwarded-Host
+        let proto = headers
+            .get("X-Forwarded-Proto")
+            .or_else(|| headers.get("x-forwarded-proto"));
+        let fwd_host = headers
+            .get("X-Forwarded-Host")
+            .or_else(|| headers.get("x-forwarded-host"));
+        if let (Some(p), Some(h)) = (proto, fwd_host) {
+            return format!("{}://{}", p, h);
+        }
+
+        // 3. X-Original-URL
+        let orig_url = headers
+            .get("X-Original-URL")
+            .or_else(|| headers.get("x-original-url"));
+        if let Some(url) = orig_url {
+            return url.trim_end_matches('/').to_string();
+        }
+
+        // 4. Fallback to server config
+        format!("http://{}:{}", self.host, self.port)
+    }
+
+    // ------------------------------------------------------------------
+    // Private helpers
+    // ------------------------------------------------------------------
+
+    /// Check Basic Auth from request headers using timing-safe comparison.
+    fn check_basic_auth(&self, headers: &HashMap<String, String>) -> bool {
+        let auth_header = headers
+            .get("Authorization")
+            .or_else(|| headers.get("authorization"));
+
+        let auth_header = match auth_header {
+            Some(h) => h,
+            None => return false,
+        };
+
+        if !auth_header.starts_with("Basic ") {
+            return false;
+        }
+
+        let decoded = match BASE64.decode(&auth_header[6..]) {
+            Ok(d) => d,
+            Err(_) => return false,
+        };
+
+        let decoded_str = match String::from_utf8(decoded) {
+            Ok(s) => s,
+            Err(_) => return false,
+        };
+
+        let colon_pos = match decoded_str.find(':') {
+            Some(p) => p,
+            None => return false,
+        };
+
+        let input_user = &decoded_str[..colon_pos];
+        let input_pass = &decoded_str[colon_pos + 1..];
+
+        // Timing-safe comparison using HMAC
+        let user_ok = constant_time_eq(input_user, &self.basic_auth_user);
+        let pass_ok = constant_time_eq(input_pass, &self.basic_auth_password);
+
+        user_ok && pass_ok
+    }
+
+    fn handle_swml_request(
+        &self,
+        _method: &str,
+        _request_data: &Option<Value>,
+        _headers: &HashMap<String, String>,
+    ) -> (u16, HashMap<String, String>, String) {
+        self.json_response(200, &self.document.to_value())
+    }
+
+    fn handle_swaig_request(
+        &self,
+        _request_data: &Option<Value>,
+        _headers: &HashMap<String, String>,
+    ) -> (u16, HashMap<String, String>, String) {
+        self.json_response(200, &serde_json::json!([]))
+    }
+
+    fn handle_post_prompt(
+        &self,
+        _request_data: &Option<Value>,
+        _headers: &HashMap<String, String>,
+    ) -> (u16, HashMap<String, String>, String) {
+        self.json_response(200, &serde_json::json!({}))
+    }
+
+    fn json_response(
+        &self,
+        status: u16,
+        data: &Value,
+    ) -> (u16, HashMap<String, String>, String) {
+        let body = serde_json::to_string(data).unwrap_or_else(|_| "{}".to_string());
+        let mut headers = HashMap::new();
+        headers.insert("Content-Type".to_string(), "application/json".to_string());
+        for (k, v) in security_headers() {
+            headers.insert(k, v);
+        }
+        (status, headers, body)
+    }
+}
+
+// ------------------------------------------------------------------
+// Free functions
+// ------------------------------------------------------------------
+
+/// Security headers applied to all responses.
+fn security_headers() -> Vec<(String, String)> {
+    vec![
+        (
+            "X-Content-Type-Options".to_string(),
+            "nosniff".to_string(),
+        ),
+        ("X-Frame-Options".to_string(), "DENY".to_string()),
+        ("Cache-Control".to_string(), "no-store".to_string()),
+    ]
+}
+
+/// Timing-safe string comparison using HMAC.
+fn constant_time_eq(a: &str, b: &str) -> bool {
+    let mut mac_a =
+        HmacSha256::new_from_slice(HMAC_KEY).expect("HMAC key should be valid");
+    mac_a.update(a.as_bytes());
+    let digest_a = mac_a.finalize().into_bytes();
+
+    let mut mac_b =
+        HmacSha256::new_from_slice(HMAC_KEY).expect("HMAC key should be valid");
+    mac_b.update(b.as_bytes());
+    let digest_b = mac_b.finalize().into_bytes();
+
+    digest_a == digest_b
+}
+
+/// Generate a cryptographically secure random hex string.
+fn random_hex(bytes: usize) -> String {
+    let mut rng = rand::thread_rng();
+    let random_bytes: Vec<u8> = (0..bytes).map(|_| rng.r#gen()).collect();
+    hex_encode(&random_bytes)
+}
+
+/// Encode bytes as lowercase hex string.
+fn hex_encode(bytes: &[u8]) -> String {
+    bytes.iter().map(|b| format!("{:02x}", b)).collect()
+}
+
+/// Build a Basic auth header value.
+fn make_basic_auth(user: &str, pass: &str) -> String {
+    let encoded = BASE64.encode(format!("{}:{}", user, pass));
+    format!("Basic {}", encoded)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn default_options(name: &str) -> ServiceOptions {
+        ServiceOptions {
+            name: name.to_string(),
+            route: None,
+            host: None,
+            port: Some(3000),
+            basic_auth_user: Some("testuser".to_string()),
+            basic_auth_password: Some("testpass".to_string()),
+        }
+    }
+
+    fn authed_headers(user: &str, pass: &str) -> HashMap<String, String> {
+        let mut h = HashMap::new();
+        h.insert("Authorization".to_string(), make_basic_auth(user, pass));
+        h
+    }
+
+    #[test]
+    fn test_construction() {
+        let svc = Service::new(default_options("my-service"));
+        assert_eq!(svc.name(), "my-service");
+        assert_eq!(svc.route(), "/");
+        assert_eq!(svc.host(), "0.0.0.0");
+        assert_eq!(svc.port(), 3000);
+    }
+
+    #[test]
+    fn test_explicit_auth() {
+        let svc = Service::new(ServiceOptions {
+            name: "svc".to_string(),
+            route: None,
+            host: None,
+            port: Some(3000),
+            basic_auth_user: Some("alice".to_string()),
+            basic_auth_password: Some("secret".to_string()),
+        });
+        let (u, p) = svc.basic_auth_credentials();
+        assert_eq!(u, "alice");
+        assert_eq!(p, "secret");
+    }
+
+    #[test]
+    fn test_env_auth() {
+        // SAFETY: test-only env mutation
+        unsafe {
+            env::set_var("SWML_BASIC_AUTH_USER", "envuser");
+            env::set_var("SWML_BASIC_AUTH_PASSWORD", "envpass");
+        }
+        let svc = Service::new(ServiceOptions {
+            name: "svc".to_string(),
+            route: None,
+            host: None,
+            port: Some(3000),
+            basic_auth_user: None,
+            basic_auth_password: None,
+        });
+        let (u, p) = svc.basic_auth_credentials();
+        assert_eq!(u, "envuser");
+        assert_eq!(p, "envpass");
+        unsafe {
+            env::remove_var("SWML_BASIC_AUTH_USER");
+            env::remove_var("SWML_BASIC_AUTH_PASSWORD");
+        }
+    }
+
+    #[test]
+    fn test_auto_generated_auth() {
+        unsafe {
+            env::remove_var("SWML_BASIC_AUTH_USER");
+            env::remove_var("SWML_BASIC_AUTH_PASSWORD");
+        }
+        let svc = Service::new(ServiceOptions {
+            name: "svc".to_string(),
+            route: None,
+            host: None,
+            port: Some(3000),
+            basic_auth_user: None,
+            basic_auth_password: None,
+        });
+        let (u, p) = svc.basic_auth_credentials();
+        // Auto-generated: 16 bytes -> 32 hex chars, 32 bytes -> 64 hex chars
+        assert_eq!(u.len(), 32);
+        assert_eq!(p.len(), 64);
+        // Should be valid hex
+        assert!(u.chars().all(|c| c.is_ascii_hexdigit()));
+        assert!(p.chars().all(|c| c.is_ascii_hexdigit()));
+    }
+
+    #[test]
+    fn test_health_endpoint() {
+        let svc = Service::new(default_options("svc"));
+        let (status, headers, body) =
+            svc.handle_request("GET", "/health", &HashMap::new(), "");
+        assert_eq!(status, 200);
+        let parsed: Value = serde_json::from_str(&body).unwrap();
+        assert_eq!(parsed["status"], "healthy");
+        assert_eq!(headers["Content-Type"], "application/json");
+    }
+
+    #[test]
+    fn test_ready_endpoint() {
+        let svc = Service::new(default_options("svc"));
+        let (status, _headers, body) =
+            svc.handle_request("GET", "/ready", &HashMap::new(), "");
+        assert_eq!(status, 200);
+        let parsed: Value = serde_json::from_str(&body).unwrap();
+        assert_eq!(parsed["status"], "ready");
+    }
+
+    #[test]
+    fn test_auth_required_on_root() {
+        let svc = Service::new(default_options("svc"));
+        let (status, headers, body) = svc.handle_request("POST", "/", &HashMap::new(), "");
+        assert_eq!(status, 401);
+        assert_eq!(body, "Unauthorized");
+        assert!(headers.contains_key("WWW-Authenticate"));
+    }
+
+    #[test]
+    fn test_auth_success_returns_document() {
+        let svc = Service::new(default_options("svc"));
+        let headers = authed_headers("testuser", "testpass");
+        let (status, _, body) = svc.handle_request("POST", "/", &headers, "");
+        assert_eq!(status, 200);
+        let parsed: Value = serde_json::from_str(&body).unwrap();
+        assert_eq!(parsed["version"], "1.0.0");
+    }
+
+    #[test]
+    fn test_auth_wrong_password() {
+        let svc = Service::new(default_options("svc"));
+        let headers = authed_headers("testuser", "wrong");
+        let (status, _, _) = svc.handle_request("POST", "/", &headers, "");
+        assert_eq!(status, 401);
+    }
+
+    #[test]
+    fn test_auth_wrong_user() {
+        let svc = Service::new(default_options("svc"));
+        let headers = authed_headers("wrong", "testpass");
+        let (status, _, _) = svc.handle_request("POST", "/", &headers, "");
+        assert_eq!(status, 401);
+    }
+
+    #[test]
+    fn test_security_headers_present() {
+        let svc = Service::new(default_options("svc"));
+        let (_, headers, _) = svc.handle_request("GET", "/health", &HashMap::new(), "");
+        assert_eq!(headers.get("X-Content-Type-Options").unwrap(), "nosniff");
+        assert_eq!(headers.get("X-Frame-Options").unwrap(), "DENY");
+        assert_eq!(headers.get("Cache-Control").unwrap(), "no-store");
+    }
+
+    #[test]
+    fn test_add_verb_valid() {
+        let mut svc = Service::new(default_options("svc"));
+        svc.add_verb("answer", "main", serde_json::json!({}));
+        let verbs = svc.document().get_verbs("main");
+        assert_eq!(verbs.len(), 1);
+        assert!(verbs[0].get("answer").is_some());
+    }
+
+    #[test]
+    #[should_panic(expected = "Unknown SWML verb")]
+    fn test_add_verb_unknown_panics() {
+        let mut svc = Service::new(default_options("svc"));
+        svc.add_verb("totally_fake_verb", "main", serde_json::json!({}));
+    }
+
+    #[test]
+    fn test_sleep_integer() {
+        let mut svc = Service::new(default_options("svc"));
+        svc.sleep(2000, "main");
+        let verbs = svc.document().get_verbs("main");
+        assert_eq!(verbs.len(), 1);
+        assert_eq!(verbs[0]["sleep"], 2000);
+    }
+
+    #[test]
+    fn test_sip_extraction_basic() {
+        let body = serde_json::json!({"call": {"to": "sip:alice@example.com"}});
+        let result = Service::extract_sip_username(&body);
+        assert_eq!(result, Some("alice".to_string()));
+    }
+
+    #[test]
+    fn test_sip_extraction_top_level_to() {
+        let body = serde_json::json!({"to": "sip:bob@example.com"});
+        let result = Service::extract_sip_username(&body);
+        assert_eq!(result, Some("bob".to_string()));
+    }
+
+    #[test]
+    fn test_sip_extraction_plain_username() {
+        let body = serde_json::json!({"to": "charlie"});
+        let result = Service::extract_sip_username(&body);
+        assert_eq!(result, Some("charlie".to_string()));
+    }
+
+    #[test]
+    fn test_sip_extraction_missing() {
+        let body = serde_json::json!({"other": "data"});
+        let result = Service::extract_sip_username(&body);
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_sip_extraction_too_long() {
+        let long_name = "a".repeat(65);
+        let body = serde_json::json!({"to": long_name});
+        let result = Service::extract_sip_username(&body);
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_sip_extraction_invalid_chars() {
+        let body = serde_json::json!({"to": "user name!@#"});
+        let result = Service::extract_sip_username(&body);
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_proxy_url_env() {
+        unsafe { env::set_var("SWML_PROXY_URL_BASE", "https://proxy.example.com/"); }
+        let svc = Service::new(default_options("svc"));
+        let result = svc.get_proxy_url_base(&HashMap::new());
+        assert_eq!(result, "https://proxy.example.com");
+        unsafe { env::remove_var("SWML_PROXY_URL_BASE"); }
+    }
+
+    #[test]
+    fn test_proxy_url_forwarded_headers() {
+        unsafe { env::remove_var("SWML_PROXY_URL_BASE"); }
+        let svc = Service::new(default_options("svc"));
+        let mut headers = HashMap::new();
+        headers.insert("X-Forwarded-Proto".to_string(), "https".to_string());
+        headers.insert("X-Forwarded-Host".to_string(), "app.example.com".to_string());
+        let result = svc.get_proxy_url_base(&headers);
+        assert_eq!(result, "https://app.example.com");
+    }
+
+    #[test]
+    fn test_proxy_url_fallback() {
+        unsafe { env::remove_var("SWML_PROXY_URL_BASE"); }
+        let svc = Service::new(ServiceOptions {
+            name: "svc".to_string(),
+            route: None,
+            host: Some("127.0.0.1".to_string()),
+            port: Some(8080),
+            basic_auth_user: Some("u".to_string()),
+            basic_auth_password: Some("p".to_string()),
+        });
+        let result = svc.get_proxy_url_base(&HashMap::new());
+        assert_eq!(result, "http://127.0.0.1:8080");
+    }
+
+    #[test]
+    fn test_body_size_limit() {
+        let svc = Service::new(default_options("svc"));
+        let headers = authed_headers("testuser", "testpass");
+        let big_body = "x".repeat(MAX_BODY_SIZE + 1);
+        let (status, _, body) = svc.handle_request("POST", "/", &headers, &big_body);
+        assert_eq!(status, 413);
+        let parsed: Value = serde_json::from_str(&body).unwrap();
+        assert_eq!(parsed["error"], "Request body too large");
+    }
+
+    #[test]
+    fn test_swaig_route() {
+        let svc = Service::new(default_options("svc"));
+        let headers = authed_headers("testuser", "testpass");
+        let (status, _, body) = svc.handle_request("POST", "/swaig", &headers, "");
+        assert_eq!(status, 200);
+        let parsed: Value = serde_json::from_str(&body).unwrap();
+        assert!(parsed.is_array());
+    }
+
+    #[test]
+    fn test_post_prompt_route() {
+        let svc = Service::new(default_options("svc"));
+        let headers = authed_headers("testuser", "testpass");
+        let (status, _, body) = svc.handle_request("POST", "/post_prompt", &headers, "");
+        assert_eq!(status, 200);
+        let parsed: Value = serde_json::from_str(&body).unwrap();
+        assert!(parsed.is_object());
+    }
+
+    #[test]
+    fn test_not_found_route() {
+        let svc = Service::new(default_options("svc"));
+        let headers = authed_headers("testuser", "testpass");
+        let (status, _, _) = svc.handle_request("GET", "/unknown", &headers, "");
+        assert_eq!(status, 404);
+    }
+
+    #[test]
+    fn test_custom_route() {
+        let svc = Service::new(ServiceOptions {
+            name: "svc".to_string(),
+            route: Some("/api/v1".to_string()),
+            host: None,
+            port: Some(3000),
+            basic_auth_user: Some("u".to_string()),
+            basic_auth_password: Some("p".to_string()),
+        });
+        assert_eq!(svc.route(), "/api/v1");
+
+        let headers = authed_headers("u", "p");
+        // Root of the custom route
+        let (status, _, _) = svc.handle_request("POST", "/api/v1", &headers, "");
+        assert_eq!(status, 200);
+
+        // Sub-route
+        let (status, _, _) = svc.handle_request("POST", "/api/v1/swaig", &headers, "");
+        assert_eq!(status, 200);
+
+        // Path outside the route should 404
+        let (status, _, _) = svc.handle_request("POST", "/other", &headers, "");
+        assert_eq!(status, 404);
+    }
+
+    #[test]
+    fn test_constant_time_eq() {
+        assert!(constant_time_eq("hello", "hello"));
+        assert!(!constant_time_eq("hello", "world"));
+        assert!(!constant_time_eq("hello", "hell"));
+        assert!(constant_time_eq("", ""));
+    }
+
+    #[test]
+    fn test_health_no_auth_required() {
+        let svc = Service::new(default_options("svc"));
+        // No auth headers at all — should still work for /health
+        let (status, _, _) = svc.handle_request("GET", "/health", &HashMap::new(), "");
+        assert_eq!(status, 200);
+    }
+
+    #[test]
+    fn test_ready_no_auth_required() {
+        let svc = Service::new(default_options("svc"));
+        let (status, _, _) = svc.handle_request("GET", "/ready", &HashMap::new(), "");
+        assert_eq!(status, 200);
+    }
+}
