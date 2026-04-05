@@ -10,3 +10,7 @@ pub mod swaig;
 pub mod skills;
 pub mod prefabs;
 pub mod server;
+
+pub mod relay;
+pub mod rest;
+pub mod serverless;
