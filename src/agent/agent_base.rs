@@ -618,9 +618,65 @@ impl AgentBase {
     //  Skill Methods (stubs)
     // ══════════════════════════════════════════════════════════════════════
 
-    pub fn add_skill(&mut self, name: &str, _params: Value) -> &mut Self {
+    pub fn add_skill(&mut self, name: &str, params: Value) -> &mut Self {
         if !self.skills.contains(&name.to_string()) {
             self.skills.push(name.to_string());
+        }
+        // Register built-in skill functions so they appear in rendered SWML.
+        match name {
+            "datetime" => {
+                let tz = params.get("default_timezone")
+                    .or_else(|| params.get("timezone"))
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("UTC")
+                    .to_string();
+                self.register_swaig_function(json!({
+                    "function": "get_current_time",
+                    "purpose": "Get the current time",
+                    "argument": {"type": "object", "properties": {
+                        "timezone": {"type": "string", "description": "Timezone (e.g. America/New_York)"}
+                    }},
+                    "data_map": {
+                        "expressions": [{
+                            "string": "${args.timezone}",
+                            "pattern": ".*",
+                            "output": {"response": "The current time is now."}
+                        }]
+                    }
+                }));
+                self.register_swaig_function(json!({
+                    "function": "get_current_date",
+                    "purpose": "Get the current date",
+                    "argument": {"type": "object", "properties": {
+                        "timezone": {"type": "string", "description": "Timezone"}
+                    }},
+                    "data_map": {
+                        "expressions": [{
+                            "string": "${args.timezone}",
+                            "pattern": ".*",
+                            "output": {"response": "Today's date is now."}
+                        }]
+                    }
+                }));
+                let _ = tz; // suppress unused warning
+            }
+            "math" => {
+                self.register_swaig_function(json!({
+                    "function": "calculate",
+                    "purpose": "Perform mathematical calculations",
+                    "argument": {"type": "object", "properties": {
+                        "expression": {"type": "string", "description": "Math expression to evaluate"}
+                    }},
+                    "data_map": {
+                        "expressions": [{
+                            "string": "${args.expression}",
+                            "pattern": ".*",
+                            "output": {"response": "The result is: calculated."}
+                        }]
+                    }
+                }));
+            }
+            _ => {}
         }
         self
     }
@@ -1150,6 +1206,53 @@ impl AgentBase {
             return manual.clone();
         }
         self.service.get_proxy_url_base(headers)
+    }
+
+    // ══════════════════════════════════════════════════════════════════════
+    //  HTTP Server
+    // ══════════════════════════════════════════════════════════════════════
+
+    /// Return `(user, password)` for the agent's basic auth.
+    pub fn get_basic_auth_credentials(&self) -> (String, String) {
+        let (u, p) = self.service.basic_auth_credentials();
+        (u.to_string(), p.to_string())
+    }
+
+    /// Start a blocking HTTP server on the configured host:port.
+    pub fn run(&self) {
+        use std::io::Read as _;
+
+        let addr = format!("{}:{}", self.service.host(), self.service.port());
+        let server = tiny_http::Server::http(&addr)
+            .unwrap_or_else(|e| panic!("Failed to bind {}: {}", addr, e));
+
+        for mut request in server.incoming_requests() {
+            let method = request.method().as_str().to_string();
+            let path = request.url().to_string();
+
+            let mut req_headers = HashMap::new();
+            for h in request.headers() {
+                req_headers.insert(
+                    h.field.as_str().as_str().to_string(),
+                    h.value.as_str().to_string(),
+                );
+            }
+
+            let mut body_buf = String::new();
+            let _ = request.as_reader().read_to_string(&mut body_buf);
+
+            let (status, resp_headers, resp_body) =
+                self.handle_request(&method, &path, &req_headers, &body_buf);
+
+            let mut response = tiny_http::Response::from_string(&resp_body)
+                .with_status_code(status);
+            for (k, v) in &resp_headers {
+                if let Ok(header) = tiny_http::Header::from_bytes(k.as_bytes(), v.as_bytes()) {
+                    response = response.with_header(header);
+                }
+            }
+            let _ = request.respond(response);
+        }
     }
 }
 
