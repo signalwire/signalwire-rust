@@ -106,6 +106,12 @@ pub struct AgentBase {
     // ── Native functions / fillers / debug ───────────────────────────────
     native_functions: Vec<String>,
     internal_fillers: Vec<String>,
+    /// Structured internal fillers keyed by function_name → language_code
+    /// → phrases. Populated by `set_internal_fillers_map` and
+    /// `add_internal_filler_for`. Separate from the legacy
+    /// `internal_fillers: Vec<String>` above to preserve backward
+    /// compatibility.
+    internal_fillers_map: HashMap<String, HashMap<String, Vec<String>>>,
     debug_events_level: Option<String>,
 
     // ── LLM params ──────────────────────────────────────────────────────
@@ -169,6 +175,7 @@ impl Clone for AgentBase {
             global_data: self.global_data.clone(),
             native_functions: self.native_functions.clone(),
             internal_fillers: self.internal_fillers.clone(),
+            internal_fillers_map: self.internal_fillers_map.clone(),
             debug_events_level: self.debug_events_level.clone(),
             prompt_llm_params: self.prompt_llm_params.clone(),
             post_prompt_llm_params: self.post_prompt_llm_params.clone(),
@@ -222,6 +229,7 @@ impl AgentBase {
             global_data: Map::new(),
             native_functions: Vec::new(),
             internal_fillers: Vec::new(),
+            internal_fillers_map: HashMap::new(),
             debug_events_level: None,
             prompt_llm_params: Map::new(),
             post_prompt_llm_params: Map::new(),
@@ -366,7 +374,60 @@ impl AgentBase {
     //  Tool Methods
     // ══════════════════════════════════════════════════════════════════════
 
-    /// Define a tool with a callable handler.
+    /// Register a SWAIG tool (function) that the AI can invoke during a
+    /// call.
+    ///
+    /// # How this becomes a tool the model sees
+    ///
+    /// A SWAIG function is **exactly the same concept** as a "tool" in
+    /// native OpenAI / Anthropic tool calling. On every LLM turn, the
+    /// SDK renders each registered SWAIG function into the OpenAI tool
+    /// schema:
+    ///
+    /// ```text
+    /// {
+    ///   "type": "function",
+    ///   "function": {
+    ///     "name":        "your_name_here",
+    ///     "description": "your description text",
+    ///     "parameters":  { ... your JSON schema ... }
+    ///   }
+    /// }
+    /// ```
+    ///
+    /// That schema is sent to the model as part of the same API call
+    /// that produces the next assistant message. The model reads:
+    ///
+    ///   - the function `description` to decide WHEN to call this tool
+    ///   - each parameter `description` (inside `parameters`) to decide
+    ///     HOW to fill in that argument from the user's utterance
+    ///
+    /// This means **descriptions are prompt engineering**, not developer
+    /// comments. A vague description is the #1 cause of "the model has
+    /// the right tool but doesn't call it" failures.
+    ///
+    /// # Bad vs good descriptions
+    ///
+    /// ```text
+    /// BAD : description: "Lookup function"
+    /// GOOD: description: "Look up a customer's account details by "
+    ///                  + "account number. Use this BEFORE quoting any "
+    ///                  + "account-specific info (balance, plan, status). "
+    ///                  + "Do not use for general product questions."
+    ///
+    /// BAD : parameters: json!({"id": {"type": "string", "description": "the id"}})
+    /// GOOD: parameters: json!({"account_number": {"type": "string",
+    ///         "description": "The customer's 8-digit account number, "
+    ///                       "no dashes or spaces. Ask the user if they "
+    ///                       "don't provide it."}})
+    /// ```
+    ///
+    /// # Tool count matters
+    ///
+    /// LLM tool selection accuracy degrades past ~7-8
+    /// simultaneously-active tools per call. Use
+    /// [`crate::contexts::Step::set_functions`] to partition tools
+    /// across steps so only the relevant subset is active at any moment.
     pub fn define_tool(
         &mut self,
         name: &str,
@@ -529,13 +590,104 @@ impl AgentBase {
         self
     }
 
+    /// The complete set of internal SWAIG function names that accept
+    /// fillers, matching the SWAIGInternalFiller schema definition.
+    ///
+    /// Any name outside this set is silently ignored by the runtime —
+    /// [`Self::set_internal_fillers_map`] and
+    /// [`Self::add_internal_filler_for`] warn if you pass an unknown
+    /// name.
+    ///
+    /// Notable absences: `change_step`, `gather_submit`, and arbitrary
+    /// user-defined SWAIG function names are NOT supported.
+    pub const SUPPORTED_INTERNAL_FILLER_NAMES: &'static [&'static str] = &[
+        "hangup",                   // AI is hanging up the call
+        "check_time",               // AI is checking the time
+        "wait_for_user",            // AI is waiting for user input
+        "wait_seconds",             // deliberate pause / wait period
+        "adjust_response_latency",  // AI is adjusting response timing
+        "next_step",                // transitioning between steps in prompt.contexts
+        "change_context",           // switching between contexts in prompt.contexts
+        "get_visual_input",         // processing visual input (enable_vision)
+        "get_ideal_strategy",       // thinking (enable_thinking)
+    ];
+
     pub fn set_internal_fillers(&mut self, fillers: Vec<&str>) -> &mut Self {
         self.internal_fillers = fillers.into_iter().map(|s| s.to_string()).collect();
         self
     }
 
+    /// Set internal fillers for native SWAIG functions (structured form).
+    ///
+    /// Internal fillers are short phrases the AI agent speaks (via TTS)
+    /// while an internal/native function is running, so the caller
+    /// doesn't hear dead air during transitions or background work.
+    ///
+    /// Supported function names (match the SWAIGInternalFiller schema):
+    /// `hangup`, `check_time`, `wait_for_user`, `wait_seconds`,
+    /// `adjust_response_latency`, `next_step`, `change_context`,
+    /// `get_visual_input`, `get_ideal_strategy`. See
+    /// [`Self::SUPPORTED_INTERNAL_FILLER_NAMES`].
+    ///
+    /// Notably NOT supported: `change_step`, `gather_submit`, or
+    /// arbitrary user-defined SWAIG function names. The runtime only
+    /// honors fillers for the names listed above; everything else is
+    /// silently ignored at the SWML level. This method warns at
+    /// registration time if you pass an unknown name so you catch the
+    /// typo early.
+    pub fn set_internal_fillers_map(
+        &mut self,
+        fillers: HashMap<String, HashMap<String, Vec<String>>>,
+    ) -> &mut Self {
+        let mut unknown: Vec<String> = fillers
+            .keys()
+            .filter(|k| !Self::SUPPORTED_INTERNAL_FILLER_NAMES.contains(&k.as_str()))
+            .cloned()
+            .collect();
+        unknown.sort();
+        if !unknown.is_empty() {
+            log::warn!(
+                "unknown_internal_filler_names: {:?}. set_internal_fillers_map received \
+                 names that the SWML schema does not recognize. Those entries will be \
+                 ignored by the runtime. Supported names: {:?}",
+                unknown,
+                Self::SUPPORTED_INTERNAL_FILLER_NAMES
+            );
+        }
+        self.internal_fillers_map = fillers;
+        self
+    }
+
     pub fn add_internal_filler(&mut self, filler: &str) -> &mut Self {
         self.internal_fillers.push(filler.to_string());
+        self
+    }
+
+    /// Add internal fillers for a single internal function and language.
+    ///
+    /// See [`Self::set_internal_fillers_map`] for the complete list of
+    /// supported `function_name` values
+    /// ([`Self::SUPPORTED_INTERNAL_FILLER_NAMES`]) and what fillers do.
+    /// Names outside the supported set log a warning.
+    pub fn add_internal_filler_for(
+        &mut self,
+        function_name: &str,
+        language_code: &str,
+        fillers: Vec<String>,
+    ) -> &mut Self {
+        if !Self::SUPPORTED_INTERNAL_FILLER_NAMES.contains(&function_name) {
+            log::warn!(
+                "unknown_internal_filler_name: '{}'. add_internal_filler_for received a \
+                 function name the SWML schema does not recognize. The entry will be \
+                 stored but the runtime will not play these fillers. Supported names: {:?}",
+                function_name,
+                Self::SUPPORTED_INTERNAL_FILLER_NAMES
+            );
+        }
+        self.internal_fillers_map
+            .entry(function_name.to_string())
+            .or_default()
+            .insert(language_code.to_string(), fillers);
         self
     }
 
@@ -607,11 +759,40 @@ impl AgentBase {
     // ══════════════════════════════════════════════════════════════════════
 
     /// Return the ContextBuilder, creating it lazily on first access.
+    ///
+    /// The builder's tool-name supplier is set to a snapshot of the
+    /// currently registered tool names so [`ContextBuilder::validate`]
+    /// can check for collisions with reserved native tool names
+    /// (`next_step`, `change_context`, `gather_submit`). Tools added to
+    /// the agent after the first `define_contexts()` call will not be
+    /// included in that snapshot — call [`AgentBase::refresh_context_tools`]
+    /// to update it, or call `define_contexts` only after defining all
+    /// tools.
     pub fn define_contexts(&mut self) -> &mut ContextBuilder {
+        let tool_names: Vec<String> = self.tool_order.clone();
         if self.context_builder.is_none() {
-            self.context_builder = Some(ContextBuilder::new());
+            let mut cb = ContextBuilder::new();
+            cb.attach_tool_name_supplier(move || tool_names.clone());
+            self.context_builder = Some(cb);
         }
         self.context_builder.as_mut().unwrap()
+    }
+
+    /// Refresh the ContextBuilder's tool-name supplier with the current
+    /// list of registered SWAIG tools. Call this if you define new tools
+    /// after the first `define_contexts()` call and want the next
+    /// `validate()` to see them.
+    pub fn refresh_context_tools(&mut self) -> &mut Self {
+        let tool_names: Vec<String> = self.tool_order.clone();
+        if let Some(ref mut cb) = self.context_builder {
+            cb.attach_tool_name_supplier(move || tool_names.clone());
+        }
+        self
+    }
+
+    /// Return the names of every registered SWAIG tool in insertion order.
+    pub fn list_tool_names(&self) -> Vec<String> {
+        self.tool_order.clone()
     }
 
     // ══════════════════════════════════════════════════════════════════════

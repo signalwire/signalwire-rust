@@ -2,6 +2,23 @@ use std::collections::HashMap;
 
 use serde_json::{json, Map, Value};
 
+/// Reserved tool names auto-injected by the runtime when contexts/steps are
+/// present. User-defined SWAIG tools must not collide with these names:
+///
+///   - `next_step` / `change_context` are injected when valid_steps or
+///     valid_contexts is set so the model can navigate the flow.
+///   - `gather_submit` is injected while a step's gather_info is collecting
+///     answers.
+///
+/// [`ContextBuilder::validate`] rejects any agent that registers a user
+/// tool sharing one of these names — the runtime would never call the
+/// user tool because the native one wins.
+pub const RESERVED_NATIVE_TOOL_NAMES: &[&str] = &[
+    "next_step",
+    "change_context",
+    "gather_submit",
+];
+
 // ── GatherQuestion ──────────────────────────────────────────────────────────
 
 /// A single question within a gather_info block.
@@ -197,8 +214,38 @@ impl Step {
         self
     }
 
-    /// Set which functions are available. Pass `json!("none")` to disable all,
-    /// or a `Value::Array` of function name strings.
+    /// Set which non-internal functions are callable while this step is
+    /// active.
+    ///
+    /// # Inheritance behavior (IMPORTANT)
+    ///
+    /// If you do NOT call this method, the step inherits whichever
+    /// function set was active on the previous step (or the previous
+    /// context's last step). The server-side runtime only resets the
+    /// active set when a step explicitly declares its `functions` field.
+    /// This is the most common source of bugs in multi-step agents:
+    /// forgetting `set_functions` on a later step lets the previous
+    /// step's tools leak through. Best practice is to call
+    /// `set_functions` explicitly on every step that should differ from
+    /// the previous one.
+    ///
+    /// Keep the per-step active set small: LLM tool selection accuracy
+    /// degrades noticeably past ~7-8 simultaneously-active tools per
+    /// call. Use per-step whitelisting to partition large tool
+    /// collections.
+    ///
+    /// Internal functions (e.g. `gather_submit`, hangup hook) are
+    /// ALWAYS protected and cannot be deactivated by this whitelist. The
+    /// native navigation tools `next_step` and `change_context` are
+    /// injected automatically when `set_valid_steps` /
+    /// `set_valid_contexts` is used; they are not affected by this list.
+    ///
+    /// # Arguments
+    ///
+    /// - `functions` — one of:
+    ///   - `json!(["a", "b"])` — whitelist of allowed function names
+    ///   - `json!([])` — explicit disable-all (no user functions callable)
+    ///   - `json!("none")` — synonym for the empty array
     pub fn set_functions(&mut self, functions: Value) -> &mut Self {
         self.functions = Some(functions);
         self
@@ -214,6 +261,18 @@ impl Step {
         self
     }
 
+    /// Mark this step as terminal for the step flow.
+    ///
+    /// **IMPORTANT**: `end = true` does NOT end the conversation or
+    /// hang up the call. It exits step mode entirely after this step
+    /// executes — clearing the steps list, current step index,
+    /// valid_steps, and valid_contexts. The agent keeps running, but
+    /// operates only under the base system prompt and the context-level
+    /// prompt; no more step instructions are injected and no more
+    /// `next_step` tool is offered.
+    ///
+    /// To actually end the call, call a hangup tool or define a
+    /// hangup hook.
     pub fn set_end(&mut self, end: bool) -> &mut Self {
         self.end = end;
         self
@@ -235,7 +294,28 @@ impl Step {
         self
     }
 
-    /// Add a question to this step's gather_info. Initialises gather_info if needed.
+    /// Add a question to this step's gather_info. Initialises
+    /// gather_info if needed.
+    ///
+    /// # Gather mode locks function access (IMPORTANT)
+    ///
+    /// While the model is asking gather questions, the runtime
+    /// forcibly deactivates ALL of the step's other functions. The
+    /// only callable tools during a gather question are:
+    ///
+    ///   - `gather_submit` (the native answer-submission tool)
+    ///   - Whatever names you pass in this question's `functions`
+    ///     argument
+    ///
+    /// `next_step` and `change_context` are also filtered out — the
+    /// model cannot navigate away until the gather completes. This
+    /// is by design: it forces a tight ask → submit → next-question
+    /// loop.
+    ///
+    /// If a question needs to call out to a tool (e.g. validate an
+    /// email, geocode a ZIP), list that tool name in this question's
+    /// `functions` argument. Functions listed here are active ONLY
+    /// for this question.
     pub fn add_gather_question(
         &mut self,
         key: &str,
@@ -472,11 +552,56 @@ impl Context {
 
 const MAX_CONTEXTS: usize = 50;
 
-/// Builder for defining and validating multiple named contexts.
-#[derive(Debug, Clone)]
+/// Builder for multi-step, multi-context AI agent workflows.
+///
+/// A ContextBuilder owns one or more [`Context`]s; each Context owns an
+/// ordered list of [`Step`]s. Only one context and one step is active at
+/// a time. Per chat turn, the runtime injects the current step's
+/// instructions as a system message, then asks the LLM for a response.
+///
+/// # Native tools auto-injected by the runtime
+///
+/// When a step (or its enclosing context) declares valid_steps or
+/// valid_contexts, the runtime auto-injects two native tools so the
+/// model can navigate the flow:
+///
+///   - `next_step(step: enum)`         — present when valid_steps is set
+///   - `change_context(context: enum)` — present when valid_contexts is set
+///
+/// A third native tool — `gather_submit` — is injected during
+/// gather_info questioning. These three names are reserved: see
+/// [`RESERVED_NATIVE_TOOL_NAMES`]. [`ContextBuilder::validate`] rejects
+/// any agent that defines a SWAIG tool with one of these names.
+///
+/// # Function whitelisting ([`Step::set_functions`])
+///
+/// Each step may declare a functions whitelist. The whitelist is applied
+/// in-memory at the start of each LLM turn. CRITICALLY: if a step does
+/// NOT declare a functions field, it INHERITS the previous step's
+/// active set. See [`Step::set_functions`] for details and examples.
+#[derive(Clone)]
 pub struct ContextBuilder {
     contexts: HashMap<String, Context>,
     context_order: Vec<String>,
+    /// Optional closure returning the list of registered SWAIG tool
+    /// names, used by [`Self::validate`] to check for collisions with
+    /// reserved native tool names. `AgentBase::define_contexts()` wires
+    /// this up automatically via [`Self::attach_tool_name_supplier`].
+    #[allow(clippy::type_complexity)]
+    tool_name_supplier: Option<std::sync::Arc<dyn Fn() -> Vec<String> + Send + Sync>>,
+}
+
+impl std::fmt::Debug for ContextBuilder {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ContextBuilder")
+            .field("contexts", &self.contexts)
+            .field("context_order", &self.context_order)
+            .field(
+                "tool_name_supplier",
+                &self.tool_name_supplier.as_ref().map(|_| "<closure>"),
+            )
+            .finish()
+    }
 }
 
 impl ContextBuilder {
@@ -484,7 +609,19 @@ impl ContextBuilder {
         ContextBuilder {
             contexts: HashMap::new(),
             context_order: Vec::new(),
+            tool_name_supplier: None,
         }
+    }
+
+    /// Attach a closure that returns registered SWAIG tool names so
+    /// [`Self::validate`] can check for collisions with
+    /// [`RESERVED_NATIVE_TOOL_NAMES`].
+    pub fn attach_tool_name_supplier<F>(&mut self, supplier: F) -> &mut Self
+    where
+        F: Fn() -> Vec<String> + Send + Sync + 'static,
+    {
+        self.tool_name_supplier = Some(std::sync::Arc::new(supplier));
+        self
     }
 
     pub fn add_context(&mut self, name: &str) -> &mut Context {
@@ -598,7 +735,66 @@ impl ContextBuilder {
                             ));
                         }
                     }
+
+                    // Validate completion_action references an existing
+                    // step or is 'next_step' with a following step.
+                    if let Some(action) = gi.completion_action() {
+                        if action == "next_step" {
+                            let idx = ctx.step_order.iter().position(|n| n == step_name);
+                            if let Some(i) = idx {
+                                if i + 1 >= ctx.step_order.len() {
+                                    errors.push(format!(
+                                        "Step '{}' in context '{}' has gather_info \
+                                         completion_action='next_step' but it is the last \
+                                         step in the context. Either (1) add another step \
+                                         after '{}', (2) set completion_action to the name \
+                                         of an existing step in this context to jump to it, \
+                                         or (3) set completion_action=None (default) to stay \
+                                         in '{}' after gathering completes.",
+                                        step_name, ctx_name, step_name, step_name
+                                    ));
+                                }
+                            }
+                        } else if !ctx.steps.contains_key(action) {
+                            let mut available: Vec<&String> = ctx.steps.keys().collect();
+                            available.sort();
+                            errors.push(format!(
+                                "Step '{}' in context '{}' has gather_info \
+                                 completion_action='{}' but '{}' is not a step in this \
+                                 context. Valid options: 'next_step' (advance to the next \
+                                 sequential step), None (stay in the current step), or one \
+                                 of {:?}.",
+                                step_name, ctx_name, action, action, available
+                            ));
+                        }
+                    }
                 }
+            }
+        }
+
+        // Validate that user-defined tools do not collide with reserved
+        // native tool names. The runtime auto-injects next_step /
+        // change_context / gather_submit when contexts/steps are present,
+        // so user tools sharing those names would never be called.
+        if let Some(ref supplier) = self.tool_name_supplier {
+            let registered = supplier();
+            let mut colliding: Vec<String> = registered
+                .into_iter()
+                .filter(|name| RESERVED_NATIVE_TOOL_NAMES.contains(&name.as_str()))
+                .collect();
+            colliding.sort();
+            colliding.dedup();
+            if !colliding.is_empty() {
+                let mut reserved: Vec<&&str> = RESERVED_NATIVE_TOOL_NAMES.iter().collect();
+                reserved.sort();
+                errors.push(format!(
+                    "Tool name(s) {:?} collide with reserved native tools \
+                     auto-injected by contexts/steps. The names {:?} are \
+                     reserved and cannot be used for user-defined SWAIG tools \
+                     when contexts/steps are in use. Rename your tool(s) to \
+                     avoid the collision.",
+                    colliding, reserved
+                ));
             }
         }
 
