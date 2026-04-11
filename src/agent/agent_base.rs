@@ -795,6 +795,17 @@ impl AgentBase {
         self.tool_order.clone()
     }
 
+    /// Remove all contexts, returning the agent to a no-contexts state.
+    /// This is a convenience wrapper around `define_contexts().reset()`.
+    /// Use it in a dynamic config callback when you need to rebuild
+    /// contexts from scratch for a specific request.
+    pub fn reset_contexts(&mut self) -> &mut Self {
+        if let Some(ref mut cb) = self.context_builder {
+            cb.reset();
+        }
+        self
+    }
+
     // ══════════════════════════════════════════════════════════════════════
     //  Skill Methods (stubs)
     // ══════════════════════════════════════════════════════════════════════

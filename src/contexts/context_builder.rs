@@ -410,6 +410,7 @@ pub struct Context {
     steps: HashMap<String, Step>,
     step_order: Vec<String>,
 
+    initial_step: Option<String>,
     prompt_text: Option<String>,
     system_prompt: Option<String>,
 
@@ -423,6 +424,7 @@ impl Context {
             name: name.to_string(),
             steps: HashMap::new(),
             step_order: Vec::new(),
+            initial_step: None,
             prompt_text: None,
             system_prompt: None,
             enter_fillers: None,
@@ -484,6 +486,15 @@ impl Context {
         self
     }
 
+    /// Set which step the context starts on when entered.
+    ///
+    /// By default, a context starts on its first step (index 0). Use
+    /// this to skip a preamble step on re-entry via `change_context`.
+    pub fn set_initial_step(&mut self, step_name: &str) -> &mut Self {
+        self.initial_step = Some(step_name.to_string());
+        self
+    }
+
     // ── Prompt ───────────────────────────────────────────────────────────
 
     pub fn set_prompt_text(&mut self, prompt: &str) -> &mut Self {
@@ -531,6 +542,9 @@ impl Context {
             .collect();
         map.insert("steps".to_string(), Value::Array(step_arr));
 
+        if let Some(ref is) = self.initial_step {
+            map.insert("initial_step".to_string(), json!(is));
+        }
         if let Some(ref sp) = self.system_prompt {
             map.insert("system_prompt".to_string(), json!(sp));
         }
@@ -624,6 +638,15 @@ impl ContextBuilder {
         self
     }
 
+    /// Remove all contexts, returning the builder to its initial state.
+    /// Use this in a dynamic config callback when you need to rebuild
+    /// contexts from scratch for a specific request.
+    pub fn reset(&mut self) -> &mut Self {
+        self.contexts.clear();
+        self.context_order.clear();
+        self
+    }
+
     pub fn add_context(&mut self, name: &str) -> &mut Context {
         assert!(
             !self.contexts.contains_key(name),
@@ -679,6 +702,21 @@ impl ContextBuilder {
         for (name, ctx) in &self.contexts {
             if ctx.steps.is_empty() {
                 errors.push(format!("Context '{}' must have at least one step", name));
+            }
+        }
+
+        // Validate initial_step references a real step in the context
+        for (name, ctx) in &self.contexts {
+            if let Some(ref is) = ctx.initial_step {
+                if !ctx.steps.contains_key(is) {
+                    let mut available: Vec<&String> = ctx.steps.keys().collect();
+                    available.sort();
+                    errors.push(format!(
+                        "Context '{}' has initial_step='{}' but that step does not exist. \
+                         Available steps: {:?}",
+                        name, is, available
+                    ));
+                }
             }
         }
 
@@ -1273,5 +1311,67 @@ mod tests {
         ctx.add_step("s1").set_text("a");
         ctx.remove_step("nonexistent");
         assert_eq!(ctx.steps().len(), 1);
+    }
+
+    // ── initial_step tests ──────────────────────────────────────────────
+
+    #[test]
+    fn test_initial_step_emitted_in_to_value() {
+        let mut ctx = Context::new("default");
+        ctx.add_step("greeting").set_text("Hello");
+        ctx.add_step("triage").set_text("What?");
+        ctx.set_initial_step("triage");
+        let val = ctx.to_value();
+        assert_eq!(val["initial_step"], "triage");
+    }
+
+    #[test]
+    fn test_initial_step_omitted_when_not_set() {
+        let mut ctx = Context::new("default");
+        ctx.add_step("greeting").set_text("Hello");
+        let val = ctx.to_value();
+        assert!(val.get("initial_step").is_none());
+    }
+
+    #[test]
+    fn test_validate_accepts_valid_initial_step() {
+        let mut builder = ContextBuilder::new();
+        let ctx = builder.add_context("default");
+        ctx.add_step("a").set_text("A");
+        ctx.add_step("b").set_text("B");
+        ctx.set_initial_step("b");
+        assert!(builder.validate().is_ok());
+    }
+
+    #[test]
+    fn test_validate_rejects_invalid_initial_step() {
+        let mut builder = ContextBuilder::new();
+        let ctx = builder.add_context("default");
+        ctx.add_step("a").set_text("A");
+        ctx.set_initial_step("nonexistent");
+        let result = builder.validate();
+        assert!(result.is_err());
+        let errors = result.unwrap_err();
+        assert!(errors.iter().any(|e| e.contains("initial_step='nonexistent'")));
+    }
+
+    // ── reset tests ─────────────────────────────────────────────────────
+
+    #[test]
+    fn test_builder_reset_clears_contexts() {
+        let mut builder = ContextBuilder::new();
+        builder.add_context("default").add_step("s1").set_text("Hi");
+        assert!(builder.has_contexts());
+        builder.reset();
+        assert!(!builder.has_contexts());
+    }
+
+    #[test]
+    fn test_builder_reset_allows_rebuild() {
+        let mut builder = ContextBuilder::new();
+        builder.add_context("default").add_step("s1").set_text("Hi");
+        builder.reset();
+        builder.add_context("default").add_step("s1").set_text("New");
+        assert!(builder.validate().is_ok());
     }
 }
