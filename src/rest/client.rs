@@ -1,13 +1,16 @@
 use std::env;
 
 use super::crud_resource::CrudResource;
-use super::http_client::{HttpClient, HttpTransport, StubTransport};
+use super::http_client::{HttpClient, UreqTransport};
 
 /// Top-level SignalWire REST client.
 ///
 /// Provides lazy access to every API namespace (fabric, calling,
-/// phone_numbers, datasphere, video, compat, etc.).  Credentials can
+/// phone_numbers, datasphere, video, compat, etc.). Credentials can
 /// be supplied explicitly or pulled from environment variables.
+///
+/// Production HTTP transport is `ureq` (sync, blocking, real network
+/// I/O). Tests can substitute a stub via [`with_http`].
 pub struct RestClient {
     project_id: String,
     token: String,
@@ -16,23 +19,10 @@ pub struct RestClient {
     http: HttpClient,
 }
 
-/// Wrapper so Arc<StubTransport> implements HttpTransport (used internally).
-struct StubTransportWrapper2(std::sync::Arc<StubTransport>);
-
-impl HttpTransport for StubTransportWrapper2 {
-    fn execute(
-        &self,
-        method: &str,
-        url: &str,
-        headers: &std::collections::HashMap<String, String>,
-        body: Option<&str>,
-    ) -> Result<(u16, String), String> {
-        self.0.execute(method, url, headers, body)
-    }
-}
-
 impl RestClient {
-    /// Create a new REST client with explicit credentials.
+    /// Create a new REST client with explicit credentials. The base URL
+    /// resolves to `https://{space}`. Use [`with_base_url`] to override
+    /// (e.g. for fixture-driven tests pointed at `http://127.0.0.1:N`).
     pub fn new(project_id: &str, token: &str, space: &str) -> Result<Self, String> {
         if project_id.is_empty() {
             return Err(
@@ -51,14 +41,11 @@ impl RestClient {
         }
 
         let base_url = format!("https://{}", space);
-
-        // Use stub transport for now; production would inject a real HTTP transport.
-        let stub = std::sync::Arc::new(StubTransport::new(200, "{}"));
         let http = HttpClient::new(
             project_id,
             token,
             &base_url,
-            Box::new(StubTransportWrapper2(stub)),
+            Box::new(UreqTransport::new()),
         );
 
         Ok(RestClient {
@@ -66,6 +53,35 @@ impl RestClient {
             token: token.to_string(),
             space: space.to_string(),
             base_url,
+            http,
+        })
+    }
+
+    /// Create a REST client with an explicit base URL. Used by audit
+    /// harnesses and integration tests to point at a local fixture
+    /// without going through the `https://{space}` resolution. Production
+    /// callers should use [`new`] instead.
+    pub fn with_base_url(project_id: &str, token: &str, base_url: &str) -> Result<Self, String> {
+        if project_id.is_empty() {
+            return Err("projectId is required".to_string());
+        }
+        if token.is_empty() {
+            return Err("token is required".to_string());
+        }
+        if base_url.is_empty() {
+            return Err("base_url is required".to_string());
+        }
+        let http = HttpClient::new(
+            project_id,
+            token,
+            base_url,
+            Box::new(UreqTransport::new()),
+        );
+        Ok(RestClient {
+            project_id: project_id.to_string(),
+            token: token.to_string(),
+            space: base_url.to_string(),
+            base_url: base_url.trim_end_matches('/').to_string(),
             http,
         })
     }

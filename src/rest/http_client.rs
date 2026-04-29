@@ -20,6 +20,103 @@ pub trait HttpTransport: Send + Sync {
     ) -> Result<(u16, String), String>;
 }
 
+/// Real HTTP transport backed by ureq.
+///
+/// This is the production transport — every REST namespace operation
+/// goes through `ureq::Agent::request()` to a real HTTP endpoint. The
+/// REST audit fixture (`audit_rest_transport.py`) drives the wire
+/// shape (method, path, headers, body) end-to-end against this code,
+/// so any regression in serialization is caught.
+pub struct UreqTransport {
+    agent: ureq::Agent,
+}
+
+impl Default for UreqTransport {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl UreqTransport {
+    pub fn new() -> Self {
+        let agent: ureq::Agent = ureq::Agent::config_builder()
+            .timeout_global(Some(std::time::Duration::from_secs(30)))
+            .http_status_as_error(false)
+            .build()
+            .into();
+        UreqTransport { agent }
+    }
+}
+
+impl HttpTransport for UreqTransport {
+    fn execute(
+        &self,
+        method: &str,
+        url: &str,
+        headers: &HashMap<String, String>,
+        body: Option<&str>,
+    ) -> Result<(u16, String), String> {
+        let response_result = match method.to_ascii_uppercase().as_str() {
+            "GET" => {
+                let mut req = self.agent.get(url);
+                for (k, v) in headers {
+                    req = req.header(k, v);
+                }
+                req.call()
+            }
+            "POST" => {
+                let mut req = self.agent.post(url);
+                for (k, v) in headers {
+                    req = req.header(k, v);
+                }
+                match body {
+                    Some(b) => req.send(b),
+                    None => req.send_empty(),
+                }
+            }
+            "PUT" => {
+                let mut req = self.agent.put(url);
+                for (k, v) in headers {
+                    req = req.header(k, v);
+                }
+                match body {
+                    Some(b) => req.send(b),
+                    None => req.send_empty(),
+                }
+            }
+            "PATCH" => {
+                let mut req = self.agent.patch(url);
+                for (k, v) in headers {
+                    req = req.header(k, v);
+                }
+                match body {
+                    Some(b) => req.send(b),
+                    None => req.send_empty(),
+                }
+            }
+            "DELETE" => {
+                let mut req = self.agent.delete(url);
+                for (k, v) in headers {
+                    req = req.header(k, v);
+                }
+                req.call()
+            }
+            other => {
+                return Err(format!("Unsupported HTTP method: {}", other));
+            }
+        };
+
+        let mut response = response_result
+            .map_err(|e| format!("HTTP {} {} failed: {}", method, url, e))?;
+        let status = response.status().as_u16();
+        let body_str = response
+            .body_mut()
+            .read_to_string()
+            .map_err(|e| format!("HTTP {} {} body read failed: {}", method, url, e))?;
+        Ok((status, body_str))
+    }
+}
+
 /// A stub transport that records requests and returns canned responses.
 /// Useful for unit testing without network access.
 pub struct StubTransport {
