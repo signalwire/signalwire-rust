@@ -32,13 +32,10 @@ fn main() {
     // Franklin — greeter
     {
         let greeter = ctx_builder.add_context("greeter");
-        greeter.set_isolated(true);
-        greeter.add_section(
-            "Persona",
+        greeter.set_system_prompt(
             "You are Franklin, a friendly greeter. Welcome callers and determine their needs.",
-            vec![],
         );
-        greeter.add_enter_filler("Hey there! Welcome to TechCo. I'm Franklin!");
+        greeter.set_enter_fillers(serde_json::json!(["Hey there! Welcome to TechCo. I'm Franklin!"]));
 
         let step = greeter.add_step("welcome");
         step.set_text("Welcome the caller. Ask if they need sales or support.");
@@ -48,13 +45,10 @@ fn main() {
     // Rachael — sales
     {
         let sales = ctx_builder.add_context("sales");
-        sales.set_isolated(true);
-        sales.add_section(
-            "Persona",
+        sales.set_system_prompt(
             "You are Rachael, a knowledgeable sales specialist.",
-            vec![],
         );
-        sales.add_enter_filler("Hi! I'm Rachael from sales. Let me help you find the perfect system.");
+        sales.set_enter_fillers(serde_json::json!(["Hi! I'm Rachael from sales. Let me help you find the perfect system."]));
 
         let step1 = sales.add_step("needs");
         step1.set_text("Ask about the customer's computing needs: use case, budget, preferences.");
@@ -72,13 +66,10 @@ fn main() {
     // Dwight — support
     {
         let support = ctx_builder.add_context("support");
-        support.set_isolated(true);
-        support.add_section(
-            "Persona",
+        support.set_system_prompt(
             "You are Dwight, a no-nonsense technical support specialist.",
-            vec![],
         );
-        support.add_enter_filler("Dwight here. Let's get your issue sorted out.");
+        support.set_enter_fillers(serde_json::json!(["Dwight here. Let's get your issue sorted out."]));
 
         let step1 = support.add_step("diagnose");
         step1.set_text("Ask about the technical issue. Gather symptoms and error messages.");

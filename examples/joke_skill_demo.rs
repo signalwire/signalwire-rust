@@ -39,7 +39,7 @@ fn main() {
     ]);
 
     // One-liner skill integration (compare with raw data_map in joke_agent.rs)
-    agent.add_skill("joke", Some(json!({"api_key": api_key})));
+    agent.add_skill("joke", json!({"api_key": api_key}));
 
     println!("Joke Skill Demo running at http://localhost:3000/joke-skill-demo");
     agent.run();

@@ -17,16 +17,16 @@ fn main() {
     });
 
     // Build a complex SWML document
-    service.reset_document();
-    service.add_answer_verb();
+    service.document_mut().reset();
+    service.add_verb("answer", "main", json!({}));
 
     // Welcome message
-    service.add_verb("play", json!({
+    service.add_verb("play", "main", json!({
         "url": "say:Welcome to the SWML service demo."
     }));
 
     // Collect DTMF input
-    service.add_verb("prompt", json!({
+    service.add_verb("prompt", "main", json!({
         "play": "say:Press 1 to hear music. Press 2 to record a message. Press 3 to be transferred.",
         "max_digits": 1,
         "terminators": "#",
@@ -34,22 +34,22 @@ fn main() {
     }));
 
     // Set a variable
-    service.add_verb("set", json!({
+    service.add_verb("set", "main", json!({
         "call_status": "active",
         "menu_selection": "pending"
     }));
 
     // Conditional routing would happen on the platform side via switch verb
-    service.add_verb("play", json!({
+    service.add_verb("play", "main", json!({
         "url": "say:Thank you for using the SWML service demo."
     }));
 
-    service.add_hangup_verb();
+    service.add_verb("hangup", "main", json!({}));
 
     // Render and display
-    let doc = service.render();
+    let doc = service.render_pretty();
     println!("SWML document:");
-    println!("{}", serde_json::to_string_pretty(&doc).unwrap());
+    println!("{}", doc);
 
     println!("\nServing at http://localhost:3000/swml-demo");
     service.run();

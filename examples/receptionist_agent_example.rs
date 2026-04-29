@@ -5,7 +5,6 @@
 
 use signalwire::prefabs::ReceptionistAgent;
 use serde_json::json;
-use std::sync::Arc;
 
 fn main() {
     let departments = vec![
@@ -36,13 +35,14 @@ fn main() {
 
     let mut agent = ReceptionistAgent::new(
         "acme-receptionist",
-        "/reception",
         departments,
-        greeting,
-        "inworld.Mark",
+        Some(greeting),
+        Some("/reception"),
     );
 
-    agent.prompt_add_section(
+    agent.agent_mut().add_language("English", "en-US", "inworld.Mark");
+
+    agent.agent_mut().prompt_add_section(
         "Company Information",
         "ACME Corporation is a leading provider of innovative solutions. \
          Our business hours are Monday through Friday, 9 AM to 5 PM Eastern Time.",
@@ -50,13 +50,13 @@ fn main() {
     );
 
     // Summary callback
-    agent.set_summary_callback(Arc::new(Box::new(|summary, _raw, _headers| {
+    agent.agent_mut().on_summary(Box::new(|summary, _raw, _headers| {
         println!("Call summary: {summary}");
-    })));
+    }));
 
-    let (user, pass) = agent.get_basic_auth_credentials();
+    let (user, pass) = agent.agent().get_basic_auth_credentials();
     println!("Receptionist agent");
     println!("  URL: http://localhost:3000/reception");
     println!("  Auth: {user}:{pass}");
-    agent.run();
+    agent.agent().run();
 }

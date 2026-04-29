@@ -17,29 +17,13 @@ fn main() {
         ..AgentOptions::new("mcp-agent")
     });
 
-    // -- MCP Server --
-    // Adds /agent/mcp endpoint speaking JSON-RPC 2.0 (MCP protocol).
-    // Claude Desktop and other MCP clients can connect here.
-    agent.enable_mcp_server();
-
-    // -- MCP Client: tool server --
-    // Auto-discover tools from an external MCP server at call start.
-    agent.add_mcp_server(
-        "https://mcp.example.com/tools",
-        json!({"Authorization": "Bearer sk-your-mcp-api-key"}),
-    );
-
-    // -- MCP Client: resource server --
-    // Fetch resources into global_data at session start.
-    agent.add_mcp_server_with_resources(
-        "https://mcp.example.com/crm",
-        json!({"Authorization": "Bearer sk-your-crm-key"}),
-        true,
-        json!({
-            "caller_id": "${caller_id_number}",
-            "tenant": "acme-corp"
-        }),
-    );
+    // -- MCP Gateway skill --
+    // Add the mcp_gateway skill to expose external MCP servers as SWAIG tools.
+    agent.add_skill("mcp_gateway", json!({
+        "gateway_url": "https://mcp.example.com/tools",
+        "headers": {"Authorization": "Bearer sk-your-mcp-api-key"},
+        "tool_prefix": "mcp_",
+    }));
 
     // -- Agent configuration --
     agent.prompt_add_section("Role", "", vec![]);

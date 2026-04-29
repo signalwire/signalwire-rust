@@ -39,21 +39,24 @@ fn main() {
     let search_url = format!("https://{space}/api/datasphere/documents/search");
     let auth_header = format!("Bearer {token}");
 
-    let search_tool = DataMap::new("search_docs")
+    let mut search_tool = DataMap::new("search_docs");
+    search_tool
         .description("Search Datasphere documents")
-        .parameter("query", "string", "Search query", true)
+        .parameter("query", "string", "Search query", true, vec![])
         .webhook(
             "POST",
             &search_url,
-            json!({"query": "${args.query}", "document_id": doc_id, "limit": 5}),
             json!({"Authorization": auth_header, "Content-Type": "application/json"}),
+            "",
+            false,
+            vec![],
         )
+        .body(json!({"query": "${args.query}", "document_id": doc_id, "limit": 5}))
         .output(FunctionResult::with_response(
             "Results: ${response.results[0].text}",
-        ))
-        .build();
+        ).to_value());
 
-    agent.define_datamap_tool(search_tool);
+    agent.register_swaig_function(search_tool.to_swaig_function());
 
     println!("Datasphere env demo at http://localhost:3000/datasphere-env");
     println!("  Space: {space}");

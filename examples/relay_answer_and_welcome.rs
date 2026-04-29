@@ -6,38 +6,39 @@
 //! Environment:
 //!   SIGNALWIRE_PROJECT_ID, SIGNALWIRE_API_TOKEN, SIGNALWIRE_SPACE
 
-use signalwire::relay::RelayClient;
+use signalwire::relay::Client;
 use std::env;
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     if env::var("SIGNALWIRE_LOG_LEVEL").is_err() {
-        env::set_var("SIGNALWIRE_LOG_LEVEL", "debug");
+        // SAFETY: Single-threaded init; no other threads are spawned yet.
+        unsafe { env::set_var("SIGNALWIRE_LOG_LEVEL", "debug"); }
     }
 
-    let client = RelayClient::builder()
-        .project(&env::var("SIGNALWIRE_PROJECT_ID")?)
-        .token(&env::var("SIGNALWIRE_API_TOKEN")?)
-        .space(&env::var("SIGNALWIRE_SPACE")?)
-        .contexts(vec!["default".into()])
-        .build()?;
+    let client = Client::from_env()?;
 
-    client.on_call(|call| async move {
-        println!("Incoming call: {}", call.call_id);
-        call.answer().await?;
+    client.on_call(|call, _event| {
+        let id = call.call_id.clone().unwrap_or_default();
+        println!("Incoming call: {}", id);
+        let _ = call.answer();
 
-        let action = call.play(vec![serde_json::json!({
-            "type": "tts",
-            "params": {"text": "Welcome to SignalWire!"}
-        })]).await?;
-        action.wait().await?;
+        let _ = call.play(serde_json::json!({
+            "play": [{
+                "type": "tts",
+                "params": {"text": "Welcome to SignalWire!"}
+            }]
+        }));
 
-        call.hangup().await?;
-        println!("Call ended: {}", call.call_id);
-        Ok(())
+        let _ = call.hangup();
+        println!("Call ended: {}", id);
     });
 
     println!("Waiting for inbound calls on context 'default' ...");
-    client.run().await?;
-    Ok(())
+    client.connect();
+    client.receive(&["default".to_string()]);
+
+    // Block forever (relay loop runs in a background thread).
+    loop {
+        std::thread::sleep(std::time::Duration::from_secs(60));
+    }
 }

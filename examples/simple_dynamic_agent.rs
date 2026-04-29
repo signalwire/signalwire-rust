@@ -18,7 +18,7 @@ fn main() {
     let mut agent = AgentBase::new(opts);
 
     // Dynamic configuration — called for every inbound request
-    agent.set_dynamic_config_callback(Arc::new(Box::new(
+    agent.set_dynamic_config_callback(Box::new(
         |_query_params, _body_params, _headers, agent| {
             // Voice
             agent.add_language("English", "en-US", "inworld.Mark");
@@ -52,7 +52,7 @@ fn main() {
                 "If you cannot help, offer to connect with a human",
             ]);
         },
-    )));
+    ));
 
     println!("Dynamic agent running at http://localhost:3000/");
     agent.run();

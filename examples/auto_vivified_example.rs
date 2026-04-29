@@ -17,24 +17,24 @@ fn main() {
     });
 
     // Build the SWML document using verb helper methods
-    service.reset_document();
-    service.add_answer_verb();
+    service.document_mut().reset();
+    service.add_verb("answer", "main", json!({}));
 
     // Play greeting
-    service.add_verb("play", json!({
+    service.add_verb("play", "main", json!({
         "url": "say:Hello! You've reached our voicemail. Please leave a message after the beep."
     }));
 
     // Pause
-    service.add_verb("sleep", json!(1000));
+    service.sleep(1000, "main");
 
     // Beep
-    service.add_verb("play", json!({
+    service.add_verb("play", "main", json!({
         "url": "https://example.com/beep.wav"
     }));
 
     // Record
-    service.add_verb("record", json!({
+    service.add_verb("record", "main", json!({
         "stereo": true,
         "format": "wav",
         "direction": "speak",
@@ -45,15 +45,15 @@ fn main() {
     }));
 
     // Thank and hang up
-    service.add_verb("play", json!({
+    service.add_verb("play", "main", json!({
         "url": "say:Thank you. Goodbye!"
     }));
-    service.add_hangup_verb();
+    service.add_verb("hangup", "main", json!({}));
 
     // Dump the document
-    let doc = service.render();
+    let doc = service.render_pretty();
     println!("Generated SWML:");
-    println!("{}", serde_json::to_string_pretty(&doc).unwrap());
+    println!("{}", doc);
 
     // Serve
     println!("\nStarting voicemail service at http://localhost:3000/voicemail");

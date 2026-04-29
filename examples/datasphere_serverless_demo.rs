@@ -29,28 +29,31 @@ fn main() {
     ]);
 
     // Datasphere search via DataMap
-    let search_tool = DataMap::new("search_knowledge")
+    let mut search_tool = DataMap::new("search_knowledge");
+    search_tool
         .description("Search the Datasphere knowledge base")
-        .parameter("query", "string", "Search query", true)
-        .parameter("max_results", "integer", "Maximum results", false)
+        .parameter("query", "string", "Search query", true, vec![])
+        .parameter("max_results", "integer", "Maximum results", false, vec![])
         .webhook(
             "POST",
             "https://${env.SIGNALWIRE_SPACE}/api/datasphere/documents/search",
             json!({
-                "query": "${args.query}",
-                "limit": "${args.max_results}"
-            }),
-            json!({
                 "Authorization": "Basic ${env.DATASPHERE_AUTH}",
                 "Content-Type": "application/json"
             }),
+            "",
+            false,
+            vec![],
         )
+        .body(json!({
+            "query": "${args.query}",
+            "limit": "${args.max_results}"
+        }))
         .output(FunctionResult::with_response(
             "Found ${response.total} results. Top result: ${response.results[0].text}",
-        ))
-        .build();
+        ).to_value());
 
-    agent.define_datamap_tool(search_tool);
+    agent.register_swaig_function(search_tool.to_swaig_function());
 
     agent.run();
 }

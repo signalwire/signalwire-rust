@@ -46,24 +46,35 @@ fn question_sets() -> HashMap<&'static str, Vec<serde_json::Value>> {
 fn main() {
     let sets = Arc::new(question_sets());
 
-    let mut agent = InfoGathererAgent::new_dynamic(
+    // Construct with the default question set, then swap it in per-request
+    // via set_dynamic_config_callback.
+    let mut agent = InfoGathererAgent::new(
         "dynamic-contact-form",
-        "/contact",
-        {
-            let sets = sets.clone();
-            move |query_params, _body, _headers| {
-                let set_name = query_params
-                    .get("set")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("default");
-                println!("Dynamic config: set={set_name}");
-                sets.get(set_name)
-                    .cloned()
-                    .unwrap_or_else(|| sets["default"].clone())
-            }
-        },
+        sets["default"].clone(),
+        Some("/contact"),
     );
 
-    agent.add_language("English", "en-US", "inworld.Mark");
-    agent.run();
+    agent.agent_mut().add_language("English", "en-US", "inworld.Mark");
+
+    let sets_for_callback = sets.clone();
+    agent.agent_mut().set_dynamic_config_callback(Box::new(
+        move |query_params, _body, _headers, agent| {
+            let set_name = query_params
+                .get("set")
+                .and_then(|v| v.as_str())
+                .unwrap_or("default");
+            println!("Dynamic config: set={set_name}");
+            let qs = sets_for_callback
+                .get(set_name)
+                .cloned()
+                .unwrap_or_else(|| sets_for_callback["default"].clone());
+            agent.set_global_data(json!({
+                "questions": qs,
+                "question_index": 0,
+                "answers": [],
+            }));
+        },
+    ));
+
+    agent.agent().run();
 }

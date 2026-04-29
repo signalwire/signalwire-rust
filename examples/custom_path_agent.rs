@@ -27,7 +27,7 @@ fn main() {
         vec![],
     );
 
-    agent.set_dynamic_config_callback(Arc::new(Box::new(
+    agent.set_dynamic_config_callback(Box::new(
         |query_params, _body_params, _headers, agent| {
             let user_name = query_params
                 .get("user_name")
@@ -59,7 +59,7 @@ fn main() {
             };
             agent.prompt_add_section("Communication Style", style_desc, vec![]);
         },
-    )));
+    ));
 
     println!("Chat agent at http://localhost:3000/chat");
     agent.run();

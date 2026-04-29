@@ -84,7 +84,7 @@ fn retail_agent() -> AgentBase {
         "Proactively offer related products",
         "Handle returns and exchanges gracefully",
     ]);
-    agent.set_dynamic_config_callback(Arc::new(Box::new(
+    agent.set_dynamic_config_callback(Box::new(
         |query_params, _body, _headers, agent| {
             let department = query_params
                 .get("department")
@@ -96,19 +96,56 @@ fn retail_agent() -> AgentBase {
                 vec![],
             );
         },
-    )));
+    ));
     agent
 }
 
 fn main() {
-    let mut server = AgentServer::new("0.0.0.0", 3000);
-    server.add_agent(healthcare_agent());
-    server.add_agent(finance_agent());
-    server.add_agent(retail_agent());
+    let mut server = AgentServer::new(Some("0.0.0.0"), Some(3000));
+    server.register(healthcare_agent(), None).unwrap();
+    server.register(finance_agent(), None).unwrap();
+    server.register(retail_agent(), None).unwrap();
 
     println!("Multi-agent server:");
     println!("  Healthcare: http://localhost:3000/healthcare");
     println!("  Finance:    http://localhost:3000/finance");
     println!("  Retail:     http://localhost:3000/retail");
-    server.run();
+    run_server(server);
+}
+
+fn run_server(server: AgentServer) {
+    use std::collections::HashMap;
+    use std::io::Read as _;
+
+    let addr = format!("{}:{}", server.host(), server.port());
+    let http = tiny_http::Server::http(&addr)
+        .unwrap_or_else(|e| panic!("Failed to bind {}: {}", addr, e));
+
+    for mut request in http.incoming_requests() {
+        let method = request.method().as_str().to_string();
+        let path = request.url().to_string();
+
+        let mut req_headers = HashMap::new();
+        for h in request.headers() {
+            req_headers.insert(
+                h.field.as_str().as_str().to_string(),
+                h.value.as_str().to_string(),
+            );
+        }
+
+        let mut body_buf = String::new();
+        let _ = request.as_reader().read_to_string(&mut body_buf);
+
+        let (status, resp_headers, resp_body) =
+            server.handle_request(&method, &path, &req_headers, &body_buf);
+
+        let mut response =
+            tiny_http::Response::from_string(&resp_body).with_status_code(status);
+        for (k, v) in &resp_headers {
+            if let Ok(header) = tiny_http::Header::from_bytes(k.as_bytes(), v.as_bytes()) {
+                response = response.with_header(header);
+            }
+        }
+        let _ = request.respond(response);
+    }
 }

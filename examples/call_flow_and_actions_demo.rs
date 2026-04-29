@@ -37,9 +37,9 @@ fn main() {
 
     // -- Debug events --
     agent.enable_debug_events("all");
-    agent.set_debug_event_handler(Arc::new(Box::new(|event, _headers| {
+    agent.on_debug_event(Box::new(|event, _headers| {
         println!("Debug event: {}", event);
-    })));
+    }));
 
     // -- Tools demonstrating FunctionResult actions --
     agent.define_tool(

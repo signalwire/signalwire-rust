@@ -33,7 +33,7 @@ fn main() {
     ]);
 
     // Raw data_map tool
-    agent.define_datamap_tool(json!({
+    agent.register_swaig_function(json!({
         "function": "get_joke",
         "description": "Tell a joke",
         "data_map": {

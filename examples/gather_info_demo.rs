@@ -31,39 +31,47 @@ fn main() {
     let step1 = ctx.add_step("demographics");
     step1.set_text("Collect the patient's basic information.");
     step1.set_gather_info(
-        "patient_demographics",
-        "Please collect the following patient information.",
+        Some("patient_demographics"),
+        None,
+        Some("Please collect the following patient information."),
     );
-    step1.add_gather_question("full_name", "What is your full name?", "string", false);
-    step1.add_gather_question("date_of_birth", "What is your date of birth?", "string", false);
-    step1.add_gather_question("phone_number", "What is your phone number?", "string", true);
-    step1.add_gather_question("email", "What is your email address?", "string", false);
+    step1.add_gather_question("full_name", "What is your full name?", "string", false, None, None);
+    step1.add_gather_question("date_of_birth", "What is your date of birth?", "string", false, None, None);
+    step1.add_gather_question("phone_number", "What is your phone number?", "string", true, None, None);
+    step1.add_gather_question("email", "What is your email address?", "string", false, None, None);
     step1.set_valid_steps(vec!["symptoms"]);
 
     // Step 2: Symptoms
     let step2 = ctx.add_step("symptoms");
     step2.set_text("Ask about the patient's current symptoms and reason for visit.");
     step2.set_gather_info(
-        "patient_symptoms",
-        "Now let's talk about why you're visiting today.",
+        Some("patient_symptoms"),
+        None,
+        Some("Now let's talk about why you're visiting today."),
     );
     step2.add_gather_question(
         "reason_for_visit",
         "What is the main reason for your visit today?",
         "string",
         false,
+        None,
+        None,
     );
     step2.add_gather_question(
         "symptom_duration",
         "How long have you been experiencing these symptoms?",
         "string",
         false,
+        None,
+        None,
     );
     step2.add_gather_question(
         "pain_level",
         "On a scale of 1 to 10, how would you rate your discomfort?",
         "string",
         false,
+        None,
+        None,
     );
     step2.set_valid_steps(vec!["confirmation"]);
 

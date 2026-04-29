@@ -19,7 +19,7 @@ fn main() {
 
     let mut agent = AgentBase::new(opts);
 
-    agent.set_dynamic_config_callback(Arc::new(Box::new(
+    agent.set_dynamic_config_callback(Box::new(
         |query_params, _body_params, _headers, agent| {
             let tier = query_params
                 .get("tier")
@@ -81,7 +81,7 @@ fn main() {
                 "test_group": test_group,
             }));
         },
-    )));
+    ));
 
     agent.run();
 }

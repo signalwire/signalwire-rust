@@ -19,7 +19,7 @@ fn main() {
 
     let mut agent = AgentBase::new(opts);
 
-    agent.set_dynamic_config_callback(Arc::new(Box::new(
+    agent.set_dynamic_config_callback(Box::new(
         |query_params, _body_params, _headers, agent| {
             let is_vip = query_params
                 .get("vip")
@@ -94,7 +94,7 @@ fn main() {
                 "customer_id": customer_id,
             }));
         },
-    )));
+    ));
 
     println!("Enhanced dynamic agent at http://localhost:3000/");
     agent.run();

@@ -46,44 +46,49 @@ fn main() {
     );
 
     // DataMap tool: weather API (no webhook needed)
-    let weather = DataMap::new("get_weather")
+    let mut weather = DataMap::new("get_weather");
+    weather
         .description("Get the current weather for a city")
-        .parameter("city", "string", "City name", true)
+        .parameter("city", "string", "City name", true, vec![])
         .webhook(
             "GET",
             "https://api.weatherapi.com/v1/current.json",
-            json!({"key": "demo", "q": "${args.city}"}),
             json!({}),
+            "",
+            false,
+            vec![],
         )
+        .params(json!({"key": "demo", "q": "${args.city}"}))
         .output(FunctionResult::with_response(
             "The weather in ${args.city} is ${response.current.condition.text}, \
              temperature ${response.current.temp_f}F.",
-        ))
-        .build();
-    agent.define_datamap_tool(weather);
+        ).to_value());
+    agent.register_swaig_function(weather.to_swaig_function());
 
     // DataMap tool: expression-based command processor
-    let commands = DataMap::new("process_command")
+    let mut commands = DataMap::new("process_command");
+    commands
         .description("Process a user command")
-        .parameter("command", "string", "Command to process", true)
+        .parameter("command", "string", "Command to process", true, vec![])
         .expression(
             "${args.command}",
             r"^start",
-            FunctionResult::with_response("Starting the process."),
+            FunctionResult::with_response("Starting the process.").to_value(),
+            None,
         )
         .expression(
             "${args.command}",
             r"^stop",
-            FunctionResult::with_response("Stopping the process."),
+            FunctionResult::with_response("Stopping the process.").to_value(),
+            None,
         )
-        .expression_with_nomatch(
+        .expression(
             "${args.command}",
             r"^status",
-            FunctionResult::with_response("Current status: running."),
-            FunctionResult::with_response("Unknown command. Try start, stop, or status."),
-        )
-        .build();
-    agent.define_datamap_tool(commands);
+            FunctionResult::with_response("Current status: running.").to_value(),
+            Some(FunctionResult::with_response("Unknown command. Try start, stop, or status.").to_value()),
+        );
+    agent.register_swaig_function(commands.to_swaig_function());
 
     agent.run();
 }

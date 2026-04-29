@@ -69,12 +69,49 @@ fn support_kb_agent() -> AgentBase {
 }
 
 fn main() {
-    let mut server = AgentServer::new("0.0.0.0", 3000);
-    server.add_agent(product_kb_agent());
-    server.add_agent(support_kb_agent());
+    let mut server = AgentServer::new(Some("0.0.0.0"), Some(3000));
+    server.register(product_kb_agent(), None).unwrap();
+    server.register(support_kb_agent(), None).unwrap();
 
     println!("Datasphere multi-instance:");
     println!("  Products: http://localhost:3000/product-kb");
     println!("  Support:  http://localhost:3000/support-kb");
-    server.run();
+    run_server(server);
+}
+
+fn run_server(server: AgentServer) {
+    use std::collections::HashMap;
+    use std::io::Read as _;
+
+    let addr = format!("{}:{}", server.host(), server.port());
+    let http = tiny_http::Server::http(&addr)
+        .unwrap_or_else(|e| panic!("Failed to bind {}: {}", addr, e));
+
+    for mut request in http.incoming_requests() {
+        let method = request.method().as_str().to_string();
+        let path = request.url().to_string();
+
+        let mut req_headers = HashMap::new();
+        for h in request.headers() {
+            req_headers.insert(
+                h.field.as_str().as_str().to_string(),
+                h.value.as_str().to_string(),
+            );
+        }
+
+        let mut body_buf = String::new();
+        let _ = request.as_reader().read_to_string(&mut body_buf);
+
+        let (status, resp_headers, resp_body) =
+            server.handle_request(&method, &path, &req_headers, &body_buf);
+
+        let mut response =
+            tiny_http::Response::from_string(&resp_body).with_status_code(status);
+        for (k, v) in &resp_headers {
+            if let Ok(header) = tiny_http::Header::from_bytes(k.as_bytes(), v.as_bytes()) {
+                response = response.with_header(header);
+            }
+        }
+        let _ = request.respond(response);
+    }
 }

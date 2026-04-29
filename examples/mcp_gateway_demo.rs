@@ -33,7 +33,7 @@ fn main() {
     );
 
     // Connect to MCP gateway — tools are discovered automatically
-    agent.add_skill("mcp_gateway", Some(json!({
+    agent.add_skill("mcp_gateway", json!({
         "gateway_url": env::var("MCP_GATEWAY_URL")
             .unwrap_or_else(|_| "http://localhost:8080".into()),
         "auth_user": env::var("MCP_GATEWAY_AUTH_USER")
@@ -41,7 +41,7 @@ fn main() {
         "auth_password": env::var("MCP_GATEWAY_AUTH_PASSWORD")
             .unwrap_or_else(|_| "changeme".into()),
         "services": [{"name": "todo"}]
-    })));
+    }));
 
     println!("MCP Gateway agent at http://localhost:3000/mcp-gateway");
     agent.run();

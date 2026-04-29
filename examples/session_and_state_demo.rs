@@ -42,12 +42,12 @@ fn main() {
     );
 
     // Summary callback
-    agent.set_summary_callback(Arc::new(Box::new(|summary, raw_data, _headers| {
+    agent.on_summary(Box::new(|summary, raw_data, _headers| {
         println!("=== Call Summary ===");
         println!("{summary}");
         println!("Raw data: {raw_data}");
         println!("====================");
-    })));
+    }));
 
     // Tool: update customer info
     agent.define_tool(

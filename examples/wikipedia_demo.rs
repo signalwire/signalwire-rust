@@ -29,20 +29,22 @@ fn main() {
     ]);
 
     // DataMap tool for Wikipedia API (no webhook needed)
-    let wiki_tool = DataMap::new("search_wikipedia")
+    let mut wiki_tool = DataMap::new("search_wikipedia");
+    wiki_tool
         .description("Search Wikipedia for information on a topic")
-        .parameter("topic", "string", "Topic to search for", true)
+        .parameter("topic", "string", "Topic to search for", true, vec![])
         .webhook(
             "GET",
             "https://en.wikipedia.org/api/rest_v1/page/summary/${args.topic}",
-            json!({}),
             json!({"Accept": "application/json"}),
+            "",
+            false,
+            vec![],
         )
         .output(FunctionResult::with_response(
             "Wikipedia summary for '${args.topic}': ${response.extract}",
-        ))
-        .build();
-    agent.define_datamap_tool(wiki_tool);
+        ).to_value());
+    agent.register_swaig_function(wiki_tool.to_swaig_function());
 
     agent.add_hints(vec!["Wikipedia", "look up", "what is", "tell me about"]);
 

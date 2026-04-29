@@ -4,12 +4,15 @@
 //! Survey Agent — conduct a survey using the SurveyAgent prefab.
 
 use signalwire::prefabs::SurveyAgent;
-use serde_json::json;
+use serde_json::{json, Map, Value};
 
 fn main() {
+    let mut options: Map<String, Value> = Map::new();
+    options.insert("route".to_string(), json!("/survey"));
+    options.insert("survey_name".to_string(), json!("Customer Survey"));
+
     let mut agent = SurveyAgent::new(
         "customer-survey",
-        "/survey",
         vec![
             json!({
                 "key_name": "satisfaction",
@@ -30,21 +33,22 @@ fn main() {
                 "question_text": "Do you have any other comments or feedback?"
             }),
         ],
+        Some(&options),
     );
 
-    agent.add_language("English", "en-US", "inworld.Mark");
+    agent.agent_mut().add_language("English", "en-US", "inworld.Mark");
 
-    agent.prompt_add_section(
+    agent.agent_mut().prompt_add_section(
         "Introduction",
         "Thank you for taking the time to complete our customer satisfaction survey.",
         vec![],
     );
 
-    agent.set_post_prompt(
+    agent.agent_mut().set_post_prompt(
         "Summarize survey responses: satisfaction score, NPS score, \
          improvement suggestion, and additional comments.",
     );
 
     println!("Survey agent at http://localhost:3000/survey");
-    agent.run();
+    agent.agent().run();
 }
