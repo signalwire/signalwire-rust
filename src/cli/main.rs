@@ -9,14 +9,21 @@ use serde_json::{json, Value};
 /// CLI entry point for the `swaig-test` tool.
 ///
 /// Usage:
+///   swaig-test --example <NAME> --list-tools
 ///   swaig-test --url <URL> [options]
 ///
 /// Options:
-///   --url <URL>          SWAIG endpoint URL (required). Basic auth can be
-///                        embedded as user:pass@host.
-///   --dump-swml          Fetch and dump the SWML document.
+///   --example <NAME>     SWMLService example to introspect by name (e.g.
+///                        `swmlservice_swaig_standalone`). Runs the example
+///                        in-process via `cargo run --example` with the
+///                        `SWAIG_LIST_TOOLS=1` env var; the SDK's serve()
+///                        dumps the runtime registry instead of binding a
+///                        port.
+///   --url <URL>          SWAIG endpoint URL. Basic auth can be embedded as
+///                        user:pass@host.
+///   --dump-swml          Fetch and dump the SWML document (URL mode).
 ///   --list-tools         List available SWAIG tools.
-///   --exec <TOOL>        Execute a specific SWAIG tool by name.
+///   --exec <TOOL>        Execute a specific SWAIG tool by name (URL mode).
 ///   --param <K=V>        Parameter for --exec (repeatable).
 ///   --raw                Print raw JSON responses (no formatting).
 ///   --verbose            Enable verbose output.
@@ -30,6 +37,7 @@ fn main() {
     }
 
     let mut url: Option<String> = None;
+    let mut example: Option<String> = None;
     let mut dump_swml = false;
     let mut list_tools = false;
     let mut exec_tool: Option<String> = None;
@@ -46,6 +54,15 @@ fn main() {
                     url = Some(args[i].clone());
                 } else {
                     eprintln!("Error: --url requires a value");
+                    process::exit(1);
+                }
+            }
+            "--example" => {
+                i += 1;
+                if i < args.len() {
+                    example = Some(args[i].clone());
+                } else {
+                    eprintln!("Error: --example requires a name");
                     process::exit(1);
                 }
             }
@@ -90,10 +107,20 @@ fn main() {
         i += 1;
     }
 
+    // Example/file-loader mode.
+    if let Some(name) = example {
+        if !list_tools {
+            eprintln!("Error: --example currently only supports --list-tools");
+            process::exit(1);
+        }
+        do_list_tools_via_introspect(&name, raw, verbose);
+        return;
+    }
+
     let url = match url {
         Some(u) => u,
         None => {
-            eprintln!("Error: --url is required");
+            eprintln!("Error: --url or --example is required");
             process::exit(1);
         }
     };
@@ -125,13 +152,19 @@ fn print_help() {
     println!("swaig-test - SignalWire SWAIG testing tool");
     println!();
     println!("Usage:");
+    println!("  swaig-test --example <NAME> --list-tools");
     println!("  swaig-test --url <URL> [options]");
     println!();
     println!("Options:");
-    println!("  --url <URL>      SWAIG endpoint URL (required)");
-    println!("  --dump-swml      Fetch and dump the SWML document");
+    println!("  --example <NAME> Introspect a built example by cargo example name.");
+    println!("                   Runs `cargo run --example <NAME>` with");
+    println!("                   SWAIG_LIST_TOOLS=1 set; the SDK's serve() dumps");
+    println!("                   the runtime tool registry and exits without");
+    println!("                   binding any port.");
+    println!("  --url <URL>      SWAIG endpoint URL (HTTP mode)");
+    println!("  --dump-swml      Fetch and dump the SWML document (URL mode)");
     println!("  --list-tools     List available SWAIG tools");
-    println!("  --exec <TOOL>    Execute a specific SWAIG tool");
+    println!("  --exec <TOOL>    Execute a specific SWAIG tool (URL mode)");
     println!("  --param <K=V>    Parameter for --exec (repeatable)");
     println!("  --raw            Print raw JSON (no formatting)");
     println!("  --verbose        Enable verbose output");
@@ -139,6 +172,107 @@ fn print_help() {
     println!();
     println!("Auth:");
     println!("  Embed credentials in the URL: http://user:pass@host:port/path");
+}
+
+/// Introspect a SWMLService example by spawning `cargo run --example NAME`
+/// with `SWAIG_LIST_TOOLS=1`. The SDK's `Service::run()` honors that env var
+/// by printing the registry to stdout between sentinels and exiting before
+/// it would have bound any port. We capture stdout, slice out the JSON, and
+/// pretty-print or emit raw.
+fn do_list_tools_via_introspect(example_name: &str, raw: bool, verbose: bool) {
+    if verbose {
+        eprintln!("[verbose] running `cargo run --example {}` with SWAIG_LIST_TOOLS=1", example_name);
+    }
+    let mut cmd = std::process::Command::new("cargo");
+    cmd.args(["run", "--quiet", "--example", example_name])
+        .env("SWAIG_LIST_TOOLS", "1");
+    let output = match cmd.output() {
+        Ok(o) => o,
+        Err(e) => {
+            eprintln!("Error: failed to spawn cargo: {}", e);
+            process::exit(1);
+        }
+    };
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        eprintln!("Error: example `{}` exited non-zero", example_name);
+        if !stderr.is_empty() {
+            eprintln!("--- cargo stderr ---\n{}", stderr.trim_end());
+        }
+        process::exit(1);
+    }
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let body = match extract_introspect_payload(&stdout) {
+        Some(s) => s,
+        None => {
+            eprintln!(
+                "Error: example `{}` did not emit __SWAIG_TOOLS_BEGIN__/__SWAIG_TOOLS_END__ markers. Make sure it calls service.run().",
+                example_name
+            );
+            if verbose {
+                eprintln!("--- raw stdout ---\n{}", stdout);
+            }
+            process::exit(1);
+        }
+    };
+    let parsed: Value = match serde_json::from_str(body) {
+        Ok(v) => v,
+        Err(e) => {
+            eprintln!("Error: malformed introspect payload: {}", e);
+            eprintln!("--- payload ---\n{}", body);
+            process::exit(1);
+        }
+    };
+    if raw {
+        println!("{}", body);
+        return;
+    }
+    let tools = parsed.get("tools").and_then(|v| v.as_array());
+    let tools = match tools {
+        Some(a) => a,
+        None => {
+            println!("{}", serde_json::to_string_pretty(&parsed).unwrap_or_default());
+            return;
+        }
+    };
+    if tools.is_empty() {
+        println!("No tools registered.");
+        return;
+    }
+    println!("Registered SWAIG tools ({}):", tools.len());
+    for (i, tool) in tools.iter().enumerate() {
+        let name = tool
+            .get("function")
+            .and_then(|v| v.as_str())
+            .or_else(|| tool.get("name").and_then(|v| v.as_str()))
+            .unwrap_or("<unnamed>");
+        let desc = tool
+            .get("purpose")
+            .and_then(|v| v.as_str())
+            .or_else(|| tool.get("description").and_then(|v| v.as_str()))
+            .unwrap_or("");
+        println!("  {}. {} — {}", i + 1, name, desc);
+        let argument = tool.get("argument").or_else(|| tool.get("parameters"));
+        if let Some(arg) = argument {
+            if let Some(props) = arg.get("properties").and_then(|v| v.as_object()) {
+                for (pname, pdef) in props {
+                    let ptype = pdef.get("type").and_then(|v| v.as_str()).unwrap_or("");
+                    let pdesc = pdef.get("description").and_then(|v| v.as_str()).unwrap_or("");
+                    println!("       - {} ({}): {}", pname, ptype, pdesc);
+                }
+            }
+        }
+    }
+}
+
+/// Extract the JSON payload between __SWAIG_TOOLS_BEGIN__ and
+/// __SWAIG_TOOLS_END__ markers in the example's stdout. Returns None if
+/// either marker is missing.
+fn extract_introspect_payload(stdout: &str) -> Option<&str> {
+    let begin = stdout.find("__SWAIG_TOOLS_BEGIN__")?;
+    let after_begin = &stdout[begin + "__SWAIG_TOOLS_BEGIN__".len()..];
+    let end = after_begin.find("__SWAIG_TOOLS_END__")?;
+    Some(after_begin[..end].trim())
 }
 
 /// Extract Basic auth credentials from a URL of the form
@@ -408,6 +542,26 @@ mod tests {
         assert!(result.is_err());
         let err = result.unwrap_err();
         assert!(err.contains("HTTP transport not available"));
+    }
+
+    #[test]
+    fn test_extract_introspect_payload_happy_path() {
+        let stdout = "noise line\n__SWAIG_TOOLS_BEGIN__\n{\"tools\":[]}\n__SWAIG_TOOLS_END__\nmore noise\n";
+        let payload = extract_introspect_payload(stdout).unwrap();
+        assert_eq!(payload, "{\"tools\":[]}");
+    }
+
+    #[test]
+    fn test_extract_introspect_payload_missing_markers() {
+        let stdout = "no markers anywhere";
+        assert!(extract_introspect_payload(stdout).is_none());
+    }
+
+    #[test]
+    fn test_extract_introspect_payload_partial_marker() {
+        // BEGIN present, END missing — must return None, not garbage.
+        let stdout = "__SWAIG_TOOLS_BEGIN__\n{\"tools\":[]}\n";
+        assert!(extract_introspect_payload(stdout).is_none());
     }
 
     #[test]

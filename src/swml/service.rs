@@ -541,7 +541,28 @@ impl Service {
     // ------------------------------------------------------------------
 
     /// Start a blocking HTTP server on `host:port`.
+    /// Introspect path: when invoked with `SWAIG_LIST_TOOLS=1`, print the
+    /// runtime tool registry as JSON to stdout (between sentinel markers so
+    /// the swaig-test CLI can extract it past any user log noise) and exit.
+    /// This is how the CLI lists tools on a compiled SWMLService example
+    /// without standing up an HTTP server.
+    fn print_tool_registry_and_exit(&self) -> ! {
+        let signatures: Vec<&serde_json::Value> = self
+            .tool_order
+            .iter()
+            .filter_map(|name| self.tools.get(name).map(|td| &td.definition))
+            .collect();
+        let body = serde_json::json!({ "tools": signatures });
+        println!("__SWAIG_TOOLS_BEGIN__");
+        println!("{}", serde_json::to_string(&body).unwrap_or_else(|_| "{}".to_string()));
+        println!("__SWAIG_TOOLS_END__");
+        std::process::exit(0);
+    }
+
     pub fn run(&self) {
+        if std::env::var("SWAIG_LIST_TOOLS").is_ok() {
+            self.print_tool_registry_and_exit();
+        }
         let addr = format!("{}:{}", self.host, self.port);
         let server = tiny_http::Server::http(&addr)
             .unwrap_or_else(|e| panic!("Failed to bind {}: {}", addr, e));
