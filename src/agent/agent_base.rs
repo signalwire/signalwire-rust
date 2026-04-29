@@ -71,8 +71,13 @@ type DebugEventCallback = Box<
 ///
 /// Manages prompt configuration, tool registration, SWML rendering,
 /// and HTTP request handling for AI agent endpoints.
+///
+/// AgentBase implements `Deref<Target = Service>` (Rust's idiomatic
+/// equivalent of inheritance) so `Service` methods like `set_route`,
+/// `define_tool`, `on_function_call`, etc. are usable on `AgentBase`
+/// instances directly without needing forwarding wrappers.
 pub struct AgentBase {
-    // ── Service (composition, not inheritance) ───────────────────────────
+    // ── Service (composition + Deref<Service> for inheritance shape) ────
     service: Service,
 
     // ── Call handling ────────────────────────────────────────────────────
@@ -195,6 +200,23 @@ impl Clone for AgentBase {
             skills: self.skills.clone(),
             manual_proxy_url: self.manual_proxy_url.clone(),
         }
+    }
+}
+
+// Deref/DerefMut to Service is Rust's idiomatic equivalent of inheritance:
+// callers can invoke any &Service or &mut Service method on an AgentBase
+// directly, and field access through agent.field works for Service fields
+// too. Removes the need for forwarding wrappers like `agent.service().route()`.
+impl std::ops::Deref for AgentBase {
+    type Target = Service;
+    fn deref(&self) -> &Service {
+        &self.service
+    }
+}
+
+impl std::ops::DerefMut for AgentBase {
+    fn deref_mut(&mut self) -> &mut Service {
+        &mut self.service
     }
 }
 
