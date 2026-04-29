@@ -1,13 +1,33 @@
 use std::collections::HashMap;
+use std::net::TcpStream;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::mpsc::{self, Receiver, Sender};
 use std::sync::{Arc, Mutex};
+use std::thread;
+use std::time::{Duration, Instant};
 
 use serde_json::{json, Value};
+use tungstenite::stream::MaybeTlsStream;
+use tungstenite::{Message as WsMessage, WebSocket};
 
 use super::call::Call;
 use super::constants;
 use super::event::Event;
 use super::message::Message;
 use crate::logging::Logger;
+
+/// Default WebSocket path appended to the configured host. Mirrors Python's
+/// `wss://{space}/api/relay/ws` and is the canonical RELAY endpoint.
+const RELAY_PATH: &str = "/api/relay/ws";
+
+/// How long `connect()` waits for the `signalwire.connect` response before
+/// giving up and tearing the socket down. Matches Python's `_EXECUTE_TIMEOUT`.
+const HANDSHAKE_TIMEOUT: Duration = Duration::from_secs(10);
+
+/// Live socket type. `MaybeTlsStream` selects plain TCP for `ws://` and TLS
+/// when compiled with native-tls / rustls features. The audit fixture uses
+/// plain `ws://`; production users get `wss://` with TLS-enabled features.
+type WsStream = WebSocket<MaybeTlsStream<TcpStream>>;
 
 /// Callback type for inbound call handler.
 pub type OnCallHandler = Box<dyn Fn(Arc<Call>, &Event) + Send + Sync>;
@@ -41,8 +61,18 @@ struct PendingDial {
 /// JSON-RPC requests, and dispatches inbound events to the correct Call
 /// or Message objects.
 ///
-/// The transport layer (WebSocket send/receive) is abstracted so that
-/// unit tests can inject messages without needing a real WebSocket.
+/// The transport is a real WebSocket connection over TCP (plus TLS for
+/// `wss://`). One reader thread (spawned on `connect()`) owns the read
+/// half and dispatches every inbound JSON-RPC frame through
+/// `handle_message`. Writes go through `send()` which serializes the
+/// frame and pushes it onto an mpsc channel that the reader thread
+/// drains alongside its read loop, so all socket I/O is single-
+/// threaded but both directions make forward progress.
+///
+/// Tests still use `sent_messages` to inspect what the client *would*
+/// have written; `send()` mirrors every frame into that Vec whether or
+/// not a live socket is attached. That keeps the unit tests covering
+/// dispatch logic working without a real RELAY server.
 pub struct Client {
     // ── identity / auth ───────────────────────────────────────────────
     pub project: String,
@@ -69,6 +99,18 @@ pub struct Client {
     // ── internals ─────────────────────────────────────────────────────
     reconnect_delay: Mutex<u64>,
     running: Mutex<bool>,
+
+    /// Outbound write channel — `send()` enqueues a JSON-encoded frame
+    /// and the reader thread flushes it to the socket. `None` when no
+    /// reader thread is running (purely in-memory test mode).
+    write_tx: Mutex<Option<Sender<WsMessage>>>,
+
+    /// Reader thread join handle. Set on `connect()`, joined on
+    /// `disconnect()` / drop.
+    reader_thread: Mutex<Option<thread::JoinHandle<()>>>,
+
+    /// Reader thread observes this to know when to exit.
+    closing: Arc<AtomicBool>,
 
     /// Messages sent through the transport (for testing).
     pub sent_messages: Mutex<Vec<Value>>,
@@ -97,6 +139,9 @@ impl Client {
             on_event_handler: Mutex::new(None),
             reconnect_delay: Mutex::new(1),
             running: Mutex::new(false),
+            write_tx: Mutex::new(None),
+            reader_thread: Mutex::new(None),
+            closing: Arc::new(AtomicBool::new(false)),
             sent_messages: Mutex::new(Vec::new()),
             logger: Logger::new("relay.client"),
         }
@@ -116,31 +161,189 @@ impl Client {
     //  Connection lifecycle
     // ══════════════════════════════════════════════════════════════════
 
-    /// Establish the WebSocket connection and authenticate.
-    /// (Stub: production would open WSS to wss://{host}/api/relay/ws)
+    /// Open the WebSocket connection, run the `signalwire.connect`
+    /// handshake, subscribe to the configured contexts, and spawn the
+    /// reader thread that dispatches every inbound frame through
+    /// `handle_message`.
     ///
-    /// Resets the reconnect delay on a fresh connection.  The delay is
-    /// *not* reset when called from `reconnect()` because the backoff
-    /// has already been bumped before the call.
-    pub fn connect(&self) {
-        self.logger
-            .info(&format!("Connecting to {}", self.host));
+    /// Reads the WebSocket scheme from `SIGNALWIRE_RELAY_SCHEME` (defaults
+    /// to `wss`; the audit fixture sets `ws`) and the host override from
+    /// `SIGNALWIRE_RELAY_HOST` (used by the audit fixture to point at a
+    /// `127.0.0.1:N` ephemeral port). In production neither env var is
+    /// usually set and the URL resolves to `wss://{self.host}/api/relay/ws`,
+    /// matching Python's `RelayClient.connect()`.
+    ///
+    /// Returns `Err` if the TCP/WS upgrade fails, the server rejects the
+    /// connect handshake, or the response doesn't arrive within
+    /// `HANDSHAKE_TIMEOUT`.
+    pub fn connect(self: &Arc<Self>) -> Result<(), String> {
+        self.logger.info(&format!("Connecting to {}", self.host));
+
+        let scheme = std::env::var("SIGNALWIRE_RELAY_SCHEME")
+            .unwrap_or_else(|_| "wss".to_string());
+        let host_override = std::env::var("SIGNALWIRE_RELAY_HOST").ok();
+        let endpoint_host = host_override.as_deref().unwrap_or(self.host.as_str());
+        let url = format!("{}://{}{}", scheme, endpoint_host, RELAY_PATH);
+
+        let (ws_stream, _resp) = tungstenite::connect(&url)
+            .map_err(|e| format!("WS connect to {}: {}", url, e))?;
+
+        // Set a short read timeout on the underlying TCP stream so the
+        // reader thread can periodically check the closing flag and the
+        // outbound write channel without blocking forever on read().
+        // Plain (`ws://`) is the audit-fixture path; if the build was
+        // compiled with a TLS feature the runtime variant is whichever
+        // one tungstenite picked, and we fall through to a no-op (the
+        // reader thread still makes progress on inbound data).
+        if let MaybeTlsStream::Plain(s) = ws_stream.get_ref() {
+            let _ = s.set_read_timeout(Some(Duration::from_millis(100)));
+        }
+
+        // Wire the write side: outbound `send()` calls push frames here;
+        // the reader thread drains the receiver alongside its read loop.
+        let (write_tx, write_rx) = mpsc::channel::<WsMessage>();
+        *self.write_tx.lock().unwrap() = Some(write_tx);
+
+        // Reset closing state — a fresh connect starts running again.
+        self.closing.store(false, Ordering::SeqCst);
         *self.connected.lock().unwrap() = true;
+        *self.running.lock().unwrap() = true;
+
+        // Spawn the reader thread. It owns the WebSocket; all socket I/O
+        // happens inside it. Both directions make forward progress
+        // because the loop alternates read attempts (with a 100ms read
+        // timeout) and write-channel drains.
+        let me = Arc::clone(self);
+        let handle = thread::Builder::new()
+            .name("relay-reader".to_string())
+            .spawn(move || {
+                Client::reader_loop(me, ws_stream, write_rx);
+            })
+            .map_err(|e| format!("spawn reader thread: {}", e))?;
+        *self.reader_thread.lock().unwrap() = Some(handle);
+
+        // Run signalwire.connect synchronously, blocking until the auth
+        // response arrives or HANDSHAKE_TIMEOUT elapses. Contexts known
+        // at construction time go in `params.contexts` of the connect
+        // frame, matching Python's behavior. Callers can still call
+        // [`receive`] later to add more contexts dynamically.
+        self.authenticate_blocking()?;
+
+        Ok(())
     }
 
     /// Initial connect -- resets reconnect delay and connects.
-    pub fn connect_fresh(&self) {
+    pub fn connect_fresh(self: &Arc<Self>) -> Result<(), String> {
         *self.reconnect_delay.lock().unwrap() = 1;
-        self.connect();
+        self.connect()
     }
 
-    /// Send the signalwire.connect RPC to authenticate and bind a session.
-    pub fn authenticate(&self) {
+    /// Send the `signalwire.connect` RPC and block until the response
+    /// arrives or the handshake times out. The response carries the
+    /// server-assigned protocol string and authorization state.
+    pub fn authenticate_blocking(&self) -> Result<(), String> {
         self.logger.info("Authenticating");
+
+        let id = generate_uuid();
+        let mut params = json!({
+            "version": {
+                "major": constants::PROTOCOL_VERSION_MAJOR,
+                "minor": constants::PROTOCOL_VERSION_MINOR,
+                "revision": constants::PROTOCOL_VERSION_REVISION,
+            },
+            "authentication": {
+                "project": self.project,
+                "token": self.token,
+            },
+            "agent": self.agent,
+            "event_acks": true,
+        });
+        // Include current contexts on the connect frame so the audit
+        // fixture (and Python's RELAY) sees the subscription on the
+        // initial handshake. Subsequent `signalwire.receive` calls
+        // dynamically add more.
+        let ctxs: Vec<String> = self.contexts.lock().unwrap().clone();
+        if !ctxs.is_empty() {
+            if let Value::Object(ref mut obj) = params {
+                obj.insert("contexts".to_string(), json!(ctxs));
+            }
+        }
+        // Re-send authorization state on reconnect for fast resume.
+        if let Some(state) = self.authorization_state.lock().unwrap().clone() {
+            if let Value::Object(ref mut obj) = params {
+                obj.insert("authorization_state".to_string(), json!(state));
+            }
+        }
 
         let msg = json!({
             "jsonrpc": "2.0",
-            "id": generate_uuid(),
+            "id": id,
+            "method": "signalwire.connect",
+            "params": params,
+        });
+
+        // Use a oneshot channel to surface the response back here.
+        let (resp_tx, resp_rx) = mpsc::channel::<Result<Value, Value>>();
+        let resolve_tx = resp_tx.clone();
+        let reject_tx = resp_tx;
+        self.register_pending(
+            &id,
+            move |v| {
+                let _ = resolve_tx.send(Ok(v));
+            },
+            move |e| {
+                let _ = reject_tx.send(Err(e));
+            },
+        );
+
+        self.send(&msg);
+
+        // Block on the oneshot. If the reader thread sees the response
+        // it forwards it through `pending` → resolve → resp_tx.
+        match resp_rx.recv_timeout(HANDSHAKE_TIMEOUT) {
+            Ok(Ok(result)) => {
+                if let Some(p) = result.get("protocol").and_then(|v| v.as_str()) {
+                    *self.protocol.lock().unwrap() = Some(p.to_string());
+                }
+                if let Some(state) = result
+                    .get("authorization")
+                    .and_then(|a| a.get("authorization_state"))
+                    .and_then(|v| v.as_str())
+                {
+                    *self.authorization_state.lock().unwrap() = Some(state.to_string());
+                }
+                self.logger.info("Authenticated");
+                Ok(())
+            }
+            Ok(Err(err)) => {
+                let msg = err
+                    .get("message")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("authentication failed")
+                    .to_string();
+                Err(format!("RELAY auth error: {}", msg))
+            }
+            Err(_) => {
+                // Pending may still be registered — clean it up so a
+                // late response doesn't trip into a stale callback.
+                self.pending.lock().unwrap().remove(&id);
+                Err(format!(
+                    "Timed out after {:?} waiting for signalwire.connect response",
+                    HANDSHAKE_TIMEOUT
+                ))
+            }
+        }
+    }
+
+    /// Backwards-compat: enqueue the `signalwire.connect` frame without
+    /// waiting. Used by older tests that drive `handle_message` directly.
+    /// Production code should call [`connect`] which runs the full
+    /// handshake.
+    pub fn authenticate(&self) {
+        let id = generate_uuid();
+        let msg = json!({
+            "jsonrpc": "2.0",
+            "id": id,
             "method": "signalwire.connect",
             "params": {
                 "version": {
@@ -155,33 +358,53 @@ impl Client {
                 "agent": self.agent,
             },
         });
-
         self.send(&msg);
     }
 
-    /// Gracefully close the connection.
+    /// Gracefully close the connection. Signals the reader thread to
+    /// exit, sends a WS close frame, and joins the thread.
     pub fn disconnect(&self) {
         self.logger.info("Disconnecting");
+        self.closing.store(true, Ordering::SeqCst);
         *self.running.lock().unwrap() = false;
         *self.connected.lock().unwrap() = false;
+        // Drop the write sender so the reader's drain loop sees the
+        // channel close and breaks promptly.
+        *self.write_tx.lock().unwrap() = None;
+
+        // Join the reader thread (best effort — thread will exit once
+        // it observes the closing flag).
+        if let Some(handle) = self.reader_thread.lock().unwrap().take() {
+            let _ = handle.join();
+        }
     }
 
-    /// Reconnect with exponential back-off (1 s -> 30 s cap).
-    pub fn reconnect(&self) {
+    /// Reconnect with exponential back-off (1s → 30s cap). Sleeps for
+    /// the current delay, doubles the delay (capped at 30s), and runs
+    /// the full connect handshake again. Authorization state survives
+    /// across reconnects because [`authenticate_blocking`] re-sends the
+    /// stored token on the new socket.
+    pub fn reconnect(self: &Arc<Self>) -> Result<(), String> {
         *self.connected.lock().unwrap() = false;
 
-        let delay = *self.reconnect_delay.lock().unwrap();
+        let delay = self.bump_reconnect_delay();
         self.logger
             .warn(&format!("Reconnecting in {}s", delay));
+        thread::sleep(Duration::from_secs(delay));
 
-        // In a real implementation we would sleep here.
+        self.connect()
+    }
 
-        {
-            let mut rd = self.reconnect_delay.lock().unwrap();
-            *rd = (*rd * 2).min(30);
-        }
-
-        self.connect();
+    /// Compute the next reconnect delay (1s → 2s → 4s → … → 30s) and
+    /// return the value to wait *this* time. Mirrors Python's
+    /// `RECONNECT_MIN_DELAY` / `RECONNECT_MAX_DELAY` / backoff factor.
+    /// Exposed (and tested) separately from [`reconnect`] so the math
+    /// is verifiable without opening a real socket.
+    pub fn bump_reconnect_delay(&self) -> u64 {
+        let mut rd = self.reconnect_delay.lock().unwrap();
+        let cur = *rd;
+        *rd = (cur.saturating_mul(2)).min(30);
+        cur
     }
 
     pub fn is_connected(&self) -> bool {
@@ -225,10 +448,22 @@ impl Client {
     }
 
     /// Send a raw JSON message through the transport.
+    ///
+    /// Records the frame in `sent_messages` (used by tests and for debug
+    /// inspection) and, when a live socket is attached, enqueues the
+    /// frame on the writer channel so the reader thread flushes it to
+    /// the WebSocket. With no live socket attached the call is purely
+    /// in-memory — that's the path the dispatch unit tests below take.
     pub fn send(&self, msg: &Value) {
-        self.logger
-            .debug(&format!(">> {}", msg));
+        self.logger.debug(&format!(">> {}", msg));
         self.sent_messages.lock().unwrap().push(msg.clone());
+        if let Some(tx) = self.write_tx.lock().unwrap().as_ref() {
+            let raw = msg.to_string();
+            if let Err(e) = tx.send(WsMessage::Text(raw)) {
+                self.logger
+                    .warn(&format!("write channel closed: {}", e));
+            }
+        }
     }
 
     /// Send an acknowledgement for a server-initiated request.
@@ -541,6 +776,120 @@ impl Client {
         self.logger.warn("Server sent disconnect");
         *self.connected.lock().unwrap() = false;
     }
+
+    /// Long-running loop that owns the WebSocket. Alternates between
+    /// short-timeout reads and draining the outbound write channel,
+    /// dispatching every inbound text frame through `handle_message`.
+    /// Exits when the closing flag is set, the write channel is
+    /// dropped, or the socket reports a fatal error.
+    fn reader_loop(
+        client: Arc<Self>,
+        mut socket: WsStream,
+        write_rx: Receiver<WsMessage>,
+    ) {
+        // Track whether we observed a clean close so the disconnect
+        // logic can decide whether to attempt a reconnect later.
+        loop {
+            if client.closing.load(Ordering::SeqCst) {
+                let _ = socket.close(None);
+                let _ = socket.flush();
+                break;
+            }
+
+            // 1) Drain any queued outbound frames before reading. Writes
+            //    are infrequent; a single batch here keeps latency low
+            //    and avoids stale frames when the server pushes a burst
+            //    of events.
+            let mut wrote_any = false;
+            loop {
+                match write_rx.try_recv() {
+                    Ok(frame) => {
+                        if let Err(e) = socket.send(frame) {
+                            client
+                                .logger
+                                .warn(&format!("WS send error: {}", e));
+                            break;
+                        }
+                        wrote_any = true;
+                    }
+                    Err(mpsc::TryRecvError::Empty) => break,
+                    Err(mpsc::TryRecvError::Disconnected) => {
+                        // Sender side dropped — disconnect() was called.
+                        let _ = socket.close(None);
+                        let _ = socket.flush();
+                        return;
+                    }
+                }
+            }
+            if wrote_any {
+                let _ = socket.flush();
+            }
+
+            // 2) Try to read one inbound frame. The TCP read timeout is
+            //    100ms so this returns regularly to give the write side
+            //    a turn.
+            match socket.read() {
+                Ok(WsMessage::Text(t)) => {
+                    client.handle_message(&t);
+                }
+                Ok(WsMessage::Binary(b)) => {
+                    // RELAY uses text frames; binary is unexpected. Try
+                    // to decode as UTF-8 and dispatch anyway, otherwise
+                    // log and drop.
+                    match std::str::from_utf8(&b) {
+                        Ok(s) => client.handle_message(s),
+                        Err(_) => client
+                            .logger
+                            .debug("ignoring non-UTF8 binary WS frame"),
+                    }
+                }
+                Ok(WsMessage::Ping(p)) => {
+                    // Tungstenite normally auto-pongs on the next write;
+                    // ensure we explicitly respond so the server's
+                    // half-open detector doesn't fire.
+                    let _ = socket.send(WsMessage::Pong(p));
+                }
+                Ok(WsMessage::Pong(_)) => {
+                    // No-op; we don't track our own pings here.
+                }
+                Ok(WsMessage::Close(_)) => {
+                    client.logger.info("server closed WS");
+                    *client.connected.lock().unwrap() = false;
+                    break;
+                }
+                Ok(WsMessage::Frame(_)) => {
+                    // Raw frame — should not happen with the protocol
+                    // module's `read()` API. Ignore.
+                }
+                Err(tungstenite::Error::Io(e))
+                    if e.kind() == std::io::ErrorKind::WouldBlock
+                        || e.kind() == std::io::ErrorKind::TimedOut =>
+                {
+                    // Read timeout — loop back to drain writes. This is
+                    // the steady state when the server is quiet.
+                }
+                Err(tungstenite::Error::ConnectionClosed) => {
+                    client.logger.info("WS connection closed");
+                    *client.connected.lock().unwrap() = false;
+                    break;
+                }
+                Err(tungstenite::Error::AlreadyClosed) => {
+                    *client.connected.lock().unwrap() = false;
+                    break;
+                }
+                Err(e) => {
+                    client.logger.warn(&format!("WS read error: {}", e));
+                    *client.connected.lock().unwrap() = false;
+                    break;
+                }
+            }
+        }
+
+        // Reader is exiting — clear the write sender so subsequent
+        // `send()` calls fall back to in-memory buffering rather than
+        // pushing into a dead channel.
+        *client.write_tx.lock().unwrap() = None;
+    }
 }
 
 /// Generate a simple UUID v4.
@@ -588,27 +937,120 @@ mod tests {
     }
 
     #[test]
-    fn test_connect_disconnect() {
+    fn test_disconnect_clears_state() {
+        // disconnect() works on a Client without ever opening a socket
+        // — it just flips the in-memory flags and joins (a non-existent)
+        // reader thread. Proves the lifecycle hooks aren't tied to an
+        // active connection.
         let c = make_client();
-        c.connect();
-        assert!(c.is_connected());
+        *c.connected.lock().unwrap() = true;
+        *c.running.lock().unwrap() = true;
         c.disconnect();
         assert!(!c.is_connected());
+        assert!(!c.is_running());
     }
 
     #[test]
-    fn test_reconnect_backoff() {
+    fn test_reconnect_backoff_math() {
+        // The backoff delay starts at 1s and doubles on each call,
+        // capping at 30s. Tested directly so we don't need a real
+        // socket — the doubling is the contract Python relies on.
         let c = make_client();
-        c.connect();
-        c.reconnect();
+        assert_eq!(c.bump_reconnect_delay(), 1);
         assert_eq!(*c.reconnect_delay.lock().unwrap(), 2);
-        c.reconnect();
+        assert_eq!(c.bump_reconnect_delay(), 2);
         assert_eq!(*c.reconnect_delay.lock().unwrap(), 4);
-        // Verify cap
         for _ in 0..10 {
-            c.reconnect();
+            c.bump_reconnect_delay();
         }
         assert!(*c.reconnect_delay.lock().unwrap() <= 30);
+    }
+
+    #[test]
+    fn test_real_ws_handshake_against_loopback_fixture() {
+        // Stand up a tiny WebSocket server on 127.0.0.1:0 that speaks
+        // just enough JSON-RPC to satisfy `signalwire.connect`. Drive
+        // the real `connect()` against it and prove the client opens
+        // the socket, sends the connect frame with `params.project`,
+        // parses the auth response, and stores the authorization
+        // state for fast-reconnect.
+        use std::net::TcpListener;
+
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let port = listener.local_addr().unwrap().port();
+
+        // Server thread: accept one upgrade, run the handshake, push a
+        // response, and exit.
+        let server = std::thread::spawn(move || {
+            let (stream, _) = listener.accept().unwrap();
+            let mut ws = tungstenite::accept(stream).unwrap();
+            // Read the connect frame.
+            loop {
+                match ws.read() {
+                    Ok(WsMessage::Text(t)) => {
+                        let v: Value = serde_json::from_str(&t).unwrap();
+                        if v.get("method").and_then(|m| m.as_str()) == Some("signalwire.connect") {
+                            let id = v.get("id").cloned().unwrap_or(json!(""));
+                            let project = v
+                                .get("params")
+                                .and_then(|p| p.get("authentication"))
+                                .and_then(|a| a.get("project"))
+                                .cloned()
+                                .unwrap_or(json!(""));
+                            let resp = json!({
+                                "jsonrpc": "2.0",
+                                "id": id,
+                                "result": {
+                                    "authorization": {
+                                        "authorization_state": "fixture-state-token",
+                                    },
+                                    "protocol": "signalwire-relay-test",
+                                    "project": project,
+                                }
+                            });
+                            ws.send(WsMessage::Text(resp.to_string())).unwrap();
+                            // Hold the connection open briefly so the
+                            // client doesn't see a premature close.
+                            std::thread::sleep(Duration::from_millis(150));
+                            break;
+                        }
+                    }
+                    Ok(_) => {}
+                    Err(_) => break,
+                }
+            }
+        });
+
+        // SAFETY: this test serializes itself through env-var locking
+        // by being one of the only tests that mutates the relay env
+        // vars. Other tests in this module don't touch them.
+        unsafe {
+            std::env::set_var("SIGNALWIRE_RELAY_SCHEME", "ws");
+            std::env::set_var("SIGNALWIRE_RELAY_HOST", format!("127.0.0.1:{}", port));
+        }
+
+        let client = Arc::new(Client::new("test-project", "test-token", "ignored"));
+        let res = client.connect();
+        assert!(res.is_ok(), "connect failed: {:?}", res);
+        // Authorization state should have been captured from the
+        // fixture's response — proves the client parsed
+        // `result.authorization.authorization_state`.
+        assert_eq!(
+            *client.authorization_state.lock().unwrap(),
+            Some("fixture-state-token".to_string())
+        );
+        // Protocol string captured.
+        assert_eq!(
+            *client.protocol.lock().unwrap(),
+            Some("signalwire-relay-test".to_string())
+        );
+        client.disconnect();
+        let _ = server.join();
+
+        unsafe {
+            std::env::remove_var("SIGNALWIRE_RELAY_SCHEME");
+            std::env::remove_var("SIGNALWIRE_RELAY_HOST");
+        }
     }
 
     #[test]
@@ -712,7 +1154,10 @@ mod tests {
     #[test]
     fn test_handle_disconnect() {
         let c = make_client();
-        c.connect();
+        // Manually flip the in-memory connected flag (this test verifies
+        // the dispatcher's response to a `signalwire.disconnect` frame —
+        // not the transport).
+        *c.connected.lock().unwrap() = true;
         assert!(c.is_connected());
 
         let msg = json!({

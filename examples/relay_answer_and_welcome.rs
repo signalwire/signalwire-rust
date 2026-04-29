@@ -8,6 +8,7 @@
 
 use signalwire::relay::Client;
 use std::env;
+use std::sync::Arc;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     if env::var("SIGNALWIRE_LOG_LEVEL").is_err() {
@@ -15,7 +16,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         unsafe { env::set_var("SIGNALWIRE_LOG_LEVEL", "debug"); }
     }
 
-    let client = Client::from_env()?;
+    let client = Arc::new(Client::from_env()?);
 
     client.on_call(|call, _event| {
         let id = call.call_id.clone().unwrap_or_default();
@@ -34,7 +35,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     });
 
     println!("Waiting for inbound calls on context 'default' ...");
-    client.connect();
+    client.connect()?;
     client.receive(&["default".to_string()]);
 
     // Block forever (relay loop runs in a background thread).
