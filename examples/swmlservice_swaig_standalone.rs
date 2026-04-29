@@ -32,11 +32,20 @@ use signalwire::swml::service::{Service, ServiceOptions};
 use serde_json::json;
 
 fn main() {
+    // Port from PORT env var (set by the audit harness or by `cargo run`
+    // users on a busy box) or first positional CLI arg, falling back to
+    // 3000 for the hand-run case.
+    let port: u16 = std::env::var("PORT")
+        .ok()
+        .or_else(|| std::env::args().nth(1))
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(3000);
+
     let mut service = Service::new(ServiceOptions {
         name: "standalone-swaig".to_string(),
         route: Some("/standalone".to_string()),
         host: Some("0.0.0.0".to_string()),
-        port: Some(3000),
+        port: Some(port),
         basic_auth_user: None,
         basic_auth_password: None,
     });
