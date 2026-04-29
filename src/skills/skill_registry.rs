@@ -192,12 +192,39 @@ mod tests {
 
     #[test]
     fn test_each_builtin_instantiable() {
-        let names = SkillRegistry::list_skills();
-        for name in &names {
+        // Iterate the *18 known builtins* directly rather than walking
+        // `list_skills()`. The latter may include user-registered
+        // skills from a sibling test (`test_register_custom_skill`)
+        // that runs in parallel under the global lock — those have
+        // an internal `name()` that may differ from the registry key
+        // (e.g. "my_custom_datetime" wraps Datetime which reports
+        // "datetime"). Pinning to the canonical builtin set keeps
+        // this test independent of test execution order.
+        let builtins = [
+            "datetime",
+            "math",
+            "joke",
+            "weather_api",
+            "web_search",
+            "wikipedia_search",
+            "google_maps",
+            "spider",
+            "datasphere",
+            "datasphere_serverless",
+            "swml_transfer",
+            "play_background_file",
+            "api_ninjas_trivia",
+            "native_vector_search",
+            "info_gatherer",
+            "claude_skills",
+            "mcp_gateway",
+            "custom_skills",
+        ];
+        for name in builtins {
             let factory = SkillRegistry::get_factory(name);
             assert!(factory.is_some(), "Factory missing for builtin: {}", name);
             let instance = factory.unwrap()(Map::new());
-            assert_eq!(instance.name(), name.as_str());
+            assert_eq!(instance.name(), name);
         }
     }
 
