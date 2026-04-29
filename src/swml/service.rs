@@ -365,7 +365,7 @@ impl Service {
         // Route dispatch
         match sub_path.as_str() {
             "/" | "" => self.handle_swml_request(method, &request_data, headers),
-            "/swaig" => self.handle_swaig_request(&request_data, headers),
+            "/swaig" => self.handle_swaig_request(method, &request_data, headers),
             "/post_prompt" => self.handle_post_prompt(&request_data, headers),
             _ => self.json_response(404, &serde_json::json!({"error": "Not found"})),
         }
@@ -506,12 +506,132 @@ impl Service {
         self.json_response(200, &self.document.to_value())
     }
 
+    /// Handle `/swaig` — the SWAIG dispatch endpoint.
+    ///
+    /// GET: returns the rendered SWML document. This mirrors what
+    /// AgentBase serves and lets the platform fetch the doc from either
+    /// `/` or `/swaig?call_id=...`.
+    ///
+    /// POST: dispatches a tool call. Expected body shape:
+    ///
+    /// ```json
+    /// {
+    ///   "function": "<name>",
+    ///   "argument": {"parsed": [{"<arg>": "<value>"}], "raw": "<json>"}
+    /// }
+    /// ```
+    ///
+    /// Argument extraction also accepts a flat `{"arguments": {...}}` form
+    /// for compatibility with non-platform callers (e.g. swaig-test
+    /// driving the endpoint with a simple body).
+    ///
+    /// Status codes:
+    /// - 200 with `{"response": ...}` from the handler on success.
+    /// - 200 with `{"response": "Function '<name>' not found"}` for an
+    ///   unknown function (mirrors Python — does not 404, since the
+    ///   platform expects a SWAIG response shape).
+    /// - 400 if `function` is missing or fails the
+    ///   `^[a-zA-Z_][a-zA-Z0-9_]*$` validator (path-traversal guard).
+    /// - 415 if the request is POST without `Content-Type: application/json`.
+    ///
+    /// Auth and body-size checks already ran in `handle_request` before
+    /// this method is invoked.
     fn handle_swaig_request(
         &self,
-        _request_data: &Option<Value>,
+        method: &str,
+        request_data: &Option<Value>,
         _headers: &HashMap<String, String>,
     ) -> (u16, HashMap<String, String>, String) {
-        self.json_response(200, &serde_json::json!([]))
+        if method.eq_ignore_ascii_case("GET") {
+            return self.json_response(200, &self.document.to_value());
+        }
+
+        let body = match request_data {
+            Some(b) => b,
+            None => {
+                return self.json_response(
+                    400,
+                    &serde_json::json!({"error": "Missing request body"}),
+                );
+            }
+        };
+
+        let function_name = match body.get("function").and_then(|v| v.as_str()) {
+            Some(name) if !name.is_empty() => name,
+            _ => {
+                return self.json_response(
+                    400,
+                    &serde_json::json!({"error": "Missing function name"}),
+                );
+            }
+        };
+
+        if !function_name_is_valid(function_name) {
+            return self.json_response(
+                400,
+                &serde_json::json!({
+                    "error": format!("Invalid function name format: '{}'", function_name)
+                }),
+            );
+        }
+
+        // Extract args. Handle the platform's nested
+        // `{argument: {parsed: [{...}], raw: "..."}}` shape and the flat
+        // `{arguments: {...}}` shape used by some external callers.
+        let mut args = serde_json::Map::new();
+        if let Some(arg_obj) = body.get("argument").and_then(|v| v.as_object()) {
+            if let Some(parsed_arr) = arg_obj.get("parsed").and_then(|v| v.as_array()) {
+                if let Some(first) = parsed_arr.first().and_then(|v| v.as_object()) {
+                    for (k, v) in first {
+                        args.insert(k.clone(), v.clone());
+                    }
+                }
+            } else if let Some(raw_str) = arg_obj.get("raw").and_then(|v| v.as_str()) {
+                if !raw_str.is_empty() {
+                    if let Ok(Value::Object(parsed)) = serde_json::from_str::<Value>(raw_str) {
+                        for (k, v) in &parsed {
+                            args.insert(k.clone(), v.clone());
+                        }
+                    }
+                }
+            }
+        } else if let Some(flat) = body.get("arguments").and_then(|v| v.as_object()) {
+            for (k, v) in flat {
+                args.insert(k.clone(), v.clone());
+            }
+        }
+
+        // Raw data is the full request body as a map (callers like skill
+        // handlers may want call_id, global_data, etc.).
+        let raw_data = match body.as_object() {
+            Some(m) => m.clone(),
+            None => serde_json::Map::new(),
+        };
+
+        // Dispatch via the registered handler. If the function name isn't
+        // registered, or it's registered without a local handler (DataMap
+        // tools that the platform executes server-side), return a SWAIG
+        // response saying so — the platform expects a `{response: ...}`
+        // shape, not a 404.
+        match self.tools.get(function_name).and_then(|t| t.handler.as_ref()) {
+            Some(handler) => {
+                let result = handler(&args, &raw_data);
+                self.json_response(200, &result.to_value())
+            }
+            None => {
+                // Differentiate "name not in registry" from "name in registry
+                // but DataMap (no local handler)" so the response is honest.
+                let msg = if self.tools.contains_key(function_name) {
+                    format!(
+                        "Function '{}' is registered but has no local handler (DataMap tool runs server-side)",
+                        function_name
+                    )
+                } else {
+                    format!("Function '{}' not found", function_name)
+                };
+                self.json_response(200, &serde_json::json!({"response": msg}))
+            }
+        }
     }
 
     fn handle_post_prompt(
@@ -602,6 +722,27 @@ impl Service {
 // ------------------------------------------------------------------
 
 /// Security headers applied to all responses.
+/// SWAIG function-name validator. Mirrors the regex used by every other
+/// port: `^[a-zA-Z_][a-zA-Z0-9_]*$`. Rejects path-traversal-style names
+/// (`../etc/passwd`), names starting with a digit, and any name containing
+/// a character other than ASCII letters / digits / underscore.
+fn function_name_is_valid(name: &str) -> bool {
+    let mut chars = name.chars();
+    let first = match chars.next() {
+        Some(c) => c,
+        None => return false,
+    };
+    if !(first.is_ascii_alphabetic() || first == '_') {
+        return false;
+    }
+    for c in chars {
+        if !(c.is_ascii_alphanumeric() || c == '_') {
+            return false;
+        }
+    }
+    true
+}
+
 fn security_headers() -> Vec<(String, String)> {
     vec![
         (
@@ -927,13 +1068,125 @@ mod tests {
     }
 
     #[test]
-    fn test_swaig_route() {
+    fn test_swaig_route_get_returns_swml_document() {
+        // GET /swaig returns the rendered SWML doc — same as GET / —
+        // letting the platform fetch it from either endpoint.
         let svc = Service::new(default_options("svc"));
         let headers = authed_headers("testuser", "testpass");
-        let (status, _, body) = svc.handle_request("POST", "/swaig", &headers, "");
+        let (status, _, body) = svc.handle_request("GET", "/swaig", &headers, "");
         assert_eq!(status, 200);
         let parsed: Value = serde_json::from_str(&body).unwrap();
-        assert!(parsed.is_array());
+        assert!(parsed.is_object(), "SWML doc must be an object, got {}", body);
+        assert!(parsed.get("sections").is_some(), "SWML doc must have a sections key");
+    }
+
+    #[test]
+    fn test_swaig_route_post_dispatches_registered_handler() {
+        // The previous test_swaig_route asserted POST /swaig returned `[]`
+        // — that was the stub talking. Now the dispatcher actually invokes
+        // the registered handler and returns its FunctionResult.
+        let mut svc = Service::new(default_options("svc"));
+        svc.define_tool(
+            "lookup",
+            "Look it up",
+            serde_json::json!({"competitor": {"type": "string"}}),
+            Box::new(|args, _raw| {
+                let competitor = args
+                    .get("competitor")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("<unknown>");
+                FunctionResult::with_response(&format!("{} pricing: $99", competitor))
+            }),
+            false,
+        );
+        let headers = authed_headers("testuser", "testpass");
+        let body = r#"{"function":"lookup","argument":{"parsed":[{"competitor":"ACME"}]}}"#;
+        let (status, _, resp) = svc.handle_request("POST", "/swaig", &headers, body);
+        assert_eq!(status, 200);
+        let parsed: Value = serde_json::from_str(&resp).unwrap();
+        assert_eq!(parsed["response"], "ACME pricing: $99");
+    }
+
+    #[test]
+    fn test_swaig_route_post_unknown_function_returns_swaig_response() {
+        // Mirrors Python: unknown function returns 200 with a SWAIG-shaped
+        // {"response": "..."} body, NOT a 404 — the platform expects the
+        // SWAIG response shape regardless.
+        let svc = Service::new(default_options("svc"));
+        let headers = authed_headers("testuser", "testpass");
+        let body = r#"{"function":"never_registered","argument":{"parsed":[{}]}}"#;
+        let (status, _, resp) = svc.handle_request("POST", "/swaig", &headers, body);
+        assert_eq!(status, 200);
+        let parsed: Value = serde_json::from_str(&resp).unwrap();
+        let msg = parsed["response"].as_str().unwrap_or("");
+        assert!(msg.contains("never_registered"), "response should name the missing function: {}", msg);
+        assert!(msg.contains("not found"), "response should say 'not found': {}", msg);
+    }
+
+    #[test]
+    fn test_swaig_route_post_invalid_function_name_returns_400() {
+        // Path-traversal guard. Function name must match
+        // ^[a-zA-Z_][a-zA-Z0-9_]*$.
+        let svc = Service::new(default_options("svc"));
+        let headers = authed_headers("testuser", "testpass");
+        let body = r#"{"function":"../etc/passwd","argument":{"parsed":[{}]}}"#;
+        let (status, _, resp) = svc.handle_request("POST", "/swaig", &headers, body);
+        assert_eq!(status, 400);
+        assert!(resp.contains("Invalid function name format"));
+    }
+
+    #[test]
+    fn test_swaig_route_post_missing_function_returns_400() {
+        let svc = Service::new(default_options("svc"));
+        let headers = authed_headers("testuser", "testpass");
+        let body = r#"{"argument":{"parsed":[{}]}}"#;
+        let (status, _, resp) = svc.handle_request("POST", "/swaig", &headers, body);
+        assert_eq!(status, 400);
+        assert!(resp.contains("Missing function name"));
+    }
+
+    #[test]
+    fn test_swaig_route_post_accepts_flat_arguments_shape() {
+        // External callers may use {"arguments": {...}} instead of the
+        // platform's nested {"argument": {"parsed": [{...}]}}. Both work.
+        let mut svc = Service::new(default_options("svc"));
+        svc.define_tool(
+            "echo",
+            "Echo",
+            serde_json::json!({"name": {"type": "string"}}),
+            Box::new(|args, _raw| {
+                let n = args
+                    .get("name")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("<unknown>");
+                FunctionResult::with_response(&format!("hi {}", n))
+            }),
+            false,
+        );
+        let headers = authed_headers("testuser", "testpass");
+        let body = r#"{"function":"echo","arguments":{"name":"there"}}"#;
+        let (status, _, resp) = svc.handle_request("POST", "/swaig", &headers, body);
+        assert_eq!(status, 200);
+        let parsed: Value = serde_json::from_str(&resp).unwrap();
+        assert_eq!(parsed["response"], "hi there");
+    }
+
+    #[test]
+    fn test_function_name_is_valid_accepts_normal_names() {
+        assert!(function_name_is_valid("lookup"));
+        assert!(function_name_is_valid("_internal"));
+        assert!(function_name_is_valid("get_weather_v2"));
+        assert!(function_name_is_valid("a"));
+    }
+
+    #[test]
+    fn test_function_name_is_valid_rejects_bad_names() {
+        assert!(!function_name_is_valid(""));
+        assert!(!function_name_is_valid("../etc/passwd"));
+        assert!(!function_name_is_valid("1starts_with_digit"));
+        assert!(!function_name_is_valid("has space"));
+        assert!(!function_name_is_valid("has-dash"));
+        assert!(!function_name_is_valid("has.dot"));
     }
 
     #[test]
@@ -971,8 +1224,8 @@ mod tests {
         let (status, _, _) = svc.handle_request("POST", "/api/v1", &headers, "");
         assert_eq!(status, 200);
 
-        // Sub-route
-        let (status, _, _) = svc.handle_request("POST", "/api/v1/swaig", &headers, "");
+        // Sub-route — GET /swaig returns the SWML doc.
+        let (status, _, _) = svc.handle_request("GET", "/api/v1/swaig", &headers, "");
         assert_eq!(status, 200);
 
         // Path outside the route should 404
