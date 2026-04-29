@@ -1,6 +1,6 @@
 {
   "version": "1",
-  "generated_from": "signalwire-rust @ b8a423feeda8d3c19827f5ba701e81b8e120739d",
+  "generated_from": "signalwire-rust @ 474864414dd53af2fffc18b97fd4f79241355103",
   "modules": {
     "signalwire": {
       "classes": {},
@@ -11,6 +11,9 @@
         "RestClient",
         "SWMLService",
         "add_skill_directory",
+        "list_skills",
+        "list_skills_with_params",
+        "register_skill",
         "run_agent",
         "start_agent"
       ]
@@ -450,6 +453,13 @@
       "functions": []
     },
     "signalwire.relay.action": {
+      "classes": {},
+      "functions": [
+        "__init__",
+        "action"
+      ]
+    },
+    "signalwire.relay.call": {
       "classes": {
         "Action": [
           "__init__",
@@ -470,41 +480,6 @@
           "stop_method",
           "with_stop_method"
         ],
-        "CollectAction": [
-          "__init__",
-          "action",
-          "collect_result",
-          "handle_event_filtered",
-          "start_input_timers"
-        ],
-        "DetectAction": [
-          "detect_result"
-        ],
-        "FaxAction": [
-          "__init__",
-          "action",
-          "fax_type"
-        ],
-        "PlayAction": [
-          "pause",
-          "resume",
-          "volume"
-        ],
-        "RecordAction": [
-          "duration",
-          "pause",
-          "resume",
-          "size",
-          "url"
-        ]
-      },
-      "functions": [
-        "__init__",
-        "action"
-      ]
-    },
-    "signalwire.relay.call": {
-      "classes": {
         "Call": [
           "__init__",
           "__repr__",
@@ -552,6 +527,33 @@
           "transfer",
           "unhold",
           "user_event"
+        ],
+        "CollectAction": [
+          "__init__",
+          "action",
+          "collect_result",
+          "handle_event_filtered",
+          "start_input_timers"
+        ],
+        "DetectAction": [
+          "detect_result"
+        ],
+        "FaxAction": [
+          "__init__",
+          "action",
+          "fax_type"
+        ],
+        "PlayAction": [
+          "pause",
+          "resume",
+          "volume"
+        ],
+        "RecordAction": [
+          "duration",
+          "pause",
+          "resume",
+          "size",
+          "url"
         ]
       },
       "functions": []
@@ -815,145 +817,105 @@
       },
       "functions": []
     },
-    "signalwire.skills.builtin.api_ninjas_trivia": {
+    "signalwire.skills.api_ninjas_trivia.skill": {
       "classes": {
-        "ApiNinjasTrivia": [
+        "ApiNinjasTriviaSkill": [
           "__init__"
         ]
       },
       "functions": []
     },
-    "signalwire.skills.builtin.claude_skills": {
+    "signalwire.skills.claude_skills.skill": {
       "classes": {
-        "ClaudeSkills": [
+        "ClaudeSkillsSkill": [
           "__init__"
         ]
       },
       "functions": []
     },
-    "signalwire.skills.builtin.custom_skills": {
+    "signalwire.skills.custom_skills.skill": {
       "classes": {
-        "CustomSkills": [
+        "CustomSkillsSkill": [
           "__init__"
         ]
       },
       "functions": []
     },
-    "signalwire.skills.builtin.datasphere": {
+    "signalwire.skills.datasphere.skill": {
       "classes": {
-        "Datasphere": [
+        "DataSphereSkill": [
           "__init__"
         ]
       },
       "functions": []
     },
-    "signalwire.skills.builtin.datasphere_serverless": {
+    "signalwire.skills.datasphere_serverless.skill": {
       "classes": {
-        "DatasphereServerless": [
+        "DataSphereServerlessSkill": [
           "__init__"
         ]
       },
       "functions": []
     },
-    "signalwire.skills.builtin.datetime": {
+    "signalwire.skills.datetime.skill": {
       "classes": {
-        "Datetime": [
+        "DateTimeSkill": [
           "__init__"
         ]
       },
       "functions": []
     },
-    "signalwire.skills.builtin.google_maps": {
+    "signalwire.skills.google_maps.skill": {
       "classes": {
-        "GoogleMaps": [
+        "GoogleMapsSkill": [
           "__init__"
         ]
       },
       "functions": []
     },
-    "signalwire.skills.builtin.info_gatherer": {
+    "signalwire.skills.info_gatherer.skill": {
       "classes": {
-        "InfoGatherer": [
+        "InfoGathererSkill": [
           "__init__"
         ]
       },
       "functions": []
     },
-    "signalwire.skills.builtin.joke": {
+    "signalwire.skills.joke.skill": {
       "classes": {
-        "Joke": [
+        "JokeSkill": [
           "__init__"
         ]
       },
       "functions": []
     },
-    "signalwire.skills.builtin.math": {
+    "signalwire.skills.math.skill": {
       "classes": {
-        "Math": [
+        "MathSkill": [
           "__init__"
         ]
       },
       "functions": []
     },
-    "signalwire.skills.builtin.mcp_gateway": {
+    "signalwire.skills.mcp_gateway.skill": {
       "classes": {
-        "McpGateway": [
+        "MCPGatewaySkill": [
           "__init__"
         ]
       },
       "functions": []
     },
-    "signalwire.skills.builtin.native_vector_search": {
+    "signalwire.skills.native_vector_search.skill": {
       "classes": {
-        "NativeVectorSearch": [
+        "NativeVectorSearchSkill": [
           "__init__"
         ]
       },
       "functions": []
     },
-    "signalwire.skills.builtin.play_background_file": {
+    "signalwire.skills.play_background_file.skill": {
       "classes": {
-        "PlayBackgroundFile": [
-          "__init__"
-        ]
-      },
-      "functions": []
-    },
-    "signalwire.skills.builtin.spider": {
-      "classes": {
-        "Spider": [
-          "__init__"
-        ]
-      },
-      "functions": []
-    },
-    "signalwire.skills.builtin.swml_transfer": {
-      "classes": {
-        "SwmlTransfer": [
-          "__init__"
-        ]
-      },
-      "functions": []
-    },
-    "signalwire.skills.builtin.weather_api": {
-      "classes": {
-        "WeatherApi": [
-          "__init__"
-        ]
-      },
-      "functions": []
-    },
-    "signalwire.skills.builtin.web_search": {
-      "classes": {
-        "WebSearch": [
-          "__init__"
-        ]
-      },
-      "functions": []
-    },
-    "signalwire.skills.builtin.wikipedia_search": {
-      "classes": {
-        "WikipediaSearch": [
+        "PlayBackgroundFileSkill": [
           "__init__"
         ]
       },
@@ -988,6 +950,46 @@
       "functions": [
         "value_to_map"
       ]
+    },
+    "signalwire.skills.spider.skill": {
+      "classes": {
+        "SpiderSkill": [
+          "__init__"
+        ]
+      },
+      "functions": []
+    },
+    "signalwire.skills.swml_transfer.skill": {
+      "classes": {
+        "SWMLTransferSkill": [
+          "__init__"
+        ]
+      },
+      "functions": []
+    },
+    "signalwire.skills.weather_api.skill": {
+      "classes": {
+        "WeatherApiSkill": [
+          "__init__"
+        ]
+      },
+      "functions": []
+    },
+    "signalwire.skills.web_search.skill": {
+      "classes": {
+        "WebSearchSkill": [
+          "__init__"
+        ]
+      },
+      "functions": []
+    },
+    "signalwire.skills.wikipedia_search.skill": {
+      "classes": {
+        "WikipediaSearchSkill": [
+          "__init__"
+        ]
+      },
+      "functions": []
     },
     "signalwire.swml.schema": {
       "classes": {},

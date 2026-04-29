@@ -91,12 +91,74 @@ CLASS_MODULE_MAP: dict[str, str] = {
     "Client": "signalwire.relay.client",  # Rust's `relay::Client` == Python's `RelayClient`
     "Call": "signalwire.relay.call",
     "Message": "signalwire.relay.message",
+    "Action": "signalwire.relay.call",
+    "PlayAction": "signalwire.relay.call",
+    "RecordAction": "signalwire.relay.call",
+    "CollectAction": "signalwire.relay.call",
+    "ConnectAction": "signalwire.relay.call",
+    "DetectAction": "signalwire.relay.call",
+    "FaxAction": "signalwire.relay.call",
+    "TapAction": "signalwire.relay.call",
+    "SendDigitsAction": "signalwire.relay.call",
+    "DialAction": "signalwire.relay.call",
+    "ReferAction": "signalwire.relay.call",
+    "PayAction": "signalwire.relay.call",
+    "StreamAction": "signalwire.relay.call",
+    "TranscribeAction": "signalwire.relay.call",
+    "PromptAction": "signalwire.relay.call",
+    "QueueAction": "signalwire.relay.call",
+    "EchoAction": "signalwire.relay.call",
+    "AIAction": "signalwire.relay.call",
+    "StandaloneCollectAction": "signalwire.relay.call",
+    "DenoiseAction": "signalwire.relay.call",
+    "Event": "signalwire.relay.event",
+
+    # skills (Rust's short names → Python's <Name>Skill canonical class)
+    "ApiNinjasTrivia": "signalwire.skills.api_ninjas_trivia.skill",
+    "ClaudeSkills": "signalwire.skills.claude_skills.skill",
+    "CustomSkills": "signalwire.skills.custom_skills.skill",
+    "Datasphere": "signalwire.skills.datasphere.skill",
+    "DatasphereServerless": "signalwire.skills.datasphere_serverless.skill",
+    "Datetime": "signalwire.skills.datetime.skill",
+    "GoogleMaps": "signalwire.skills.google_maps.skill",
+    "InfoGatherer": "signalwire.skills.info_gatherer.skill",
+    "Joke": "signalwire.skills.joke.skill",
+    "Math": "signalwire.skills.math.skill",
+    "McpGateway": "signalwire.skills.mcp_gateway.skill",
+    "NativeVectorSearch": "signalwire.skills.native_vector_search.skill",
+    "PlayBackgroundFile": "signalwire.skills.play_background_file.skill",
+    "Spider": "signalwire.skills.spider.skill",
+    "SwmlTransfer": "signalwire.skills.swml_transfer.skill",
+    "WeatherApi": "signalwire.skills.weather_api.skill",
+    "WebSearch": "signalwire.skills.web_search.skill",
+    "WikipediaSearch": "signalwire.skills.wikipedia_search.skill",
 }
 
 # Rust class name → Python canonical class name (when they differ).
+# Skill suffixes are required: Python names every skill class
+# `<Stem>Skill` (e.g. WikipediaSearchSkill); Rust uses just `<Stem>`.
 CLASS_RENAME_MAP: dict[str, str] = {
     "Service": "SWMLService",
     "Client": "RelayClient",  # within relay/ module
+    # Skills
+    "ApiNinjasTrivia": "ApiNinjasTriviaSkill",
+    "ClaudeSkills": "ClaudeSkillsSkill",
+    "CustomSkills": "CustomSkillsSkill",
+    "Datasphere": "DataSphereSkill",
+    "DatasphereServerless": "DataSphereServerlessSkill",
+    "Datetime": "DateTimeSkill",
+    "GoogleMaps": "GoogleMapsSkill",
+    "InfoGatherer": "InfoGathererSkill",
+    "Joke": "JokeSkill",
+    "Math": "MathSkill",
+    "McpGateway": "MCPGatewaySkill",
+    "NativeVectorSearch": "NativeVectorSearchSkill",
+    "PlayBackgroundFile": "PlayBackgroundFileSkill",
+    "Spider": "SpiderSkill",
+    "SwmlTransfer": "SWMLTransferSkill",
+    "WeatherApi": "WeatherApiSkill",
+    "WebSearch": "WebSearchSkill",
+    "WikipediaSearch": "WikipediaSearchSkill",
 }
 
 

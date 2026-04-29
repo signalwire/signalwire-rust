@@ -81,6 +81,37 @@ pub fn run_agent(agent: &AgentBase, _host: Option<&str>, _port: Option<u16>) {
     agent.run();
 }
 
+/// Sorted list of every registered skill name.
+///
+/// Mirrors Python's `signalwire.list_skills()`.
+pub fn list_skills() -> Vec<String> {
+    skills::SkillRegistry::list_skills()
+}
+
+/// Per-skill schema map (parameter metadata) for every registered
+/// skill. Currently returns only the skill name as the key with an
+/// empty parameter map — Rust skills don't carry rich Python-style
+/// parameter introspection. The shape matches Python's contract so
+/// downstream tooling can iterate.
+///
+/// Mirrors Python's `signalwire.list_skills_with_params()`.
+pub fn list_skills_with_params() -> std::collections::HashMap<String, serde_json::Value> {
+    let mut out = std::collections::HashMap::new();
+    for name in skills::SkillRegistry::list_skills() {
+        out.insert(name, serde_json::json!({"parameters": {}}));
+    }
+    out
+}
+
+/// Register a custom skill by name + factory.
+///
+/// Mirrors Python's `signalwire.register_skill(skill_class)` — the
+/// Rust signature differs because Rust uses a typed factory rather
+/// than reflection-driven class registration.
+pub fn register_skill(name: &str, factory: skills::skill_registry::SkillFactory) {
+    skills::SkillRegistry::register_skill(name, factory)
+}
+
 #[cfg(test)]
 mod top_level_tests {
     use super::*;
