@@ -236,6 +236,14 @@ impl Service {
         self.tool_order.clone()
     }
 
+    /// Look up a registered tool's full SWAIG definition (the JSON
+    /// shape returned to the SignalWire platform). Used by audit
+    /// harnesses that need to inspect the DataMap webhook URL of a
+    /// registered tool without invoking it.
+    pub fn tool_definition(&self, name: &str) -> Option<Value> {
+        self.tools.get(name).map(|t| t.definition.clone())
+    }
+
     // ------------------------------------------------------------------
     // Accessors
     // ------------------------------------------------------------------

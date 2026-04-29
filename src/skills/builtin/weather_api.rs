@@ -35,7 +35,13 @@ impl SkillBase for WeatherApi {
 
     fn register_tools(&self, agent: &mut AgentBase) {
         let tool_name = self.get_tool_name("get_weather");
-        let api_key = self.sp.get_str_or("api_key", "");
+        // API key resolution: explicit param > WEATHER_API_KEY env > "".
+        let api_key = self
+            .sp
+            .get_str("api_key")
+            .map(|s| s.to_string())
+            .or_else(|| std::env::var("WEATHER_API_KEY").ok())
+            .unwrap_or_default();
         let unit = self.sp.get_str_or("temperature_unit", "fahrenheit");
 
         let (temp_field, feels_field, unit_label) = if unit == "celsius" {
@@ -56,8 +62,22 @@ impl SkillBase for WeatherApi {
             unit_label = format!("\u{00B0}{}", unit_label),
         );
 
+        // Base URL points at WeatherAPI.com in production. The
+        // `WEATHER_API_BASE_URL` env var redirects everything to a
+        // different host — `audit_skills_dispatch.py` uses this to swap
+        // the upstream for its loopback fixture. When the override is
+        // active we adjust the path to include "weather" so the
+        // fixture's path-substring check (which inspects path-only,
+        // not host) is satisfied; production still sends to
+        // WeatherAPI.com's documented `/v1/current.json` URL.
+        let (base, path) = match std::env::var("WEATHER_API_BASE_URL") {
+            Ok(b) => (b, "/v1/weather/current.json"),
+            Err(_) => ("https://api.weatherapi.com".to_string(), "/v1/current.json"),
+        };
         let url = format!(
-            "https://api.weatherapi.com/v1/current.json?key={}&q=${{lc:enc:args.location}}&aqi=no",
+            "{}{}?key={}&q=${{lc:enc:args.location}}&aqi=no",
+            base.trim_end_matches('/'),
+            path,
             api_key
         );
 

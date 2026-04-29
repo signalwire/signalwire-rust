@@ -51,12 +51,18 @@ impl SkillBase for ApiNinjasTrivia {
     }
 
     fn setup(&mut self) -> bool {
-        self.sp.get_str("api_key").is_some()
+        self.sp.get_str("api_key").is_some() || std::env::var("API_NINJAS_KEY").is_ok()
     }
 
     fn register_tools(&self, agent: &mut AgentBase) {
         let tool_name = self.get_tool_name("get_trivia");
-        let api_key = self.sp.get_str_or("api_key", "");
+        // API key resolution: explicit param > API_NINJAS_KEY env > "".
+        let api_key = self
+            .sp
+            .get_str("api_key")
+            .map(|s| s.to_string())
+            .or_else(|| std::env::var("API_NINJAS_KEY").ok())
+            .unwrap_or_default();
 
         let categories: Vec<Value> = self
             .sp
@@ -66,6 +72,15 @@ impl SkillBase for ApiNinjasTrivia {
             .filter(|a| !a.is_empty())
             .cloned()
             .unwrap_or_else(|| ALL_CATEGORIES.iter().map(|c| json!(c)).collect());
+
+        // Base URL defaults to API Ninjas; override via env for the
+        // audit fixture (audit_skills_dispatch.py sets this).
+        let base = std::env::var("API_NINJAS_BASE_URL")
+            .unwrap_or_else(|_| "https://api.api-ninjas.com".to_string());
+        let url = format!(
+            "{}/v1/trivia?category=%{{args.category}}",
+            base.trim_end_matches('/')
+        );
 
         let mut func_def = json!({
             "function": tool_name,
@@ -83,7 +98,7 @@ impl SkillBase for ApiNinjasTrivia {
             },
             "data_map": {
                 "webhooks": [{
-                    "url": "https://api.api-ninjas.com/v1/trivia?category=%{args.category}",
+                    "url": url,
                     "method": "GET",
                     "headers": {
                         "X-Api-Key": api_key,
@@ -124,7 +139,27 @@ mod tests {
 
     #[test]
     fn test_api_ninjas_trivia_setup_needs_key() {
+        // Setup() succeeds iff either an explicit `api_key` param is
+        // set OR the API_NINJAS_KEY env var is present. We verify the
+        // negative case by clearing the env var first, restoring it
+        // on exit so other tests aren't affected.
+        let prev = std::env::var("API_NINJAS_KEY").ok();
+        unsafe {
+            std::env::remove_var("API_NINJAS_KEY");
+        }
+
         let mut skill = ApiNinjasTrivia::new(Map::new());
-        assert!(!skill.setup());
+        assert!(!skill.setup(), "setup must fail when no key is anywhere");
+
+        let mut params = Map::new();
+        params.insert("api_key".to_string(), json!("explicit-key"));
+        let mut skill_with_param = ApiNinjasTrivia::new(params);
+        assert!(skill_with_param.setup());
+
+        unsafe {
+            if let Some(v) = prev {
+                std::env::set_var("API_NINJAS_KEY", v);
+            }
+        }
     }
 }
