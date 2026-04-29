@@ -113,6 +113,9 @@ RE_PUB_TRAIT = re.compile(r"^\s*pub(?:\s*\([^)]*\))?\s+trait\s+(\w+)\b")
 RE_PUB_TYPE = re.compile(r"^\s*pub(?:\s*\([^)]*\))?\s+type\s+(\w+)\b")
 RE_IMPL_BLOCK = re.compile(r"^\s*impl(?:\s*<[^>]*>)?\s+(\w+)(?:\s*<[^>]*>)?\s*(?:where[^{]*)?\{")
 RE_IMPL_TRAIT_FOR = re.compile(r"^\s*impl(?:\s*<[^>]*>)?\s+\w+(?:\s*<[^>]*>)?\s+for\s+(\w+)\b")
+# `pub use <path>::Name;` and `pub use <path>::{A, B};` and `pub use <path>::Name as Other;`
+RE_PUB_USE_ITEM = re.compile(r"^\s*pub\s+use\s+([\w:]+)::([\w?]+)(?:\s+as\s+(\w+))?\s*;")
+RE_PUB_USE_GROUP = re.compile(r"^\s*pub\s+use\s+([\w:]+)::\{([^}]+)\}\s*;")
 
 
 def _git_sha() -> str:
@@ -132,6 +135,9 @@ def _module_path_for_class(name: str, file_relative: Path) -> str:
     if parts and parts[0] == "src":
         parts = parts[1:]
     if not parts:
+        return "signalwire"
+    # src/lib.rs → top-level signalwire module (re-exports / __init__ helpers).
+    if parts == ("lib",):
         return "signalwire"
     return "signalwire." + ".".join(parts)
 
@@ -216,8 +222,12 @@ def _parse_file(path: Path) -> tuple[set[str], dict[str, set[str]], set[str]]:
         m_fn = RE_PUB_FN.match(line)
         if m_fn:
             fn_name = m_fn.group(1)
+            # Map Rust idiomatic constructor / dunder-equivalent names
+            # to Python's canonical dunder names.
             if fn_name == "new":
                 fn_name = "__init__"
+            elif fn_name == "repr":
+                fn_name = "__repr__"
             if impl_stack:
                 methods[impl_stack[-1]].add(fn_name)
             else:
@@ -230,6 +240,41 @@ def _parse_file(path: Path) -> tuple[set[str], dict[str, set[str]], set[str]]:
             brace_depth_for_impl.pop()
 
     return free_fns, dict(methods), classes
+
+
+def _parse_lib_reexports(path: Path) -> set[str]:
+    """Pull `pub use ...::Name;` items from src/lib.rs.
+
+    These names are re-exported at the crate root and Python's
+    `signalwire/__init__.py` lists most of them as either top-level
+    functions (e.g. `RestClient`) or top-level class re-exports. We
+    emit each name into the top-level ``signalwire`` module's
+    `functions` list so Python's flat surface lines up.
+    """
+    out: set[str] = set()
+    try:
+        text = path.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return out
+    for line in text.splitlines():
+        # `pub use foo::bar::Name;` or `pub use foo::bar::Name as Other;`
+        m = RE_PUB_USE_ITEM.match(line)
+        if m:
+            renamed = m.group(3)
+            out.add(renamed if renamed else m.group(2))
+            continue
+        # `pub use foo::bar::{A, B as C};`
+        m = RE_PUB_USE_GROUP.match(line)
+        if m:
+            for part in m.group(2).split(","):
+                part = part.strip()
+                if not part:
+                    continue
+                if " as " in part:
+                    out.add(part.split(" as ")[1].strip())
+                else:
+                    out.add(part)
+    return out
 
 
 def build_surface() -> dict:
@@ -248,6 +293,17 @@ def build_surface() -> dict:
         if free_fns:
             mod = _module_path_for_class("__module__", rel)  # fallback path-derived
             modules[mod]["functions"].extend(sorted(free_fns))
+
+    # Inject lib.rs `pub use` re-exports into the top-level module
+    # so the surface mirrors Python's `signalwire/__init__.py` flat
+    # exports.
+    lib_path = SRC_DIR / "lib.rs"
+    if lib_path.is_file():
+        for name in sorted(_parse_lib_reexports(lib_path)):
+            if name not in modules["signalwire"]["functions"]:
+                modules["signalwire"]["functions"].append(name)
+        # keep functions sorted for determinism
+        modules["signalwire"]["functions"] = sorted(set(modules["signalwire"]["functions"]))
 
     # Second pass: collect methods per class
     for path in files:

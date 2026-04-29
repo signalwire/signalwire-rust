@@ -1,7 +1,20 @@
 {
   "version": "1",
-  "generated_from": "signalwire-rust @ 3e2817c009e88798ce759befffa029076bedc20e",
+  "generated_from": "signalwire-rust @ b8a423feeda8d3c19827f5ba701e81b8e120739d",
   "modules": {
+    "signalwire": {
+      "classes": {},
+      "functions": [
+        "AgentBase",
+        "AgentOptions",
+        "AgentServer",
+        "RestClient",
+        "SWMLService",
+        "add_skill_directory",
+        "run_agent",
+        "start_agent"
+      ]
+    },
     "signalwire.agent.agent_base": {
       "classes": {
         "AgentOptions": [
@@ -38,11 +51,11 @@
       "classes": {
         "BedrockAgent": [
           "__init__",
+          "__repr__",
           "agent",
           "agent_mut",
           "max_tokens",
           "render_swml",
-          "repr",
           "set_inference_params",
           "set_llm_model",
           "set_llm_temperature",
@@ -494,6 +507,7 @@
       "classes": {
         "Call": [
           "__init__",
+          "__repr__",
           "ai",
           "ai_hold",
           "ai_message",
@@ -606,6 +620,7 @@
       "classes": {
         "Message": [
           "__init__",
+          "__repr__",
           "body",
           "context",
           "direction",
@@ -947,6 +962,8 @@
     "signalwire.skills.registry": {
       "classes": {
         "SkillRegistry": [
+          "add_skill_directory",
+          "external_paths",
           "get_factory",
           "list_skills",
           "register_skill"

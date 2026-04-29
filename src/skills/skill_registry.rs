@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::path::PathBuf;
 use std::sync::{LazyLock, Mutex};
 
 use serde_json::{Map, Value};
@@ -20,12 +21,22 @@ static REGISTRY: LazyLock<Mutex<SkillRegistryInner>> = LazyLock::new(|| {
 
 struct SkillRegistryInner {
     skills: HashMap<String, SkillFactory>,
+    /// External directories registered via [`SkillRegistry::add_skill_directory`].
+    ///
+    /// Rust cannot load .rs files at runtime, so the recorded path is
+    /// informational: third-party skill crates must call
+    /// [`SkillRegistry::register_skill`] at startup with their factory.
+    /// This vector keeps the path registration so callers and tooling
+    /// can introspect which directories were declared (mirrors
+    /// Python's `_external_paths`).
+    external_paths: Vec<PathBuf>,
 }
 
 impl SkillRegistryInner {
     fn new() -> Self {
         SkillRegistryInner {
             skills: HashMap::new(),
+            external_paths: Vec::new(),
         }
     }
 
@@ -142,6 +153,44 @@ impl SkillRegistry {
         names.sort();
         names
     }
+
+    /// Register an external directory containing third-party skill
+    /// factories.
+    ///
+    /// Mirrors Python's
+    /// `signalwire.skills.registry.SkillRegistry.add_skill_directory`.
+    /// Rust cannot dynamically load `.rs` files the way Python loads
+    /// `.py` modules from a directory; in Rust, third-party skills
+    /// must call [`SkillRegistry::register_skill`] at startup. The
+    /// path is recorded for introspection / logging purposes (matching
+    /// the Python `_external_paths` field) so the surface contract
+    /// matches.
+    ///
+    /// # Errors
+    /// Returns an error string if the directory does not exist or is
+    /// not a directory.
+    pub fn add_skill_directory(path: &str) -> Result<(), String> {
+        let p = PathBuf::from(path);
+        if !p.exists() {
+            return Err(format!("Skill directory does not exist: {}", path));
+        }
+        if !p.is_dir() {
+            return Err(format!("Path is not a directory: {}", path));
+        }
+        let mut inner = REGISTRY.lock().expect("skill registry poisoned");
+        let canonical = std::fs::canonicalize(&p).unwrap_or_else(|_| p.clone());
+        if !inner.external_paths.iter().any(|existing| existing == &canonical) {
+            inner.external_paths.push(canonical);
+        }
+        Ok(())
+    }
+
+    /// Read the list of external skill directories registered via
+    /// [`SkillRegistry::add_skill_directory`].
+    pub fn external_paths() -> Vec<PathBuf> {
+        let inner = REGISTRY.lock().expect("skill registry poisoned");
+        inner.external_paths.clone()
+    }
 }
 
 #[cfg(test)]
@@ -237,5 +286,51 @@ mod tests {
         );
         let names = SkillRegistry::list_skills();
         assert!(names.contains(&"my_custom_datetime".to_string()));
+    }
+
+    #[test]
+    fn test_add_skill_directory_existing() {
+        // Use the project's `src/skills` directory — known to exist.
+        let dir = std::env::current_dir().unwrap().join("src").join("skills");
+        let r = SkillRegistry::add_skill_directory(dir.to_str().unwrap());
+        assert!(r.is_ok(), "add_skill_directory failed: {:?}", r);
+        let canonical = std::fs::canonicalize(&dir).unwrap();
+        assert!(
+            SkillRegistry::external_paths().iter().any(|p| p == &canonical),
+            "external_paths should contain registered directory"
+        );
+    }
+
+    #[test]
+    fn test_add_skill_directory_nonexistent() {
+        let r = SkillRegistry::add_skill_directory("/no-such-directory-xyz-12345");
+        assert!(r.is_err());
+        assert!(r.unwrap_err().contains("does not exist"));
+    }
+
+    #[test]
+    fn test_add_skill_directory_path_is_a_file() {
+        // Cargo.toml is guaranteed to exist as a file.
+        let file = std::env::current_dir().unwrap().join("Cargo.toml");
+        let r = SkillRegistry::add_skill_directory(file.to_str().unwrap());
+        assert!(r.is_err());
+        assert!(r.unwrap_err().contains("not a directory"));
+    }
+
+    #[test]
+    fn test_add_skill_directory_idempotent() {
+        let dir = std::env::current_dir().unwrap().join("src");
+        let canonical = std::fs::canonicalize(&dir).unwrap();
+        SkillRegistry::add_skill_directory(dir.to_str().unwrap()).unwrap();
+        let count_first = SkillRegistry::external_paths()
+            .iter()
+            .filter(|p| **p == canonical)
+            .count();
+        SkillRegistry::add_skill_directory(dir.to_str().unwrap()).unwrap();
+        let count_second = SkillRegistry::external_paths()
+            .iter()
+            .filter(|p| **p == canonical)
+            .count();
+        assert_eq!(count_first, count_second);
     }
 }

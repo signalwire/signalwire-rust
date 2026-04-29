@@ -115,6 +115,16 @@ impl Message {
         self.message_id.as_deref()
     }
 
+    /// Python-style `__repr__` (mirrors `Message.__repr__` in the
+    /// signalwire-python reference). Returns a string of the form
+    /// `Message(message_id=..., from=..., to=..., state=...)`.
+    pub fn repr(&self) -> String {
+        format!(
+            "Message(message_id={:?}, from={:?}, to={:?}, state={:?})",
+            self.message_id, self.from_number, self.to_number, self.state()
+        )
+    }
+
     pub fn context(&self) -> Option<&str> {
         self.context.as_deref()
     }

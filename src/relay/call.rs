@@ -89,6 +89,16 @@ impl Call {
         self.state.lock().unwrap().clone()
     }
 
+    /// Python-style `__repr__` (mirrors `Call.__repr__` in the
+    /// signalwire-python reference). Returns a string of the form
+    /// `Call(call_id=..., state=...)`.
+    pub fn repr(&self) -> String {
+        format!(
+            "Call(call_id={:?}, state={:?})",
+            self.call_id, self.current_state()
+        )
+    }
+
     // ------------------------------------------------------------------
     // Event dispatch
     // ------------------------------------------------------------------
