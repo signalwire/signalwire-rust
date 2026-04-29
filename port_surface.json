@@ -1,6 +1,6 @@
 {
   "version": "1",
-  "generated_from": "signalwire-rust @ e22c85b108069a4e1af53f35b0bad813c4a80482",
+  "generated_from": "signalwire-rust @ 0978b8efd426761d1036d68bce700ae20a1975d9",
   "modules": {
     "signalwire.agent.agent_base": {
       "classes": {
@@ -27,6 +27,31 @@
           "setup_sip_routing",
           "sip_username_mapping",
           "unregister"
+        ]
+      },
+      "functions": []
+    },
+    "signalwire.agents.bedrock": {
+      "classes": {
+        "BedrockAgent": [
+          "__init__",
+          "agent",
+          "agent_mut",
+          "max_tokens",
+          "render_swml",
+          "repr",
+          "set_inference_params",
+          "set_llm_model",
+          "set_llm_temperature",
+          "set_post_prompt_llm_params",
+          "set_prompt_llm_params",
+          "set_voice",
+          "temperature",
+          "top_p",
+          "voice_id"
+        ],
+        "BedrockOptions": [
+          "with_name"
         ]
       },
       "functions": []

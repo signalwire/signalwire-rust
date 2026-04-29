@@ -45,6 +45,15 @@ CLASS_MODULE_MAP: dict[str, str] = {
     # core/agent
     "AgentBase": "signalwire.core.agent_base",
 
+    # prefabs (Python canonical paths)
+    "BedrockAgent": "signalwire.agents.bedrock",
+    "BedrockOptions": "signalwire.agents.bedrock",
+    "InfoGathererAgent": "signalwire.prefabs.info_gatherer",
+    "SurveyAgent": "signalwire.prefabs.survey",
+    "ReceptionistAgent": "signalwire.prefabs.receptionist",
+    "FAQBotAgent": "signalwire.prefabs.faq_bot",
+    "ConciergeAgent": "signalwire.prefabs.concierge",
+
     # core/contexts
     "Context": "signalwire.core.contexts",
     "ContextBuilder": "signalwire.core.contexts",

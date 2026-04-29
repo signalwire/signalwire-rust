@@ -1,9 +1,11 @@
+pub mod bedrock;
 pub mod info_gatherer;
 pub mod survey;
 pub mod receptionist;
 pub mod faq_bot;
 pub mod concierge;
 
+pub use bedrock::{BedrockAgent, BedrockOptions};
 pub use info_gatherer::InfoGathererAgent;
 pub use survey::SurveyAgent;
 pub use receptionist::ReceptionistAgent;
