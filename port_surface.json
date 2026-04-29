@@ -1,6 +1,6 @@
 {
   "version": "1",
-  "generated_from": "signalwire-rust @ 0978b8efd426761d1036d68bce700ae20a1975d9",
+  "generated_from": "signalwire-rust @ 3e2817c009e88798ce759befffa029076bedc20e",
   "modules": {
     "signalwire.agent.agent_base": {
       "classes": {
@@ -22,8 +22,11 @@
           "is_sip_routing_enabled",
           "port",
           "register",
+          "register_global_routing_callback",
           "register_sip_username",
+          "run",
           "serve_static",
+          "serve_static_files",
           "setup_sip_routing",
           "sip_username_mapping",
           "unregister"

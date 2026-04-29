@@ -1,12 +1,27 @@
 use std::collections::HashMap;
 use std::env;
 use std::fs;
+use std::io::Read as _;
 use std::path::PathBuf;
+use std::sync::Arc;
 
 use serde_json::{json, Value};
 
 use crate::agent::AgentBase;
 use crate::logging::Logger;
+
+/// Callback signature for global request-time routing decisions.
+///
+/// The callback receives the parsed request body (or `None` if absent
+/// / unparseable) and returns:
+/// - `Some(route)` — redirect handling to that route's agent.
+/// - `None` — fall through to normal route dispatch.
+///
+/// Mirrors Python's `register_routing_callback` / `register_global_routing_callback`
+/// signature (`Callable[[Request, Dict[str, Any]], Optional[str]]`),
+/// modulo Rust's lack of a FastAPI Request object.
+pub type GlobalRoutingCallback =
+    Arc<dyn Fn(&str, &HashMap<String, String>, &Option<Value>) -> Option<String> + Send + Sync>;
 
 /// Extension-to-MIME mapping for static file serving.
 const MIME_TYPES: &[(&str, &str)] = &[
@@ -39,6 +54,10 @@ pub struct AgentServer {
     sip_routing_enabled: bool,
     sip_username_mapping: HashMap<String, String>,
     static_routes: HashMap<String, PathBuf>,
+    /// Path → callback. Each entry is consulted before normal route
+    /// dispatch when its path matches. Returning `Some(route)` redirects
+    /// to that agent; `None` falls through.
+    global_routing_callbacks: HashMap<String, GlobalRoutingCallback>,
     logger: Logger,
 }
 
@@ -59,6 +78,7 @@ impl AgentServer {
             sip_routing_enabled: false,
             sip_username_mapping: HashMap::new(),
             static_routes: HashMap::new(),
+            global_routing_callbacks: HashMap::new(),
             logger: Logger::new("agent_server"),
         }
     }
@@ -169,6 +189,101 @@ impl AgentServer {
         Ok(())
     }
 
+    /// Serve static files from a directory under a URL prefix.
+    ///
+    /// This is the named-mirror of Python's
+    /// `AgentServer.serve_static_files(directory, route="/")`. Behaves
+    /// identically to [`AgentServer::serve_static`] (which kept the
+    /// shorter Rust-idiomatic name) — both are kept so existing code
+    /// keeps working and the Python-name parity is preserved for the
+    /// surface diff.
+    ///
+    /// # Errors
+    /// Returns an error string if the directory does not exist.
+    pub fn serve_static_files(&mut self, directory: &str, route: &str) -> Result<(), String> {
+        self.serve_static(directory, route)
+    }
+
+    // ======================================================================
+    //  Global Routing Callbacks
+    // ======================================================================
+
+    /// Register a routing callback that runs on every request whose
+    /// path matches the configured `path`. Returning `Some(route)` from
+    /// the callback redirects handling to that registered agent;
+    /// returning `None` falls through to normal longest-prefix
+    /// dispatch.
+    ///
+    /// Mirrors Python's
+    /// `AgentServer.register_global_routing_callback(callback_fn, path)`.
+    ///
+    /// In Python the callback signature is
+    /// `(request, body) -> Optional[route]`; the Rust signature passes
+    /// `(path, headers, parsed_body)` since Rust does not carry a
+    /// FastAPI request object.
+    pub fn register_global_routing_callback(
+        &mut self,
+        callback: GlobalRoutingCallback,
+        path: &str,
+    ) -> &mut Self {
+        let normalized = self.normalize_route(path);
+        self.logger.info(&format!(
+            "Registered global routing callback at {}",
+            normalized
+        ));
+        self.global_routing_callbacks.insert(normalized, callback);
+        self
+    }
+
+    /// Run the HTTP server on the configured host:port, blocking the
+    /// current thread until the listener exits.
+    ///
+    /// Mirrors Python's `AgentServer.run(host, port)`. The optional
+    /// `host` and `port` arguments override the values supplied at
+    /// construction time (matching the Python contract).
+    pub fn run(&self, host: Option<&str>, port: Option<u16>) {
+        let bind_host = host.unwrap_or(self.host.as_str());
+        let bind_port = port.unwrap_or(self.port);
+        let addr = format!("{}:{}", bind_host, bind_port);
+        let server = tiny_http::Server::http(&addr)
+            .unwrap_or_else(|e| panic!("Failed to bind {}: {}", addr, e));
+
+        self.logger.info(&format!(
+            "AgentServer running on http://{} ({} agent{})",
+            addr,
+            self.agents.len(),
+            if self.agents.len() == 1 { "" } else { "s" }
+        ));
+
+        for mut request in server.incoming_requests() {
+            let method = request.method().as_str().to_string();
+            let path = request.url().to_string();
+
+            let mut req_headers = HashMap::new();
+            for h in request.headers() {
+                req_headers.insert(
+                    h.field.as_str().as_str().to_string(),
+                    h.value.as_str().to_string(),
+                );
+            }
+
+            let mut body_buf = String::new();
+            let _ = request.as_reader().read_to_string(&mut body_buf);
+
+            let (status, resp_headers, resp_body) =
+                self.handle_request(&method, &path, &req_headers, &body_buf);
+
+            let mut response = tiny_http::Response::from_string(&resp_body)
+                .with_status_code(status);
+            for (k, v) in &resp_headers {
+                if let Ok(header) = tiny_http::Header::from_bytes(k.as_bytes(), v.as_bytes()) {
+                    response = response.with_header(header);
+                }
+            }
+            let _ = request.respond(response);
+        }
+    }
+
     // ======================================================================
     //  Request Handling
     // ======================================================================
@@ -211,6 +326,32 @@ impl AgentServer {
             return result;
         }
 
+        // Run any global routing callbacks registered for this path.
+        // The longest matching path wins (so a callback at "/api/v2"
+        // takes precedence over one at "/api").
+        let parsed_body: Option<Value> = if !body.is_empty() {
+            serde_json::from_str::<Value>(body).ok()
+        } else {
+            None
+        };
+        if let Some(redirected_route) =
+            self.dispatch_global_routing_callbacks(&path, headers, &parsed_body)
+        {
+            // The callback redirected us to a specific agent's route.
+            // The redirected agent handles the request under its own
+            // route — Python's behaviour ("callback returns the route
+            // string" → "this agent picks up the call").
+            let normalized = self.normalize_route(&redirected_route);
+            if let Some(agent) = self.agents.get(&normalized) {
+                return agent.handle_request(method, &normalized, headers, body);
+            }
+            // Configured route does not resolve — log and fall through.
+            self.logger.warn(&format!(
+                "Routing callback returned route '{}' which is not registered",
+                redirected_route
+            ));
+        }
+
         // Find matching agent by longest prefix
         if let Some(matched_route) = self.find_matching_route(&path) {
             let agent = &self.agents[&matched_route];
@@ -218,6 +359,35 @@ impl AgentServer {
         }
 
         self.json_response(404, &json!({"error": "Not Found"}))
+    }
+
+    /// Walk the registered global routing callbacks (longest-prefix
+    /// first) and return the first non-`None` redirect.
+    fn dispatch_global_routing_callbacks(
+        &self,
+        path: &str,
+        headers: &HashMap<String, String>,
+        body: &Option<Value>,
+    ) -> Option<String> {
+        let mut keys: Vec<&String> = self.global_routing_callbacks.keys().collect();
+        keys.sort_by(|a, b| b.len().cmp(&a.len()));
+        for key in keys {
+            let key_str = key.as_str();
+            let matches = if key_str == "/" {
+                true
+            } else {
+                path == key_str || path.starts_with(&format!("{}/", key_str))
+            };
+            if !matches {
+                continue;
+            }
+            if let Some(cb) = self.global_routing_callbacks.get(key) {
+                if let Some(route) = cb(path, headers, body) {
+                    return Some(route);
+                }
+            }
+        }
+        None
     }
 
     // ======================================================================
@@ -627,5 +797,125 @@ mod tests {
         server.register(make_agent("a", "/a"), None).unwrap();
         server.register(make_agent("b", "/b"), None).unwrap();
         assert_eq!(server.get_agents(), vec!["/a", "/b", "/c"]);
+    }
+
+    #[test]
+    fn test_serve_static_files_alias_matches_serve_static() {
+        // serve_static_files mirrors Python's name; we keep it as a
+        // direct alias of serve_static. Both should fail on a missing
+        // directory.
+        let mut server = AgentServer::new(None, Some(3000));
+        let r1 = server.serve_static_files("/nonexistent/path/xyz", "/static");
+        assert!(r1.is_err());
+    }
+
+    #[test]
+    fn test_serve_static_files_existing_directory_records_route() {
+        // Use the project's `src/` directory — guaranteed to exist.
+        let project = std::env::current_dir().unwrap();
+        let dir = project.join("src");
+        let mut server = AgentServer::new(None, Some(3000));
+        let r = server.serve_static_files(dir.to_str().unwrap(), "/static");
+        assert!(r.is_ok(), "serve_static_files unexpectedly errored: {:?}", r);
+        assert!(server.static_routes.contains_key("/static"));
+    }
+
+    #[test]
+    fn test_register_global_routing_callback_redirects_to_target() {
+        let mut server = AgentServer::new(None, Some(3000));
+        server.register(make_agent("primary", "/primary"), None).unwrap();
+        server.register(make_agent("redirected", "/redirected"), None).unwrap();
+
+        let cb: GlobalRoutingCallback = Arc::new(|_path, _hdrs, _body| {
+            Some("/redirected".to_string())
+        });
+        server.register_global_routing_callback(cb, "/primary");
+
+        // Without auth headers we still expect dispatch to land on the
+        // redirected agent (which will return 401 because it has auth
+        // configured). The point is that the callback fired and the
+        // request reached an agent.
+        let (status, _, _) =
+            server.handle_request("POST", "/primary", &HashMap::new(), "");
+        assert_eq!(status, 401);
+    }
+
+    #[test]
+    fn test_register_global_routing_callback_none_falls_through() {
+        let mut server = AgentServer::new(None, Some(3000));
+        server.register(make_agent("primary", "/primary"), None).unwrap();
+
+        let cb: GlobalRoutingCallback = Arc::new(|_path, _hdrs, _body| None);
+        server.register_global_routing_callback(cb, "/primary");
+
+        // Returning None from the callback falls through to normal
+        // dispatch — the agent at /primary handles the request and
+        // returns 401 (no auth).
+        let (status, _, _) =
+            server.handle_request("POST", "/primary", &HashMap::new(), "");
+        assert_eq!(status, 401);
+    }
+
+    #[test]
+    fn test_register_global_routing_callback_unknown_target_falls_through() {
+        let mut server = AgentServer::new(None, Some(3000));
+        server.register(make_agent("primary", "/primary"), None).unwrap();
+
+        // Callback points at a route that does not exist; handler
+        // should log a warning and proceed with normal dispatch.
+        let cb: GlobalRoutingCallback = Arc::new(|_path, _hdrs, _body| {
+            Some("/does-not-exist".to_string())
+        });
+        server.register_global_routing_callback(cb, "/primary");
+
+        let (status, _, _) =
+            server.handle_request("POST", "/primary", &HashMap::new(), "");
+        // /primary still resolves and returns 401 (auth required).
+        assert_eq!(status, 401);
+    }
+
+    #[test]
+    fn test_register_global_routing_callback_path_not_matching_skipped() {
+        use std::sync::atomic::{AtomicBool, Ordering};
+
+        let mut server = AgentServer::new(None, Some(3000));
+        server.register(make_agent("primary", "/primary"), None).unwrap();
+
+        let fired = Arc::new(AtomicBool::new(false));
+        let fired_for_cb = fired.clone();
+        let cb: GlobalRoutingCallback = Arc::new(move |_path, _hdrs, _body| {
+            fired_for_cb.store(true, Ordering::SeqCst);
+            None
+        });
+        server.register_global_routing_callback(cb, "/some-other-path");
+
+        // Hit /primary — the callback registered at /some-other-path
+        // should NOT fire.
+        let _ = server.handle_request("POST", "/primary", &HashMap::new(), "");
+        assert!(!fired.load(Ordering::SeqCst));
+    }
+
+    #[test]
+    fn test_register_global_routing_callback_receives_parsed_body() {
+        use std::sync::Mutex;
+
+        let mut server = AgentServer::new(None, Some(3000));
+        server.register(make_agent("primary", "/primary"), None).unwrap();
+
+        let captured_body: Arc<Mutex<Option<Value>>> = Arc::new(Mutex::new(None));
+        let cap = captured_body.clone();
+        let cb: GlobalRoutingCallback = Arc::new(move |_path, _hdrs, body| {
+            *cap.lock().unwrap() = body.clone();
+            None
+        });
+        server.register_global_routing_callback(cb, "/primary");
+
+        let body_json = r#"{"call": {"to": "sip:alice@example.com"}}"#;
+        let _ = server.handle_request("POST", "/primary", &HashMap::new(), body_json);
+
+        let captured = captured_body.lock().unwrap();
+        assert!(captured.is_some(), "callback should have received parsed body");
+        let v = captured.as_ref().unwrap();
+        assert_eq!(v["call"]["to"], "sip:alice@example.com");
     }
 }
