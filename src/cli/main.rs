@@ -316,11 +316,15 @@ fn build_headers(auth: &Option<String>) -> HashMap<String, String> {
     headers
 }
 
-/// Stub HTTP request function.
+/// Make an HTTP request via `ureq`.
 ///
-/// In a production build with ureq or reqwest this would make a real
-/// HTTP request.  For the SDK skeleton we print what *would* be sent
-/// and return a stub response.
+/// 4xx / 5xx are not transport failures: the agent returns the status code
+/// and body verbatim and lets the caller decide how to react. The only
+/// `Err` cases are genuine I/O / DNS / TLS / parse errors that prevented
+/// us from getting a status line back.
+///
+/// 30-second global timeout. Verbose mode mirrors method/URL/headers/body
+/// to stderr before the call.
 fn http_request(
     method: &str,
     url: &str,
@@ -338,13 +342,52 @@ fn http_request(
         }
     }
 
-    // Stub: return an informative message indicating we need a real
-    // HTTP client to make actual requests.
-    Err(format!(
-        "HTTP transport not available. To make real requests, \
-         compile with the 'ureq' feature. Would send: {} {}",
-        method, url
-    ))
+    let agent: ureq::Agent = ureq::Agent::config_builder()
+        .timeout_global(Some(std::time::Duration::from_secs(30)))
+        .http_status_as_error(false)
+        .build()
+        .into();
+
+    let response_result = match method.to_ascii_uppercase().as_str() {
+        "GET" => {
+            let mut req = agent.get(url);
+            for (k, v) in headers {
+                req = req.header(k, v);
+            }
+            req.call()
+        }
+        "POST" => {
+            let mut req = agent.post(url);
+            for (k, v) in headers {
+                req = req.header(k, v);
+            }
+            match body {
+                Some(b) => req.send(b),
+                None => req.send_empty(),
+            }
+        }
+        "PUT" => {
+            let mut req = agent.put(url);
+            for (k, v) in headers {
+                req = req.header(k, v);
+            }
+            match body {
+                Some(b) => req.send(b),
+                None => req.send_empty(),
+            }
+        }
+        other => {
+            return Err(format!("Unsupported HTTP method: {}", other));
+        }
+    };
+
+    let mut response = response_result.map_err(|e| format!("HTTP {} {} failed: {}", method, url, e))?;
+    let status = response.status().as_u16();
+    let body_str = response
+        .body_mut()
+        .read_to_string()
+        .map_err(|e| format!("HTTP {} {} body read failed: {}", method, url, e))?;
+    Ok((status, body_str))
 }
 
 fn do_dump_swml(base_url: &str, auth: &Option<String>, raw: bool, verbose: bool) {
@@ -535,13 +578,111 @@ mod tests {
         assert_eq!(headers["Content-Type"], "application/json");
     }
 
+    /// Spawn a tiny_http server on an ephemeral port that responds with the
+    /// given fixed status + body, capturing whatever the request was. Returns
+    /// (base_url, request_capture). Used by the http_request behavior tests
+    /// below. Killed when the returned guard drops.
+    fn spawn_test_server(
+        status: u16,
+        response_body: &'static str,
+    ) -> (String, std::sync::Arc<std::sync::Mutex<Vec<(String, String, HashMap<String, String>, String)>>>, std::thread::JoinHandle<()>) {
+        let server = tiny_http::Server::http("127.0.0.1:0").expect("bind 127.0.0.1:0");
+        let port = server.server_addr().to_ip().unwrap().port();
+        let base = format!("http://127.0.0.1:{}", port);
+        let captured = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
+        let cap_clone = std::sync::Arc::clone(&captured);
+        let handle = std::thread::spawn(move || {
+            for mut req in server.incoming_requests() {
+                let method = req.method().as_str().to_string();
+                let path = req.url().to_string();
+                let mut hmap = HashMap::new();
+                for h in req.headers() {
+                    hmap.insert(
+                        h.field.as_str().as_str().to_string(),
+                        h.value.as_str().to_string(),
+                    );
+                }
+                let mut body = String::new();
+                let _ = req.as_reader().read_to_string(&mut body);
+                cap_clone.lock().unwrap().push((method, path, hmap, body));
+                let resp = tiny_http::Response::from_string(response_body)
+                    .with_status_code(status);
+                let _ = req.respond(resp);
+            }
+        });
+        (base, captured, handle)
+    }
+
     #[test]
-    fn test_http_request_stub_returns_error() {
-        let headers = HashMap::new();
-        let result = http_request("GET", "http://localhost/test", &headers, None, false);
-        assert!(result.is_err());
-        let err = result.unwrap_err();
-        assert!(err.contains("HTTP transport not available"));
+    fn test_http_request_get_round_trips_real_response() {
+        // Real GET against a real local HTTP server. Was previously a stub
+        // test asserting `err.contains("HTTP transport not available")` —
+        // that test ratified the stub. Now the function does real I/O.
+        let (base, captured, _h) = spawn_test_server(200, r#"{"ok":true,"verb":"GET"}"#);
+        let url = format!("{}/swml", base);
+        let headers = build_headers(&None);
+        let (status, body) = http_request("GET", &url, &headers, None, false)
+            .expect("real GET should succeed against the test server");
+        assert_eq!(status, 200);
+        assert!(body.contains("\"ok\":true"));
+        let cap = captured.lock().unwrap();
+        assert_eq!(cap.len(), 1, "exactly one request hit the test server");
+        assert_eq!(cap[0].0, "GET");
+        assert_eq!(cap[0].1, "/swml");
+    }
+
+    #[test]
+    fn test_http_request_post_forwards_body_and_basic_auth() {
+        let (base, captured, _h) = spawn_test_server(
+            200,
+            r#"{"function":"lookup","response":"ACME"}"#,
+        );
+        let url = format!("{}/swaig", base);
+        let mut headers = build_headers(&Some("Basic dGVzdDp0ZXN0".to_string()));
+        headers.insert("Content-Type".to_string(), "application/json".to_string());
+        let body = r#"{"function":"lookup","argument":{"parsed":[{"competitor":"ACME"}]}}"#;
+        let (status, resp) = http_request("POST", &url, &headers, Some(body), false)
+            .expect("real POST should succeed");
+        assert_eq!(status, 200);
+        assert!(resp.contains("\"response\":\"ACME\""));
+        let cap = captured.lock().unwrap();
+        assert_eq!(cap[0].0, "POST");
+        assert_eq!(cap[0].1, "/swaig");
+        // Auth header forwarded verbatim. Header names are case-insensitive
+        // in HTTP — different stacks normalize differently — so look it up
+        // case-insensitively.
+        let auth = cap[0]
+            .2
+            .iter()
+            .find(|(k, _)| k.eq_ignore_ascii_case("Authorization"))
+            .map(|(_, v)| v.as_str());
+        assert_eq!(auth, Some("Basic dGVzdDp0ZXN0"));
+        // Body forwarded verbatim.
+        assert!(cap[0].3.contains("ACME"));
+    }
+
+    #[test]
+    fn test_http_request_propagates_4xx_status_with_body() {
+        // 4xx is NOT a transport failure — http_request returns (status, body)
+        // and lets the caller decide how to react. Asserts that contract.
+        let (base, _captured, _h) = spawn_test_server(404, r#"{"error":"not found"}"#);
+        let (status, body) = http_request("GET", &format!("{}/missing", base), &HashMap::new(), None, false)
+            .expect("4xx is not an Err — it's a status the caller will handle");
+        assert_eq!(status, 404);
+        assert!(body.contains("not found"));
+    }
+
+    #[test]
+    fn test_http_request_dns_failure_returns_err() {
+        // Unresolvable host = real transport-layer failure = Err.
+        let result = http_request(
+            "GET",
+            "http://this-host-does-not-exist.invalid/",
+            &HashMap::new(),
+            None,
+            false,
+        );
+        assert!(result.is_err(), "DNS failure must surface as Err");
     }
 
     #[test]
@@ -565,16 +706,21 @@ mod tests {
     }
 
     #[test]
-    fn test_http_request_stub_verbose() {
-        let mut headers = HashMap::new();
-        headers.insert("Authorization".to_string(), "Basic abc".to_string());
-        let result = http_request(
+    fn test_http_request_verbose_does_not_change_behavior() {
+        // Verbose mode logs to stderr but does not change the result. Real
+        // round-trip succeeds the same way it does in non-verbose mode.
+        let (base, _captured, _h) = spawn_test_server(200, r#"{"ok":true}"#);
+        let mut headers = build_headers(&None);
+        headers.insert("Authorization".to_string(), "Basic dGVzdDp0ZXN0".to_string());
+        let (status, body) = http_request(
             "POST",
-            "http://localhost/test",
+            &format!("{}/swaig", base),
             &headers,
             Some("{\"key\":\"val\"}"),
             true, // verbose
-        );
-        assert!(result.is_err());
+        )
+        .expect("verbose POST should round-trip");
+        assert_eq!(status, 200);
+        assert!(body.contains("\"ok\":true"));
     }
 }
