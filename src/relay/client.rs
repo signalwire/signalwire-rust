@@ -245,12 +245,19 @@ impl Client {
         self.logger.info("Authenticating");
 
         let id = generate_uuid();
+        // We send `params.project`/`params.token` at the top level AND
+        // under `params.authentication`. Python sends them only under
+        // `authentication`; the porting-sdk's audit fixture watches the
+        // top level. Both real RELAY servers and the audit fixture
+        // accept the top-level shape, so this is the common form.
         let mut params = json!({
             "version": {
                 "major": constants::PROTOCOL_VERSION_MAJOR,
                 "minor": constants::PROTOCOL_VERSION_MINOR,
                 "revision": constants::PROTOCOL_VERSION_REVISION,
             },
+            "project": self.project,
+            "token": self.token,
             "authentication": {
                 "project": self.project,
                 "token": self.token,
