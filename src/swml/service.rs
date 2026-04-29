@@ -366,7 +366,12 @@ impl Service {
         match sub_path.as_str() {
             "/" | "" => self.handle_swml_request(method, &request_data, headers),
             "/swaig" => self.handle_swaig_request(method, &request_data, headers),
-            "/post_prompt" => self.handle_post_prompt(&request_data, headers),
+            // `/post_prompt` is an AgentBase-only route (Python parity:
+            // post_prompt lives on agent's WebMixin, not on SWMLService).
+            // AgentBase implements its own handle_request that intercepts
+            // /post_prompt before falling through to Service. Service users
+            // who don't have an AgentBase wrapper get 404 here — which is
+            // correct: a non-agent SWML service has no post-prompt semantic.
             _ => self.json_response(404, &serde_json::json!({"error": "Not found"})),
         }
     }
@@ -632,14 +637,6 @@ impl Service {
                 self.json_response(200, &serde_json::json!({"response": msg}))
             }
         }
-    }
-
-    fn handle_post_prompt(
-        &self,
-        _request_data: &Option<Value>,
-        _headers: &HashMap<String, String>,
-    ) -> (u16, HashMap<String, String>, String) {
-        self.json_response(200, &serde_json::json!({}))
     }
 
     fn json_response(
@@ -1190,13 +1187,17 @@ mod tests {
     }
 
     #[test]
-    fn test_post_prompt_route() {
+    fn test_post_prompt_route_returns_404_on_swml_service() {
+        // /post_prompt is an AgentBase-only route per Python parity. A
+        // bare SWMLService that someone instantiates directly (sidecar,
+        // non-agent SWML host) does not have post-prompt semantics; POST
+        // /post_prompt must 404.
         let svc = Service::new(default_options("svc"));
         let headers = authed_headers("testuser", "testpass");
         let (status, _, body) = svc.handle_request("POST", "/post_prompt", &headers, "");
-        assert_eq!(status, 200);
+        assert_eq!(status, 404);
         let parsed: Value = serde_json::from_str(&body).unwrap();
-        assert!(parsed.is_object());
+        assert_eq!(parsed["error"], "Not found");
     }
 
     #[test]
