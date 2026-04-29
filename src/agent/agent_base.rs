@@ -8,20 +8,11 @@ use crate::security::SessionManager;
 use crate::swaig::FunctionResult;
 use crate::swml::service::{Service, ServiceOptions};
 
-/// Handler type for SWAIG function callbacks.
-///
-/// Receives `(args, raw_data)` and returns a `FunctionResult`.
-pub type FunctionHandler = Box<
-    dyn Fn(&Map<String, Value>, &Map<String, Value>) -> FunctionResult + Send + Sync,
->;
-
-/// Internal tool definition (function metadata + optional handler).
-#[derive(Clone)]
-struct ToolDef {
-    definition: Value,
-    handler: Option<Arc<FunctionHandler>>,
-    secure: bool,
-}
+// FunctionHandler and ToolDef are now declared on swml::Service so that
+// tools registered on Service-the-sidecar and AgentBase share storage.
+// Re-exported here for backward compatibility with consumers that referenced
+// `crate::agent::agent_base::FunctionHandler`.
+pub use crate::swml::service::{FunctionHandler, ToolDef};
 
 /// Options for constructing an `AgentBase`.
 pub struct AgentOptions {
@@ -93,8 +84,9 @@ pub struct AgentBase {
     post_prompt: String,
 
     // ── Tools / SWAIG ───────────────────────────────────────────────────
-    tools: HashMap<String, ToolDef>,
-    tool_order: Vec<String>,
+    // tools / tool_order live on the embedded Service (single registry,
+    // shared between Service-the-sidecar and AgentBase). Accessed via
+    // self.tools / self.tool_order through Deref<Target=Service>.
 
     // ── Hints ───────────────────────────────────────────────────────────
     hints: Vec<String>,
@@ -153,15 +145,21 @@ pub struct AgentBase {
 
 impl Clone for AgentBase {
     fn clone(&self) -> Self {
+        // Build a fresh Service with the same config, then deep-copy the
+        // SWAIG tool registry into it so the clone has the same tools as
+        // the original (matches the dynamic-config "ephemeral copy" pattern).
+        let mut service = Service::new(ServiceOptions {
+            name: self.service.name().to_string(),
+            route: Some(self.service.route().to_string()),
+            host: Some(self.service.host().to_string()),
+            port: Some(self.service.port()),
+            basic_auth_user: Some(self.service.basic_auth_credentials().0.to_string()),
+            basic_auth_password: Some(self.service.basic_auth_credentials().1.to_string()),
+        });
+        service.tools = self.service.tools.clone();
+        service.tool_order = self.service.tool_order.clone();
         AgentBase {
-            service: Service::new(ServiceOptions {
-                name: self.service.name().to_string(),
-                route: Some(self.service.route().to_string()),
-                host: Some(self.service.host().to_string()),
-                port: Some(self.service.port()),
-                basic_auth_user: Some(self.service.basic_auth_credentials().0.to_string()),
-                basic_auth_password: Some(self.service.basic_auth_credentials().1.to_string()),
-            }),
+            service,
             auto_answer: self.auto_answer,
             record_call: self.record_call,
             record_format: self.record_format.clone(),
@@ -170,8 +168,6 @@ impl Clone for AgentBase {
             pom_sections: self.pom_sections.clone(),
             prompt_text: self.prompt_text.clone(),
             post_prompt: self.post_prompt.clone(),
-            tools: self.tools.clone(),
-            tool_order: self.tool_order.clone(),
             hints: self.hints.clone(),
             pattern_hints: self.pattern_hints.clone(),
             languages: self.languages.clone(),
@@ -241,8 +237,6 @@ impl AgentBase {
             pom_sections: Vec::new(),
             prompt_text: String::new(),
             post_prompt: String::new(),
-            tools: HashMap::new(),
-            tool_order: Vec::new(),
             hints: Vec::new(),
             pattern_hints: Vec::new(),
             languages: Vec::new(),
@@ -450,80 +444,19 @@ impl AgentBase {
     /// simultaneously-active tools per call. Use
     /// [`crate::contexts::Step::set_functions`] to partition tools
     /// across steps so only the relevant subset is active at any moment.
-    pub fn define_tool(
-        &mut self,
-        name: &str,
-        description: &str,
-        parameters: Value,
-        handler: Box<
-            dyn Fn(&Map<String, Value>, &Map<String, Value>) -> FunctionResult + Send + Sync,
-        >,
-        secure: bool,
-    ) -> &mut Self {
-        let mut definition = Map::new();
-        definition.insert("function".to_string(), json!(name));
-        definition.insert("purpose".to_string(), json!(description));
-        definition.insert(
-            "argument".to_string(),
-            json!({"type": "object", "properties": parameters}),
-        );
+    // define_tool, register_swaig_function, define_tools, on_function_call
+    // are provided by swml::Service and accessible on AgentBase via the
+    // `Deref<Target=Service>` impl. No agent-level wrapping is needed:
+    // tools registered via `agent.define_tool(...)` and via
+    // `service.define_tool(...)` go to the same registry.
 
-        self.tools.insert(
-            name.to_string(),
-            ToolDef {
-                definition: Value::Object(definition),
-                handler: Some(Arc::new(handler)),
-                secure,
-            },
-        );
-
-        if !self.tool_order.contains(&name.to_string()) {
-            self.tool_order.push(name.to_string());
-        }
-        self
-    }
-
-    /// Register a raw SWAIG function definition (e.g. from DataMap).
-    pub fn register_swaig_function(&mut self, func_def: Value) -> &mut Self {
-        let name = func_def["function"]
-            .as_str()
-            .unwrap_or("")
-            .to_string();
-        if name.is_empty() {
-            return self;
-        }
-        self.tools.insert(
-            name.clone(),
-            ToolDef {
-                definition: func_def,
-                handler: None,
-                secure: false,
-            },
-        );
-        if !self.tool_order.contains(&name) {
-            self.tool_order.push(name);
-        }
-        self
-    }
-
-    /// Register multiple tool definitions at once.
+    /// Convenience: register multiple raw SWAIG function descriptors.
+    /// Wraps the inherited `register_swaig_function` for each.
     pub fn define_tools(&mut self, tool_defs: Vec<Value>) -> &mut Self {
         for def in tool_defs {
             self.register_swaig_function(def);
         }
         self
-    }
-
-    /// Dispatch a function call to the registered handler.
-    pub fn on_function_call(
-        &self,
-        name: &str,
-        args: &Map<String, Value>,
-        raw_data: &Map<String, Value>,
-    ) -> Option<FunctionResult> {
-        let tool = self.tools.get(name)?;
-        let handler = tool.handler.as_ref()?;
-        Some(handler(args, raw_data))
     }
 
     // ══════════════════════════════════════════════════════════════════════

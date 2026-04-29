@@ -10,6 +10,7 @@ use serde_json::Value;
 use sha2::Sha256;
 
 use crate::logging::Logger;
+use crate::swaig::FunctionResult;
 use crate::swml::document::Document;
 use crate::swml::schema;
 
@@ -44,26 +45,31 @@ pub struct Service {
 
     // SWAIG tool registry — lifted from AgentBase so any Service (sidecar,
     // non-agent verb host) can register and dispatch SWAIG functions.
-    tools: HashMap<String, ServiceToolDef>,
-    tool_order: Vec<String>,
+    // Same registry shape used by AgentBase via inherited access through
+    // its Deref<Target=Service> impl, so tools registered on either
+    // Service-the-sidecar or AgentBase live in a single place.
+    pub(crate) tools: HashMap<String, ToolDef>,
+    pub(crate) tool_order: Vec<String>,
 }
 
-/// Function handler registered by `Service::define_tool`. Plain dispatch —
-/// no token validation or ephemeral-config logic; AgentBase handles those
-/// agent-specific concerns at its layer.
-pub type ServiceToolHandler = std::sync::Arc<
-    dyn Fn(&serde_json::Map<String, Value>, &serde_json::Map<String, Value>) -> Value
+/// Handler type for SWAIG function callbacks.
+///
+/// Receives `(args, raw_data)` and returns a `FunctionResult`. Same signature
+/// AgentBase uses, so handlers are interchangeable between the two paths.
+pub type FunctionHandler = Box<
+    dyn Fn(&serde_json::Map<String, Value>, &serde_json::Map<String, Value>) -> FunctionResult
         + Send
         + Sync,
 >;
 
-/// Tool registered on a `Service` for SWAIG dispatch.
+/// Tool registered on a `Service` for SWAIG dispatch. The `definition`
+/// field holds the rendered SWAIG function dict (function/purpose/argument);
+/// `handler` is `None` for raw / DataMap-style functions, where dispatch
+/// happens server-side rather than in this process.
 #[derive(Clone)]
-pub struct ServiceToolDef {
-    pub name: String,
-    pub description: String,
-    pub parameters: Value,
-    pub handler: Option<ServiceToolHandler>,
+pub struct ToolDef {
+    pub definition: Value,
+    pub handler: Option<std::sync::Arc<FunctionHandler>>,
     pub secure: bool,
 }
 
@@ -152,68 +158,69 @@ impl Service {
     /// Define a SWAIG function the AI can call. Tool descriptions and
     /// parameter descriptions are LLM-facing prompt engineering — see
     /// PORTING_GUIDE for guidance.
+    ///
+    /// Same shape as `AgentBase::define_tool` — a tool registered here is
+    /// usable on both sidecar and agent paths because they share storage.
     pub fn define_tool(
         &mut self,
-        name: impl Into<String>,
-        description: impl Into<String>,
+        name: &str,
+        description: &str,
         parameters: Value,
-        handler: ServiceToolHandler,
+        handler: FunctionHandler,
         secure: bool,
     ) -> &mut Self {
-        let name = name.into();
-        if !self.tool_order.contains(&name) {
-            self.tool_order.push(name.clone());
-        }
+        let mut definition = serde_json::Map::new();
+        definition.insert("function".to_string(), serde_json::json!(name));
+        definition.insert("purpose".to_string(), serde_json::json!(description));
+        definition.insert(
+            "argument".to_string(),
+            serde_json::json!({"type": "object", "properties": parameters}),
+        );
+
         self.tools.insert(
-            name.clone(),
-            ServiceToolDef {
-                name,
-                description: description.into(),
-                parameters,
-                handler: Some(handler),
+            name.to_string(),
+            ToolDef {
+                definition: Value::Object(definition),
+                handler: Some(std::sync::Arc::new(handler)),
                 secure,
             },
         );
+        if !self.tool_order.contains(&name.to_string()) {
+            self.tool_order.push(name.to_string());
+        }
         self
     }
 
     /// Register a raw SWAIG function definition (e.g. DataMap tools that
     /// have no local handler).
     pub fn register_swaig_function(&mut self, func_def: Value) -> &mut Self {
-        if let Some(name) = func_def.get("function").and_then(|v| v.as_str()) {
-            let name = name.to_string();
-            if !self.tool_order.contains(&name) {
-                self.tool_order.push(name.clone());
-            }
-            self.tools.insert(
-                name.clone(),
-                ServiceToolDef {
-                    name,
-                    description: func_def
-                        .get("description")
-                        .and_then(|v| v.as_str())
-                        .unwrap_or("")
-                        .to_string(),
-                    parameters: func_def
-                        .get("parameters")
-                        .cloned()
-                        .unwrap_or_else(|| Value::Object(serde_json::Map::new())),
-                    handler: None,
-                    secure: false,
-                },
-            );
+        let name = func_def["function"].as_str().unwrap_or("").to_string();
+        if name.is_empty() {
+            return self;
+        }
+        self.tools.insert(
+            name.clone(),
+            ToolDef {
+                definition: func_def,
+                handler: None,
+                secure: false,
+            },
+        );
+        if !self.tool_order.contains(&name) {
+            self.tool_order.push(name);
         }
         self
     }
 
     /// Dispatch a function call to the registered handler. Returns
-    /// `None` for unknown functions.
+    /// `None` for unknown functions or registered functions with no
+    /// local handler (e.g. DataMap tools that execute server-side).
     pub fn on_function_call(
         &self,
         name: &str,
         args: &serde_json::Map<String, Value>,
         raw_data: &serde_json::Map<String, Value>,
-    ) -> Option<Value> {
+    ) -> Option<FunctionResult> {
         let tool = self.tools.get(name)?;
         let handler = tool.handler.as_ref()?;
         Some(handler(args, raw_data))
@@ -989,9 +996,9 @@ mod tests {
             "lookup",
             "Look it up",
             serde_json::json!({}),
-            std::sync::Arc::new(move |args, _raw| {
+            Box::new(move |args, _raw| {
                 *captured_for_handler.lock().unwrap() = args.clone();
-                serde_json::json!({"response": "ok"})
+                FunctionResult::with_response("ok")
             }),
             false,
         );
@@ -999,7 +1006,7 @@ mod tests {
         args.insert("x".to_string(), Value::String("y".to_string()));
         let result = svc.on_function_call("lookup", &args, &serde_json::Map::new());
         assert!(result.is_some());
-        let v = result.unwrap();
+        let v = result.unwrap().to_value();
         assert_eq!(v["response"], "ok");
         assert_eq!(captured.lock().unwrap().get("x").unwrap(), &Value::String("y".to_string()));
     }
@@ -1022,14 +1029,14 @@ mod tests {
             "first",
             "f",
             serde_json::json!({}),
-            std::sync::Arc::new(|_, _| serde_json::json!({})),
+            Box::new(|_, _| FunctionResult::default()),
             false,
         );
         svc.define_tool(
             "second",
             "s",
             serde_json::json!({}),
-            std::sync::Arc::new(|_, _| serde_json::json!({})),
+            Box::new(|_, _| FunctionResult::default()),
             false,
         );
         assert_eq!(svc.list_tool_names(), vec!["first".to_string(), "second".to_string()]);
@@ -1058,14 +1065,12 @@ mod tests {
             "lookup_competitor",
             "Look up competitor pricing.",
             serde_json::json!({"competitor": {"type": "string"}}),
-            std::sync::Arc::new(|args, _raw| {
+            Box::new(|args, _raw| {
                 let competitor = args
                     .get("competitor")
                     .and_then(|v| v.as_str())
                     .unwrap_or("unknown");
-                serde_json::json!({
-                    "response": format!("Pricing for {}: $99", competitor)
-                })
+                FunctionResult::with_response(&format!("Pricing for {}: $99", competitor))
             }),
             false,
         );
@@ -1073,7 +1078,7 @@ mod tests {
         args.insert("competitor".to_string(), Value::String("ACME".to_string()));
         let result = svc.on_function_call("lookup_competitor", &args, &serde_json::Map::new());
         assert!(result.is_some());
-        let v = result.unwrap();
+        let v = result.unwrap().to_value();
         let resp = v["response"].as_str().unwrap();
         assert!(resp.contains("ACME"));
     }
