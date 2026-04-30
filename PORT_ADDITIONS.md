@@ -598,3 +598,6 @@ Rust has no method overriding via embedded structs alone. Where Python exposes a
 
 signalwire.core.swml_service.SWMLService.set_on_swml_request_hook: Rust function-field hook setter used in place of subclass override; Python's WebMixin.on_swml_request is overridden via subclassing, but Rust has no method inheritance so the hook is registered as a closure on Service.
 
+signalwire.utils.schema_utils.SchemaUtils.generate_method_signature: Python-source codegen helper; canonical Python signatures filter this method out (Python-only output shape)
+signalwire.utils.schema_utils.SchemaUtils.generate_method_body: Python-source codegen helper; canonical Python signatures filter this method out (Python-only output shape)
+signalwire.utils.schema_utils.SchemaUtils.full_validation_available: @property in Python (filtered as bool-returning attribute); ports expose it as an explicit method per spec

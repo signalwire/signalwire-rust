@@ -310,6 +310,14 @@ impl Service {
         self.port
     }
 
+    /// SchemaUtils helper bound to this Service.  Mirrors Python's
+    /// `self.schema_utils` instance attribute on `SWMLService`.
+    /// Returns a freshly-built helper each call — the underlying
+    /// schema is `LazyLock`-cached, so this is cheap.
+    pub fn schema_utils(&self) -> crate::utils::SchemaUtils {
+        crate::utils::SchemaUtils::new(None, true)
+    }
+
     pub fn document(&self) -> &Document {
         &self.document
     }

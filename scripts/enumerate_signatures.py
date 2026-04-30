@@ -477,6 +477,7 @@ def build_signature(fn: dict, paths: dict, aliases: dict, context: str) -> dict:
     inputs = sig.get("inputs", [])
     params_out: list = []
     is_method = False
+    is_ctor = context.endswith(".__init__")
     for i, entry in enumerate(inputs):
         if not isinstance(entry, list) or len(entry) != 2:
             continue
@@ -491,6 +492,10 @@ def build_signature(fn: dict, paths: dict, aliases: dict, context: str) -> dict:
             "type": canon,
             "required": True,  # Rust has no defaults
         })
+    # Constructors have no Rust receiver but Python's canonical signature
+    # includes ``self`` first. Synthesize it so __init__ shapes line up.
+    if is_ctor and not is_method:
+        params_out.insert(0, {"name": "self", "kind": "self"})
 
     output = sig.get("output")
     return_canon = translate_rust_type(output, paths, aliases, f"{context}[->]") if output else "void"

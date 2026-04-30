@@ -1,8 +1,10 @@
 // Cross-port "utils" namespace mirroring `signalwire.utils.*` in the
 // Python reference. Houses serverless detection, URL validation, etc.
 
+pub mod schema_utils;
 pub mod url_validator;
 
+pub use schema_utils::{SchemaUtils, SchemaValidationError};
 pub use url_validator::validate_url;
 
 use crate::core::logging_config::get_execution_mode;

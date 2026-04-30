@@ -92,6 +92,12 @@ CLASS_MODULE_MAP: dict[str, str] = {
     # CLASS_MODULE_MAP lookup happens against the translated name.
     "SWMLService": "signalwire.core.swml_service",
 
+    # SchemaUtils + SchemaValidationError — Rust port lives at
+    # signalwire-rust/src/utils/schema_utils.rs and projects onto the
+    # canonical Python SchemaUtils class under signalwire.utils.schema_utils.
+    "SchemaUtils": "signalwire.utils.schema_utils",
+    "SchemaValidationError": "signalwire.utils.schema_utils",
+
     # rest namespaces — Rust uses short struct names (Calling, Fabric);
     # CLASS_RENAME_MAP renames them to the Python ``...Namespace`` form,
     # which is what _translate_class returns and CLASS_MODULE_MAP keys
