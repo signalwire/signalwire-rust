@@ -4297,25 +4297,6 @@
               ],
               "returns": "optional<class:signalwire.value.Value>"
             },
-            "on_swml_request": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                },
-                {
-                  "name": "request_data",
-                  "type": "optional<class:signalwire.value.Value>",
-                  "required": true
-                },
-                {
-                  "name": "callback_path",
-                  "type": "optional<string>",
-                  "required": true
-                }
-              ],
-              "returns": "optional<class:signalwire.value.Value>"
-            },
             "port": {
               "params": [
                 {

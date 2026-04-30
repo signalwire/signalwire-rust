@@ -373,6 +373,16 @@ def collect(rust_doc: dict, aliases: dict) -> tuple[dict, list]:
             for n in projected:
                 ab_methods.pop(n, None)
 
+        # on_swml_request lives only on WebMixin in Python (NOT on
+        # SWMLService). The Rust port emits it on SWMLService since
+        # Service.rs is the reflection target. Drop the duplicate from
+        # SWMLService so the projection-only WebMixin entry is kept and
+        # the diff doesn't flag it as a port-only method on SWMLService.
+        # on_request stays — Python's SWMLService inherits it from WebMixin
+        # in the canonical reference.
+        if svc_entry:
+            svc_methods.pop("on_swml_request", None)
+
     sorted_modules = {}
     for k in sorted(out_modules):
         entry = out_modules[k]

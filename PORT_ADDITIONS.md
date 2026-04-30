@@ -592,3 +592,9 @@ signalwire.AgentOptions: Rust idiom: pub use exposes types under signalwire::Foo
 signalwire.AgentServer: Rust idiom: pub use exposes types under signalwire::Foo so users can `use signalwire::AgentBase` directly. Python lists these too but the dotted-path enumerator records them differently.
 signalwire.SWMLService: Rust idiom: pub use exposes types under signalwire::Foo so users can `use signalwire::AgentBase` directly. Python lists these too but the dotted-path enumerator records them differently.
 
+### Rust function-field hook setters (no method overriding via inheritance)
+
+Rust has no method overriding via embedded structs alone. Where Python exposes a subclass-overridable method on WebMixin (on_swml_request), the Rust port exposes a typed set_<name>_hook setter that registers a closure. This is the idiomatic Rust override pattern; the function-field hook is invoked from the corresponding accessor on Service. The hook setter has no Python equivalent because Python overrides via subclassing — the *capability* is mirrored, but the binding shape is port-native.
+
+signalwire.core.swml_service.SWMLService.set_on_swml_request_hook: Rust function-field hook setter used in place of subclass override; Python's WebMixin.on_swml_request is overridden via subclassing, but Rust has no method inheritance so the hook is registered as a closure on Service.
+

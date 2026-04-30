@@ -32,6 +32,18 @@ pub struct ServiceOptions {
     pub basic_auth_password: Option<String>,
 }
 
+/// Hook function for SWML-request customization. Mirrors Python's
+/// `WebMixin.on_swml_request(request_data, callback_path)` — receives the
+/// parsed body and optional callback path, and returns a JSON `Value` of
+/// modifications to merge (or `None` to use default rendering).
+///
+/// Rust has no method overriding via inheritance — the function-field
+/// hook is the idiomatic equivalent of Python's overridable
+/// `on_swml_request`. Set via `Service::set_on_swml_request_hook`.
+pub type OnSwmlRequestHook = Box<
+    dyn Fn(Option<&Value>, Option<&str>) -> Option<Value> + Send + Sync,
+>;
+
 /// SWML service: holds a document, auth credentials, and handles HTTP requests.
 pub struct Service {
     name: String,
@@ -50,6 +62,9 @@ pub struct Service {
     // Service-the-sidecar or AgentBase live in a single place.
     pub(crate) tools: HashMap<String, ToolDef>,
     pub(crate) tool_order: Vec<String>,
+
+    // SWML customization hook (Python WebMixin parity).
+    pub(crate) on_swml_request_hook: Option<std::sync::Arc<OnSwmlRequestHook>>,
 }
 
 /// Handler type for SWAIG function callbacks.
@@ -148,6 +163,7 @@ impl Service {
             basic_auth_password,
             tools: HashMap::new(),
             tool_order: Vec::new(),
+            on_swml_request_hook: None,
         }
     }
 
@@ -345,6 +361,63 @@ impl Service {
 
     pub fn render_pretty(&self) -> String {
         self.document.render_pretty()
+    }
+
+    // ------------------------------------------------------------------
+    // SWML customization hooks (Python WebMixin parity)
+    // ------------------------------------------------------------------
+
+    /// Register a function that customizes the SWML response on a
+    /// per-request basis. The hook receives the parsed body and the
+    /// callback path; returning `Some(value)` applies modifications,
+    /// `None` falls through to the default rendering.
+    ///
+    /// Rust has no method overriding via inheritance — this hook is
+    /// the idiomatic Rust equivalent of Python's overridable
+    /// `on_swml_request`.
+    pub fn set_on_swml_request_hook<F>(&mut self, hook: F) -> &mut Self
+    where
+        F: Fn(Option<&Value>, Option<&str>) -> Option<Value> + Send + Sync + 'static,
+    {
+        self.on_swml_request_hook = Some(std::sync::Arc::new(Box::new(hook)));
+        self
+    }
+
+    /// Customization hook called when SWML is requested. Default
+    /// delegates to [`Service::on_swml_request`] and returns its result.
+    /// Subclasses (or external callers) typically configure
+    /// `on_swml_request` via [`Service::set_on_swml_request_hook`]
+    /// rather than overriding this method.
+    ///
+    /// Returning `None` uses the default rendered SWML; returning a
+    /// non-`None` value applies modifications to the rendered document.
+    ///
+    /// Python parity: `WebMixin.on_request(request_data, callback_path)`.
+    pub fn on_request(
+        &self,
+        request_data: Option<&Value>,
+        callback_path: Option<&str>,
+    ) -> Option<Value> {
+        self.on_swml_request(request_data, callback_path)
+    }
+
+    /// Customization point for modifying SWML based on request data.
+    /// If a hook has been registered via
+    /// [`Service::set_on_swml_request_hook`] the hook is invoked;
+    /// otherwise this returns `None` (no modification).
+    ///
+    /// Python parity: `WebMixin.on_swml_request(request_data, callback_path)`.
+    /// The Python third `request` argument is FastAPI-specific and
+    /// intentionally not mirrored.
+    pub fn on_swml_request(
+        &self,
+        request_data: Option<&Value>,
+        callback_path: Option<&str>,
+    ) -> Option<Value> {
+        if let Some(hook) = &self.on_swml_request_hook {
+            return hook(request_data, callback_path);
+        }
+        None
     }
 
     // ------------------------------------------------------------------
@@ -1427,5 +1500,68 @@ mod tests {
         let v = result.unwrap().to_value();
         let resp = v["response"].as_str().unwrap();
         assert!(resp.contains("ACME"));
+    }
+
+    // -----------------------------------------------------------------
+    // WebMixin parity: on_request / on_swml_request
+    //
+    // Python parity:
+    //   tests/unit/core/mixins/test_web_mixin.py::
+    //     test_on_request_delegates_to_on_swml_request
+    //     test_on_swml_request_called
+    //
+    // Rust has no method overriding via inheritance — the
+    // function-field hook (set_on_swml_request_hook) is the
+    // idiomatic way to inject custom behavior into Service.
+    // -----------------------------------------------------------------
+
+    #[test]
+    fn test_on_request_delegates_to_on_swml_request() {
+        use std::sync::Mutex;
+        let mut svc = Service::new(default_options("t"));
+
+        let captured: std::sync::Arc<Mutex<(Option<Value>, Option<String>)>> =
+            std::sync::Arc::new(Mutex::new((None, None)));
+        let cap = captured.clone();
+        svc.set_on_swml_request_hook(move |rd, cb| {
+            let mut g = cap.lock().unwrap();
+            g.0 = rd.cloned();
+            g.1 = cb.map(|s| s.to_string());
+            Some(serde_json::json!({"custom": true}))
+        });
+
+        let rd = serde_json::json!({"data": "val"});
+        let result = svc.on_request(Some(&rd), Some("/cb"));
+
+        let g = captured.lock().unwrap();
+        assert_eq!(g.0.as_ref(), Some(&rd));
+        assert_eq!(g.1.as_deref(), Some("/cb"));
+        assert_eq!(result, Some(serde_json::json!({"custom": true})));
+    }
+
+    #[test]
+    fn test_on_request_default_returns_none() {
+        let svc = Service::new(default_options("t"));
+        assert!(svc.on_request(None, None).is_none());
+    }
+
+    #[test]
+    fn test_on_swml_request_default_returns_none() {
+        let svc = Service::new(default_options("t"));
+        assert!(svc.on_swml_request(None, None).is_none());
+    }
+
+    #[test]
+    fn test_on_swml_request_hook_invoked() {
+        use std::sync::atomic::{AtomicBool, Ordering};
+        let mut svc = Service::new(default_options("t"));
+        let called = std::sync::Arc::new(AtomicBool::new(false));
+        let c = called.clone();
+        svc.set_on_swml_request_hook(move |_, _| {
+            c.store(true, Ordering::SeqCst);
+            None
+        });
+        svc.on_swml_request(None, None);
+        assert!(called.load(Ordering::SeqCst));
     }
 }
