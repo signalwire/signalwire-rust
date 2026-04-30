@@ -105,13 +105,41 @@ pub fn list_skills_with_params() -> std::collections::HashMap<String, serde_json
     out
 }
 
-/// Register a custom skill by name + factory.
+/// Register a custom skill class.
 ///
-/// Mirrors Python's `signalwire.register_skill(skill_class)` — the
-/// Rust signature differs because Rust uses a typed factory rather
-/// than reflection-driven class registration.
-pub fn register_skill(name: &str, factory: skills::skill_registry::SkillFactory) {
-    skills::SkillRegistry::register_skill(name, factory)
+/// Mirrors Python's `signalwire.register_skill(skill_class)`. Python's
+/// `skill_class` carries both the name (via `SKILL_NAME` attribute) and
+/// the factory (via the class itself); Rust packages the same pair as
+/// a [`SkillSpec`] tuple — the canonical "skill class" descriptor in
+/// Rust.
+///
+/// # Arguments
+/// - `skill_class`: A [`SkillSpec`] describing the skill's name and
+///   factory function.
+///
+/// To preserve the older two-argument call style, [`SkillRegistry::register_skill`]
+/// remains available as `signalwire::skills::SkillRegistry::register_skill(name, factory)`.
+pub fn register_skill(skill_class: SkillSpec) {
+    skills::SkillRegistry::register_skill(&skill_class.name, skill_class.factory)
+}
+
+/// Skill registration descriptor — Rust's analogue of a Python skill
+/// class. Bundles a skill's registration name with its factory closure
+/// into a single value so [`register_skill`] can mirror Python's
+/// one-argument signature.
+pub struct SkillSpec {
+    /// Snake-case skill name used as the registry key.
+    pub name: String,
+    /// Factory closure that constructs a [`skills::SkillBase`] from a
+    /// JSON parameters map.
+    pub factory: skills::skill_registry::SkillFactory,
+}
+
+impl SkillSpec {
+    /// Convenience constructor.
+    pub fn new(name: impl Into<String>, factory: skills::skill_registry::SkillFactory) -> Self {
+        SkillSpec { name: name.into(), factory }
+    }
 }
 
 /// Construct a [`RestClient`] from positional or keyword credentials.

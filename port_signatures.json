@@ -36,13 +36,8 @@
         "register_skill": {
           "params": [
             {
-              "name": "name",
-              "type": "string",
-              "required": true
-            },
-            {
-              "name": "factory",
-              "type": "class:signalwire.skillfactory.SkillFactory",
+              "name": "skill_class",
+              "type": "class:signalwire.skillspec.SkillSpec",
               "required": true
             }
           ],
