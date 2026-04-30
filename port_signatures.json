@@ -2,6 +2,39 @@
   "version": "2",
   "generated_from": "signalwire-rust via cargo rustdoc-json (FORMAT_VERSION 57)",
   "modules": {
+    "signalwire": {
+      "functions": {
+        "add_skill_directory": {
+          "params": [
+            {
+              "name": "path",
+              "type": "string",
+              "required": true
+            }
+          ],
+          "returns": "void"
+        },
+        "list_skills_with_params": {
+          "params": [],
+          "returns": "dict<string,class:signalwire.value.Value>"
+        },
+        "register_skill": {
+          "params": [
+            {
+              "name": "name",
+              "type": "string",
+              "required": true
+            },
+            {
+              "name": "factory",
+              "type": "class:signalwire.skillfactory.SkillFactory",
+              "required": true
+            }
+          ],
+          "returns": "void"
+        }
+      }
+    },
     "signalwire.agent_server": {
       "classes": {
         "AgentServer": {
@@ -3426,6 +3459,14 @@
               "returns": "any"
             }
           }
+        }
+      }
+    },
+    "signalwire.core.logging_config": {
+      "functions": {
+        "get_execution_mode": {
+          "params": [],
+          "returns": "string"
         }
       }
     },
@@ -7686,6 +7727,14 @@
               "returns": "void"
             }
           }
+        }
+      }
+    },
+    "signalwire.utils": {
+      "functions": {
+        "is_serverless_mode": {
+          "params": [],
+          "returns": "bool"
         }
       }
     },
