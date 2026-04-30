@@ -7688,6 +7688,25 @@
           }
         }
       }
+    },
+    "signalwire.utils.url_validator": {
+      "functions": {
+        "validate_url": {
+          "params": [
+            {
+              "name": "url",
+              "type": "string",
+              "required": true
+            },
+            {
+              "name": "allow_private",
+              "type": "bool",
+              "required": true
+            }
+          ],
+          "returns": "bool"
+        }
+      }
     }
   }
 }

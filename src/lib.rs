@@ -1,5 +1,7 @@
+pub mod core;
 pub mod logging;
 pub mod swml;
+pub mod utils;
 
 pub mod agent;
 pub mod contexts;

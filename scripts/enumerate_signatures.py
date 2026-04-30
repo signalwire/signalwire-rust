@@ -215,6 +215,26 @@ def _extract_angle_args(args) -> list:
 # ---------------------------------------------------------------------------
 
 
+# Free-function targets to project from rustdoc into the canonical
+# inventory. Keyed by (canonical_module, canonical_function) so the
+# walker only emits things that the Python reference also has at the
+# module level (no port-only additions sneak in here — PORT_ADDITIONS.md
+# is the place for extras).
+def _collect_free_function_targets() -> set[tuple[str, str]]:
+    targets: set[tuple[str, str]] = set()
+    # Read the Python reference's module-level functions directly so the
+    # set stays in sync with whatever the oracle currently exposes.
+    try:
+        import json as _json
+        ref = _json.loads((PSDK / "python_signatures.json").read_text(encoding="utf-8"))
+        for mod_name, mod_entry in ref.get("modules", {}).items():
+            for fn_name in (mod_entry.get("functions") or {}).keys():
+                targets.add((mod_name, fn_name))
+    except FileNotFoundError:
+        pass
+    return targets
+
+
 def collect(rust_doc: dict, aliases: dict) -> tuple[dict, list]:
     index = rust_doc["index"]
     paths = rust_doc["paths"]
@@ -313,6 +333,54 @@ def collect(rust_doc: dict, aliases: dict) -> tuple[dict, list]:
             "methods": dict(sorted(methods_out.items())),
         }
 
+    # Free-function walk — module-level ``pub fn`` items that are not
+    # inherent or trait methods. Project the rustdoc path
+    # ``signalwire::utils::url_validator::validate_url`` onto the Python
+    # canonical ``signalwire.utils.url_validator.validate_url`` (free
+    # function, no class). Only declarations whose canonical Python path
+    # corresponds to an existing module entry in the Python reference
+    # are emitted; everything else is treated as a port-only extension
+    # and dropped (PORT_ADDITIONS.md owns surface-level extras).
+    free_fn_targets = _collect_free_function_targets()
+    for iid, item in index.items():
+        inner = item.get("inner", {})
+        if "function" not in inner:
+            continue
+        # Only pub items; rustdoc emits everything but we still want to
+        # filter on visibility.
+        if item.get("visibility") != "public":
+            continue
+        path_id = item.get("id")
+        path_entry = paths.get(str(path_id)) or paths.get(path_id)
+        if not path_entry or path_entry.get("kind") != "function":
+            continue
+        rust_path = path_entry.get("path", [])
+        if len(rust_path) < 2 or rust_path[0] != "signalwire":
+            continue
+        # Skip impl-level fns (those have a struct/enum segment somewhere
+        # in the path that is not a module). The free-function walk only
+        # cares about path-rooted fns.
+        target_module = ".".join(rust_path[:-1])
+        target_function = rust_path[-1]
+        if (target_module, target_function) not in free_fn_targets:
+            continue
+        try:
+            sig = build_signature(
+                inner["function"], paths, aliases,
+                f"{target_module}.{target_function}",
+            )
+        except TypeTranslationError as e:
+            failures.append(str(e))
+            continue
+        # Free functions have no receiver; strip a leading self if rustdoc
+        # somehow emitted one (it shouldn't, but be defensive).
+        params = sig.get("params", [])
+        if params and params[0].get("kind") == "self":
+            sig["params"] = params[1:]
+        out_modules.setdefault(target_module, {"classes": {}})
+        out_modules[target_module].setdefault("functions", {})
+        out_modules[target_module]["functions"][target_function] = sig
+
     # Mixin/manager projections — the Rust ``Service`` (renamed
     # SWMLService) inherits to AgentBase. Project Service-side methods
     # to canonical Python mixin / manager paths so the audit lines up.
@@ -386,11 +454,17 @@ def collect(rust_doc: dict, aliases: dict) -> tuple[dict, list]:
     sorted_modules = {}
     for k in sorted(out_modules):
         entry = out_modules[k]
-        sorted_modules[k] = {
-            "classes": {
+        out_entry: dict = {}
+        if entry.get("classes"):
+            out_entry["classes"] = {
                 cls: entry["classes"][cls] for cls in sorted(entry["classes"])
             }
-        }
+        if entry.get("functions"):
+            out_entry["functions"] = {
+                fn: entry["functions"][fn] for fn in sorted(entry["functions"])
+            }
+        if out_entry:
+            sorted_modules[k] = out_entry
     return {
         "version": "2",
         "generated_from": f"signalwire-rust via cargo rustdoc-json (FORMAT_VERSION {rust_doc.get('format_version')})",
