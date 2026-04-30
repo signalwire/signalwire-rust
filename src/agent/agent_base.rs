@@ -427,6 +427,55 @@ impl AgentBase {
         }
     }
 
+    /// Returns the post-prompt text whatever `set_post_prompt` stored, or
+    /// `None` when no post-prompt has been set.
+    ///
+    /// Mirrors Python's `PromptManager.get_post_prompt` /
+    /// `PromptMixin.get_post_prompt` — used by SWML rendering when a
+    /// post-prompt is configured.
+    pub fn get_post_prompt(&self) -> Option<&str> {
+        if self.post_prompt.is_empty() {
+            None
+        } else {
+            Some(&self.post_prompt)
+        }
+    }
+
+    /// Returns the raw prompt text whatever `set_prompt_text` stored, or
+    /// `None` when no raw prompt has been set. Distinct from `get_prompt`
+    /// which may return the POM array when `use_pom` is `true`.
+    ///
+    /// Mirrors Python's `PromptManager.get_raw_prompt`.
+    pub fn get_raw_prompt(&self) -> Option<&str> {
+        if self.prompt_text.is_empty() {
+            None
+        } else {
+            Some(&self.prompt_text)
+        }
+    }
+
+    /// Sets the prompt as a list of POM section objects. Each section
+    /// supports keys "title", "body", "bullets", "numbered",
+    /// "numbered_bullets", and "subsections". Switches the agent to POM
+    /// mode.
+    ///
+    /// Mirrors Python's `PromptManager.set_prompt_pom` — accepts a list
+    /// of section dicts and stores them in `pom_sections`.
+    pub fn set_prompt_pom(&mut self, pom: Vec<Value>) -> &mut Self {
+        self.use_pom = true;
+        self.pom_sections = pom;
+        self
+    }
+
+    /// Returns the contexts dictionary as a serialised `Value::Object`,
+    /// or `None` when no contexts have been defined yet.
+    ///
+    /// Mirrors Python's `PromptManager.get_contexts` which returns the
+    /// contexts dict or `None`.
+    pub fn get_contexts(&self) -> Option<Value> {
+        self.context_builder.as_ref().map(|cb| cb.to_value())
+    }
+
     // ══════════════════════════════════════════════════════════════════════
     //  Tool Methods
     // ══════════════════════════════════════════════════════════════════════

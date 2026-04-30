@@ -467,6 +467,187 @@
         }
       }
     },
+    "signalwire.core.agent.prompt.manager": {
+      "classes": {
+        "PromptManager": {
+          "methods": {
+            "define_contexts": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "class:signalwire.core.contexts.ContextBuilder"
+            },
+            "get_contexts": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "optional<class:signalwire.value.Value>"
+            },
+            "get_post_prompt": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "optional<string>"
+            },
+            "get_prompt": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "class:signalwire.value.Value"
+            },
+            "get_raw_prompt": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "optional<string>"
+            },
+            "prompt_add_section": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                },
+                {
+                  "name": "title",
+                  "type": "string",
+                  "required": true
+                },
+                {
+                  "name": "body",
+                  "type": "string",
+                  "required": true
+                },
+                {
+                  "name": "bullets",
+                  "type": "list<string>",
+                  "required": true
+                }
+              ],
+              "returns": "any"
+            },
+            "prompt_add_subsection": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                },
+                {
+                  "name": "parent_title",
+                  "type": "string",
+                  "required": true
+                },
+                {
+                  "name": "title",
+                  "type": "string",
+                  "required": true
+                },
+                {
+                  "name": "body",
+                  "type": "string",
+                  "required": true
+                }
+              ],
+              "returns": "any"
+            },
+            "prompt_add_to_section": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                },
+                {
+                  "name": "title",
+                  "type": "string",
+                  "required": true
+                },
+                {
+                  "name": "body",
+                  "type": "optional<string>",
+                  "required": true
+                },
+                {
+                  "name": "bullets",
+                  "type": "list<string>",
+                  "required": true
+                }
+              ],
+              "returns": "any"
+            },
+            "prompt_has_section": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                },
+                {
+                  "name": "title",
+                  "type": "string",
+                  "required": true
+                }
+              ],
+              "returns": "bool"
+            },
+            "set_post_prompt": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                },
+                {
+                  "name": "text",
+                  "type": "string",
+                  "required": true
+                }
+              ],
+              "returns": "any"
+            },
+            "set_prompt_pom": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                },
+                {
+                  "name": "pom",
+                  "type": "list<class:signalwire.value.Value>",
+                  "required": true
+                }
+              ],
+              "returns": "any"
+            },
+            "set_prompt_text": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                },
+                {
+                  "name": "text",
+                  "type": "string",
+                  "required": true
+                }
+              ],
+              "returns": "any"
+            }
+          }
+        }
+      }
+    },
     "signalwire.core.agent.tools.registry": {
       "classes": {
         "ToolRegistry": {
@@ -898,15 +1079,6 @@
               ],
               "returns": "string"
             },
-            "define_contexts": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "class:signalwire.core.contexts.ContextBuilder"
-            },
             "enable_debug_events": {
               "params": [
                 {
@@ -929,15 +1101,6 @@
                 }
               ],
               "returns": "any"
-            },
-            "get_prompt": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "class:signalwire.value.Value"
             },
             "handle_request": {
               "params": [
@@ -1050,92 +1213,6 @@
                 }
               ],
               "returns": "optional<list<class:signalwire.value.Value>>"
-            },
-            "prompt_add_section": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                },
-                {
-                  "name": "title",
-                  "type": "string",
-                  "required": true
-                },
-                {
-                  "name": "body",
-                  "type": "string",
-                  "required": true
-                },
-                {
-                  "name": "bullets",
-                  "type": "list<string>",
-                  "required": true
-                }
-              ],
-              "returns": "any"
-            },
-            "prompt_add_subsection": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                },
-                {
-                  "name": "parent_title",
-                  "type": "string",
-                  "required": true
-                },
-                {
-                  "name": "title",
-                  "type": "string",
-                  "required": true
-                },
-                {
-                  "name": "body",
-                  "type": "string",
-                  "required": true
-                }
-              ],
-              "returns": "any"
-            },
-            "prompt_add_to_section": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                },
-                {
-                  "name": "title",
-                  "type": "string",
-                  "required": true
-                },
-                {
-                  "name": "body",
-                  "type": "optional<string>",
-                  "required": true
-                },
-                {
-                  "name": "bullets",
-                  "type": "list<string>",
-                  "required": true
-                }
-              ],
-              "returns": "any"
-            },
-            "prompt_has_section": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                },
-                {
-                  "name": "title",
-                  "type": "string",
-                  "required": true
-                }
-              ],
-              "returns": "bool"
             },
             "refresh_context_tools": {
               "params": [
@@ -1360,20 +1437,6 @@
               ],
               "returns": "any"
             },
-            "set_post_prompt": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                },
-                {
-                  "name": "text",
-                  "type": "string",
-                  "required": true
-                }
-              ],
-              "returns": "any"
-            },
             "set_post_prompt_llm_params": {
               "params": [
                 {
@@ -1411,20 +1474,6 @@
                 {
                   "name": "params",
                   "type": "class:signalwire.value.Value",
-                  "required": true
-                }
-              ],
-              "returns": "any"
-            },
-            "set_prompt_text": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                },
-                {
-                  "name": "text",
-                  "type": "string",
                   "required": true
                 }
               ],

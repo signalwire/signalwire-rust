@@ -332,6 +332,24 @@ def collect(rust_doc: dict, aliases: dict) -> tuple[dict, list]:
         ("signalwire.core.mixins.state_mixin", "StateMixin"): [
             "validate_tool_token",
         ],
+        ("signalwire.core.mixins.web_mixin", "WebMixin"): [
+            "on_request", "on_swml_request",
+        ],
+        # Python additionally extracted a ``PromptManager`` class that
+        # PromptMixin delegates to.  The user-facing surface is
+        # identical (``agent.prompt_manager.X`` ≡ ``agent.X``).  Project
+        # the same set of AgentBase methods to PromptManager so the
+        # cross-language audit treats both paths as covered.  Rust
+        # exposes the prompt methods directly on AgentBase rather than
+        # under a separate PromptMixin namespace, so this is the only
+        # prompt-side projection needed here.
+        ("signalwire.core.agent.prompt.manager", "PromptManager"): [
+            "define_contexts", "get_contexts", "get_post_prompt", "get_prompt",
+            "get_raw_prompt",
+            "prompt_add_section", "prompt_add_subsection", "prompt_add_to_section",
+            "prompt_has_section", "set_post_prompt", "set_prompt_pom",
+            "set_prompt_text",
+        ],
     }
     svc_entry = out_modules.get("signalwire.core.swml_service", {}).get("classes", {}).get("SWMLService")
     ab_entry = out_modules.get("signalwire.core.agent_base", {}).get("classes", {}).get("AgentBase")
