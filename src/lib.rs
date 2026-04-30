@@ -114,6 +114,57 @@ pub fn register_skill(name: &str, factory: skills::skill_registry::SkillFactory)
     skills::SkillRegistry::register_skill(name, factory)
 }
 
+/// Construct a [`RestClient`] from positional or keyword credentials.
+///
+/// Mirrors Python's top-level `signalwire.RestClient(*args, **kwargs)`
+/// factory — in Python that's a thin wrapper that lazy-imports
+/// `signalwire.rest.RestClient` and instantiates it. The Rust struct
+/// is exposed at `signalwire::rest::RestClient`; this free function
+/// provides the same one-line entry point under `signalwire::`.
+///
+/// The struct re-export at `signalwire::RestClient` (a type) and this
+/// function at `signalwire::RestClient` (a value) coexist because
+/// they live in distinct namespaces — types and values, respectively.
+///
+/// The signature mirrors Python's `(*args, **kwargs)` shape so the
+/// cross-language signature audit recognises them as compatible. In
+/// practice callers pass either:
+///   * `args = ["proj", "tok", "space"]` (three positional strings), or
+///   * `args = []` and `kwargs = {"project": ..., "token": ..., "host": ...}`
+///
+/// Either form maps onto [`rest::RestClient::new`].
+///
+/// # Errors
+/// Returns an error string if credentials cannot be derived from either
+/// `args` or `kwargs` (or fall back to the standard environment
+/// variables `SIGNALWIRE_PROJECT_ID` / `SIGNALWIRE_API_TOKEN` /
+/// `SIGNALWIRE_SPACE`).
+#[allow(non_snake_case)]
+pub fn RestClient(
+    args: Vec<String>,
+    kwargs: std::collections::HashMap<String, String>,
+) -> Result<rest::RestClient, String> {
+    // Resolve credentials in this order:
+    //   1. positional args[0..3] = (project, token, space)
+    //   2. kwargs["project"|"project_id"], kwargs["token"], kwargs["space"|"host"]
+    //   3. environment variables (via from_env)
+    let project = args.first().cloned()
+        .or_else(|| kwargs.get("project").cloned())
+        .or_else(|| kwargs.get("project_id").cloned())
+        .or_else(|| std::env::var("SIGNALWIRE_PROJECT_ID").ok())
+        .unwrap_or_default();
+    let token = args.get(1).cloned()
+        .or_else(|| kwargs.get("token").cloned())
+        .or_else(|| std::env::var("SIGNALWIRE_API_TOKEN").ok())
+        .unwrap_or_default();
+    let space = args.get(2).cloned()
+        .or_else(|| kwargs.get("space").cloned())
+        .or_else(|| kwargs.get("host").cloned())
+        .or_else(|| std::env::var("SIGNALWIRE_SPACE").ok())
+        .unwrap_or_default();
+    rest::RestClient::new(&project, &token, &space)
+}
+
 #[cfg(test)]
 mod top_level_tests {
     use super::*;
@@ -138,6 +189,41 @@ mod top_level_tests {
         // the real path used for tests. Just exercise the re-export.
         let client = RestClient::with_base_url("p", "t", "http://127.0.0.1:1");
         assert!(client.is_ok());
+    }
+
+    #[test]
+    fn test_top_level_rest_client_factory_positional() {
+        // Positional form: args=[project, token, space].
+        let client = RestClient(
+            vec!["proj".to_string(), "tok".to_string(), "test.signalwire.com".to_string()],
+            std::collections::HashMap::new(),
+        ).expect("factory should succeed with positional args");
+        assert_eq!(client.project_id(), "proj");
+        assert_eq!(client.token(), "tok");
+        assert_eq!(client.space(), "test.signalwire.com");
+    }
+
+    #[test]
+    fn test_top_level_rest_client_factory_kwargs() {
+        // Keyword form: kwargs={"project":..., "token":..., "host":...}.
+        let mut kw = std::collections::HashMap::new();
+        kw.insert("project".to_string(), "kproj".to_string());
+        kw.insert("token".to_string(), "ktok".to_string());
+        kw.insert("host".to_string(), "kw.signalwire.com".to_string());
+        let client = RestClient(vec![], kw)
+            .expect("factory should succeed with kwargs");
+        assert_eq!(client.project_id(), "kproj");
+        assert_eq!(client.token(), "ktok");
+        assert_eq!(client.space(), "kw.signalwire.com");
+    }
+
+    #[test]
+    fn test_top_level_rest_client_factory_rejects_empty() {
+        // Validation matches RestClient::new — empty credentials are
+        // rejected with a descriptive error.
+        let r = RestClient(vec!["".to_string(), "tok".to_string(), "space".to_string()],
+                           std::collections::HashMap::new());
+        assert!(r.is_err());
     }
 
     #[test]
