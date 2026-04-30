@@ -412,6 +412,21 @@ impl AgentBase {
         }
     }
 
+    /// Read-only snapshot of the agent's POM section list.
+    ///
+    /// Python parity: `agent.pom` instance attribute (agent_base.py
+    /// line 209). Returns `None` when `use_pom` is `false` (mirroring
+    /// Python's `self.pom = None`); otherwise returns a freshly cloned
+    /// `Vec<Value>` so callers cannot mutate the agent's internal
+    /// section list.
+    pub fn pom(&self) -> Option<Vec<Value>> {
+        if !self.use_pom {
+            None
+        } else {
+            Some(self.pom_sections.clone())
+        }
+    }
+
     // ══════════════════════════════════════════════════════════════════════
     //  Tool Methods
     // ══════════════════════════════════════════════════════════════════════
@@ -1505,6 +1520,46 @@ mod tests {
         let prompt = agent.get_prompt();
         assert!(prompt.is_array());
         assert_eq!(prompt[0]["title"], "Role");
+    }
+
+    // ──── pom() accessor (Python parity: agent.pom)
+    //
+    // Mirrors signalwire-python tests/unit/core/test_agent_base.py::
+    //   TestAgentBasePromptMethods::test_set_prompt_pom_succeeds_when_use_pom_true
+
+    #[test]
+    fn test_pom_returns_sections_after_prompt_add_section() {
+        let mut agent = AgentBase::new(default_options());
+        agent.prompt_add_section("Greeting", "Hello", vec![]);
+        let pom = agent.pom().expect("pom must be Some when use_pom is true");
+        assert_eq!(pom.len(), 1);
+        assert_eq!(pom[0]["title"], "Greeting");
+        assert_eq!(pom[0]["body"], "Hello");
+    }
+
+    #[test]
+    fn test_pom_none_when_use_pom_false() {
+        let mut opts = default_options();
+        opts.use_pom = false;
+        let agent = AgentBase::new(opts);
+        assert!(agent.pom().is_none(), "pom() must return None when use_pom is false");
+    }
+
+    #[test]
+    fn test_pom_returns_clone_not_internal_vec() {
+        let mut agent = AgentBase::new(default_options());
+        agent.prompt_add_section("Original", "Body", vec![]);
+
+        let mut pom = agent.pom().unwrap();
+        // Mutate the returned Vec; agent state must be unaffected.
+        pom.push(json!({"title": "Injected"}));
+        if let Value::Object(ref mut m) = pom[0] {
+            m.insert("title".to_string(), json!("Hijacked"));
+        }
+
+        let fresh = agent.pom().unwrap();
+        assert_eq!(fresh.len(), 1, "caller mutation leaked into agent state");
+        assert_eq!(fresh[0]["title"], "Original", "caller mutation leaked into agent state");
     }
 
     #[test]

@@ -1042,6 +1042,15 @@
               ],
               "returns": "any"
             },
+            "pom": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "optional<list<class:signalwire.value.Value>>"
+            },
             "prompt_add_section": {
               "params": [
                 {
@@ -3533,6 +3542,52 @@
         }
       }
     },
+    "signalwire.core.mixins.web_mixin": {
+      "classes": {
+        "WebMixin": {
+          "methods": {
+            "on_request": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                },
+                {
+                  "name": "request_data",
+                  "type": "optional<class:signalwire.value.Value>",
+                  "required": true
+                },
+                {
+                  "name": "callback_path",
+                  "type": "optional<string>",
+                  "required": true
+                }
+              ],
+              "returns": "optional<class:signalwire.value.Value>"
+            },
+            "on_swml_request": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                },
+                {
+                  "name": "request_data",
+                  "type": "optional<class:signalwire.value.Value>",
+                  "required": true
+                },
+                {
+                  "name": "callback_path",
+                  "type": "optional<string>",
+                  "required": true
+                }
+              ],
+              "returns": "optional<class:signalwire.value.Value>"
+            }
+          }
+        }
+      }
+    },
     "signalwire.core.security.session_manager": {
       "classes": {
         "SessionManager": {
@@ -4174,6 +4229,44 @@
               ],
               "returns": "optional<class:signalwire.core.function_result.FunctionResult>"
             },
+            "on_request": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                },
+                {
+                  "name": "request_data",
+                  "type": "optional<class:signalwire.value.Value>",
+                  "required": true
+                },
+                {
+                  "name": "callback_path",
+                  "type": "optional<string>",
+                  "required": true
+                }
+              ],
+              "returns": "optional<class:signalwire.value.Value>"
+            },
+            "on_swml_request": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                },
+                {
+                  "name": "request_data",
+                  "type": "optional<class:signalwire.value.Value>",
+                  "required": true
+                },
+                {
+                  "name": "callback_path",
+                  "type": "optional<string>",
+                  "required": true
+                }
+              ],
+              "returns": "optional<class:signalwire.value.Value>"
+            },
             "port": {
               "params": [
                 {
@@ -4246,6 +4339,20 @@
                 }
               ],
               "returns": "void"
+            },
+            "set_on_swml_request_hook": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                },
+                {
+                  "name": "hook",
+                  "type": "any",
+                  "required": true
+                }
+              ],
+              "returns": "any"
             },
             "sleep": {
               "params": [
