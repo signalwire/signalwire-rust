@@ -256,17 +256,28 @@ def collect(rust_doc: dict, aliases: dict) -> tuple[dict, list]:
             # Skip trait impls that pull in unrelated methods (stdlib derives etc.)
             trait = impl_inner.get("trait")
             if trait is not None:
-                # Allow impls of SDK-relevant traits but skip stdlib derives.
                 # rustdoc emits trait { path, id }; only keep impls whose
-                # trait path is part of the SDK.
+                # trait path is part of the SDK. Skip ALL stdlib traits.
                 trait_path = trait.get("path", "") if isinstance(trait, dict) else ""
                 if trait_path in (
                     "Debug", "Clone", "Default", "PartialEq", "Eq",
                     "Hash", "Send", "Sync", "Drop", "From", "TryFrom",
                     "Display", "Error", "Iterator", "IntoIterator",
                     "Future", "Serialize", "Deserialize",
+                    "Borrow", "BorrowMut", "AsRef", "AsMut", "ToOwned",
+                    "Into", "Deref", "DerefMut", "CloneToUninit",
+                    "Pointable", "Any", "TypeId", "Unpin",
+                    "PartialOrd", "Ord", "Copy", "Sized",
+                    "FnOnce", "Fn", "FnMut",
                 ):
                     continue
+                # Drop blanket impls: any trait path that isn't part of SDK
+                if trait_path and not trait_path.startswith("signalwire"):
+                    # Most stdlib trait paths are unqualified (Debug, Borrow);
+                    # if it's not in our allow-skip list and starts with a
+                    # capital letter, conservatively skip it too.
+                    if trait_path[0:1].isupper():
+                        continue
             for method_id in impl_inner.get("items", []):
                 method_item = get(method_id)
                 if not method_item:

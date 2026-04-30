@@ -21,24 +21,6 @@
               ],
               "returns": "void"
             },
-            "borrow": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
-            "borrow_mut": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
             "get_agent": {
               "params": [
                 {
@@ -113,15 +95,6 @@
                 }
               ],
               "returns": "string"
-            },
-            "into": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
             },
             "is_sip_routing_enabled": {
               "params": [
@@ -273,24 +246,6 @@
               ],
               "returns": "dict<string,string>"
             },
-            "try_into": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
-            "type_id": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "class:signalwire.typeid.TypeId"
-            },
             "unregister": {
               "params": [
                 {
@@ -301,15 +256,6 @@
                   "name": "route",
                   "type": "string",
                   "required": true
-                }
-              ],
-              "returns": "any"
-            },
-            "vzip": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
                 }
               ],
               "returns": "any"
@@ -349,51 +295,6 @@
                 }
               ],
               "returns": "class:signalwire.core.agent_base.AgentBase"
-            },
-            "borrow": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
-            "borrow_mut": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
-            "deref": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "class:signalwire.core.agent_base.AgentBase"
-            },
-            "deref_mut": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "class:signalwire.core.agent_base.AgentBase"
-            },
-            "into": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
             },
             "max_tokens": {
               "params": [
@@ -539,24 +440,6 @@
               ],
               "returns": "float"
             },
-            "try_into": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
-            "type_id": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "class:signalwire.typeid.TypeId"
-            },
             "voice_id": {
               "params": [
                 {
@@ -565,74 +448,11 @@
                 }
               ],
               "returns": "string"
-            },
-            "vzip": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
             }
           }
         },
         "BedrockOptions": {
           "methods": {
-            "borrow": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
-            "borrow_mut": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
-            "into": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
-            "try_into": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
-            "type_id": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "class:signalwire.typeid.TypeId"
-            },
-            "vzip": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
             "with_name": {
               "params": [
                 {
@@ -893,24 +713,6 @@
               ],
               "returns": "any"
             },
-            "borrow": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
-            "borrow_mut": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
             "build_ai_verb": {
               "params": [
                 {
@@ -970,34 +772,6 @@
               ],
               "returns": "any"
             },
-            "clone_into": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                },
-                {
-                  "name": "target",
-                  "type": "any",
-                  "required": true
-                }
-              ],
-              "returns": "void"
-            },
-            "clone_to_uninit": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                },
-                {
-                  "name": "dest",
-                  "type": "int",
-                  "required": true
-                }
-              ],
-              "returns": "void"
-            },
             "define_contexts": {
               "params": [
                 {
@@ -1020,24 +794,6 @@
                 }
               ],
               "returns": "any"
-            },
-            "deref": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "class:signalwire.service.SWMLService"
-            },
-            "deref_mut": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "class:signalwire.service.SWMLService"
             },
             "enable_debug_events": {
               "params": [
@@ -1122,15 +878,6 @@
                 }
               ],
               "returns": "bool"
-            },
-            "into": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
             },
             "list_skills": {
               "params": [
@@ -1599,33 +1346,6 @@
               ],
               "returns": "any"
             },
-            "to_owned": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
-            "try_into": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
-            "type_id": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "class:signalwire.typeid.TypeId"
-            },
             "update_global_data": {
               "params": [
                 {
@@ -1636,15 +1356,6 @@
                   "name": "data",
                   "type": "class:signalwire.value.Value",
                   "required": true
-                }
-              ],
-              "returns": "any"
-            },
-            "vzip": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
                 }
               ],
               "returns": "any"
@@ -1681,52 +1392,6 @@
               ],
               "returns": "class:signalwire.core.contexts.Step"
             },
-            "borrow": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
-            "borrow_mut": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
-            "clone_into": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                },
-                {
-                  "name": "target",
-                  "type": "any",
-                  "required": true
-                }
-              ],
-              "returns": "void"
-            },
-            "clone_to_uninit": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                },
-                {
-                  "name": "dest",
-                  "type": "int",
-                  "required": true
-                }
-              ],
-              "returns": "void"
-            },
             "get_step": {
               "params": [
                 {
@@ -1754,15 +1419,6 @@
                 }
               ],
               "returns": "optional<class:signalwire.core.contexts.Step>"
-            },
-            "into": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
             },
             "move_step": {
               "params": [
@@ -1894,15 +1550,6 @@
               ],
               "returns": "dict<string,class:signalwire.core.contexts.Step>"
             },
-            "to_owned": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
             "to_value": {
               "params": [
                 {
@@ -1911,33 +1558,6 @@
                 }
               ],
               "returns": "class:signalwire.value.Value"
-            },
-            "try_into": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
-            "type_id": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "class:signalwire.typeid.TypeId"
-            },
-            "vzip": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
             }
           }
         },
@@ -1974,52 +1594,6 @@
                 }
               ],
               "returns": "any"
-            },
-            "borrow": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
-            "borrow_mut": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
-            "clone_into": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                },
-                {
-                  "name": "target",
-                  "type": "any",
-                  "required": true
-                }
-              ],
-              "returns": "void"
-            },
-            "clone_to_uninit": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                },
-                {
-                  "name": "dest",
-                  "type": "int",
-                  "required": true
-                }
-              ],
-              "returns": "void"
             },
             "get_context": {
               "params": [
@@ -2058,25 +1632,7 @@
               ],
               "returns": "bool"
             },
-            "into": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
             "reset": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
-            "to_owned": {
               "params": [
                 {
                   "name": "self",
@@ -2094,24 +1650,6 @@
               ],
               "returns": "class:signalwire.value.Value"
             },
-            "try_into": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
-            "type_id": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "class:signalwire.typeid.TypeId"
-            },
             "validate": {
               "params": [
                 {
@@ -2120,15 +1658,6 @@
                 }
               ],
               "returns": "void"
-            },
-            "vzip": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
             }
           }
         },
@@ -2193,52 +1722,6 @@
               ],
               "returns": "any"
             },
-            "borrow": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
-            "borrow_mut": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
-            "clone_into": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                },
-                {
-                  "name": "target",
-                  "type": "any",
-                  "required": true
-                }
-              ],
-              "returns": "void"
-            },
-            "clone_to_uninit": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                },
-                {
-                  "name": "dest",
-                  "type": "int",
-                  "required": true
-                }
-              ],
-              "returns": "void"
-            },
             "completion_action": {
               "params": [
                 {
@@ -2247,15 +1730,6 @@
                 }
               ],
               "returns": "optional<string>"
-            },
-            "into": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
             },
             "questions": {
               "params": [
@@ -2266,15 +1740,6 @@
               ],
               "returns": "list<class:signalwire.core.contexts.GatherQuestion>"
             },
-            "to_owned": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
             "to_value": {
               "params": [
                 {
@@ -2283,33 +1748,6 @@
                 }
               ],
               "returns": "class:signalwire.value.Value"
-            },
-            "try_into": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
-            "type_id": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "class:signalwire.typeid.TypeId"
-            },
-            "vzip": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
             }
           }
         },
@@ -2350,61 +1788,6 @@
               ],
               "returns": "void"
             },
-            "borrow": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
-            "borrow_mut": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
-            "clone_into": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                },
-                {
-                  "name": "target",
-                  "type": "any",
-                  "required": true
-                }
-              ],
-              "returns": "void"
-            },
-            "clone_to_uninit": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                },
-                {
-                  "name": "dest",
-                  "type": "int",
-                  "required": true
-                }
-              ],
-              "returns": "void"
-            },
-            "into": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
             "key": {
               "params": [
                 {
@@ -2414,15 +1797,6 @@
               ],
               "returns": "string"
             },
-            "to_owned": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
             "to_value": {
               "params": [
                 {
@@ -2431,33 +1805,6 @@
                 }
               ],
               "returns": "class:signalwire.value.Value"
-            },
-            "try_into": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
-            "type_id": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "class:signalwire.typeid.TypeId"
-            },
-            "vzip": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
             }
           }
         },
@@ -2531,52 +1878,6 @@
               ],
               "returns": "any"
             },
-            "borrow": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
-            "borrow_mut": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
-            "clone_into": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                },
-                {
-                  "name": "target",
-                  "type": "any",
-                  "required": true
-                }
-              ],
-              "returns": "void"
-            },
-            "clone_to_uninit": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                },
-                {
-                  "name": "dest",
-                  "type": "int",
-                  "required": true
-                }
-              ],
-              "returns": "void"
-            },
             "gather_info": {
               "params": [
                 {
@@ -2585,15 +1886,6 @@
                 }
               ],
               "returns": "optional<class:signalwire.core.contexts.GatherInfo>"
-            },
-            "into": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
             },
             "name": {
               "params": [
@@ -2726,15 +2018,6 @@
               ],
               "returns": "any"
             },
-            "to_owned": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
             "to_value": {
               "params": [
                 {
@@ -2743,24 +2026,6 @@
                 }
               ],
               "returns": "class:signalwire.value.Value"
-            },
-            "try_into": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
-            "type_id": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "class:signalwire.typeid.TypeId"
             },
             "valid_contexts": {
               "params": [
@@ -2779,15 +2044,6 @@
                 }
               ],
               "returns": "optional<list<string>>"
-            },
-            "vzip": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
             }
           }
         }
@@ -2820,52 +2076,6 @@
                 }
               ],
               "returns": "any"
-            },
-            "borrow": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
-            "borrow_mut": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
-            "clone_into": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                },
-                {
-                  "name": "target",
-                  "type": "any",
-                  "required": true
-                }
-              ],
-              "returns": "void"
-            },
-            "clone_to_uninit": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                },
-                {
-                  "name": "dest",
-                  "type": "int",
-                  "required": true
-                }
-              ],
-              "returns": "void"
             },
             "create_expression_tool": {
               "params": [
@@ -3031,15 +2241,6 @@
               ],
               "returns": "any"
             },
-            "into": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
             "output": {
               "params": [
                 {
@@ -3116,15 +2317,6 @@
               ],
               "returns": "any"
             },
-            "to_owned": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
             "to_swaig_function": {
               "params": [
                 {
@@ -3133,33 +2325,6 @@
                 }
               ],
               "returns": "class:signalwire.value.Value"
-            },
-            "try_into": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
-            "type_id": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "class:signalwire.typeid.TypeId"
-            },
-            "vzip": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
             },
             "webhook": {
               "params": [
@@ -3268,24 +2433,6 @@
               ],
               "returns": "any"
             },
-            "borrow": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
-            "borrow_mut": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
             "clear_dynamic_hints": {
               "params": [
                 {
@@ -3294,34 +2441,6 @@
                 }
               ],
               "returns": "any"
-            },
-            "clone_into": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                },
-                {
-                  "name": "target",
-                  "type": "any",
-                  "required": true
-                }
-              ],
-              "returns": "void"
-            },
-            "clone_to_uninit": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                },
-                {
-                  "name": "dest",
-                  "type": "int",
-                  "required": true
-                }
-              ],
-              "returns": "void"
             },
             "connect": {
               "params": [
@@ -3497,15 +2616,6 @@
                   "name": "timeout",
                   "type": "int",
                   "required": true
-                }
-              ],
-              "returns": "any"
-            },
-            "into": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
                 }
               ],
               "returns": "any"
@@ -4069,15 +3179,6 @@
               ],
               "returns": "string"
             },
-            "to_owned": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
             "to_value": {
               "params": [
                 {
@@ -4100,24 +3201,6 @@
                 }
               ],
               "returns": "any"
-            },
-            "try_into": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
-            "type_id": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "class:signalwire.typeid.TypeId"
             },
             "update_global_data": {
               "params": [
@@ -4143,15 +3226,6 @@
                   "name": "settings",
                   "type": "class:signalwire.value.Value",
                   "required": true
-                }
-              ],
-              "returns": "any"
-            },
-            "vzip": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
                 }
               ],
               "returns": "any"
@@ -4208,52 +3282,6 @@
               ],
               "returns": "void"
             },
-            "borrow": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
-            "borrow_mut": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
-            "clone_into": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                },
-                {
-                  "name": "target",
-                  "type": "any",
-                  "required": true
-                }
-              ],
-              "returns": "void"
-            },
-            "clone_to_uninit": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                },
-                {
-                  "name": "dest",
-                  "type": "int",
-                  "required": true
-                }
-              ],
-              "returns": "void"
-            },
             "create_session": {
               "params": [
                 {
@@ -4287,24 +3315,6 @@
               ],
               "returns": "string"
             },
-            "into": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
-            "to_owned": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
             "token_expiry_secs": {
               "params": [
                 {
@@ -4313,24 +3323,6 @@
                 }
               ],
               "returns": "int"
-            },
-            "try_into": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
-            "type_id": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "class:signalwire.typeid.TypeId"
             },
             "validate_token": {
               "params": [
@@ -4356,15 +3348,6 @@
               ],
               "returns": "bool"
             },
-            "vzip": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
             "with_defaults": {
               "params": [],
               "returns": "any"
@@ -4380,24 +3363,6 @@
             "__init__": {
               "params": [],
               "returns": "void"
-            },
-            "borrow": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
-            "borrow_mut": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
             },
             "get_skill": {
               "params": [
@@ -4426,15 +3391,6 @@
                 }
               ],
               "returns": "bool"
-            },
-            "into": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
             },
             "list_skills": {
               "params": [
@@ -4488,24 +3444,6 @@
               ],
               "returns": "tuple<bool,string>"
             },
-            "try_into": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
-            "type_id": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "class:signalwire.typeid.TypeId"
-            },
             "unload_skill": {
               "params": [
                 {
@@ -4519,15 +3457,6 @@
                 }
               ],
               "returns": "bool"
-            },
-            "vzip": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
             }
           }
         }
@@ -4617,24 +3546,6 @@
               ],
               "returns": "void"
             },
-            "borrow": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
-            "borrow_mut": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
             "clear_section": {
               "params": [
                 {
@@ -4677,15 +3588,6 @@
               ],
               "returns": "bool"
             },
-            "into": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
             "render": {
               "params": [
                 {
@@ -4722,24 +3624,6 @@
               ],
               "returns": "class:signalwire.value.Value"
             },
-            "try_into": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
-            "type_id": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "class:signalwire.typeid.TypeId"
-            },
             "version": {
               "params": [
                 {
@@ -4748,15 +3632,6 @@
                 }
               ],
               "returns": "string"
-            },
-            "vzip": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
             }
           }
         }
@@ -4813,33 +3688,6 @@
               ],
               "returns": "dict<string,class:signalwire.value.Value>"
             },
-            "borrow": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
-            "borrow_mut": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
-            "into": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
             "services": {
               "params": [
                 {
@@ -4849,24 +3697,6 @@
               ],
               "returns": "list<string>"
             },
-            "try_into": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
-            "type_id": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "class:signalwire.typeid.TypeId"
-            },
             "venue_name": {
               "params": [
                 {
@@ -4875,15 +3705,6 @@
                 }
               ],
               "returns": "string"
-            },
-            "vzip": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
             }
           }
         }
@@ -4941,24 +3762,6 @@
               ],
               "returns": "class:signalwire.core.agent_base.AgentBase"
             },
-            "borrow": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
-            "borrow_mut": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
             "faqs": {
               "params": [
                 {
@@ -4968,15 +3771,6 @@
               ],
               "returns": "list<class:signalwire.value.Value>"
             },
-            "into": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
             "suggest_related": {
               "params": [
                 {
@@ -4985,33 +3779,6 @@
                 }
               ],
               "returns": "bool"
-            },
-            "try_into": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
-            "type_id": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "class:signalwire.typeid.TypeId"
-            },
-            "vzip": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
             }
           }
         }
@@ -5059,33 +3826,6 @@
               ],
               "returns": "class:signalwire.core.agent_base.AgentBase"
             },
-            "borrow": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
-            "borrow_mut": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
-            "into": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
             "questions": {
               "params": [
                 {
@@ -5094,33 +3834,6 @@
                 }
               ],
               "returns": "list<class:signalwire.value.Value>"
-            },
-            "try_into": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
-            "type_id": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "class:signalwire.typeid.TypeId"
-            },
-            "vzip": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
             }
           }
         }
@@ -5173,24 +3886,6 @@
               ],
               "returns": "class:signalwire.core.agent_base.AgentBase"
             },
-            "borrow": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
-            "borrow_mut": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
             "departments": {
               "params": [
                 {
@@ -5208,42 +3903,6 @@
                 }
               ],
               "returns": "string"
-            },
-            "into": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
-            "try_into": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
-            "type_id": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "class:signalwire.typeid.TypeId"
-            },
-            "vzip": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
             }
           }
         }
@@ -5291,33 +3950,6 @@
               ],
               "returns": "class:signalwire.core.agent_base.AgentBase"
             },
-            "borrow": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
-            "borrow_mut": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
-            "into": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
             "survey_name": {
               "params": [
                 {
@@ -5335,33 +3967,6 @@
                 }
               ],
               "returns": "list<class:signalwire.value.Value>"
-            },
-            "try_into": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
-            "type_id": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "class:signalwire.typeid.TypeId"
-            },
-            "vzip": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
             }
           }
         }
@@ -5399,69 +4004,6 @@
                 }
               ],
               "returns": "class:signalwire.relay.call.Action"
-            },
-            "borrow": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
-            "borrow_mut": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
-            "deref": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "class:signalwire.relay.call.Action"
-            },
-            "into": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
-            "try_into": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
-            "type_id": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "class:signalwire.typeid.TypeId"
-            },
-            "vzip": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
             }
           }
         },
@@ -5486,24 +4028,6 @@
                 }
               ],
               "returns": "void"
-            },
-            "borrow": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
-            "borrow_mut": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
             },
             "call_id": {
               "params": [
@@ -5564,15 +4088,6 @@
                 }
               ],
               "returns": "void"
-            },
-            "into": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
             },
             "is_done": {
               "params": [
@@ -5678,33 +4193,6 @@
                 }
               ],
               "returns": "string"
-            },
-            "try_into": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
-            "type_id": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "class:signalwire.typeid.TypeId"
-            },
-            "vzip": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
             },
             "with_stop_method": {
               "params": [
@@ -5827,24 +4315,6 @@
                 }
               ],
               "returns": "class:signalwire.value.Value"
-            },
-            "borrow": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
-            "borrow_mut": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
             },
             "clear_digit_bindings": {
               "params": [
@@ -5973,15 +4443,6 @@
                 }
               ],
               "returns": "class:signalwire.value.Value"
-            },
-            "into": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
             },
             "join_conference": {
               "params": [
@@ -6289,24 +4750,6 @@
               ],
               "returns": "class:signalwire.value.Value"
             },
-            "try_into": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
-            "type_id": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "class:signalwire.typeid.TypeId"
-            },
             "unhold": {
               "params": [
                 {
@@ -6329,15 +4772,6 @@
                 }
               ],
               "returns": "class:signalwire.value.Value"
-            },
-            "vzip": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
             }
           }
         },
@@ -6372,24 +4806,6 @@
               ],
               "returns": "class:signalwire.relay.call.Action"
             },
-            "borrow": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
-            "borrow_mut": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
             "collect_result": {
               "params": [
                 {
@@ -6398,15 +4814,6 @@
                 }
               ],
               "returns": "optional<class:signalwire.value.Value>"
-            },
-            "deref": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "class:signalwire.relay.call.Action"
             },
             "handle_event_filtered": {
               "params": [
@@ -6422,15 +4829,6 @@
               ],
               "returns": "void"
             },
-            "into": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
             "start_input_timers": {
               "params": [
                 {
@@ -6439,33 +4837,6 @@
                 }
               ],
               "returns": "void"
-            },
-            "try_into": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
-            "type_id": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "class:signalwire.typeid.TypeId"
-            },
-            "vzip": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
             }
           }
         },
@@ -6500,33 +4871,6 @@
               ],
               "returns": "class:signalwire.relay.call.Action"
             },
-            "borrow": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
-            "borrow_mut": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
-            "deref": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "class:signalwire.relay.call.Action"
-            },
             "detect_result": {
               "params": [
                 {
@@ -6535,42 +4879,6 @@
                 }
               ],
               "returns": "optional<class:signalwire.value.Value>"
-            },
-            "into": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
-            "try_into": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
-            "type_id": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "class:signalwire.typeid.TypeId"
-            },
-            "vzip": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
             }
           }
         },
@@ -6610,33 +4918,6 @@
               ],
               "returns": "class:signalwire.relay.call.Action"
             },
-            "borrow": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
-            "borrow_mut": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
-            "deref": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "class:signalwire.relay.call.Action"
-            },
             "fax_type": {
               "params": [
                 {
@@ -6645,42 +4926,6 @@
                 }
               ],
               "returns": "string"
-            },
-            "into": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
-            "try_into": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
-            "type_id": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "class:signalwire.typeid.TypeId"
-            },
-            "vzip": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
             }
           }
         },
@@ -6714,69 +4959,6 @@
                 }
               ],
               "returns": "class:signalwire.relay.call.Action"
-            },
-            "borrow": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
-            "borrow_mut": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
-            "deref": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "class:signalwire.relay.call.Action"
-            },
-            "into": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
-            "try_into": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
-            "type_id": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "class:signalwire.typeid.TypeId"
-            },
-            "vzip": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
             }
           }
         },
@@ -6811,42 +4993,6 @@
               ],
               "returns": "class:signalwire.relay.call.Action"
             },
-            "borrow": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
-            "borrow_mut": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
-            "deref": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "class:signalwire.relay.call.Action"
-            },
-            "into": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
             "pause": {
               "params": [
                 {
@@ -6865,24 +5011,6 @@
               ],
               "returns": "void"
             },
-            "try_into": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
-            "type_id": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "class:signalwire.typeid.TypeId"
-            },
             "volume": {
               "params": [
                 {
@@ -6896,15 +5024,6 @@
                 }
               ],
               "returns": "void"
-            },
-            "vzip": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
             }
           }
         },
@@ -6939,33 +5058,6 @@
               ],
               "returns": "class:signalwire.relay.call.Action"
             },
-            "borrow": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
-            "borrow_mut": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
-            "deref": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "class:signalwire.relay.call.Action"
-            },
             "duration": {
               "params": [
                 {
@@ -6974,15 +5066,6 @@
                 }
               ],
               "returns": "optional<float>"
-            },
-            "into": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
             },
             "pause": {
               "params": [
@@ -7011,24 +5094,6 @@
               ],
               "returns": "optional<int>"
             },
-            "try_into": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
-            "type_id": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "class:signalwire.typeid.TypeId"
-            },
             "url": {
               "params": [
                 {
@@ -7037,15 +5102,6 @@
                 }
               ],
               "returns": "optional<string>"
-            },
-            "vzip": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
             }
           }
         },
@@ -7079,69 +5135,6 @@
                 }
               ],
               "returns": "class:signalwire.relay.call.Action"
-            },
-            "borrow": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
-            "borrow_mut": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
-            "deref": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "class:signalwire.relay.call.Action"
-            },
-            "into": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
-            "try_into": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
-            "type_id": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "class:signalwire.typeid.TypeId"
-            },
-            "vzip": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
             }
           }
         },
@@ -7175,69 +5168,6 @@
                 }
               ],
               "returns": "class:signalwire.relay.call.Action"
-            },
-            "borrow": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
-            "borrow_mut": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
-            "deref": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "class:signalwire.relay.call.Action"
-            },
-            "into": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
-            "try_into": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
-            "type_id": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "class:signalwire.typeid.TypeId"
-            },
-            "vzip": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
             }
           }
         },
@@ -7271,69 +5201,6 @@
                 }
               ],
               "returns": "class:signalwire.relay.call.Action"
-            },
-            "borrow": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
-            "borrow_mut": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
-            "deref": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "class:signalwire.relay.call.Action"
-            },
-            "into": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
-            "try_into": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
-            "type_id": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "class:signalwire.typeid.TypeId"
-            },
-            "vzip": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
             }
           }
         }
@@ -7363,24 +5230,6 @@
               ],
               "returns": "void"
             },
-            "borrow": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
-            "borrow_mut": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
             "call_id": {
               "params": [
                 {
@@ -7389,34 +5238,6 @@
                 }
               ],
               "returns": "optional<string>"
-            },
-            "clone_into": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                },
-                {
-                  "name": "target",
-                  "type": "any",
-                  "required": true
-                }
-              ],
-              "returns": "void"
-            },
-            "clone_to_uninit": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                },
-                {
-                  "name": "dest",
-                  "type": "int",
-                  "required": true
-                }
-              ],
-              "returns": "void"
             },
             "control_id": {
               "params": [
@@ -7435,15 +5256,6 @@
                 }
               ],
               "returns": "string"
-            },
-            "into": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
             },
             "node_id": {
               "params": [
@@ -7505,15 +5317,6 @@
               ],
               "returns": "float"
             },
-            "to_owned": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
             "to_value": {
               "params": [
                 {
@@ -7522,33 +5325,6 @@
                 }
               ],
               "returns": "class:signalwire.value.Value"
-            },
-            "try_into": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
-            "type_id": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "class:signalwire.typeid.TypeId"
-            },
-            "vzip": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
             }
           }
         }
@@ -7576,24 +5352,6 @@
                 }
               ],
               "returns": "optional<string>"
-            },
-            "borrow": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
-            "borrow_mut": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
             },
             "context": {
               "params": [
@@ -7635,15 +5393,6 @@
                 }
               ],
               "returns": "optional<string>"
-            },
-            "into": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
             },
             "is_done": {
               "params": [
@@ -7767,33 +5516,6 @@
                 }
               ],
               "returns": "optional<string>"
-            },
-            "try_into": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
-            "type_id": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "class:signalwire.typeid.TypeId"
-            },
-            "vzip": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
             }
           }
         }
@@ -7826,24 +5548,6 @@
                 }
               ],
               "returns": "string"
-            },
-            "borrow": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
-            "borrow_mut": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
             },
             "client": {
               "params": [
@@ -7896,15 +5600,6 @@
               ],
               "returns": "class:signalwire.value.Value"
             },
-            "into": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
             "list": {
               "params": [
                 {
@@ -7918,24 +5613,6 @@
                 }
               ],
               "returns": "class:signalwire.value.Value"
-            },
-            "try_into": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
-            "type_id": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "class:signalwire.typeid.TypeId"
             },
             "update": {
               "params": [
@@ -7955,15 +5632,6 @@
                 }
               ],
               "returns": "class:signalwire.value.Value"
-            },
-            "vzip": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
             }
           }
         }
@@ -8010,24 +5678,6 @@
                 }
               ],
               "returns": "string"
-            },
-            "borrow": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
-            "borrow_mut": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
             },
             "calling": {
               "params": [
@@ -8095,15 +5745,6 @@
                 }
               ],
               "returns": "class:signalwire.rest._base.CrudResource"
-            },
-            "into": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
             },
             "logs": {
               "params": [
@@ -8240,24 +5881,6 @@
               ],
               "returns": "string"
             },
-            "try_into": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
-            "type_id": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "class:signalwire.typeid.TypeId"
-            },
             "verified_callers": {
               "params": [
                 {
@@ -8275,15 +5898,6 @@
                 }
               ],
               "returns": "class:signalwire.rest._base.CrudResource"
-            },
-            "vzip": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
             },
             "with_base_url": {
               "params": [
@@ -8348,24 +5962,6 @@
               ],
               "returns": "void"
             },
-            "borrow": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
-            "borrow_mut": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
             "external_paths": {
               "params": [],
               "returns": "list<string>"
@@ -8379,15 +5975,6 @@
                 }
               ],
               "returns": "optional<class:signalwire.skillfactory.SkillFactory>"
-            },
-            "into": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
             },
             "list_skills": {
               "params": [],
@@ -8407,33 +5994,6 @@
                 }
               ],
               "returns": "void"
-            },
-            "try_into": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
-            "type_id": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "class:signalwire.typeid.TypeId"
-            },
-            "vzip": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
             }
           }
         }
