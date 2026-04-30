@@ -212,6 +212,36 @@ impl Service {
         self
     }
 
+    /// Whether a SWAIG function with the given name is registered.
+    /// Python parity: `ToolRegistry.has_function`.
+    pub fn has_function(&self, name: &str) -> bool {
+        self.tools.contains_key(name)
+    }
+
+    /// Get a registered SWAIG function definition by name, or `None`
+    /// when absent. Python parity: `ToolRegistry.get_function`.
+    pub fn get_function(&self, name: &str) -> Option<&ToolDef> {
+        self.tools.get(name)
+    }
+
+    /// Snapshot of all registered SWAIG functions keyed by name.
+    /// Python parity: `ToolRegistry.get_all_functions`.
+    pub fn get_all_functions(&self) -> HashMap<String, ToolDef> {
+        self.tools.clone()
+    }
+
+    /// Remove a registered SWAIG function. Returns `true` when the
+    /// function was found and removed; `false` when it wasn't
+    /// registered. Python parity: `ToolRegistry.remove_function`.
+    pub fn remove_function(&mut self, name: &str) -> bool {
+        if self.tools.remove(name).is_some() {
+            self.tool_order.retain(|n| n != name);
+            true
+        } else {
+            false
+        }
+    }
+
     /// Dispatch a function call to the registered handler. Returns
     /// `None` for unknown functions or registered functions with no
     /// local handler (e.g. DataMap tools that execute server-side).

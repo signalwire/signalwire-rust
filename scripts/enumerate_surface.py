@@ -87,6 +87,11 @@ CLASS_MODULE_MAP: dict[str, str] = {
     "RestClient": "signalwire.rest.client",
     "CrudResource": "signalwire.rest._base",
 
+    # SWMLService — Rust struct is named ``Service`` and renamed via
+    # CLASS_RENAME_MAP. Canonical name after translate is SWMLService;
+    # CLASS_MODULE_MAP lookup happens against the translated name.
+    "SWMLService": "signalwire.core.swml_service",
+
     # rest namespaces — Rust uses short struct names (Calling, Fabric);
     # CLASS_RENAME_MAP renames them to the Python ``...Namespace`` form,
     # which is what _translate_class returns and CLASS_MODULE_MAP keys

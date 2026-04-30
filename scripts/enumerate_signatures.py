@@ -313,6 +313,34 @@ def collect(rust_doc: dict, aliases: dict) -> tuple[dict, list]:
             "methods": dict(sorted(methods_out.items())),
         }
 
+    # Mixin/manager projections — the Rust ``Service`` (renamed
+    # SWMLService) inherits to AgentBase. Project Service-side methods
+    # to canonical Python mixin / manager paths so the audit lines up.
+    MIXIN_PROJECTIONS: dict[tuple[str, str], list[str]] = {
+        ("signalwire.core.agent.tools.registry", "ToolRegistry"): [
+            "define_tool", "register_swaig_function",
+            "has_function", "get_function", "get_all_functions",
+            "remove_function",
+        ],
+        ("signalwire.core.mixins.tool_mixin", "ToolMixin"): [
+            "define_tool", "on_function_call", "register_swaig_function",
+            "define_tools",
+        ],
+    }
+    svc_entry = out_modules.get("signalwire.core.swml_service", {}).get("classes", {}).get("SWMLService")
+    ab_entry = out_modules.get("signalwire.core.agent_base", {}).get("classes", {}).get("AgentBase")
+    if svc_entry or ab_entry:
+        svc_methods = svc_entry["methods"] if svc_entry else {}
+        ab_methods = ab_entry["methods"] if ab_entry else {}
+        combined = {**svc_methods, **ab_methods}
+        for (target_mod, target_cls), expected in MIXIN_PROJECTIONS.items():
+            present = {m: combined[m] for m in expected if m in combined}
+            if not present:
+                continue
+            out_modules.setdefault(target_mod, {"classes": {}})
+            out_modules[target_mod]["classes"].setdefault(target_cls, {"methods": {}})
+            out_modules[target_mod]["classes"][target_cls]["methods"].update(present)
+
     sorted_modules = {}
     for k in sorted(out_modules):
         entry = out_modules[k]
