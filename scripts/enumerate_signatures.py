@@ -326,6 +326,9 @@ def collect(rust_doc: dict, aliases: dict) -> tuple[dict, list]:
             "define_tool", "on_function_call", "register_swaig_function",
             "define_tools",
         ],
+        ("signalwire.core.mixins.auth_mixin", "AuthMixin"): [
+            "validate_basic_auth", "get_basic_auth_credentials",
+        ],
     }
     svc_entry = out_modules.get("signalwire.core.swml_service", {}).get("classes", {}).get("SWMLService")
     ab_entry = out_modules.get("signalwire.core.agent_base", {}).get("classes", {}).get("AgentBase")

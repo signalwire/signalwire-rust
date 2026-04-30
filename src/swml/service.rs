@@ -306,6 +306,39 @@ impl Service {
         (&self.basic_auth_user, &self.basic_auth_password)
     }
 
+    /// Get (user, password) — Python-canonical name.
+    /// Python parity: ``AuthMixin.get_basic_auth_credentials``.
+    pub fn get_basic_auth_credentials(&self) -> (String, String) {
+        (self.basic_auth_user.clone(), self.basic_auth_password.clone())
+    }
+
+    /// Get (user, password, source) where source is one of "provided",
+    /// "environment", or "generated". Python parity:
+    /// ``AuthMixin.get_basic_auth_credentials(include_source=True)``.
+    pub fn get_basic_auth_credentials_with_source(&self) -> (String, String, String) {
+        let user = self.basic_auth_user.clone();
+        let pass = self.basic_auth_password.clone();
+        let env_user = env::var("SWML_BASIC_AUTH_USER").unwrap_or_default();
+        let env_pass = env::var("SWML_BASIC_AUTH_PASSWORD").unwrap_or_default();
+        let source = if !env_user.is_empty() && !env_pass.is_empty()
+            && user == env_user && pass == env_pass
+        {
+            "environment".to_string()
+        } else if user.starts_with("user_") && pass.len() > 20 {
+            "generated".to_string()
+        } else {
+            "provided".to_string()
+        };
+        (user, pass, source)
+    }
+
+    /// Validate provided basic-auth credentials against the configured ones.
+    /// Python parity: ``AuthMixin.validate_basic_auth(username, password)``.
+    pub fn validate_basic_auth(&self, username: &str, password: &str) -> bool {
+        constant_time_eq(username, &self.basic_auth_user)
+            && constant_time_eq(password, &self.basic_auth_password)
+    }
+
     pub fn render(&self) -> String {
         self.document.render()
     }
