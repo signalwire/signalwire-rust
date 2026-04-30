@@ -277,6 +277,32 @@ impl AgentBase {
         &mut self.service
     }
 
+    /// Mint a per-call SWAIG-function token via the agent's SessionManager.
+    ///
+    /// Python parity: `state_mixin.StateMixin._create_tool_token` —
+    /// delegates to `SessionManager::create_token` and returns `String::new()`
+    /// on failure (Python catches all exceptions and returns "").
+    pub fn create_tool_token(&self, tool_name: &str, call_id: &str) -> String {
+        self.session_manager.create_token(tool_name, call_id)
+    }
+
+    /// Validate a per-call SWAIG-function token. Returns `false` when the
+    /// function is not registered or when the SessionManager rejects the
+    /// token.
+    ///
+    /// Python parity: `state_mixin.StateMixin.validate_tool_token` —
+    /// rejects unknown function names up-front. Rust's
+    /// `SessionManager::validate_token` returns `bool` (no panics on bad
+    /// input — see security/session_manager.rs), so no try/catch is
+    /// required for parity.
+    pub fn validate_tool_token(&self, function_name: &str, token: &str, call_id: &str) -> bool {
+        if !self.service.has_function(function_name) {
+            return false;
+        }
+        self.session_manager
+            .validate_token(function_name, call_id, token)
+    }
+
     // ══════════════════════════════════════════════════════════════════════
     //  Prompt Methods
     // ══════════════════════════════════════════════════════════════════════
@@ -2357,5 +2383,63 @@ mod tests {
 
         let guard = captured.lock().unwrap();
         assert_eq!(*guard, "Great call");
+    }
+
+    // ── Tool tokens ──────────────────────────────────────────────────────
+    //
+    // Parity: signalwire-python tests/unit/core/test_agent_base.py
+    //   ::TestAgentBaseTokenMethods::test_validate_tool_token
+    //   ::TestAgentBaseTokenMethods::test_create_tool_token
+
+    fn agent_with_tool() -> AgentBase {
+        let mut a = AgentBase::new(default_options());
+        a.define_tool(
+            "test_tool",
+            "t",
+            json!({}),
+            Box::new(|_a, _r| FunctionResult::with_response("ok")),
+            true,
+        );
+        a
+    }
+
+    #[test]
+    fn test_create_tool_token_round_trip() {
+        let a = agent_with_tool();
+        let token = a.create_tool_token("test_tool", "call_123");
+        assert!(!token.is_empty(), "expected non-empty SessionManager-issued token");
+        assert!(
+            a.validate_tool_token("test_tool", &token, "call_123"),
+            "validate_tool_token rejected the token we just created"
+        );
+    }
+
+    #[test]
+    fn test_validate_tool_token_rejects_unknown_function() {
+        let a = AgentBase::new(default_options());
+        assert!(
+            !a.validate_tool_token("not_registered", "any_token", "call_123"),
+            "expected false for unregistered function"
+        );
+    }
+
+    #[test]
+    fn test_validate_tool_token_rejects_bad_token() {
+        let a = agent_with_tool();
+        assert!(
+            !a.validate_tool_token("test_tool", "garbage_token_value", "call_123"),
+            "expected false for garbage token"
+        );
+    }
+
+    #[test]
+    fn test_validate_tool_token_rejects_wrong_call_id() {
+        let a = agent_with_tool();
+        let token = a.create_tool_token("test_tool", "call_A");
+        assert!(!token.is_empty());
+        assert!(
+            !a.validate_tool_token("test_tool", &token, "call_B"),
+            "expected false when token bound to a different call_id"
+        );
     }
 }

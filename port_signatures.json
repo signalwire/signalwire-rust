@@ -879,6 +879,25 @@
               ],
               "returns": "any"
             },
+            "create_tool_token": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                },
+                {
+                  "name": "tool_name",
+                  "type": "string",
+                  "required": true
+                },
+                {
+                  "name": "call_id",
+                  "type": "string",
+                  "required": true
+                }
+              ],
+              "returns": "string"
+            },
             "define_contexts": {
               "params": [
                 {
@@ -887,20 +906,6 @@
                 }
               ],
               "returns": "class:signalwire.core.contexts.ContextBuilder"
-            },
-            "define_tools": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                },
-                {
-                  "name": "tool_defs",
-                  "type": "list<class:signalwire.value.Value>",
-                  "required": true
-                }
-              ],
-              "returns": "any"
             },
             "enable_debug_events": {
               "params": [
@@ -924,15 +929,6 @@
                 }
               ],
               "returns": "any"
-            },
-            "get_basic_auth_credentials": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "tuple<string,string>"
             },
             "get_prompt": {
               "params": [
@@ -3406,6 +3402,38 @@
                 }
               ],
               "returns": "tuple<string,string>"
+            }
+          }
+        }
+      }
+    },
+    "signalwire.core.mixins.state_mixin": {
+      "classes": {
+        "StateMixin": {
+          "methods": {
+            "validate_tool_token": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                },
+                {
+                  "name": "function_name",
+                  "type": "string",
+                  "required": true
+                },
+                {
+                  "name": "token",
+                  "type": "string",
+                  "required": true
+                },
+                {
+                  "name": "call_id",
+                  "type": "string",
+                  "required": true
+                }
+              ],
+              "returns": "bool"
             }
           }
         }

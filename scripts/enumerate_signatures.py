@@ -329,6 +329,9 @@ def collect(rust_doc: dict, aliases: dict) -> tuple[dict, list]:
         ("signalwire.core.mixins.auth_mixin", "AuthMixin"): [
             "validate_basic_auth", "get_basic_auth_credentials",
         ],
+        ("signalwire.core.mixins.state_mixin", "StateMixin"): [
+            "validate_tool_token",
+        ],
     }
     svc_entry = out_modules.get("signalwire.core.swml_service", {}).get("classes", {}).get("SWMLService")
     ab_entry = out_modules.get("signalwire.core.agent_base", {}).get("classes", {}).get("AgentBase")
@@ -336,6 +339,7 @@ def collect(rust_doc: dict, aliases: dict) -> tuple[dict, list]:
         svc_methods = svc_entry["methods"] if svc_entry else {}
         ab_methods = ab_entry["methods"] if ab_entry else {}
         combined = {**svc_methods, **ab_methods}
+        projected: set[str] = set()
         for (target_mod, target_cls), expected in MIXIN_PROJECTIONS.items():
             present = {m: combined[m] for m in expected if m in combined}
             if not present:
@@ -343,6 +347,13 @@ def collect(rust_doc: dict, aliases: dict) -> tuple[dict, list]:
             out_modules.setdefault(target_mod, {"classes": {}})
             out_modules[target_mod]["classes"].setdefault(target_cls, {"methods": {}})
             out_modules[target_mod]["classes"][target_cls]["methods"].update(present)
+            projected.update(present)
+        # Drop projected methods from AgentBase only — keep them on
+        # SWMLService (which Python keeps as the primary host of tool/auth
+        # methods). This matches the .NET adapter pattern.
+        if ab_entry:
+            for n in projected:
+                ab_methods.pop(n, None)
 
     sorted_modules = {}
     for k in sorted(out_modules):
