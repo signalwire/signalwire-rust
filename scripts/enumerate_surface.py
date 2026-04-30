@@ -87,6 +87,13 @@ CLASS_MODULE_MAP: dict[str, str] = {
     "RestClient": "signalwire.rest.client",
     "CrudResource": "signalwire.rest._base",
 
+    # rest namespaces — Rust uses short struct names (Calling, Fabric);
+    # CLASS_RENAME_MAP renames them to the Python ``...Namespace`` form,
+    # which is what _translate_class returns and CLASS_MODULE_MAP keys
+    # are looked up against.
+    "CallingNamespace": "signalwire.rest.namespaces.calling",
+    "FabricNamespace": "signalwire.rest.namespaces.fabric",
+
     # relay
     "Client": "signalwire.relay.client",  # Rust's `relay::Client` == Python's `RelayClient`
     "Call": "signalwire.relay.call",
@@ -140,6 +147,8 @@ CLASS_MODULE_MAP: dict[str, str] = {
 CLASS_RENAME_MAP: dict[str, str] = {
     "Service": "SWMLService",
     "Client": "RelayClient",  # within relay/ module
+    "Calling": "CallingNamespace",
+    "Fabric": "FabricNamespace",
     # Skills
     "ApiNinjasTrivia": "ApiNinjasTriviaSkill",
     "ClaudeSkills": "ClaudeSkillsSkill",
