@@ -28,6 +28,7 @@
 #![allow(dead_code)]
 
 use std::collections::HashMap;
+use std::path::PathBuf;
 use std::process::{Command, Stdio};
 use std::sync::{Mutex, MutexGuard, OnceLock};
 use std::time::{Duration, Instant};
@@ -225,7 +226,9 @@ fn ensure_server() -> Result<HarnessHandle, String> {
     }
 
     Err(format!(
-        "`python -m mock_signalwire` did not become ready within {STARTUP_TIMEOUT:?} on port {port}"
+        "`python -m mock_signalwire` did not become ready within {STARTUP_TIMEOUT:?} on port {port} \
+         (clone porting-sdk next to signalwire-rust so tests can find \
+         porting-sdk/test_harness/mock_signalwire/, or pip install the mock_signalwire package)"
     ))
 }
 
@@ -258,6 +261,15 @@ fn spawn_server(port: u16) -> Result<(), String> {
     // logic doesn't block. We mirror Go's `setsid + Setpgid` approach.
     use std::os::unix::process::CommandExt;
 
+    // Try to inject porting-sdk/test_harness/mock_signalwire/ into
+    // PYTHONPATH so `python -m mock_signalwire` resolves without a prior
+    // `pip install -e ...`. Adjacency contract: porting-sdk next to
+    // signalwire-rust in ~/src/. When the walk fails (e.g. porting-sdk
+    // is not adjacent), we still spawn — the child falls back to whatever
+    // is on the system Python's sys.path, and the readiness probe surfaces
+    // a clear timeout error if neither mode is available.
+    let pkg_dir = discover_porting_sdk_package("mock_signalwire");
+
     let mut cmd = Command::new("python");
     cmd.arg("-m")
         .arg("mock_signalwire")
@@ -270,6 +282,22 @@ fn spawn_server(port: u16) -> Result<(), String> {
         .stdin(Stdio::null())
         .stdout(Stdio::null())
         .stderr(Stdio::null());
+
+    if let Some(pkg_dir) = pkg_dir {
+        // Prepend the porting-sdk package dir to PYTHONPATH. Use the OS
+        // path separator so this works on every platform Cargo runs on.
+        let existing = std::env::var_os("PYTHONPATH");
+        let new_pp: std::ffi::OsString = match existing {
+            Some(ev) if !ev.is_empty() => {
+                let mut joined = std::ffi::OsString::from(&pkg_dir);
+                joined.push(separator());
+                joined.push(ev);
+                joined
+            }
+            _ => std::ffi::OsString::from(&pkg_dir),
+        };
+        cmd.env("PYTHONPATH", new_pp);
+    }
 
     // Detach to a new session.
     unsafe {
@@ -285,6 +313,49 @@ fn spawn_server(port: u16) -> Result<(), String> {
     cmd.spawn()
         .map_err(|e| format!("failed to spawn `python -m mock_signalwire`: {e} (set MOCK_SIGNALWIRE_PORT to use a pre-running instance)"))?;
     Ok(())
+}
+
+/// Walk up from this source file looking for an adjacent
+/// `../porting-sdk/test_harness/<name>/<name>/__init__.py`. Returns the
+/// absolute path to the directory containing the Python package (the value
+/// to put on PYTHONPATH so that `python -m <name>` resolves), or `None`
+/// when no adjacent porting-sdk is reachable.
+///
+/// The walk anchors at `CARGO_MANIFEST_DIR` (the crate root, injected by
+/// Cargo at compile time). Tests run with that as their working directory
+/// by default, so this is the canonical source-of-truth for "where this
+/// repo lives on disk."
+fn discover_porting_sdk_package(name: &str) -> Option<String> {
+    let crate_root = env!("CARGO_MANIFEST_DIR");
+    let mut dir: PathBuf = PathBuf::from(crate_root);
+    loop {
+        let parent = match dir.parent() {
+            Some(p) => p.to_path_buf(),
+            None => return None,
+        };
+        let candidate = parent
+            .join("porting-sdk")
+            .join("test_harness")
+            .join(name);
+        let init = candidate.join(name).join("__init__.py");
+        if init.is_file() {
+            return Some(candidate.to_string_lossy().into_owned());
+        }
+        if parent == dir {
+            return None;
+        }
+        dir = parent;
+    }
+}
+
+#[cfg(unix)]
+fn separator() -> &'static str {
+    ":"
+}
+
+#[cfg(windows)]
+fn separator() -> &'static str {
+    ";"
 }
 
 // libc setsid binding without pulling in the libc crate. Rust 2024
