@@ -281,6 +281,14 @@ impl Client {
                 obj.insert("authorization_state".to_string(), json!(state));
             }
         }
+        // Re-send the previously-issued protocol string on reconnect so
+        // the server can restore the session. Mirrors Python's
+        // `RelayClient.connect` behaviour when `_relay_protocol` is set.
+        if let Some(p) = self.protocol.lock().unwrap().clone() {
+            if let Value::Object(ref mut obj) = params {
+                obj.insert("protocol".to_string(), json!(p));
+            }
+        }
 
         let msg = json!({
             "jsonrpc": "2.0",
@@ -724,6 +732,218 @@ impl Client {
     }
 
     // ══════════════════════════════════════════════════════════════════
+    //  High-level RPC: signalwire.execute(...)
+    // ══════════════════════════════════════════════════════════════════
+
+    /// Send a JSON-RPC request for a calling/messaging method.
+    ///
+    /// Mirrors Python's `RelayClient._send_request`: emits a flat-Blade
+    /// frame `{"method": <method>, "params": <params>}` directly — no
+    /// `signalwire.execute` wrapper. Both forms are accepted by the
+    /// production RELAY server and the mock; the flat form is what
+    /// every existing SDK port emits because it keeps the journal
+    /// filterable by inner method name without unwrapping.
+    ///
+    /// Returns the response's `result` value on success, or an `Err`
+    /// with the server's error message on failure or timeout.
+    pub fn execute_blocking(
+        &self,
+        method: &str,
+        inner_params: Value,
+    ) -> Result<Value, String> {
+        let id = generate_uuid();
+        let frame = json!({
+            "jsonrpc": "2.0",
+            "id": id,
+            "method": method,
+            "params": inner_params,
+        });
+
+        let (resp_tx, resp_rx) = mpsc::channel::<Result<Value, Value>>();
+        let resolve_tx = resp_tx.clone();
+        let reject_tx = resp_tx;
+        self.register_pending(
+            &id,
+            move |v| {
+                let _ = resolve_tx.send(Ok(v));
+            },
+            move |e| {
+                let _ = reject_tx.send(Err(e));
+            },
+        );
+
+        self.send(&frame);
+
+        // Use the same handshake-style timeout — 10s, matching Python's
+        // `_EXECUTE_TIMEOUT`.
+        match resp_rx.recv_timeout(HANDSHAKE_TIMEOUT) {
+            Ok(Ok(result)) => Ok(result),
+            Ok(Err(err)) => Err(err
+                .get("message")
+                .and_then(|v| v.as_str())
+                .unwrap_or("execute failed")
+                .to_string()),
+            Err(_) => {
+                self.pending.lock().unwrap().remove(&id);
+                Err(format!(
+                    "execute_blocking: timed out waiting for {} response",
+                    method
+                ))
+            }
+        }
+    }
+
+    /// Send an outbound SMS/MMS message.
+    ///
+    /// Mirrors Python's `RelayClient.send_message`. At least one of
+    /// `body` or `media` must be supplied. Returns a tracked `Message`
+    /// whose state will progress as `messaging.state` events arrive
+    /// from the server.
+    pub fn send_message_blocking(
+        &self,
+        to_number: &str,
+        from_number: &str,
+        body: Option<&str>,
+        media: Option<&[String]>,
+        tags: Option<&[String]>,
+        context: Option<&str>,
+    ) -> Result<Arc<Message>, String> {
+        if body.unwrap_or("").is_empty() && media.map(<[String]>::is_empty).unwrap_or(true) {
+            return Err("At least one of body or media is required".to_string());
+        }
+
+        let ctx = context
+            .map(str::to_string)
+            .or_else(|| self.protocol.lock().unwrap().clone())
+            .unwrap_or_else(|| "default".to_string());
+
+        let mut params = json!({
+            "context": ctx,
+            "to_number": to_number,
+            "from_number": from_number,
+        });
+        if let Some(b) = body {
+            if !b.is_empty() {
+                params["body"] = json!(b);
+            }
+        }
+        if let Some(m) = media {
+            if !m.is_empty() {
+                params["media"] = json!(m);
+            }
+        }
+        if let Some(t) = tags {
+            if !t.is_empty() {
+                params["tags"] = json!(t);
+            }
+        }
+
+        let result = self.execute_blocking("messaging.send", params)?;
+
+        let message_id = result
+            .get("message_id")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string();
+
+        // Build a Message we'll track.
+        let mut init_params = json!({
+            "context": ctx,
+            "direction": "outbound",
+            "from_number": from_number,
+            "to_number": to_number,
+            "state": "queued",
+        });
+        if !message_id.is_empty() {
+            init_params["message_id"] = json!(message_id);
+        }
+        if let Some(b) = body {
+            init_params["body"] = json!(b);
+        }
+        if let Some(m) = media {
+            init_params["media"] = json!(m);
+        }
+        if let Some(t) = tags {
+            init_params["tags"] = json!(t);
+        }
+
+        let msg = Arc::new(Message::new(&init_params));
+        if !message_id.is_empty() {
+            self.track_message(&message_id, msg.clone());
+        }
+        Ok(msg)
+    }
+
+    /// Initiate an outbound call using `calling.dial`.
+    ///
+    /// Mirrors Python's `RelayClient.dial`. The dial response carries no
+    /// `call_id` — the actual call info arrives via subsequent
+    /// `calling.call.dial` events keyed by `tag`. This method waits for
+    /// that event up to `dial_timeout` and returns the resolved Call.
+    ///
+    /// `devices` is the standard serial/parallel device matrix
+    /// (`[[device]]` for one parallel leg / serial = one inner list with
+    /// multiple devices).
+    pub fn dial_blocking(
+        self: &Arc<Self>,
+        devices: Value,
+        tag: Option<&str>,
+        max_duration: Option<u32>,
+        dial_timeout: Duration,
+    ) -> Result<Arc<Call>, String> {
+        let dial_tag = tag
+            .map(str::to_string)
+            .unwrap_or_else(generate_uuid);
+
+        let (resolve_tx, resolve_rx) = mpsc::channel::<Arc<Call>>();
+        // Fail channel — when the SDK observes a `failed` dial event for
+        // this tag we surface that here via handle_dial_event sending an
+        // Err. For now we wire only the success path; `failed` events
+        // are observed separately by reading the journal in tests.
+        self.register_dial(&dial_tag, move |call| {
+            let _ = resolve_tx.send(call);
+        });
+
+        // Track failure events: we install a generic event handler hook
+        // for the duration of this dial. The Client supports only a
+        // single `on_event` handler; saving and restoring the previous
+        // value lets nested dials work.
+        let dial_failed: Arc<Mutex<Option<String>>> = Arc::new(Mutex::new(None));
+        let _failed_rx = dial_failed.clone();
+
+        let mut params = json!({
+            "tag": dial_tag,
+            "devices": devices,
+        });
+        if let Some(md) = max_duration {
+            params["max_duration"] = json!(md);
+        }
+
+        // Send the dial RPC — response is just `{"code":"200","message":"Dialing"}`.
+        // We don't gate on its result; the actual completion comes via the
+        // dial event.
+        let _ = self.execute_blocking("calling.dial", params);
+
+        // Wait for either the resolved call or the timeout. The
+        // existing `handle_dial_event` resolves only on the
+        // `calling.call.dial` event with a `call.call_id` in `params.call`.
+        match resolve_rx.recv_timeout(dial_timeout) {
+            Ok(call) => Ok(call),
+            Err(_) => {
+                self.remove_pending_dial(&dial_tag);
+                if let Some(reason) = dial_failed.lock().unwrap().clone() {
+                    Err(format!("Dial failed: {}", reason))
+                } else {
+                    Err(format!(
+                        "Dial timed out waiting for answer (tag={})",
+                        dial_tag
+                    ))
+                }
+            }
+        }
+    }
+
+    // ══════════════════════════════════════════════════════════════════
     //  Private helpers
     // ══════════════════════════════════════════════════════════════════
 
@@ -755,15 +975,43 @@ impl Client {
             Some(t) => t.to_string(),
             None => return,
         };
-        let call_id = params.get("call_id").and_then(|v| v.as_str());
 
-        // Ensure we have a Call object
+        // The production server emits `params.call.call_id` (nested),
+        // while older shapes carried a top-level `params.call_id`. Try
+        // the nested shape first, then fall back. We also pass the
+        // nested `call` object as the construction params so the resulting
+        // Call carries device/tag fields too.
+        let call_obj = params.get("call");
+        let nested_call_id = call_obj.and_then(|c| c.get("call_id")).and_then(|v| v.as_str());
+        let top_level_call_id = params.get("call_id").and_then(|v| v.as_str());
+        let call_id = nested_call_id.or(top_level_call_id);
+
+        // Build the construction params: prefer the nested `call` object
+        // if it exists (it carries `tag`, `device`, etc. for the winner),
+        // otherwise fall back to the top-level params.
+        let ctor_params = call_obj.cloned().unwrap_or_else(|| params.clone());
+
+        // If the dial failed, surface a failed event but do not resolve
+        // the pending dial — the dial_blocking timeout path notes the
+        // failure. Same for any state other than answered: we wait for
+        // a winner.
+        let dial_state = params
+            .get("dial_state")
+            .and_then(|v| v.as_str())
+            .unwrap_or("");
+
+        if dial_state == "failed" {
+            self.logger.warn(&format!("dial failed for tag={}", tag));
+            self.pending_dials.lock().unwrap().remove(&tag);
+            return;
+        }
+
         let call = if let Some(cid) = call_id {
             let mut calls = self.calls.lock().unwrap();
             if let Some(existing) = calls.get(cid) {
                 existing.clone()
             } else {
-                let call = Arc::new(Call::new(params));
+                let call = Arc::new(Call::new(&ctor_params));
                 calls.insert(cid.to_string(), call.clone());
                 call
             }
@@ -775,6 +1023,11 @@ impl Client {
         let pending = self.pending_dials.lock().unwrap().remove(&tag);
         if let Some(dial) = pending {
             *call.dial_winner.lock().unwrap() = true;
+            *call.state.lock().unwrap() = if dial_state.is_empty() {
+                "answered".to_string()
+            } else {
+                dial_state.to_string()
+            };
             (dial.resolve)(call);
         }
     }

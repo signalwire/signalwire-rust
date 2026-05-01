@@ -6,3 +6,4 @@
 // the singleton mock-server harness from `mocktest`.
 
 pub mod mocktest;
+pub mod relay_mocktest;
