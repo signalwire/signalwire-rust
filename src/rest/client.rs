@@ -159,9 +159,11 @@ impl RestClient {
         CrudResource::new(&self.http, "/api/relay/rest/phone_numbers")
     }
 
-    /// Datasphere documents.
-    pub fn datasphere(&self) -> CrudResource<'_> {
-        CrudResource::new(&self.http, "/api/datasphere/documents")
+    /// Datasphere namespace (documents + chunks + search).
+    pub fn datasphere(
+        &self,
+    ) -> super::namespaces::datasphere::DatasphereNamespace<'_> {
+        super::namespaces::datasphere::DatasphereNamespace::new(&self.http)
     }
 
     /// Video rooms.
@@ -169,12 +171,15 @@ impl RestClient {
         CrudResource::new(&self.http, "/api/video/rooms")
     }
 
-    /// Compatibility (Twilio-compatible LaML) API.
-    pub fn compat(&self) -> CrudResource<'_> {
-        CrudResource::new(
-            &self.http,
-            &format!("/api/laml/2010-04-01/Accounts/{}", self.project_id),
-        )
+    /// Compatibility (Twilio-compatible LAML) API namespace.
+    ///
+    /// Returns a [`Compat`](super::namespaces::compat::Compat) handle whose
+    /// sub-resources (`calls`, `messages`, `faxes`, `phone_numbers`,
+    /// `conferences`, `recordings`, `transcriptions`, `applications`,
+    /// `laml_bins`, `queues`, `tokens`, `accounts`) cover the full Python
+    /// `client.compat.*` surface.
+    pub fn compat(&self) -> super::namespaces::compat::Compat<'_> {
+        super::namespaces::compat::Compat::new(&self.http, &self.project_id)
     }
 
     /// Addresses.
@@ -182,9 +187,9 @@ impl RestClient {
         CrudResource::new(&self.http, "/api/relay/rest/addresses")
     }
 
-    /// Queues.
-    pub fn queues(&self) -> CrudResource<'_> {
-        CrudResource::new(&self.http, "/api/fabric/resources/queues")
+    /// Queues namespace (CRUD + member operations).
+    pub fn queues(&self) -> super::namespaces::queues::Queues<'_> {
+        super::namespaces::queues::Queues::new(&self.http)
     }
 
     /// Recordings.
@@ -192,9 +197,9 @@ impl RestClient {
         CrudResource::new(&self.http, "/api/relay/rest/recordings")
     }
 
-    /// Number groups.
-    pub fn number_groups(&self) -> CrudResource<'_> {
-        CrudResource::new(&self.http, "/api/relay/rest/number_groups")
+    /// Number groups (CRUD + membership operations).
+    pub fn number_groups(&self) -> super::namespaces::number_groups::NumberGroups<'_> {
+        super::namespaces::number_groups::NumberGroups::new(&self.http)
     }
 
     /// Verified callers.
@@ -202,9 +207,10 @@ impl RestClient {
         CrudResource::new(&self.http, "/api/relay/rest/verified_callers")
     }
 
-    /// SIP profiles.
-    pub fn sip_profile(&self) -> CrudResource<'_> {
-        CrudResource::new(&self.http, "/api/relay/rest/sip_profiles")
+    /// Project SIP profile (singular: singleton resource at
+    /// `/api/relay/rest/sip_profile`).
+    pub fn sip_profile(&self) -> super::namespaces::sip_profile::SipProfile<'_> {
+        super::namespaces::sip_profile::SipProfile::new(&self.http)
     }
 
     /// Phone number lookup.
@@ -222,9 +228,9 @@ impl RestClient {
         CrudResource::new(&self.http, "/api/relay/rest/imported_phone_numbers")
     }
 
-    /// Multi-factor authentication.
-    pub fn mfa(&self) -> CrudResource<'_> {
-        CrudResource::new(&self.http, "/api/relay/rest/mfa")
+    /// Multi-factor authentication (sms/call/verify).
+    pub fn mfa(&self) -> super::namespaces::mfa::Mfa<'_> {
+        super::namespaces::mfa::Mfa::new(&self.http)
     }
 
     /// Registry (10DLC brands, campaigns, orders).
@@ -237,9 +243,9 @@ impl RestClient {
         CrudResource::new(&self.http, "/api/relay/rest/logs")
     }
 
-    /// Project management.
-    pub fn project(&self) -> CrudResource<'_> {
-        CrudResource::new(&self.http, "/api/relay/rest/project")
+    /// Project namespace (exposes `tokens` sub-resource).
+    pub fn project(&self) -> super::namespaces::project::Project<'_> {
+        super::namespaces::project::Project::new(&self.http)
     }
 
     /// PubSub tokens.
@@ -305,7 +311,7 @@ mod tests {
     fn test_datasphere_path() {
         let client = RestClient::new("proj", "tok", "test.sw.com").unwrap();
         let ds = client.datasphere();
-        assert_eq!(ds.base_path(), "/api/datasphere/documents");
+        assert_eq!(ds.documents().base_path(), "/api/datasphere/documents");
     }
 
     #[test]
@@ -319,7 +325,13 @@ mod tests {
     fn test_compat_path() {
         let client = RestClient::new("proj", "tok", "test.sw.com").unwrap();
         let c = client.compat();
-        assert_eq!(c.base_path(), "/api/laml/2010-04-01/Accounts/proj");
+        // Compat namespace exposes sub-resources; calls() rooted under the
+        // account-scoped base path.
+        assert_eq!(
+            c.calls().base_path(),
+            "/api/laml/2010-04-01/Accounts/proj/Calls"
+        );
+        assert_eq!(c.account_sid(), "proj");
     }
 
     #[test]
@@ -333,10 +345,12 @@ mod tests {
 
     #[test]
     fn test_queues_path() {
+        // Python ships queues at `/api/relay/rest/queues`. Rust now matches
+        // that path through the dedicated Queues namespace.
         let client = RestClient::new("proj", "tok", "test.sw.com").unwrap();
         assert_eq!(
             client.queues().base_path(),
-            "/api/fabric/resources/queues"
+            "/api/relay/rest/queues"
         );
     }
 
@@ -369,10 +383,11 @@ mod tests {
 
     #[test]
     fn test_sip_profile_path() {
+        // SIP profile is a singleton resource per project: singular path.
         let client = RestClient::new("proj", "tok", "test.sw.com").unwrap();
         assert_eq!(
             client.sip_profile().base_path(),
-            "/api/relay/rest/sip_profiles"
+            "/api/relay/rest/sip_profile"
         );
     }
 
@@ -426,10 +441,12 @@ mod tests {
 
     #[test]
     fn test_project_path() {
+        // Project namespace exposes a `tokens` sub-resource at
+        // `/api/project/tokens`.
         let client = RestClient::new("proj", "tok", "test.sw.com").unwrap();
         assert_eq!(
-            client.project().base_path(),
-            "/api/relay/rest/project"
+            client.project().tokens().base_path(),
+            "/api/project/tokens"
         );
     }
 

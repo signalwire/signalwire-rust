@@ -104,6 +104,29 @@ CLASS_MODULE_MAP: dict[str, str] = {
     # are looked up against.
     "CallingNamespace": "signalwire.rest.namespaces.calling",
     "FabricNamespace": "signalwire.rest.namespaces.fabric",
+    # Compat namespace + sub-resources
+    "CompatNamespace": "signalwire.rest.namespaces.compat",
+    "CompatAccounts": "signalwire.rest.namespaces.compat",
+    "CompatCalls": "signalwire.rest.namespaces.compat",
+    "CompatMessages": "signalwire.rest.namespaces.compat",
+    "CompatFaxes": "signalwire.rest.namespaces.compat",
+    "CompatConferences": "signalwire.rest.namespaces.compat",
+    "CompatPhoneNumbers": "signalwire.rest.namespaces.compat",
+    "CompatApplications": "signalwire.rest.namespaces.compat",
+    "CompatLamlBins": "signalwire.rest.namespaces.compat",
+    "CompatQueues": "signalwire.rest.namespaces.compat",
+    "CompatRecordings": "signalwire.rest.namespaces.compat",
+    "CompatTranscriptions": "signalwire.rest.namespaces.compat",
+    "CompatTokens": "signalwire.rest.namespaces.compat",
+    # Standalone Relay namespaces newly modeled as proper structs.
+    "MfaResource": "signalwire.rest.namespaces.mfa",
+    "SipProfileResource": "signalwire.rest.namespaces.sip_profile",
+    "NumberGroupsResource": "signalwire.rest.namespaces.number_groups",
+    "QueuesResource": "signalwire.rest.namespaces.queues",
+    "ProjectNamespace": "signalwire.rest.namespaces.project",
+    "ProjectTokens": "signalwire.rest.namespaces.project",
+    "DatasphereNamespace": "signalwire.rest.namespaces.datasphere",
+    "DatasphereDocuments": "signalwire.rest.namespaces.datasphere",
 
     # relay
     "Client": "signalwire.relay.client",  # Rust's `relay::Client` == Python's `RelayClient`
@@ -160,6 +183,15 @@ CLASS_RENAME_MAP: dict[str, str] = {
     "Client": "RelayClient",  # within relay/ module
     "Calling": "CallingNamespace",
     "Fabric": "FabricNamespace",
+    # Compat namespace + sub-resources (Rust short names → Python class names).
+    "Compat": "CompatNamespace",
+    "Mfa": "MfaResource",
+    "SipProfile": "SipProfileResource",
+    "NumberGroups": "NumberGroupsResource",
+    "Queues": "QueuesResource",
+    "Project": "ProjectNamespace",
+    # Datasphere REST namespace already uses its full name to avoid
+    # colliding with the Datasphere skill in `signalwire.skills.datasphere`.
     # Skills
     "ApiNinjasTrivia": "ApiNinjasTriviaSkill",
     "ClaudeSkills": "ClaudeSkillsSkill",

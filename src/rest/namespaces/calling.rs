@@ -64,7 +64,10 @@ impl<'a> Calling<'a> {
         self.execute("dial", None, params)
     }
 
-    pub fn update_call(&self, params: Value) -> Result<Value, SignalWireRestError> {
+    /// POST /api/calling/calls with `command="update"` — mirrors the Python
+    /// `client.calling.update(id=..., state=...)` shape: caller-supplied
+    /// `id` lives **inside** params, not as the top-level body field.
+    pub fn update(&self, params: Value) -> Result<Value, SignalWireRestError> {
         self.execute("update", None, params)
     }
 

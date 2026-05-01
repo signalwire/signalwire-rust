@@ -601,3 +601,61 @@ signalwire.core.swml_service.SWMLService.set_on_swml_request_hook: Rust function
 signalwire.utils.schema_utils.SchemaUtils.generate_method_signature: Python-source codegen helper; canonical Python signatures filter this method out (Python-only output shape)
 signalwire.utils.schema_utils.SchemaUtils.generate_method_body: Python-source codegen helper; canonical Python signatures filter this method out (Python-only output shape)
 signalwire.utils.schema_utils.SchemaUtils.full_validation_available: @property in Python (filtered as bool-returning attribute); ports expose it as an explicit method per spec
+
+### REST namespaces — explicit CRUD where Python uses inheritance
+
+The Python SDK derives CompatCalls / CompatMessages / CompatFaxes /
+CompatApplications / CompatLamlBins / CompatQueues / DatasphereDocuments /
+NumberGroupsResource / QueuesResource from CrudResource and uses class
+inheritance to hand off list / create / get / update / delete. Rust has
+no class inheritance; the port emits each method explicitly on every
+struct so the user-facing surface matches one-to-one. This is the same
+"flatten-the-MRO" pattern the diff already excuses for the Agent / Skill
+side.
+
+signalwire.rest.namespaces.compat.CompatApplications.__init__: Rust port emits explicit CRUD where Python inherits via CrudResource; Python users have the same surface via inheritance.
+signalwire.rest.namespaces.compat.CompatApplications.create: Rust port emits explicit CRUD where Python inherits via CrudResource; Python users have the same surface via inheritance.
+signalwire.rest.namespaces.compat.CompatApplications.delete: Rust port emits explicit CRUD where Python inherits via CrudResource; Python users have the same surface via inheritance.
+signalwire.rest.namespaces.compat.CompatApplications.get: Rust port emits explicit CRUD where Python inherits via CrudResource; Python users have the same surface via inheritance.
+signalwire.rest.namespaces.compat.CompatApplications.list: Rust port emits explicit CRUD where Python inherits via CrudResource; Python users have the same surface via inheritance.
+signalwire.rest.namespaces.compat.CompatCalls.__init__: Rust port emits an explicit constructor; Python's BaseResource.__init__ is inherited.
+signalwire.rest.namespaces.compat.CompatConferences.__init__: Rust port emits an explicit constructor; Python's BaseResource.__init__ is inherited.
+signalwire.rest.namespaces.compat.CompatFaxes.__init__: Rust port emits an explicit constructor; Python's BaseResource.__init__ is inherited.
+signalwire.rest.namespaces.compat.CompatFaxes.create: Rust port emits explicit CRUD where Python inherits via CrudResource; Python users have the same surface via inheritance.
+signalwire.rest.namespaces.compat.CompatFaxes.delete: Rust port emits explicit CRUD where Python inherits via CrudResource; Python users have the same surface via inheritance.
+signalwire.rest.namespaces.compat.CompatFaxes.get: Rust port emits explicit CRUD where Python inherits via CrudResource; Python users have the same surface via inheritance.
+signalwire.rest.namespaces.compat.CompatFaxes.list: Rust port emits explicit CRUD where Python inherits via CrudResource; Python users have the same surface via inheritance.
+signalwire.rest.namespaces.compat.CompatLamlBins.__init__: Rust port emits an explicit constructor; Python's BaseResource.__init__ is inherited.
+signalwire.rest.namespaces.compat.CompatLamlBins.create: Rust port emits explicit CRUD where Python inherits via CrudResource; Python users have the same surface via inheritance.
+signalwire.rest.namespaces.compat.CompatLamlBins.delete: Rust port emits explicit CRUD where Python inherits via CrudResource; Python users have the same surface via inheritance.
+signalwire.rest.namespaces.compat.CompatLamlBins.get: Rust port emits explicit CRUD where Python inherits via CrudResource; Python users have the same surface via inheritance.
+signalwire.rest.namespaces.compat.CompatLamlBins.list: Rust port emits explicit CRUD where Python inherits via CrudResource; Python users have the same surface via inheritance.
+signalwire.rest.namespaces.compat.CompatMessages.__init__: Rust port emits an explicit constructor; Python's BaseResource.__init__ is inherited.
+signalwire.rest.namespaces.compat.CompatMessages.create: Rust port emits explicit CRUD where Python inherits via CrudResource; Python users have the same surface via inheritance.
+signalwire.rest.namespaces.compat.CompatMessages.delete: Rust port emits explicit CRUD where Python inherits via CrudResource; Python users have the same surface via inheritance.
+signalwire.rest.namespaces.compat.CompatMessages.get: Rust port emits explicit CRUD where Python inherits via CrudResource; Python users have the same surface via inheritance.
+signalwire.rest.namespaces.compat.CompatMessages.list: Rust port emits explicit CRUD where Python inherits via CrudResource; Python users have the same surface via inheritance.
+signalwire.rest.namespaces.compat.CompatNamespace.client: Rust borrow-accessor used by sub-resources; Python attribute access via __dict__ provides the same capability.
+signalwire.rest.namespaces.compat.CompatQueues.__init__: Rust port emits an explicit constructor; Python's BaseResource.__init__ is inherited.
+signalwire.rest.namespaces.compat.CompatQueues.create: Rust port emits explicit CRUD where Python inherits via CrudResource; Python users have the same surface via inheritance.
+signalwire.rest.namespaces.compat.CompatQueues.delete: Rust port emits explicit CRUD where Python inherits via CrudResource; Python users have the same surface via inheritance.
+signalwire.rest.namespaces.compat.CompatQueues.get: Rust port emits explicit CRUD where Python inherits via CrudResource; Python users have the same surface via inheritance.
+signalwire.rest.namespaces.compat.CompatQueues.list: Rust port emits explicit CRUD where Python inherits via CrudResource; Python users have the same surface via inheritance.
+signalwire.rest.namespaces.compat.CompatRecordings.__init__: Rust port emits an explicit constructor; Python's BaseResource.__init__ is inherited.
+signalwire.rest.namespaces.compat.CompatTokens.__init__: Rust port emits an explicit constructor; Python's BaseResource.__init__ is inherited.
+signalwire.rest.namespaces.compat.CompatTranscriptions.__init__: Rust port emits an explicit constructor; Python's BaseResource.__init__ is inherited.
+signalwire.rest.namespaces.datasphere.DatasphereDocuments.create: Rust port emits explicit CRUD where Python inherits via CrudResource.
+signalwire.rest.namespaces.datasphere.DatasphereDocuments.delete: Rust port emits explicit CRUD where Python inherits via CrudResource.
+signalwire.rest.namespaces.datasphere.DatasphereDocuments.get: Rust port emits explicit CRUD where Python inherits via CrudResource.
+signalwire.rest.namespaces.datasphere.DatasphereDocuments.list: Rust port emits explicit CRUD where Python inherits via CrudResource.
+signalwire.rest.namespaces.datasphere.DatasphereDocuments.update: Rust port emits explicit CRUD where Python inherits via CrudResource.
+signalwire.rest.namespaces.number_groups.NumberGroupsResource.create: Rust port emits explicit CRUD where Python inherits via CrudResource.
+signalwire.rest.namespaces.number_groups.NumberGroupsResource.delete: Rust port emits explicit CRUD where Python inherits via CrudResource.
+signalwire.rest.namespaces.number_groups.NumberGroupsResource.get: Rust port emits explicit CRUD where Python inherits via CrudResource.
+signalwire.rest.namespaces.number_groups.NumberGroupsResource.list: Rust port emits explicit CRUD where Python inherits via CrudResource.
+signalwire.rest.namespaces.number_groups.NumberGroupsResource.update: Rust port emits explicit CRUD where Python inherits via CrudResource.
+signalwire.rest.namespaces.queues.QueuesResource.create: Rust port emits explicit CRUD where Python inherits via CrudResource.
+signalwire.rest.namespaces.queues.QueuesResource.delete: Rust port emits explicit CRUD where Python inherits via CrudResource.
+signalwire.rest.namespaces.queues.QueuesResource.get: Rust port emits explicit CRUD where Python inherits via CrudResource.
+signalwire.rest.namespaces.queues.QueuesResource.list: Rust port emits explicit CRUD where Python inherits via CrudResource.
+signalwire.rest.namespaces.queues.QueuesResource.update: Rust port emits explicit CRUD where Python inherits via CrudResource.
