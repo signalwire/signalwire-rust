@@ -235,6 +235,81 @@ def _collect_free_function_targets() -> set[tuple[str, str]]:
     return targets
 
 
+def _load_python_reference() -> dict:
+    """Load the Python signatures inventory once for projection lookups.
+
+    Used by the variadic-projection pass: when a Rust method takes
+    ``params: serde_json::Value`` AND the Python reference shows the
+    same method's trailing parameter as ``**kwargs`` (kind=var_keyword),
+    we project the Rust positional ``params`` as var_keyword so the
+    cross-language audit treats the two as functionally equivalent.
+    Rust has no native ``**kwargs``; serde_json::Value at the trailing
+    position IS the idiomatic stand-in.
+    """
+    try:
+        import json as _json
+        return _json.loads((PSDK / "python_signatures.json").read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        return {"modules": {}}
+
+
+def _project_variadic_kwargs(out_modules: dict, py_ref: dict) -> None:
+    """Post-process pass: for each Rust method whose trailing parameter is
+    a serde_json::Value-shaped ``params`` argument AND whose Python-reference
+    twin has a ``var_keyword`` parameter at the same position, rewrite the
+    Rust param entry to match Python's variadic shape.
+
+    Rationale: the Rust SDK uses ``params: serde_json::Value`` as its
+    universal **kwargs equivalent — every ``Call.ai(params)``,
+    ``Calling.dial(params)``, etc. takes a single JSON-object argument
+    that carries every named keyword. Python's reference adapter emits
+    these as ``**kwargs``. Without projection, every such method shows
+    up as drift (``kind 'var_keyword' vs 'positional'``). Projecting
+    here lines them up so PORT_SIGNATURE_OMISSIONS.md only carries
+    actually divergent cases.
+
+    Conditions for projection:
+      1. The Rust method has a final positional parameter named ``params``.
+      2. The translated canonical type is ``any`` or
+         ``class:signalwire.value.Value``.
+      3. Python reference's same fully-qualified method has a final
+         parameter with kind=``var_keyword``.
+    """
+    PROJECTED_TYPE = "dict<string,any>"
+    py_modules = py_ref.get("modules", {})
+    for mod_name, mod_entry in out_modules.items():
+        py_mod = py_modules.get(mod_name, {})
+        for cls_name, cls_entry in mod_entry.get("classes", {}).items():
+            py_cls = py_mod.get("classes", {}).get(cls_name, {})
+            for m_name, sig in cls_entry.get("methods", {}).items():
+                py_sig = py_cls.get("methods", {}).get(m_name)
+                if not py_sig:
+                    continue
+                py_params = py_sig.get("params", [])
+                rust_params = sig.get("params", [])
+                if not py_params or not rust_params:
+                    continue
+                # Trailing-position check on both sides.
+                py_last = py_params[-1]
+                rust_last = rust_params[-1]
+                if py_last.get("kind") != "var_keyword":
+                    continue
+                if rust_last.get("kind") in ("self", "var_keyword"):
+                    continue
+                rust_name = rust_last.get("name", "")
+                rust_type = (rust_last.get("type") or "").replace(" ", "")
+                # Accept the conventional ``params`` parameter name and the
+                # canonical type forms emitted for serde_json::Value.
+                if rust_name not in ("params", "kwargs", "options"):
+                    continue
+                if rust_type not in ("any", "class:signalwire.value.Value"):
+                    continue
+                # Project to Python's variadic shape.
+                rust_last["kind"] = "var_keyword"
+                rust_last["type"] = PROJECTED_TYPE
+                rust_last["required"] = False
+
+
 def collect(rust_doc: dict, aliases: dict) -> tuple[dict, list]:
     index = rust_doc["index"]
     paths = rust_doc["paths"]
@@ -261,11 +336,21 @@ def collect(rust_doc: dict, aliases: dict) -> tuple[dict, list]:
             continue
         impls = kind_inner.get("impls", [])
 
-        # Determine canonical module for this class
+        # Determine canonical module for this class. Mirror enumerate_surface.py:
+        # the CLASS_MODULE_MAP can be keyed by either the native Rust struct
+        # name (e.g. ``Client`` → ``signalwire.relay.client``) OR by the
+        # canonical Python class name (e.g. ``CallingNamespace`` →
+        # ``signalwire.rest.namespaces.calling``). _translate_class renames
+        # ``Client`` → ``RelayClient`` for emit, but the module-map lookup
+        # must also consider the native form so that struct→module mapping
+        # works regardless of which form the map uses.
         canonical_name = _translate_class(struct_name)
-        if canonical_name not in CLASS_MODULE_MAP:
+        if struct_name in CLASS_MODULE_MAP:
+            mod = CLASS_MODULE_MAP[struct_name]
+        elif canonical_name in CLASS_MODULE_MAP:
+            mod = CLASS_MODULE_MAP[canonical_name]
+        else:
             continue  # port-only struct; would be in PORT_ADDITIONS
-        mod = CLASS_MODULE_MAP[canonical_name]
 
         methods_out: dict = {}
         for impl_id in impls:
@@ -434,22 +519,45 @@ def collect(rust_doc: dict, aliases: dict) -> tuple[dict, list]:
             out_modules[target_mod]["classes"].setdefault(target_cls, {"methods": {}})
             out_modules[target_mod]["classes"][target_cls]["methods"].update(present)
             projected.update(present)
-        # Drop projected methods from AgentBase only — keep them on
-        # SWMLService (which Python keeps as the primary host of tool/auth
-        # methods). This matches the .NET adapter pattern.
+        # Drop projected methods from AgentBase — they live on the canonical
+        # mixin path now and emitting them on AgentBase too creates duplicate
+        # missing-reference drift.
         if ab_entry:
             for n in projected:
                 ab_methods.pop(n, None)
 
-        # on_swml_request lives only on WebMixin in Python (NOT on
-        # SWMLService). The Rust port emits it on SWMLService since
-        # Service.rs is the reflection target. Drop the duplicate from
-        # SWMLService so the projection-only WebMixin entry is kept and
-        # the diff doesn't flag it as a port-only method on SWMLService.
-        # on_request stays — Python's SWMLService inherits it from WebMixin
-        # in the canonical reference.
+        # SWMLService is itself a Python class with its own method inventory.
+        # Some projected methods ARE legitimately on Python's SWMLService
+        # (get_basic_auth_credentials, on_request) — those stay. Others are
+        # projection-only (validate_basic_auth, get/has/remove_function,
+        # validate_tool_token, define_tool, on_function_call, register_*,
+        # define_tools, on_swml_request) — those should be dropped from
+        # SWMLService because Python's signatures inventory does NOT expose
+        # them there, and keeping them on the Rust SWMLService creates
+        # missing-reference drift. Python's reference signatures inventory
+        # is the source of truth for what SWMLService actually exposes.
         if svc_entry:
-            svc_methods.pop("on_swml_request", None)
+            try:
+                py_ref = _load_python_reference()
+                py_svc_methods = set(py_ref.get("modules", {})
+                                     .get("signalwire.core.swml_service", {})
+                                     .get("classes", {})
+                                     .get("SWMLService", {})
+                                     .get("methods", {}).keys())
+            except Exception:
+                py_svc_methods = set()
+            for n in list(svc_methods.keys()):
+                if n in projected and n not in py_svc_methods:
+                    svc_methods.pop(n, None)
+
+    # Project Rust ``params: serde_json::Value`` trailing arguments onto
+    # Python's ``**kwargs`` shape wherever the Python reference uses
+    # var_keyword at the same position. See _project_variadic_kwargs for
+    # the rationale: Rust uses a single Value as the **kwargs equivalent
+    # for every Call/CallingNamespace command, and the audit needs to
+    # treat the two as functionally equivalent.
+    py_ref = _load_python_reference()
+    _project_variadic_kwargs(out_modules, py_ref)
 
     sorted_modules = {}
     for k in sorted(out_modules):

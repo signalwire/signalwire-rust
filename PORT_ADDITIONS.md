@@ -659,3 +659,34 @@ signalwire.rest.namespaces.queues.QueuesResource.delete: Rust port emits explici
 signalwire.rest.namespaces.queues.QueuesResource.get: Rust port emits explicit CRUD where Python inherits via CrudResource.
 signalwire.rest.namespaces.queues.QueuesResource.list: Rust port emits explicit CRUD where Python inherits via CrudResource.
 signalwire.rest.namespaces.queues.QueuesResource.update: Rust port emits explicit CRUD where Python inherits via CrudResource.
+
+### BedrockAgent methods present in Python's surface but not in its signatures inventory
+
+Python's surface inventory (`python_surface.json`) lists these BedrockAgent methods, but the canonical `python_signatures.json` does not (the Python adapter could not import boto3 to enumerate them). These are NOT port-only additions — they are the same methods Python ships, with corresponding Rust implementations.
+
+signalwire.agents.bedrock.BedrockAgent.__init__: Python ships this in BedrockAgent's source surface; the Python signatures adapter could not enumerate it (missing boto3 in the audit env). Rust matches Python's surface.
+signalwire.agents.bedrock.BedrockAgent.set_inference_params: Python ships this in BedrockAgent's source surface; the Python signatures adapter could not enumerate it (missing boto3 in the audit env). Rust matches Python's surface.
+signalwire.agents.bedrock.BedrockAgent.set_llm_model: Python ships this in BedrockAgent's source surface; the Python signatures adapter could not enumerate it (missing boto3 in the audit env). Rust matches Python's surface.
+signalwire.agents.bedrock.BedrockAgent.set_llm_temperature: Python ships this in BedrockAgent's source surface; the Python signatures adapter could not enumerate it (missing boto3 in the audit env). Rust matches Python's surface.
+signalwire.agents.bedrock.BedrockAgent.set_post_prompt_llm_params: Python ships this in BedrockAgent's source surface; the Python signatures adapter could not enumerate it (missing boto3 in the audit env). Rust matches Python's surface.
+signalwire.agents.bedrock.BedrockAgent.set_prompt_llm_params: Python ships this in BedrockAgent's source surface; the Python signatures adapter could not enumerate it (missing boto3 in the audit env). Rust matches Python's surface.
+signalwire.agents.bedrock.BedrockAgent.set_voice: Python ships this in BedrockAgent's source surface; the Python signatures adapter could not enumerate it (missing boto3 in the audit env). Rust matches Python's surface.
+
+### Rust AgentBase / SWMLService extras
+
+signalwire.core.agent_base.AgentBase.create_tool_token: Rust convenience method that mints a one-shot tool-call token for use in subsequent SWAIG callbacks. Python users hit StateMixin.validate_tool_token for the inverse half; Rust ships both halves on AgentBase.
+signalwire.core.swml_service.SWMLService.get_basic_auth_credentials_with_source: Rust variant of get_basic_auth_credentials that returns a 3-tuple (user, pass, source). Python uses the same method's `include_source=True` flag for this; Rust splits into two methods to keep the return type monomorphic.
+
+### Rust Action subclass accessors
+
+signalwire.relay.call.DetectAction.action: Rust Action subclasses expose an ``action()`` accessor that returns the underlying Action struct (the inner state shared across all action variants). Python uses inheritance, so this accessor does not exist as a method.
+signalwire.relay.call.PlayAction.action: Rust Action subclasses expose an ``action()`` accessor that returns the underlying Action struct (the inner state shared across all action variants). Python uses inheritance, so this accessor does not exist as a method.
+signalwire.relay.call.RecordAction.action: Rust Action subclasses expose an ``action()`` accessor that returns the underlying Action struct (the inner state shared across all action variants). Python uses inheritance, so this accessor does not exist as a method.
+
+### Rust RelayClient blocking variants
+
+These are blocking-IO siblings of Python's async RelayClient methods. Python's reference is async-only because the SDK lives inside FastAPI's event loop; the Rust port additionally exposes a blocking API for synchronous calling-code paths.
+
+signalwire.relay.client.RelayClient.dial_blocking: Rust ships blocking-IO variants of the async dial/execute/send_message methods so synchronous Rust code can invoke RELAY without spinning up a tokio runtime. Python's RelayClient is async-only.
+signalwire.relay.client.RelayClient.execute_blocking: Rust ships blocking-IO variants of the async dial/execute/send_message methods so synchronous Rust code can invoke RELAY without spinning up a tokio runtime. Python's RelayClient is async-only.
+signalwire.relay.client.RelayClient.send_message_blocking: Rust ships blocking-IO variants of the async dial/execute/send_message methods so synchronous Rust code can invoke RELAY without spinning up a tokio runtime. Python's RelayClient is async-only.

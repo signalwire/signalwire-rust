@@ -1229,3 +1229,19 @@ signalwire.relay.client.RelayClient.__del__
 signalwire.relay.client.RelayClient.__aenter__: Python async-context-manager protocol; Rust uses RAII Drop semantics
 signalwire.relay.client.RelayClient.__aexit__: Python async-context-manager protocol; Rust uses RAII Drop semantics
 signalwire.relay.client.RelayClient.__del__: Python finalizer; Rust uses Drop
+
+## Python state-attribute accessors (Python-only)
+
+Python's reflection adapter emits zero-arg accessors for public instance
+attributes (e.g. ``self.app``, ``self.logger``) as if they were getter
+methods. Rust does not expose these as accessor methods — internal state
+is private and accessed through dedicated APIs where needed. This is a
+Rust idiom (private fields with no auto-generated getters).
+
+signalwire.agent_server.AgentServer.app: Python's AgentServer exposes its FastAPI instance as a public attribute; Rust keeps the underlying axum/poem app private (server runs the app internally rather than handing it back).
+signalwire.agent_server.AgentServer.logger: Python exposes ``self.logger`` as a public attribute; Rust uses tracing::info!()/log::info!() macros directly (no struct-attached logger).
+signalwire.core.agent_base.AgentBase.skill_manager: Python exposes ``self.skill_manager`` as a public attribute; Rust holds the SkillManager privately and exposes typed methods on AgentBase (add_skill, list_skills, etc.) instead.
+signalwire.core.skill_manager.SkillManager.logger: Python exposes ``self.logger`` as a public attribute on SkillManager; Rust uses tracing macros directly.
+signalwire.core.swml_service.SWMLService.security: Python exposes ``self.security`` as the SecurityConfig attribute; Rust holds security configuration privately and exposes the relevant methods (get_basic_auth_credentials, validate_basic_auth) instead.
+signalwire.core.swml_service.SWMLService.verb_registry: Python exposes ``self.verb_registry`` as the VerbHandlerRegistry attribute; Rust holds the verb registry privately and exposes verb-registration methods on SWMLService instead.
+signalwire.skills.registry.SkillRegistry.logger: Python exposes ``self.logger`` as a public attribute on SkillRegistry; Rust uses tracing macros directly.
