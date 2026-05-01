@@ -127,6 +127,36 @@ CLASS_MODULE_MAP: dict[str, str] = {
     "ProjectTokens": "signalwire.rest.namespaces.project",
     "DatasphereNamespace": "signalwire.rest.namespaces.datasphere",
     "DatasphereDocuments": "signalwire.rest.namespaces.datasphere",
+    # Video namespace + sub-resources
+    "VideoNamespace": "signalwire.rest.namespaces.video",
+    "VideoRooms": "signalwire.rest.namespaces.video",
+    "VideoRoomTokens": "signalwire.rest.namespaces.video",
+    "VideoRoomSessions": "signalwire.rest.namespaces.video",
+    "VideoRoomRecordings": "signalwire.rest.namespaces.video",
+    "VideoConferences": "signalwire.rest.namespaces.video",
+    "VideoConferenceTokens": "signalwire.rest.namespaces.video",
+    "VideoStreams": "signalwire.rest.namespaces.video",
+    # Logs namespace + sub-resources
+    "LogsNamespace": "signalwire.rest.namespaces.logs",
+    "MessageLogs": "signalwire.rest.namespaces.logs",
+    "VoiceLogs": "signalwire.rest.namespaces.logs",
+    "FaxLogs": "signalwire.rest.namespaces.logs",
+    "ConferenceLogs": "signalwire.rest.namespaces.logs",
+    # Registry namespace + sub-resources
+    "RegistryNamespace": "signalwire.rest.namespaces.registry",
+    "RegistryBrands": "signalwire.rest.namespaces.registry",
+    "RegistryCampaigns": "signalwire.rest.namespaces.registry",
+    "RegistryOrders": "signalwire.rest.namespaces.registry",
+    "RegistryNumbers": "signalwire.rest.namespaces.registry",
+    # Fabric namespace expanded sub-resources
+    "FabricAddresses": "signalwire.rest.namespaces.fabric",
+    "FabricTokens": "signalwire.rest.namespaces.fabric",
+    "GenericResources": "signalwire.rest.namespaces.fabric",
+    "SubscribersResource": "signalwire.rest.namespaces.fabric",
+    "CallFlowsResource": "signalwire.rest.namespaces.fabric",
+    "ConferenceRoomsResource": "signalwire.rest.namespaces.fabric",
+    "CxmlApplicationsResource": "signalwire.rest.namespaces.fabric",
+    "PaginatedIterator": "signalwire.rest._pagination",
 
     # relay
     "Client": "signalwire.relay.client",  # Rust's `relay::Client` == Python's `RelayClient`
@@ -190,6 +220,10 @@ CLASS_RENAME_MAP: dict[str, str] = {
     "NumberGroups": "NumberGroupsResource",
     "Queues": "QueuesResource",
     "Project": "ProjectNamespace",
+    # Video / logs / registry namespace renames (Rust short → Python class)
+    "Video": "VideoNamespace",
+    "Logs": "LogsNamespace",
+    "Registry": "RegistryNamespace",
     # Datasphere REST namespace already uses its full name to avoid
     # colliding with the Datasphere skill in `signalwire.skills.datasphere`.
     # Skills

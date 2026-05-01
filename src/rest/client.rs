@@ -166,9 +166,10 @@ impl RestClient {
         super::namespaces::datasphere::DatasphereNamespace::new(&self.http)
     }
 
-    /// Video rooms.
-    pub fn video(&self) -> CrudResource<'_> {
-        CrudResource::new(&self.http, "/api/video/rooms")
+    /// Video API namespace (rooms, sessions, recordings, conferences,
+    /// tokens, streams).
+    pub fn video(&self) -> super::namespaces::video::Video<'_> {
+        super::namespaces::video::Video::new(&self.http)
     }
 
     /// Compatibility (Twilio-compatible LAML) API namespace.
@@ -233,14 +234,14 @@ impl RestClient {
         super::namespaces::mfa::Mfa::new(&self.http)
     }
 
-    /// Registry (10DLC brands, campaigns, orders).
-    pub fn registry(&self) -> CrudResource<'_> {
-        CrudResource::new(&self.http, "/api/relay/rest/registry")
+    /// Registry (10DLC brands, campaigns, orders, numbers).
+    pub fn registry(&self) -> super::namespaces::registry::Registry<'_> {
+        super::namespaces::registry::Registry::new(&self.http)
     }
 
     /// Logs (messages, voice, fax, conferences).
-    pub fn logs(&self) -> CrudResource<'_> {
-        CrudResource::new(&self.http, "/api/relay/rest/logs")
+    pub fn logs(&self) -> super::namespaces::logs::Logs<'_> {
+        super::namespaces::logs::Logs::new(&self.http)
     }
 
     /// Project namespace (exposes `tokens` sub-resource).
@@ -318,7 +319,8 @@ mod tests {
     fn test_video_path() {
         let client = RestClient::new("proj", "tok", "test.sw.com").unwrap();
         let v = client.video();
-        assert_eq!(v.base_path(), "/api/video/rooms");
+        assert_eq!(v.rooms().base_path(), "/api/video/rooms");
+        assert_eq!(v.streams().base_path(), "/api/video/streams");
     }
 
     #[test]
@@ -428,15 +430,19 @@ mod tests {
     fn test_registry_path() {
         let client = RestClient::new("proj", "tok", "test.sw.com").unwrap();
         assert_eq!(
-            client.registry().base_path(),
-            "/api/relay/rest/registry"
+            client.registry().brands().base_path(),
+            "/api/relay/rest/registry/beta/brands"
         );
     }
 
     #[test]
     fn test_logs_path() {
         let client = RestClient::new("proj", "tok", "test.sw.com").unwrap();
-        assert_eq!(client.logs().base_path(), "/api/relay/rest/logs");
+        assert_eq!(
+            client.logs().messages().base_path(),
+            "/api/messaging/logs"
+        );
+        assert_eq!(client.logs().voice().base_path(), "/api/voice/logs");
     }
 
     #[test]

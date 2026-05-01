@@ -9,3 +9,6 @@ pub mod number_groups;
 pub mod queues;
 pub mod project;
 pub mod datasphere;
+pub mod video;
+pub mod logs;
+pub mod registry;
