@@ -412,19 +412,32 @@ impl AgentBase {
         }
     }
 
-    /// Read-only snapshot of the agent's POM section list.
+    /// Read-only snapshot of the agent's POM as a typed
+    /// [`PromptObjectModel`].
     ///
     /// Python parity: `agent.pom` instance attribute (agent_base.py
     /// line 209). Returns `None` when `use_pom` is `false` (mirroring
-    /// Python's `self.pom = None`); otherwise returns a freshly cloned
-    /// `Vec<Value>` so callers cannot mutate the agent's internal
+    /// Python's `self.pom = None`); otherwise returns a freshly built
+    /// [`PromptObjectModel`] populated from the agent's stored
     /// section list.
-    pub fn pom(&self) -> Option<Vec<Value>> {
+    ///
+    /// Returning a typed POM (rather than the raw `Vec<Value>`) lets
+    /// callers reach for `render_markdown` / `render_xml` / `to_json`
+    /// directly without re-implementing the renderers — matching
+    /// Python's `agent.pom.render_markdown()` ergonomics.
+    pub fn pom(&self) -> Option<crate::pom::PromptObjectModel> {
         if !self.use_pom {
-            None
-        } else {
-            Some(self.pom_sections.clone())
+            return None;
         }
+        // Build a PromptObjectModel from the stored section dicts.
+        // pom_sections is always a JSON array of section objects; on
+        // the off chance the stored shape is invalid (caller passed
+        // garbage to set_prompt_pom) fall back to an empty model so
+        // we never panic from inside the public accessor.
+        let arr = Value::Array(self.pom_sections.clone());
+        crate::pom::PromptObjectModel::from_value(&arr)
+            .ok()
+            .or_else(|| Some(crate::pom::PromptObjectModel::new()))
     }
 
     /// Returns the post-prompt text whatever `set_post_prompt` stored, or
@@ -1581,9 +1594,9 @@ mod tests {
         let mut agent = AgentBase::new(default_options());
         agent.prompt_add_section("Greeting", "Hello", vec![]);
         let pom = agent.pom().expect("pom must be Some when use_pom is true");
-        assert_eq!(pom.len(), 1);
-        assert_eq!(pom[0]["title"], "Greeting");
-        assert_eq!(pom[0]["body"], "Hello");
+        assert_eq!(pom.sections.len(), 1);
+        assert_eq!(pom.sections[0].title.as_deref(), Some("Greeting"));
+        assert_eq!(pom.sections[0].body, "Hello");
     }
 
     #[test]
@@ -1600,15 +1613,21 @@ mod tests {
         agent.prompt_add_section("Original", "Body", vec![]);
 
         let mut pom = agent.pom().unwrap();
-        // Mutate the returned Vec; agent state must be unaffected.
-        pom.push(json!({"title": "Injected"}));
-        if let Value::Object(ref mut m) = pom[0] {
-            m.insert("title".to_string(), json!("Hijacked"));
-        }
+        // Mutate the returned PromptObjectModel; agent state must be unaffected.
+        pom.add_section_with(Some("Injected".to_string()), "ib").unwrap();
+        pom.sections[0].title = Some("Hijacked".to_string());
 
         let fresh = agent.pom().unwrap();
-        assert_eq!(fresh.len(), 1, "caller mutation leaked into agent state");
-        assert_eq!(fresh[0]["title"], "Original", "caller mutation leaked into agent state");
+        assert_eq!(
+            fresh.sections.len(),
+            1,
+            "caller mutation leaked into agent state"
+        );
+        assert_eq!(
+            fresh.sections[0].title.as_deref(),
+            Some("Original"),
+            "caller mutation leaked into agent state"
+        );
     }
 
     #[test]

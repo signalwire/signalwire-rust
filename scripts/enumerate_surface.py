@@ -87,6 +87,12 @@ CLASS_MODULE_MAP: dict[str, str] = {
     "RestClient": "signalwire.rest.client",
     "CrudResource": "signalwire.rest._base",
 
+    # pom — Rust's `signalwire::pom::pom` projects to Python's
+    # canonical `signalwire.pom.pom` module (matches the Python
+    # source layout signalwire-python/signalwire/signalwire/pom/pom.py).
+    "PromptObjectModel": "signalwire.pom.pom",
+    "Section": "signalwire.pom.pom",
+
     # SWMLService — Rust struct is named ``Service`` and renamed via
     # CLASS_RENAME_MAP. Canonical name after translate is SWMLService;
     # CLASS_MODULE_MAP lookup happens against the translated name.
@@ -204,6 +210,39 @@ CLASS_MODULE_MAP: dict[str, str] = {
     "WebSearch": "signalwire.skills.web_search.skill",
     "WikipediaSearch": "signalwire.skills.wikipedia_search.skill",
 }
+
+# Per-class method renames: {class_name: {rust_method: python_method}}.
+# Used when a Rust method follows Rust idiom (e.g. `to_value`) but
+# the Python reference uses a different name (`to_dict`). Without
+# this mapping the surface diff would mark the rename as a "missing"
+# Python method + an "extra" Rust method.
+METHOD_RENAMES: dict[str, dict[str, str]] = {
+    # signalwire.pom.pom: Rust's `to_value` returns a `serde_json::Value`
+    # which is the natural Rust analogue of Python's `to_dict` (dict);
+    # both serialise the same way through `to_json` / `to_yaml`.
+    # `from_value` is a private-ish helper used by `from_json` /
+    # `from_yaml`; Python doesn't expose it (the Python equivalent is
+    # `_from_dict`, also internal). Skip it from the surface.
+    # `find_section_mut` is the Rust borrow-checker companion to
+    # `find_section`; collapse both to Python's single `find_section`.
+    "PromptObjectModel": {
+        "to_value": "to_dict",
+        "from_value": None,
+        "find_section_mut": None,
+        "add_section_with": None,
+    },
+    "Section": {
+        "to_value": "to_dict",
+        "add_subsection_full": None,
+        # `render_markdown_at` / `render_xml_at` are `pub(crate)`
+        # crate-internal helpers used by recursive rendering. They
+        # show up in the public-fn regex (which permits `pub(...)`)
+        # but aren't part of the cross-port contract. Drop them.
+        "render_markdown_at": None,
+        "render_xml_at": None,
+    },
+}
+
 
 # Rust class name → Python canonical class name (when they differ).
 # Skill suffixes are required: Python names every skill class
@@ -460,8 +499,22 @@ def build_surface() -> dict:
         for cls, meth_set in methods.items():
             module_path = _module_path_for_class(cls, class_defining_files.get(cls, rel))
             translated = _translate_class(cls)
+            # Apply per-class method renames. Keys map Rust → Python;
+            # value `None` means "drop this method from the surface
+            # entirely" (private Rust helper that isn't on the Python
+            # reference contract).
+            rename_table = METHOD_RENAMES.get(cls, {})
+            renamed_methods = set()
+            for m in meth_set:
+                if m in rename_table:
+                    target = rename_table[m]
+                    if target is not None:
+                        renamed_methods.add(target)
+                    # `None` → drop
+                else:
+                    renamed_methods.add(m)
             existing = set(modules[module_path]["classes"].get(translated, []))
-            existing.update(meth_set)
+            existing.update(renamed_methods)
             modules[module_path]["classes"][translated] = sorted(existing)
 
     # Stable sort + cleanup

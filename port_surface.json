@@ -1,6 +1,6 @@
 {
   "version": "1",
-  "generated_from": "signalwire-rust @ d45ec4d0c10856699a3f88d4659c2229abf92dc1",
+  "generated_from": "signalwire-rust @ 5f00dc75bf3b65c1e12832593d1544f9489e2781",
   "modules": {
     "signalwire": {
       "classes": {
@@ -419,6 +419,33 @@
       "functions": [
         "init"
       ]
+    },
+    "signalwire.pom.pom": {
+      "classes": {
+        "PromptObjectModel": [
+          "__init__",
+          "add_pom_as_subsection",
+          "add_section",
+          "find_section",
+          "from_json",
+          "from_yaml",
+          "render_markdown",
+          "render_xml",
+          "to_dict",
+          "to_json",
+          "to_yaml"
+        ],
+        "Section": [
+          "__init__",
+          "add_body",
+          "add_bullets",
+          "add_subsection",
+          "render_markdown",
+          "render_xml",
+          "to_dict"
+        ]
+      },
+      "functions": []
     },
     "signalwire.prefabs.concierge": {
       "classes": {

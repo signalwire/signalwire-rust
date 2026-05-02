@@ -1,5 +1,6 @@
 pub mod core;
 pub mod logging;
+pub mod pom;
 pub mod swml;
 pub mod utils;
 
