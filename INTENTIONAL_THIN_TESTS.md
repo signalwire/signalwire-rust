@@ -45,34 +45,38 @@ mock (`mock_relay`). Same plumbing-vs-tests distinction: helpers under
 `tests/common/relay_mocktest.rs` aren't `#[test]`-attributed; the real
 content-shaped assertions live in the `tests/relay_mock_*.rs` files.
 
-- `tests/common/relay_mocktest.rs:50` — lock_journal: helper that returns the global serialization MutexGuard
-- `tests/common/relay_mocktest.rs:96` — JournalEntry::frame_params: accessor on a struct
-- `tests/common/relay_mocktest.rs:110` — JournalEntry::inner_params: accessor on a struct
-- `tests/common/relay_mocktest.rs:123` — JournalEntry::event_params: accessor on a struct
-- `tests/common/relay_mocktest.rs:177` — connected_client: builds a connected RelayClient via env-var redirect
-- `tests/common/relay_mocktest.rs:191` — journal_all: HTTP client to `/__mock__/journal`, panics on transport failure
-- `tests/common/relay_mocktest.rs:205` — journal_recv: filters journal_all by direction/method
-- `tests/common/relay_mocktest.rs:237` — journal_last: panics if journal empty (real exercise)
-- `tests/common/relay_mocktest.rs:246` — journal_reset: HTTP POST to `/__mock__/journal/reset`
-- `tests/common/relay_mocktest.rs:255` — scenario_reset: HTTP POST to `/__mock__/scenarios/reset`
-- `tests/common/relay_mocktest.rs:265` — reset_all: composes the two resets above
-- `tests/common/relay_mocktest.rs:274` — arm_method: HTTP POST to `/__mock__/scenarios/<method>`
-- `tests/common/relay_mocktest.rs:283` — arm_dial: HTTP POST to `/__mock__/scenarios/dial`
-- `tests/common/relay_mocktest.rs:294` — push: HTTP POST to `/__mock__/push`
-- `tests/common/relay_mocktest.rs:303` — inbound_call: HTTP POST to `/__mock__/inbound_call`
-- `tests/common/relay_mocktest.rs:321` — TestGuard / begin: takes the global mutex and resets
-- `tests/common/relay_mocktest.rs:332` — resolve_ws_port: parses MOCK_RELAY_PORT env var
-- `tests/common/relay_mocktest.rs:343` — resolve_http_port: parses MOCK_RELAY_HTTP_PORT env var
-- `tests/common/relay_mocktest.rs:355` — ensure_server: probes `/__mock__/health` and spawns mock_relay if missing
-- `tests/common/relay_mocktest.rs:396` — probe_health: GETs `/__mock__/health` and returns success on 200 + `schemas_loaded`
-- `tests/common/relay_mocktest.rs:468` — discover_porting_sdk_package: walks parents looking for `porting-sdk/test_harness/<name>`
-- `tests/common/relay_mocktest.rs:489` — separator (unix): returns `:`
-- `tests/common/relay_mocktest.rs:494` — separator (windows): returns `;`
-- `tests/common/relay_mocktest.rs:499` — extern setsid: C binding
-- `tests/common/relay_mocktest.rs:502` — libc_setsid: thin wrapper around setsid
-- `tests/common/relay_mocktest.rs:510` — decode_journal: serde_json -> Vec<JournalEntry>
-- `tests/common/relay_mocktest.rs:518` — decode_entry: serde_json -> single JournalEntry
-- `tests/common/relay_mocktest.rs:564` — _hashmap_anchor: import-anchor for HashMap
+- `tests/common/relay_mocktest.rs:58` — lock_journal: helper that returns the global serialization MutexGuard
+- `tests/common/relay_mocktest.rs:82` — CrossBinaryLock::acquire: opens /tmp lock file and runs flock(LOCK_EX); panics on failure
+- `tests/common/relay_mocktest.rs:112` — CrossBinaryLock::drop: explicit flock(LOCK_UN) on file descriptor
+- `tests/common/relay_mocktest.rs:126` — extern flock: C binding for the BSD-style file lock
+- `tests/common/relay_mocktest.rs:137` — wait_for_no_sessions: polls /__mock__/sessions until count==0 or budget elapses
+- `tests/common/relay_mocktest.rs:201` — JournalEntry::frame_params: accessor on a struct
+- `tests/common/relay_mocktest.rs:215` — JournalEntry::inner_params: accessor on a struct
+- `tests/common/relay_mocktest.rs:228` — JournalEntry::event_params: accessor on a struct
+- `tests/common/relay_mocktest.rs:282` — journal_all: HTTP client to `/__mock__/journal`, panics on transport failure
+- `tests/common/relay_mocktest.rs:296` — journal_recv: filters journal_all by direction/method
+- `tests/common/relay_mocktest.rs:310` — journal_send: filters journal_all by direction/event_type
+- `tests/common/relay_mocktest.rs:342` — journal_reset: HTTP POST to `/__mock__/journal/reset`
+- `tests/common/relay_mocktest.rs:351` — scenario_reset: HTTP POST to `/__mock__/scenarios/reset`
+- `tests/common/relay_mocktest.rs:360` — reset_all: composes the two resets above
+- `tests/common/relay_mocktest.rs:370` — arm_method: HTTP POST to `/__mock__/scenarios/<method>`
+- `tests/common/relay_mocktest.rs:379` — arm_dial: HTTP POST to `/__mock__/scenarios/dial`
+- `tests/common/relay_mocktest.rs:388` — push: HTTP POST to `/__mock__/push`
+- `tests/common/relay_mocktest.rs:399` — inbound_call: HTTP POST to `/__mock__/inbound_call`
+- `tests/common/relay_mocktest.rs:408` — scenario_play: HTTP POST to `/__mock__/scenario_play`
+- `tests/common/relay_mocktest.rs:438` — TestGuard / begin: takes the global mutex + cross-binary file lock + drains sessions, then resets
+- `tests/common/relay_mocktest.rs:465` — resolve_ws_port: parses MOCK_RELAY_PORT env var
+- `tests/common/relay_mocktest.rs:476` — resolve_http_port: parses MOCK_RELAY_HTTP_PORT env var
+- `tests/common/relay_mocktest.rs:488` — ensure_server: probes `/__mock__/health` and spawns mock_relay if missing
+- `tests/common/relay_mocktest.rs:529` — probe_health: GETs `/__mock__/health` and returns success on 200 + `schemas_loaded`
+- `tests/common/relay_mocktest.rs:601` — discover_porting_sdk_package: walks parents looking for `porting-sdk/test_harness/<name>`
+- `tests/common/relay_mocktest.rs:622` — separator (unix): returns `:`
+- `tests/common/relay_mocktest.rs:627` — separator (windows): returns `;`
+- `tests/common/relay_mocktest.rs:632` — extern setsid: C binding
+- `tests/common/relay_mocktest.rs:635` — libc_setsid: thin wrapper around setsid
+- `tests/common/relay_mocktest.rs:643` — decode_journal: serde_json -> Vec<JournalEntry>
+- `tests/common/relay_mocktest.rs:651` — decode_entry: serde_json -> single JournalEntry
+- `tests/common/relay_mocktest.rs:697` — _hashmap_anchor: import-anchor for HashMap
 
 ## tests/relay_mock_*.rs — small test-file helpers
 

@@ -24,6 +24,8 @@
 #![allow(dead_code)]
 
 use std::collections::HashMap;
+use std::fs::OpenOptions;
+use std::os::unix::io::AsRawFd;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
 use std::sync::{Arc, Mutex, MutexGuard, OnceLock};
@@ -45,6 +47,12 @@ const STARTUP_TIMEOUT: Duration = Duration::from_secs(30);
 /// scenario queues, and the env-var redirect for `relay::Client` are
 /// process-global state, so two parallel tests would otherwise see each
 /// other's recorded entries.
+///
+/// Note: this mutex is only effective WITHIN a single test binary. Cargo
+/// runs each integration-test binary as its own process, and runs them
+/// concurrently. The shared `mock_relay` server is the same instance for
+/// all binaries, so we additionally hold a Unix file lock (see
+/// [`acquire_cross_binary_lock`]) to serialize across binaries.
 static SERIALIZE: OnceLock<Mutex<()>> = OnceLock::new();
 
 fn lock_journal() -> MutexGuard<'static, ()> {
@@ -52,6 +60,103 @@ fn lock_journal() -> MutexGuard<'static, ()> {
         .get_or_init(|| Mutex::new(()))
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
+}
+
+/// Path of the cross-binary advisory file lock. Located in `/tmp` so each
+/// test binary process (with its own copy of this module) refers to the
+/// same inode and `flock` can serialize them.
+const CROSS_BINARY_LOCK_PATH: &str = "/tmp/signalwire-rust-mock-relay.lock";
+
+/// Cross-process advisory `flock` guard. Ensures only one test (across all
+/// integration-test binaries) is touching the mock-relay server at a time
+/// — the WebSocket session registry, journal, and broadcast plane are
+/// shared state that two concurrent binaries would otherwise pollute.
+///
+/// Held for the entire test (acquired in [`begin`], released when the
+/// returned [`TestGuard`] drops).
+struct CrossBinaryLock {
+    file: std::fs::File,
+}
+
+impl CrossBinaryLock {
+    fn acquire() -> Self {
+        let file = OpenOptions::new()
+            .create(true)
+            .read(true)
+            .write(true)
+            .truncate(false)
+            .open(CROSS_BINARY_LOCK_PATH)
+            .unwrap_or_else(|e| {
+                panic!(
+                    "relay_mocktest: open {}: {}",
+                    CROSS_BINARY_LOCK_PATH, e
+                )
+            });
+        // LOCK_EX: exclusive lock. Blocks until acquired. Released on
+        // close (i.e. when the File drops at the end of the test).
+        let fd = file.as_raw_fd();
+        // SAFETY: fd is valid for the lifetime of `file`.
+        let rc = unsafe { libc_flock(fd, LOCK_EX) };
+        if rc != 0 {
+            panic!(
+                "relay_mocktest: flock LOCK_EX on {}: errno={}",
+                CROSS_BINARY_LOCK_PATH,
+                std::io::Error::last_os_error()
+            );
+        }
+        CrossBinaryLock { file }
+    }
+}
+
+impl Drop for CrossBinaryLock {
+    fn drop(&mut self) {
+        // LOCK_UN: explicit unlock. Closing the file would also release
+        // the lock, but explicit is safer in case the kernel reuses the
+        // descriptor.
+        let fd = self.file.as_raw_fd();
+        // SAFETY: fd is valid until the File drops.
+        let _ = unsafe { libc_flock(fd, LOCK_UN) };
+    }
+}
+
+const LOCK_EX: i32 = 2;
+const LOCK_UN: i32 = 8;
+
+unsafe extern "C" {
+    fn flock(fd: i32, operation: i32) -> i32;
+}
+
+unsafe fn libc_flock(fd: i32, op: i32) -> i32 {
+    unsafe { flock(fd, op) }
+}
+
+/// Block until the mock-relay session registry is empty, or `budget`
+/// elapses. Used at the start of each test to ensure no stale session
+/// from a previous binary's torn-down client is still registered (which
+/// would receive broadcasts intended for *this* test's client).
+fn wait_for_no_sessions(budget: Duration) {
+    let h = harness();
+    let url = format!("{}/__mock__/sessions", h.http_url);
+    let deadline = Instant::now() + budget;
+    while Instant::now() < deadline {
+        let mut resp = match ureq::get(&url).call() {
+            Ok(r) => r,
+            Err(_) => return, // server unreachable — let later code panic with detail
+        };
+        let body: Value = match resp.body_mut().read_json::<Value>() {
+            Ok(v) => v,
+            Err(_) => return,
+        };
+        let sessions = body
+            .get("sessions")
+            .and_then(Value::as_array)
+            .map(|a| a.len())
+            .unwrap_or(0);
+        if sessions == 0 {
+            return;
+        }
+        std::thread::sleep(Duration::from_millis(20));
+    }
 }
 
 /// One-shot health probe / spawn lock.
@@ -313,16 +418,44 @@ pub fn scenario_play(ops: Value) -> Value {
 
 /// RAII guard that holds the global serialization mutex for the duration
 /// of a single test. Tests should bind the return value to `let _g`.
+///
+/// Field order matters: `_cross_binary` must be listed AFTER `_inner` so
+/// that on drop the cross-binary file lock is released BEFORE the
+/// in-process mutex (Rust drops fields in declaration order, so the
+/// in-process mutex drops first — no, actually fields drop in REVERSE
+/// declaration order; the last-declared drops first). We want the
+/// in-process mutex to release LAST so a same-binary follow-up test
+/// doesn't re-enter `begin` and race with the about-to-release file lock.
 pub struct TestGuard {
+    _cross_binary: CrossBinaryLock,
     _inner: MutexGuard<'static, ()>,
 }
 
-/// Acquire the global serialization mutex and reset journal+scenarios.
+/// Acquire the global serialization mutex (in-process) and the cross-binary
+/// file lock, ensure the mock-relay session registry has drained, and reset
+/// journal+scenarios. The returned [`TestGuard`] must outlive the test
+/// body — bind it to `let _g = relay_mocktest::begin();` at the top.
 pub fn begin() -> TestGuard {
-    let guard = lock_journal();
+    // Acquire the in-process mutex first; it's cheap and guards same-binary
+    // concurrency. Then acquire the cross-binary file lock to serialize
+    // against tests in other binaries running concurrently against the
+    // same shared mock_relay server.
+    let inner = lock_journal();
+    let cross = CrossBinaryLock::acquire();
+
+    // Wait for any leftover sessions from a previous binary's tests to
+    // drain — once the file lock is held, we know no other test is in
+    // begin/disconnect, but the SDK in the previous binary might not have
+    // closed its WebSocket cleanly yet. The mock server unregisters
+    // sessions only when the WS read loop sees ConnectionClosed.
+    wait_for_no_sessions(Duration::from_secs(2));
+
     journal_reset();
     scenario_reset();
-    TestGuard { _inner: guard }
+    TestGuard {
+        _cross_binary: cross,
+        _inner: inner,
+    }
 }
 
 // ---------------------------------------------------------------------------

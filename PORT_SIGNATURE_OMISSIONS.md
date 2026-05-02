@@ -201,3 +201,23 @@ signalwire.skills.registry.SkillRegistry.list_skills: Rust ``SkillRegistry::list
 signalwire.skills.registry.SkillRegistry.register_skill: Rust ``register_skill(skill_class)`` takes a SkillFactory (function pointer) where Python takes a SkillBase class — Rust does not have inheritance
 signalwire.skills.spider.skill.SpiderSkill.__init__: Rust skill constructor takes (params) where Python takes (agent, params) — Rust attaches the agent in a separate setup phase rather than via constructor
 signalwire.skills.weather_api.skill.WeatherApiSkill.__init__: Rust skill constructor takes (params) where Python takes (agent, params) — Rust attaches the agent in a separate setup phase rather than via constructor
+
+## POM (signalwire.pom.pom) — Rust idiom
+
+The Rust POM port follows the same shape as the Java/C++ ports: a small
+core type with field-mutating builders. Where Python collapses many
+optional kwargs into a single signature, Rust splits them into the
+canonical "minimum-required" entry-point + a `_full`/`_with` overload
+or per-field setters returning `&mut Self`. Per-method renderers do
+not expose the internal `level` / `section_number` recursion params at
+the public surface; those remain on a private `render_*_at` helper.
+
+signalwire.pom.pom.PromptObjectModel.__init__: rust-default-ctor — Rust ``PromptObjectModel::new()`` takes no args; Python takes ``debug=False``. Rust uses the standard `log`/`tracing` crates for diagnostics rather than a per-instance debug toggle.
+signalwire.pom.pom.PromptObjectModel.add_pom_as_subsection: rust-typed-overload — Rust takes ``target_title: &str`` where Python's `target` is ``Union[str, Section]``. Rust avoids union dispatch; callers pass the title (matching the documented happy path).
+signalwire.pom.pom.PromptObjectModel.add_section: rust-builder-mut-ref — Rust ``add_section(title)`` returns ``&mut Section`` for further field configuration; the additional Python kwargs (body, bullets, numbered, numberedBullets) are set via the returned mutable reference (or via the convenience `add_section_with` overload for body).
+signalwire.pom.pom.PromptObjectModel.from_json: rust-typed-overload — Rust ``from_json(&str)`` takes a string only; the dict-input branch is covered by ``from_value(&Value)``. Rust does not collapse union inputs into one signature.
+signalwire.pom.pom.PromptObjectModel.from_yaml: rust-typed-overload — Rust ``from_yaml(&str)`` takes a string only; the dict-input branch is covered by ``from_value(&Value)``. Rust does not collapse union inputs into one signature.
+signalwire.pom.pom.Section.__init__: rust-builder-mut-ref — Rust ``Section::new(title)`` constructs with title only; remaining Python kwargs (body, bullets, numbered, numberedBullets) are set via the per-field builder methods (`add_body`, `add_bullets`) or struct-literal construction.
+signalwire.pom.pom.Section.add_subsection: rust-builder-mut-ref — Rust ``add_subsection(title)`` returns ``&mut Section`` for chained configuration; the full Python signature is exposed via the ``add_subsection_full`` companion method (title, body, bullets, numbered, numbered_bullets).
+signalwire.pom.pom.Section.render_markdown: rust-public-default — Rust public ``render_markdown()`` always renders at the conventional top-level (level=2, no section_number); the recursion-internal variant is the crate-private ``render_markdown_at(level, section_number)`` invoked by `PromptObjectModel`.
+signalwire.pom.pom.Section.render_xml: rust-public-default — Rust public ``render_xml()`` always renders at indent=0 with no section_number; the recursion-internal variant is the crate-private ``render_xml_at(indent, section_number)`` invoked by `PromptObjectModel`.
