@@ -1,0 +1,67 @@
+name: Test
+
+# Runs the full per-port CI gate set: cargo test, signature regen, drift
+# against the Python reference, and the no-cheat-tests audit. Mirrors
+# `bash scripts/run-ci.sh` so there's no drift between local and CI.
+#
+# Test runner uses --test-threads=1: the shared mock_signalwire /
+# mock_relay servers are single-tenant, and parallel cargo test binaries
+# would race each other through the shared journal. The flock at
+# /tmp/signalwire-rust-mock-relay.lock backstops process-level
+# serialization but the in-runner threads also have to be serial.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout signalwire-rust
+        uses: actions/checkout@v5
+        with:
+          path: signalwire-rust
+
+      - name: Checkout porting-sdk (mock_relay + mock_signalwire test harnesses)
+        uses: actions/checkout@v5
+        with:
+          repository: signalwire/porting-sdk
+          path: porting-sdk
+          token: ${{ secrets.PORTING_SDK_TOKEN }}
+
+      - name: Set up Rust (stable + nightly for rustdoc-json)
+        # Stable for `cargo test`; nightly for the rustdoc-json output
+        # consumed by scripts/enumerate_signatures.py (Gate 2).
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install Rust nightly (rustdoc-json for SIGNATURES gate)
+        uses: dtolnay/rust-toolchain@nightly
+
+      - name: Cache cargo registry + target
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            signalwire-rust/target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('signalwire-rust/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Set up Python (porting-sdk audit scripts)
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Python test harnesses (mock_relay + mock_signalwire)
+        run: |
+          pip install -e porting-sdk/test_harness/mock_relay
+          pip install -e porting-sdk/test_harness/mock_signalwire
+
+      - name: Run CI gate script (TEST -> SIGNATURES -> DRIFT -> NO-CHEAT)
+        working-directory: signalwire-rust
+        env:
+          PORTING_SDK: ${{ github.workspace }}/porting-sdk
+        run: bash scripts/run-ci.sh
