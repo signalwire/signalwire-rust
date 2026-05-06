@@ -690,3 +690,205 @@ These are blocking-IO siblings of Python's async RelayClient methods. Python's r
 signalwire.relay.client.RelayClient.dial_blocking: Rust ships blocking-IO variants of the async dial/execute/send_message methods so synchronous Rust code can invoke RELAY without spinning up a tokio runtime. Python's RelayClient is async-only.
 signalwire.relay.client.RelayClient.execute_blocking: Rust ships blocking-IO variants of the async dial/execute/send_message methods so synchronous Rust code can invoke RELAY without spinning up a tokio runtime. Python's RelayClient is async-only.
 signalwire.relay.client.RelayClient.send_message_blocking: Rust ships blocking-IO variants of the async dial/execute/send_message methods so synchronous Rust code can invoke RELAY without spinning up a tokio runtime. Python's RelayClient is async-only.
+
+### Rust top-level re-exports
+
+signalwire.SkillSpec: top-level re-export: Rust exposes SkillSpec at the crate root for ergonomic `signalwire::SkillSpec` access; Python's equivalent is internal to the skill registry. The struct itself is a Rust idiom — Python uses raw class objects passed to `register_skill(...)`.
+signalwire.SkillSpec.__init__: top-level re-export: Rust exposes SkillSpec at the crate root for ergonomic `signalwire::SkillSpec` access; Python's equivalent is internal to the skill registry. The struct itself is a Rust idiom — Python uses raw class objects passed to `register_skill(...)`.
+
+### AgentBase prompt_mixin / state_mixin lifted methods
+
+prompt_mixin_lifted / state_mixin_lifted: Rust folds Python's PromptMixin and StateMixin onto AgentBase directly so callers don't reach into a sub-object — same pattern as the documented tool_mixin_lifted bucket above. Python keeps these methods on the originating mixins; Rust hangs them on AgentBase.
+
+signalwire.core.agent_base.AgentBase.get_contexts: prompt_mixin_lifted: Rust AgentBase exposes a get_contexts() accessor; Python's equivalent lives on PromptMixin (mirrors tool_mixin_lifted pattern).
+signalwire.core.agent_base.AgentBase.get_post_prompt: prompt_mixin_lifted: Rust rolls up PromptMixin onto AgentBase; Python keeps these on PromptMixin (mirrors tool_mixin_lifted pattern).
+signalwire.core.agent_base.AgentBase.get_raw_prompt: prompt_mixin_lifted: Rust rolls up PromptMixin onto AgentBase; Python keeps these on PromptMixin (mirrors tool_mixin_lifted pattern).
+signalwire.core.agent_base.AgentBase.pom: prompt_mixin_lifted: Rust accessor returning the underlying PromptObjectModel; Python keeps the POM private inside PromptMixin (mirrors tool_mixin_lifted pattern).
+signalwire.core.agent_base.AgentBase.set_prompt_pom: prompt_mixin_lifted: Rust rolls up PromptMixin onto AgentBase; Python keeps these on PromptMixin (mirrors tool_mixin_lifted pattern).
+signalwire.core.agent_base.AgentBase.validate_tool_token: state_mixin_lifted: Rust rolls up StateMixin onto AgentBase; Python keeps validate_tool_token on StateMixin (mirrors tool_mixin_lifted pattern).
+
+### SWMLService tool_mixin / web_mixin / auth_mixin lifted methods
+
+tool_mixin_lifted / web_mixin_lifted / auth_mixin_lifted: Rust folds Python's ToolMixin / WebMixin / AuthMixin onto SWMLService directly so subclasses (notably AgentBase) inherit them without a separate composition step — same pattern as the documented tool_mixin_lifted bucket above.
+
+signalwire.core.swml_service.SWMLService.get_all_functions: tool_mixin_lifted: Rust exposes the tool registry's accessors directly on SWMLService; Python keeps these on ToolRegistry (accessed via agent.tool_registry.get_all_functions()).
+signalwire.core.swml_service.SWMLService.get_function: tool_mixin_lifted: Rust exposes the tool registry's accessors directly on SWMLService; Python keeps these on ToolRegistry (mirrors tool_mixin_lifted pattern).
+signalwire.core.swml_service.SWMLService.has_function: tool_mixin_lifted: Rust exposes the tool registry's accessors directly on SWMLService; Python keeps these on ToolRegistry (mirrors tool_mixin_lifted pattern).
+signalwire.core.swml_service.SWMLService.on_swml_request: web_mixin_lifted: Rust rolls up WebMixin onto SWMLService so subclasses (notably AgentBase) can override the SWML-request hook directly; Python keeps on_swml_request on WebMixin (mirrors tool_mixin_lifted pattern).
+signalwire.core.swml_service.SWMLService.remove_function: tool_mixin_lifted: Rust exposes the tool registry's mutators directly on SWMLService; Python keeps these on ToolRegistry (mirrors tool_mixin_lifted pattern).
+signalwire.core.swml_service.SWMLService.schema_utils: tool_mixin_lifted: Rust exposes a schema_utils() accessor on SWMLService for the SWML schema validator; Python imports `signalwire.utils.schema_utils` directly (mirrors tool_mixin_lifted pattern).
+signalwire.core.swml_service.SWMLService.validate_basic_auth: auth_mixin_lifted: Rust rolls up AuthMixin onto SWMLService; Python keeps validate_basic_auth on AuthMixin and accesses it via the mixin chain (mirrors tool_mixin_lifted pattern).
+
+### PaginatedIterator Rust-side field accessors
+
+idiomatic_getter: Rust models PaginatedIterator as a struct whose fields are exposed via accessor functions (`pub fn data_key(&self) -> &str`, etc.). Python uses plain attribute access on the iterator instance; the same data is reachable, just without explicit getters.
+
+signalwire.rest._pagination.PaginatedIterator.data_key: idiomatic_getter: Rust accessor for the underlying field; Python uses attribute access on the iterator object.
+signalwire.rest._pagination.PaginatedIterator.http: idiomatic_getter: Rust accessor for the underlying field; Python uses attribute access on the iterator object.
+signalwire.rest._pagination.PaginatedIterator.index: idiomatic_getter: Rust accessor for the underlying field; Python uses attribute access on the iterator object.
+signalwire.rest._pagination.PaginatedIterator.is_done: idiomatic_getter: Rust accessor for the underlying field; Python uses attribute access on the iterator object (Python's equivalent is `not iter._has_more`).
+signalwire.rest._pagination.PaginatedIterator.items: idiomatic_getter: Rust accessor for the underlying field; Python uses attribute access on the iterator object.
+signalwire.rest._pagination.PaginatedIterator.next_item: idiomatic_getter: Rust accessor for the next-item helper; Python uses `next(iter)` directly via the iterator protocol.
+signalwire.rest._pagination.PaginatedIterator.params: idiomatic_getter: Rust accessor for the underlying field; Python uses attribute access on the iterator object.
+signalwire.rest._pagination.PaginatedIterator.path: idiomatic_getter: Rust accessor for the underlying field; Python uses attribute access on the iterator object.
+
+### REST namespace field accessors (base_path / client / project_id / sub-resource getters)
+
+namespace_field_accessor: Rust REST namespaces are structs whose fields are exposed via accessor functions (`pub fn base_path(&self) -> &str`, `pub fn client(&self) -> &Client`, `pub fn calls(&self) -> &CompatCalls`, etc.). Python keeps the equivalent state as private attributes accessed via `__dict__` / `self.calls`; Rust ships explicit getters so the surface is one-to-one with the C-style API the rest of the language expects.
+
+signalwire.rest.namespaces.calling.CallingNamespace.base_path: namespace_field_accessor: Rust accessor for the namespace's base path; Python uses a private class attribute.
+signalwire.rest.namespaces.calling.CallingNamespace.client: namespace_field_accessor: Rust accessor for the parent client reference; Python uses a private attribute.
+signalwire.rest.namespaces.calling.CallingNamespace.project_id: namespace_field_accessor: Rust accessor for the project_id field; Python uses an instance attribute.
+signalwire.rest.namespaces.compat.CompatAccounts.base_path: namespace_field_accessor: Rust accessor for the resource's base path; Python uses a class-level attribute.
+signalwire.rest.namespaces.compat.CompatApplications.base_path: namespace_field_accessor: Rust accessor for the resource's base path; Python uses a class-level attribute.
+signalwire.rest.namespaces.compat.CompatCalls.base_path: namespace_field_accessor: Rust accessor for the resource's base path; Python uses a class-level attribute.
+signalwire.rest.namespaces.compat.CompatConferences.base_path: namespace_field_accessor: Rust accessor for the resource's base path; Python uses a class-level attribute.
+signalwire.rest.namespaces.compat.CompatFaxes.base_path: namespace_field_accessor: Rust accessor for the resource's base path; Python uses a class-level attribute.
+signalwire.rest.namespaces.compat.CompatLamlBins.base_path: namespace_field_accessor: Rust accessor for the resource's base path; Python uses a class-level attribute.
+signalwire.rest.namespaces.compat.CompatMessages.base_path: namespace_field_accessor: Rust accessor for the resource's base path; Python uses a class-level attribute.
+signalwire.rest.namespaces.compat.CompatNamespace.account_sid: namespace_field_accessor: Rust accessor for the account_sid field; Python uses an instance attribute.
+signalwire.rest.namespaces.compat.CompatNamespace.accounts: namespace_field_accessor: Rust sub-resource getter for the namespace; Python uses attribute access on the namespace instance.
+signalwire.rest.namespaces.compat.CompatNamespace.applications: namespace_field_accessor: Rust sub-resource getter for the namespace; Python uses attribute access on the namespace instance.
+signalwire.rest.namespaces.compat.CompatNamespace.calls: namespace_field_accessor: Rust sub-resource getter for the namespace; Python uses attribute access on the namespace instance.
+signalwire.rest.namespaces.compat.CompatNamespace.conferences: namespace_field_accessor: Rust sub-resource getter for the namespace; Python uses attribute access on the namespace instance.
+signalwire.rest.namespaces.compat.CompatNamespace.faxes: namespace_field_accessor: Rust sub-resource getter for the namespace; Python uses attribute access on the namespace instance.
+signalwire.rest.namespaces.compat.CompatNamespace.laml_bins: namespace_field_accessor: Rust sub-resource getter for the namespace; Python uses attribute access on the namespace instance.
+signalwire.rest.namespaces.compat.CompatNamespace.messages: namespace_field_accessor: Rust sub-resource getter for the namespace; Python uses attribute access on the namespace instance.
+signalwire.rest.namespaces.compat.CompatNamespace.phone_numbers: namespace_field_accessor: Rust sub-resource getter for the namespace; Python uses attribute access on the namespace instance.
+signalwire.rest.namespaces.compat.CompatNamespace.queues: namespace_field_accessor: Rust sub-resource getter for the namespace; Python uses attribute access on the namespace instance.
+signalwire.rest.namespaces.compat.CompatNamespace.recordings: namespace_field_accessor: Rust sub-resource getter for the namespace; Python uses attribute access on the namespace instance.
+signalwire.rest.namespaces.compat.CompatNamespace.tokens: namespace_field_accessor: Rust sub-resource getter for the namespace; Python uses attribute access on the namespace instance.
+signalwire.rest.namespaces.compat.CompatNamespace.transcriptions: namespace_field_accessor: Rust sub-resource getter for the namespace; Python uses attribute access on the namespace instance.
+signalwire.rest.namespaces.compat.CompatPhoneNumbers.available_base: namespace_field_accessor: Rust accessor for the available-numbers sub-path; Python keeps the equivalent as a class-level attribute.
+signalwire.rest.namespaces.compat.CompatPhoneNumbers.base_path: namespace_field_accessor: Rust accessor for the resource's base path; Python uses a class-level attribute.
+signalwire.rest.namespaces.compat.CompatQueues.base_path: namespace_field_accessor: Rust accessor for the resource's base path; Python uses a class-level attribute.
+signalwire.rest.namespaces.compat.CompatRecordings.base_path: namespace_field_accessor: Rust accessor for the resource's base path; Python uses a class-level attribute.
+signalwire.rest.namespaces.compat.CompatTokens.base_path: namespace_field_accessor: Rust accessor for the resource's base path; Python uses a class-level attribute.
+signalwire.rest.namespaces.compat.CompatTranscriptions.base_path: namespace_field_accessor: Rust accessor for the resource's base path; Python uses a class-level attribute.
+signalwire.rest.namespaces.datasphere.DatasphereDocuments.base_path: namespace_field_accessor: Rust accessor for the resource's base path; Python uses a class-level attribute.
+signalwire.rest.namespaces.datasphere.DatasphereNamespace.documents: namespace_field_accessor: Rust sub-resource getter for the namespace; Python uses attribute access on the namespace instance.
+signalwire.rest.namespaces.fabric.FabricAddresses.base_path: namespace_field_accessor: Rust accessor for the resource's base path; Python uses a class-level attribute.
+signalwire.rest.namespaces.fabric.FabricNamespace.addresses: namespace_field_accessor: Rust sub-resource getter for the namespace; Python uses attribute access on the namespace instance.
+signalwire.rest.namespaces.fabric.FabricNamespace.ai_agents: namespace_field_accessor: Rust sub-resource getter for the namespace; Python uses attribute access on the namespace instance.
+signalwire.rest.namespaces.fabric.FabricNamespace.call_flows: namespace_field_accessor: Rust sub-resource getter for the namespace; Python uses attribute access on the namespace instance.
+signalwire.rest.namespaces.fabric.FabricNamespace.call_queues: namespace_field_accessor: Rust sub-resource getter for the namespace; Python uses attribute access on the namespace instance.
+signalwire.rest.namespaces.fabric.FabricNamespace.client: namespace_field_accessor: Rust accessor for the parent client reference; Python uses a private attribute.
+signalwire.rest.namespaces.fabric.FabricNamespace.conference_rooms: namespace_field_accessor: Rust sub-resource getter for the namespace; Python uses attribute access on the namespace instance.
+signalwire.rest.namespaces.fabric.FabricNamespace.conversations: namespace_field_accessor: Rust sub-resource getter for the namespace; Python uses attribute access on the namespace instance.
+signalwire.rest.namespaces.fabric.FabricNamespace.cxml_applications: namespace_field_accessor: Rust sub-resource getter for the namespace; Python uses attribute access on the namespace instance.
+signalwire.rest.namespaces.fabric.FabricNamespace.dial_plans: namespace_field_accessor: Rust sub-resource getter for the namespace; Python uses attribute access on the namespace instance.
+signalwire.rest.namespaces.fabric.FabricNamespace.freeclimb_apps: namespace_field_accessor: Rust sub-resource getter for the namespace; Python uses attribute access on the namespace instance.
+signalwire.rest.namespaces.fabric.FabricNamespace.phone_numbers: namespace_field_accessor: Rust sub-resource getter for the namespace; Python uses attribute access on the namespace instance.
+signalwire.rest.namespaces.fabric.FabricNamespace.resources: namespace_field_accessor: Rust sub-resource getter for the namespace; Python uses attribute access on the namespace instance.
+signalwire.rest.namespaces.fabric.FabricNamespace.sip_endpoints: namespace_field_accessor: Rust sub-resource getter for the namespace; Python uses attribute access on the namespace instance.
+signalwire.rest.namespaces.fabric.FabricNamespace.sip_profiles: namespace_field_accessor: Rust sub-resource getter for the namespace; Python uses attribute access on the namespace instance.
+signalwire.rest.namespaces.fabric.FabricNamespace.subscribers: namespace_field_accessor: Rust sub-resource getter for the namespace; Python uses attribute access on the namespace instance.
+signalwire.rest.namespaces.fabric.FabricNamespace.swml_scripts: namespace_field_accessor: Rust sub-resource getter for the namespace; Python uses attribute access on the namespace instance.
+signalwire.rest.namespaces.fabric.FabricNamespace.tokens: namespace_field_accessor: Rust sub-resource getter for the namespace; Python uses attribute access on the namespace instance.
+signalwire.rest.namespaces.logs.LogsNamespace.client: namespace_field_accessor: Rust accessor for the parent client reference; Python uses a private attribute.
+signalwire.rest.namespaces.logs.LogsNamespace.conferences: namespace_field_accessor: Rust sub-resource getter for the namespace; Python uses attribute access on the namespace instance.
+signalwire.rest.namespaces.logs.LogsNamespace.fax: namespace_field_accessor: Rust sub-resource getter for the namespace; Python uses attribute access on the namespace instance.
+signalwire.rest.namespaces.logs.LogsNamespace.messages: namespace_field_accessor: Rust sub-resource getter for the namespace; Python uses attribute access on the namespace instance.
+signalwire.rest.namespaces.logs.LogsNamespace.voice: namespace_field_accessor: Rust sub-resource getter for the namespace; Python uses attribute access on the namespace instance.
+signalwire.rest.namespaces.mfa.MfaResource.base_path: namespace_field_accessor: Rust accessor for the resource's base path; Python uses a class-level attribute.
+signalwire.rest.namespaces.number_groups.NumberGroupsResource.base_path: namespace_field_accessor: Rust accessor for the resource's base path; Python uses a class-level attribute.
+signalwire.rest.namespaces.project.ProjectNamespace.tokens: namespace_field_accessor: Rust sub-resource getter for the namespace; Python uses attribute access on the namespace instance.
+signalwire.rest.namespaces.project.ProjectTokens.base_path: namespace_field_accessor: Rust accessor for the resource's base path; Python uses a class-level attribute.
+signalwire.rest.namespaces.queues.QueuesResource.base_path: namespace_field_accessor: Rust accessor for the resource's base path; Python uses a class-level attribute.
+signalwire.rest.namespaces.registry.RegistryNamespace.brands: namespace_field_accessor: Rust sub-resource getter for the namespace; Python uses attribute access on the namespace instance.
+signalwire.rest.namespaces.registry.RegistryNamespace.campaigns: namespace_field_accessor: Rust sub-resource getter for the namespace; Python uses attribute access on the namespace instance.
+signalwire.rest.namespaces.registry.RegistryNamespace.client: namespace_field_accessor: Rust accessor for the parent client reference; Python uses a private attribute.
+signalwire.rest.namespaces.registry.RegistryNamespace.numbers: namespace_field_accessor: Rust sub-resource getter for the namespace; Python uses attribute access on the namespace instance.
+signalwire.rest.namespaces.registry.RegistryNamespace.orders: namespace_field_accessor: Rust sub-resource getter for the namespace; Python uses attribute access on the namespace instance.
+signalwire.rest.namespaces.sip_profile.SipProfileResource.base_path: namespace_field_accessor: Rust accessor for the resource's base path; Python uses a class-level attribute.
+signalwire.rest.namespaces.video.VideoNamespace.client: namespace_field_accessor: Rust accessor for the parent client reference; Python uses a private attribute.
+signalwire.rest.namespaces.video.VideoNamespace.conference_tokens: namespace_field_accessor: Rust sub-resource getter for the namespace; Python uses attribute access on the namespace instance.
+signalwire.rest.namespaces.video.VideoNamespace.conferences: namespace_field_accessor: Rust sub-resource getter for the namespace; Python uses attribute access on the namespace instance.
+signalwire.rest.namespaces.video.VideoNamespace.room_recordings: namespace_field_accessor: Rust sub-resource getter for the namespace; Python uses attribute access on the namespace instance.
+signalwire.rest.namespaces.video.VideoNamespace.room_sessions: namespace_field_accessor: Rust sub-resource getter for the namespace; Python uses attribute access on the namespace instance.
+signalwire.rest.namespaces.video.VideoNamespace.room_tokens: namespace_field_accessor: Rust sub-resource getter for the namespace; Python uses attribute access on the namespace instance.
+signalwire.rest.namespaces.video.VideoNamespace.rooms: namespace_field_accessor: Rust sub-resource getter for the namespace; Python uses attribute access on the namespace instance.
+signalwire.rest.namespaces.video.VideoNamespace.streams: namespace_field_accessor: Rust sub-resource getter for the namespace; Python uses attribute access on the namespace instance.
+
+### Rust REST resource constructors and explicit CRUD (flatten-the-MRO)
+
+Rust port emits explicit `__init__` constructors and CRUD methods on each resource struct since Rust has no class inheritance — same flatten-the-MRO pattern documented above for CompatApplications / CompatFaxes / etc. These resources extend the existing list with newly-added Fabric / Logs / Registry / Video resources whose entries weren't in the file yet.
+
+signalwire.rest.namespaces.fabric.CallFlowsResource.__init__: Rust port emits an explicit constructor; Python's BaseResource.__init__ is inherited.
+signalwire.rest.namespaces.fabric.CallFlowsResource.base_path: namespace_field_accessor: Rust accessor for the resource's base path; Python uses a class-level attribute.
+signalwire.rest.namespaces.fabric.CallFlowsResource.create: Rust port emits explicit CRUD where Python inherits via CrudResource.
+signalwire.rest.namespaces.fabric.CallFlowsResource.delete: Rust port emits explicit CRUD where Python inherits via CrudResource.
+signalwire.rest.namespaces.fabric.CallFlowsResource.get: Rust port emits explicit CRUD where Python inherits via CrudResource.
+signalwire.rest.namespaces.fabric.CallFlowsResource.list: Rust port emits explicit CRUD where Python inherits via CrudResource.
+signalwire.rest.namespaces.fabric.CallFlowsResource.update: Rust port emits explicit CRUD where Python inherits via CrudResource.
+signalwire.rest.namespaces.fabric.ConferenceRoomsResource.__init__: Rust port emits an explicit constructor; Python's BaseResource.__init__ is inherited.
+signalwire.rest.namespaces.fabric.ConferenceRoomsResource.base_path: namespace_field_accessor: Rust accessor for the resource's base path; Python uses a class-level attribute.
+signalwire.rest.namespaces.fabric.ConferenceRoomsResource.create: Rust port emits explicit CRUD where Python inherits via CrudResource.
+signalwire.rest.namespaces.fabric.ConferenceRoomsResource.delete: Rust port emits explicit CRUD where Python inherits via CrudResource.
+signalwire.rest.namespaces.fabric.ConferenceRoomsResource.get: Rust port emits explicit CRUD where Python inherits via CrudResource.
+signalwire.rest.namespaces.fabric.ConferenceRoomsResource.list: Rust port emits explicit CRUD where Python inherits via CrudResource.
+signalwire.rest.namespaces.fabric.ConferenceRoomsResource.update: Rust port emits explicit CRUD where Python inherits via CrudResource.
+signalwire.rest.namespaces.fabric.CxmlApplicationsResource.__init__: Rust port emits an explicit constructor; Python's BaseResource.__init__ is inherited.
+signalwire.rest.namespaces.fabric.CxmlApplicationsResource.base_path: namespace_field_accessor: Rust accessor for the resource's base path; Python uses a class-level attribute.
+signalwire.rest.namespaces.fabric.CxmlApplicationsResource.delete: Rust port emits explicit CRUD where Python inherits via CrudResource.
+signalwire.rest.namespaces.fabric.CxmlApplicationsResource.get: Rust port emits explicit CRUD where Python inherits via CrudResource.
+signalwire.rest.namespaces.fabric.CxmlApplicationsResource.list: Rust port emits explicit CRUD where Python inherits via CrudResource.
+signalwire.rest.namespaces.fabric.CxmlApplicationsResource.update: Rust port emits explicit CRUD where Python inherits via CrudResource.
+signalwire.rest.namespaces.fabric.FabricAddresses.__init__: Rust port emits an explicit constructor; Python's BaseResource.__init__ is inherited.
+signalwire.rest.namespaces.fabric.GenericResources.__init__: Rust port emits an explicit constructor; Python's BaseResource.__init__ is inherited.
+signalwire.rest.namespaces.fabric.GenericResources.base_path: namespace_field_accessor: Rust accessor for the resource's base path; Python uses a class-level attribute.
+signalwire.rest.namespaces.fabric.SubscribersResource.__init__: Rust port emits an explicit constructor; Python's BaseResource.__init__ is inherited.
+signalwire.rest.namespaces.fabric.SubscribersResource.base_path: namespace_field_accessor: Rust accessor for the resource's base path; Python uses a class-level attribute.
+signalwire.rest.namespaces.fabric.SubscribersResource.create: Rust port emits explicit CRUD where Python inherits via CrudResource.
+signalwire.rest.namespaces.fabric.SubscribersResource.delete: Rust port emits explicit CRUD where Python inherits via CrudResource.
+signalwire.rest.namespaces.fabric.SubscribersResource.get: Rust port emits explicit CRUD where Python inherits via CrudResource.
+signalwire.rest.namespaces.fabric.SubscribersResource.list: Rust port emits explicit CRUD where Python inherits via CrudResource.
+signalwire.rest.namespaces.fabric.SubscribersResource.list_addresses: crud_with_addresses_lifted: Rust folds Python's CrudWithAddresses.list_addresses mixin onto the SubscribersResource directly so callers don't reach into a parent class; Python keeps it on the abstract CrudWithAddresses parent (same pattern Perl documents).
+signalwire.rest.namespaces.fabric.SubscribersResource.update: Rust port emits explicit CRUD where Python inherits via CrudResource.
+signalwire.rest.namespaces.logs.ConferenceLogs.__init__: Rust port emits an explicit constructor; Python's BaseResource.__init__ is inherited.
+signalwire.rest.namespaces.logs.ConferenceLogs.base_path: namespace_field_accessor: Rust accessor for the resource's base path; Python uses a class-level attribute.
+signalwire.rest.namespaces.logs.FaxLogs.__init__: Rust port emits an explicit constructor; Python's BaseResource.__init__ is inherited.
+signalwire.rest.namespaces.logs.FaxLogs.base_path: namespace_field_accessor: Rust accessor for the resource's base path; Python uses a class-level attribute.
+signalwire.rest.namespaces.logs.MessageLogs.__init__: Rust port emits an explicit constructor; Python's BaseResource.__init__ is inherited.
+signalwire.rest.namespaces.logs.MessageLogs.base_path: namespace_field_accessor: Rust accessor for the resource's base path; Python uses a class-level attribute.
+signalwire.rest.namespaces.logs.VoiceLogs.__init__: Rust port emits an explicit constructor; Python's BaseResource.__init__ is inherited.
+signalwire.rest.namespaces.logs.VoiceLogs.base_path: namespace_field_accessor: Rust accessor for the resource's base path; Python uses a class-level attribute.
+signalwire.rest.namespaces.registry.RegistryBrands.__init__: Rust port emits an explicit constructor; Python's BaseResource.__init__ is inherited.
+signalwire.rest.namespaces.registry.RegistryBrands.base_path: namespace_field_accessor: Rust accessor for the resource's base path; Python uses a class-level attribute.
+signalwire.rest.namespaces.registry.RegistryCampaigns.__init__: Rust port emits an explicit constructor; Python's BaseResource.__init__ is inherited.
+signalwire.rest.namespaces.registry.RegistryCampaigns.base_path: namespace_field_accessor: Rust accessor for the resource's base path; Python uses a class-level attribute.
+signalwire.rest.namespaces.registry.RegistryNumbers.__init__: Rust port emits an explicit constructor; Python's BaseResource.__init__ is inherited.
+signalwire.rest.namespaces.registry.RegistryNumbers.base_path: namespace_field_accessor: Rust accessor for the resource's base path; Python uses a class-level attribute.
+signalwire.rest.namespaces.registry.RegistryOrders.__init__: Rust port emits an explicit constructor; Python's BaseResource.__init__ is inherited.
+signalwire.rest.namespaces.registry.RegistryOrders.base_path: namespace_field_accessor: Rust accessor for the resource's base path; Python uses a class-level attribute.
+signalwire.rest.namespaces.video.VideoConferenceTokens.__init__: Rust port emits an explicit constructor; Python's BaseResource.__init__ is inherited.
+signalwire.rest.namespaces.video.VideoConferenceTokens.base_path: namespace_field_accessor: Rust accessor for the resource's base path; Python uses a class-level attribute.
+signalwire.rest.namespaces.video.VideoConferences.__init__: Rust port emits an explicit constructor; Python's BaseResource.__init__ is inherited.
+signalwire.rest.namespaces.video.VideoConferences.base_path: namespace_field_accessor: Rust accessor for the resource's base path; Python uses a class-level attribute.
+signalwire.rest.namespaces.video.VideoConferences.create: Rust port emits explicit CRUD where Python inherits via CrudResource.
+signalwire.rest.namespaces.video.VideoConferences.delete: Rust port emits explicit CRUD where Python inherits via CrudResource.
+signalwire.rest.namespaces.video.VideoConferences.get: Rust port emits explicit CRUD where Python inherits via CrudResource.
+signalwire.rest.namespaces.video.VideoConferences.list: Rust port emits explicit CRUD where Python inherits via CrudResource.
+signalwire.rest.namespaces.video.VideoConferences.update: Rust port emits explicit CRUD where Python inherits via CrudResource.
+signalwire.rest.namespaces.video.VideoRoomRecordings.__init__: Rust port emits an explicit constructor; Python's BaseResource.__init__ is inherited.
+signalwire.rest.namespaces.video.VideoRoomRecordings.base_path: namespace_field_accessor: Rust accessor for the resource's base path; Python uses a class-level attribute.
+signalwire.rest.namespaces.video.VideoRoomSessions.__init__: Rust port emits an explicit constructor; Python's BaseResource.__init__ is inherited.
+signalwire.rest.namespaces.video.VideoRoomSessions.base_path: namespace_field_accessor: Rust accessor for the resource's base path; Python uses a class-level attribute.
+signalwire.rest.namespaces.video.VideoRoomTokens.__init__: Rust port emits an explicit constructor; Python's BaseResource.__init__ is inherited.
+signalwire.rest.namespaces.video.VideoRoomTokens.base_path: namespace_field_accessor: Rust accessor for the resource's base path; Python uses a class-level attribute.
+signalwire.rest.namespaces.video.VideoRooms.__init__: Rust port emits an explicit constructor; Python's BaseResource.__init__ is inherited.
+signalwire.rest.namespaces.video.VideoRooms.base_path: namespace_field_accessor: Rust accessor for the resource's base path; Python uses a class-level attribute.
+signalwire.rest.namespaces.video.VideoRooms.create: Rust port emits explicit CRUD where Python inherits via CrudResource.
+signalwire.rest.namespaces.video.VideoRooms.delete: Rust port emits explicit CRUD where Python inherits via CrudResource.
+signalwire.rest.namespaces.video.VideoRooms.get: Rust port emits explicit CRUD where Python inherits via CrudResource.
+signalwire.rest.namespaces.video.VideoRooms.list: Rust port emits explicit CRUD where Python inherits via CrudResource.
+signalwire.rest.namespaces.video.VideoRooms.update: Rust port emits explicit CRUD where Python inherits via CrudResource.
+signalwire.rest.namespaces.video.VideoStreams.__init__: Rust port emits an explicit constructor; Python's BaseResource.__init__ is inherited.
+signalwire.rest.namespaces.video.VideoStreams.base_path: namespace_field_accessor: Rust accessor for the resource's base path; Python uses a class-level attribute.
+
+### Rust module-level helpers projected under `<file>::mod`
+
+The Rust adapter projects free functions defined in `mod.rs` files under the module path `signalwire.<parent>.mod.<fn>`; Python flattens these to `signalwire.<parent>.<fn>`. The helpers themselves match Python; only the path differs.
+
+signalwire.utils.mod.is_serverless_mode: rust-path-projection: Rust ships this as a free function in `signalwire/src/utils/mod.rs`; the Rust adapter emits the `mod` segment in the qualified path. Python's equivalent is `signalwire.utils.is_serverless_mode` and is functionally identical.
+signalwire.utils.url_validator._set_resolver: port-only test helper: Rust exposes a `_set_resolver` function so the audit harness can inject DNS-resolver mocks for url_validator tests; Python's equivalent test path patches the resolver via `unittest.mock.patch`.
