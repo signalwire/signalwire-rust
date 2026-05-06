@@ -59,6 +59,79 @@ fn test_calling_update() {
 }
 
 #[test]
+fn test_calling_dial_forwards_codecs_array() {
+    // OpenAPI spec gained an optional `codecs` param on calling/calls dial
+    // (porting-sdk PR #1). dial(Value) accepts free-form JSON so codecs
+    // flows through without source changes; this test confirms it reaches
+    // the wire as an array.
+    let _g = common::mocktest::begin();
+    let c = common::mocktest::client();
+    let body = c
+        .calling()
+        .dial(json!({
+            "url": "https://example.com/swml",
+            "to": "+15551234567",
+            "codecs": ["OPUS", "G729", "VP8", "PCMA"],
+        }))
+        .expect("calling.dial");
+    assert!(body.is_object());
+    assert!(body.as_object().unwrap().contains_key("id"));
+
+    let entry = common::mocktest::journal_last();
+    assert_eq!(entry.method, "POST");
+    assert_eq!(entry.path, CALLS_PATH);
+    let body_obj = entry.body_object().expect("body object");
+    assert_eq!(
+        body_obj.get("command").and_then(Value::as_str),
+        Some("dial")
+    );
+    assert!(
+        !body_obj.contains_key("id"),
+        "top-level body must not contain id"
+    );
+    let params = params_from_body(body_obj);
+    assert_eq!(
+        params.get("to").and_then(Value::as_str),
+        Some("+15551234567")
+    );
+    let codecs = params
+        .get("codecs")
+        .and_then(Value::as_array)
+        .expect("codecs should be array");
+    let codecs_str: Vec<&str> = codecs.iter().filter_map(Value::as_str).collect();
+    assert_eq!(codecs_str, vec!["OPUS", "G729", "VP8", "PCMA"]);
+}
+
+#[test]
+fn test_calling_dial_forwards_codecs_string() {
+    // Comma-separated-string form of the same param is also valid per the
+    // OpenAPI spec; confirm it round-trips unchanged through the wire.
+    let _g = common::mocktest::begin();
+    let c = common::mocktest::client();
+    let body = c
+        .calling()
+        .dial(json!({
+            "url": "https://example.com/swml",
+            "to": "+15551234567",
+            "codecs": "OPUS,G729,VP8,PCMA",
+        }))
+        .expect("calling.dial");
+    assert!(body.is_object());
+
+    let entry = common::mocktest::journal_last();
+    let body_obj = entry.body_object().expect("body object");
+    assert_eq!(
+        body_obj.get("command").and_then(Value::as_str),
+        Some("dial")
+    );
+    let params = params_from_body(body_obj);
+    assert_eq!(
+        params.get("codecs").and_then(Value::as_str),
+        Some("OPUS,G729,VP8,PCMA")
+    );
+}
+
+#[test]
 fn test_calling_transfer() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
