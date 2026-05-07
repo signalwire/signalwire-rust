@@ -899,3 +899,8 @@ Rust adds an explicit `signing_key()` accessor and a `set_signing_key()` setter 
 
 signalwire.core.agent_base.AgentBase.set_signing_key: rust-explicit-setter — Rust exposes ``set_signing_key(Option<&str>)`` so callers can configure the webhook signature key after construction; Python relies on attribute assignment which doesn't surface as a method in the signature inventory.
 signalwire.core.agent_base.AgentBase.signing_key: rust-explicit-getter — Rust exposes ``signing_key() -> Option<&str>`` for the resolved Signing Key; Python uses attribute access (``agent.signing_key``) which the audit infrastructure doesn't model as a method.
+signalwire.security.webhook.validate_request: rust_idiom: validator functions live under signalwire::security::webhook (Python uses signalwire.core.security.webhook_validator); see PORT_OMISSIONS for the missing-port projection
+signalwire.security.webhook.validate_webhook_signature: rust_idiom: see validate_request entry
+signalwire.security.webhook_layer.WebhookLayer: rust_idiom: tower::Layer for axum/hyper (Python uses FastAPI dependency factory)
+signalwire.security.webhook_layer.WebhookLayer.__init__: rust_idiom: see WebhookLayer entry
+signalwire.security.webhook_layer.WebhookLayer.with_url_base: rust_idiom_builder: builder method for proxy URL base (Rust idiom, no Python equivalent)

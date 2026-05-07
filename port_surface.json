@@ -1,6 +1,6 @@
 {
   "version": "1",
-  "generated_from": "signalwire-rust @ 5f00dc75bf3b65c1e12832593d1544f9489e2781",
+  "generated_from": "signalwire-rust @ a9b440af28cf7a82a8792ea2c5b797c7ad1dc30a",
   "modules": {
     "signalwire": {
       "classes": {
@@ -154,7 +154,9 @@
           "set_prompt_pom",
           "set_prompt_text",
           "set_pronunciations",
+          "set_signing_key",
           "set_webhook_url",
+          "signing_key",
           "update_global_data",
           "validate_tool_token"
         ]
@@ -1337,6 +1339,22 @@
           "delete",
           "get",
           "update"
+        ]
+      },
+      "functions": []
+    },
+    "signalwire.security.webhook": {
+      "classes": {},
+      "functions": [
+        "validate_request",
+        "validate_webhook_signature"
+      ]
+    },
+    "signalwire.security.webhook_layer": {
+      "classes": {
+        "WebhookLayer": [
+          "__init__",
+          "with_url_base"
         ]
       },
       "functions": []
