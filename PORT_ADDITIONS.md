@@ -892,3 +892,10 @@ The Rust adapter projects free functions defined in `mod.rs` files under the mod
 
 signalwire.utils.mod.is_serverless_mode: rust-path-projection: Rust ships this as a free function in `signalwire/src/utils/mod.rs`; the Rust adapter emits the `mod` segment in the qualified path. Python's equivalent is `signalwire.utils.is_serverless_mode` and is functionally identical.
 signalwire.utils.url_validator._set_resolver: port-only test helper: Rust exposes a `_set_resolver` function so the audit harness can inject DNS-resolver mocks for url_validator tests; Python's equivalent test path patches the resolver via `unittest.mock.patch`.
+
+### Webhook signing-key getter / setter on AgentBase
+
+Rust adds an explicit `signing_key()` accessor and a `set_signing_key()` setter on AgentBase so callers can introspect or override the resolved Signing Key after construction. Python uses attribute access (`agent.signing_key = ...`) which doesn't show up as a method in the signature audit.
+
+signalwire.core.agent_base.AgentBase.set_signing_key: rust-explicit-setter — Rust exposes ``set_signing_key(Option<&str>)`` so callers can configure the webhook signature key after construction; Python relies on attribute assignment which doesn't surface as a method in the signature inventory.
+signalwire.core.agent_base.AgentBase.signing_key: rust-explicit-getter — Rust exposes ``signing_key() -> Option<&str>`` for the resolved Signing Key; Python uses attribute access (``agent.signing_key``) which the audit infrastructure doesn't model as a method.

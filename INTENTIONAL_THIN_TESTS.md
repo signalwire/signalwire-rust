@@ -88,3 +88,23 @@ constructors; the assertions live in the test functions that use them.
 - `tests/relay_mock_event_dispatch.rs:63` — bare_event_frame: builds a signalwire.event push body
 - `tests/relay_mock_outbound_call.rs:18` — phone_device: builds a `{"type":"phone","params":...}` shape
 - `tests/relay_mock_outbound_call.rs:22` — default_device: pre-canned phone_device for canned tests
+
+## tests/webhook_*.rs — webhook-validator test fixture helpers
+
+The three webhook test files (`webhook_validator.rs`,
+`webhook_middleware.rs`, `webhook_agent_base.rs`) use a small set of
+non-`#[test]` helpers to build canonical signing inputs and test
+fixtures. These are constructors / signers with no assertions of
+their own; the content-shaped assertions live in the `#[test]`
+functions that consume them.
+
+- `tests/webhook_validator.rs:36` — vector_b_params: builds the canonical Vector B param list (sorted-by-key concat input)
+- `tests/webhook_validator.rs:46` — vector_b_form_body: builds the wire-shape form-encoded body for Vector B
+- `tests/webhook_validator.rs:157` — b64_sig: HMAC-SHA1 base64 signer used by the URL port-normalization tests
+- `tests/webhook_middleware.rs:51` — HitCounter::count: returns the AtomicUsize hit count read by the assertions
+- `tests/webhook_middleware.rs:56` — echo_handler: axum handler that bumps the hit count and echoes the buffered body
+- `tests/webhook_middleware.rs:62` — build_router: assembles a Router with the WebhookLayer for each test
+- `tests/webhook_middleware.rs:69` — read_body: drains an axum response body into Vec<u8> for byte comparison
+- `tests/webhook_agent_base.rs:28` — make_agent: AgentBase factory parameterised by signing-key option
+- `tests/webhook_agent_base.rs:42` — auth_headers: builds a Basic-auth HashMap for the agent's check_auth gate
+- `tests/webhook_agent_base.rs:49` — hex_sig: Scheme-A HMAC-SHA1 hex signer for known url+body pairs

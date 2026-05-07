@@ -25,6 +25,16 @@ pub struct AgentOptions {
     pub auto_answer: bool,
     pub record_call: bool,
     pub use_pom: bool,
+    /// SignalWire Signing Key used to validate the
+    /// `X-SignalWire-Signature` header on incoming POST webhooks
+    /// (`POST /`, `POST /swaig`, `POST /post_prompt`).
+    ///
+    /// When `None`, the agent falls back to the
+    /// `SIGNALWIRE_SIGNING_KEY` environment variable. When neither is
+    /// set, the agent logs a prominent warning at startup and accepts
+    /// unsigned requests — see Python parity (`webhook_validator.py`,
+    /// reference at `signalwire-python/signalwire/signalwire/core/security/`).
+    pub signing_key: Option<String>,
 }
 
 impl AgentOptions {
@@ -39,6 +49,7 @@ impl AgentOptions {
             auto_answer: true,
             record_call: false,
             use_pom: true,
+            signing_key: None,
         }
     }
 }
@@ -141,6 +152,12 @@ pub struct AgentBase {
 
     // ── Proxy override ──────────────────────────────────────────────────
     manual_proxy_url: Option<String>,
+
+    // ── Webhook signature validation ────────────────────────────────────
+    /// Resolved signing key (from options, then env). `None` means
+    /// signature validation is disabled and a startup warning was
+    /// emitted. See `AgentOptions::signing_key`.
+    signing_key: Option<String>,
 }
 
 impl Clone for AgentBase {
@@ -195,6 +212,7 @@ impl Clone for AgentBase {
             context_builder: self.context_builder.clone(),
             skills: self.skills.clone(),
             manual_proxy_url: self.manual_proxy_url.clone(),
+            signing_key: self.signing_key.clone(),
         }
     }
 }
@@ -226,6 +244,23 @@ impl AgentBase {
             basic_auth_user: options.basic_auth_user,
             basic_auth_password: options.basic_auth_password,
         });
+
+        // Resolve the signing key: explicit option, then environment.
+        // When neither produces a non-empty value, log a prominent
+        // startup warning and continue without validation — matching
+        // Python's `[signalwire] webhook signature validation is disabled`
+        // banner.
+        let signing_key = options
+            .signing_key
+            .filter(|s| !s.is_empty())
+            .or_else(|| std::env::var("SIGNALWIRE_SIGNING_KEY").ok())
+            .filter(|s| !s.is_empty());
+
+        if signing_key.is_none() {
+            log::warn!(
+                "[signalwire] webhook signature validation is disabled — set AgentOptions::signing_key or SIGNALWIRE_SIGNING_KEY to enable"
+            );
+        }
 
         AgentBase {
             service,
@@ -264,6 +299,7 @@ impl AgentBase {
             context_builder: None,
             skills: Vec::new(),
             manual_proxy_url: None,
+            signing_key,
         }
     }
 
@@ -275,6 +311,21 @@ impl AgentBase {
     /// Access the underlying service mutably.
     pub fn service_mut(&mut self) -> &mut Service {
         &mut self.service
+    }
+
+    /// Return the signing key resolved from `AgentOptions::signing_key`
+    /// or the `SIGNALWIRE_SIGNING_KEY` environment variable. `None`
+    /// means signature validation is disabled.
+    pub fn signing_key(&self) -> Option<&str> {
+        self.signing_key.as_deref()
+    }
+
+    /// Set or clear the signing key after construction. Useful for
+    /// tests and dynamic-config flows. Pass an empty string or
+    /// `None`-equivalent to disable.
+    pub fn set_signing_key(&mut self, key: Option<&str>) -> &mut Self {
+        self.signing_key = key.map(|s| s.to_string()).filter(|s| !s.is_empty());
+        self
     }
 
     /// Mint a per-call SWAIG-function token via the agent's SessionManager.
@@ -1239,6 +1290,21 @@ impl AgentBase {
             return (401, resp_headers, "Unauthorized".to_string());
         }
 
+        // Webhook signature validation. Mounted on POSTs to the
+        // signed routes (`/`, `/swaig`, `/post_prompt`) when a
+        // signing key is configured. Unsigned / invalid requests are
+        // rejected with 403; signed-and-valid fall through to the
+        // normal dispatch.
+        if method.eq_ignore_ascii_case("POST")
+            && matches!(sub_path.as_str(), "/" | "" | "/swaig" | "/post_prompt")
+        {
+            if let Some(ref key) = self.signing_key {
+                if !self.verify_request_signature(key, headers, path, body) {
+                    return json_response(403, &json!({"error": "Invalid signature"}));
+                }
+            }
+        }
+
         // Parse body
         let request_data: Option<Value> = if !body.is_empty() {
             serde_json::from_str(body).ok()
@@ -1252,6 +1318,45 @@ impl AgentBase {
             "/post_prompt" => self.handle_post_prompt(&request_data, headers),
             _ => json_response(404, &json!({"error": "Not found"})),
         }
+    }
+
+    /// Validate the SignalWire signature header against the URL the
+    /// platform POSTed to and the raw body. Reconstructs the public
+    /// URL via `Service::get_proxy_url_base` plus the request path
+    /// (so `X-Forwarded-*` headers and `SWML_PROXY_URL_BASE` are
+    /// honored). Returns `false` for missing header, missing key
+    /// (which shouldn't happen — caller already checked), or any
+    /// validator error.
+    fn verify_request_signature(
+        &self,
+        signing_key: &str,
+        headers: &HashMap<String, String>,
+        path: &str,
+        raw_body: &str,
+    ) -> bool {
+        // Header lookup is case-insensitive in practice — try both.
+        let signature = headers
+            .get("X-SignalWire-Signature")
+            .or_else(|| headers.get("x-signalwire-signature"))
+            .or_else(|| headers.get("X-Twilio-Signature"))
+            .or_else(|| headers.get("x-twilio-signature"));
+        let signature = match signature {
+            Some(s) => s.as_str(),
+            None => return false,
+        };
+
+        let url_base = self.resolve_proxy_base(headers);
+        // Strip a trailing slash on the base so we don't double-up.
+        let base = url_base.trim_end_matches('/');
+        let full_url = format!("{}{}", base, path);
+
+        crate::security::webhook::validate_webhook_signature(
+            signing_key,
+            signature,
+            &full_url,
+            raw_body,
+        )
+        .unwrap_or(false)
     }
 
     /// Create a deep copy of this agent for per-request customisation.

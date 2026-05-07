@@ -235,6 +235,21 @@ def _collect_free_function_targets() -> set[tuple[str, str]]:
     return targets
 
 
+# Per-module rename for free-function paths. Rustdoc reports these
+# under their physical module path (e.g. ``signalwire::security::webhook``);
+# the Python reference lives under ``signalwire.core.security.webhook_validator``.
+# The audit pipeline projects the Rust path onto the Python canonical
+# path BEFORE the free_fn_targets lookup so canonical free functions
+# show up under the right module entry in port_signatures.json.
+FREE_FN_MODULE_RENAMES: dict[str, str] = {
+    # webhook signature validator — Rust splits validator and tower
+    # middleware across two modules; both project onto the Python
+    # canonical names so the cross-language audit lines up.
+    "signalwire.security.webhook": "signalwire.core.security.webhook_validator",
+    "signalwire.security.webhook_layer": "signalwire.core.security.webhook_middleware",
+}
+
+
 def _load_python_reference() -> dict:
     """Load the Python signatures inventory once for projection lookups.
 
@@ -447,6 +462,11 @@ def collect(rust_doc: dict, aliases: dict) -> tuple[dict, list]:
         # cares about path-rooted fns.
         target_module = ".".join(rust_path[:-1])
         target_function = rust_path[-1]
+        # Apply per-module rename before the free_fn_targets lookup.
+        # This is how Rust paths under ``signalwire.security.webhook``
+        # surface as Python-canonical
+        # ``signalwire.core.security.webhook_validator`` in the audit.
+        target_module = FREE_FN_MODULE_RENAMES.get(target_module, target_module)
         if (target_module, target_function) not in free_fn_targets:
             continue
         try:
