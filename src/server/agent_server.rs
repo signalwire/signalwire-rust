@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 use std::env;
 use std::fs;
-use std::io::Read as _;
 use std::path::PathBuf;
 use std::sync::Arc;
 

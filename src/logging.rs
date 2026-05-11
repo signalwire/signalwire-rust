@@ -1,5 +1,4 @@
 use std::env;
-use std::io::Write;
 use std::sync::Once;
 
 static INIT: Once = Once::new();

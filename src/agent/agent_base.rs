@@ -5,8 +5,9 @@ use serde_json::{json, Map, Value};
 
 use crate::contexts::ContextBuilder;
 use crate::security::SessionManager;
-use crate::swaig::FunctionResult;
 use crate::swml::service::{Service, ServiceOptions};
+#[cfg(test)]
+use crate::swaig::FunctionResult;
 
 // FunctionHandler and ToolDef are now declared on swml::Service so that
 // tools registered on Service-the-sidecar and AgentBase share storage.
@@ -1575,8 +1576,6 @@ impl AgentBase {
 
     /// Start a blocking HTTP server on the configured host:port.
     pub fn run(&self) {
-        use std::io::Read as _;
-
         let addr = format!("{}:{}", self.service.host(), self.service.port());
         let server = tiny_http::Server::http(&addr)
             .unwrap_or_else(|e| panic!("Failed to bind {}: {}", addr, e));

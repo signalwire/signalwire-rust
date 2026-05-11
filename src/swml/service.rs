@@ -462,6 +462,9 @@ impl Service {
         headers: &HashMap<String, String>,
         body: &str,
     ) -> (u16, HashMap<String, String>, String) {
+        self.logger
+            .info(&format!("incoming request: {} {}", method, path));
+
         // Health/ready: no auth
         if path == "/health" {
             return self.json_response(200, &serde_json::json!({"status": "healthy"}));
@@ -486,11 +489,17 @@ impl Service {
 
         let sub_path = match sub_path {
             Some(p) => p,
-            None => return self.json_response(404, &serde_json::json!({"error": "Not found"})),
+            None => {
+                self.logger
+                    .debug(&format!("path {} did not match route {}", path, self.route));
+                return self.json_response(404, &serde_json::json!({"error": "Not found"}));
+            }
         };
 
         // Auth required for everything under the route
         if !self.check_basic_auth(headers) {
+            self.logger
+                .warn(&format!("basic auth failed for {} {}", method, path));
             let mut resp_headers = HashMap::new();
             resp_headers.insert("Content-Type".to_string(), "text/plain".to_string());
             resp_headers.insert(
@@ -506,10 +515,22 @@ impl Service {
         // Parse body
         let request_data: Option<Value> = if !body.is_empty() {
             if body.len() > MAX_BODY_SIZE {
+                self.logger.warn(&format!(
+                    "request body {} bytes exceeds limit {}",
+                    body.len(),
+                    MAX_BODY_SIZE
+                ));
                 return self
                     .json_response(413, &serde_json::json!({"error": "Request body too large"}));
             }
-            serde_json::from_str(body).ok()
+            match serde_json::from_str(body) {
+                Ok(v) => Some(v),
+                Err(e) => {
+                    self.logger
+                        .debug(&format!("body JSON parse failed: {} ({} bytes)", e, body.len()));
+                    None
+                }
+            }
         } else {
             None
         };
@@ -716,6 +737,7 @@ impl Service {
         let function_name = match body.get("function").and_then(|v| v.as_str()) {
             Some(name) if !name.is_empty() => name,
             _ => {
+                self.logger.warn("/swaig POST missing function name");
                 return self.json_response(
                     400,
                     &serde_json::json!({"error": "Missing function name"}),
@@ -724,6 +746,10 @@ impl Service {
         };
 
         if !function_name_is_valid(function_name) {
+            self.logger.warn(&format!(
+                "/swaig rejected invalid function name: {:?}",
+                function_name
+            ));
             return self.json_response(
                 400,
                 &serde_json::json!({
@@ -731,6 +757,9 @@ impl Service {
                 }),
             );
         }
+
+        self.logger
+            .info(&format!("/swaig dispatch: function={}", function_name));
 
         // Extract args. Handle the platform's nested
         // `{argument: {parsed: [{...}], raw: "..."}}` shape and the flat
@@ -773,6 +802,8 @@ impl Service {
         match self.tools.get(function_name).and_then(|t| t.handler.as_ref()) {
             Some(handler) => {
                 let result = handler(&args, &raw_data);
+                self.logger
+                    .debug(&format!("/swaig dispatched: function={} ok", function_name));
                 self.json_response(200, &result.to_value())
             }
             None => {
@@ -786,6 +817,7 @@ impl Service {
                 } else {
                     format!("Function '{}' not found", function_name)
                 };
+                self.logger.warn(&format!("/swaig {}", msg));
                 self.json_response(200, &serde_json::json!({"response": msg}))
             }
         }
@@ -930,7 +962,10 @@ fn hex_encode(bytes: &[u8]) -> String {
     bytes.iter().map(|b| format!("{:02x}", b)).collect()
 }
 
-/// Build a Basic auth header value.
+/// Build a Basic auth header value. Test-only — Service consumes incoming
+/// Authorization headers via check_basic_auth and never builds outgoing
+/// ones in production code.
+#[cfg(test)]
 fn make_basic_auth(user: &str, pass: &str) -> String {
     let encoded = BASE64.encode(format!("{}:{}", user, pass));
     format!("Basic {}", encoded)

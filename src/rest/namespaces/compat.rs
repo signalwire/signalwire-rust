@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 
-use serde_json::{json, Value};
+#[cfg(test)]
+use serde_json::json;
+use serde_json::Value;
 
 use crate::rest::error::SignalWireRestError;
 use crate::rest::http_client::HttpClient;
