@@ -7,3 +7,7 @@ Cargo.lock
 .env
 .idea/
 .vscode/
+
+# Python audit-script bytecode (scripts/enumerate_*.py invocations)
+__pycache__/
+*.pyc
