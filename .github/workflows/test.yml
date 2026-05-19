@@ -10,6 +10,10 @@ name: Test
 # /tmp/signalwire-rust-mock-relay.lock backstops process-level
 # serialization but the in-runner threads also have to be serial.
 
+env:
+  # Opt into Node.js 24 ahead of GitHub's 2026-06-02 default switch.
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
 on:
   pull_request:
   push:
