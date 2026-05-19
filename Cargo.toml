@@ -1,6 +1,6 @@
 [package]
 name = "signalwire"
-version = "1.0.0"
+version = "1.1.0"
 edition = "2024"
 description = "SignalWire AI Agents SDK for Rust — build AI voice agents, control live calls over WebSocket, and manage resources over REST."
 license = "MIT"
