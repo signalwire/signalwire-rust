@@ -641,6 +641,57 @@ impl AgentBase {
         self
     }
 
+    /// Set (or replace) the per-language `params` dict on an already-added
+    /// language. Mirrors Python's `AIConfigMixin.set_language_params` —
+    /// engine-specific tuning (voice stability/similarity, model knobs,
+    /// etc.) can be attached after the language entry was created.
+    ///
+    /// Behavior, matching Python:
+    ///   - If `params` is a non-empty JSON object, store it under the
+    ///     `params` key on the matching language entry (replacing any
+    ///     prior value).
+    ///   - If `params` is an empty object (or any non-object value),
+    ///     remove the `params` key (treated as unset).
+    ///   - If no language with the given code exists, this is a no-op.
+    ///   - Returns `&mut Self` for chaining.
+    ///
+    /// Python parity: the per-language params are emitted as the language
+    /// object's `params` key in SWML and use snake_case wire shape.
+    pub fn set_language_params(&mut self, code: &str, params: Value) -> &mut Self {
+        for language in &mut self.languages {
+            if let Some(obj) = language.as_object_mut() {
+                if obj.get("code").and_then(|v| v.as_str()) == Some(code) {
+                    let non_empty = match &params {
+                        Value::Object(m) => !m.is_empty(),
+                        _ => false,
+                    };
+                    if non_empty {
+                        obj.insert("params".to_string(), params);
+                    } else {
+                        obj.remove("params");
+                    }
+                    break;
+                }
+            }
+        }
+        self
+    }
+
+    /// Read the per-language `params` dict for a previously-added
+    /// language. Mirrors Python's `AIConfigMixin.get_language_params`.
+    ///
+    /// Returns `Some(&Value)` (always a JSON object) when params were set,
+    /// `None` otherwise — including when the language code is unknown.
+    /// No error path.
+    pub fn get_language_params(&self, code: &str) -> Option<&Value> {
+        for language in &self.languages {
+            if language.get("code").and_then(|v| v.as_str()) == Some(code) {
+                return language.get("params");
+            }
+        }
+        None
+    }
+
     pub fn set_languages(&mut self, languages: Vec<Value>) -> &mut Self {
         self.languages = languages;
         self
@@ -1891,6 +1942,137 @@ mod tests {
         agent.add_language("English", "en-US", "Polly.Salli");
         agent.set_languages(vec![]);
         assert!(agent.languages.is_empty());
+    }
+
+    // -------------------------------------------------------------------
+    // Per-language params — mirrors Python's TestPerLanguageParams.
+    //
+    // Rust idiom difference: Python's `add_language(..., params=...)` keyword
+    // arg has no Rust equivalent (Rust doesn't support kwargs and the
+    // existing `add_language(name, code, voice)` signature is widely used).
+    // The functional parity is provided via the fluent
+    // `add_language(...).set_language_params(code, params)` chain. Tests
+    // that exercise the "inline params" path on the Python side are
+    // mirrored here as the equivalent two-call chain.
+    // -------------------------------------------------------------------
+
+    #[test]
+    fn test_add_language_then_set_params_attaches_params() {
+        let mut agent = AgentBase::new(default_options());
+        agent
+            .add_language("English", "en-US", "josh")
+            .set_language_params(
+                "en-US",
+                json!({"stability": 0.5, "similarity_boost": 0.75}),
+            );
+        assert_eq!(
+            agent.languages[0]["params"],
+            json!({"stability": 0.5, "similarity_boost": 0.75})
+        );
+    }
+
+    #[test]
+    fn test_add_language_without_params_omits_key() {
+        let mut agent = AgentBase::new(default_options());
+        agent.add_language("French", "fr-FR", "fr-FR-Neural2-A");
+        assert!(agent.languages[0].get("params").is_none());
+    }
+
+    #[test]
+    fn test_set_language_params_empty_object_omits_key() {
+        let mut agent = AgentBase::new(default_options());
+        agent.add_language("French", "fr-FR", "v");
+        agent.set_language_params("fr-FR", json!({}));
+        assert!(agent.languages[0].get("params").is_none());
+    }
+
+    #[test]
+    fn test_get_language_params_returns_set_dict() {
+        let mut agent = AgentBase::new(default_options());
+        agent
+            .add_language("English", "en-US", "v")
+            .set_language_params("en-US", json!({"a": 1}));
+        assert_eq!(agent.get_language_params("en-US"), Some(&json!({"a": 1})));
+    }
+
+    #[test]
+    fn test_get_language_params_returns_none_when_unset() {
+        let mut agent = AgentBase::new(default_options());
+        agent.add_language("English", "en-US", "v");
+        assert!(agent.get_language_params("en-US").is_none());
+    }
+
+    #[test]
+    fn test_get_language_params_returns_none_for_unknown_code() {
+        let agent = AgentBase::new(default_options());
+        assert!(agent.get_language_params("zh-CN").is_none());
+    }
+
+    #[test]
+    fn test_set_language_params_replaces_existing() {
+        let mut agent = AgentBase::new(default_options());
+        agent
+            .add_language("English", "en-US", "v")
+            .set_language_params("en-US", json!({"a": 1}))
+            .set_language_params("en-US", json!({"b": 2}));
+        assert_eq!(agent.get_language_params("en-US"), Some(&json!({"b": 2})));
+    }
+
+    #[test]
+    fn test_set_language_params_adds_when_unset() {
+        let mut agent = AgentBase::new(default_options());
+        agent.add_language("English", "en-US", "v");
+        agent.set_language_params("en-US", json!({"c": 3}));
+        assert_eq!(agent.get_language_params("en-US"), Some(&json!({"c": 3})));
+    }
+
+    #[test]
+    fn test_set_language_params_empty_dict_removes_key() {
+        let mut agent = AgentBase::new(default_options());
+        agent
+            .add_language("English", "en-US", "v")
+            .set_language_params("en-US", json!({"a": 1}));
+        agent.set_language_params("en-US", json!({}));
+        assert!(agent.get_language_params("en-US").is_none());
+        assert!(agent.languages[0].get("params").is_none());
+    }
+
+    #[test]
+    fn test_set_language_params_unknown_code_is_noop() {
+        let mut agent = AgentBase::new(default_options());
+        agent.add_language("English", "en-US", "v");
+        agent.set_language_params("zh-CN", json!({"a": 1}));
+        // The known language stays untouched.
+        assert!(agent.languages[0].get("params").is_none());
+        // No new languages were added.
+        assert_eq!(agent.languages.len(), 1);
+    }
+
+    #[test]
+    fn test_set_language_params_returns_self_for_chaining() {
+        let mut agent = AgentBase::new(default_options());
+        agent.add_language("English", "en-US", "v");
+        // Chain two setters together; the second only compiles when the
+        // first returns &mut Self.
+        agent
+            .set_language_params("en-US", json!({"a": 1}))
+            .set_language_params("en-US", json!({"b": 2}));
+        assert_eq!(agent.get_language_params("en-US"), Some(&json!({"b": 2})));
+    }
+
+    #[test]
+    fn test_set_language_params_emitted_in_ai_verb() {
+        // The per-language `params` key is wired into the SWML `languages`
+        // array unchanged — build_ai_verb clones `self.languages` on
+        // emission, so any object key (including `params`) flows through.
+        let mut agent = AgentBase::new(default_options());
+        agent
+            .add_language("English", "en-US", "josh")
+            .set_language_params("en-US", json!({"stability": 0.5}));
+        let ai = agent.build_ai_verb(&HashMap::new());
+        let lang0 = &ai["languages"][0];
+        assert_eq!(lang0["code"], "en-US");
+        assert_eq!(lang0["params"], json!({"stability": 0.5}));
     }
 
     #[test]

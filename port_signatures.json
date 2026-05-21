@@ -1157,6 +1157,20 @@
               ],
               "returns": "any"
             },
+            "get_language_params": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                },
+                {
+                  "name": "code",
+                  "type": "string",
+                  "required": true
+                }
+              ],
+              "returns": "optional<class:signalwire.value.Value>"
+            },
             "handle_request": {
               "params": [
                 {
@@ -1426,6 +1440,25 @@
                 {
                   "name": "fillers",
                   "type": "dict<string,dict<string,list<string>>>",
+                  "required": true
+                }
+              ],
+              "returns": "any"
+            },
+            "set_language_params": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                },
+                {
+                  "name": "code",
+                  "type": "string",
+                  "required": true
+                },
+                {
+                  "name": "params",
+                  "type": "class:signalwire.value.Value",
                   "required": true
                 }
               ],
