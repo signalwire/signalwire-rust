@@ -18,6 +18,9 @@ _Build AI voice agents, control live calls over WebSocket, and manage every Sign
 <a href="LICENSE"><img src="https://img.shields.io/badge/MIT-License-blue" alt="MIT License" /></a>
 <a href="https://github.com/signalwire/signalwire-rust" target="_blank"><img src="https://img.shields.io/github/stars/signalwire/signalwire-rust" alt="GitHub Stars" /></a>
 
+<a href="https://codespaces.new/signalwire/signalwire-rust" target="_blank"><img src="https://github.com/codespaces/badge.svg" alt="Open in GitHub Codespaces" /></a>
+<a href="https://replit.com/new/github/signalwire/signalwire-rust" target="_blank"><img src="https://replit.com/badge/github/signalwire/signalwire-rust" alt="Run on Replit" /></a>
+
 </div>
 
 ---

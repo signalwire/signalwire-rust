@@ -1,0 +1,5 @@
+run = "cargo check"
+entrypoint = "README.md"
+
+[nix]
+channel = "stable-24_05"

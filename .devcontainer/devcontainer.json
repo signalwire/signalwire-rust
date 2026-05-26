@@ -1,0 +1,9 @@
+{
+  "name": "signalwire-rust",
+  "image": "mcr.microsoft.com/devcontainers/rust:1",
+  "postCreateCommand": "cargo check",
+  "forwardPorts": [3000, 8000],
+  "customizations": {
+    "vscode": { "extensions": ["rust-lang.rust-analyzer"] }
+  }
+}
