@@ -11,7 +11,7 @@ _Build AI voice agents, control live calls over WebSocket, and manage every Sign
 <p align="center">
   <a href="https://developer.signalwire.com/sdks/agents-sdk" target="_blank">Documentation</a> &middot;
   <a href="https://github.com/signalwire/signalwire-docs/issues/new/choose" target="_blank">Report an Issue</a> &middot;
-  <a href="https://crates.io/crates/signalwire" target="_blank">crates.io</a>
+  <a href="https://crates.io/crates/signalwire-sdk" target="_blank">crates.io</a>
 </p>
 
 <a href="https://discord.com/invite/F2WNYTNjuF" target="_blank"><img src="https://img.shields.io/badge/Discord%20Community-5865F2" alt="Discord" /></a>
@@ -34,8 +34,10 @@ _Build AI voice agents, control live calls over WebSocket, and manage every Sign
 | **REST Client** | Manage SignalWire resources over HTTP -- phone numbers, SIP endpoints, Fabric AI agents, video rooms, messaging, and 18+ API namespaces | [REST docs](rest/README.md) |
 
 ```bash
-cargo add signalwire
+cargo add signalwire-sdk
 ```
+
+> Published as `signalwire-sdk` on crates.io. The library import path is still `signalwire`, so `use signalwire::...` works unchanged.
 
 ---
 
@@ -194,13 +196,15 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-signalwire = "1"
+signalwire = { package = "signalwire-sdk", version = "1" }
 ```
+
+The crate is published as `signalwire-sdk` (the bare `signalwire` name is held by an unofficial wrapper); the `package =` rename keeps the import path as `use signalwire::...`.
 
 Or with `cargo`:
 
 ```bash
-cargo add signalwire
+cargo add signalwire-sdk
 ```
 
 Requires Rust edition 2024 (rustc 1.85+).

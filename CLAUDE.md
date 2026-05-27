@@ -6,7 +6,7 @@ This file provides guidance to Claude Code when working with code in this reposi
 
 This is the SignalWire AI Agents Rust SDK -- a Rust port of the Python SignalWire AI Agents framework. It provides tools for building, deploying, and managing AI agents as microservices that expose HTTP endpoints to interact with the SignalWire platform.
 
-**Package:** `signalwire` on [crates.io](https://crates.io/crates/signalwire)
+**Package:** `signalwire-sdk` on [crates.io](https://crates.io/crates/signalwire-sdk) (library import path stays `signalwire`; the bare `signalwire` crate name was held by an unofficial wrapper)
 
 ## Development Commands
 

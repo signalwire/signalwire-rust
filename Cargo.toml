@@ -1,5 +1,5 @@
 [package]
-name = "signalwire"
+name = "signalwire-sdk"
 version = "1.1.2"
 edition = "2024"
 description = "SignalWire AI Agents SDK for Rust — build AI voice agents, control live calls over WebSocket, and manage resources over REST."
@@ -7,6 +7,13 @@ license = "MIT"
 repository = "https://github.com/signalwire/signalwire-rust"
 keywords = ["signalwire", "ai", "agents", "swml", "voip"]
 categories = ["api-bindings", "web-programming"]
+
+# Package is published as `signalwire-sdk` because the `signalwire` crate
+# name was already claimed by an unofficial wrapper. The lib name is kept
+# as `signalwire` so users write `use signalwire::...` unchanged.
+[lib]
+name = "signalwire"
+path = "src/lib.rs"
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }
