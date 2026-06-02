@@ -148,6 +148,13 @@ impl SkillParams {
         self.params.get(key).and_then(|v| v.as_bool()).unwrap_or(false)
     }
 
+    /// Like [`get_bool`](Self::get_bool) but returns `default` when the key is
+    /// absent (or not a boolean). Needed for params whose documented default
+    /// is `true` — `get_bool` always falls back to `false`.
+    pub fn get_bool_or(&self, key: &str, default: bool) -> bool {
+        self.params.get(key).and_then(|v| v.as_bool()).unwrap_or(default)
+    }
+
     pub fn get_i64(&self, key: &str, default: i64) -> i64 {
         self.params.get(key).and_then(|v| v.as_i64()).unwrap_or(default)
     }
