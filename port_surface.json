@@ -1,6 +1,6 @@
 {
   "version": "1",
-  "generated_from": "signalwire-rust @ 29426e4c04de3a06a8766aefc653010c25f15a42",
+  "generated_from": "signalwire-rust @ 3da6186fb0afac02a439ad139515c2d997e92535",
   "modules": {
     "signalwire": {
       "classes": {
@@ -405,6 +405,7 @@
     "signalwire.logging": {
       "classes": {
         "Level": [
+          "all",
           "as_str",
           "from_str"
         ],
@@ -1572,6 +1573,31 @@
       "classes": {
         "WikipediaSearchSkill": [
           "__init__"
+        ]
+      },
+      "functions": []
+    },
+    "signalwire.swaig.media_enums": {
+      "classes": {
+        "Codec": [
+          "all",
+          "as_str",
+          "from_str"
+        ],
+        "RecordDirection": [
+          "all",
+          "as_str",
+          "from_str"
+        ],
+        "RecordFormat": [
+          "all",
+          "as_str",
+          "from_str"
+        ],
+        "TapDirection": [
+          "all",
+          "as_str",
+          "from_str"
         ]
       },
       "functions": []

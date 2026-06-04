@@ -403,6 +403,27 @@ signalwire.skills.skill_name.SkillName.as_str: rust_enum_idiom: returns the cano
 signalwire.skills.skill_name.SkillName.all: rust_enum_idiom: &'static slice of every built-in SkillName for exhaustive iteration (see SkillName).
 signalwire.skills.skill_name.SkillName.from_str: rust_enum_idiom: parse a wire name back to a SkillName, None for custom/third-party names (see SkillName).
 
+### Rust SWML media-action closed-set enums
+
+rust_enum_idiom: typed closed sets for FunctionResult media-action parameters that the Python reference validates against a fixed list and rejects with ValueError otherwise — record_call(format in [wav,mp3]; direction in [speak,listen,both]) and tap(direction in [speak,hear,both]; codec in [PCMU,PCMA]). FunctionResult.record_call/tap keep their &str params (Python parity); each enum plugs in via as_str()/AsRef<str>/Display so a typo Python only catches at runtime fails at the Rust call site instead. Wire/SWML output is byte-identical. record_call's direction (listen) and tap's direction (hear) are deliberately two enums mirroring the reference's two separate validation lists.
+
+signalwire.swaig.media_enums.RecordFormat: rust_enum_idiom: typed {wav,mp3} for FunctionResult.record_call(format) — mirrors Python's `format in ["wav","mp3"]` validation; record_call keeps &str, accepts this via as_str()/AsRef<str>. Wire output identical.
+signalwire.swaig.media_enums.RecordFormat.as_str: rust_enum_idiom: canonical wire string for the format (see RecordFormat) — the exact string record_call(&str) expects.
+signalwire.swaig.media_enums.RecordFormat.all: rust_enum_idiom: &'static slice of every RecordFormat for exhaustive iteration (see RecordFormat).
+signalwire.swaig.media_enums.RecordFormat.from_str: rust_enum_idiom: parse a wire string to a RecordFormat, None for anything the reference would reject (see RecordFormat).
+signalwire.swaig.media_enums.RecordDirection: rust_enum_idiom: typed {speak,listen,both} for FunctionResult.record_call(direction) — mirrors Python's `direction in ["speak","listen","both"]` validation. Distinct from TapDirection (uses hear, not listen). record_call keeps &str. Wire output identical.
+signalwire.swaig.media_enums.RecordDirection.as_str: rust_enum_idiom: canonical wire string for the direction (see RecordDirection) — the exact string record_call(&str) expects.
+signalwire.swaig.media_enums.RecordDirection.all: rust_enum_idiom: &'static slice of every RecordDirection for exhaustive iteration (see RecordDirection).
+signalwire.swaig.media_enums.RecordDirection.from_str: rust_enum_idiom: parse a wire string to a RecordDirection, None for anything the reference would reject — including `hear`, which is valid only for tap (see RecordDirection).
+signalwire.swaig.media_enums.TapDirection: rust_enum_idiom: typed {speak,hear,both} for FunctionResult.tap(direction) — mirrors Python's `valid_directions = ["speak","hear","both"]` validation. Distinct from RecordDirection (uses listen, not hear). tap keeps &str. Wire output identical.
+signalwire.swaig.media_enums.TapDirection.as_str: rust_enum_idiom: canonical wire string for the direction (see TapDirection) — the exact string tap(&str) expects.
+signalwire.swaig.media_enums.TapDirection.all: rust_enum_idiom: &'static slice of every TapDirection for exhaustive iteration (see TapDirection).
+signalwire.swaig.media_enums.TapDirection.from_str: rust_enum_idiom: parse a wire string to a TapDirection, None for anything the reference would reject — including `listen`, which is valid only for record_call (see TapDirection).
+signalwire.swaig.media_enums.Codec: rust_enum_idiom: typed {PCMU,PCMA} for FunctionResult.tap(codec) — mirrors Python's `valid_codecs = ["PCMU","PCMA"]` validation. tap keeps &str, accepts this via as_str()/AsRef<str>. Wire output identical (upper-case strings).
+signalwire.swaig.media_enums.Codec.as_str: rust_enum_idiom: canonical upper-case wire string for the codec (see Codec) — the exact string tap(&str) expects.
+signalwire.swaig.media_enums.Codec.all: rust_enum_idiom: &'static slice of every Codec for exhaustive iteration (see Codec).
+signalwire.swaig.media_enums.Codec.from_str: rust_enum_idiom: parse a wire string to a Codec (case-sensitive, mirroring the reference's literal list), None otherwise (see Codec).
+
 ### Rust SkillRegistry methods
 
 external_paths returns the directories registered via add_skill_directory (mirroring Python's _external_paths attribute). get_factory returns a closure-wrapped factory (Rust replacement for Python's get_skill / get_skill_class).
@@ -481,6 +502,7 @@ signalwire.skills.custom_skills.skill.CustomSkillsSkill: Rust ships custom_skill
 Rust ships an explicit Logger type and Level enum with associated helpers. Python uses the standard logging module with helper wrappers in signalwire.core.logging_config (which is in PORT_OMISSIONS.md).
 
 signalwire.logging.Level: Rust ships an explicit Logger type and Level enum with associated helpers. Python uses the standard logging module with helper wrappers in signalwire.core.logging_config (which is in PORT_OMISSIONS.md).
+signalwire.logging.Level.all: rust_enum_idiom: &'static slice of every Level (debug/info/warn/error) in ascending-severity order for exhaustive iteration. Python uses the stdlib logging module; this is the Rust enum's closed-set helper.
 signalwire.logging.Level.as_str: Rust ships an explicit Logger type and Level enum with associated helpers. Python uses the standard logging module with helper wrappers in signalwire.core.logging_config (which is in PORT_OMISSIONS.md).
 signalwire.logging.Level.from_str: Rust ships an explicit Logger type and Level enum with associated helpers. Python uses the standard logging module with helper wrappers in signalwire.core.logging_config (which is in PORT_OMISSIONS.md).
 signalwire.logging.Logger: Rust ships an explicit Logger type and Level enum with associated helpers. Python uses the standard logging module with helper wrappers in signalwire.core.logging_config (which is in PORT_OMISSIONS.md).

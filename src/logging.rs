@@ -1,9 +1,16 @@
 use std::env;
+use std::fmt;
 use std::sync::Once;
 
 static INIT: Once = Once::new();
 
-/// Log levels matching the SDK convention.
+/// Log levels matching the SDK convention — the closed set `debug` / `info` /
+/// `warn` / `error`, ordered by increasing severity.
+///
+/// `as_str()` returns the upper-case label used in emitted log lines
+/// (`"DEBUG"`); [`Display`](fmt::Display) and [`AsRef<str>`] agree with it.
+/// `from_str()` parses the lower-case names (case-insensitively) accepted by
+/// `SIGNALWIRE_LOG_LEVEL`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Level {
     Debug = 0,
@@ -30,6 +37,23 @@ impl Level {
             Level::Warn => "WARN",
             Level::Error => "ERROR",
         }
+    }
+
+    /// Every [`Level`], in ascending-severity order.
+    pub fn all() -> &'static [Level] {
+        &[Level::Debug, Level::Info, Level::Warn, Level::Error]
+    }
+}
+
+impl fmt::Display for Level {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl AsRef<str> for Level {
+    fn as_ref(&self) -> &str {
+        self.as_str()
     }
 }
 
@@ -260,6 +284,24 @@ mod tests {
         assert_eq!(Level::from_str("error"), Some(Level::Error));
         assert_eq!(Level::from_str("bogus"), None);
         assert_eq!(Level::from_str(""), None);
+    }
+
+    #[test]
+    fn test_level_display_and_as_ref_match_as_str() {
+        // The enum and its string label produce the identical result across
+        // Display / AsRef<str> / as_str(), and from_str() round-trips each
+        // (case-insensitively) back to the same variant.
+        assert_eq!(Level::all().len(), 4);
+        for lvl in Level::all() {
+            assert_eq!(lvl.to_string(), lvl.as_str());
+            assert_eq!(AsRef::<str>::as_ref(lvl), lvl.as_str());
+            // as_str() is UPPER-case; from_str() accepts it case-insensitively.
+            assert_eq!(Level::from_str(lvl.as_str()), Some(*lvl));
+        }
+        // Severity order is preserved by the derived Ord.
+        assert!(Level::Debug < Level::Info);
+        assert!(Level::Info < Level::Warn);
+        assert!(Level::Warn < Level::Error);
     }
 
     #[test]
