@@ -1,6 +1,6 @@
 {
   "version": "1",
-  "generated_from": "signalwire-rust @ a9b440af28cf7a82a8792ea2c5b797c7ad1dc30a",
+  "generated_from": "signalwire-rust @ fff481a9f22c1962c21a04d1df5fcf456f8cf861",
   "modules": {
     "signalwire": {
       "classes": {
@@ -17,9 +17,7 @@
         "add_skill_directory",
         "list_skills",
         "list_skills_with_params",
-        "register_skill",
-        "run_agent",
-        "start_agent"
+        "register_skill"
       ]
     },
     "signalwire.agent.agent_base": {
@@ -115,6 +113,7 @@
           "enable_sip_routing",
           "get_basic_auth_credentials",
           "get_contexts",
+          "get_language_params",
           "get_post_prompt",
           "get_prompt",
           "get_raw_prompt",
@@ -143,6 +142,7 @@
           "set_global_data",
           "set_internal_fillers",
           "set_internal_fillers_map",
+          "set_language_params",
           "set_languages",
           "set_native_functions",
           "set_param",
@@ -1497,6 +1497,7 @@
           "empty",
           "get_array",
           "get_bool",
+          "get_bool_or",
           "get_f64",
           "get_i64",
           "get_object",

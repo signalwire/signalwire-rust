@@ -37,8 +37,6 @@ pub use swml::service::Service as SWMLService;
 
 // ─── Top-level helpers (mirror Python's `signalwire/__init__.py`) ──────
 
-use std::collections::HashMap;
-
 /// Add a directory to the global skill search path.
 ///
 /// Mirrors `signalwire.add_skill_directory(path)`. In Rust the
@@ -51,37 +49,6 @@ use std::collections::HashMap;
 /// a directory.
 pub fn add_skill_directory(path: &str) -> Result<(), String> {
     skills::SkillRegistry::add_skill_directory(path)
-}
-
-/// Construct an [`AgentServer`] containing a single [`AgentBase`] and
-/// run it on the configured `host:port`. Blocking call.
-///
-/// Mirrors Python's `signalwire.start_agent(agent, host=..., port=...)`
-/// — the Python helper instantiates an AgentServer behind the scenes,
-/// registers the agent, and runs it. The Rust signature accepts an
-/// owned `AgentBase` (Rust's ownership model makes "move into the
-/// server, then run" the natural shape).
-pub fn start_agent(agent: AgentBase, host: Option<&str>, port: Option<u16>) {
-    let mut server = AgentServer::new(host, port);
-    if let Err(e) = server.register(agent, None) {
-        panic!("start_agent: failed to register: {}", e);
-    }
-    server.run(None, None);
-}
-
-/// Run the supplied [`AgentBase`] directly (without an
-/// [`AgentServer`]) on its configured host/port. Blocking call.
-///
-/// Mirrors Python's `signalwire.run_agent(agent, host=..., port=...)`.
-/// Useful when a caller wants the agent's own routes (`/`, `/swaig`,
-/// `/post_prompt`, `/health`) without the multi-agent wrapper.
-pub fn run_agent(agent: &AgentBase, _host: Option<&str>, _port: Option<u16>) {
-    // AgentBase delegates to its embedded Service for the HTTP loop.
-    // Service::run respects the configured host:port; we accept the
-    // host/port arguments for signature parity but currently honor the
-    // values supplied at construction.
-    let _ = HashMap::<String, String>::new(); // suppress unused-import lint when no helpers are used
-    agent.run();
 }
 
 /// Sorted list of every registered skill name.

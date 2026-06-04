@@ -386,6 +386,7 @@ signalwire.skills.skill_base.SkillParams.__init__: Rust ships SkillParams + valu
 signalwire.skills.skill_base.SkillParams.empty: Rust ships SkillParams + value_to_map as typed helpers for parameter unpacking. Python uses Dict[str, Any] directly.
 signalwire.skills.skill_base.SkillParams.get_array: Rust ships SkillParams + value_to_map as typed helpers for parameter unpacking. Python uses Dict[str, Any] directly.
 signalwire.skills.skill_base.SkillParams.get_bool: Rust ships SkillParams + value_to_map as typed helpers for parameter unpacking. Python uses Dict[str, Any] directly.
+signalwire.skills.skill_base.SkillParams.get_bool_or: Rust ships SkillParams + value_to_map as typed helpers for parameter unpacking. Python uses Dict[str, Any] directly.
 signalwire.skills.skill_base.SkillParams.get_f64: Rust ships SkillParams + value_to_map as typed helpers for parameter unpacking. Python uses Dict[str, Any] directly.
 signalwire.skills.skill_base.SkillParams.get_i64: Rust ships SkillParams + value_to_map as typed helpers for parameter unpacking. Python uses Dict[str, Any] directly.
 signalwire.skills.skill_base.SkillParams.get_object: Rust ships SkillParams + value_to_map as typed helpers for parameter unpacking. Python uses Dict[str, Any] directly.
