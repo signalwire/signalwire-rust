@@ -1,6 +1,6 @@
 {
   "version": "1",
-  "generated_from": "signalwire-rust @ fff481a9f22c1962c21a04d1df5fcf456f8cf861",
+  "generated_from": "signalwire-rust @ 29426e4c04de3a06a8766aefc653010c25f15a42",
   "modules": {
     "signalwire": {
       "classes": {
@@ -554,6 +554,9 @@
           "denoise",
           "denoise_stop",
           "detect",
+          "detect_answering_machine",
+          "detect_digit",
+          "detect_fax",
           "disconnect",
           "dispatch_event",
           "echo_call",
@@ -570,6 +573,12 @@
           "pay",
           "play",
           "play_and_collect",
+          "play_audio",
+          "play_ringtone",
+          "play_silence",
+          "play_tts",
+          "prompt_audio",
+          "prompt_tts",
           "queue_enter",
           "queue_leave",
           "receive_fax",
@@ -650,7 +659,9 @@
           "unreceive"
         ]
       },
-      "functions": []
+      "functions": [
+        "ws_connect"
+      ]
     },
     "signalwire.relay.constants": {
       "classes": {},
@@ -1359,6 +1370,12 @@
       },
       "functions": []
     },
+    "signalwire.server.tls": {
+      "classes": {},
+      "functions": [
+        "bind_server"
+      ]
+    },
     "signalwire.serverless.adapter": {
       "classes": {
         "Adapter": [
@@ -1508,6 +1525,16 @@
       "functions": [
         "value_to_map"
       ]
+    },
+    "signalwire.skills.skill_name": {
+      "classes": {
+        "SkillName": [
+          "all",
+          "as_str",
+          "from_str"
+        ]
+      },
+      "functions": []
     },
     "signalwire.skills.spider.skill": {
       "classes": {

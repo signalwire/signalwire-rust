@@ -2268,6 +2268,36 @@ mod tests {
         assert_eq!(agent.list_skills().len(), 1);
     }
 
+    #[test]
+    fn test_add_skill_via_skill_name_enum_loads_identical_skill() {
+        use crate::skills::SkillName;
+
+        // The enum's as_str() is the canonical wire string.
+        assert_eq!(SkillName::Datetime.as_str(), "datetime");
+
+        // add_skill() driven by the typed enum loads the *identical* skill as
+        // the bare string: same bookkeeping entry AND the same SWAIG functions
+        // get registered (real behaviour, not just the name list).
+        let mut enum_agent = AgentBase::new(default_options());
+        enum_agent.add_skill(SkillName::Datetime.as_str(), json!({}));
+        assert!(enum_agent.has_skill("datetime")); // string lookup
+        assert!(enum_agent.has_skill(SkillName::Datetime.as_str())); // enum lookup — same skill
+        assert!(enum_agent.has_tool("get_current_time"));
+        assert!(enum_agent.has_tool("get_current_date"));
+
+        // Parity: the bare string still works identically (Python uses str).
+        let mut string_agent = AgentBase::new(default_options());
+        string_agent.add_skill("datetime", json!({}));
+
+        // Both paths produce the same loaded-skill set and the same tool set.
+        assert_eq!(enum_agent.list_skills(), string_agent.list_skills());
+        assert_eq!(enum_agent.list_tool_names(), string_agent.list_tool_names());
+
+        // remove_skill() accepts the enum's str too (mirrors PHP removeSkill).
+        enum_agent.remove_skill(SkillName::Datetime.as_str());
+        assert!(!enum_agent.has_skill("datetime"));
+    }
+
     // ── Web / Callbacks ──────────────────────────────────────────────────
 
     #[test]
