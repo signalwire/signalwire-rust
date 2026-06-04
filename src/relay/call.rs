@@ -350,6 +350,236 @@ impl Call {
     }
 
     // ------------------------------------------------------------------
+    // Typed audio / detect / prompt convenience wrappers
+    //
+    // Thin typed wrappers over the generic `play` / `detect` /
+    // `play_and_collect` actions above, mirroring the Python reference's
+    // `call.play_tts` / `call.detect_digit` / `call.prompt_tts` family.
+    // Each builds the EXACT RELAY media/params shape with serde_json and
+    // delegates to the matching generic so the emitted wire frame is
+    // byte-identical to hand-building the media dict.
+    //
+    // Required arguments are typed Rust parameters; the keyword-optional
+    // arguments (Python's `*, language=None, volume=None, ...`) ride in a
+    // trailing `opts: Value` JSON object — the Rust SDK's idiomatic
+    // **kwargs stand-in, consistent with every other Call command method.
+    // Only keys the caller actually supplies are copied onto the wire, so
+    // the only-provided-keys behavior matches Python exactly.
+    // ------------------------------------------------------------------
+
+    /// Play text-to-speech. Typed convenience over [`Call::play`].
+    ///
+    /// Wire shape: `play [{"type":"tts","params":{"text":...,language?,
+    /// gender?,voice?}}]` with an optional top-level `volume`.
+    /// `opts` may carry `language`, `gender`, `voice` (strings) and
+    /// `volume` (number).
+    pub fn play_tts(&self, text: &str, opts: Value) -> Arc<Action> {
+        let mut tts = serde_json::Map::new();
+        tts.insert("text".to_string(), Value::String(text.to_string()));
+        for key in ["language", "gender", "voice"] {
+            if let Some(v) = opts.get(key) {
+                tts.insert(key.to_string(), v.clone());
+            }
+        }
+        let mut params = serde_json::Map::new();
+        params.insert(
+            "play".to_string(),
+            serde_json::json!([{ "type": "tts", "params": Value::Object(tts) }]),
+        );
+        if let Some(vol) = opts.get("volume") {
+            params.insert("volume".to_string(), vol.clone());
+        }
+        self.play(Value::Object(params))
+    }
+
+    /// Play an audio file from a URL. Typed convenience over [`Call::play`].
+    ///
+    /// Wire shape: `play [{"type":"audio","params":{"url":...}}]` with an
+    /// optional top-level `volume` (read from `opts`).
+    pub fn play_audio(&self, url: &str, opts: Value) -> Arc<Action> {
+        let mut params = serde_json::Map::new();
+        params.insert(
+            "play".to_string(),
+            serde_json::json!([{ "type": "audio", "params": { "url": url } }]),
+        );
+        if let Some(vol) = opts.get("volume") {
+            params.insert("volume".to_string(), vol.clone());
+        }
+        self.play(Value::Object(params))
+    }
+
+    /// Play silence for `duration` seconds. Typed convenience over
+    /// [`Call::play`].
+    ///
+    /// Wire shape: `play [{"type":"silence","params":{"duration":...}}]`.
+    pub fn play_silence(&self, duration: f64) -> Arc<Action> {
+        self.play(serde_json::json!({
+            "play": [{ "type": "silence", "params": { "duration": duration } }]
+        }))
+    }
+
+    /// Play a named ringtone by country code. Typed convenience over
+    /// [`Call::play`].
+    ///
+    /// Wire shape: `play [{"type":"ringtone","params":{"name":...,
+    /// duration?}}]` with an optional top-level `volume`.
+    /// `opts` may carry `duration` and `volume` (numbers).
+    pub fn play_ringtone(&self, name: &str, opts: Value) -> Arc<Action> {
+        let mut rt = serde_json::Map::new();
+        rt.insert("name".to_string(), Value::String(name.to_string()));
+        if let Some(d) = opts.get("duration") {
+            rt.insert("duration".to_string(), d.clone());
+        }
+        let mut params = serde_json::Map::new();
+        params.insert(
+            "play".to_string(),
+            serde_json::json!([{ "type": "ringtone", "params": Value::Object(rt) }]),
+        );
+        if let Some(vol) = opts.get("volume") {
+            params.insert("volume".to_string(), vol.clone());
+        }
+        self.play(Value::Object(params))
+    }
+
+    /// Detect DTMF digits. Typed convenience over [`Call::detect`].
+    ///
+    /// Wire shape: `detect {"type":"digit","params":{digits?}}` with an
+    /// optional top-level `timeout`. `opts` may carry `digits` (string)
+    /// and `timeout` (number).
+    pub fn detect_digit(&self, opts: Value) -> Arc<Action> {
+        let mut detect_params = serde_json::Map::new();
+        if let Some(d) = opts.get("digits") {
+            detect_params.insert("digits".to_string(), d.clone());
+        }
+        let mut params = serde_json::Map::new();
+        params.insert(
+            "detect".to_string(),
+            serde_json::json!({ "type": "digit", "params": Value::Object(detect_params) }),
+        );
+        if let Some(t) = opts.get("timeout") {
+            params.insert("timeout".to_string(), t.clone());
+        }
+        self.detect(Value::Object(params))
+    }
+
+    /// Detect human vs answering machine (AMD). Typed convenience over
+    /// [`Call::detect`].
+    ///
+    /// Wire shape: `detect {"type":"machine","params":{...only-provided...}}`
+    /// with an optional top-level `timeout`. `opts` may carry any of
+    /// `initial_timeout`, `end_silence_timeout`, `machine_voice_threshold`,
+    /// `machine_words_threshold`, `detect_interruptions`,
+    /// `detect_message_end`, and `timeout`.
+    pub fn detect_answering_machine(&self, opts: Value) -> Arc<Action> {
+        let mut detect_params = serde_json::Map::new();
+        for key in [
+            "initial_timeout",
+            "end_silence_timeout",
+            "machine_voice_threshold",
+            "machine_words_threshold",
+            "detect_interruptions",
+            "detect_message_end",
+        ] {
+            if let Some(v) = opts.get(key) {
+                detect_params.insert(key.to_string(), v.clone());
+            }
+        }
+        let mut params = serde_json::Map::new();
+        params.insert(
+            "detect".to_string(),
+            serde_json::json!({ "type": "machine", "params": Value::Object(detect_params) }),
+        );
+        if let Some(t) = opts.get("timeout") {
+            params.insert("timeout".to_string(), t.clone());
+        }
+        self.detect(Value::Object(params))
+    }
+
+    /// Detect a fax tone (CED/CNG). Typed convenience over [`Call::detect`].
+    ///
+    /// Wire shape: `detect {"type":"fax","params":{tone?}}` with an optional
+    /// top-level `timeout`. `opts` may carry `tone` (string) and `timeout`
+    /// (number).
+    pub fn detect_fax(&self, opts: Value) -> Arc<Action> {
+        let mut detect_params = serde_json::Map::new();
+        if let Some(tone) = opts.get("tone") {
+            detect_params.insert("tone".to_string(), tone.clone());
+        }
+        let mut params = serde_json::Map::new();
+        params.insert(
+            "detect".to_string(),
+            serde_json::json!({ "type": "fax", "params": Value::Object(detect_params) }),
+        );
+        if let Some(t) = opts.get("timeout") {
+            params.insert("timeout".to_string(), t.clone());
+        }
+        self.detect(Value::Object(params))
+    }
+
+    /// Play TTS then collect input. Typed media over
+    /// [`Call::play_and_collect`].
+    ///
+    /// Wire shape: `play_and_collect [{"type":"tts","params":{"text":...,
+    /// language?,gender?,voice?}}]` with the given `collect` object and an
+    /// optional top-level `volume`. `opts` may carry `language`, `gender`,
+    /// `voice` (strings) and `volume` (number).
+    pub fn prompt_tts(&self, text: &str, collect: Value, opts: Value) -> Arc<Action> {
+        let mut tts = serde_json::Map::new();
+        tts.insert("text".to_string(), Value::String(text.to_string()));
+        for key in ["language", "gender", "voice"] {
+            if let Some(v) = opts.get(key) {
+                tts.insert(key.to_string(), v.clone());
+            }
+        }
+        let mut params = serde_json::Map::new();
+        params.insert(
+            "play".to_string(),
+            serde_json::json!([{ "type": "tts", "params": Value::Object(tts) }]),
+        );
+        params.insert("collect".to_string(), collect);
+        if let Some(vol) = opts.get("volume") {
+            params.insert("volume".to_string(), vol.clone());
+        }
+        self.play_and_collect(Value::Object(params))
+    }
+
+    /// Play an audio file then collect input. Typed media over
+    /// [`Call::play_and_collect`].
+    ///
+    /// Wire shape: `play_and_collect [{"type":"audio","params":{"url":...}}]`
+    /// with the given `collect` object and an optional top-level `volume`.
+    /// `opts` may carry `volume` (number).
+    pub fn prompt_audio(&self, url: &str, collect: Value, opts: Value) -> Arc<Action> {
+        let mut params = serde_json::Map::new();
+        params.insert(
+            "play".to_string(),
+            serde_json::json!([{ "type": "audio", "params": { "url": url } }]),
+        );
+        params.insert("collect".to_string(), collect);
+        if let Some(vol) = opts.get("volume") {
+            params.insert("volume".to_string(), vol.clone());
+        }
+        self.play_and_collect(Value::Object(params))
+    }
+
+    // ------------------------------------------------------------------
+    // State-wait convenience (wait_for_answered / wait_for_ringing /
+    // wait_for_ending) is intentionally NOT implemented.
+    //
+    // Python's wait_for_* helpers are built on a generic async
+    // `Call.wait_for(event_type, predicate)` event-bus primitive that
+    // suspends a coroutine until a matching `calling.call.state` event
+    // arrives. The Rust Call deliberately has no such async wait
+    // primitive (see PORT_OMISSIONS.md for `Call.wait_for` /
+    // `Call.wait_for_ended`): it is a synchronous command surface, and
+    // state observation is done through `Call::on` callbacks
+    // (register_event_callback) which fire as state events are
+    // dispatched. With no `wait_for` to short-circuit against, the three
+    // state waiters have nothing to delegate to, so they are documented
+    // as surface omissions in PORT_OMISSIONS.md rather than stubbed.
+    // ------------------------------------------------------------------
+
+    // ------------------------------------------------------------------
     // Private helpers
     // ------------------------------------------------------------------
 
@@ -704,6 +934,176 @@ mod tests {
         let call = make_call();
         let action = call.play_and_collect(json!({}));
         assert_eq!(action.stop_method(), "calling.collect.stop");
+    }
+
+    // -- Typed convenience wrapper tests (built media/params shapes) --
+
+    /// Pull the single command a convenience wrapper recorded.
+    fn one_built(call: &Call, expect_method: &str) -> Value {
+        let cmds = call.sent_commands.lock().unwrap();
+        assert_eq!(cmds.len(), 1, "expected exactly one built command");
+        assert_eq!(cmds[0].0, expect_method);
+        cmds[0].1.clone()
+    }
+
+    #[test]
+    fn test_play_tts_builds_tts_media() {
+        let call = make_call();
+        let action = call.play_tts(
+            "Hi there",
+            json!({"language": "en-US", "gender": "male", "voice": "spore", "volume": -2.0}),
+        );
+        assert_eq!(action.stop_method(), "calling.play.stop");
+        let p = one_built(&call, "calling.play");
+        let media = &p["play"][0];
+        assert_eq!(media["type"], "tts");
+        assert_eq!(media["params"]["text"], "Hi there");
+        assert_eq!(media["params"]["language"], "en-US");
+        assert_eq!(media["params"]["gender"], "male");
+        assert_eq!(media["params"]["voice"], "spore");
+        // volume is top-level, not inside the tts params.
+        assert_eq!(p["volume"], -2.0);
+        assert!(media["params"].get("volume").is_none());
+    }
+
+    #[test]
+    fn test_play_tts_omits_unset_optionals() {
+        let call = make_call();
+        call.play_tts("Bare", json!({}));
+        let p = one_built(&call, "calling.play");
+        let params = &p["play"][0]["params"];
+        assert_eq!(params["text"], "Bare");
+        assert!(params.get("language").is_none());
+        assert!(params.get("gender").is_none());
+        assert!(params.get("voice").is_none());
+        assert!(p.get("volume").is_none());
+    }
+
+    #[test]
+    fn test_play_audio_builds_audio_media() {
+        let call = make_call();
+        call.play_audio("https://x/a.mp3", json!({"volume": 1.5}));
+        let p = one_built(&call, "calling.play");
+        assert_eq!(p["play"][0]["type"], "audio");
+        assert_eq!(p["play"][0]["params"]["url"], "https://x/a.mp3");
+        assert_eq!(p["volume"], 1.5);
+    }
+
+    #[test]
+    fn test_play_silence_builds_silence_media() {
+        let call = make_call();
+        call.play_silence(3.0);
+        let p = one_built(&call, "calling.play");
+        assert_eq!(p["play"][0]["type"], "silence");
+        assert_eq!(p["play"][0]["params"]["duration"], 3.0);
+    }
+
+    #[test]
+    fn test_play_ringtone_builds_ringtone_media() {
+        let call = make_call();
+        call.play_ringtone("us", json!({"duration": 5.0, "volume": -1.0}));
+        let p = one_built(&call, "calling.play");
+        assert_eq!(p["play"][0]["type"], "ringtone");
+        assert_eq!(p["play"][0]["params"]["name"], "us");
+        assert_eq!(p["play"][0]["params"]["duration"], 5.0);
+        assert_eq!(p["volume"], -1.0);
+    }
+
+    #[test]
+    fn test_play_ringtone_omits_unset_duration() {
+        let call = make_call();
+        call.play_ringtone("de", json!({}));
+        let p = one_built(&call, "calling.play");
+        assert_eq!(p["play"][0]["params"]["name"], "de");
+        assert!(p["play"][0]["params"].get("duration").is_none());
+        assert!(p.get("volume").is_none());
+    }
+
+    #[test]
+    fn test_detect_digit_builds_digit_detect() {
+        let call = make_call();
+        let action = call.detect_digit(json!({"digits": "42", "timeout": 10.0}));
+        assert_eq!(action.stop_method(), "calling.detect.stop");
+        let p = one_built(&call, "calling.detect");
+        assert_eq!(p["detect"]["type"], "digit");
+        assert_eq!(p["detect"]["params"]["digits"], "42");
+        assert_eq!(p["timeout"], 10.0);
+    }
+
+    #[test]
+    fn test_detect_digit_empty_params() {
+        let call = make_call();
+        call.detect_digit(json!({}));
+        let p = one_built(&call, "calling.detect");
+        assert_eq!(p["detect"]["type"], "digit");
+        assert!(p["detect"]["params"].as_object().unwrap().is_empty());
+        assert!(p.get("timeout").is_none());
+    }
+
+    #[test]
+    fn test_detect_answering_machine_only_provided_keys() {
+        let call = make_call();
+        call.detect_answering_machine(json!({
+            "initial_timeout": 5.0,
+            "machine_words_threshold": 6,
+            "detect_message_end": false,
+            "timeout": 25.0,
+        }));
+        let p = one_built(&call, "calling.detect");
+        assert_eq!(p["detect"]["type"], "machine");
+        let dp = p["detect"]["params"].as_object().unwrap();
+        assert_eq!(dp["initial_timeout"], 5.0);
+        assert_eq!(dp["machine_words_threshold"], 6);
+        assert_eq!(dp["detect_message_end"], false);
+        assert!(!dp.contains_key("end_silence_timeout"));
+        assert!(!dp.contains_key("machine_voice_threshold"));
+        assert!(!dp.contains_key("detect_interruptions"));
+        // timeout is the top-level detect() arg, not an AMD param.
+        assert!(!dp.contains_key("timeout"));
+        assert_eq!(p["timeout"], 25.0);
+    }
+
+    #[test]
+    fn test_detect_fax_builds_fax_detect() {
+        let call = make_call();
+        call.detect_fax(json!({"tone": "CNG"}));
+        let p = one_built(&call, "calling.detect");
+        assert_eq!(p["detect"]["type"], "fax");
+        assert_eq!(p["detect"]["params"]["tone"], "CNG");
+        assert!(p.get("timeout").is_none());
+    }
+
+    #[test]
+    fn test_prompt_tts_builds_tts_media_plus_collect() {
+        let call = make_call();
+        let action = call.prompt_tts(
+            "Pick one",
+            json!({"digits": {"max": 1}}),
+            json!({"voice": "spore", "volume": 0.5}),
+        );
+        assert_eq!(action.stop_method(), "calling.collect.stop");
+        let p = one_built(&call, "calling.play_and_collect");
+        assert_eq!(p["play"][0]["type"], "tts");
+        assert_eq!(p["play"][0]["params"]["text"], "Pick one");
+        assert_eq!(p["play"][0]["params"]["voice"], "spore");
+        assert_eq!(p["collect"]["digits"]["max"], 1);
+        assert_eq!(p["volume"], 0.5);
+    }
+
+    #[test]
+    fn test_prompt_audio_builds_audio_media_plus_collect() {
+        let call = make_call();
+        call.prompt_audio(
+            "https://x/p.wav",
+            json!({"speech": {"end_silence_timeout": 1}}),
+            json!({}),
+        );
+        let p = one_built(&call, "calling.play_and_collect");
+        assert_eq!(p["play"][0]["type"], "audio");
+        assert_eq!(p["play"][0]["params"]["url"], "https://x/p.wav");
+        assert_eq!(p["collect"]["speech"]["end_silence_timeout"], 1);
+        // volume omitted when not supplied.
+        assert!(p.get("volume").is_none());
     }
 
     #[test]

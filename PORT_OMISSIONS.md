@@ -631,7 +631,10 @@ signalwire.relay.call.Call.echo: Python Call.echo helper; Rust Call exposes equi
 signalwire.relay.call.Call.pass_: Python Call.pass_ helper (reserved-word-wrapped 'pass'); Rust uses Call::pass_call to avoid the keyword collision
 signalwire.relay.call.Call.refer: Python Call.refer (SIP REFER); Rust delegates SIP refer via the underlying ReferAction surface
 signalwire.relay.call.Call.wait_for: Python Call event-bus helpers; Rust Call exposes register_event_callback for the same effect
+signalwire.relay.call.Call.wait_for_answered: Python state-wait helper built on the wait_for async primitive (which Rust omits); Rust Call is a synchronous command surface and observes call_state via register_event_callback, so there is no wait_for to short-circuit against
 signalwire.relay.call.Call.wait_for_ended: Python Call event-bus helpers; Rust Call exposes register_event_callback for the same effect
+signalwire.relay.call.Call.wait_for_ending: Python state-wait helper built on the wait_for async primitive (which Rust omits); Rust Call is a synchronous command surface and observes call_state via register_event_callback, so there is no wait_for to short-circuit against
+signalwire.relay.call.Call.wait_for_ringing: Python state-wait helper built on the wait_for async primitive (which Rust omits); Rust Call is a synchronous command surface and observes call_state via register_event_callback, so there is no wait_for to short-circuit against
 signalwire.relay.call.CollectAction.stop: Python CollectAction.stop; Rust delegates via the unified Action surface
 signalwire.relay.call.CollectAction.volume: Python CollectAction.volume; Rust delegates volume control via the unified Action surface
 signalwire.relay.call.DetectAction.__init__: Python DetectAction constructor; Rust constructs DetectAction internally during call.detect()
