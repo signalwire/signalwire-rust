@@ -865,7 +865,9 @@ impl Service {
             self.print_tool_registry_and_exit();
         }
         let addr = format!("{}:{}", self.host, self.port);
-        let server = tiny_http::Server::http(&addr)
+        // HTTP, or HTTPS when SWML_SSL_ENABLED + SWML_SSL_CERT_PATH/KEY_PATH are
+        // set (mirrors Python's SecurityConfig / uvicorn ssl_* contract).
+        let (server, _is_https) = crate::server::tls::bind_server(&addr)
             .unwrap_or_else(|e| panic!("Failed to bind {}: {}", addr, e));
 
         for mut request in server.incoming_requests() {

@@ -29,9 +29,24 @@ regex = "1"
 log = "0.4"
 env_logger = "0.11"
 chrono = "0.4"
-tiny_http = "0.12"
+# `ssl-rustls` enables `tiny_http::Server::https(addr, SslConfig{..})` so the
+# webhook / SWML server can serve real HTTPS (driven by SWML_SSL_ENABLED /
+# SWML_SSL_CERT_PATH / SWML_SSL_KEY_PATH, mirroring Python's uvicorn ssl_*).
+tiny_http = { version = "0.12", features = ["ssl-rustls"] }
 ureq = { version = "3.3", features = ["json"] }
-tungstenite = { version = "0.24", default-features = false, features = ["handshake"] }
+# `rustls-tls-webpki-roots` adds rustls so `wss://` actually works (the bare
+# `handshake` feature has NO TLS). The relay client trusts Mozilla roots by
+# default and, when SIGNALWIRE_RELAY_CA_FILE is set, a caller-supplied CA.
+tungstenite = { version = "0.24", default-features = false, features = ["handshake", "rustls-tls-webpki-roots"] }
+# Direct rustls handle (same 0.23 already in the tree via ureq/tungstenite,
+# with the `ring` provider) so the relay client can build a custom
+# `RootCertStore` / `ClientConfig` to trust a private CA over WSS.
+rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
+rustls-pki-types = "1"
+rustls-pemfile = "2"
+# `http::Uri` is re-exported by tungstenite; depend on it directly so the relay
+# client can compute the TLS/plain mode + default port for the custom-CA path.
+http = "1"
 url = "2"
 # Optional Tower middleware integration. Enabled by default so users on
 # axum / hyper get a drop-in webhook-validation Layer; opt out via

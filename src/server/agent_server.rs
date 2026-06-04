@@ -244,11 +244,14 @@ impl AgentServer {
         let bind_host = host.unwrap_or(self.host.as_str());
         let bind_port = port.unwrap_or(self.port);
         let addr = format!("{}:{}", bind_host, bind_port);
-        let server = tiny_http::Server::http(&addr)
+        // HTTP, or HTTPS when SWML_SSL_ENABLED + SWML_SSL_CERT_PATH/KEY_PATH are
+        // set (mirrors Python's SecurityConfig / uvicorn ssl_* contract).
+        let (server, is_https) = crate::server::tls::bind_server(&addr)
             .unwrap_or_else(|e| panic!("Failed to bind {}: {}", addr, e));
 
         self.logger.info(&format!(
-            "AgentServer running on http://{} ({} agent{})",
+            "AgentServer running on {}://{} ({} agent{})",
+            if is_https { "https" } else { "http" },
             addr,
             self.agents.len(),
             if self.agents.len() == 1 { "" } else { "s" }

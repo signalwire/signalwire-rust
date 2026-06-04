@@ -29,6 +29,112 @@ const HANDSHAKE_TIMEOUT: Duration = Duration::from_secs(10);
 /// plain `ws://`; production users get `wss://` with TLS-enabled features.
 type WsStream = WebSocket<MaybeTlsStream<TcpStream>>;
 
+/// WebSocket transport setup, including TLS for `wss://`.
+///
+/// The crate enables tungstenite's `rustls-tls-webpki-roots` feature, so
+/// `wss://` connections verify against the bundled Mozilla root set out of the
+/// box. rustls deliberately does NOT consult `SSL_CERT_FILE` or the OS trust
+/// store, so to trust a private / self-signed CA (e.g. the porting-sdk test CA
+/// for the WSS capability test, or a corporate proxy CA in production) the
+/// caller sets `SIGNALWIRE_RELAY_CA_FILE` to a PEM bundle. When set, we build a
+/// dedicated `rustls::ClientConfig` whose root store is *exactly* that CA and
+/// hand it to tungstenite as a custom `Connector` — real verification against a
+/// caller-chosen trust anchor, never `danger_accept_invalid_certs`.
+mod tls {
+    use std::net::TcpStream;
+    use std::sync::Arc;
+
+    use tungstenite::client::uri_mode;
+    use tungstenite::stream::{MaybeTlsStream, Mode};
+    use tungstenite::{client_tls_with_config, Connector};
+
+    use super::WsStream;
+
+    /// Env var pointing at a PEM CA bundle to trust for `wss://` instead of
+    /// (in addition to verifying against) the built-in webpki roots. Mirrors
+    /// the per-client custom-CA hook the Go pilot flagged as a follow-up;
+    /// here it is wired so the relay client can verify a private CA.
+    const CA_FILE_ENV: &str = "SIGNALWIRE_RELAY_CA_FILE";
+
+    /// Open a verified WebSocket to `url`.
+    ///
+    /// * `ws://`  -> plain TCP (the shared mock-relay audit path).
+    /// * `wss://` with no `SIGNALWIRE_RELAY_CA_FILE` -> rustls + webpki roots.
+    /// * `wss://` with `SIGNALWIRE_RELAY_CA_FILE` -> rustls verifying against
+    ///   *that* CA, via a custom `Connector::Rustls`.
+    pub fn ws_connect(url: &str) -> Result<WsStream, String> {
+        let ca_file = std::env::var(CA_FILE_ENV).ok().filter(|s| !s.is_empty());
+
+        // No custom CA: let tungstenite drive the connect with its default
+        // (webpki-roots) connector. This still performs full verification.
+        let Some(ca_file) = ca_file else {
+            let (ws, _resp) =
+                tungstenite::connect(url).map_err(|e| format!("connect {url}: {e}"))?;
+            return Ok(ws);
+        };
+
+        // Custom CA path: parse the URL, open the TCP stream ourselves, and
+        // wrap it with a rustls connector whose only trust anchor is `ca_file`.
+        let parsed = url::Url::parse(url).map_err(|e| format!("parse url {url}: {e}"))?;
+        let host = parsed
+            .host_str()
+            .ok_or_else(|| format!("url {url} has no host"))?
+            .to_string();
+        let mode = uri_mode(
+            &url.parse::<http::Uri>()
+                .map_err(|e| format!("parse uri {url}: {e}"))?,
+        )
+        .map_err(|e| format!("uri mode {url}: {e}"))?;
+        let port = parsed.port().unwrap_or(match mode {
+            Mode::Tls => 443,
+            Mode::Plain => 80,
+        });
+
+        let tcp = TcpStream::connect((host.as_str(), port))
+            .map_err(|e| format!("tcp connect {host}:{port}: {e}"))?;
+
+        let config = client_config_trusting(&ca_file)?;
+        let connector = Connector::Rustls(Arc::new(config));
+
+        let (ws, _resp) = client_tls_with_config(url, tcp, None, Some(connector))
+            .map_err(|e| format!("wss handshake {url}: {e}"))?;
+        // Sanity: a `wss://` url with a custom CA must have negotiated TLS.
+        debug_assert!(matches!(ws.get_ref(), MaybeTlsStream::Rustls(_)));
+        Ok(ws)
+    }
+
+    /// Build a `rustls::ClientConfig` whose root store contains *only* the
+    /// certificate(s) in the PEM file at `ca_path`. Uses the `ring` provider
+    /// explicitly (it is already in the dependency tree) rather than relying on
+    /// a process-default `CryptoProvider`, which the crate never installs.
+    fn client_config_trusting(ca_path: &str) -> Result<rustls::ClientConfig, String> {
+        let pem = std::fs::read(ca_path)
+            .map_err(|e| format!("read CA file {ca_path}: {e}"))?;
+        let mut reader = std::io::BufReader::new(pem.as_slice());
+
+        let mut roots = rustls::RootCertStore::empty();
+        let mut added = 0usize;
+        for cert in rustls_pemfile::certs(&mut reader) {
+            let cert = cert.map_err(|e| format!("parse CA pem {ca_path}: {e}"))?;
+            roots
+                .add(cert)
+                .map_err(|e| format!("add CA cert from {ca_path}: {e}"))?;
+            added += 1;
+        }
+        if added == 0 {
+            return Err(format!("no certificates found in CA file {ca_path}"));
+        }
+
+        let provider = Arc::new(rustls::crypto::ring::default_provider());
+        let config = rustls::ClientConfig::builder_with_provider(provider)
+            .with_safe_default_protocol_versions()
+            .map_err(|e| format!("rustls protocol versions: {e}"))?
+            .with_root_certificates(roots)
+            .with_no_client_auth();
+        Ok(config)
+    }
+}
+
 /// Callback type for inbound call handler.
 pub type OnCallHandler = Box<dyn Fn(Arc<Call>, &Event) + Send + Sync>;
 
@@ -185,18 +291,23 @@ impl Client {
         let endpoint_host = host_override.as_deref().unwrap_or(self.host.as_str());
         let url = format!("{}://{}{}", scheme, endpoint_host, RELAY_PATH);
 
-        let (ws_stream, _resp) = tungstenite::connect(&url)
+        let ws_stream = tls::ws_connect(&url)
             .map_err(|e| format!("WS connect to {}: {}", url, e))?;
 
         // Set a short read timeout on the underlying TCP stream so the
         // reader thread can periodically check the closing flag and the
         // outbound write channel without blocking forever on read().
-        // Plain (`ws://`) is the audit-fixture path; if the build was
-        // compiled with a TLS feature the runtime variant is whichever
-        // one tungstenite picked, and we fall through to a no-op (the
-        // reader thread still makes progress on inbound data).
-        if let MaybeTlsStream::Plain(s) = ws_stream.get_ref() {
-            let _ = s.set_read_timeout(Some(Duration::from_millis(100)));
+        // `ws://` yields a Plain stream; `wss://` (rustls enabled) yields a
+        // Rustls stream whose `.sock` is the same TcpStream — set the timeout
+        // on whichever socket is live so the reader loop stays responsive.
+        match ws_stream.get_ref() {
+            MaybeTlsStream::Plain(s) => {
+                let _ = s.set_read_timeout(Some(Duration::from_millis(100)));
+            }
+            MaybeTlsStream::Rustls(s) => {
+                let _ = s.sock.set_read_timeout(Some(Duration::from_millis(100)));
+            }
+            _ => {}
         }
 
         // Wire the write side: outbound `send()` calls push frames here;

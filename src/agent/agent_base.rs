@@ -1626,9 +1626,13 @@ impl AgentBase {
     }
 
     /// Start a blocking HTTP server on the configured host:port.
+    ///
+    /// Serves HTTPS instead when `SWML_SSL_ENABLED` is set together with
+    /// `SWML_SSL_CERT_PATH` / `SWML_SSL_KEY_PATH` (mirrors Python's
+    /// `SecurityConfig` / uvicorn `ssl_*` contract).
     pub fn run(&self) {
         let addr = format!("{}:{}", self.service.host(), self.service.port());
-        let server = tiny_http::Server::http(&addr)
+        let (server, _is_https) = crate::server::tls::bind_server(&addr)
             .unwrap_or_else(|e| panic!("Failed to bind {}: {}", addr, e));
 
         for mut request in server.incoming_requests() {

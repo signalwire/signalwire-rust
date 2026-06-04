@@ -39,13 +39,44 @@ impl Default for UreqTransport {
 
 impl UreqTransport {
     pub fn new() -> Self {
-        let agent: ureq::Agent = ureq::Agent::config_builder()
+        let mut builder = ureq::Agent::config_builder()
             .timeout_global(Some(std::time::Duration::from_secs(30)))
-            .http_status_as_error(false)
-            .build()
-            .into();
+            .http_status_as_error(false);
+
+        // ureq verifies against the bundled webpki (Mozilla) roots by default,
+        // and — like all rustls users — ignores SSL_CERT_FILE / the OS store.
+        // To trust a private / self-signed CA over HTTPS (e.g. the porting-sdk
+        // test CA, or a corporate proxy CA), set SIGNALWIRE_REST_CA_FILE to a
+        // PEM bundle; we load it as the *only* trust anchor. Real verification
+        // against a caller-chosen CA — never disabled / accept-invalid.
+        if let Some(tls_config) = custom_ca_tls_config() {
+            builder = builder.tls_config(tls_config);
+        }
+
+        let agent: ureq::Agent = builder.build().into();
         UreqTransport { agent }
     }
+}
+
+/// Build a ureq `TlsConfig` trusting *only* the PEM CA bundle named by
+/// `SIGNALWIRE_REST_CA_FILE`, or `None` when the env var is unset/empty (the
+/// default webpki-roots path). Panics with a clear message if the file is set
+/// but unreadable / contains no certificate — a misconfigured CA should fail
+/// loudly, not silently fall back to the wrong trust store.
+fn custom_ca_tls_config() -> Option<ureq::tls::TlsConfig> {
+    let ca_path = std::env::var("SIGNALWIRE_REST_CA_FILE")
+        .ok()
+        .filter(|s| !s.is_empty())?;
+    let pem = std::fs::read(&ca_path)
+        .unwrap_or_else(|e| panic!("read SIGNALWIRE_REST_CA_FILE {ca_path}: {e}"));
+    let cert = ureq::tls::Certificate::from_pem(&pem)
+        .unwrap_or_else(|e| panic!("parse SIGNALWIRE_REST_CA_FILE {ca_path}: {e}"));
+    let root_certs = ureq::tls::RootCerts::new_with_certs(&[cert]);
+    Some(
+        ureq::tls::TlsConfig::builder()
+            .root_certs(root_certs)
+            .build(),
+    )
 }
 
 impl HttpTransport for UreqTransport {

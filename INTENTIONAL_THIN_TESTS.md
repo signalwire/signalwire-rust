@@ -108,3 +108,34 @@ functions that consume them.
 - `tests/webhook_agent_base.rs:28` — make_agent: AgentBase factory parameterised by signing-key option
 - `tests/webhook_agent_base.rs:42` — auth_headers: builds a Basic-auth HashMap for the agent's check_auth gate
 - `tests/webhook_agent_base.rs:49` — hex_sig: Scheme-A HMAC-SHA1 hex signer for known url+body pairs
+
+## tests/common/tls_support.rs — TLS capability-test harness, not test functions
+
+Shared plumbing for the three TLS capability tests (`tls_wss_relay.rs`,
+`tls_https_rest.rs`, `tls_https_server.rs`): cert discovery, `--tls` mock
+spawning on dedicated ports, a CA-trusting HTTPS agent, and a cross-binary
+`flock`. Same plumbing-vs-tests distinction as the other `common/` helpers —
+these aren't `#[test]` items; the content-shaped assertions (real `wss://` /
+`https://` round-trips plus untrusted-CA negative controls) live in the three
+`tls_*` test files. The flagged helpers below have no assertion of their own.
+
+- `tests/common/tls_support.rs:53` — certs_dir: walks to porting-sdk/test_harness/tls and runs the idempotent gen_certs.sh
+- `tests/common/tls_support.rs:79` — ca_file: returns the certs/ca.crt path
+- `tests/common/tls_support.rs:111` — discover_harness_pkg: walks parents looking for `porting-sdk/test_harness/<name>`
+- `tests/common/tls_support.rs:134` — TlsMockProc::drop: kills + reaps the spawned `--tls` mock subprocess
+- `tests/common/tls_support.rs:179` — spawn_tls_mock_relay: starts `mock_relay --tls` on the dedicated WS/HTTP ports, waits for health
+- `tests/common/tls_support.rs:205` — spawn_tls_mock_signalwire: starts `mock_signalwire --tls` on the dedicated port, waits for HTTPS health
+- `tests/common/tls_support.rs:280` — RelayTlsLock::acquire: opens /tmp lock file and runs flock(LOCK_EX); panics on failure
+- `tests/common/tls_support.rs:301` — RelayTlsLock::drop: explicit flock(LOCK_UN) on file descriptor
+- `tests/common/tls_support.rs:312` — extern setsid: C binding for session detach
+- `tests/common/tls_support.rs:315` — libc_setsid: thin wrapper around setsid
+
+## tests/tls_*.rs — TLS capability-test file helpers
+
+A couple of one-off helpers local to the TLS test files read the mock journal
+over the control plane. They panic on transport/decode failure but carry no
+assertion of their own; the content-shaped assertions (protocol string set,
+`signalwire.connect` recorded, untrusted-CA rejection) live in the `#[test]`
+functions that consume them.
+
+- `tests/tls_wss_relay.rs:128` — journal_recv_methods: GETs the plain-HTTP `/__mock__/journal` and returns the recv-direction method names
