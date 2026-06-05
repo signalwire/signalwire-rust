@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use serde_json::{json, Map, Value};
 
 use crate::swaig::media_enums::{Codec, MediaArg, RecordDirection, RecordFormat, TapDirection};
@@ -10,6 +8,84 @@ use crate::swaig::media_enums::{Codec, MediaArg, RecordDirection, RecordFormat, 
 fn render_list(values: &[&str]) -> String {
     let items: Vec<String> = values.iter().map(|v| format!("'{}'", v)).collect();
     format!("[{}]", items.join(", "))
+}
+
+/// A `Union[str, List[str]]` key argument for [`FunctionResult::remove_global_data`]
+/// and [`FunctionResult::remove_metadata`].
+///
+/// The Python reference accepts **either** a single key string **or** a list of
+/// keys and passes the value through *verbatim* — so a `str` emits a **bare
+/// string** (`{"unset_global_data": "plan"}`) and a `list` emits a **list**
+/// (`{"unset_global_data": ["plan", "chips"]}`). A bare `Vec<&str>` parameter
+/// cannot express the single-key bare-string form (it always wraps in a list),
+/// which is a real emission divergence. This enum restores parity: both call
+/// styles compile (`impl Into<KeysArg>`), and [`into_value`](KeysArg::into_value)
+/// yields the exact Python wire shape per arm.
+///
+/// ```
+/// use signalwire::swaig::FunctionResult;
+/// let mut fr = FunctionResult::new();
+/// fr.remove_global_data("plan");                 // -> {"unset_global_data": "plan"}
+/// let mut fr2 = FunctionResult::new();
+/// fr2.remove_global_data(vec!["plan", "chips"]);  // -> {"unset_global_data": ["plan","chips"]}
+/// ```
+///
+/// [`FunctionResult::remove_global_data`]: crate::swaig::FunctionResult::remove_global_data
+/// [`FunctionResult::remove_metadata`]: crate::swaig::FunctionResult::remove_metadata
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum KeysArg {
+    /// A single key — emits the bare key string (Python's `str` arm).
+    One(String),
+    /// A list of keys — emits the key array (Python's `List[str]` arm).
+    Many(Vec<String>),
+}
+
+impl KeysArg {
+    /// The JSON wire value for this argument: a bare string for [`One`](KeysArg::One),
+    /// an array for [`Many`](KeysArg::Many) — byte-identical to Python's
+    /// pass-through of its `Union[str, List[str]]` value.
+    pub fn into_value(self) -> Value {
+        match self {
+            KeysArg::One(s) => Value::String(s),
+            KeysArg::Many(v) => Value::Array(v.into_iter().map(Value::String).collect()),
+        }
+    }
+}
+
+impl From<&str> for KeysArg {
+    fn from(s: &str) -> Self {
+        KeysArg::One(s.to_string())
+    }
+}
+
+impl From<String> for KeysArg {
+    fn from(s: String) -> Self {
+        KeysArg::One(s)
+    }
+}
+
+impl From<&String> for KeysArg {
+    fn from(s: &String) -> Self {
+        KeysArg::One(s.clone())
+    }
+}
+
+impl From<Vec<&str>> for KeysArg {
+    fn from(v: Vec<&str>) -> Self {
+        KeysArg::Many(v.into_iter().map(str::to_string).collect())
+    }
+}
+
+impl From<Vec<String>> for KeysArg {
+    fn from(v: Vec<String>) -> Self {
+        KeysArg::Many(v)
+    }
+}
+
+impl From<&[&str]> for KeysArg {
+    fn from(v: &[&str]) -> Self {
+        KeysArg::Many(v.iter().map(|s| s.to_string()).collect())
+    }
 }
 
 /// Result returned from a SWAIG function handler.
@@ -223,10 +299,14 @@ impl FunctionResult {
         self
     }
 
-    /// Python: add_action("unset_global_data", keys) — value is the bare key
-    /// list (Python's `Union[str, List[str]]`); no `{"keys": ...}` wrapper.
-    pub fn remove_global_data(&mut self, keys: Vec<&str>) -> &mut Self {
-        self.actions.push(json!({"unset_global_data": keys}));
+    /// Python: add_action("unset_global_data", keys) — the value is the bare key
+    /// (Python's `Union[str, List[str]]`, passed through verbatim): a single key
+    /// emits the **bare string** (`"plan"`), a list emits the **array**
+    /// (`["plan", "chips"]`); no `{"keys": ...}` wrapper. Accepts both call
+    /// styles via `impl Into<KeysArg>` (`"plan"` or `vec!["plan", "chips"]`).
+    pub fn remove_global_data(&mut self, keys: impl Into<KeysArg>) -> &mut Self {
+        self.actions
+            .push(json!({"unset_global_data": keys.into().into_value()}));
         self
     }
 
@@ -235,10 +315,14 @@ impl FunctionResult {
         self
     }
 
-    /// Python: add_action("unset_meta_data", keys) — value is the bare key list;
-    /// no `{"keys": ...}` wrapper.
-    pub fn remove_metadata(&mut self, keys: Vec<&str>) -> &mut Self {
-        self.actions.push(json!({"unset_meta_data": keys}));
+    /// Python: add_action("unset_meta_data", keys) — the value is the bare key
+    /// (Python's `Union[str, List[str]]`, passed through verbatim): a single key
+    /// emits the **bare string** (`"token"`), a list emits the **array**
+    /// (`["token", "count"]`); no `{"keys": ...}` wrapper. Accepts both call
+    /// styles via `impl Into<KeysArg>`.
+    pub fn remove_metadata(&mut self, keys: impl Into<KeysArg>) -> &mut Self {
+        self.actions
+            .push(json!({"unset_meta_data": keys.into().into_value()}));
         self
     }
 
@@ -490,12 +574,19 @@ impl FunctionResult {
         self
     }
 
-    pub fn toggle_functions(&mut self, toggles: HashMap<String, bool>) -> &mut Self {
-        let formatted: Vec<Value> = toggles
-            .into_iter()
-            .map(|(name, active)| json!({"function": name, "active": active}))
-            .collect();
-        self.actions.push(json!({"toggle_functions": formatted}));
+    /// Enable/disable specific SWAIG functions.
+    ///
+    /// Mirrors the Python reference (`FunctionResult.toggle_functions`), which
+    /// takes a `List[Dict[str, Any]]` (each dict carries `function` + `active`,
+    /// plus any further keys) and passes it through verbatim via
+    /// `add_action("toggle_functions", function_toggles)`. The action value is
+    /// therefore the **ordered list as-is** — order is preserved and arbitrary
+    /// keys/values survive. A `HashMap<String, bool>` cannot express this (it
+    /// drops ordering and forbids extra keys / non-bool values), so the
+    /// parameter is the bare `Vec<Value>` list, exactly like `add_dynamic_hints`.
+    pub fn toggle_functions(&mut self, function_toggles: Vec<Value>) -> &mut Self {
+        self.actions
+            .push(json!({"toggle_functions": function_toggles}));
         self
     }
 
@@ -1425,6 +1516,19 @@ mod tests {
     }
 
     #[test]
+    fn test_remove_global_data_str_is_bare_string() {
+        // Python's `Union[str, List[str]]` str arm passes the value through
+        // VERBATIM, so a single key emits the BARE STRING — NOT a one-element
+        // list. (The earlier `Vec<&str>`-only signature wrongly wrapped it in a
+        // list; the cross-port emission differ caught that as `unset_global_data.str`.)
+        let mut fr = FunctionResult::new();
+        fr.remove_global_data("plan");
+        assert_eq!(action0(&fr), json!({"unset_global_data": "plan"}));
+        // It is a JSON string, not an array.
+        assert!(action0(&fr)["unset_global_data"].is_string());
+    }
+
+    #[test]
     fn test_set_metadata() {
         let mut fr = FunctionResult::new();
         fr.set_metadata(json!({"key1": "value1", "key2": 42}));
@@ -1439,6 +1543,15 @@ mod tests {
         let mut fr = FunctionResult::new();
         fr.remove_metadata(vec!["key1", "key2"]);
         assert_eq!(action0(&fr), json!({"unset_meta_data": ["key1", "key2"]}));
+    }
+
+    #[test]
+    fn test_remove_metadata_str_is_bare_string() {
+        // str arm -> bare string (Python Union[str, List[str]] verbatim).
+        let mut fr = FunctionResult::new();
+        fr.remove_metadata("token");
+        assert_eq!(action0(&fr), json!({"unset_meta_data": "token"}));
+        assert!(action0(&fr)["unset_meta_data"].is_string());
     }
 
     #[test]
@@ -1666,14 +1779,29 @@ mod tests {
 
     #[test]
     fn test_toggle_functions() {
+        // Python parity: toggle_functions takes a List[Dict] and passes it
+        // through verbatim, so the action value is the ORDERED list as-is —
+        // order preserved, arbitrary keys/values survive. (A HashMap<String,
+        // bool> would lose both; that was the latent emission bug the
+        // cross-port emission differ exposed.)
         let mut fr = FunctionResult::new();
-        let mut toggles = HashMap::new();
-        toggles.insert("get_weather".to_string(), true);
-        fr.toggle_functions(toggles);
+        fr.toggle_functions(vec![
+            json!({"function": "transfer", "active": false}),
+            json!({"function": "lookup", "active": true}),
+        ]);
+        // Whole-action equality pins the EXACT ordered shape (matches the
+        // emission_corpus `toggle_functions` oracle byte-for-byte).
+        assert_eq!(
+            action0(&fr),
+            json!({"toggle_functions": [
+                {"function": "transfer", "active": false},
+                {"function": "lookup", "active": true}
+            ]})
+        );
+        // Order is significant: first entry must be `transfer`, not `lookup`.
         let tf = action0(&fr)["toggle_functions"].as_array().unwrap().clone();
-        assert_eq!(tf.len(), 1);
-        assert_eq!(tf[0]["function"], "get_weather");
-        assert_eq!(tf[0]["active"], true);
+        assert_eq!(tf[0]["function"], "transfer");
+        assert_eq!(tf[1]["function"], "lookup");
     }
 
     #[test]

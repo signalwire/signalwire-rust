@@ -9,6 +9,7 @@
 #   2. signature regen (rustdoc + adapter)      — python adapter
 #   3. drift gate                               — porting-sdk diff_port_signatures.py
 #   4. no-cheat gate                            — porting-sdk audit_no_cheat_tests.py
+#   5. emission gate                            — porting-sdk diff_port_emission.py
 
 set -u
 set -o pipefail
@@ -79,6 +80,18 @@ run_gate "DRIFT" "diff_port_signatures vs python reference" \
 # Gate 4: no-cheat
 run_gate "NO-CHEAT" "audit_no_cheat_tests" \
     python3 "$PORTING_SDK_DIR/scripts/audit_no_cheat_tests.py" --root "$PORT_ROOT"
+
+# Gate 5: emission — byte-compare the SWAIG FunctionResult serialisation against
+# Python's to_dict() over the shared 81-entry corpus. The drift gate (Gate 3)
+# polices the SURFACE; this one polices the EMISSION (action shape/keys/values +
+# the to_dict() envelope), the bug class the §6 sweep proved is otherwise drift-0
+# and invisible to CI. Pure serialisation — no mock servers, no network; needs
+# only signalwire-python adjacent (already required) + the emit_corpus example.
+# The dump program is examples/emit_corpus.rs (cargo run --example emit_corpus).
+run_gate "EMISSION" "diff_port_emission vs python to_dict() oracle" \
+    python3 "$PORTING_SDK_DIR/scripts/diff_port_emission.py" \
+        --dump-cmd 'cargo run --quiet --example emit_corpus' \
+        --port-repo "$PORT_ROOT"
 
 if [ -z "$FAILED_GATES" ]; then
     echo "==> CI PASS"

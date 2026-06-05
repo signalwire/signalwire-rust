@@ -3230,7 +3230,7 @@
                 },
                 {
                   "name": "keys",
-                  "type": "list<string>",
+                  "type": "class:signalwire.keysarg.KeysArg",
                   "required": true
                 }
               ],
@@ -3244,7 +3244,7 @@
                 },
                 {
                   "name": "keys",
-                  "type": "list<string>",
+                  "type": "class:signalwire.keysarg.KeysArg",
                   "required": true
                 }
               ],
@@ -3692,8 +3692,8 @@
                   "kind": "self"
                 },
                 {
-                  "name": "toggles",
-                  "type": "dict<string,bool>",
+                  "name": "function_toggles",
+                  "type": "list<class:signalwire.value.Value>",
                   "required": true
                 }
               ],

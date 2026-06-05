@@ -1,6 +1,6 @@
 {
   "version": "1",
-  "generated_from": "signalwire-rust @ 3bcc999b6bea6409438b9d56628c5bcce98b03ca",
+  "generated_from": "signalwire-rust @ be474a9bd2ee9aebd3bcfa511f2b1d2785b784ac",
   "modules": {
     "signalwire": {
       "classes": {
@@ -1630,6 +1630,14 @@
       "classes": {
         "WikipediaSearchSkill": [
           "__init__"
+        ]
+      },
+      "functions": []
+    },
+    "signalwire.swaig.function_result": {
+      "classes": {
+        "KeysArg": [
+          "into_value"
         ]
       },
       "functions": []
