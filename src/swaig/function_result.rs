@@ -12,8 +12,9 @@ fn render_list(values: &[&str]) -> String {
 
 /// Result returned from a SWAIG function handler.
 ///
-/// Serialises to `{"response": "...", "action": [...], "post_process": true}` where
-/// `action` is omitted when empty and `post_process` is omitted when false.
+/// Serialises to match the Python reference's `to_dict()`: `response` is omitted when empty,
+/// `action` when empty, and `post_process` unless there are actions; an otherwise-empty result
+/// defaults to `{"response": "Action completed."}`.
 #[derive(Debug, Clone)]
 pub struct FunctionResult {
     response: String,
@@ -69,14 +70,26 @@ impl FunctionResult {
     /// - `post_process` is only included if `true`.
     pub fn to_value(&self) -> Value {
         let mut map = Map::new();
-        map.insert("response".to_string(), Value::String(self.response.clone()));
+        // response is omitted when empty (Python parity).
+        if !self.response.is_empty() {
+            map.insert("response".to_string(), Value::String(self.response.clone()));
+        }
 
         if !self.actions.is_empty() {
             map.insert("action".to_string(), Value::Array(self.actions.clone()));
         }
 
-        if self.post_process {
+        // post_process only matters when there are actions to execute.
+        if self.post_process && !self.actions.is_empty() {
             map.insert("post_process".to_string(), Value::Bool(true));
+        }
+
+        // Ensure at least one of response or action is present.
+        if map.is_empty() {
+            map.insert(
+                "response".to_string(),
+                Value::String("Action completed.".to_string()),
+            );
         }
 
         Value::Object(map)
@@ -1149,9 +1162,11 @@ mod tests {
 
     #[test]
     fn test_construction_default() {
+        // An otherwise-empty result defaults to {"response": "Action completed."}
+        // (Python to_dict parity), with no action/post_process keys.
         let fr = FunctionResult::new();
         let val = fr.to_value();
-        assert_eq!(val["response"], "");
+        assert_eq!(val["response"], "Action completed.");
         assert!(val.get("action").is_none());
         assert!(val.get("post_process").is_none());
     }
@@ -1183,6 +1198,26 @@ mod tests {
         let mut fr = FunctionResult::new();
         fr.set_post_process(false).add_action(json!({"x": 1}));
         assert!(fr.to_value().get("post_process").is_none());
+    }
+
+    #[test]
+    fn test_post_process_omitted_without_action() {
+        // post_process is dropped when there are no actions, even if set true
+        // (Python to_dict: `if self.post_process and self.action`).
+        let mut fr = FunctionResult::new();
+        fr.set_response("hi").set_post_process(true);
+        assert!(fr.to_value().get("post_process").is_none());
+    }
+
+    #[test]
+    fn test_empty_response_omitted_with_action() {
+        // response is omitted when empty but an action is present (Python parity:
+        // {"action": [...]} with no "response" key).
+        let mut fr = FunctionResult::new();
+        fr.add_action(json!({"x": 1}));
+        let val = fr.to_value();
+        assert!(val.get("response").is_none());
+        assert_eq!(val["action"].as_array().unwrap().len(), 1);
     }
 
     #[test]
@@ -2236,7 +2271,8 @@ mod tests {
 
     #[test]
     fn test_default_trait() {
+        // Default is an empty result -> defaults to "Action completed." (Python parity).
         let fr = FunctionResult::default();
-        assert_eq!(fr.to_value()["response"], "");
+        assert_eq!(fr.to_value()["response"], "Action completed.");
     }
 }
