@@ -8,6 +8,7 @@ use serde_json::{json, Value};
 
 use crate::agent::AgentBase;
 use crate::logging::Logger;
+use crate::server::error::ServerError;
 
 /// Callback signature for global request-time routing decisions.
 ///
@@ -90,14 +91,18 @@ impl AgentServer {
     /// or at an explicit route override.
     ///
     /// # Errors
-    /// Returns an error string if the route is already registered.
-    pub fn register(&mut self, agent: AgentBase, route: Option<&str>) -> Result<(), String> {
+    /// Returns [`ServerError::RouteAlreadyRegistered`] if the route is taken.
+    pub fn register(
+        &mut self,
+        agent: AgentBase,
+        route: Option<&str>,
+    ) -> Result<(), ServerError> {
         let route = self.normalize_route(
             route.unwrap_or_else(|| agent.service().route()),
         );
 
         if self.agents.contains_key(&route) {
-            return Err(format!("Route '{}' is already registered", route));
+            return Err(ServerError::RouteAlreadyRegistered { route });
         }
 
         self.logger.info(&format!(
@@ -171,16 +176,22 @@ impl AgentServer {
     /// Serve static files from a directory under a URL prefix.
     ///
     /// # Errors
-    /// Returns an error string if the directory does not exist.
-    pub fn serve_static(&mut self, directory: &str, url_prefix: &str) -> Result<(), String> {
-        let real_dir = fs::canonicalize(directory).map_err(|_| {
-            format!("Static directory '{}' does not exist", directory)
+    /// Returns [`ServerError::StaticDir`] if the directory does not exist or is
+    /// not a directory.
+    pub fn serve_static(
+        &mut self,
+        directory: &str,
+        url_prefix: &str,
+    ) -> Result<(), ServerError> {
+        let real_dir = fs::canonicalize(directory).map_err(|_| ServerError::StaticDir {
+            path: directory.to_string(),
+            reason: "does not exist".to_string(),
         })?;
         if !real_dir.is_dir() {
-            return Err(format!(
-                "Static path '{}' is not a directory",
-                directory
-            ));
+            return Err(ServerError::StaticDir {
+                path: directory.to_string(),
+                reason: "is not a directory".to_string(),
+            });
         }
 
         let prefix = self.normalize_route(url_prefix);
@@ -198,8 +209,12 @@ impl AgentServer {
     /// surface diff.
     ///
     /// # Errors
-    /// Returns an error string if the directory does not exist.
-    pub fn serve_static_files(&mut self, directory: &str, route: &str) -> Result<(), String> {
+    /// Returns [`ServerError::StaticDir`] if the directory does not exist.
+    pub fn serve_static_files(
+        &mut self,
+        directory: &str,
+        route: &str,
+    ) -> Result<(), ServerError> {
         self.serve_static(directory, route)
     }
 
@@ -639,7 +654,10 @@ mod tests {
         assert!(server.register(agent1, None).is_ok());
         let result = server.register(agent2, None);
         assert!(result.is_err());
-        assert!(result.unwrap_err().contains("already registered"));
+        // Typed error: match the variant AND check the Display text.
+        let err = result.unwrap_err();
+        assert!(matches!(err, ServerError::RouteAlreadyRegistered { .. }));
+        assert!(err.to_string().contains("already registered"));
     }
 
     #[test]

@@ -12,6 +12,7 @@ use tungstenite::{Message as WsMessage, WebSocket};
 
 use super::call::Call;
 use super::constants;
+use super::error::RelayError;
 use super::event::Event;
 use super::message::Message;
 use crate::logging::Logger;
@@ -48,6 +49,7 @@ mod tls {
     use tungstenite::stream::{MaybeTlsStream, Mode};
     use tungstenite::{client_tls_with_config, Connector};
 
+    use super::RelayError;
     use super::WsStream;
 
     /// Env var pointing at a PEM CA bundle to trust for `wss://` instead of
@@ -62,42 +64,43 @@ mod tls {
     /// * `wss://` with no `SIGNALWIRE_RELAY_CA_FILE` -> rustls + webpki roots.
     /// * `wss://` with `SIGNALWIRE_RELAY_CA_FILE` -> rustls verifying against
     ///   *that* CA, via a custom `Connector::Rustls`.
-    pub fn ws_connect(url: &str) -> Result<WsStream, String> {
+    pub fn ws_connect(url: &str) -> Result<WsStream, RelayError> {
         let ca_file = std::env::var(CA_FILE_ENV).ok().filter(|s| !s.is_empty());
 
         // No custom CA: let tungstenite drive the connect with its default
         // (webpki-roots) connector. This still performs full verification.
         let Some(ca_file) = ca_file else {
-            let (ws, _resp) =
-                tungstenite::connect(url).map_err(|e| format!("connect {url}: {e}"))?;
+            let (ws, _resp) = tungstenite::connect(url)
+                .map_err(|e| RelayError::transport(format!("connect {url}"), e))?;
             return Ok(ws);
         };
 
         // Custom CA path: parse the URL, open the TCP stream ourselves, and
         // wrap it with a rustls connector whose only trust anchor is `ca_file`.
-        let parsed = url::Url::parse(url).map_err(|e| format!("parse url {url}: {e}"))?;
+        let parsed = url::Url::parse(url)
+            .map_err(|e| RelayError::transport(format!("parse url {url}"), e))?;
         let host = parsed
             .host_str()
-            .ok_or_else(|| format!("url {url} has no host"))?
+            .ok_or_else(|| RelayError::transport(format!("url {url}"), "no host in URL"))?
             .to_string();
         let mode = uri_mode(
             &url.parse::<http::Uri>()
-                .map_err(|e| format!("parse uri {url}: {e}"))?,
+                .map_err(|e| RelayError::transport(format!("parse uri {url}"), e))?,
         )
-        .map_err(|e| format!("uri mode {url}: {e}"))?;
+        .map_err(|e| RelayError::transport(format!("uri mode {url}"), e))?;
         let port = parsed.port().unwrap_or(match mode {
             Mode::Tls => 443,
             Mode::Plain => 80,
         });
 
         let tcp = TcpStream::connect((host.as_str(), port))
-            .map_err(|e| format!("tcp connect {host}:{port}: {e}"))?;
+            .map_err(|e| RelayError::transport(format!("tcp connect {host}:{port}"), e))?;
 
         let config = client_config_trusting(&ca_file)?;
         let connector = Connector::Rustls(Arc::new(config));
 
         let (ws, _resp) = client_tls_with_config(url, tcp, None, Some(connector))
-            .map_err(|e| format!("wss handshake {url}: {e}"))?;
+            .map_err(|e| RelayError::transport(format!("wss handshake {url}"), e))?;
         // Sanity: a `wss://` url with a custom CA must have negotiated TLS.
         debug_assert!(matches!(ws.get_ref(), MaybeTlsStream::Rustls(_)));
         Ok(ws)
@@ -107,28 +110,32 @@ mod tls {
     /// certificate(s) in the PEM file at `ca_path`. Uses the `ring` provider
     /// explicitly (it is already in the dependency tree) rather than relying on
     /// a process-default `CryptoProvider`, which the crate never installs.
-    fn client_config_trusting(ca_path: &str) -> Result<rustls::ClientConfig, String> {
+    fn client_config_trusting(ca_path: &str) -> Result<rustls::ClientConfig, RelayError> {
         let pem = std::fs::read(ca_path)
-            .map_err(|e| format!("read CA file {ca_path}: {e}"))?;
+            .map_err(|e| RelayError::transport(format!("read CA file {ca_path}"), e))?;
         let mut reader = std::io::BufReader::new(pem.as_slice());
 
         let mut roots = rustls::RootCertStore::empty();
         let mut added = 0usize;
         for cert in rustls_pemfile::certs(&mut reader) {
-            let cert = cert.map_err(|e| format!("parse CA pem {ca_path}: {e}"))?;
+            let cert =
+                cert.map_err(|e| RelayError::transport(format!("parse CA pem {ca_path}"), e))?;
             roots
                 .add(cert)
-                .map_err(|e| format!("add CA cert from {ca_path}: {e}"))?;
+                .map_err(|e| RelayError::transport(format!("add CA cert from {ca_path}"), e))?;
             added += 1;
         }
         if added == 0 {
-            return Err(format!("no certificates found in CA file {ca_path}"));
+            return Err(RelayError::transport(
+                format!("CA file {ca_path}"),
+                "no certificates found",
+            ));
         }
 
         let provider = Arc::new(rustls::crypto::ring::default_provider());
         let config = rustls::ClientConfig::builder_with_provider(provider)
             .with_safe_default_protocol_versions()
-            .map_err(|e| format!("rustls protocol versions: {e}"))?
+            .map_err(|e| RelayError::transport("rustls protocol versions", e))?
             .with_root_certificates(roots)
             .with_no_client_auth();
         Ok(config)
@@ -254,12 +261,13 @@ impl Client {
     }
 
     /// Create from env vars SIGNALWIRE_PROJECT_ID, SIGNALWIRE_API_TOKEN, SIGNALWIRE_SPACE.
-    pub fn from_env() -> Result<Self, String> {
-        let project =
-            std::env::var("SIGNALWIRE_PROJECT_ID").map_err(|_| "SIGNALWIRE_PROJECT_ID not set")?;
-        let token =
-            std::env::var("SIGNALWIRE_API_TOKEN").map_err(|_| "SIGNALWIRE_API_TOKEN not set")?;
-        let host = std::env::var("SIGNALWIRE_SPACE").map_err(|_| "SIGNALWIRE_SPACE not set")?;
+    pub fn from_env() -> Result<Self, RelayError> {
+        let project = std::env::var("SIGNALWIRE_PROJECT_ID")
+            .map_err(|_| RelayError::missing_env("SIGNALWIRE_PROJECT_ID"))?;
+        let token = std::env::var("SIGNALWIRE_API_TOKEN")
+            .map_err(|_| RelayError::missing_env("SIGNALWIRE_API_TOKEN"))?;
+        let host = std::env::var("SIGNALWIRE_SPACE")
+            .map_err(|_| RelayError::missing_env("SIGNALWIRE_SPACE"))?;
         Ok(Self::new(&project, &token, &host))
     }
 
@@ -282,7 +290,7 @@ impl Client {
     /// Returns `Err` if the TCP/WS upgrade fails, the server rejects the
     /// connect handshake, or the response doesn't arrive within
     /// `HANDSHAKE_TIMEOUT`.
-    pub fn connect(self: &Arc<Self>) -> Result<(), String> {
+    pub fn connect(self: &Arc<Self>) -> Result<(), RelayError> {
         self.logger.info(&format!("Connecting to {}", self.host));
 
         let scheme = std::env::var("SIGNALWIRE_RELAY_SCHEME")
@@ -291,8 +299,9 @@ impl Client {
         let endpoint_host = host_override.as_deref().unwrap_or(self.host.as_str());
         let url = format!("{}://{}{}", scheme, endpoint_host, RELAY_PATH);
 
-        let ws_stream = tls::ws_connect(&url)
-            .map_err(|e| format!("WS connect to {}: {}", url, e))?;
+        // ws_connect already returns a `RelayError::Transport`; keep its
+        // (richer) context rather than re-wrapping it.
+        let ws_stream = tls::ws_connect(&url)?;
 
         // Set a short read timeout on the underlying TCP stream so the
         // reader thread can periodically check the closing flag and the
@@ -330,7 +339,7 @@ impl Client {
             .spawn(move || {
                 Client::reader_loop(me, ws_stream, write_rx);
             })
-            .map_err(|e| format!("spawn reader thread: {}", e))?;
+            .map_err(|e| RelayError::transport("spawn reader thread", e))?;
         *self.reader_thread.lock().unwrap() = Some(handle);
 
         // Run signalwire.connect synchronously, blocking until the auth
@@ -344,7 +353,7 @@ impl Client {
     }
 
     /// Initial connect -- resets reconnect delay and connects.
-    pub fn connect_fresh(self: &Arc<Self>) -> Result<(), String> {
+    pub fn connect_fresh(self: &Arc<Self>) -> Result<(), RelayError> {
         *self.reconnect_delay.lock().unwrap() = 1;
         self.connect()
     }
@@ -352,7 +361,7 @@ impl Client {
     /// Send the `signalwire.connect` RPC and block until the response
     /// arrives or the handshake times out. The response carries the
     /// server-assigned protocol string and authorization state.
-    pub fn authenticate_blocking(&self) -> Result<(), String> {
+    pub fn authenticate_blocking(&self) -> Result<(), RelayError> {
         self.logger.info("Authenticating");
 
         let id = generate_uuid();
@@ -447,16 +456,18 @@ impl Client {
                     .and_then(|v| v.as_str())
                     .unwrap_or("authentication failed")
                     .to_string();
-                Err(format!("RELAY auth error: {}", msg))
+                Err(RelayError::Auth { message: msg })
             }
             Err(_) => {
                 // Pending may still be registered — clean it up so a
                 // late response doesn't trip into a stale callback.
                 self.pending.lock().unwrap().remove(&id);
-                Err(format!(
-                    "Timed out after {:?} waiting for signalwire.connect response",
-                    HANDSHAKE_TIMEOUT
-                ))
+                Err(RelayError::Timeout {
+                    what: format!(
+                        "signalwire.connect response (after {:?})",
+                        HANDSHAKE_TIMEOUT
+                    ),
+                })
             }
         }
     }
@@ -510,7 +521,7 @@ impl Client {
     /// the full connect handshake again. Authorization state survives
     /// across reconnects because [`authenticate_blocking`] re-sends the
     /// stored token on the new socket.
-    pub fn reconnect(self: &Arc<Self>) -> Result<(), String> {
+    pub fn reconnect(self: &Arc<Self>) -> Result<(), RelayError> {
         *self.connected.lock().unwrap() = false;
 
         let delay = self.bump_reconnect_delay();
@@ -861,7 +872,7 @@ impl Client {
         &self,
         method: &str,
         inner_params: Value,
-    ) -> Result<Value, String> {
+    ) -> Result<Value, RelayError> {
         let id = generate_uuid();
         let frame = json!({
             "jsonrpc": "2.0",
@@ -889,17 +900,19 @@ impl Client {
         // `_EXECUTE_TIMEOUT`.
         match resp_rx.recv_timeout(HANDSHAKE_TIMEOUT) {
             Ok(Ok(result)) => Ok(result),
-            Ok(Err(err)) => Err(err
-                .get("message")
-                .and_then(|v| v.as_str())
-                .unwrap_or("execute failed")
-                .to_string()),
+            Ok(Err(err)) => Err(RelayError::Rpc {
+                method: method.to_string(),
+                message: err
+                    .get("message")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("execute failed")
+                    .to_string(),
+            }),
             Err(_) => {
                 self.pending.lock().unwrap().remove(&id);
-                Err(format!(
-                    "execute_blocking: timed out waiting for {} response",
-                    method
-                ))
+                Err(RelayError::Timeout {
+                    what: format!("{method} response"),
+                })
             }
         }
     }
@@ -918,9 +931,11 @@ impl Client {
         media: Option<&[String]>,
         tags: Option<&[String]>,
         context: Option<&str>,
-    ) -> Result<Arc<Message>, String> {
+    ) -> Result<Arc<Message>, RelayError> {
         if body.unwrap_or("").is_empty() && media.map(<[String]>::is_empty).unwrap_or(true) {
-            return Err("At least one of body or media is required".to_string());
+            return Err(RelayError::InvalidArgument {
+                message: "At least one of body or media is required".to_string(),
+            });
         }
 
         let ctx = context
@@ -1001,7 +1016,7 @@ impl Client {
         tag: Option<&str>,
         max_duration: Option<u32>,
         dial_timeout: Duration,
-    ) -> Result<Arc<Call>, String> {
+    ) -> Result<Arc<Call>, RelayError> {
         let dial_tag = tag
             .map(str::to_string)
             .unwrap_or_else(generate_uuid);
@@ -1043,12 +1058,11 @@ impl Client {
             Err(_) => {
                 self.remove_pending_dial(&dial_tag);
                 if let Some(reason) = dial_failed.lock().unwrap().clone() {
-                    Err(format!("Dial failed: {}", reason))
+                    Err(RelayError::DialFailed { reason })
                 } else {
-                    Err(format!(
-                        "Dial timed out waiting for answer (tag={})",
-                        dial_tag
-                    ))
+                    Err(RelayError::DialFailed {
+                        reason: format!("timed out waiting for answer (tag={dial_tag})"),
+                    })
                 }
             }
         }

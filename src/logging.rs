@@ -1,5 +1,6 @@
 use std::env;
 use std::fmt;
+use std::str::FromStr;
 use std::sync::Once;
 
 static INIT: Once = Once::new();
@@ -54,6 +55,51 @@ impl fmt::Display for Level {
 impl AsRef<str> for Level {
     fn as_ref(&self) -> &str {
         self.as_str()
+    }
+}
+
+/// Error returned when a string is parsed into [`Level`] (via [`FromStr`]) but
+/// is not one of `debug`/`info`/`warn`/`error` (case-insensitive).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ParseLevelError {
+    input: String,
+}
+
+impl ParseLevelError {
+    /// The string that failed to parse as a log level.
+    pub fn input(&self) -> &str {
+        &self.input
+    }
+}
+
+impl fmt::Display for ParseLevelError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{:?} is not a valid log level (expected one of: debug, info, warn, error)",
+            self.input
+        )
+    }
+}
+
+impl std::error::Error for ParseLevelError {}
+
+/// Idiomatic `"debug".parse::<Level>()` — case-insensitive, matching the
+/// inherent [`Level::from_str`] used to read `SIGNALWIRE_LOG_LEVEL`. Returns a
+/// typed [`ParseLevelError`] rather than the inherent method's `None`.
+impl FromStr for Level {
+    type Err = ParseLevelError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "debug" => Ok(Level::Debug),
+            "info" => Ok(Level::Info),
+            "warn" => Ok(Level::Warn),
+            "error" => Ok(Level::Error),
+            _ => Err(ParseLevelError {
+                input: s.to_string(),
+            }),
+        }
     }
 }
 
@@ -284,6 +330,19 @@ mod tests {
         assert_eq!(Level::from_str("error"), Some(Level::Error));
         assert_eq!(Level::from_str("bogus"), None);
         assert_eq!(Level::from_str(""), None);
+    }
+
+    #[test]
+    fn test_level_parse_trait_is_case_insensitive_and_typed() {
+        use std::str::FromStr;
+        // `.parse()` resolves to FromStr (Result), not the inherent Option.
+        assert_eq!("DEBUG".parse::<Level>(), Ok(Level::Debug));
+        assert_eq!("Info".parse::<Level>(), Ok(Level::Info));
+        assert_eq!(<Level as FromStr>::from_str("warn"), Ok(Level::Warn));
+        let err = "bogus".parse::<Level>().unwrap_err();
+        assert_eq!(err.input(), "bogus");
+        assert!(err.to_string().contains("bogus"));
+        let _: &dyn std::error::Error = &err;
     }
 
     #[test]

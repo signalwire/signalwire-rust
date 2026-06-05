@@ -27,6 +27,35 @@
 //! ```
 
 use std::fmt;
+use std::str::FromStr;
+
+/// Error returned when a string is parsed into [`SkillName`] (via [`FromStr`])
+/// but does not name one of the built-in skills.
+///
+/// Unlike the SWAIG media enums, the skill-name set is *open* (custom skills
+/// are valid), so most callers want the inherent [`SkillName::from_str`] which
+/// returns `None` for a custom name. The [`FromStr`] impl exists for the
+/// idiomatic `"datetime".parse::<SkillName>()` and reports the offending input
+/// when it is not a built-in.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ParseSkillNameError {
+    input: String,
+}
+
+impl ParseSkillNameError {
+    /// The string that failed to parse as a built-in skill name.
+    pub fn input(&self) -> &str {
+        &self.input
+    }
+}
+
+impl fmt::Display for ParseSkillNameError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?} is not a built-in skill name", self.input)
+    }
+}
+
+impl std::error::Error for ParseSkillNameError {}
 
 /// The closed set of skill names that ship built in with this SDK.
 ///
@@ -36,6 +65,7 @@ use std::fmt;
 ///
 /// [`SkillRegistry`]: crate::skills::SkillRegistry
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[must_use]
 pub enum SkillName {
     /// `api_ninjas_trivia`
     ApiNinjasTrivia,
@@ -148,6 +178,24 @@ impl AsRef<str> for SkillName {
     }
 }
 
+/// Idiomatic `"datetime".parse::<SkillName>()`. Errs with
+/// [`ParseSkillNameError`] for custom / unknown names; for the open-set case
+/// where a custom name is acceptable, prefer the inherent
+/// [`SkillName::from_str`] which returns `None` instead.
+impl FromStr for SkillName {
+    type Err = ParseSkillNameError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        SkillName::all()
+            .iter()
+            .copied()
+            .find(|n| n.as_str() == s)
+            .ok_or_else(|| ParseSkillNameError {
+                input: s.to_string(),
+            })
+    }
+}
+
 impl From<SkillName> for String {
     fn from(s: SkillName) -> String {
         s.as_str().to_string()
@@ -191,5 +239,23 @@ mod tests {
         assert_eq!(SkillName::from_str("math"), Some(SkillName::Math));
         assert_eq!(SkillName::from_str("datetiem"), None); // the classic typo
         assert_eq!(SkillName::from_str("my_custom_skill"), None);
+    }
+
+    #[test]
+    fn test_parse_trait_roundtrips_and_reports_unknown() {
+        use std::str::FromStr;
+        // `.parse()` resolves to the FromStr impl (Result), distinct from the
+        // inherent Option-returning `from_str` above.
+        for n in SkillName::all() {
+            let parsed: SkillName = n.as_str().parse().unwrap();
+            assert_eq!(parsed, *n);
+            assert_eq!(<SkillName as FromStr>::from_str(n.as_str()), Ok(*n));
+        }
+        let err = "datetiem".parse::<SkillName>().unwrap_err();
+        assert_eq!(err.input(), "datetiem");
+        assert!(err.to_string().contains("datetiem"));
+        let _: &dyn std::error::Error = &err;
+        // Custom skill names are not built-ins → Err on the trait path.
+        assert!("my_custom_skill".parse::<SkillName>().is_err());
     }
 }

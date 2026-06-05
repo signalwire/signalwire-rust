@@ -6,6 +6,7 @@ use serde_json::{json, Map, Value};
 /// A DataMap tool defines its behaviour declaratively (expressions, webhooks)
 /// instead of with a code handler.
 #[derive(Debug, Clone)]
+#[must_use]
 pub struct DataMap {
     function_name: String,
     purpose: String,

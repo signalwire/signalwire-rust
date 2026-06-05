@@ -938,3 +938,48 @@ signalwire.security.webhook.validate_webhook_signature: rust_idiom: see validate
 signalwire.security.webhook_layer.WebhookLayer: rust_idiom: tower::Layer for axum/hyper (Python uses FastAPI dependency factory)
 signalwire.security.webhook_layer.WebhookLayer.__init__: rust_idiom: see WebhookLayer entry
 signalwire.security.webhook_layer.WebhookLayer.with_url_base: rust_idiom_builder: builder method for proxy URL base (Rust idiom, no Python equivalent)
+
+### Typed RELAY / server error enums (Tier-2 idiom pass — match the REST exemplar)
+
+The Tier-2 idiom pass replaced the relay/server `Result<_, String>` failure channel with proper Rust error enums, exactly as the REST layer already does with `SignalWireRestError`. `RelayError`/`ServerError` carry their failure data in variants (callers `match`, not call getters) and impl `Display` + `std::error::Error`. Python models all failures as a single stringly raised exception, so these typed enums + their constructor helpers are port-only. `ServerError` carries data only in variants (no `pub fn`), so it does NOT appear here; `RelayError` ships two ergonomic constructor helpers. The Err type is invisible to the signature audit (`Result<T,E>` → `T`), so this is surface-only and drift-0 on Layer A.
+
+signalwire.relay.error.RelayError: rust-typed-error — closed RELAY failure set replacing `Result<_, String>` on the relay client surface; mirrors the REST `SignalWireRestError` exemplar. Python raises a single stringly exception.
+signalwire.relay.error.RelayError.transport: rust-error-ctor — convenience constructor for the `Transport` variant from a context + any `Display` cause; used by the client's `map_err` sites. No Python equivalent.
+signalwire.relay.error.RelayError.missing_env: rust-error-ctor — convenience constructor for the `MissingEnv` variant naming the unset variable. No Python equivalent.
+
+### Typed `FromStr` parse-error structs for the closed-set enums (Tier-2 idiom pass)
+
+The Tier-2 idiom pass added `impl std::str::FromStr` to the closed-set enums so callers can write the idiomatic `"wav".parse::<RecordFormat>()`. The trait's `Err` is a small typed parse-error struct per std convention (`ParseIntError`-style), carrying the offending input and a diagnostic `Display`. These are the typed analogue of Python's `ValueError`; Python validates with a bare `raise ValueError` (no named error type), so the structs + their `input()` accessor are port-only.
+
+signalwire.swaig.media_enums.ParseMediaEnumError: rust-parse-error — `FromStr::Err` for RecordFormat/RecordDirection/TapDirection/Codec; the typed analogue of Python's `ValueError` on the media-action closed sets.
+signalwire.swaig.media_enums.ParseMediaEnumError.input: rust-error-accessor — returns the string that failed to parse. Python's `ValueError` carries only a message.
+signalwire.skills.skill_name.ParseSkillNameError: rust-parse-error — `FromStr::Err` for SkillName (`"datetime".parse::<SkillName>()`); the open-set inherent `from_str` still returns `Option` for custom names. No Python equivalent.
+signalwire.skills.skill_name.ParseSkillNameError.input: rust-error-accessor — returns the string that was not a built-in skill name. No Python equivalent.
+signalwire.logging.ParseLevelError: rust-parse-error — `FromStr::Err` for the log `Level` enum (`"debug".parse::<Level>()`), case-insensitive. No Python equivalent.
+signalwire.logging.ParseLevelError.input: rust-error-accessor — returns the string that was not a valid log level. No Python equivalent.
+
+### Fluent builder methods on the options structs (Tier-2 idiom pass — agent/service builder)
+
+The Tier-2 idiom pass added a fluent `with_*` builder face to the `AgentOptions` / `ServiceOptions` construction structs (each method takes and returns `self`), mirroring the existing `BedrockOptions::with_name` precedent. Python configures these as keyword arguments to `AgentBase.__init__` / `SWMLService.__init__`; the Rust port carries them on the options struct, so the builder methods are port-only. `ServiceOptions` gains a `new` + the methods, so the whole struct now surfaces.
+
+signalwire.agent.agent_base.AgentOptions.route: rust-builder-method — fluent setter for the agent's HTTP route; Python passes `route=` to `AgentBase.__init__`.
+signalwire.agent.agent_base.AgentOptions.host: rust-builder-method — fluent setter for the bind host; Python passes `host=` to `AgentBase.__init__`.
+signalwire.agent.agent_base.AgentOptions.port: rust-builder-method — fluent setter for the bind port; Python passes `port=` to `AgentBase.__init__`.
+signalwire.agent.agent_base.AgentOptions.basic_auth: rust-builder-method — fluent setter for Basic-Auth credentials; Python passes `basic_auth=(user,pass)` to `AgentBase.__init__`.
+signalwire.agent.agent_base.AgentOptions.auto_answer: rust-builder-method — fluent setter for auto-answer; Python passes `auto_answer=` to `AgentBase.__init__`.
+signalwire.agent.agent_base.AgentOptions.record_call: rust-builder-method — fluent setter for call recording; Python passes `record_call=` to `AgentBase.__init__`.
+signalwire.agent.agent_base.AgentOptions.use_pom: rust-builder-method — fluent setter for POM prompt rendering; Python passes `use_pom=` to `AgentBase.__init__`.
+signalwire.agent.agent_base.AgentOptions.signing_key: rust-builder-method — fluent setter for the webhook signing key; Python passes `agent.signing_key = ...` (attribute) or relies on the env var.
+signalwire.swml.service.ServiceOptions: rust-options-builder — construction options for `Service` (Python's `SWMLService`); now exposes a fluent builder, so the struct surfaces. Python uses `SWMLService.__init__` keyword arguments.
+signalwire.swml.service.ServiceOptions.__init__: rust-options-builder — name-only constructor for the service options builder. Python uses `SWMLService.__init__` directly.
+signalwire.swml.service.ServiceOptions.route: rust-builder-method — fluent setter for the service route; Python passes `route=` to `SWMLService.__init__`.
+signalwire.swml.service.ServiceOptions.host: rust-builder-method — fluent setter for the bind host; Python passes `host=` to `SWMLService.__init__`.
+signalwire.swml.service.ServiceOptions.port: rust-builder-method — fluent setter for the bind port; Python passes `port=` to `SWMLService.__init__`.
+signalwire.swml.service.ServiceOptions.basic_auth: rust-builder-method — fluent setter for Basic-Auth credentials; Python passes `basic_auth=(user,pass)` to `SWMLService.__init__`.
+
+### Pre-existing relay/server transport helpers (Layer-B only; not gated by run-ci)
+
+These two Rust-only transport entry points predate this pass but were never documented because run-ci only gates Layer A (signatures), not Layer B (surface). Documented here so the surface diff is clean. Both are internal transport plumbing with no Python equivalent.
+
+signalwire.relay.client.ws_connect: rust-transport-helper — opens a verified WebSocket (plain `ws://` or rustls `wss://`, optionally trusting a private CA) for the relay client. Python's websocket connect is internal to `RelayClient`.
+signalwire.server.tls.bind_server: rust-transport-helper — `pub(crate)` HTTP/HTTPS listener bind shared by the server entry points (selects TLS via `SWML_SSL_*`). Python uses uvicorn's `ssl_*`.

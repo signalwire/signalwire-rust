@@ -36,6 +36,7 @@ pub struct BedrockAgent {
 
 /// Construction options for [`BedrockAgent`]. Mirrors the keyword
 /// arguments of Python's `BedrockAgent.__init__`.
+#[must_use]
 pub struct BedrockOptions {
     /// Agent name (default `"bedrock_agent"`).
     pub name: String,

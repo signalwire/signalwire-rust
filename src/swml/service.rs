@@ -23,6 +23,27 @@ const MAX_BODY_SIZE: usize = 1_048_576;
 const HMAC_KEY: &[u8] = b"signalwire-swml-service-auth-compare";
 
 /// Options for constructing a `Service`.
+///
+/// Doubles as an idiomatic **builder** (parallel to
+/// [`AgentOptions`](crate::agent::AgentOptions)): [`ServiceOptions::new`] gives
+/// a name-only default and the `with_*` methods take/return `self` for
+/// one-expression configuration feeding [`Service::new`]:
+///
+/// ```no_run
+/// use signalwire::SWMLService;
+/// use signalwire::swml::service::ServiceOptions;
+///
+/// let svc = SWMLService::new(
+///     ServiceOptions::new("sidecar")
+///         .route("/swml")
+///         .basic_auth("user", "secret"),
+/// );
+/// ```
+///
+/// Direct struct-literal construction still works; the builder methods are an
+/// additive convenience. `#[must_use]` flags an options value built but never
+/// passed to [`Service::new`].
+#[must_use]
 pub struct ServiceOptions {
     pub name: String,
     pub route: Option<String>,
@@ -30,6 +51,46 @@ pub struct ServiceOptions {
     pub port: Option<u16>,
     pub basic_auth_user: Option<String>,
     pub basic_auth_password: Option<String>,
+}
+
+impl ServiceOptions {
+    /// Name-only options with the same defaults the struct-literal callers use
+    /// (`port` defaults to 3000 via [`Service::new`] when left `None`).
+    pub fn new(name: &str) -> Self {
+        ServiceOptions {
+            name: name.to_string(),
+            route: None,
+            host: None,
+            port: None,
+            basic_auth_user: None,
+            basic_auth_password: None,
+        }
+    }
+
+    /// Set the HTTP route this service serves (e.g. `"/swml"`).
+    pub fn route(mut self, route: &str) -> Self {
+        self.route = Some(route.to_string());
+        self
+    }
+
+    /// Set the bind host (e.g. `"0.0.0.0"`).
+    pub fn host(mut self, host: &str) -> Self {
+        self.host = Some(host.to_string());
+        self
+    }
+
+    /// Set the bind port.
+    pub fn port(mut self, port: u16) -> Self {
+        self.port = Some(port);
+        self
+    }
+
+    /// Set HTTP Basic-Auth credentials guarding this service's endpoints.
+    pub fn basic_auth(mut self, user: &str, password: &str) -> Self {
+        self.basic_auth_user = Some(user.to_string());
+        self.basic_auth_password = Some(password.to_string());
+        self
+    }
 }
 
 /// Hook function for SWML-request customization. Mirrors Python's

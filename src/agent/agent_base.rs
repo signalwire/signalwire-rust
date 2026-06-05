@@ -16,6 +16,37 @@ use crate::swaig::FunctionResult;
 pub use crate::swml::service::{FunctionHandler, ToolDef};
 
 /// Options for constructing an `AgentBase`.
+///
+/// Doubles as an idiomatic **builder**: every field has a fluent
+/// `with_*`/setter that takes and returns `self`, so an agent can be configured
+/// in one expression and handed straight to [`AgentBase::new`]:
+///
+/// ```no_run
+/// use signalwire::agent::{AgentBase, AgentOptions};
+///
+/// let agent = AgentBase::new(
+///     AgentOptions::new("receptionist")
+///         .route("/reception")
+///         .basic_auth("user", "secret")
+///         .auto_answer(true)
+///         .signing_key("whsec_…"),
+/// );
+/// ```
+///
+/// Direct field assignment (`opts.route = Some(...)`) still works — the builder
+/// methods are an additive convenience. `#[must_use]` flags an `AgentOptions`
+/// that is built but never passed to [`AgentBase::new`]; under
+/// `#[deny(unused_must_use)]` that is a hard compile error, as this
+/// `compile_fail` doctest proves:
+///
+/// ```compile_fail
+/// #![deny(unused_must_use)]
+/// use signalwire::agent::AgentOptions;
+/// // Building an AgentOptions and dropping it on the floor is a compile error
+/// // because the type is `#[must_use]` — you must feed it to AgentBase::new.
+/// AgentOptions::new("oops").route("/x");
+/// ```
+#[must_use]
 pub struct AgentOptions {
     pub name: String,
     pub route: Option<String>,
@@ -52,6 +83,64 @@ impl AgentOptions {
             use_pom: true,
             signing_key: None,
         }
+    }
+
+    // ── Fluent builder methods (idiomatic chaining; each returns Self) ────
+    //
+    // These are an additive Rust-idiom convenience over direct field
+    // assignment. They take and return `self` so configuration reads as one
+    // expression feeding `AgentBase::new`. Python configures these as keyword
+    // arguments to `AgentBase.__init__`; the Rust port carries them on
+    // `AgentOptions`, and these methods are the builder face of that struct.
+
+    /// Set the HTTP route this agent serves (e.g. `"/reception"`).
+    pub fn route(mut self, route: &str) -> Self {
+        self.route = Some(route.to_string());
+        self
+    }
+
+    /// Set the bind host (e.g. `"0.0.0.0"`).
+    pub fn host(mut self, host: &str) -> Self {
+        self.host = Some(host.to_string());
+        self
+    }
+
+    /// Set the bind port.
+    pub fn port(mut self, port: u16) -> Self {
+        self.port = Some(port);
+        self
+    }
+
+    /// Set HTTP Basic-Auth credentials guarding this agent's endpoints.
+    pub fn basic_auth(mut self, user: &str, password: &str) -> Self {
+        self.basic_auth_user = Some(user.to_string());
+        self.basic_auth_password = Some(password.to_string());
+        self
+    }
+
+    /// Toggle automatic call answering (default `true`).
+    pub fn auto_answer(mut self, auto_answer: bool) -> Self {
+        self.auto_answer = auto_answer;
+        self
+    }
+
+    /// Toggle call recording (default `false`).
+    pub fn record_call(mut self, record_call: bool) -> Self {
+        self.record_call = record_call;
+        self
+    }
+
+    /// Toggle Prompt-Object-Model prompt rendering (default `true`).
+    pub fn use_pom(mut self, use_pom: bool) -> Self {
+        self.use_pom = use_pom;
+        self
+    }
+
+    /// Set the SignalWire signing key used to validate inbound
+    /// `X-SignalWire-Signature` webhook headers. See [`AgentOptions::signing_key`].
+    pub fn signing_key(mut self, signing_key: &str) -> Self {
+        self.signing_key = Some(signing_key.to_string());
+        self
     }
 }
 

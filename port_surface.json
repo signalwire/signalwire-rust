@@ -1,6 +1,6 @@
 {
   "version": "1",
-  "generated_from": "signalwire-rust @ 8791616cfbeccfb213275b3d51c2599d0d699f6a",
+  "generated_from": "signalwire-rust @ fc391b514dc923d54f8b1f06cdb100605966bea4",
   "modules": {
     "signalwire": {
       "classes": {
@@ -23,7 +23,15 @@
     "signalwire.agent.agent_base": {
       "classes": {
         "AgentOptions": [
-          "__init__"
+          "__init__",
+          "auto_answer",
+          "basic_auth",
+          "host",
+          "port",
+          "record_call",
+          "route",
+          "signing_key",
+          "use_pom"
         ]
       },
       "functions": []
@@ -417,6 +425,9 @@
           "log",
           "should_log",
           "warn"
+        ],
+        "ParseLevelError": [
+          "input"
         ]
       },
       "functions": [
@@ -671,6 +682,15 @@
         "is_call_terminal",
         "is_message_terminal"
       ]
+    },
+    "signalwire.relay.error": {
+      "classes": {
+        "RelayError": [
+          "missing_env",
+          "transport"
+        ]
+      },
+      "functions": []
     },
     "signalwire.relay.event": {
       "classes": {
@@ -1529,6 +1549,9 @@
     },
     "signalwire.skills.skill_name": {
       "classes": {
+        "ParseSkillNameError": [
+          "input"
+        ],
         "SkillName": [
           "all",
           "as_str",
@@ -1584,6 +1607,9 @@
           "as_str",
           "from_str"
         ],
+        "ParseMediaEnumError": [
+          "input"
+        ],
         "RecordDirection": [
           "all",
           "as_str",
@@ -1610,6 +1636,18 @@
         "is_valid_verb",
         "verb_count"
       ]
+    },
+    "signalwire.swml.service": {
+      "classes": {
+        "ServiceOptions": [
+          "__init__",
+          "basic_auth",
+          "host",
+          "port",
+          "route"
+        ]
+      },
+      "functions": []
     },
     "signalwire.utils.mod": {
       "classes": {},

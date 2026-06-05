@@ -138,4 +138,11 @@ assertion of their own; the content-shaped assertions (protocol string set,
 `signalwire.connect` recorded, untrusted-CA rejection) live in the `#[test]`
 functions that consume them.
 
-- `tests/tls_wss_relay.rs:128` — journal_recv_methods: GETs the plain-HTTP `/__mock__/journal` and returns the recv-direction method names
+- `tests/tls_wss_relay.rs:138` — journal_recv_methods: GETs the plain-HTTP `/__mock__/journal` and returns the recv-direction method names
+
+## tests/relay_mock_typed_errors.rs + tests/server_typed_errors.rs — typed-error test-file helpers
+
+Two helper factories local to the typed-error test files. They construct test fixtures (a relay client pointed at the mock with caller-chosen creds; an agent built through the fluent `AgentOptions` builder) and carry no assertion of their own; the content-shaped assertions — that each genuine failure surfaces the right `RelayError` / `ServerError` *variant* with the expected carried data — live in the `#[test]` functions that consume them.
+
+- `tests/relay_mock_typed_errors.rs:27` — client_with_creds: builds a RelayClient at the mock host with caller-chosen project/token (to drive the auth-rejection path); mirrors `connected_client` minus the connect-must-succeed assertion
+- `tests/server_typed_errors.rs:17` — agent: AgentBase factory built via the fluent `AgentOptions` builder (also exercises the builder item under test)

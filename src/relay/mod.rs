@@ -4,6 +4,7 @@
 /// tracking, and the async-ready `Client` that ties everything together.
 
 pub mod constants;
+pub mod error;
 pub mod event;
 pub mod action;
 pub mod message;
@@ -11,6 +12,7 @@ pub mod call;
 pub mod client;
 
 pub use constants::*;
+pub use error::RelayError;
 pub use event::Event;
 pub use action::{
     Action, PlayAction, RecordAction, CollectAction, DetectAction,

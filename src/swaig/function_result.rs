@@ -16,6 +16,7 @@ fn render_list(values: &[&str]) -> String {
 /// `action` when empty, and `post_process` unless there are actions; an otherwise-empty result
 /// defaults to `{"response": "Action completed."}`.
 #[derive(Debug, Clone)]
+#[must_use]
 pub struct FunctionResult {
     response: String,
     actions: Vec<Value>,

@@ -39,6 +39,54 @@
 //! mirroring the reference's two separate validation lists.
 
 use std::fmt;
+use std::str::FromStr;
+
+/// Error returned when a string is parsed into one of the closed-set media
+/// enums (via [`FromStr`]) but is not a recognised wire value.
+///
+/// Carries the offending input and the enum's accepted set so the message is
+/// actionable — e.g. `"foo" is not a valid RecordFormat (expected one of:
+/// wav, mp3, mp4)`. This is the typed analogue of the Python reference's
+/// `ValueError`, surfaced through the idiomatic `"wav".parse::<RecordFormat>()`
+/// entry point.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ParseMediaEnumError {
+    /// The string that failed to parse.
+    input: String,
+    /// Human name of the target enum (e.g. `"RecordFormat"`).
+    target: &'static str,
+    /// The accepted wire values, for the diagnostic message.
+    accepted: &'static [&'static str],
+}
+
+impl ParseMediaEnumError {
+    fn new(input: &str, target: &'static str, accepted: &'static [&'static str]) -> Self {
+        ParseMediaEnumError {
+            input: input.to_string(),
+            target,
+            accepted,
+        }
+    }
+
+    /// The string that failed to parse.
+    pub fn input(&self) -> &str {
+        &self.input
+    }
+}
+
+impl fmt::Display for ParseMediaEnumError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{:?} is not a valid {} (expected one of: {})",
+            self.input,
+            self.target,
+            self.accepted.join(", ")
+        )
+    }
+}
+
+impl std::error::Error for ParseMediaEnumError {}
 
 /// Recording container format for [`FunctionResult::record_call`].
 ///
@@ -46,6 +94,7 @@ use std::fmt;
 ///
 /// [`FunctionResult::record_call`]: crate::swaig::FunctionResult::record_call
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[must_use]
 pub enum RecordFormat {
     /// `wav` (the reference default).
     Wav,
@@ -93,6 +142,21 @@ impl AsRef<str> for RecordFormat {
     }
 }
 
+/// Idiomatic `"wav".parse::<RecordFormat>()`. Accepts exactly the wire strings
+/// (`wav`/`mp3`/`mp4`) the reference validates; anything else is a typed
+/// [`ParseMediaEnumError`] (the parity-equivalent of Python's `ValueError`).
+impl FromStr for RecordFormat {
+    type Err = ParseMediaEnumError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        RecordFormat::all()
+            .iter()
+            .copied()
+            .find(|f| f.as_str() == s)
+            .ok_or_else(|| ParseMediaEnumError::new(s, "RecordFormat", &["wav", "mp3", "mp4"]))
+    }
+}
+
 impl From<RecordFormat> for String {
     fn from(v: RecordFormat) -> String {
         v.as_str().to_string()
@@ -113,6 +177,7 @@ impl From<RecordFormat> for &'static str {
 ///
 /// [`FunctionResult::record_call`]: crate::swaig::FunctionResult::record_call
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[must_use]
 pub enum RecordDirection {
     /// `speak` — what the party says.
     Speak,
@@ -160,6 +225,22 @@ impl AsRef<str> for RecordDirection {
     }
 }
 
+/// Idiomatic `"listen".parse::<RecordDirection>()`. Note `hear` (valid for
+/// `tap`) is rejected here — `record_call` uses `listen`.
+impl FromStr for RecordDirection {
+    type Err = ParseMediaEnumError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        RecordDirection::all()
+            .iter()
+            .copied()
+            .find(|d| d.as_str() == s)
+            .ok_or_else(|| {
+                ParseMediaEnumError::new(s, "RecordDirection", &["speak", "listen", "both"])
+            })
+    }
+}
+
 impl From<RecordDirection> for String {
     fn from(v: RecordDirection) -> String {
         v.as_str().to_string()
@@ -180,6 +261,7 @@ impl From<RecordDirection> for &'static str {
 ///
 /// [`FunctionResult::tap`]: crate::swaig::FunctionResult::tap
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[must_use]
 pub enum TapDirection {
     /// `speak` — what the party says.
     Speak,
@@ -223,6 +305,22 @@ impl AsRef<str> for TapDirection {
     }
 }
 
+/// Idiomatic `"hear".parse::<TapDirection>()`. Note `listen` (valid for
+/// `record_call`) is rejected here — `tap` uses `hear`.
+impl FromStr for TapDirection {
+    type Err = ParseMediaEnumError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        TapDirection::all()
+            .iter()
+            .copied()
+            .find(|d| d.as_str() == s)
+            .ok_or_else(|| {
+                ParseMediaEnumError::new(s, "TapDirection", &["speak", "hear", "both"])
+            })
+    }
+}
+
 impl From<TapDirection> for String {
     fn from(v: TapDirection) -> String {
         v.as_str().to_string()
@@ -242,6 +340,7 @@ impl From<TapDirection> for &'static str {
 ///
 /// [`FunctionResult::tap`]: crate::swaig::FunctionResult::tap
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[must_use]
 pub enum Codec {
     /// `PCMU` (G.711 µ-law, the reference default).
     Pcmu,
@@ -280,6 +379,20 @@ impl fmt::Display for Codec {
 impl AsRef<str> for Codec {
     fn as_ref(&self) -> &str {
         self.as_str()
+    }
+}
+
+/// Idiomatic `"PCMU".parse::<Codec>()`. Case-sensitive, mirroring the
+/// reference's literal `in ["PCMU", "PCMA"]` check — `"pcmu"` is rejected.
+impl FromStr for Codec {
+    type Err = ParseMediaEnumError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Codec::all()
+            .iter()
+            .copied()
+            .find(|c| c.as_str() == s)
+            .ok_or_else(|| ParseMediaEnumError::new(s, "Codec", &["PCMU", "PCMA"]))
     }
 }
 
@@ -466,5 +579,65 @@ mod tests {
             let owned: String = (*c).into();
             assert_eq!(owned, c.as_str());
         }
+    }
+
+    // ── std::str::FromStr (the idiomatic `.parse()` entry point) ──────────
+    //
+    // These cover the *trait* impl (Result-returning), distinct from the
+    // inherent `from_str` (Option-returning) exercised above. `.parse()`
+    // resolves to the trait, so this is what idiomatic callers reach for.
+
+    #[test]
+    fn test_parse_record_format_roundtrips_every_variant() {
+        use std::str::FromStr;
+        // Every wire string round-trips through `.parse()` back to its variant.
+        for f in RecordFormat::all() {
+            let parsed: RecordFormat = f.as_str().parse().unwrap();
+            assert_eq!(parsed, *f);
+            // The trait method (fully-qualified to bypass the inherent
+            // Option-returning `from_str`) agrees with `.parse()`.
+            assert_eq!(<RecordFormat as FromStr>::from_str(f.as_str()), Ok(*f));
+        }
+    }
+
+    #[test]
+    fn test_parse_record_format_rejects_out_of_set_with_typed_error() {
+        // Out-of-set parse is a typed Err, NOT a panic — the parity-equivalent
+        // of Python's ValueError. The error names the bad input + accepted set.
+        let err = "ogg".parse::<RecordFormat>().unwrap_err();
+        assert_eq!(err.input(), "ogg");
+        let msg = err.to_string();
+        assert!(msg.contains("ogg"), "message should echo the bad input: {msg}");
+        assert!(msg.contains("RecordFormat"), "message should name the enum: {msg}");
+        assert!(msg.contains("wav"), "message should list accepted values: {msg}");
+        // It is a real std::error::Error.
+        let _: &dyn std::error::Error = &err;
+        // Case-sensitivity preserved through the trait too.
+        assert!("WAV".parse::<RecordFormat>().is_err());
+    }
+
+    #[test]
+    fn test_parse_directions_enforce_the_three_vocabularies() {
+        // The whole point of two direction enums: `listen` belongs to
+        // record_call, `hear` to tap. `.parse()` enforces the split.
+        assert_eq!("listen".parse::<RecordDirection>(), Ok(RecordDirection::Listen));
+        assert!("hear".parse::<RecordDirection>().is_err());
+
+        assert_eq!("hear".parse::<TapDirection>(), Ok(TapDirection::Hear));
+        assert!("listen".parse::<TapDirection>().is_err());
+
+        // Diagnostic for the cross-vocab miss names the right target enum.
+        let e = "listen".parse::<TapDirection>().unwrap_err();
+        assert!(e.to_string().contains("TapDirection"));
+        assert!(e.to_string().contains("hear"));
+    }
+
+    #[test]
+    fn test_parse_codec_is_case_sensitive() {
+        use std::str::FromStr;
+        assert_eq!("PCMU".parse::<Codec>(), Ok(Codec::Pcmu));
+        assert_eq!(<Codec as FromStr>::from_str("PCMA"), Ok(Codec::Pcma));
+        assert!("pcmu".parse::<Codec>().is_err());
+        assert!("OPUS".parse::<Codec>().is_err(), "the 7-value RELAY codec OPUS is not a SWAIG tap codec");
     }
 }

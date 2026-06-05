@@ -95,6 +95,7 @@ pub fn register_skill(skill_class: SkillSpec) {
 /// class. Bundles a skill's registration name with its factory closure
 /// into a single value so [`register_skill`] can mirror Python's
 /// one-argument signature.
+#[must_use]
 pub struct SkillSpec {
     /// Snake-case skill name used as the registry key.
     pub name: String,

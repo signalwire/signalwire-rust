@@ -29,6 +29,7 @@ use crate::pom::section::Section;
 /// [`to_json`]: PromptObjectModel::to_json
 /// [`to_yaml`]: PromptObjectModel::to_yaml
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[must_use]
 pub struct PromptObjectModel {
     /// Top-level sections, in insertion order. Only the *first*
     /// entry may have `title = None`; all others must carry a

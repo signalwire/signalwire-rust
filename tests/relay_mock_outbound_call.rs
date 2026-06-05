@@ -161,13 +161,23 @@ fn test_dial_failed_raises_relay_error() {
         Duration::from_secs(2),
     );
     let _ = join.join();
-    assert!(result.is_err(), "dial with failed event should error");
-    let err = result.err().unwrap();
-    assert!(
-        err.contains("Dial") && (err.contains("timed out") || err.contains("failed")),
-        "unexpected dial error: {}",
-        err
-    );
+    // `Arc<Call>` is not Debug, so match the result directly rather than
+    // unwrapping the Ok side.
+    match result {
+        Ok(_) => panic!("dial with failed event should error"),
+        Err(err) => {
+            assert!(
+                matches!(err, signalwire::relay::RelayError::DialFailed { .. }),
+                "expected DialFailed, got {err:?}"
+            );
+            let msg = err.to_string();
+            assert!(
+                msg.contains("dial failed")
+                    && (msg.contains("timed out") || msg.contains("failed")),
+                "unexpected dial error: {msg}"
+            );
+        }
+    }
     client.disconnect();
 }
 
@@ -182,8 +192,16 @@ fn test_dial_timeout_when_no_dial_event() {
         None,
         Duration::from_millis(500),
     );
-    assert!(result.is_err());
-    assert!(result.err().unwrap().contains("timed out"));
+    match result {
+        Ok(_) => panic!("dial with no event should time out"),
+        Err(err) => {
+            assert!(
+                matches!(err, signalwire::relay::RelayError::DialFailed { .. }),
+                "expected DialFailed, got {err:?}"
+            );
+            assert!(err.to_string().contains("timed out"));
+        }
+    }
     client.disconnect();
 }
 

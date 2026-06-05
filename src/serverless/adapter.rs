@@ -2,7 +2,14 @@ use std::collections::HashMap;
 use std::env;
 
 /// Detected runtime environment.
+///
+/// `#[non_exhaustive]` because the set of recognised serverless hosts mirrors
+/// what [`Adapter::detect`] probes for at runtime and is expected to grow
+/// (new FaaS platforms) without that being a breaking change — downstream
+/// `match` arms must include a wildcard.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[must_use]
+#[non_exhaustive]
 pub enum RuntimeEnvironment {
     Lambda,
     Gcf,

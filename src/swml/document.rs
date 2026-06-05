@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use serde_json::Value;
 
 /// SWML document: version + named sections containing verb arrays.
+#[must_use]
 pub struct Document {
     version: String,
     sections: HashMap<String, Vec<Value>>,

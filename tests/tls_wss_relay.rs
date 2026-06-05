@@ -110,11 +110,21 @@ fn tls_relay_client_wss_connect_and_auth() {
         "WSS connect with only webpki roots unexpectedly succeeded against the self-signed CA"
     );
     let err = result.unwrap_err();
+    // The typed error is a Transport failure (not auth / timeout / dial),
+    // carrying the connect context + the rustls verification cause.
     assert!(
-        err.contains("WS connect") || err.to_lowercase().contains("certif") || err.contains("Tls"),
-        "untrusted WSS connect failed for an unexpected reason: {err}"
+        matches!(err, signalwire::relay::RelayError::Transport { .. }),
+        "expected a Transport error, got: {err:?}"
     );
-    eprintln!("untrusted WSS dial correctly rejected: {err}");
+    let msg = err.to_string();
+    assert!(
+        msg.contains("connect")
+            || msg.to_lowercase().contains("certif")
+            || msg.contains("Tls")
+            || msg.to_lowercase().contains("handshake"),
+        "untrusted WSS connect failed for an unexpected reason: {msg}"
+    );
+    eprintln!("untrusted WSS dial correctly rejected: {msg}");
 
     // Clean up env so it doesn't leak to other tests in the binary.
     unsafe {

@@ -594,6 +594,7 @@ const MAX_CONTEXTS: usize = 50;
 /// NOT declare a functions field, it INHERITS the previous step's
 /// active set. See [`Step::set_functions`] for details and examples.
 #[derive(Clone)]
+#[must_use]
 pub struct ContextBuilder {
     contexts: HashMap<String, Context>,
     context_order: Vec<String>,
