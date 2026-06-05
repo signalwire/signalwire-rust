@@ -102,11 +102,13 @@ fn dispatch(client: &RestClient, op: &str, args: &Value) -> Result<Value, String
                 .map_err(|e| format!("{}: {}", op, e.message()))
         }
         "fabric.subscribers.list" => {
-            let params = args_to_string_map(args);
+            // fabric namespaces' list() take &Value (richer params); pass the raw
+            // args Value directly. (crud-based namespaces like phone_numbers take a
+            // &HashMap<String,String>, hence args_to_string_map there.)
             client
                 .fabric()
                 .subscribers()
-                .list(&params)
+                .list(args)
                 .map_err(|e| format!("{}: {}", op, e.message()))
         }
         other => Err(format!("rest_audit_harness: unsupported operation '{}'", other)),
