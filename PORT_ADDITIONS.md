@@ -131,6 +131,7 @@ signalwire.agents.bedrock.BedrockAgent.voice_id: Read-only / mutable accessors t
 
 current_state mirrors Python's `state` attribute under a method name. dispatch_event is the public event-router (private in Python). echo_call / refer_call / pass replace Python's reserved-word-clashing Call.echo / Call.refer / Call.pass_. resolve_all_actions is a Rust convenience for terminal cleanup.
 
+signalwire.relay.call.Call.call_state: Typed Tier-3 accessor returning the call state as a `CallState` enum (created/ringing/answered/ending/ended, `#[non_exhaustive]` with `Other` for unknown server values), exposed ALONGSIDE the string `current_state()` for parity — `call_state().as_str() == current_state()` always. Python's dynamic `state` attribute is a bare string; this is the floor-not-ceiling typed view. Additive; no Python equivalent.
 signalwire.relay.call.Call.current_state: current_state mirrors Python's `state` attribute under a method name. dispatch_event is the public event-router (private in Python). echo_call / refer_call / pass replace Python's reserved-word-clashing Call.echo / Call.refer / Call.pass_. resolve_all_actions is a Rust convenience for terminal cleanup.
 signalwire.relay.call.Call.dispatch_event: current_state mirrors Python's `state` attribute under a method name. dispatch_event is the public event-router (private in Python). echo_call / refer_call / pass replace Python's reserved-word-clashing Call.echo / Call.refer / Call.pass_. resolve_all_actions is a Rust convenience for terminal cleanup.
 signalwire.relay.call.Call.echo_call: current_state mirrors Python's `state` attribute under a method name. dispatch_event is the public event-router (private in Python). echo_call / refer_call / pass replace Python's reserved-word-clashing Call.echo / Call.refer / Call.pass_. resolve_all_actions is a Rust convenience for terminal cleanup.
@@ -192,12 +193,41 @@ signalwire.relay.message.Message.dispatch_event: Rust ships typed accessors on M
 signalwire.relay.message.Message.from_number: Rust ships typed accessors on Message (body, context, direction, dispatch_event, from_number, …) where Python exposes the same data via attribute access. Python's RelayClient.send_message wraps Message construction.
 signalwire.relay.message.Message.media: Rust ships typed accessors on Message (body, context, direction, dispatch_event, from_number, …) where Python exposes the same data via attribute access. Python's RelayClient.send_message wraps Message construction.
 signalwire.relay.message.Message.message_id: Rust ships typed accessors on Message (body, context, direction, dispatch_event, from_number, …) where Python exposes the same data via attribute access. Python's RelayClient.send_message wraps Message construction.
+signalwire.relay.message.Message.message_state: Typed Tier-3 accessor returning the delivery state as an `Option<MessageState>` enum (queued/initiated/sent/delivered/undelivered/failed/received, `#[non_exhaustive]` with `Other` for unknown server values), exposed ALONGSIDE the string `state()` for parity — when set, `message_state().unwrap().as_str() == state().unwrap()`. Floor-not-ceiling typed view over Python's bare-string `state`. Additive; no Python equivalent.
 signalwire.relay.message.Message.on_completed: Rust ships typed accessors on Message (body, context, direction, dispatch_event, from_number, …) where Python exposes the same data via attribute access. Python's RelayClient.send_message wraps Message construction.
 signalwire.relay.message.Message.reason: Rust ships typed accessors on Message (body, context, direction, dispatch_event, from_number, …) where Python exposes the same data via attribute access. Python's RelayClient.send_message wraps Message construction.
 signalwire.relay.message.Message.resolve: Rust ships typed accessors on Message (body, context, direction, dispatch_event, from_number, …) where Python exposes the same data via attribute access. Python's RelayClient.send_message wraps Message construction.
 signalwire.relay.message.Message.state: Rust ships typed accessors on Message (body, context, direction, dispatch_event, from_number, …) where Python exposes the same data via attribute access. Python's RelayClient.send_message wraps Message construction.
 signalwire.relay.message.Message.tags: Rust ships typed accessors on Message (body, context, direction, dispatch_event, from_number, …) where Python exposes the same data via attribute access. Python's RelayClient.send_message wraps Message construction.
 signalwire.relay.message.Message.to_number: Rust ships typed accessors on Message (body, context, direction, dispatch_event, from_number, …) where Python exposes the same data via attribute access. Python's RelayClient.send_message wraps Message construction.
+
+### Rust typed RELAY state enums (Tier-3 typed objects)
+
+Tier-3 idiom pass: three `#[non_exhaustive]` enums giving the server-emitted RELAY state vocabularies a typed view over the bare strings Python carries dynamically (floor-not-ceiling). DELIBERATELY three distinct types — CallState ≠ DialState ≠ MessageState — so the vocabularies can't be conflated even where wire words coincide (`answered` is terminal for a dial but not a call; `failed` is both a dial and a message state). Each: `as_str()` (wire string, incl. the captured `Other` value), `from_str()` (infallible — unknown server values become `Other`, never panic, also via `FromStr`), `is_terminal()` (delegates to the matching `relay::constants::is_*_terminal` so typed and string predicates can't disagree). Grounded in Python `relay/constants.py` (CALL_STATE_*/MESSAGE_STATE_*/MESSAGE_TERMINAL_STATES) + the port's `relay::constants` (DIAL_STATE_*). Additive — `constants` keeps the raw consts + predicates. No Python equivalent (Python has no state enums).
+
+signalwire.relay.state_enums.CallState: Typed call-lifecycle state (created/ringing/answered/ending/ended), `#[non_exhaustive]` + `Other(String)` for unknown server values. Terminal = ended. See section preamble.
+signalwire.relay.state_enums.CallState.as_str: Canonical wire string for the state (the captured raw string for `Other`), so `CallState::from_str(s).as_str() == s`. See section preamble.
+signalwire.relay.state_enums.CallState.from_str: Infallible parse of a wire string to CallState (unknown → `Other`); also exposed via `impl FromStr`. See section preamble.
+signalwire.relay.state_enums.CallState.is_terminal: `true` iff terminal (ended); delegates to `relay::constants::is_call_terminal`. See section preamble.
+signalwire.relay.state_enums.DialState: Typed dial-outcome state (dialing/answered/failed), `#[non_exhaustive]` + `Other(String)`. Terminal = answered or failed. Distinct from CallState. See section preamble.
+signalwire.relay.state_enums.DialState.as_str: Canonical wire string for the dial state (raw for `Other`). See section preamble.
+signalwire.relay.state_enums.DialState.from_str: Infallible parse to DialState (unknown → `Other`); also via `impl FromStr`. See section preamble.
+signalwire.relay.state_enums.DialState.is_terminal: `true` iff terminal (answered or failed). See section preamble.
+signalwire.relay.state_enums.MessageState: Typed message-delivery state (queued/initiated/sent/delivered/undelivered/failed/received), `#[non_exhaustive]` + `Other(String)`. Terminal = delivered/undelivered/failed. Distinct from DialState. See section preamble.
+signalwire.relay.state_enums.MessageState.as_str: Canonical wire string for the delivery state (raw for `Other`). See section preamble.
+signalwire.relay.state_enums.MessageState.from_str: Infallible parse to MessageState (unknown → `Other`); also via `impl FromStr`. See section preamble.
+signalwire.relay.state_enums.MessageState.is_terminal: `true` iff terminal (delivered/undelivered/failed); delegates to `relay::constants::is_message_terminal`. See section preamble.
+
+### Rust typed RELAY Device struct (Tier-3 typed object)
+
+Tier-3 idiom pass: a typed `{type, params}` Device shape for the device object that recurs as a raw `serde_json::Value` across `connect`/`refer`/`dial`/`tap` (and the serial/parallel matrix `[[device]]`). Types the SHAPE only — `type` stays a `String` because the discriminant (phone/sip/webrtc/rtp/…) is NOT enumerated in `relay-protocol/calling.{dial,connect,refer,tap}.params.json`. Additive: every raw-`Value` entry point is unchanged, and `Device::to_value()` serialises byte-identical to the hand-written `json!({"type":…,"params":…})`. No Python equivalent (Python passes a raw dict).
+
+signalwire.relay.device.Device: Typed RELAY device descriptor (`device_type: String` + `params: Value`); types the wire shape only. See section preamble.
+signalwire.relay.device.Device.__init__: `Device::new(type, params)` constructor; non-object params normalise to `{}` on the wire. See section preamble.
+signalwire.relay.device.Device.phone: Convenience constructor for a `phone` device (`{to_number, from_number}`). See section preamble.
+signalwire.relay.device.Device.sip: Convenience constructor for a `sip` device (`{to, from}`). See section preamble.
+signalwire.relay.device.Device.to_value: Serialise to the wire device object `{"type":…,"params":{…}}`, byte-identical to the hand-written form. See section preamble.
+signalwire.relay.device.Device.matrix: Build the serial/parallel device matrix (`[[device,…],…]`) that dial/connect take, from rows of Devices. See section preamble.
 
 ### Rust REST HTTP transport types
 

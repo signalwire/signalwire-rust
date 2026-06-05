@@ -5731,6 +5731,15 @@
               ],
               "returns": "class:signalwire.value.Value"
             },
+            "call_state": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "class:signalwire.callstate.CallState"
+            },
             "clear_digit_bindings": {
               "params": [
                 {
@@ -7512,6 +7521,15 @@
                 }
               ],
               "returns": "optional<string>"
+            },
+            "message_state": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "optional<class:signalwire.messagestate.MessageState>"
             },
             "on": {
               "params": [

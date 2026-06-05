@@ -4,6 +4,8 @@
 /// tracking, and the async-ready `Client` that ties everything together.
 
 pub mod constants;
+pub mod state_enums;
+pub mod device;
 pub mod error;
 pub mod event;
 pub mod action;
@@ -12,6 +14,8 @@ pub mod call;
 pub mod client;
 
 pub use constants::*;
+pub use state_enums::{CallState, DialState, MessageState};
+pub use device::Device;
 pub use error::RelayError;
 pub use event::Event;
 pub use action::{

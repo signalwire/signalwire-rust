@@ -89,6 +89,19 @@ impl Call {
         self.state.lock().unwrap().clone()
     }
 
+    /// Current call state as a typed [`CallState`].
+    ///
+    /// The typed counterpart to [`current_state`](Call::current_state): both
+    /// read the same underlying string, so
+    /// `call.call_state().as_str() == call.current_state()` always holds. An
+    /// unrecognised server value parses to [`CallState::Other`] rather than
+    /// panicking. Enables `match call.call_state() { CallState::Ended => …, … }`
+    /// and `call.call_state().is_terminal()` instead of stringly comparisons.
+    #[must_use]
+    pub fn call_state(&self) -> super::state_enums::CallState {
+        super::state_enums::CallState::from_str(&self.state.lock().unwrap())
+    }
+
     /// Python-style `__repr__` (mirrors `Call.__repr__` in the
     /// signalwire-python reference). Returns a string of the form
     /// `Call(call_id=..., state=...)`.

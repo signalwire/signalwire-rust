@@ -157,6 +157,24 @@ impl Message {
         self.state.lock().unwrap().clone()
     }
 
+    /// Current delivery state as a typed [`MessageState`].
+    ///
+    /// The typed counterpart to [`state`](Message::state): both read the same
+    /// underlying string, so when a state is present
+    /// `msg.message_state().unwrap().as_str() == msg.state().unwrap()` holds.
+    /// `None` when no state has been observed yet. An unrecognised server
+    /// value parses to [`MessageState::Other`] rather than panicking. Enables
+    /// `msg.message_state().map(|s| s.is_terminal())` and `match` instead of
+    /// stringly comparisons.
+    #[must_use]
+    pub fn message_state(&self) -> Option<super::state_enums::MessageState> {
+        self.state
+            .lock()
+            .unwrap()
+            .as_deref()
+            .map(super::state_enums::MessageState::from_str)
+    }
+
     pub fn reason(&self) -> Option<String> {
         self.reason.lock().unwrap().clone()
     }

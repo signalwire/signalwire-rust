@@ -1,6 +1,6 @@
 {
   "version": "1",
-  "generated_from": "signalwire-rust @ 69a86e4310ba9825cf3862cf713d6dfb924ad641",
+  "generated_from": "signalwire-rust @ 47b8988437a2f9bc4bd1f2f6fb3520899a33af5f",
   "modules": {
     "signalwire": {
       "classes": {
@@ -559,6 +559,7 @@
           "amazon_bedrock",
           "answer",
           "bind_digit",
+          "call_state",
           "clear_digit_bindings",
           "collect",
           "connect",
@@ -683,6 +684,18 @@
         "is_message_terminal"
       ]
     },
+    "signalwire.relay.device": {
+      "classes": {
+        "Device": [
+          "__init__",
+          "matrix",
+          "phone",
+          "sip",
+          "to_value"
+        ]
+      },
+      "functions": []
+    },
     "signalwire.relay.error": {
       "classes": {
         "RelayError": [
@@ -723,6 +736,7 @@
           "is_done",
           "media",
           "message_id",
+          "message_state",
           "on",
           "on_completed",
           "reason",
@@ -731,6 +745,26 @@
           "state",
           "tags",
           "to_number"
+        ]
+      },
+      "functions": []
+    },
+    "signalwire.relay.state_enums": {
+      "classes": {
+        "CallState": [
+          "as_str",
+          "from_str",
+          "is_terminal"
+        ],
+        "DialState": [
+          "as_str",
+          "from_str",
+          "is_terminal"
+        ],
+        "MessageState": [
+          "as_str",
+          "from_str",
+          "is_terminal"
         ]
       },
       "functions": []

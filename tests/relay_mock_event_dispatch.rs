@@ -489,3 +489,99 @@ fn test_dial_event_routes_via_tag_when_no_top_level_call_id() {
     );
     client.disconnect();
 }
+
+// ---------------------------------------------------------------------------
+// Tier-3 typed state enum: Call::call_state() on a real dispatched
+// calling.call.state event, and parity with the string accessor.
+// ---------------------------------------------------------------------------
+
+#[test]
+fn test_call_state_typed_accessor_tracks_real_state_event() {
+    use signalwire::relay::CallState;
+
+    let _g = relay_mocktest::begin();
+    let client = relay_mocktest::connected_client(&["default"]);
+    let call = answered_inbound_call(&client, "ec-stt-typed");
+
+    // After answered_inbound_call forced state to "answered", the typed view
+    // must agree with the string view.
+    assert_eq!(call.current_state(), "answered");
+    assert_eq!(call.call_state(), CallState::Answered);
+    assert_eq!(call.call_state().as_str(), call.current_state());
+    assert!(!call.call_state().is_terminal());
+
+    // Drive a REAL calling.call.state event through the mock → SDK recv loop.
+    relay_mocktest::push(bare_event_frame(
+        "calling.call.state",
+        json!({"call_id": "ec-stt-typed", "state": "ending", "direction": "inbound"}),
+    ));
+    assert!(wait_until(2000, || call.call_state() == CallState::Ending));
+    // Typed and string accessors stay in lock-step, still non-terminal.
+    assert_eq!(call.current_state(), "ending");
+    assert_eq!(call.call_state().as_str(), "ending");
+    assert!(!call.call_state().is_terminal());
+
+    // Terminal transition: the enum reports terminal exactly when the call ends.
+    relay_mocktest::push(bare_event_frame(
+        "calling.call.state",
+        json!({"call_id": "ec-stt-typed", "state": "ended", "direction": "inbound"}),
+    ));
+    assert!(wait_until(2000, || call.call_state().is_terminal()));
+    assert_eq!(call.call_state(), CallState::Ended);
+    assert_eq!(call.call_state().as_str(), call.current_state());
+
+    client.disconnect();
+}
+
+// ---------------------------------------------------------------------------
+// Tier-3 typed Device: build the dial matrix with the typed struct and prove
+// (a) a real mock dial answers and (b) the journaled wire `devices` is
+// byte-identical to the hand-written json! matrix.
+// ---------------------------------------------------------------------------
+
+#[test]
+fn test_dial_with_typed_device_matches_handwritten_wire() {
+    use signalwire::relay::Device;
+
+    let _g = relay_mocktest::begin();
+    let client = relay_mocktest::connected_client(&["default"]);
+    relay_mocktest::arm_dial(json!({
+        "tag": "ec-typed-dev",
+        "winner_call_id": "WINDEV",
+        "states": ["created", "answered"],
+        "node_id": "n",
+        "device": {"type": "phone", "params": {}},
+    }));
+
+    // Typed device matrix — one parallel leg, one phone device.
+    let devices = Device::matrix(&[&[Device::phone("+1", "+2")]]);
+    // It must be byte-identical to the hand-written matrix the other dial
+    // tests use, BEFORE we ever send it.
+    let handwritten =
+        json!([[{"type": "phone", "params": {"to_number": "+1", "from_number": "+2"}}]]);
+    assert_eq!(
+        serde_json::to_string(&devices).unwrap(),
+        serde_json::to_string(&handwritten).unwrap(),
+    );
+
+    let call = client
+        .dial_blocking(
+            devices,
+            Some("ec-typed-dev"),
+            None,
+            std::time::Duration::from_secs(5),
+        )
+        .expect("typed-device dial should answer");
+    assert_eq!(call.call_id.as_deref(), Some("WINDEV"));
+
+    // The dial RPC the SDK actually sent must carry exactly that device wire.
+    let sent = relay_mocktest::journal_recv(Some("calling.dial"));
+    assert!(!sent.is_empty(), "no calling.dial RPC in journal");
+    let sent_devices = sent.last().unwrap().inner_params().get("devices").cloned();
+    assert_eq!(
+        sent_devices.map(|d| serde_json::to_string(&d).unwrap()),
+        Some(serde_json::to_string(&handwritten).unwrap()),
+    );
+
+    client.disconnect();
+}
