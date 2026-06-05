@@ -11,7 +11,7 @@
 //! | `tap`             | `direction` | `"speak"`, `"hear"`, `"both"`            |
 //! | `tap`             | `codec`     | `"PCMU"`, `"PCMA"`                        |
 //!
-//! In Python a typo (`record_call(format="mp4")`) only fails at runtime with a
+//! In Python a typo (`record_call(format="ogg")`) only fails at runtime with a
 //! `ValueError`. These enums give the same closed sets a typed alternative so
 //! the typo fails at the **call site** with editor autocompletion and
 //! exhaustive matching, while the `&str` API stays available for parity.
@@ -41,7 +41,7 @@ use std::fmt;
 
 /// Recording container format for [`FunctionResult::record_call`].
 ///
-/// Mirrors the Python reference's `format in ["wav", "mp3"]` validation.
+/// Mirrors the Python reference's `format in ["wav", "mp3", "mp4"]` validation.
 ///
 /// [`FunctionResult::record_call`]: crate::swaig::FunctionResult::record_call
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -50,6 +50,8 @@ pub enum RecordFormat {
     Wav,
     /// `mp3`
     Mp3,
+    /// `mp4`
+    Mp4,
 }
 
 impl RecordFormat {
@@ -62,12 +64,13 @@ impl RecordFormat {
         match self {
             RecordFormat::Wav => "wav",
             RecordFormat::Mp3 => "mp3",
+            RecordFormat::Mp4 => "mp4",
         }
     }
 
     /// Every [`RecordFormat`], in declaration order.
     pub fn all() -> &'static [RecordFormat] {
-        &[RecordFormat::Wav, RecordFormat::Mp3]
+        &[RecordFormat::Wav, RecordFormat::Mp3, RecordFormat::Mp4]
     }
 
     /// Parse a wire string into a [`RecordFormat`], or `None` if it is not a
@@ -322,11 +325,12 @@ mod tests {
     fn test_record_format_from_str_roundtrips_and_rejects_typo() {
         assert_eq!(RecordFormat::from_str("wav"), Some(RecordFormat::Wav));
         assert_eq!(RecordFormat::from_str("mp3"), Some(RecordFormat::Mp3));
-        // The reference rejects anything else with ValueError; here it's None.
-        assert_eq!(RecordFormat::from_str("mp4"), None);
+        assert_eq!(RecordFormat::from_str("mp4"), Some(RecordFormat::Mp4));
+        // The reference rejects anything outside {wav,mp3,mp4} with ValueError; here it's None.
+        assert_eq!(RecordFormat::from_str("ogg"), None);
         assert_eq!(RecordFormat::from_str("WAV"), None);
         assert_eq!(RecordFormat::from_str(""), None);
-        assert_eq!(RecordFormat::all().len(), 2);
+        assert_eq!(RecordFormat::all().len(), 3);
         // Display / AsRef / Into<String> all agree with as_str().
         for f in RecordFormat::all() {
             assert_eq!(f.to_string(), f.as_str());
