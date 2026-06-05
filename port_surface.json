@@ -1,6 +1,6 @@
 {
   "version": "1",
-  "generated_from": "signalwire-rust @ fc391b514dc923d54f8b1f06cdb100605966bea4",
+  "generated_from": "signalwire-rust @ 69a86e4310ba9825cf3862cf713d6dfb924ad641",
   "modules": {
     "signalwire": {
       "classes": {
@@ -1624,6 +1624,39 @@
           "all",
           "as_str",
           "from_str"
+        ]
+      },
+      "functions": []
+    },
+    "signalwire.swaig.params_builder": {
+      "classes": {
+        "ParamKind": [
+          "as_str"
+        ],
+        "ParamsBuilder": [
+          "__init__",
+          "array",
+          "boolean",
+          "build",
+          "build_schema",
+          "enum_of",
+          "integer",
+          "number",
+          "object",
+          "property",
+          "required",
+          "string"
+        ],
+        "PropertyBuilder": [
+          "__init__",
+          "build",
+          "default",
+          "enum_values",
+          "extra",
+          "format",
+          "items",
+          "properties",
+          "required"
         ]
       },
       "functions": []

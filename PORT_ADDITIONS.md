@@ -424,6 +424,36 @@ signalwire.swaig.media_enums.Codec.as_str: rust_enum_idiom: canonical upper-case
 signalwire.swaig.media_enums.Codec.all: rust_enum_idiom: &'static slice of every Codec for exhaustive iteration (see Codec).
 signalwire.swaig.media_enums.Codec.from_str: rust_enum_idiom: parse a wire string to a Codec (case-sensitive, mirroring the reference's literal list), None otherwise (see Codec).
 
+### Typed SWAIG tool-parameter builder (Tier-2 flagship idiom pass)
+
+`define_tool(parameters: Value)` takes the SWAIG argument schema as an untyped, hand-written `json!({ ... })` `properties` blob (Python passes the same as a `Dict[str,Any]`). `ParamsBuilder`/`PropertyBuilder`/`ParamKind` are an ADDITIVE typed convenience over the EXACT SAME wire output: `build()` returns the byte-identical `properties` object `define_tool` already accepts, `build_schema()` returns the byte-identical full `{"type":"object","properties":{…},"required":[…]}` schema (Python's `_ensure_parameter_structure` output) for the `register_swaig_function` / DataMap path. The untyped path is unchanged; no Python-reference symbol corresponds (this is pure Rust idiom — fluent + `#[must_use]`). Closed-set properties integrate the Tier-1 media enums via their `all()`/`AsRef<str>`.
+
+signalwire.swaig.params_builder.ParamKind: rust-builder-idiom: JSON-Schema primitive-type enum ({string,number,integer,boolean,array,object}) used by the typed param builder; renders the literal `"type"` value. No Python equivalent (Python writes the type string inline).
+signalwire.swaig.params_builder.ParamKind.as_str: rust-builder-idiom: canonical JSON-Schema `"type"` string for the kind (e.g. `"integer"`) — what lands in the schema, byte-identical to the hand-written literal.
+signalwire.swaig.params_builder.ParamsBuilder: rust-builder-idiom: fluent typed builder for a SWAIG tool's parameter schema; produces the SAME untyped `serde_json::Value` `define_tool` already accepts. Additive convenience, untyped path unchanged.
+signalwire.swaig.params_builder.ParamsBuilder.__init__: rust-builder-idiom: `ParamsBuilder::new()` — start an empty parameter schema (enumerator maps Rust `new` → `__init__`).
+signalwire.swaig.params_builder.ParamsBuilder.array: rust-builder-idiom: add an `array` property with a `ParamKind` element type, emitting `{"type":"array","items":{"type":…}}` — byte-identical to the hand-written form.
+signalwire.swaig.params_builder.ParamsBuilder.boolean: rust-builder-idiom: add a `boolean` property with description — byte-identical to the hand-written `{"type":"boolean","description":…}`.
+signalwire.swaig.params_builder.ParamsBuilder.build: rust-builder-idiom: render the `properties` object the unchanged `define_tool(parameters)` accepts; byte-identical to the hand-written `json!({…})` properties blob.
+signalwire.swaig.params_builder.ParamsBuilder.build_schema: rust-builder-idiom: render the full `{"type":"object","properties":{…},"required":[…]}` schema (Python's `_ensure_parameter_structure` output); byte-identical to the hand-written full schema used with register_swaig_function / DataMap.
+signalwire.swaig.params_builder.ParamsBuilder.enum_of: rust-builder-idiom: add a closed-set (`enum`) property from any `impl AsRef<str>` iterator (the Tier-1 media enums plug in via `all()`), emitting `{"type":"string","enum":[…]}` — byte-identical to the hand-written enum schema.
+signalwire.swaig.params_builder.ParamsBuilder.integer: rust-builder-idiom: add an `integer` property with description — byte-identical to the hand-written `{"type":"integer","description":…}`.
+signalwire.swaig.params_builder.ParamsBuilder.number: rust-builder-idiom: add a `number` (float) property with description — byte-identical to the hand-written `{"type":"number","description":…}`.
+signalwire.swaig.params_builder.ParamsBuilder.object: rust-builder-idiom: add a nested `object` property whose shape is another ParamsBuilder, emitting `{"type":"object","properties":{…}}` (plus nested required) — byte-identical to the hand-written nested schema.
+signalwire.swaig.params_builder.ParamsBuilder.property: rust-builder-idiom: add a fully-customised property built via PropertyBuilder (escape hatch for default/format/per-property required); inserts its rendered object verbatim.
+signalwire.swaig.params_builder.ParamsBuilder.required: rust-builder-idiom: declare the top-level required-parameter list (JSON-Schema sibling of `properties`, == Python's `required=[…]` arg); surfaces in build_schema()'s `"required":[…]`.
+signalwire.swaig.params_builder.ParamsBuilder.string: rust-builder-idiom: add a `string` property with description — byte-identical to the hand-written `{"type":"string","description":…}`.
+signalwire.swaig.params_builder.PropertyBuilder: rust-builder-idiom: per-property typed builder for options the one-line ParamsBuilder helpers don't cover (default/format/per-property required/nesting); renders the same `{"type":…,"description":…,…}` object as hand-written.
+signalwire.swaig.params_builder.PropertyBuilder.__init__: rust-builder-idiom: `PropertyBuilder::new(kind, description)` — start a property of the given ParamKind with an LLM-facing description (enumerator maps `new` → `__init__`).
+signalwire.swaig.params_builder.PropertyBuilder.build: rust-builder-idiom: finish the property, yielding its rendered schema object; byte-identical to the hand-written property object.
+signalwire.swaig.params_builder.PropertyBuilder.default: rust-builder-idiom: attach a `"default"` value to the property — byte-identical to the hand-written `"default":…`.
+signalwire.swaig.params_builder.PropertyBuilder.enum_values: rust-builder-idiom: constrain the property to a closed set (`"enum":[…]`) from any `impl AsRef<str>` iterator — how the Tier-1 media enums integrate.
+signalwire.swaig.params_builder.PropertyBuilder.extra: rust-builder-idiom: escape hatch to insert an arbitrary extra schema key (e.g. `"minimum"`, `"pattern"`) without a dedicated helper.
+signalwire.swaig.params_builder.PropertyBuilder.format: rust-builder-idiom: attach a JSON-Schema `"format"` hint (`"date"`/`"email"`/…); the format vocabulary is open so this stays a `&str`.
+signalwire.swaig.params_builder.PropertyBuilder.items: rust-builder-idiom: set the array element schema, emitting `"items":{"type":…}` — byte-identical to the hand-written array items.
+signalwire.swaig.params_builder.PropertyBuilder.properties: rust-builder-idiom: set the nested `properties` (and nested `required`) for an object property from another ParamsBuilder — byte-identical to the hand-written nested object schema.
+signalwire.swaig.params_builder.PropertyBuilder.required: rust-builder-idiom: per-property `"required": true` flag (the style some skills use, e.g. the datasphere skill); distinct from ParamsBuilder.required's top-level array.
+
 ### Rust SkillRegistry methods
 
 external_paths returns the directories registered via add_skill_directory (mirroring Python's _external_paths attribute). get_factory returns a closure-wrapped factory (Rust replacement for Python's get_skill / get_skill_class).
