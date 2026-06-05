@@ -298,8 +298,21 @@ RE_PUB_STRUCT = re.compile(r"^\s*pub(?:\s*\([^)]*\))?\s+struct\s+(\w+)\b")
 RE_PUB_ENUM = re.compile(r"^\s*pub(?:\s*\([^)]*\))?\s+enum\s+(\w+)\b")
 RE_PUB_TRAIT = re.compile(r"^\s*pub(?:\s*\([^)]*\))?\s+trait\s+(\w+)\b")
 RE_PUB_TYPE = re.compile(r"^\s*pub(?:\s*\([^)]*\))?\s+type\s+(\w+)\b")
-RE_IMPL_BLOCK = re.compile(r"^\s*impl(?:\s*<[^>]*>)?\s+(\w+)(?:\s*<[^>]*>)?\s*(?:where[^{]*)?\{")
-RE_IMPL_TRAIT_FOR = re.compile(r"^\s*impl(?:\s*<[^>]*>)?\s+\w+(?:\s*<[^>]*>)?\s+for\s+(\w+)\b")
+# Generic params / args can themselves contain one level of nested angle
+# brackets — e.g. ``impl<E: AsRef<str>> MediaArg<E>``. A flat ``<[^>]*>``
+# stops at the first ``>`` (here the one closing ``AsRef<str``) and then fails
+# to match the type, silently dropping the whole impl block (its methods leak
+# out as module-level free functions). ``_NESTED_ANGLES`` allows one level of
+# nesting so such bounds are consumed correctly.
+_NESTED_ANGLES = r"<(?:[^<>]|<[^<>]*>)*>"
+RE_IMPL_BLOCK = re.compile(
+    r"^\s*impl(?:\s*" + _NESTED_ANGLES + r")?\s+(\w+)(?:\s*" + _NESTED_ANGLES
+    + r")?\s*(?:where[^{]*)?\{"
+)
+RE_IMPL_TRAIT_FOR = re.compile(
+    r"^\s*impl(?:\s*" + _NESTED_ANGLES + r")?\s+\w+(?:\s*" + _NESTED_ANGLES
+    + r")?\s+for\s+(\w+)\b"
+)
 # `pub use <path>::Name;` and `pub use <path>::{A, B};` and `pub use <path>::Name as Other;`
 RE_PUB_USE_ITEM = re.compile(r"^\s*pub\s+use\s+([\w:]+)::([\w?]+)(?:\s+as\s+(\w+))?\s*;")
 RE_PUB_USE_GROUP = re.compile(r"^\s*pub\s+use\s+([\w:]+)::\{([^}]+)\}\s*;")

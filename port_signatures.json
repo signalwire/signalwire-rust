@@ -3176,12 +3176,12 @@
                 },
                 {
                   "name": "format",
-                  "type": "string",
+                  "type": "class:signalwire.recordformat.RecordFormat",
                   "required": true
                 },
                 {
                   "name": "direction",
-                  "type": "string",
+                  "type": "class:signalwire.recorddirection.RecordDirection",
                   "required": true
                 },
                 {
@@ -3646,12 +3646,12 @@
                 },
                 {
                   "name": "direction",
-                  "type": "string",
+                  "type": "class:signalwire.tapdirection.TapDirection",
                   "required": true
                 },
                 {
                   "name": "codec",
-                  "type": "string",
+                  "type": "class:signalwire.codec.Codec",
                   "required": true
                 },
                 {
@@ -4782,7 +4782,7 @@
                 },
                 {
                   "name": "body",
-                  "type": "any",
+                  "type": "string",
                   "required": true
                 }
               ],
@@ -4917,7 +4917,7 @@
                 },
                 {
                   "name": "body",
-                  "type": "any",
+                  "type": "string",
                   "required": true
                 }
               ],
@@ -4945,7 +4945,7 @@
                 },
                 {
                   "name": "title",
-                  "type": "any",
+                  "type": "string",
                   "required": true
                 }
               ],
@@ -4959,12 +4959,12 @@
                 },
                 {
                   "name": "title",
-                  "type": "any",
+                  "type": "string",
                   "required": true
                 },
                 {
                   "name": "body",
-                  "type": "any",
+                  "type": "string",
                   "required": true
                 },
                 {

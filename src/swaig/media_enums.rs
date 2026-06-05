@@ -6,7 +6,7 @@
 //!
 //! | Helper            | Parameter   | Allowed values (Python reference)        |
 //! |-------------------|-------------|------------------------------------------|
-//! | `record_call`     | `format`    | `"wav"`, `"mp3"`                          |
+//! | `record_call`     | `format`    | `"wav"`, `"mp3"`, `"mp4"`                 |
 //! | `record_call`     | `direction` | `"speak"`, `"listen"`, `"both"`          |
 //! | `tap`             | `direction` | `"speak"`, `"hear"`, `"both"`            |
 //! | `tap`             | `codec`     | `"PCMU"`, `"PCMA"`                        |
@@ -14,11 +14,14 @@
 //! In Python a typo (`record_call(format="ogg")`) only fails at runtime with a
 //! `ValueError`. These enums give the same closed sets a typed alternative so
 //! the typo fails at the **call site** with editor autocompletion and
-//! exhaustive matching, while the `&str` API stays available for parity.
+//! exhaustive matching.
 //!
-//! The consuming methods keep their `&str` parameter (parity with Python's
-//! `str`); each enum plugs in via [`as_str`](RecordFormat::as_str) /
-//! `AsRef<str>` / `Display`, so the emitted SWML is byte-identical:
+//! The consuming methods take `format: impl Into<MediaArg<RecordFormat>>` (and
+//! likewise for `direction`/`codec`), so the **same parameter** accepts both
+//! the typed enum *and* a raw wire string ([`MediaArg`] wraps the two). The raw
+//! `&str` path stays available for Python parity / forward-compat; an out-of-set
+//! raw value is still rejected in the method body with the reference's exact
+//! `ValueError` text, and the emitted SWML is byte-identical either way:
 //!
 //! ```no_run
 //! use signalwire::swaig::FunctionResult;
@@ -26,7 +29,7 @@
 //!
 //! let mut fr = FunctionResult::new();
 //! // typed + autocompleted — identical wire shape to the bare strings below
-//! fr.record_call("rec1", false, RecordFormat::Mp3.as_str(), RecordDirection::Both.as_str(),
+//! fr.record_call("rec1", false, RecordFormat::Mp3, RecordDirection::Both,
 //!                "", false, 44.0, None, None, None, "").unwrap();
 //! // bare strings still work (Python parity)
 //! fr.record_call("rec2", false, "mp3", "both", "", false, 44.0, None, None, None, "").unwrap();
@@ -107,9 +110,9 @@ pub enum RecordFormat {
 impl RecordFormat {
     /// The canonical wire string for this format (e.g. `"wav"`).
     ///
-    /// This is exactly the string the bare-`str` API expects, so
-    /// `fr.record_call(id, stereo, RecordFormat::Mp3.as_str(), dir)` emits the
-    /// same SWML as `fr.record_call(id, stereo, "mp3", dir)`.
+    /// This is exactly the string the raw-`str` call style carries, so
+    /// `record_call(.., RecordFormat::Mp3, ..)` emits the same SWML as
+    /// `record_call(.., "mp3", ..)` — both resolve here via [`MediaArg`].
     pub fn as_str(&self) -> &'static str {
         match self {
             RecordFormat::Wav => "wav",
@@ -408,6 +411,107 @@ impl From<Codec> for &'static str {
     }
 }
 
+// ── MediaArg<E>: the typed-or-raw parameter wrapper ──────────────────────────
+
+/// The accepted value of a closed-set media-action parameter — *either* the
+/// typed enum (`RecordFormat::Mp3`) *or* a raw wire string (`"mp3"`).
+///
+/// This is the parameter type behind [`FunctionResult::record_call`]'s
+/// `format`/`direction` and [`FunctionResult::tap`]'s `direction`/`codec`
+/// (each method takes `impl Into<MediaArg<E>>`). It exists so a single
+/// parameter can be driven *both* ways with no overloads:
+///
+/// ```no_run
+/// use signalwire::swaig::FunctionResult;
+/// use signalwire::swaig::RecordFormat;
+///
+/// let mut fr = FunctionResult::new();
+/// // typed + autocompleted — fails at the call site on a typo
+/// fr.record_call("r", false, RecordFormat::Mp3, "both", "", false, 44.0, None, None, None, "").unwrap();
+/// // raw &str still compiles (Python parity / forward-compat) and emits the
+/// // byte-identical SWML
+/// fr.record_call("r", false, "mp3", "both", "", false, 44.0, None, None, None, "").unwrap();
+/// ```
+///
+/// **Validation is unchanged and still matches the Python reference.** The raw
+/// arm carries the string *verbatim* into the method body, where the same
+/// closed-set check runs and rejects an out-of-set value with the reference's
+/// exact `ValueError` text — e.g. `record_call(.., "ogg", ..)` still returns
+/// `Err("format must be 'wav', 'mp3', or 'mp4'")`. The typed arm is always
+/// valid by construction. Either way [`wire`](MediaArg::wire) yields the exact
+/// wire string, so the emitted SWML is byte-identical between the two call
+/// styles.
+///
+/// [`FunctionResult::record_call`]: crate::swaig::FunctionResult::record_call
+/// [`FunctionResult::tap`]: crate::swaig::FunctionResult::tap
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum MediaArg<E> {
+    /// The typed, closed-set enum value (always a valid wire string).
+    Typed(E),
+    /// A raw wire string, carried verbatim. Validated in the method body
+    /// exactly as the Python reference validates its `str` argument.
+    Raw(String),
+}
+
+impl<E: AsRef<str>> MediaArg<E> {
+    /// The wire string this argument resolves to. For [`Typed`](MediaArg::Typed)
+    /// it is the enum's canonical `as_str()`; for [`Raw`](MediaArg::Raw) it is
+    /// the string verbatim. The method body validates this value against the
+    /// closed set before emitting it (Python-reference parity).
+    pub fn wire(&self) -> &str {
+        match self {
+            MediaArg::Typed(e) => e.as_ref(),
+            MediaArg::Raw(s) => s.as_str(),
+        }
+    }
+}
+
+// The typed arm is wired per-enum (below) rather than via a blanket
+// `From<E> for MediaArg<E>`: the blanket would collide with the `&str` /
+// `String` raw arms at `E = &str` / `E = String` (trait coherence, E0119).
+// Four concrete impls keep both call styles unambiguous.
+impl<E> From<&str> for MediaArg<E> {
+    fn from(s: &str) -> Self {
+        MediaArg::Raw(s.to_string())
+    }
+}
+
+impl<E> From<String> for MediaArg<E> {
+    fn from(s: String) -> Self {
+        MediaArg::Raw(s)
+    }
+}
+
+impl<E> From<&String> for MediaArg<E> {
+    fn from(s: &String) -> Self {
+        MediaArg::Raw(s.clone())
+    }
+}
+
+impl From<RecordFormat> for MediaArg<RecordFormat> {
+    fn from(e: RecordFormat) -> Self {
+        MediaArg::Typed(e)
+    }
+}
+
+impl From<RecordDirection> for MediaArg<RecordDirection> {
+    fn from(e: RecordDirection) -> Self {
+        MediaArg::Typed(e)
+    }
+}
+
+impl From<TapDirection> for MediaArg<TapDirection> {
+    fn from(e: TapDirection) -> Self {
+        MediaArg::Typed(e)
+    }
+}
+
+impl From<Codec> for MediaArg<Codec> {
+    fn from(e: Codec) -> Self {
+        MediaArg::Typed(e)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -639,5 +743,135 @@ mod tests {
         assert_eq!(<Codec as FromStr>::from_str("PCMA"), Ok(Codec::Pcma));
         assert!("pcmu".parse::<Codec>().is_err());
         assert!("OPUS".parse::<Codec>().is_err(), "the 7-value RELAY codec OPUS is not a SWAIG tap codec");
+    }
+
+    // ── MediaArg<E> wrapper (the typed-or-raw record_call/tap param type) ──
+    //
+    // `record_call(format, direction, …)` and `tap(direction, codec, …)` take
+    // `impl Into<MediaArg<E>>`, so a single parameter accepts *both* the typed
+    // enum (`RecordFormat::Wav`) and a raw wire string (`"wav"`). These tests
+    // pin the contract: both styles compile, resolve to the same wire string,
+    // and emit byte-identical SWML; raw out-of-set strings still hit the
+    // method's closed-set validation and return the reference's exact Err.
+
+    #[test]
+    fn test_media_arg_resolves_typed_and_raw_to_the_same_wire_string() {
+        // From<Enum> -> Typed; From<&str>/From<String> -> Raw. Both arms expose
+        // the canonical wire string via wire().
+        let typed: MediaArg<RecordFormat> = RecordFormat::Mp3.into();
+        let raw: MediaArg<RecordFormat> = "mp3".into();
+        let owned: MediaArg<RecordFormat> = String::from("mp3").into();
+        assert_eq!(typed, MediaArg::Typed(RecordFormat::Mp3));
+        assert_eq!(raw, MediaArg::Raw("mp3".to_string()));
+        assert_eq!(owned, MediaArg::Raw("mp3".to_string()));
+        assert_eq!(typed.wire(), "mp3");
+        assert_eq!(raw.wire(), "mp3");
+        assert_eq!(owned.wire(), "mp3");
+        // The raw arm carries even out-of-set input verbatim (validation is the
+        // method's job, exactly as Python validates its str argument).
+        let bad: MediaArg<RecordFormat> = "ogg".into();
+        assert_eq!(bad.wire(), "ogg");
+    }
+
+    #[test]
+    fn test_record_call_typed_enum_and_raw_str_emit_identical_swml() {
+        // The crux of the wave-1 typed-param change: BOTH call styles compile
+        // through `impl Into<MediaArg<E>>` (no `.as_str()`), and the emitted
+        // SWML is byte-for-byte identical.
+        let mut typed_fr = FunctionResult::new();
+        typed_fr
+            .record_call("r", true, RecordFormat::Mp3, RecordDirection::Speak, "", false, 44.0, None, None, None, "")
+            .unwrap();
+        let mut raw_fr = FunctionResult::new();
+        raw_fr
+            .record_call("r", true, "mp3", "speak", "", false, 44.0, None, None, None, "")
+            .unwrap();
+        assert_eq!(typed_fr.to_value(), raw_fr.to_value());
+
+        // And the wire values really are the enum's canonical strings.
+        let v = typed_fr.to_value();
+        let rec = &v["action"][0]["SWML"]["sections"]["main"][0]["record_call"];
+        assert_eq!(rec["format"], "mp3");
+        assert_eq!(rec["direction"], "speak");
+    }
+
+    #[test]
+    fn test_tap_typed_enum_and_raw_str_emit_identical_swml() {
+        let mut typed_fr = FunctionResult::new();
+        typed_fr
+            .tap("wss://example.com", "t1", TapDirection::Hear, Codec::Pcma, 20, "")
+            .unwrap();
+        let mut raw_fr = FunctionResult::new();
+        raw_fr
+            .tap("wss://example.com", "t1", "hear", "PCMA", 20, "")
+            .unwrap();
+        assert_eq!(typed_fr.to_value(), raw_fr.to_value());
+
+        let v = typed_fr.to_value();
+        let tap = &v["action"][0]["SWML"]["sections"]["main"][0]["tap"];
+        assert_eq!(tap["direction"], "hear");
+        assert_eq!(tap["codec"], "PCMA");
+    }
+
+    #[test]
+    fn test_typed_default_values_match_raw_defaults_byte_for_byte() {
+        // record_call(format="wav"/direction="both") and tap(direction="both"/
+        // codec="PCMU") are the reference defaults; driving them with the typed
+        // enums must produce exactly what the bare-string defaults produce
+        // (tap omits direction/codec at default — the typed path must too).
+        let mut typed_rec = FunctionResult::new();
+        typed_rec
+            .record_call("", false, RecordFormat::Wav, RecordDirection::Both, "", false, 44.0, None, None, None, "")
+            .unwrap();
+        let mut raw_rec = FunctionResult::new();
+        raw_rec
+            .record_call("", false, "wav", "both", "", false, 44.0, None, None, None, "")
+            .unwrap();
+        assert_eq!(typed_rec.to_value(), raw_rec.to_value());
+
+        let mut typed_tap = FunctionResult::new();
+        typed_tap
+            .tap("wss://x", "", TapDirection::Both, Codec::Pcmu, 20, "")
+            .unwrap();
+        let mut raw_tap = FunctionResult::new();
+        raw_tap.tap("wss://x", "", "both", "PCMU", 20, "").unwrap();
+        assert_eq!(typed_tap.to_value(), raw_tap.to_value());
+        // Default direction/codec are omitted from the tap verb in both.
+        let tv = typed_tap.to_value();
+        let tap = &tv["action"][0]["SWML"]["sections"]["main"][0]["tap"];
+        assert!(tap.get("direction").is_none());
+        assert!(tap.get("codec").is_none());
+    }
+
+    #[test]
+    fn test_raw_str_path_still_rejects_out_of_set_with_reference_error() {
+        // Forward-compat / Python-parity: the raw &str arm carries the bad
+        // value into the method, where the unchanged closed-set check returns
+        // the reference's exact ValueError text (not a panic, not a silent
+        // default). The typed enum arm makes this state unrepresentable.
+        let mut fr = FunctionResult::new();
+        assert_eq!(
+            fr.record_call("", false, "ogg", "both", "", false, 44.0, None, None, None, "")
+                .unwrap_err(),
+            "format must be 'wav', 'mp3', or 'mp4'"
+        );
+        let mut fr = FunctionResult::new();
+        assert_eq!(
+            fr.record_call("", false, "wav", "left", "", false, 44.0, None, None, None, "")
+                .unwrap_err(),
+            "direction must be 'speak', 'listen', or 'both'"
+        );
+        let mut fr = FunctionResult::new();
+        assert_eq!(
+            fr.tap("wss://x", "", "sideways", "PCMU", 20, "").unwrap_err(),
+            "direction must be one of ['speak', 'hear', 'both']"
+        );
+        let mut fr = FunctionResult::new();
+        assert_eq!(
+            fr.tap("wss://x", "", "both", "OPUS", 20, "").unwrap_err(),
+            "codec must be one of ['PCMU', 'PCMA']"
+        );
+        // None of the rejected calls emitted an action.
+        assert!(fr.to_value().get("action").is_none());
     }
 }

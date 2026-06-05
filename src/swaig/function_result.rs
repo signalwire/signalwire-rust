@@ -2,6 +2,8 @@ use std::collections::HashMap;
 
 use serde_json::{json, Map, Value};
 
+use crate::swaig::media_enums::{Codec, MediaArg, RecordDirection, RecordFormat, TapDirection};
+
 /// Render a list of string values the way Python renders a `list[str]` inside
 /// an f-string — `['a', 'b', 'c']` — so the `join_conference` validation
 /// error messages are byte-identical to the reference's `ValueError` text.
@@ -388,8 +390,8 @@ impl FunctionResult {
         &mut self,
         control_id: &str,
         stereo: bool,
-        format: &str,
-        direction: &str,
+        format: impl Into<MediaArg<RecordFormat>>,
+        direction: impl Into<MediaArg<RecordDirection>>,
         terminators: &str,
         beep: bool,
         input_sensitivity: f64,
@@ -398,6 +400,15 @@ impl FunctionResult {
         max_length: Option<f64>,
         status_url: &str,
     ) -> Result<&mut Self, String> {
+        // Resolve the typed-or-raw closed-set args to their wire strings. Both
+        // `RecordFormat::Mp3` (typed) and `"mp3"` (raw) collapse here to the
+        // exact same `&str`, so the validation and emitted SWML below are
+        // identical regardless of call style (Python-reference parity).
+        let format: MediaArg<RecordFormat> = format.into();
+        let format: &str = format.wire();
+        let direction: MediaArg<RecordDirection> = direction.into();
+        let direction: &str = direction.wire();
+
         // ── Validation (exact reference ValueError messages) ─────────────
         let valid_format = ["wav", "mp3", "mp4"];
         if !valid_format.contains(&format) {
@@ -777,11 +788,20 @@ impl FunctionResult {
         &mut self,
         uri: &str,
         control_id: &str,
-        direction: &str,
-        codec: &str,
+        direction: impl Into<MediaArg<TapDirection>>,
+        codec: impl Into<MediaArg<Codec>>,
         rtp_ptime: i64,
         status_url: &str,
     ) -> Result<&mut Self, String> {
+        // Resolve the typed-or-raw closed-set args to their wire strings. Both
+        // `TapDirection::Hear` / `Codec::Pcma` (typed) and `"hear"` / `"PCMA"`
+        // (raw) collapse here to the same `&str`, so validation and emitted
+        // SWML are identical regardless of call style (Python-reference parity).
+        let direction: MediaArg<TapDirection> = direction.into();
+        let direction: &str = direction.wire();
+        let codec: MediaArg<Codec> = codec.into();
+        let codec: &str = codec.wire();
+
         // ── Validation (exact reference ValueError messages) ─────────────
         let valid_directions = ["speak", "hear", "both"];
         if !valid_directions.contains(&direction) {

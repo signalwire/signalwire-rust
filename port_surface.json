@@ -1,6 +1,6 @@
 {
   "version": "1",
-  "generated_from": "signalwire-rust @ 47b8988437a2f9bc4bd1f2f6fb3520899a33af5f",
+  "generated_from": "signalwire-rust @ 3bcc999b6bea6409438b9d56628c5bcce98b03ca",
   "modules": {
     "signalwire": {
       "classes": {
@@ -1640,6 +1640,9 @@
           "all",
           "as_str",
           "from_str"
+        ],
+        "MediaArg": [
+          "wire"
         ],
         "ParseMediaEnumError": [
           "input"

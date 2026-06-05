@@ -164,6 +164,18 @@ def translate_rust_type(t, paths: dict, aliases: dict, context: str) -> str:
             inner = translate_rust_type(type_args[0], paths, aliases, context) if type_args else "any"
             return inner
 
+        # MediaArg<E> — the typed-or-raw wrapper behind FunctionResult's
+        # closed-set media params (``record_call(format: impl
+        # Into<MediaArg<RecordFormat>>)`` etc.). The closed set the Python
+        # reference describes (now ``enum<…>`` in the oracle) IS the inner
+        # enum ``E``; the wrapper merely also accepts a raw string for
+        # forward-compat. Surface the inner enum's class so the param reads
+        # as the typed closed set (``class:…RecordFormat``), which is exactly
+        # what the oracle's ``enum<…>`` contract expects — not the wrapper.
+        if last == "MediaArg":
+            inner = translate_rust_type(type_args[0], paths, aliases, context) if type_args else "any"
+            return inner
+
         # SDK class — emit class:<canonical>
         canonical_name = _translate_class(last)
         if canonical_name in CLASS_MODULE_MAP:
@@ -173,6 +185,29 @@ def translate_rust_type(t, paths: dict, aliases: dict, context: str) -> str:
 
     # impl_trait: { "impl_trait": [ ... ] }
     if "impl_trait" in t:
+        # A single conversion-trait bound — ``impl Into<T>`` / ``impl
+        # AsRef<T>`` / ``impl TryInto<T>`` … — is just an ergonomic way to
+        # accept ``T`` (callers pass a ``T`` or anything that converts to one).
+        # Surface the target ``T`` so the param carries its real type instead
+        # of collapsing to ``any``. This is what makes ``record_call(format:
+        # impl Into<MediaArg<RecordFormat>>)`` surface as the typed closed set
+        # (``class:…RecordFormat`` via the MediaArg unwrap above) rather than
+        # ``any``. Multi-bound / non-conversion impl-traits (``impl
+        # Iterator``, ``impl Fn``, ``impl Display``) stay ``any``.
+        bounds = t["impl_trait"]
+        if isinstance(bounds, list) and len(bounds) == 1:
+            tb = bounds[0].get("trait_bound") if isinstance(bounds[0], dict) else None
+            trait = tb.get("trait") if isinstance(tb, dict) else None
+            if isinstance(trait, dict):
+                trait_last = str(trait.get("path", "")).split("::")[-1]
+                if trait_last in ("Into", "From", "TryInto", "TryFrom",
+                                  "AsRef", "AsMut", "Borrow", "BorrowMut",
+                                  "Cow"):
+                    inner_args = _extract_angle_args(trait.get("args"))
+                    if inner_args:
+                        return translate_rust_type(
+                            inner_args[0], paths, aliases, context
+                        )
         return "any"
 
     # function_pointer: emit callable
