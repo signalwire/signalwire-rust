@@ -94,7 +94,6 @@ signalwire.core.function_result.FunctionResult.create_payment_action: Rust ``cre
 signalwire.core.function_result.FunctionResult.create_payment_parameter: Rust ``create_payment_*`` shapes differ — Rust takes (action_type/name/value, ... text/language/voice) where Python uses different parameter naming/ordering
 signalwire.core.function_result.FunctionResult.create_payment_prompt: Rust ``create_payment_*`` shapes differ — Rust takes (action_type/name/value, ... text/language/voice) where Python uses different parameter naming/ordering
 signalwire.core.function_result.FunctionResult.execute_rpc: Rust ``execute_rpc(method, params)`` takes only the immediate method+params where Python adds (call_id, node_id) — Rust passes those via params
-signalwire.core.function_result.FunctionResult.join_conference: Rust ``join_conference(name, ...)`` takes 5 args where Python takes 19 — Rust uses Value-typed config for the rest
 signalwire.core.function_result.FunctionResult.pay: Rust ``pay(payment_connector_url, ...)`` takes 6 args where Python takes 20 — Rust takes a smaller required-args set; rest go via Value config
 signalwire.core.function_result.FunctionResult.record_call: Rust ``record_call`` takes 5 args (control_id, stereo, format, direction, terminators) where Python takes 12 — rest via Value config
 signalwire.core.function_result.FunctionResult.remove_global_data: Rust takes ``list<string>`` / ``optional<string>`` / ``dict<string,bool>`` where Python accepts a union of types — Rust prefers a single concrete type per method (no union dispatch)

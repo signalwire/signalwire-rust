@@ -2,6 +2,14 @@ use std::collections::HashMap;
 
 use serde_json::{json, Map, Value};
 
+/// Render a list of string values the way Python renders a `list[str]` inside
+/// an f-string — `['a', 'b', 'c']` — so the `join_conference` validation
+/// error messages are byte-identical to the reference's `ValueError` text.
+fn render_list(values: &[&str]) -> String {
+    let items: Vec<String> = values.iter().map(|v| format!("'{}'", v)).collect();
+    format!("[{}]", items.join(", "))
+}
+
 /// Result returned from a SWAIG function handler.
 ///
 /// Serialises to `{"response": "...", "action": [...], "post_process": true}` where
@@ -331,22 +339,185 @@ impl FunctionResult {
         self
     }
 
+    /// Join an ad-hoc audio conference (SWML `join_conference`).
+    ///
+    /// Mirrors the Python reference
+    /// (`FunctionResult.join_conference`) — `name` is required and the
+    /// remaining 18 parameters are optional with the reference's defaults.
+    /// `wait_url` carries the hold-music URL (Python has no `hold_audio`
+    /// parameter; this port previously invented one — it is removed).
+    ///
+    /// The seven closed-set / range validations from the reference are
+    /// reproduced and return `Err(message)` with the reference's exact
+    /// `ValueError` text (Rust's idiomatic recoverable-validation channel —
+    /// the `Err` type is out-of-band to the cross-language audit, which
+    /// unwraps `Result<T, E>` to `T`):
+    ///
+    /// - `beep` ∈ `{true, false, onEnter, onExit}`
+    /// - `0 < max_participants <= 250`
+    /// - `record` ∈ `{do-not-record, record-from-start}`
+    /// - `trim` ∈ `{trim-silence, do-not-trim}`
+    /// - `status_callback_method` ∈ `{GET, POST}`
+    /// - `recording_status_callback_method` ∈ `{GET, POST}`
+    /// - `name` (trimmed) must not be empty
+    ///
+    /// When every parameter is left at its default the action is the bare
+    /// conference name (`{"join_conference": "<name>"}`); otherwise it is a
+    /// `{"name": ...}` object carrying every non-default parameter under its
+    /// snake_case wire key, pushed via the same action path `record_call`
+    /// uses.
+    #[allow(clippy::too_many_arguments)]
     pub fn join_conference(
         &mut self,
         name: &str,
         muted: bool,
         beep: &str,
-        hold_audio: &str,
-    ) -> &mut Self {
-        self.actions.push(json!({
-            "join_conference": {
-                "name": name,
-                "muted": muted,
-                "beep": beep,
-                "hold_audio": hold_audio,
+        start_on_enter: bool,
+        end_on_exit: bool,
+        wait_url: Option<&str>,
+        max_participants: i64,
+        record: &str,
+        region: Option<&str>,
+        trim: &str,
+        coach: Option<&str>,
+        status_callback_event: Option<&str>,
+        status_callback: Option<&str>,
+        status_callback_method: &str,
+        recording_status_callback: Option<&str>,
+        recording_status_callback_method: &str,
+        recording_status_callback_event: &str,
+        result: Option<Value>,
+    ) -> Result<&mut Self, String> {
+        // ── Validation (exact reference ValueError messages) ─────────────
+        let valid_beep = ["true", "false", "onEnter", "onExit"];
+        if !valid_beep.contains(&beep) {
+            return Err(format!("beep must be one of {}", render_list(&valid_beep)));
+        }
+
+        if max_participants <= 0 || max_participants > 250 {
+            return Err("max_participants must be a positive integer <= 250".to_string());
+        }
+
+        let valid_record = ["do-not-record", "record-from-start"];
+        if !valid_record.contains(&record) {
+            return Err(format!("record must be one of {}", render_list(&valid_record)));
+        }
+
+        let valid_trim = ["trim-silence", "do-not-trim"];
+        if !valid_trim.contains(&trim) {
+            return Err(format!("trim must be one of {}", render_list(&valid_trim)));
+        }
+
+        let valid_methods = ["GET", "POST"];
+        if !valid_methods.contains(&status_callback_method) {
+            return Err(format!(
+                "status_callback_method must be one of {}",
+                render_list(&valid_methods)
+            ));
+        }
+        if !valid_methods.contains(&recording_status_callback_method) {
+            return Err(format!(
+                "recording_status_callback_method must be one of {}",
+                render_list(&valid_methods)
+            ));
+        }
+
+        if name.trim().is_empty() {
+            return Err("name cannot be empty".to_string());
+        }
+
+        // ── Build params (mirrors the reference's simple/full forms) ─────
+        let all_defaults = !muted
+            && beep == "true"
+            && start_on_enter
+            && !end_on_exit
+            && wait_url.is_none()
+            && max_participants == 250
+            && record == "do-not-record"
+            && region.is_none()
+            && trim == "trim-silence"
+            && coach.is_none()
+            && status_callback_event.is_none()
+            && status_callback.is_none()
+            && status_callback_method == "POST"
+            && recording_status_callback.is_none()
+            && recording_status_callback_method == "POST"
+            && recording_status_callback_event == "completed"
+            && result.is_none();
+
+        let join_params: Value = if all_defaults {
+            // Simple form — just the conference name.
+            json!(name)
+        } else {
+            // Full object form: required name + every non-default parameter
+            // under its snake_case wire key.
+            let mut p = Map::new();
+            p.insert("name".to_string(), json!(name));
+            if muted {
+                p.insert("muted".to_string(), json!(muted));
             }
-        }));
-        self
+            if beep != "true" {
+                p.insert("beep".to_string(), json!(beep));
+            }
+            if !start_on_enter {
+                p.insert("start_on_enter".to_string(), json!(start_on_enter));
+            }
+            if end_on_exit {
+                p.insert("end_on_exit".to_string(), json!(end_on_exit));
+            }
+            if let Some(v) = wait_url {
+                p.insert("wait_url".to_string(), json!(v));
+            }
+            if max_participants != 250 {
+                p.insert("max_participants".to_string(), json!(max_participants));
+            }
+            if record != "do-not-record" {
+                p.insert("record".to_string(), json!(record));
+            }
+            if let Some(v) = region {
+                p.insert("region".to_string(), json!(v));
+            }
+            if trim != "trim-silence" {
+                p.insert("trim".to_string(), json!(trim));
+            }
+            if let Some(v) = coach {
+                p.insert("coach".to_string(), json!(v));
+            }
+            if let Some(v) = status_callback_event {
+                p.insert("status_callback_event".to_string(), json!(v));
+            }
+            if let Some(v) = status_callback {
+                p.insert("status_callback".to_string(), json!(v));
+            }
+            if status_callback_method != "POST" {
+                p.insert(
+                    "status_callback_method".to_string(),
+                    json!(status_callback_method),
+                );
+            }
+            if let Some(v) = recording_status_callback {
+                p.insert("recording_status_callback".to_string(), json!(v));
+            }
+            if recording_status_callback_method != "POST" {
+                p.insert(
+                    "recording_status_callback_method".to_string(),
+                    json!(recording_status_callback_method),
+                );
+            }
+            if recording_status_callback_event != "completed" {
+                p.insert(
+                    "recording_status_callback_event".to_string(),
+                    json!(recording_status_callback_event),
+                );
+            }
+            if let Some(v) = result {
+                p.insert("result".to_string(), v);
+            }
+            Value::Object(p)
+        };
+
+        self.actions.push(json!({ "join_conference": join_params }));
+        Ok(self)
     }
 
     pub fn join_room(&mut self, name: &str) -> &mut Self {
@@ -930,15 +1101,249 @@ mod tests {
         assert_eq!(fr.to_value()["action"][0]["transfer_swml"]["version"], "1.0.0");
     }
 
+    /// Convenience: call `join_conference` with every parameter at its
+    /// reference default except `name`, so individual tests only override the
+    /// field under test. Mirrors Python's keyword-default call shape.
+    fn jc_defaults<'a>(
+        fr: &'a mut FunctionResult,
+        name: &str,
+    ) -> Result<&'a mut FunctionResult, String> {
+        fr.join_conference(
+            name, false, "true", true, false, None, 250, "do-not-record", None,
+            "trim-silence", None, None, None, "POST", None, "POST", "completed", None,
+        )
+    }
+
     #[test]
-    fn test_join_conference() {
+    fn test_join_conference_simple_form_is_bare_name() {
+        // All-defaults → bare conference NAME string (parity with the
+        // reference's simple form).
         let mut fr = FunctionResult::new();
-        fr.join_conference("room1", true, "true", "ring");
+        jc_defaults(&mut fr, "room1").unwrap();
+        let jc = &fr.to_value()["action"][0]["join_conference"];
+        assert_eq!(jc, &json!("room1"));
+        assert!(jc.is_string());
+        // hold_audio is gone — the bare-name form has no object at all.
+        assert!(jc.get("hold_audio").is_none());
+    }
+
+    #[test]
+    fn test_join_conference_full_object_form() {
+        // A non-default on every parameter exercises the full object form and
+        // every snake_case wire key (no hold_audio; wait_url carries hold music).
+        let mut fr = FunctionResult::new();
+        fr.join_conference(
+            "room1",
+            true,                       // muted
+            "onEnter",                  // beep
+            false,                      // start_on_enter
+            true,                       // end_on_exit
+            Some("https://wait.example/swml.json"), // wait_url
+            10,                         // max_participants
+            "record-from-start",        // record
+            Some("us-east"),            // region
+            "do-not-trim",              // trim
+            Some("coach-call-id"),      // coach
+            Some("start end"),          // status_callback_event
+            Some("https://cb.example"), // status_callback
+            "GET",                      // status_callback_method
+            Some("https://rec.example"), // recording_status_callback
+            "GET",                      // recording_status_callback_method
+            "in-progress",              // recording_status_callback_event
+            Some(json!({"switch": "value"})), // result
+        )
+        .unwrap();
+
+        let jc = &fr.to_value()["action"][0]["join_conference"];
+        assert!(jc.is_object());
+        assert_eq!(jc["name"], "room1");
+        assert_eq!(jc["muted"], true);
+        assert_eq!(jc["beep"], "onEnter");
+        assert_eq!(jc["start_on_enter"], false);
+        assert_eq!(jc["end_on_exit"], true);
+        assert_eq!(jc["wait_url"], "https://wait.example/swml.json");
+        assert_eq!(jc["max_participants"], 10);
+        assert_eq!(jc["record"], "record-from-start");
+        assert_eq!(jc["region"], "us-east");
+        assert_eq!(jc["trim"], "do-not-trim");
+        assert_eq!(jc["coach"], "coach-call-id");
+        assert_eq!(jc["status_callback_event"], "start end");
+        assert_eq!(jc["status_callback"], "https://cb.example");
+        assert_eq!(jc["status_callback_method"], "GET");
+        assert_eq!(jc["recording_status_callback"], "https://rec.example");
+        assert_eq!(jc["recording_status_callback_method"], "GET");
+        assert_eq!(jc["recording_status_callback_event"], "in-progress");
+        assert_eq!(jc["result"], json!({"switch": "value"}));
+        // The invented hold_audio parameter is gone.
+        assert!(jc.get("hold_audio").is_none());
+    }
+
+    #[test]
+    fn test_join_conference_omits_default_keys() {
+        // One non-default (muted) forces the object form, but every other key
+        // stays absent because it is at its default — mirrors the reference's
+        // "only when != default" emission.
+        let mut fr = FunctionResult::new();
+        fr.join_conference(
+            "room1", true, "true", true, false, None, 250, "do-not-record", None,
+            "trim-silence", None, None, None, "POST", None, "POST", "completed", None,
+        )
+        .unwrap();
         let jc = &fr.to_value()["action"][0]["join_conference"];
         assert_eq!(jc["name"], "room1");
         assert_eq!(jc["muted"], true);
-        assert_eq!(jc["beep"], "true");
-        assert_eq!(jc["hold_audio"], "ring");
+        for absent in [
+            "beep", "start_on_enter", "end_on_exit", "wait_url", "max_participants",
+            "record", "region", "trim", "coach", "status_callback_event",
+            "status_callback", "status_callback_method", "recording_status_callback",
+            "recording_status_callback_method", "recording_status_callback_event",
+            "result", "hold_audio",
+        ] {
+            assert!(jc.get(absent).is_none(), "expected {absent} to be absent");
+        }
+    }
+
+    #[test]
+    fn test_join_conference_chaining() {
+        // Returns &mut Self (via Ok) so it composes with the fluent API.
+        let mut fr = FunctionResult::new();
+        fr.set_response("joining");
+        jc_defaults(&mut fr, "room1")
+            .unwrap()
+            .set_post_process(true)
+            .say("connected");
+        let val = fr.to_value();
+        assert_eq!(val["response"], "joining");
+        assert_eq!(val["post_process"], true);
+        let actions = val["action"].as_array().unwrap();
+        assert_eq!(actions.len(), 2);
+        assert_eq!(actions[0]["join_conference"], json!("room1"));
+        assert_eq!(actions[1]["say"], "connected");
+    }
+
+    // ── join_conference validation (exact reference ValueError messages) ──
+
+    #[test]
+    fn test_join_conference_invalid_beep() {
+        let mut fr = FunctionResult::new();
+        let err = fr
+            .join_conference(
+                "room1", false, "loud", true, false, None, 250, "do-not-record",
+                None, "trim-silence", None, None, None, "POST", None, "POST",
+                "completed", None,
+            )
+            .unwrap_err();
+        assert_eq!(err, "beep must be one of ['true', 'false', 'onEnter', 'onExit']");
+        // No action was pushed on the error path.
+        assert!(fr.to_value().get("action").is_none());
+    }
+
+    #[test]
+    fn test_join_conference_max_participants_too_high() {
+        let mut fr = FunctionResult::new();
+        let err = fr
+            .join_conference(
+                "room1", false, "true", true, false, None, 251, "do-not-record",
+                None, "trim-silence", None, None, None, "POST", None, "POST",
+                "completed", None,
+            )
+            .unwrap_err();
+        assert_eq!(err, "max_participants must be a positive integer <= 250");
+    }
+
+    #[test]
+    fn test_join_conference_max_participants_zero() {
+        let mut fr = FunctionResult::new();
+        let err = fr
+            .join_conference(
+                "room1", false, "true", true, false, None, 0, "do-not-record",
+                None, "trim-silence", None, None, None, "POST", None, "POST",
+                "completed", None,
+            )
+            .unwrap_err();
+        assert_eq!(err, "max_participants must be a positive integer <= 250");
+    }
+
+    #[test]
+    fn test_join_conference_max_participants_negative() {
+        let mut fr = FunctionResult::new();
+        let err = fr
+            .join_conference(
+                "room1", false, "true", true, false, None, -5, "do-not-record",
+                None, "trim-silence", None, None, None, "POST", None, "POST",
+                "completed", None,
+            )
+            .unwrap_err();
+        assert_eq!(err, "max_participants must be a positive integer <= 250");
+    }
+
+    #[test]
+    fn test_join_conference_invalid_record() {
+        let mut fr = FunctionResult::new();
+        let err = fr
+            .join_conference(
+                "room1", false, "true", true, false, None, 250, "always",
+                None, "trim-silence", None, None, None, "POST", None, "POST",
+                "completed", None,
+            )
+            .unwrap_err();
+        assert_eq!(err, "record must be one of ['do-not-record', 'record-from-start']");
+    }
+
+    #[test]
+    fn test_join_conference_invalid_trim() {
+        let mut fr = FunctionResult::new();
+        let err = fr
+            .join_conference(
+                "room1", false, "true", true, false, None, 250, "do-not-record",
+                None, "shave", None, None, None, "POST", None, "POST", "completed",
+                None,
+            )
+            .unwrap_err();
+        assert_eq!(err, "trim must be one of ['trim-silence', 'do-not-trim']");
+    }
+
+    #[test]
+    fn test_join_conference_invalid_status_callback_method() {
+        let mut fr = FunctionResult::new();
+        let err = fr
+            .join_conference(
+                "room1", false, "true", true, false, None, 250, "do-not-record",
+                None, "trim-silence", None, None, None, "PUT", None, "POST",
+                "completed", None,
+            )
+            .unwrap_err();
+        assert_eq!(err, "status_callback_method must be one of ['GET', 'POST']");
+    }
+
+    #[test]
+    fn test_join_conference_invalid_recording_status_callback_method() {
+        let mut fr = FunctionResult::new();
+        let err = fr
+            .join_conference(
+                "room1", false, "true", true, false, None, 250, "do-not-record",
+                None, "trim-silence", None, None, None, "POST", None, "DELETE",
+                "completed", None,
+            )
+            .unwrap_err();
+        assert_eq!(
+            err,
+            "recording_status_callback_method must be one of ['GET', 'POST']"
+        );
+    }
+
+    #[test]
+    fn test_join_conference_empty_name() {
+        let mut fr = FunctionResult::new();
+        let err = jc_defaults(&mut fr, "").unwrap_err();
+        assert_eq!(err, "name cannot be empty");
+    }
+
+    #[test]
+    fn test_join_conference_whitespace_name() {
+        let mut fr = FunctionResult::new();
+        let err = jc_defaults(&mut fr, "   ").unwrap_err();
+        assert_eq!(err, "name cannot be empty");
     }
 
     #[test]
