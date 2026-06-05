@@ -102,8 +102,12 @@ impl FunctionResult {
                     "main": [
                         {"connect": Value::Object(connect_obj)}
                     ]
-                }
-            }
+                },
+                "version": "1.0.0"
+            },
+            // final=true -> permanent transfer; matches the Python reference
+            // (function_result.py connect: "transfer": str(final).lower()).
+            "transfer": if _final { "true" } else { "false" }
         }));
 
         self
@@ -787,6 +791,12 @@ mod tests {
         let connect = &action["SWML"]["sections"]["main"][0]["connect"];
         assert_eq!(connect["to"], "+15551234567");
         assert!(connect.get("from").is_none());
+        // final -> top-level "transfer" + SWML "version" (parity with Python connect)
+        assert_eq!(action["transfer"], "false");
+        assert_eq!(action["SWML"]["version"], "1.0.0");
+        let mut fr2 = FunctionResult::new();
+        fr2.connect("x", true, "");
+        assert_eq!(fr2.to_value()["action"][0]["transfer"], "true");
     }
 
     #[test]
