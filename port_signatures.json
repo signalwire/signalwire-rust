@@ -2776,17 +2776,7 @@
                   "required": true
                 },
                 {
-                  "name": "text",
-                  "type": "string",
-                  "required": true
-                },
-                {
-                  "name": "language",
-                  "type": "string",
-                  "required": true
-                },
-                {
-                  "name": "voice",
+                  "name": "phrase",
                   "type": "string",
                   "required": true
                 }
@@ -2801,13 +2791,8 @@
                   "required": true
                 },
                 {
-                  "name": "param_type",
+                  "name": "value",
                   "type": "string",
-                  "required": true
-                },
-                {
-                  "name": "config",
-                  "type": "class:signalwire.value.Value",
                   "required": true
                 }
               ],
@@ -2816,17 +2801,22 @@
             "create_payment_prompt": {
               "params": [
                 {
-                  "name": "text",
+                  "name": "for_situation",
                   "type": "string",
                   "required": true
                 },
                 {
-                  "name": "language",
+                  "name": "actions",
+                  "type": "class:signalwire.value.Value",
+                  "required": true
+                },
+                {
+                  "name": "card_type",
                   "type": "string",
                   "required": true
                 },
                 {
-                  "name": "voice",
+                  "name": "error_type",
                   "type": "string",
                   "required": true
                 }
@@ -2875,6 +2865,16 @@
                 {
                   "name": "params",
                   "type": "class:signalwire.value.Value",
+                  "required": true
+                },
+                {
+                  "name": "call_id",
+                  "type": "string",
+                  "required": true
+                },
+                {
+                  "name": "node_id",
+                  "type": "string",
                   "required": true
                 }
               ],
@@ -3042,7 +3042,7 @@
                   "kind": "self"
                 },
                 {
-                  "name": "connector_url",
+                  "name": "payment_connector_url",
                   "type": "string",
                   "required": true
                 },
@@ -3052,7 +3052,12 @@
                   "required": true
                 },
                 {
-                  "name": "action_url",
+                  "name": "status_url",
+                  "type": "string",
+                  "required": true
+                },
+                {
+                  "name": "payment_method",
                   "type": "string",
                   "required": true
                 },
@@ -3064,6 +3069,71 @@
                 {
                   "name": "max_attempts",
                   "type": "int",
+                  "required": true
+                },
+                {
+                  "name": "security_code",
+                  "type": "bool",
+                  "required": true
+                },
+                {
+                  "name": "postal_code",
+                  "type": "string",
+                  "required": true
+                },
+                {
+                  "name": "min_postal_code_length",
+                  "type": "int",
+                  "required": true
+                },
+                {
+                  "name": "token_type",
+                  "type": "string",
+                  "required": true
+                },
+                {
+                  "name": "charge_amount",
+                  "type": "string",
+                  "required": true
+                },
+                {
+                  "name": "currency",
+                  "type": "string",
+                  "required": true
+                },
+                {
+                  "name": "language",
+                  "type": "string",
+                  "required": true
+                },
+                {
+                  "name": "voice",
+                  "type": "string",
+                  "required": true
+                },
+                {
+                  "name": "description",
+                  "type": "string",
+                  "required": true
+                },
+                {
+                  "name": "valid_card_types",
+                  "type": "string",
+                  "required": true
+                },
+                {
+                  "name": "parameters",
+                  "type": "class:signalwire.value.Value",
+                  "required": true
+                },
+                {
+                  "name": "prompts",
+                  "type": "class:signalwire.value.Value",
+                  "required": true
+                },
+                {
+                  "name": "ai_response",
+                  "type": "string",
                   "required": true
                 }
               ],
@@ -3111,6 +3181,41 @@
                 },
                 {
                   "name": "direction",
+                  "type": "string",
+                  "required": true
+                },
+                {
+                  "name": "terminators",
+                  "type": "string",
+                  "required": true
+                },
+                {
+                  "name": "beep",
+                  "type": "bool",
+                  "required": true
+                },
+                {
+                  "name": "input_sensitivity",
+                  "type": "float",
+                  "required": true
+                },
+                {
+                  "name": "initial_timeout",
+                  "type": "optional<float>",
+                  "required": true
+                },
+                {
+                  "name": "end_silence_timeout",
+                  "type": "optional<float>",
+                  "required": true
+                },
+                {
+                  "name": "max_length",
+                  "type": "optional<float>",
+                  "required": true
+                },
+                {
+                  "name": "status_url",
                   "type": "string",
                   "required": true
                 }
@@ -3174,6 +3279,11 @@
                   "name": "message_text",
                   "type": "string",
                   "required": true
+                },
+                {
+                  "name": "role",
+                  "type": "string",
+                  "required": true
                 }
               ],
               "returns": "any"
@@ -3199,27 +3309,22 @@
                   "kind": "self"
                 },
                 {
-                  "name": "to",
+                  "name": "to_number",
                   "type": "string",
                   "required": true
                 },
                 {
-                  "name": "from",
+                  "name": "from_number",
                   "type": "string",
                   "required": true
                 },
                 {
                   "name": "dest_swml",
-                  "type": "optional<string>",
+                  "type": "string",
                   "required": true
                 },
                 {
-                  "name": "call_timeout",
-                  "type": "optional<int>",
-                  "required": true
-                },
-                {
-                  "name": "region",
+                  "name": "device_type",
                   "type": "string",
                   "required": true
                 }
@@ -3269,6 +3374,11 @@
                 {
                   "name": "tags",
                   "type": "list<string>",
+                  "required": true
+                },
+                {
+                  "name": "region",
+                  "type": "string",
                   "required": true
                 }
               ],
@@ -3495,6 +3605,11 @@
                   "name": "ai_response",
                   "type": "string",
                   "required": true
+                },
+                {
+                  "name": "_final",
+                  "type": "bool",
+                  "required": true
                 }
               ],
               "returns": "any"
@@ -3536,6 +3651,16 @@
                 },
                 {
                   "name": "codec",
+                  "type": "string",
+                  "required": true
+                },
+                {
+                  "name": "rtp_ptime",
+                  "type": "int",
+                  "required": true
+                },
+                {
+                  "name": "status_url",
                   "type": "string",
                   "required": true
                 }

@@ -26,9 +26,10 @@
 //!
 //! let mut fr = FunctionResult::new();
 //! // typed + autocompleted — identical wire shape to the bare strings below
-//! fr.record_call("rec1", false, RecordFormat::Mp3.as_str(), RecordDirection::Both.as_str());
+//! fr.record_call("rec1", false, RecordFormat::Mp3.as_str(), RecordDirection::Both.as_str(),
+//!                "", false, 44.0, None, None, None, "").unwrap();
 //! // bare strings still work (Python parity)
-//! fr.record_call("rec2", false, "mp3", "both");
+//! fr.record_call("rec2", false, "mp3", "both", "", false, 44.0, None, None, None, "").unwrap();
 //! ```
 //!
 //! Note that `record_call`'s direction set (`speak`/`listen`/`both`) and
@@ -311,14 +312,22 @@ mod tests {
         // record_call() driven by the typed enum emits the *identical* SWML
         // action as the bare string (real wire output, not just the name).
         let mut enum_fr = FunctionResult::new();
-        enum_fr.record_call("rec1", true, RecordFormat::Mp3.as_str(), "both");
+        enum_fr
+            .record_call("rec1", true, RecordFormat::Mp3.as_str(), "both", "", false, 44.0, None, None, None, "")
+            .unwrap();
         let mut str_fr = FunctionResult::new();
-        str_fr.record_call("rec1", true, "mp3", "both");
+        str_fr
+            .record_call("rec1", true, "mp3", "both", "", false, 44.0, None, None, None, "")
+            .unwrap();
         assert_eq!(enum_fr.to_value(), str_fr.to_value());
 
-        // And the emitted format key is exactly the enum's wire string.
+        // And the emitted format key is exactly the enum's wire string
+        // (record_call is SWML-wrapped, so the verb lives under SWML.main).
         let v: Value = enum_fr.to_value();
-        assert_eq!(v["action"][0]["record_call"]["format"], "mp3");
+        assert_eq!(
+            v["action"][0]["SWML"]["sections"]["main"][0]["record_call"]["format"],
+            "mp3"
+        );
     }
 
     #[test]
@@ -347,13 +356,20 @@ mod tests {
         assert_eq!(RecordDirection::Listen.as_str(), "listen");
 
         let mut enum_fr = FunctionResult::new();
-        enum_fr.record_call("rec1", false, "wav", RecordDirection::Listen.as_str());
+        enum_fr
+            .record_call("rec1", false, "wav", RecordDirection::Listen.as_str(), "", false, 44.0, None, None, None, "")
+            .unwrap();
         let mut str_fr = FunctionResult::new();
-        str_fr.record_call("rec1", false, "wav", "listen");
+        str_fr
+            .record_call("rec1", false, "wav", "listen", "", false, 44.0, None, None, None, "")
+            .unwrap();
         assert_eq!(enum_fr.to_value(), str_fr.to_value());
 
         let v: Value = enum_fr.to_value();
-        assert_eq!(v["action"][0]["record_call"]["direction"], "listen");
+        assert_eq!(
+            v["action"][0]["SWML"]["sections"]["main"][0]["record_call"]["direction"],
+            "listen"
+        );
     }
 
     #[test]
@@ -380,13 +396,20 @@ mod tests {
         assert_eq!(TapDirection::Hear.as_str(), "hear");
 
         let mut enum_fr = FunctionResult::new();
-        enum_fr.tap("wss://example.com", "t1", TapDirection::Hear.as_str(), "PCMU");
+        enum_fr
+            .tap("wss://example.com", "t1", TapDirection::Hear.as_str(), "PCMU", 20, "")
+            .unwrap();
         let mut str_fr = FunctionResult::new();
-        str_fr.tap("wss://example.com", "t1", "hear", "PCMU");
+        str_fr
+            .tap("wss://example.com", "t1", "hear", "PCMU", 20, "")
+            .unwrap();
         assert_eq!(enum_fr.to_value(), str_fr.to_value());
 
         let v: Value = enum_fr.to_value();
-        assert_eq!(v["action"][0]["tap"]["direction"], "hear");
+        assert_eq!(
+            v["action"][0]["SWML"]["sections"]["main"][0]["tap"]["direction"],
+            "hear"
+        );
     }
 
     #[test]
@@ -413,13 +436,20 @@ mod tests {
         assert_eq!(Codec::Pcma.as_str(), "PCMA");
 
         let mut enum_fr = FunctionResult::new();
-        enum_fr.tap("wss://example.com", "t1", "both", Codec::Pcma.as_str());
+        enum_fr
+            .tap("wss://example.com", "t1", "both", Codec::Pcma.as_str(), 20, "")
+            .unwrap();
         let mut str_fr = FunctionResult::new();
-        str_fr.tap("wss://example.com", "t1", "both", "PCMA");
+        str_fr
+            .tap("wss://example.com", "t1", "both", "PCMA", 20, "")
+            .unwrap();
         assert_eq!(enum_fr.to_value(), str_fr.to_value());
 
         let v: Value = enum_fr.to_value();
-        assert_eq!(v["action"][0]["tap"]["codec"], "PCMA");
+        assert_eq!(
+            v["action"][0]["SWML"]["sections"]["main"][0]["tap"]["codec"],
+            "PCMA"
+        );
     }
 
     #[test]

@@ -125,6 +125,10 @@ impl ReceptionistAgent {
                                 result.swml_transfer(
                                     swml_url,
                                     &format!("Transferring you to {} now.", name),
+                                    // final=true: permanent transfer (Python's
+                                    // swml_transfer default) — the receptionist
+                                    // hands the call off entirely.
+                                    true,
                                 );
                             }
                         } else if let Some(number) = dept.get("number").and_then(|v| v.as_str()) {
