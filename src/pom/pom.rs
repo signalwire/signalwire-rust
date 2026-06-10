@@ -61,7 +61,7 @@ impl PromptObjectModel {
     /// Parse a YAML string into a [`PromptObjectModel`]. Mirrors
     /// Python's `PromptObjectModel.from_yaml(yaml_data)`.
     pub fn from_yaml(yaml_str: &str) -> Result<Self, String> {
-        let value: Value = serde_yaml::from_str(yaml_str)
+        let value: Value = serde_norway::from_str(yaml_str)
             .map_err(|e| format!("invalid YAML: {}", e))?;
         Self::from_value(&value)
     }
@@ -171,7 +171,7 @@ impl PromptObjectModel {
     /// Render the model as a YAML string. Matches PyYAML's output
     /// shape (`default_flow_style=False, sort_keys=False`).
     ///
-    /// We hand-emit YAML rather than rely on `serde_yaml::to_string`
+    /// We hand-emit YAML rather than rely on `serde_norway::to_string`
     /// because the latter (a) sorts keys alphabetically when fed a
     /// `serde_json::Value` (which uses BTreeMap internally) and
     /// (b) doesn't expose a switch to disable that. The POM
