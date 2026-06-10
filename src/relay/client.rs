@@ -111,13 +111,14 @@ mod tls {
     /// explicitly (it is already in the dependency tree) rather than relying on
     /// a process-default `CryptoProvider`, which the crate never installs.
     fn client_config_trusting(ca_path: &str) -> Result<rustls::ClientConfig, RelayError> {
+        use rustls_pki_types::pem::PemObject;
+
         let pem = std::fs::read(ca_path)
             .map_err(|e| RelayError::transport(format!("read CA file {ca_path}"), e))?;
-        let mut reader = std::io::BufReader::new(pem.as_slice());
 
         let mut roots = rustls::RootCertStore::empty();
         let mut added = 0usize;
-        for cert in rustls_pemfile::certs(&mut reader) {
+        for cert in rustls_pki_types::CertificateDer::pem_slice_iter(&pem) {
             let cert =
                 cert.map_err(|e| RelayError::transport(format!("parse CA pem {ca_path}"), e))?;
             roots
@@ -596,7 +597,7 @@ impl Client {
         self.sent_messages.lock().unwrap().push(msg.clone());
         if let Some(tx) = self.write_tx.lock().unwrap().as_ref() {
             let raw = msg.to_string();
-            if let Err(e) = tx.send(WsMessage::Text(raw)) {
+            if let Err(e) = tx.send(WsMessage::Text(raw.into())) {
                 self.logger
                     .warn(&format!("write channel closed: {}", e));
             }
@@ -1279,8 +1280,8 @@ impl Client {
 
 /// Generate a simple UUID v4.
 fn generate_uuid() -> String {
-    use rand::Rng;
-    let mut rng = rand::thread_rng();
+    use rand::RngExt;
+    let mut rng = rand::rng();
     let mut data = [0u8; 16];
     rng.fill(&mut data);
     data[6] = (data[6] & 0x0f) | 0x40;
@@ -1393,7 +1394,7 @@ mod tests {
                                     "project": project,
                                 }
                             });
-                            ws.send(WsMessage::Text(resp.to_string())).unwrap();
+                            ws.send(WsMessage::Text(resp.to_string().into())).unwrap();
                             // Hold the connection open briefly so the
                             // client doesn't see a premature close.
                             std::thread::sleep(Duration::from_millis(150));

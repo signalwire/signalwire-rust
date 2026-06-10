@@ -176,7 +176,7 @@ async fn url_reconstructed_from_x_forwarded_headers_when_no_override() {
     // Without an explicit URL override, the layer reconstructs the
     // URL from X-Forwarded-Proto + X-Forwarded-Host. Sign for the
     // reconstructed URL and assert success.
-    use hmac::{Hmac, Mac};
+    use hmac::{Hmac, KeyInit, Mac};
     use sha1::Sha1;
     type HmacSha1 = Hmac<Sha1>;
 
