@@ -140,3 +140,12 @@ wait: Python action / message wait method — Rust uses Action::wait / Message::
 webhook_expression: Python DataMap webhook_expression — Rust ships DataMap expression methods
 webhook_with_form: Python DataMap webhook_with_form — Rust ships DataMap webhook with body type
 webhook_with_options: Python DataMap webhook_with_options — Rust ships DataMap webhook with options struct
+
+## porting-sdk emission-tooling references (cross-language, by design)
+
+Names from porting-sdk's shared Python emission tooling that the Rust
+emission-dump example references in its contract docstring. They are
+deliberately not Rust port surface — they name the Python single-source-of-
+truth the example must stay in sync with.
+
+corpus_ids: porting-sdk emission_corpus.corpus_ids() — the Python corpus id-set the Rust examples/emit_corpus.rs dump must match (referenced in its contract docstring, not a Rust symbol)
