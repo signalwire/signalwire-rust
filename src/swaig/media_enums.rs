@@ -128,6 +128,9 @@ impl RecordFormat {
 
     /// Parse a wire string into a [`RecordFormat`], or `None` if it is not a
     /// recognised format (the same strings the reference would reject).
+    // `FromStr` is implemented below; this inherent `from_str` is the deliberate
+    // companion that returns `Option` (a non-member is `None`, not an error).
+    #[allow(clippy::should_implement_trait)]
     pub fn from_str(s: &str) -> Option<RecordFormat> {
         RecordFormat::all().iter().copied().find(|f| f.as_str() == s)
     }
@@ -211,6 +214,9 @@ impl RecordDirection {
 
     /// Parse a wire string into a [`RecordDirection`], or `None` if it is not a
     /// recognised direction.
+    // `FromStr` is implemented below; this inherent `from_str` is the deliberate
+    // companion that returns `Option` (a non-member is `None`, not an error).
+    #[allow(clippy::should_implement_trait)]
     pub fn from_str(s: &str) -> Option<RecordDirection> {
         RecordDirection::all().iter().copied().find(|d| d.as_str() == s)
     }
@@ -291,6 +297,9 @@ impl TapDirection {
 
     /// Parse a wire string into a [`TapDirection`], or `None` if it is not a
     /// recognised direction.
+    // `FromStr` is implemented below; this inherent `from_str` is the deliberate
+    // companion that returns `Option` (a non-member is `None`, not an error).
+    #[allow(clippy::should_implement_trait)]
     pub fn from_str(s: &str) -> Option<TapDirection> {
         TapDirection::all().iter().copied().find(|d| d.as_str() == s)
     }
@@ -368,6 +377,9 @@ impl Codec {
     /// Parse a wire string into a [`Codec`], or `None` if it is not a
     /// recognised codec. Matching is exact (case-sensitive), mirroring the
     /// reference's literal `in ["PCMU", "PCMA"]` check.
+    // `FromStr` is implemented below; this inherent `from_str` is the deliberate
+    // companion that returns `Option` (a non-member is `None`, not an error).
+    #[allow(clippy::should_implement_trait)]
     pub fn from_str(s: &str) -> Option<Codec> {
         Codec::all().iter().copied().find(|c| c.as_str() == s)
     }

@@ -91,7 +91,9 @@ impl CallState {
     /// Infallible: an unrecognised value becomes [`Other`](CallState::Other)
     /// (server states can grow). Provided as an inherent method for
     /// ergonomics alongside the [`FromStr`] impl.
-    #[must_use]
+    // `FromStr` is implemented below; this inherent `from_str` is the deliberate
+    // infallible companion (an unknown wire value becomes `Other`, never an error).
+    #[allow(clippy::should_implement_trait)]
     pub fn from_str(s: &str) -> CallState {
         match s {
             constants::CALL_STATE_CREATED => CallState::Created,
@@ -164,7 +166,9 @@ impl DialState {
 
     /// Parse a wire string into a [`DialState`] (infallible; unknown →
     /// [`Other`](DialState::Other)).
-    #[must_use]
+    // `FromStr` is implemented below; this inherent `from_str` is the deliberate
+    // infallible companion (an unknown wire value becomes `Other`, never an error).
+    #[allow(clippy::should_implement_trait)]
     pub fn from_str(s: &str) -> DialState {
         match s {
             constants::DIAL_STATE_DIALING => DialState::Dialing,
@@ -250,7 +254,9 @@ impl MessageState {
 
     /// Parse a wire string into a [`MessageState`] (infallible; unknown →
     /// [`Other`](MessageState::Other)).
-    #[must_use]
+    // `FromStr` is implemented below; this inherent `from_str` is the deliberate
+    // infallible companion (an unknown wire value becomes `Other`, never an error).
+    #[allow(clippy::should_implement_trait)]
     pub fn from_str(s: &str) -> MessageState {
         match s {
             constants::MESSAGE_STATE_QUEUED => MessageState::Queued,

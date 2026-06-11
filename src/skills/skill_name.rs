@@ -161,6 +161,9 @@ impl SkillName {
 
     /// Parse a wire name back into a [`SkillName`], or `None` if the string is
     /// not a built-in (i.e. a custom / third-party skill name).
+    // `FromStr` is implemented below; this inherent `from_str` is the deliberate
+    // companion that returns `Option` (a non-member is `None`, not an error).
+    #[allow(clippy::should_implement_trait)]
     pub fn from_str(name: &str) -> Option<SkillName> {
         SkillName::all().iter().copied().find(|s| s.as_str() == name)
     }
