@@ -197,6 +197,10 @@ impl FunctionResult {
 
     // ── Call Control ─────────────────────────────────────────────────────
 
+    // `_final` mirrors Python's `final` kwarg (the audit expects the name
+    // `_final` — `final` is a reserved word in Rust); it IS used in the body, so
+    // the underscore is a name-spelling concession, not a dead binding.
+    #[allow(clippy::used_underscore_binding)]
     pub fn connect(&mut self, destination: &str, _final: bool, from: &str) -> &mut Self {
         let mut connect_obj = Map::new();
         connect_obj.insert("to".to_string(), json!(destination));
@@ -230,6 +234,7 @@ impl FunctionResult {
     /// whether the transfer is permanent (`final = true`, the default) or
     /// temporary. `ai_response` is carried inside the SWML `set` verb (it is NOT
     /// assigned to `self.response`).
+    #[allow(clippy::used_underscore_binding)] // `_final` mirrors Python's `final` kwarg (reserved in Rust); used in body.
     pub fn swml_transfer(&mut self, dest: &str, ai_response: &str, _final: bool) -> &mut Self {
         let swml_action = json!({
             "SWML": {

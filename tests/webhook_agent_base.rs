@@ -52,8 +52,11 @@ fn hex_sig(key: &str, url: &str, body: &str) -> String {
     mac.finalize()
         .into_bytes()
         .iter()
-        .map(|b| format!("{:02x}", b))
-        .collect()
+        .fold(String::new(), |mut s, b| {
+            use std::fmt::Write as _;
+            let _ = write!(s, "{b:02x}");
+            s
+        })
 }
 
 // Pin the proxy base used by Service::get_proxy_url_base via env.

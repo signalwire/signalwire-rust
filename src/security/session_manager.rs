@@ -169,7 +169,11 @@ fn constant_time_eq(a: &str, b: &str) -> bool {
 }
 
 fn hex_encode(bytes: &[u8]) -> String {
-    bytes.iter().map(|b| format!("{:02x}", b)).collect()
+    bytes.iter().fold(String::new(), |mut s, b| {
+        use std::fmt::Write as _;
+        let _ = write!(s, "{b:02x}");
+        s
+    })
 }
 
 fn random_bytes(count: usize) -> Vec<u8> {

@@ -189,8 +189,11 @@ async fn url_reconstructed_from_x_forwarded_headers_when_no_override() {
         .finalize()
         .into_bytes()
         .iter()
-        .map(|b| format!("{:02x}", b))
-        .collect();
+        .fold(String::new(), |mut s, b| {
+            use std::fmt::Write as _;
+            let _ = write!(s, "{b:02x}");
+            s
+        });
 
     let hits = HitCounter::default();
     let layer = WebhookLayer::new(key);
