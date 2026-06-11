@@ -6,7 +6,6 @@
 use signalwire::agent::{AgentBase, AgentOptions};
 use signalwire::swaig::FunctionResult;
 use serde_json::json;
-use std::sync::Arc;
 
 fn main() {
     let mut agent = AgentBase::new(AgentOptions {

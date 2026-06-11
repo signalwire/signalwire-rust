@@ -108,7 +108,6 @@ fn main() {
 
 fn run_server(server: AgentServer) {
     use std::collections::HashMap;
-    use std::io::Read as _;
 
     let addr = format!("{}:{}", server.host(), server.port());
     let http = tiny_http::Server::http(&addr)

@@ -12,7 +12,6 @@ use signalwire::agent::{AgentBase, AgentOptions};
 use signalwire::server::AgentServer;
 use signalwire::swaig::FunctionResult;
 use serde_json::json;
-use std::sync::Arc;
 
 fn healthcare_agent() -> AgentBase {
     let mut agent = AgentBase::new(AgentOptions {
@@ -115,7 +114,6 @@ fn main() {
 
 fn run_server(server: AgentServer) {
     use std::collections::HashMap;
-    use std::io::Read as _;
 
     let addr = format!("{}:{}", server.host(), server.port());
     let http = tiny_http::Server::http(&addr)

@@ -9,8 +9,6 @@
 //!   curl "http://localhost:3000/chat?mood=professional"
 
 use signalwire::agent::{AgentBase, AgentOptions};
-use serde_json::json;
-use std::sync::Arc;
 
 fn main() {
     let mut agent = AgentBase::new(AgentOptions {

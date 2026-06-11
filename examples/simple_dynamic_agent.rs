@@ -8,7 +8,6 @@
 
 use signalwire::agent::{AgentBase, AgentOptions};
 use serde_json::json;
-use std::sync::Arc;
 
 fn main() {
     let mut opts = AgentOptions::new("Simple Customer Service Agent (Dynamic)");

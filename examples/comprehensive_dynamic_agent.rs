@@ -9,7 +9,6 @@
 
 use signalwire::agent::{AgentBase, AgentOptions};
 use serde_json::json;
-use std::sync::Arc;
 
 fn main() {
     let mut opts = AgentOptions::new("Comprehensive Dynamic Agent");
