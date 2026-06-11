@@ -155,7 +155,7 @@ impl<'a> PaginatedIterator<'a> {
     }
 }
 
-impl<'a> Iterator for PaginatedIterator<'a> {
+impl Iterator for PaginatedIterator<'_> {
     type Item = Result<Value, SignalWireRestError>;
 
     fn next(&mut self) -> Option<Self::Item> {

@@ -316,6 +316,6 @@ mod tests {
         let result = agent.on_function_call("calculate", &args, &Map::new());
         assert!(result.is_some());
         let json_str = result.unwrap().to_json();
-        assert!(json_str.contains("5"));
+        assert!(json_str.contains('5'));
     }
 }

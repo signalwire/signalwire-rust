@@ -3,7 +3,7 @@ use std::sync::{Arc, Mutex};
 
 use serde_json::Value;
 
-use super::action::*;
+use super::action::Action;
 use super::constants;
 use super::event::Event;
 use crate::logging::Logger;

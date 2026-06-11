@@ -88,7 +88,7 @@ pub fn list_skills_with_params() -> std::collections::HashMap<String, serde_json
 /// To preserve the older two-argument call style, [`SkillRegistry::register_skill`]
 /// remains available as `signalwire::skills::SkillRegistry::register_skill(name, factory)`.
 pub fn register_skill(skill_class: SkillSpec) {
-    skills::SkillRegistry::register_skill(&skill_class.name, skill_class.factory)
+    skills::SkillRegistry::register_skill(&skill_class.name, skill_class.factory);
 }
 
 /// Skill registration descriptor — Rust's analogue of a Python skill
