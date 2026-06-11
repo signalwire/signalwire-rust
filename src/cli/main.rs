@@ -513,6 +513,11 @@ fn do_exec_tool(
 mod tests {
     use super::*;
 
+    /// Captured inbound requests recorded by `spawn_test_server`: a shared
+    /// `(method, path, headers, body)` log the test thread appends to.
+    type CapturedRequests =
+        std::sync::Arc<std::sync::Mutex<Vec<(String, String, HashMap<String, String>, String)>>>;
+
     #[test]
     fn test_extract_url_auth_with_creds() {
         let (url, auth) = extract_url_auth("http://user:pass@localhost:3000/api");
@@ -584,7 +589,7 @@ mod tests {
     fn spawn_test_server(
         status: u16,
         response_body: &'static str,
-    ) -> (String, std::sync::Arc<std::sync::Mutex<Vec<(String, String, HashMap<String, String>, String)>>>, std::thread::JoinHandle<()>) {
+    ) -> (String, CapturedRequests, std::thread::JoinHandle<()>) {
         let server = tiny_http::Server::http("127.0.0.1:0").expect("bind 127.0.0.1:0");
         let port = server.server_addr().to_ip().unwrap().port();
         let base = format!("http://127.0.0.1:{}", port);

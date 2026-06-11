@@ -15,7 +15,7 @@ use serde_json::{json, Map, Value};
 ///
 /// Mirrors Python's `signalwire.pom.pom.Section`. Fields are owned
 /// strings/vecs (Rust idiom — the model is a value-type document).
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Section {
     /// The section title. `None` is valid only for the *first*
     /// top-level section in a [`crate::pom::PromptObjectModel`];
@@ -38,19 +38,6 @@ pub struct Section {
     /// Whether bullets in *this* section render as `1. x` (true) or
     /// `- x` (false). Default `false` matches Python.
     pub numbered_bullets: bool,
-}
-
-impl Default for Section {
-    fn default() -> Self {
-        Section {
-            title: None,
-            body: String::new(),
-            bullets: Vec::new(),
-            subsections: Vec::new(),
-            numbered: None,
-            numbered_bullets: false,
-        }
-    }
 }
 
 impl Section {

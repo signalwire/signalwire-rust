@@ -8,6 +8,10 @@ use super::event::Event;
 /// Callback type for completion notifications.
 pub type MessageCompletedCallback = Box<dyn FnOnce(&Message) + Send>;
 
+/// Callback type for per-event message observers (`on_event`). Shared (`Arc`)
+/// because the same observer is dispatched on every inbound RELAY event.
+pub type MessageEventCallback = Arc<dyn Fn(&Message, &Event) + Send + Sync>;
+
 /// Represents a RELAY messaging message (SMS / MMS).
 ///
 /// A Message is created when you send or receive a message through the
@@ -29,7 +33,7 @@ pub struct Message {
     result: Mutex<Option<Value>>,
     on_completed: Mutex<Option<MessageCompletedCallback>>,
     callback_fired: Mutex<bool>,
-    on_event_callbacks: Mutex<Vec<Arc<dyn Fn(&Message, &Event) + Send + Sync>>>,
+    on_event_callbacks: Mutex<Vec<MessageEventCallback>>,
 }
 
 impl Message {

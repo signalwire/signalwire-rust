@@ -632,60 +632,60 @@ impl AgentBase {
     //  Tool Methods
     // ══════════════════════════════════════════════════════════════════════
 
-    /// Register a SWAIG tool (function) that the AI can invoke during a
-    /// call.
-    ///
-    /// # How this becomes a tool the model sees
-    ///
-    /// A SWAIG function is **exactly the same concept** as a "tool" in
-    /// native OpenAI / Anthropic tool calling. On every LLM turn, the
-    /// SDK renders each registered SWAIG function into the OpenAI tool
-    /// schema:
-    ///
-    /// ```text
-    /// {
-    ///   "type": "function",
-    ///   "function": {
-    ///     "name":        "your_name_here",
-    ///     "description": "your description text",
-    ///     "parameters":  { ... your JSON schema ... }
-    ///   }
-    /// }
-    /// ```
-    ///
-    /// That schema is sent to the model as part of the same API call
-    /// that produces the next assistant message. The model reads:
-    ///
-    ///   - the function `description` to decide WHEN to call this tool
-    ///   - each parameter `description` (inside `parameters`) to decide
-    ///     HOW to fill in that argument from the user's utterance
-    ///
-    /// This means **descriptions are prompt engineering**, not developer
-    /// comments. A vague description is the #1 cause of "the model has
-    /// the right tool but doesn't call it" failures.
-    ///
-    /// # Bad vs good descriptions
-    ///
-    /// ```text
-    /// BAD : description: "Lookup function"
-    /// GOOD: description: "Look up a customer's account details by "
-    ///                  + "account number. Use this BEFORE quoting any "
-    ///                  + "account-specific info (balance, plan, status). "
-    ///                  + "Do not use for general product questions."
-    ///
-    /// BAD : parameters: json!({"id": {"type": "string", "description": "the id"}})
-    /// GOOD: parameters: json!({"account_number": {"type": "string",
-    ///         "description": "The customer's 8-digit account number, "
-    ///                       "no dashes or spaces. Ask the user if they "
-    ///                       "don't provide it."}})
-    /// ```
-    ///
-    /// # Tool count matters
-    ///
-    /// LLM tool selection accuracy degrades past ~7-8
-    /// simultaneously-active tools per call. Use
-    /// [`crate::contexts::Step::set_functions`] to partition tools
-    /// across steps so only the relevant subset is active at any moment.
+    // Register a SWAIG tool (function) that the AI can invoke during a
+    // call.
+    //
+    // # How this becomes a tool the model sees
+    //
+    // A SWAIG function is **exactly the same concept** as a "tool" in
+    // native OpenAI / Anthropic tool calling. On every LLM turn, the
+    // SDK renders each registered SWAIG function into the OpenAI tool
+    // schema:
+    //
+    // ```text
+    // {
+    //   "type": "function",
+    //   "function": {
+    //     "name":        "your_name_here",
+    //     "description": "your description text",
+    //     "parameters":  { ... your JSON schema ... }
+    //   }
+    // }
+    // ```
+    //
+    // That schema is sent to the model as part of the same API call
+    // that produces the next assistant message. The model reads:
+    //
+    //   - the function `description` to decide WHEN to call this tool
+    //   - each parameter `description` (inside `parameters`) to decide
+    //     HOW to fill in that argument from the user's utterance
+    //
+    // This means **descriptions are prompt engineering**, not developer
+    // comments. A vague description is the #1 cause of "the model has
+    // the right tool but doesn't call it" failures.
+    //
+    // # Bad vs good descriptions
+    //
+    // ```text
+    // BAD : description: "Lookup function"
+    // GOOD: description: "Look up a customer's account details by "
+    //                  + "account number. Use this BEFORE quoting any "
+    //                  + "account-specific info (balance, plan, status). "
+    //                  + "Do not use for general product questions."
+    //
+    // BAD : parameters: json!({"id": {"type": "string", "description": "the id"}})
+    // GOOD: parameters: json!({"account_number": {"type": "string",
+    //         "description": "The customer's 8-digit account number, "
+    //                       "no dashes or spaces. Ask the user if they "
+    //                       "don't provide it."}})
+    // ```
+    //
+    // # Tool count matters
+    //
+    // LLM tool selection accuracy degrades past ~7-8
+    // simultaneously-active tools per call. Use
+    // [`crate::contexts::Step::set_functions`] to partition tools
+    // across steps so only the relevant subset is active at any moment.
     // define_tool, register_swaig_function, define_tools, on_function_call
     // are provided by swml::Service and accessible on AgentBase via the
     // `Deref<Target=Service>` impl. No agent-level wrapping is needed:
@@ -1139,11 +1139,7 @@ impl AgentBase {
 
     pub fn set_dynamic_config_callback(
         &mut self,
-        callback: Box<
-            dyn Fn(&Map<String, Value>, &Option<Value>, &HashMap<String, String>, &mut AgentBase)
-                + Send
-                + Sync,
-        >,
+        callback: DynamicConfigCallback,
     ) -> &mut Self {
         self.dynamic_config_callback = Some(Arc::new(callback));
         self
@@ -1178,9 +1174,7 @@ impl AgentBase {
 
     pub fn on_summary(
         &mut self,
-        callback: Box<
-            dyn Fn(&str, &Value, &HashMap<String, String>) + Send + Sync,
-        >,
+        callback: SummaryCallback,
     ) -> &mut Self {
         self.summary_callback = Some(Arc::new(callback));
         self
@@ -1188,9 +1182,7 @@ impl AgentBase {
 
     pub fn on_debug_event(
         &mut self,
-        callback: Box<
-            dyn Fn(&Value, &HashMap<String, String>) + Send + Sync,
-        >,
+        callback: DebugEventCallback,
     ) -> &mut Self {
         self.debug_event_handler = Some(Arc::new(callback));
         self

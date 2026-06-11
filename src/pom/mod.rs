@@ -11,7 +11,14 @@
 //! byte-for-byte — the cross-port parity contract lives in
 //! `signalwire-python/tests/unit/pom/test_pom_render_parity.py`.
 
-pub mod pom;
+// The `pom` implementation module mirrors the Python file layout
+// (`signalwire/pom/pom.py`) for 1:1 traceability. It is private and the public
+// type is re-exported below, so consumers write `pom::PromptObjectModel`, never
+// `pom::pom::PromptObjectModel` — the public double-path module_inception
+// guards against does not exist. (The lint still fires on the name match even
+// for a private module whose types are re-exported, so allow it here.)
+#[allow(clippy::module_inception)]
+mod pom;
 pub mod section;
 
 pub use pom::PromptObjectModel;
