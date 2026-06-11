@@ -1,7 +1,7 @@
 use base64::Engine;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
-use hmac::{Hmac, Mac};
-use rand::Rng;
+use hmac::{Hmac, KeyInit, Mac};
+use rand::RngExt;
 use sha2::Sha256;
 
 type HmacSha256 = Hmac<Sha256>;
@@ -19,8 +19,8 @@ pub struct SessionManager {
 impl SessionManager {
     /// Create a new session manager with a random 32-byte secret.
     pub fn new(token_expiry_secs: u64) -> Self {
-        let mut rng = rand::thread_rng();
-        let secret: Vec<u8> = (0..32).map(|_| rng.r#gen()).collect();
+        let mut rng = rand::rng();
+        let secret: Vec<u8> = (0..32).map(|_| rng.random()).collect();
         SessionManager {
             secret,
             token_expiry_secs,
@@ -173,8 +173,8 @@ fn hex_encode(bytes: &[u8]) -> String {
 }
 
 fn random_bytes(count: usize) -> Vec<u8> {
-    let mut rng = rand::thread_rng();
-    (0..count).map(|_| rng.r#gen()).collect()
+    let mut rng = rand::rng();
+    (0..count).map(|_| rng.random()).collect()
 }
 
 /// Get current time in seconds since Unix epoch.

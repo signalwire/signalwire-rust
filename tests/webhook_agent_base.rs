@@ -17,7 +17,7 @@ use signalwire::agent::AgentBase;
 use signalwire::AgentOptions;
 
 use base64::Engine as _;
-use hmac::{Hmac, Mac};
+use hmac::{Hmac, KeyInit, Mac};
 use sha1::Sha1;
 
 type HmacSha1 = Hmac<Sha1>;

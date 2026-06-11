@@ -660,8 +660,8 @@ impl Call {
 
 /// Generate a simple UUID v4.
 fn generate_uuid() -> String {
-    use rand::Rng;
-    let mut rng = rand::thread_rng();
+    use rand::RngExt;
+    let mut rng = rand::rng();
     let mut data = [0u8; 16];
     rng.fill(&mut data);
     data[6] = (data[6] & 0x0f) | 0x40; // version 4

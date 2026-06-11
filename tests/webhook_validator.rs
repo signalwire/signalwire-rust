@@ -156,7 +156,7 @@ fn body_sha256_mismatch_rejected() {
 
 fn b64_sig(key: &str, url: &str, params: &[(&str, &str)]) -> String {
     use base64::Engine as _;
-    use hmac::{Hmac, Mac};
+    use hmac::{Hmac, KeyInit, Mac};
     use sha1::Sha1;
     type HmacSha1 = Hmac<Sha1>;
 
@@ -212,7 +212,7 @@ fn http_port_80_normalization_both_directions() {
 fn repeated_form_keys_concat_in_submission_order() {
     // Body `To=a&To=b` → signing string `URL + ToaTob`, deterministic.
     use base64::Engine as _;
-    use hmac::{Hmac, Mac};
+    use hmac::{Hmac, KeyInit, Mac};
     use sha1::Sha1;
     type HmacSha1 = Hmac<Sha1>;
 
@@ -230,7 +230,7 @@ fn repeated_form_keys_concat_in_submission_order() {
 #[test]
 fn repeated_form_keys_swapped_order_yields_different_signature() {
     use base64::Engine as _;
-    use hmac::{Hmac, Mac};
+    use hmac::{Hmac, KeyInit, Mac};
     use sha1::Sha1;
     type HmacSha1 = Hmac<Sha1>;
 

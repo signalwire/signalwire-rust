@@ -3,8 +3,8 @@ use std::env;
 
 use base64::Engine;
 use base64::engine::general_purpose::STANDARD as BASE64;
-use hmac::{Hmac, Mac};
-use rand::Rng;
+use hmac::{Hmac, KeyInit, Mac};
+use rand::RngExt;
 use regex::Regex;
 use serde_json::Value;
 use sha2::Sha256;
@@ -1015,8 +1015,8 @@ fn constant_time_eq(a: &str, b: &str) -> bool {
 
 /// Generate a cryptographically secure random hex string.
 fn random_hex(bytes: usize) -> String {
-    let mut rng = rand::thread_rng();
-    let random_bytes: Vec<u8> = (0..bytes).map(|_| rng.r#gen()).collect();
+    let mut rng = rand::rng();
+    let random_bytes: Vec<u8> = (0..bytes).map(|_| rng.random()).collect();
     hex_encode(&random_bytes)
 }
 

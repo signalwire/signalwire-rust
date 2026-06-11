@@ -268,7 +268,7 @@ fn test_unauthenticated_raw_connect_rejected_by_mock() {
             "authentication": {"project": "", "token": ""},
         },
     });
-    sock.send(tungstenite::Message::Text(frame.to_string()))
+    sock.send(tungstenite::Message::Text(frame.to_string().into()))
         .expect("send connect");
     // Read the reply.
     let resp = sock.read().expect("read reply");
@@ -311,7 +311,7 @@ fn test_jwt_only_connect_accepted_by_mock() {
             "authentication": {"jwt_token": "fake-jwt-eyJ.AaaA.BbB"},
         },
     });
-    sock.send(tungstenite::Message::Text(frame.to_string()))
+    sock.send(tungstenite::Message::Text(frame.to_string().into()))
         .expect("send jwt connect");
     let resp = sock.read().expect("read reply");
     let txt = match resp {
