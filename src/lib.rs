@@ -137,6 +137,11 @@ impl SkillSpec {
 /// variables `SIGNALWIRE_PROJECT_ID` / `SIGNALWIRE_API_TOKEN` /
 /// `SIGNALWIRE_SPACE`).
 #[allow(non_snake_case)]
+// kwargs mirrors Python's **kwargs (the audit maps this to var_keyword); a
+// concrete HashMap<String, String> keeps that surface 1:1. clippy::implicit_hasher
+// would push a `S: BuildHasher` generic onto this public factory, uglifying the
+// Python-parity signature for a caller-hasher flexibility no consumer needs.
+#[allow(clippy::implicit_hasher)]
 pub fn RestClient(
     args: Vec<String>,
     kwargs: std::collections::HashMap<String, String>,

@@ -231,7 +231,7 @@ fn execute_datamap(agent: &AgentBase, tool_name: &str, args: &Value) -> Result<V
 }
 
 /// Naive template expansion for DataMap webhook URLs:
-///   `%{args.foo}`  → string from args["foo"]
+///   `%{args.foo}`  → string from `args["foo"]`
 ///   `${...}`       → left as-is (it's an SWML reference resolved at
 ///                    runtime by the platform; the audit fixture
 ///                    accepts whatever path comes through, so we don't

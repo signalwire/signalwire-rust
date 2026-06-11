@@ -634,10 +634,8 @@ impl Client {
                     if let Some(reject) = slot.reject.take() {
                         reject(data["error"].clone());
                     }
-                } else {
-                    if let Some(resolve) = slot.resolve.take() {
-                        resolve(data.get("result").cloned().unwrap_or(json!({})));
-                    }
+                } else if let Some(resolve) = slot.resolve.take() {
+                    resolve(data.get("result").cloned().unwrap_or(json!({})));
                 }
                 return;
             }

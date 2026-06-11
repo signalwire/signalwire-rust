@@ -168,6 +168,12 @@ type DebugEventCallback = Box<
 /// equivalent of inheritance) so `Service` methods like `set_route`,
 /// `define_tool`, `on_function_call`, etc. are usable on `AgentBase`
 /// instances directly without needing forwarding wrappers.
+// The several `bool` fields (auto_answer, record_call, record_stereo, use_pom,
+// …) are independent feature flags mirroring Python AgentBase's boolean
+// __init__ kwargs 1:1. clippy::struct_excessive_bools suggests a state struct,
+// but that would diverge from the reference's flat flag surface for no
+// behavioral gain — they're orthogonal toggles, not a state machine.
+#[allow(clippy::struct_excessive_bools)]
 pub struct AgentBase {
     // ── Service (composition + Deref<Service> for inheritance shape) ────
     service: Service,

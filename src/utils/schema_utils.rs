@@ -277,11 +277,11 @@ impl SchemaUtils {
                 continue;
             }
             let schema_name = &ref_str[prefix.len()..];
-            let defn = match defs.get(schema_name) {
+            let def_schema = match defs.get(schema_name) {
                 Some(d) => d,
                 None => continue,
             };
-            let props = match defn.get("properties").and_then(|p| p.as_object()) {
+            let props = match def_schema.get("properties").and_then(|p| p.as_object()) {
                 Some(p) if !p.is_empty() => p,
                 _ => continue,
             };
@@ -294,7 +294,7 @@ impl SchemaUtils {
                 VerbDefinition {
                     name: actual_verb,
                     schema_name: schema_name.to_string(),
-                    definition: defn.clone(),
+                    definition: def_schema.clone(),
                 },
             );
         }
