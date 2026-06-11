@@ -22,15 +22,15 @@ content-shaped assertions live in those files.
 - `tests/common/mocktest.rs:176` — begin: takes the global mutex and resets
 - `tests/common/mocktest.rs:185` — scenario_set: HTTP POST to `/__mock__/scenarios/<id>`
 - `tests/common/mocktest.rs:198` — resolve_port: parses MOCK_SIGNALWIRE_PORT env var
-- `tests/common/mocktest.rs:209` — ensure_server: probes `/__mock__/health` and spawns mock_signalwire if missing
-- `tests/common/mocktest.rs:235` — probe_health: GETs `/__mock__/health` and returns success on 200 + `specs_loaded`
-- `tests/common/mocktest.rs:328` — discover_porting_sdk_package: walks parents looking for `porting-sdk/test_harness/<name>`
-- `tests/common/mocktest.rs:352` — separator (unix): returns `:`
-- `tests/common/mocktest.rs:357` — separator (windows): returns `;`
-- `tests/common/mocktest.rs:364` — extern setsid: C binding
-- `tests/common/mocktest.rs:367` — libc_setsid: thin wrapper around setsid
-- `tests/common/mocktest.rs:375` — decode_journal: serde_json -> Vec<JournalEntry>
-- `tests/common/mocktest.rs:383` — decode_entry: serde_json -> single JournalEntry
+- `tests/common/mocktest.rs:207` — ensure_server: probes `/__mock__/health` and spawns mock_signalwire if missing
+- `tests/common/mocktest.rs:233` — probe_health: GETs `/__mock__/health` and returns success on 200 + `specs_loaded`
+- `tests/common/mocktest.rs:326` — discover_porting_sdk_package: walks parents looking for `porting-sdk/test_harness/<name>`
+- `tests/common/mocktest.rs:350` — separator (unix): returns `:`
+- `tests/common/mocktest.rs:355` — separator (windows): returns `;`
+- `tests/common/mocktest.rs:362` — extern setsid: C binding
+- `tests/common/mocktest.rs:365` — libc_setsid: thin wrapper around setsid
+- `tests/common/mocktest.rs:373` — decode_journal: serde_json -> Vec<JournalEntry>
+- `tests/common/mocktest.rs:381` — decode_entry: serde_json -> single JournalEntry
 
 ## tests/common/mod.rs — module marker
 
@@ -66,17 +66,17 @@ content-shaped assertions live in the `tests/relay_mock_*.rs` files.
 - `tests/common/relay_mocktest.rs:408` — scenario_play: HTTP POST to `/__mock__/scenario_play`
 - `tests/common/relay_mocktest.rs:438` — TestGuard / begin: takes the global mutex + cross-binary file lock + drains sessions, then resets
 - `tests/common/relay_mocktest.rs:465` — resolve_ws_port: parses MOCK_RELAY_PORT env var
-- `tests/common/relay_mocktest.rs:476` — resolve_http_port: parses MOCK_RELAY_HTTP_PORT env var
-- `tests/common/relay_mocktest.rs:488` — ensure_server: probes `/__mock__/health` and spawns mock_relay if missing
-- `tests/common/relay_mocktest.rs:529` — probe_health: GETs `/__mock__/health` and returns success on 200 + `schemas_loaded`
-- `tests/common/relay_mocktest.rs:601` — discover_porting_sdk_package: walks parents looking for `porting-sdk/test_harness/<name>`
-- `tests/common/relay_mocktest.rs:622` — separator (unix): returns `:`
-- `tests/common/relay_mocktest.rs:627` — separator (windows): returns `;`
-- `tests/common/relay_mocktest.rs:632` — extern setsid: C binding
-- `tests/common/relay_mocktest.rs:635` — libc_setsid: thin wrapper around setsid
-- `tests/common/relay_mocktest.rs:643` — decode_journal: serde_json -> Vec<JournalEntry>
-- `tests/common/relay_mocktest.rs:651` — decode_entry: serde_json -> single JournalEntry
-- `tests/common/relay_mocktest.rs:697` — _hashmap_anchor: import-anchor for HashMap
+- `tests/common/relay_mocktest.rs:474` — resolve_http_port: parses MOCK_RELAY_HTTP_PORT env var
+- `tests/common/relay_mocktest.rs:484` — ensure_server: probes `/__mock__/health` and spawns mock_relay if missing
+- `tests/common/relay_mocktest.rs:525` — probe_health: GETs `/__mock__/health` and returns success on 200 + `schemas_loaded`
+- `tests/common/relay_mocktest.rs:597` — discover_porting_sdk_package: walks parents looking for `porting-sdk/test_harness/<name>`
+- `tests/common/relay_mocktest.rs:618` — separator (unix): returns `:`
+- `tests/common/relay_mocktest.rs:623` — separator (windows): returns `;`
+- `tests/common/relay_mocktest.rs:628` — extern setsid: C binding
+- `tests/common/relay_mocktest.rs:631` — libc_setsid: thin wrapper around setsid
+- `tests/common/relay_mocktest.rs:639` — decode_journal: serde_json -> Vec<JournalEntry>
+- `tests/common/relay_mocktest.rs:647` — decode_entry: serde_json -> single JournalEntry
+- `tests/common/relay_mocktest.rs:693` — _hashmap_anchor: import-anchor for HashMap
 
 ## tests/relay_mock_*.rs — small test-file helpers
 
@@ -125,10 +125,10 @@ these aren't `#[test]` items; the content-shaped assertions (real `wss://` /
 - `tests/common/tls_support.rs:134` — TlsMockProc::drop: kills + reaps the spawned `--tls` mock subprocess
 - `tests/common/tls_support.rs:179` — spawn_tls_mock_relay: starts `mock_relay --tls` on the dedicated WS/HTTP ports, waits for health
 - `tests/common/tls_support.rs:205` — spawn_tls_mock_signalwire: starts `mock_signalwire --tls` on the dedicated port, waits for HTTPS health
-- `tests/common/tls_support.rs:280` — RelayTlsLock::acquire: opens /tmp lock file and runs flock(LOCK_EX); panics on failure
-- `tests/common/tls_support.rs:301` — RelayTlsLock::drop: explicit flock(LOCK_UN) on file descriptor
-- `tests/common/tls_support.rs:312` — extern setsid: C binding for session detach
-- `tests/common/tls_support.rs:315` — libc_setsid: thin wrapper around setsid
+- `tests/common/tls_support.rs:274` — RelayTlsLock::acquire: opens /tmp lock file and runs flock(LOCK_EX); panics on failure
+- `tests/common/tls_support.rs:295` — RelayTlsLock::drop: explicit flock(LOCK_UN) on file descriptor
+- `tests/common/tls_support.rs:306` — extern setsid: C binding for session detach
+- `tests/common/tls_support.rs:309` — libc_setsid: thin wrapper around setsid
 
 ## tests/tls_*.rs — TLS capability-test file helpers
 
