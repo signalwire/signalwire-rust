@@ -274,31 +274,26 @@ fn build_section(value: &Value, is_subsection: bool, top_index: usize) -> Result
         .as_object()
         .ok_or_else(|| "Each section must be an object/dict.".to_string())?;
 
-    if let Some(t) = map.get("title") {
-        if !t.is_string() {
+    if let Some(t) = map.get("title")
+        && !t.is_string() {
             return Err("'title' must be a string if present.".to_string());
         }
-    }
-    if let Some(s) = map.get("subsections") {
-        if !s.is_array() {
+    if let Some(s) = map.get("subsections")
+        && !s.is_array() {
             return Err("'subsections' must be a list if provided.".to_string());
         }
-    }
-    if let Some(b) = map.get("bullets") {
-        if !b.is_array() {
+    if let Some(b) = map.get("bullets")
+        && !b.is_array() {
             return Err("'bullets' must be a list if provided.".to_string());
         }
-    }
-    if let Some(n) = map.get("numbered") {
-        if !n.is_boolean() {
+    if let Some(n) = map.get("numbered")
+        && !n.is_boolean() {
             return Err("'numbered' must be a boolean if provided.".to_string());
         }
-    }
-    if let Some(nb) = map.get("numberedBullets") {
-        if !nb.is_boolean() {
+    if let Some(nb) = map.get("numberedBullets")
+        && !nb.is_boolean() {
             return Err("'numberedBullets' must be a boolean if provided.".to_string());
         }
-    }
 
     // Validate body / bullets / subsections present (Python rule)
     let has_body = map

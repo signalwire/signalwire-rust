@@ -663,11 +663,10 @@ impl Service {
     /// Detect or construct the proxy URL base from request headers.
     pub fn get_proxy_url_base(&self, headers: &HashMap<String, String>) -> String {
         // 1. Explicit env var
-        if let Ok(env_proxy) = env::var("SWML_PROXY_URL_BASE") {
-            if !env_proxy.is_empty() {
+        if let Ok(env_proxy) = env::var("SWML_PROXY_URL_BASE")
+            && !env_proxy.is_empty() {
                 return env_proxy.trim_end_matches('/').to_string();
             }
-        }
 
         // 2. X-Forwarded-Proto + X-Forwarded-Host
         let proto = headers
@@ -833,15 +832,13 @@ impl Service {
                         args.insert(k.clone(), v.clone());
                     }
                 }
-            } else if let Some(raw_str) = arg_obj.get("raw").and_then(|v| v.as_str()) {
-                if !raw_str.is_empty() {
-                    if let Ok(Value::Object(parsed)) = serde_json::from_str::<Value>(raw_str) {
+            } else if let Some(raw_str) = arg_obj.get("raw").and_then(|v| v.as_str())
+                && !raw_str.is_empty()
+                    && let Ok(Value::Object(parsed)) = serde_json::from_str::<Value>(raw_str) {
                         for (k, v) in &parsed {
                             args.insert(k.clone(), v.clone());
                         }
                     }
-                }
-            }
         } else if let Some(flat) = body.get("arguments").and_then(|v| v.as_object()) {
             for (k, v) in flat {
                 args.insert(k.clone(), v.clone());

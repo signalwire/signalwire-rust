@@ -69,11 +69,10 @@ impl GatherQuestion {
         if let Some(ref p) = self.prompt {
             map.insert("prompt".to_string(), json!(p));
         }
-        if let Some(ref f) = self.functions {
-            if !f.is_empty() {
+        if let Some(ref f) = self.functions
+            && !f.is_empty() {
                 map.insert("functions".to_string(), json!(f));
             }
-        }
 
         Value::Object(map)
     }
@@ -708,8 +707,8 @@ impl ContextBuilder {
 
         // Validate initial_step references a real step in the context
         for (name, ctx) in &self.contexts {
-            if let Some(ref is) = ctx.initial_step {
-                if !ctx.steps.contains_key(is) {
+            if let Some(ref is) = ctx.initial_step
+                && !ctx.steps.contains_key(is) {
                     let mut available: Vec<&String> = ctx.steps.keys().collect();
                     available.sort();
                     errors.push(format!(
@@ -718,7 +717,6 @@ impl ContextBuilder {
                         name, is, available
                     ));
                 }
-            }
         }
 
         // Validate step references in valid_steps
@@ -780,8 +778,8 @@ impl ContextBuilder {
                     if let Some(action) = gi.completion_action() {
                         if action == "next_step" {
                             let idx = ctx.step_order.iter().position(|n| n == step_name);
-                            if let Some(i) = idx {
-                                if i + 1 >= ctx.step_order.len() {
+                            if let Some(i) = idx
+                                && i + 1 >= ctx.step_order.len() {
                                     errors.push(format!(
                                         "Step '{}' in context '{}' has gather_info \
                                          completion_action='next_step' but it is the last \
@@ -793,7 +791,6 @@ impl ContextBuilder {
                                         step_name, ctx_name, step_name, step_name
                                     ));
                                 }
-                            }
                         } else if !ctx.steps.contains_key(action) {
                             let mut available: Vec<&String> = ctx.steps.keys().collect();
                             available.sort();

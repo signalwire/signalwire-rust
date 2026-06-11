@@ -162,14 +162,13 @@ impl SurveyAgent {
                             .unwrap_or_default();
                         let lower_answer = answer.trim().to_lowercase();
                         for choice in &choices {
-                            if let Some(c) = choice.as_str() {
-                                if c.trim().to_lowercase() == lower_answer {
+                            if let Some(c) = choice.as_str()
+                                && c.trim().to_lowercase() == lower_answer {
                                     return FunctionResult::with_response(&format!(
                                         "Valid choice: {}",
                                         c
                                     ));
                                 }
-                            }
                         }
                         let choice_list: Vec<&str> =
                             choices.iter().filter_map(|v| v.as_str()).collect();

@@ -484,8 +484,8 @@ impl AgentBase {
         body: &str,
     ) -> &mut Self {
         for section in &mut self.pom_sections {
-            if let Value::Object(map) = section {
-                if map.get("title").and_then(|t| t.as_str()) == Some(parent_title) {
+            if let Value::Object(map) = section
+                && map.get("title").and_then(|t| t.as_str()) == Some(parent_title) {
                     let subsections = map
                         .entry("subsections".to_string())
                         .or_insert_with(|| Value::Array(Vec::new()));
@@ -494,7 +494,6 @@ impl AgentBase {
                     }
                     break;
                 }
-            }
         }
         self
     }
@@ -507,8 +506,8 @@ impl AgentBase {
         bullets: Vec<&str>,
     ) -> &mut Self {
         for section in &mut self.pom_sections {
-            if let Value::Object(map) = section {
-                if map.get("title").and_then(|t| t.as_str()) == Some(title) {
+            if let Value::Object(map) = section
+                && map.get("title").and_then(|t| t.as_str()) == Some(title) {
                     if let Some(b) = body {
                         let existing = map
                             .get("body")
@@ -529,7 +528,6 @@ impl AgentBase {
                     }
                     break;
                 }
-            }
         }
         self
     }
@@ -748,8 +746,8 @@ impl AgentBase {
     /// object's `params` key in SWML and use snake_case wire shape.
     pub fn set_language_params(&mut self, code: &str, params: Value) -> &mut Self {
         for language in &mut self.languages {
-            if let Some(obj) = language.as_object_mut() {
-                if obj.get("code").and_then(|v| v.as_str()) == Some(code) {
+            if let Some(obj) = language.as_object_mut()
+                && obj.get("code").and_then(|v| v.as_str()) == Some(code) {
                     let non_empty = match &params {
                         Value::Object(m) => !m.is_empty(),
                         _ => false,
@@ -761,7 +759,6 @@ impl AgentBase {
                     }
                     break;
                 }
-            }
         }
         self
     }
@@ -1372,12 +1369,11 @@ impl AgentBase {
         }
 
         // ── Context switch ──────────────────────────────────────────────
-        if let Some(ref cb) = self.context_builder {
-            if cb.has_contexts() {
+        if let Some(ref cb) = self.context_builder
+            && cb.has_contexts() {
                 let ctx_val = cb.to_value();
                 ai.insert("context_switch".to_string(), ctx_val);
             }
-        }
 
         Value::Object(ai)
     }
@@ -1438,13 +1434,10 @@ impl AgentBase {
         // normal dispatch.
         if method.eq_ignore_ascii_case("POST")
             && matches!(sub_path.as_str(), "/" | "" | "/swaig" | "/post_prompt")
-        {
-            if let Some(ref key) = self.signing_key {
-                if !self.verify_request_signature(key, headers, path, body) {
+            && let Some(ref key) = self.signing_key
+                && !self.verify_request_signature(key, headers, path, body) {
                     return json_response(403, &json!({"error": "Invalid signature"}));
                 }
-            }
-        }
 
         // Parse body
         let request_data: Option<Value> = if !body.is_empty() {

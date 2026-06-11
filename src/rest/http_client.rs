@@ -377,7 +377,7 @@ impl HttpClient {
             })?;
 
         // Non-2xx
-        if status < 200 || status >= 300 {
+        if !(200..300).contains(&status) {
             return Err(SignalWireRestError::new(
                 &format!("{} {} returned {}", method, path, status),
                 status,

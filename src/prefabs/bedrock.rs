@@ -204,8 +204,8 @@ impl BedrockAgent {
 
         // Locate the `main` section list and rewrite the first `ai`
         // verb in-place into an `amazon_bedrock` verb.
-        if let Some(sections) = swml.get_mut("sections").and_then(|v| v.as_object_mut()) {
-            if let Some(main) = sections.get_mut("main").and_then(|v| v.as_array_mut()) {
+        if let Some(sections) = swml.get_mut("sections").and_then(|v| v.as_object_mut())
+            && let Some(main) = sections.get_mut("main").and_then(|v| v.as_array_mut()) {
                 for item in main.iter_mut() {
                     let Some(obj) = item.as_object_mut() else {
                         continue;
@@ -224,7 +224,6 @@ impl BedrockAgent {
                     break;
                 }
             }
-        }
 
         swml
     }
@@ -263,16 +262,14 @@ impl BedrockAgent {
             out.insert("global_data".to_string(), json!({}));
         }
 
-        if let Some(pp) = ai.get("post_prompt") {
-            if !pp.is_null() {
+        if let Some(pp) = ai.get("post_prompt")
+            && !pp.is_null() {
                 out.insert("post_prompt".to_string(), pp.clone());
             }
-        }
-        if let Some(ppu) = ai.get("post_prompt_url") {
-            if !ppu.is_null() {
+        if let Some(ppu) = ai.get("post_prompt_url")
+            && !ppu.is_null() {
                 out.insert("post_prompt_url".to_string(), ppu.clone());
             }
-        }
 
         // Drop None-valued entries (mirrors Python's filter).
         out.retain(|_, v| !v.is_null());

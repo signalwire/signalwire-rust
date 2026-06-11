@@ -42,8 +42,8 @@ impl SkillManager {
         let mut instance = factory(params);
         let instance_key = instance.get_instance_key();
 
-        if self.loaded_skills.contains_key(&instance_key) {
-            if !instance.supports_multiple_instances() {
+        if self.loaded_skills.contains_key(&instance_key)
+            && !instance.supports_multiple_instances() {
                 return (
                     false,
                     format!(
@@ -52,7 +52,6 @@ impl SkillManager {
                     ),
                 );
             }
-        }
 
         let missing = instance.validate_env_vars();
         if !missing.is_empty() {
@@ -117,8 +116,8 @@ impl SkillManager {
     ) -> (bool, String) {
         let instance_key = instance.get_instance_key();
 
-        if self.loaded_skills.contains_key(&instance_key) {
-            if !instance.supports_multiple_instances() {
+        if self.loaded_skills.contains_key(&instance_key)
+            && !instance.supports_multiple_instances() {
                 return (
                     false,
                     format!(
@@ -127,7 +126,6 @@ impl SkillManager {
                     ),
                 );
             }
-        }
 
         let missing = instance.validate_env_vars();
         if !missing.is_empty() {

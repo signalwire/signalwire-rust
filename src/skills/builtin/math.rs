@@ -209,13 +209,12 @@ fn parse_mul_div(tokens: &[Token], pos: &mut usize) -> Option<f64> {
 
 fn parse_power(tokens: &[Token], pos: &mut usize) -> Option<f64> {
     let base = parse_unary(tokens, pos)?;
-    if *pos < tokens.len() {
-        if let Token::Op('^') = &tokens[*pos] {
+    if *pos < tokens.len()
+        && let Token::Op('^') = &tokens[*pos] {
             *pos += 1;
             let exp = parse_power(tokens, pos)?;
             return Some(base.powf(exp));
         }
-    }
     Some(base)
 }
 
@@ -247,12 +246,11 @@ fn parse_atom(tokens: &[Token], pos: &mut usize) -> Option<f64> {
         Token::LParen => {
             *pos += 1;
             let val = parse_add_sub(tokens, pos)?;
-            if *pos < tokens.len() {
-                if let Token::RParen = &tokens[*pos] {
+            if *pos < tokens.len()
+                && let Token::RParen = &tokens[*pos] {
                     *pos += 1;
                     return Some(val);
                 }
-            }
             None
         }
         _ => None,

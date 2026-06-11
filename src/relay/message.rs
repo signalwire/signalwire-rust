@@ -225,11 +225,10 @@ impl Message {
 
         // Auto-resolve on terminal state
         let current_state = self.state.lock().unwrap().clone();
-        if let Some(ref s) = current_state {
-            if constants::is_message_terminal(s) {
+        if let Some(ref s) = current_state
+            && constants::is_message_terminal(s) {
                 self.resolve(Some(serde_json::json!(s)));
             }
-        }
     }
 
     // ------------------------------------------------------------------

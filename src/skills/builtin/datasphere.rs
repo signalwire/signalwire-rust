@@ -223,7 +223,7 @@ fn http_post_json(
         .read_to_string()
         .map_err(|e| format!("POST {} body read failed: {}", url, e))?;
 
-    if status < 200 || status >= 300 {
+    if !(200..300).contains(&status) {
         return Err(format!("POST {} returned {}: {}", url, status, body_str));
     }
 

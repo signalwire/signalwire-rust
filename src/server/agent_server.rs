@@ -398,11 +398,10 @@ impl AgentServer {
             if !matches {
                 continue;
             }
-            if let Some(cb) = self.global_routing_callbacks.get(key) {
-                if let Some(route) = cb(path, headers, body) {
+            if let Some(cb) = self.global_routing_callbacks.get(key)
+                && let Some(route) = cb(path, headers, body) {
                     return Some(route);
                 }
-            }
         }
         None
     }

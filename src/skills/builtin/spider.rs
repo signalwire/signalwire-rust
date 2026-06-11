@@ -222,7 +222,7 @@ fn http_get_text(url: &str) -> Result<String, String> {
         .body_mut()
         .read_to_string()
         .map_err(|e| format!("HTTP GET {} body read failed: {}", url, e))?;
-    if status < 200 || status >= 300 {
+    if !(200..300).contains(&status) {
         return Err(format!("HTTP GET {} returned {}: {}", url, status, body));
     }
     Ok(body)

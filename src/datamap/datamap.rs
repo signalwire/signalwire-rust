@@ -143,11 +143,10 @@ impl DataMap {
         wh.insert("method".to_string(), json!(method));
         wh.insert("url".to_string(), json!(url));
 
-        if let Value::Object(ref h) = headers {
-            if !h.is_empty() {
+        if let Value::Object(ref h) = headers
+            && !h.is_empty() {
                 wh.insert("headers".to_string(), headers.clone());
             }
-        }
         if !form_param.is_empty() {
             wh.insert("form_param".to_string(), json!(form_param));
         }

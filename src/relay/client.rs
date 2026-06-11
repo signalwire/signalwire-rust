@@ -391,25 +391,22 @@ impl Client {
         // initial handshake. Subsequent `signalwire.receive` calls
         // dynamically add more.
         let ctxs: Vec<String> = self.contexts.lock().unwrap().clone();
-        if !ctxs.is_empty() {
-            if let Value::Object(ref mut obj) = params {
+        if !ctxs.is_empty()
+            && let Value::Object(ref mut obj) = params {
                 obj.insert("contexts".to_string(), json!(ctxs));
             }
-        }
         // Re-send authorization state on reconnect for fast resume.
-        if let Some(state) = self.authorization_state.lock().unwrap().clone() {
-            if let Value::Object(ref mut obj) = params {
+        if let Some(state) = self.authorization_state.lock().unwrap().clone()
+            && let Value::Object(ref mut obj) = params {
                 obj.insert("authorization_state".to_string(), json!(state));
             }
-        }
         // Re-send the previously-issued protocol string on reconnect so
         // the server can restore the session. Mirrors Python's
         // `RelayClient.connect` behaviour when `_relay_protocol` is set.
-        if let Some(p) = self.protocol.lock().unwrap().clone() {
-            if let Value::Object(ref mut obj) = params {
+        if let Some(p) = self.protocol.lock().unwrap().clone()
+            && let Value::Object(ref mut obj) = params {
                 obj.insert("protocol".to_string(), json!(p));
             }
-        }
 
         let msg = json!({
             "jsonrpc": "2.0",
@@ -719,31 +716,28 @@ impl Client {
                     .cloned();
                 if let Some(msg) = msg {
                     msg.dispatch_event(&event);
-                    if let Some(s) = params.get("state").and_then(|v| v.as_str()) {
-                        if constants::is_message_terminal(s) {
+                    if let Some(s) = params.get("state").and_then(|v| v.as_str())
+                        && constants::is_message_terminal(s) {
                             self.messages.lock().unwrap().remove(msg_id);
                         }
-                    }
                 }
             }
             return;
         }
 
         // ── call state with a pending dial tag ───────────────────────
-        if event_type == "calling.call.state" {
-            if let Some(tag) = params.get("tag").and_then(|v| v.as_str()) {
+        if event_type == "calling.call.state"
+            && let Some(tag) = params.get("tag").and_then(|v| v.as_str()) {
                 let has_dial = self.pending_dials.lock().unwrap().contains_key(tag);
-                if has_dial {
-                    if let Some(call_id) = params.get("call_id").and_then(|v| v.as_str()) {
+                if has_dial
+                    && let Some(call_id) = params.get("call_id").and_then(|v| v.as_str()) {
                         let mut calls = self.calls.lock().unwrap();
                         if !calls.contains_key(call_id) {
                             let call = Arc::new(Call::new(&params));
                             calls.insert(call_id.to_string(), call);
                         }
                     }
-                }
             }
-        }
 
         // ── dial completion event ────────────────────────────────────
         if event_type == "calling.call.dial" {
@@ -949,21 +943,18 @@ impl Client {
             "to_number": to_number,
             "from_number": from_number,
         });
-        if let Some(b) = body {
-            if !b.is_empty() {
+        if let Some(b) = body
+            && !b.is_empty() {
                 params["body"] = json!(b);
             }
-        }
-        if let Some(m) = media {
-            if !m.is_empty() {
+        if let Some(m) = media
+            && !m.is_empty() {
                 params["media"] = json!(m);
             }
-        }
-        if let Some(t) = tags {
-            if !t.is_empty() {
+        if let Some(t) = tags
+            && !t.is_empty() {
                 params["tags"] = json!(t);
             }
-        }
 
         let result = self.execute_blocking("messaging.send", params)?;
 

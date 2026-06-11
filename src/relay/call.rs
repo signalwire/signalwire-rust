@@ -143,11 +143,10 @@ impl Call {
         }
 
         // ── connect events carry peer info ───────────────────────────
-        if event_type == "calling.call.connect" {
-            if let Some(p) = params.get("peer") {
+        if event_type == "calling.call.connect"
+            && let Some(p) = params.get("peer") {
                 *self.peer.lock().unwrap() = p.clone();
             }
-        }
 
         // ── route by control_id to the owning Action ─────────────────
         if let Some(control_id) = event.control_id() {
@@ -159,15 +158,14 @@ impl Call {
                 action.handle_event(event);
 
                 // Check whether the action has reached a terminal state
-                if let Some(action_state) = params.get("state").and_then(|v| v.as_str()) {
-                    if constants::is_action_terminal(event_type, action_state) {
+                if let Some(action_state) = params.get("state").and_then(|v| v.as_str())
+                    && constants::is_action_terminal(event_type, action_state) {
                         action.resolve(None);
                         self.actions
                             .lock()
                             .unwrap()
                             .remove(control_id);
                     }
-                }
             }
         }
 

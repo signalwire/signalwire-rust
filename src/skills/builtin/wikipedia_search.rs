@@ -158,7 +158,7 @@ fn http_get_json(url: &str) -> Result<Value, String> {
         .body_mut()
         .read_to_string()
         .map_err(|e| format!("HTTP GET {} body read failed: {}", url, e))?;
-    if status < 200 || status >= 300 {
+    if !(200..300).contains(&status) {
         return Err(format!("HTTP GET {} returned {}: {}", url, status, body));
     }
     serde_json::from_str(&body)

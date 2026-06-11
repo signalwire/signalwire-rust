@@ -200,11 +200,10 @@ impl SkillBase for InfoGatherer {
         ];
 
         for q in &questions {
-            if let Some(prompt_add) = q.get("prompt_add").and_then(|v| v.as_str()) {
-                if !prompt_add.is_empty() {
+            if let Some(prompt_add) = q.get("prompt_add").and_then(|v| v.as_str())
+                && !prompt_add.is_empty() {
                     bullets.push(prompt_add.to_string());
                 }
-            }
         }
 
         let bullet_values: Vec<Value> = bullets.into_iter().map(|b| json!(b)).collect();

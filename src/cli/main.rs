@@ -253,15 +253,14 @@ fn do_list_tools_via_introspect(example_name: &str, raw: bool, verbose: bool) {
             .unwrap_or("");
         println!("  {}. {} — {}", i + 1, name, desc);
         let argument = tool.get("argument").or_else(|| tool.get("parameters"));
-        if let Some(arg) = argument {
-            if let Some(props) = arg.get("properties").and_then(|v| v.as_object()) {
+        if let Some(arg) = argument
+            && let Some(props) = arg.get("properties").and_then(|v| v.as_object()) {
                 for (pname, pdef) in props {
                     let ptype = pdef.get("type").and_then(|v| v.as_str()).unwrap_or("");
                     let pdesc = pdef.get("description").and_then(|v| v.as_str()).unwrap_or("");
                     println!("       - {} ({}): {}", pname, ptype, pdesc);
                 }
             }
-        }
     }
 }
 
