@@ -1,7 +1,7 @@
-/// RELAY module -- real-time event signalling over WebSocket (JSON-RPC 2.0).
-///
-/// Provides constants, event/action primitives, call control, message
-/// tracking, and the async-ready `Client` that ties everything together.
+//! RELAY module -- real-time event signalling over WebSocket (JSON-RPC 2.0).
+//!
+//! Provides constants, event/action primitives, call control, message
+//! tracking, and the async-ready `Client` that ties everything together.
 
 pub mod constants;
 pub mod state_enums;

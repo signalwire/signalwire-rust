@@ -16,18 +16,15 @@
 //!
 //! This file shows four step-shaped patterns side by side:
 //!
-//!   1. `step_lookup`   — explicitly whitelists `lookup_account`
-//!   2. `step_inherit`  — has NO `set_functions()` call. Inherits
-//!                        step_lookup's whitelist, so `lookup_account`
-//!                        is still callable here. This is rarely what
-//!                        you want.
-//!   3. `step_explicit` — explicitly whitelists `process_payment`. The
-//!                        previously inherited `lookup_account` is now
-//!                        disabled, and only `process_payment` is
-//!                        active.
-//!   4. `step_disabled` — explicitly disables ALL user functions with
-//!                        an empty array (or `"none"`). Internal tools
-//!                        like next_step still work.
+//! 1. `step_lookup` — explicitly whitelists `lookup_account`
+//! 2. `step_inherit` — has NO `set_functions()` call. Inherits step_lookup's
+//!    whitelist, so `lookup_account` is still callable here. This is rarely
+//!    what you want.
+//! 3. `step_explicit` — explicitly whitelists `process_payment`. The previously
+//!    inherited `lookup_account` is now disabled, and only `process_payment`
+//!    is active.
+//! 4. `step_disabled` — explicitly disables ALL user functions with an empty
+//!    array (or `"none"`). Internal tools like next_step still work.
 //!
 //! # Best practice
 //!

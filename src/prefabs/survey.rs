@@ -17,7 +17,7 @@ impl SurveyAgent {
     /// - `name` — agent name (defaults to `"survey"` if empty).
     /// - `questions` — list of `{id, text, type, required?, scale?, choices?}` objects.
     /// - `options` — optional map with `survey_name`, `introduction`, `conclusion`,
-    ///               `brand_name`, `max_retries`, `route`.
+    ///   `brand_name`, `max_retries`, `route`.
     pub fn new(
         name: &str,
         questions: Vec<Value>,

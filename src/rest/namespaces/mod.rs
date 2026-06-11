@@ -1,4 +1,4 @@
-/// REST API namespace modules.
+//! REST API namespace modules.
 
 pub mod fabric;
 pub mod calling;

@@ -1,5 +1,5 @@
-/// REST module -- SignalWire REST API client, HTTP transport, and CRUD
-/// resource helpers.
+//! REST module -- SignalWire REST API client, HTTP transport, and CRUD
+//! resource helpers.
 
 pub mod error;
 pub mod http_client;

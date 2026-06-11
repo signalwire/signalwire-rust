@@ -1,7 +1,7 @@
-/// RELAY protocol constants.
-///
-/// Mirrors the PHP `Constants` class: protocol version, call/dial/message
-/// states, terminal-state maps, and per-event-type action terminal states.
+//! RELAY protocol constants.
+//!
+//! Mirrors the PHP `Constants` class: protocol version, call/dial/message
+//! states, terminal-state maps, and per-event-type action terminal states.
 
 /// Protocol version exchanged during `signalwire.connect`.
 pub const PROTOCOL_VERSION_MAJOR: u32 = 2;
