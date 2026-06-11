@@ -176,8 +176,8 @@ fn parse_next_url(url: &str, base_url: &str) -> (String, HashMap<String, String>
             None => (url, None),
         };
         // Strip protocol+host if it matches our base.
-        let path = if path_part.starts_with(base_url) {
-            path_part[base_url.len()..].to_string()
+        let path = if let Some(stripped) = path_part.strip_prefix(base_url) {
+            stripped.to_string()
         } else {
             // Strip scheme://host[:port] segment.
             // e.g. "http://example.com/api/foo" -> "/api/foo"

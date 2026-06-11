@@ -404,7 +404,7 @@ fn emit_section_yaml(section: &Section, out: &mut String, key_indent: usize) {
             }
             out.push_str($key);
             out.push_str(": ");
-            out.push_str(&$value);
+            out.push_str($value);
             out.push('\n');
         };
     }
@@ -425,11 +425,11 @@ fn emit_section_yaml(section: &Section, out: &mut String, key_indent: usize) {
     }
 
     if let Some(title) = &section.title {
-        push_kv!("title", yaml_scalar(title));
+        push_kv!("title", &yaml_scalar(title));
     }
 
     if !section.body.is_empty() {
-        push_kv!("body", yaml_scalar(&section.body));
+        push_kv!("body", &yaml_scalar(&section.body));
     }
 
     if !section.bullets.is_empty() {
@@ -455,11 +455,11 @@ fn emit_section_yaml(section: &Section, out: &mut String, key_indent: usize) {
     }
 
     if section.numbered == Some(true) {
-        push_kv!("numbered", "true".to_string());
+        push_kv!("numbered", "true");
     }
 
     if section.numbered_bullets {
-        push_kv!("numberedBullets", "true".to_string());
+        push_kv!("numberedBullets", "true");
     }
 
     // Theoretically invalid (validator forbids it), but if it

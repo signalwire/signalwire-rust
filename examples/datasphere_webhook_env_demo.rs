@@ -15,7 +15,7 @@ use std::env;
 fn main() {
     let webhook_url = env::var("DATASPHERE_WEBHOOK_URL")
         .unwrap_or_else(|_| "https://example.signalwire.com/api/datasphere/search".into());
-    let api_key = env::var("DATASPHERE_API_KEY")
+    let _api_key = env::var("DATASPHERE_API_KEY")
         .unwrap_or_else(|_| "your-api-key".into());
 
     let mut agent = AgentBase::new(AgentOptions {
@@ -38,7 +38,6 @@ fn main() {
 
     // Webhook-based SWAIG tool for Datasphere
     let url = webhook_url.clone();
-    let key = api_key.clone();
     agent.define_tool(
         "search_knowledge",
         "Search the Datasphere knowledge base via webhook",

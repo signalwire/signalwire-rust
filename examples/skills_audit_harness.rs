@@ -117,11 +117,9 @@ fn main() {
                 .as_object()
                 .map(|o| !o.contains_key("category"))
                 .unwrap_or(true)
-            {
-                if let Some(o) = effective.as_object_mut() {
+                && let Some(o) = effective.as_object_mut() {
                     o.insert("category".to_string(), json!("general"));
                 }
-            }
             execute_datamap(&agent, "get_trivia", &effective)
         }
         other => Err(format!("unsupported skill '{}'", other)),

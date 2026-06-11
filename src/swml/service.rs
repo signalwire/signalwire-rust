@@ -624,10 +624,7 @@ impl Service {
             .and_then(|v| v.as_str())
             .or_else(|| body.get("to").and_then(|v| v.as_str()));
 
-        let sip_uri = match sip_uri {
-            Some(s) => s,
-            None => return None,
-        };
+        let sip_uri = sip_uri?;
 
         // Extract username from sip:username@host
         let username = if let Some(caps) = Regex::new(r"^sip:([^@]+)@")
@@ -639,10 +636,7 @@ impl Service {
             Some(sip_uri.to_string())
         };
 
-        let username = match username {
-            Some(u) => u,
-            None => return None,
-        };
+        let username = username?;
 
         // Validate format
         if username.len() > 64 {

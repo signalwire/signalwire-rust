@@ -387,7 +387,7 @@ impl AgentServer {
         body: &Option<Value>,
     ) -> Option<String> {
         let mut keys: Vec<&String> = self.global_routing_callbacks.keys().collect();
-        keys.sort_by(|a, b| b.len().cmp(&a.len()));
+        keys.sort_by_key(|b| std::cmp::Reverse(b.len()));
         for key in keys {
             let key_str = key.as_str();
             let matches = if key_str == "/" {
@@ -446,7 +446,7 @@ impl AgentServer {
     ) -> Option<(u16, HashMap<String, String>, String)> {
         // Sort by longest prefix first
         let mut routes: Vec<&String> = self.static_routes.keys().collect();
-        routes.sort_by(|a, b| b.len().cmp(&a.len()));
+        routes.sort_by_key(|b| std::cmp::Reverse(b.len()));
 
         for prefix in routes {
             let normal_prefix = if prefix == "/" { "" } else { prefix.as_str() };
@@ -539,7 +539,7 @@ impl AgentServer {
     /// Find the matching agent route for a request path (longest prefix match).
     fn find_matching_route(&self, path: &str) -> Option<String> {
         let mut routes: Vec<&String> = self.agents.keys().collect();
-        routes.sort_by(|a, b| b.len().cmp(&a.len()));
+        routes.sort_by_key(|b| std::cmp::Reverse(b.len()));
 
         for route in routes {
             if route == "/" {

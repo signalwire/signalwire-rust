@@ -677,16 +677,14 @@ mod tests {
         thread::spawn(move || {
             // Accept connections forever; never write a byte back. Sockets are
             // dropped only when this thread (and the whole test process) ends.
-            for stream in listener.incoming() {
-                if let Ok(mut s) = stream {
-                    thread::spawn(move || {
-                        let mut buf = [0u8; 1024];
-                        // One read to consume the request line, then stall.
-                        let _ = s.read(&mut buf);
-                        // Hold the socket open well past any test deadline.
-                        thread::sleep(Duration::from_secs(60));
-                    });
-                }
+            for mut s in listener.incoming().flatten() {
+                thread::spawn(move || {
+                    let mut buf = [0u8; 1024];
+                    // One read to consume the request line, then stall.
+                    let _ = s.read(&mut buf);
+                    // Hold the socket open well past any test deadline.
+                    thread::sleep(Duration::from_secs(60));
+                });
             }
         });
         format!("http://127.0.0.1:{}", port)
@@ -700,22 +698,20 @@ mod tests {
         let listener = TcpListener::bind("127.0.0.1:0").expect("bind cse");
         let port = listener.local_addr().unwrap().port();
         thread::spawn(move || {
-            for stream in listener.incoming() {
-                if let Ok(mut s) = stream {
-                    thread::spawn(move || {
-                        let mut buf = [0u8; 2048];
-                        let _ = s.read(&mut buf);
-                        let resp = format!(
-                            "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\
-                             Content-Length: {}\r\nConnection: close\r\n\r\n{}",
-                            json_body.len(),
-                            json_body
-                        );
-                        use std::io::Write as _;
-                        let _ = s.write_all(resp.as_bytes());
-                        let _ = s.flush();
-                    });
-                }
+            for mut s in listener.incoming().flatten() {
+                thread::spawn(move || {
+                    let mut buf = [0u8; 2048];
+                    let _ = s.read(&mut buf);
+                    let resp = format!(
+                        "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\
+                         Content-Length: {}\r\nConnection: close\r\n\r\n{}",
+                        json_body.len(),
+                        json_body
+                    );
+                    use std::io::Write as _;
+                    let _ = s.write_all(resp.as_bytes());
+                    let _ = s.flush();
+                });
             }
         });
         format!("http://127.0.0.1:{}", port)

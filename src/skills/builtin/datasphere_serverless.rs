@@ -50,7 +50,7 @@ impl SkillBase for DatasphereServerless {
         let project_id = self.sp.get_str_or("project_id", "");
         let token = self.sp.get_str_or("token", "");
         let document_id = self.sp.get_str_or("document_id", "");
-        let count = self.sp.get_i64("count", 1).max(1).min(10);
+        let count = self.sp.get_i64("count", 1).clamp(1, 10);
         let distance = self.sp.get_f64("distance", 3.0);
         let no_results_msg = self.sp.get_str_or(
             "no_results_message",

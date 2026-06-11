@@ -463,24 +463,20 @@ pub fn begin() -> TestGuard {
 // ---------------------------------------------------------------------------
 
 fn resolve_ws_port() -> u16 {
-    if let Ok(raw) = std::env::var("MOCK_RELAY_PORT") {
-        if let Ok(p) = raw.parse::<u16>() {
-            if p != 0 {
+    if let Ok(raw) = std::env::var("MOCK_RELAY_PORT")
+        && let Ok(p) = raw.parse::<u16>()
+            && p != 0 {
                 return p;
             }
-        }
-    }
     DEFAULT_WS_PORT
 }
 
 fn resolve_http_port(ws_port: u16) -> u16 {
-    if let Ok(raw) = std::env::var("MOCK_RELAY_HTTP_PORT") {
-        if let Ok(p) = raw.parse::<u16>() {
-            if p != 0 {
+    if let Ok(raw) = std::env::var("MOCK_RELAY_HTTP_PORT")
+        && let Ok(p) = raw.parse::<u16>()
+            && p != 0 {
                 return p;
             }
-        }
-    }
     // Default convention: WS_PORT + 1000.
     ws_port.saturating_add(1000)
 }

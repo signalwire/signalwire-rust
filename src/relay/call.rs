@@ -97,7 +97,6 @@ impl Call {
     /// unrecognised server value parses to [`CallState::Other`] rather than
     /// panicking. Enables `match call.call_state() { CallState::Ended => …, … }`
     /// and `call.call_state().is_terminal()` instead of stringly comparisons.
-    #[must_use]
     pub fn call_state(&self) -> super::state_enums::CallState {
         super::state_enums::CallState::from_str(&self.state.lock().unwrap())
     }

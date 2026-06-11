@@ -40,7 +40,7 @@ fn main() {
             let max = args.get("max_results").and_then(|v| v.as_u64()).unwrap_or(3);
 
             // Simulated search results
-            let results = vec![
+            let results = [
                 ("Getting Started Guide", "Installation steps and first configuration.", 0.95),
                 ("API Reference", "Complete type and method reference.", 0.87),
                 ("Troubleshooting FAQ", "Common issues and solutions.", 0.82),

@@ -196,13 +196,11 @@ pub fn scenario_set(endpoint_id: &str, status: u16, body: Value) {
 // ---------------------------------------------------------------------------
 
 fn resolve_port() -> u16 {
-    if let Ok(raw) = std::env::var("MOCK_SIGNALWIRE_PORT") {
-        if let Ok(p) = raw.parse::<u16>() {
-            if p != 0 {
+    if let Ok(raw) = std::env::var("MOCK_SIGNALWIRE_PORT")
+        && let Ok(p) = raw.parse::<u16>()
+            && p != 0 {
                 return p;
             }
-        }
-    }
     DEFAULT_PORT
 }
 

@@ -134,7 +134,7 @@ impl FAQBotAgent {
                 }
 
                 // Sort by score descending
-                scored.sort_by(|a, b| b.1.cmp(&a.1));
+                scored.sort_by_key(|b| std::cmp::Reverse(b.1));
 
                 let best = scored[0].2;
                 let mut response = best
