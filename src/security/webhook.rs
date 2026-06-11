@@ -93,7 +93,7 @@ fn hex_hmac_sha1(key: &str, message: &str) -> String {
     mac.update(message.as_bytes());
     let digest = mac.finalize().into_bytes();
     let mut out = String::with_capacity(digest.len() * 2);
-    for b in digest.iter() {
+    for b in &digest {
         out.push_str(&format!("{:02x}", b));
     }
     out
@@ -291,7 +291,7 @@ fn check_body_sha256(url: &str, raw_body: &str) -> bool {
     hasher.update(raw_body.as_bytes());
     let digest = hasher.finalize();
     let mut hex = String::with_capacity(digest.len() * 2);
-    for b in digest.iter() {
+    for b in &digest {
         hex.push_str(&format!("{:02x}", b));
     }
     safe_eq(&hex, &expected)
@@ -356,7 +356,7 @@ pub fn validate_webhook_signature(
     let param_shapes: [&[(String, Vec<String>)]; 2] = [&parsed_params, &empty_params];
 
     for candidate_url in candidate_urls(url) {
-        for shape in param_shapes.iter() {
+        for shape in &param_shapes {
             let concat = sorted_concat_params(shape);
             let mut b_input = String::with_capacity(candidate_url.len() + concat.len());
             b_input.push_str(&candidate_url);
@@ -662,7 +662,7 @@ mod tests {
 
     #[test]
     fn validate_request_missing_signing_key_returns_error() {
-        let r = validate_request("", "sig", VECTOR_A_URL, &ParamsOrBody::Body("".into()));
+        let r = validate_request("", "sig", VECTOR_A_URL, &ParamsOrBody::Body(String::new()));
         assert_eq!(r, Err(WebhookError::MissingSigningKey));
     }
 

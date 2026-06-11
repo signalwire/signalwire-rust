@@ -223,7 +223,7 @@ mod top_level_tests {
     fn test_top_level_rest_client_factory_rejects_empty() {
         // Validation matches RestClient::new — empty credentials are
         // rejected with a descriptive error.
-        let r = RestClient(vec!["".to_string(), "tok".to_string(), "space".to_string()],
+        let r = RestClient(vec![String::new(), "tok".to_string(), "space".to_string()],
                            std::collections::HashMap::new());
         assert!(r.is_err());
     }

@@ -151,7 +151,7 @@ pub fn validate_url(url: &str, allow_private: bool) -> bool {
     };
 
     for ip in &ips {
-        for cidr in BLOCKED_NETWORKS.iter() {
+        for cidr in BLOCKED_NETWORKS {
             if cidr_contains(cidr, ip) {
                 log.warn(&format!(
                     "URL rejected: {} resolves to blocked IP {} (in {})",

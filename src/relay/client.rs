@@ -683,7 +683,7 @@ impl Client {
                 .get("authorization_state")
                 .and_then(|v| v.as_str())
                 .map(|s| s.to_string());
-            *self.authorization_state.lock().unwrap() = auth_state.clone();
+            self.authorization_state.lock().unwrap().clone_from(&auth_state);
             self.logger
                 .info(&format!("Authorization state: {:?}", auth_state));
             return;

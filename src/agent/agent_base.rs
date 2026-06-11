@@ -269,8 +269,8 @@ impl Clone for AgentBase {
             basic_auth_user: Some(self.service.basic_auth_credentials().0.to_string()),
             basic_auth_password: Some(self.service.basic_auth_credentials().1.to_string()),
         });
-        service.tools = self.service.tools.clone();
-        service.tool_order = self.service.tool_order.clone();
+        service.tools.clone_from(&self.service.tools);
+        service.tool_order.clone_from(&self.service.tool_order);
         AgentBase {
             service,
             auto_answer: self.auto_answer,
@@ -1305,7 +1305,7 @@ impl AgentBase {
         } else {
             let proxy_base = self.resolve_proxy_base(headers);
             let route_segment = if self.service.route() == "/" {
-                "".to_string()
+                String::new()
             } else {
                 self.service.route().to_string()
             };
@@ -1659,7 +1659,7 @@ impl AgentBase {
     fn build_swaig_webhook_url(&self, headers: &HashMap<String, String>) -> String {
         let proxy_base = self.resolve_proxy_base(headers);
         let route_segment = if self.service.route() == "/" {
-            "".to_string()
+            String::new()
         } else {
             self.service.route().to_string()
         };

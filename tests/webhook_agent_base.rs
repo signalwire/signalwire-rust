@@ -279,7 +279,7 @@ fn empty_signing_key_is_ignored() {
 
     let result = std::panic::catch_unwind(|| {
         let mut opts = AgentOptions::new("empty-key-test");
-        opts.signing_key = Some("".into());
+        opts.signing_key = Some(String::new());
         let agent = AgentBase::new(opts);
         assert_eq!(agent.signing_key(), None);
     });
