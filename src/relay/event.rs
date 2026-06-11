@@ -19,7 +19,12 @@ impl Event {
         timestamp: f64,
     ) -> Self {
         let ts = if timestamp == 0.0 {
-            chrono::Utc::now().timestamp_millis() as f64 / 1000.0
+            // Python parity: event timestamps are float seconds. The i64
+            // millisecond count only loses precision past 2^52 ms (year ~144000),
+            // so the f64 cast is exact for any real timestamp.
+            #[allow(clippy::cast_precision_loss)]
+            let now = chrono::Utc::now().timestamp_millis() as f64 / 1000.0;
+            now
         } else {
             timestamp
         };

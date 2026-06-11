@@ -133,7 +133,7 @@ impl SkillBase for Datasphere {
                 } else {
                     let lines: Vec<String> = entries
                         .iter()
-                        .take(count as usize)
+                        .take(usize::try_from(count).unwrap_or(0))
                         .enumerate()
                         .map(|(i, e)| {
                             let text = e

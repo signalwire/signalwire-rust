@@ -40,7 +40,7 @@ impl SkillBase for Spider {
 
     fn register_tools(&self, agent: &mut AgentBase) {
         let prefix = self.sp.get_str_or("tool_prefix", "");
-        let max_length = self.sp.get_i64("max_text_length", 5000) as usize;
+        let max_length = usize::try_from(self.sp.get_i64("max_text_length", 5000)).unwrap_or(5000);
 
         let scrape_name = format!("{}scrape_url", prefix);
         let crawl_name = format!("{}crawl_site", prefix);

@@ -104,7 +104,7 @@ impl SkillBase for WikipediaSearch {
                 } else {
                     let lines: Vec<String> = entries
                         .iter()
-                        .take(num_results as usize)
+                        .take(usize::try_from(num_results).unwrap_or(0))
                         .map(|e| {
                             let title = e.get("title").and_then(|v| v.as_str()).unwrap_or("");
                             let snippet = e.get("snippet").and_then(|v| v.as_str()).unwrap_or("");

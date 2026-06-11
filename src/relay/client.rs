@@ -1281,12 +1281,12 @@ fn generate_uuid() -> String {
         u16::from_be_bytes([data[4], data[5]]),
         u16::from_be_bytes([data[6], data[7]]),
         u16::from_be_bytes([data[8], data[9]]),
-        ((data[10] as u64) << 40)
-            | ((data[11] as u64) << 32)
-            | ((data[12] as u64) << 24)
-            | ((data[13] as u64) << 16)
-            | ((data[14] as u64) << 8)
-            | (data[15] as u64),
+        (u64::from(data[10]) << 40)
+            | (u64::from(data[11]) << 32)
+            | (u64::from(data[12]) << 24)
+            | (u64::from(data[13]) << 16)
+            | (u64::from(data[14]) << 8)
+            | u64::from(data[15]),
     )
 }
 

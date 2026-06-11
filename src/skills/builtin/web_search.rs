@@ -362,7 +362,7 @@ fn format_web_search_response(
     }
     let lines: Vec<String> = items
         .iter()
-        .take(num_results as usize)
+        .take(usize::try_from(num_results).unwrap_or(0))
         .map(|it| {
             let title = it.get("title").and_then(|v| v.as_str()).unwrap_or("");
             let link = it.get("link").and_then(|v| v.as_str()).unwrap_or("");
@@ -406,7 +406,7 @@ fn format_snippet_results(
     if items.is_empty() {
         return no_results_message.replace("{query}", query);
     }
-    let top = num_results.max(1) as usize;
+    let top = usize::try_from(num_results.max(1)).unwrap_or(1);
     let mut lines: Vec<String> = vec![format!(
         "Snippet-only results for '{}' (page content not scraped):\n",
         query

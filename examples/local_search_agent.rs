@@ -53,7 +53,7 @@ fn main() {
                         || query.to_lowercase().contains("help")
                         || query.to_lowercase().contains("how")
                 })
-                .take(max as usize)
+                .take(usize::try_from(max).unwrap_or(0))
                 .collect();
 
             if relevant.is_empty() {
