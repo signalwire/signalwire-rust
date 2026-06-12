@@ -31,6 +31,11 @@
 //!
 //!     cargo run --quiet --example emit_corpus
 
+// `corpus()` is a flat table of emission entries that must match the Python
+// single-source corpus 1:1 (see the contract docstring); it is data, not
+// logic, so its length is inherent and splitting it adds no clarity.
+#![allow(clippy::too_many_lines)]
+
 use std::collections::BTreeMap;
 
 use serde_json::{json, Map, Value};

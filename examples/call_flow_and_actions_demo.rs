@@ -3,6 +3,11 @@
 //
 //! Call Flow and Actions Demo — call-flow verbs, debug events, FunctionResult actions.
 
+// A linear demo `main` that walks through many verbs in sequence — its length
+// is the point (it shows the full flow top-to-bottom); splitting it would hurt
+// the example's readability, not help it.
+#![allow(clippy::too_many_lines)]
+
 use signalwire::agent::{AgentBase, AgentOptions};
 use signalwire::swaig::FunctionResult;
 use serde_json::json;

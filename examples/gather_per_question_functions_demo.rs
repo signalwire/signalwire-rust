@@ -30,6 +30,10 @@
 //!
 //! Run this file to see the resulting SWML.
 
+// A linear demo `main` that builds a multi-question gather flow in sequence —
+// its length is inherent to showing the whole flow; splitting hurts the example.
+#![allow(clippy::too_many_lines)]
+
 use std::collections::HashMap;
 
 use serde_json::json;

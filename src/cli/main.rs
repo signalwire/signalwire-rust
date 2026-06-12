@@ -1,3 +1,8 @@
+// The `swaig-test` `main()` is a linear CLI arg parser + dispatcher; its length
+// is inherent to the flag set it handles, and splitting it would scatter the
+// argument-handling without aiding clarity.
+#![allow(clippy::too_many_lines)]
+
 use std::collections::HashMap;
 use std::env;
 use std::process;

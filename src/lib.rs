@@ -10,6 +10,20 @@
 // consuming-by-design, so a blanket allow loses nothing real.
 #![allow(clippy::needless_pass_by_value)]
 
+// `too_many_lines` is allowed crate-wide. The functions it flags are all
+// configuration/registration builders whose length is inherent: prefab
+// constructors (ConciergeAgent::new etc.) and skill `register_tools` mirror
+// their Python `__init__` / `register_tools` counterparts, which parse a
+// config map and register many tools inline in one place; the compat verb
+// builders (e.g. join_conference) carry the full cXML attribute set plus a
+// validation block that must emit the reference's exact ValueError messages
+// verbatim. Splitting these to satisfy a 100-line heuristic would fragment a
+// parity-locked 1:1 mapping for no functional gain (the lint is
+// surface-invisible — it changes no signature or emission). The line count is
+// a readability proxy that doesn't fit builder/registration code; keeping the
+// reference's shape wins (the parity meta-rule).
+#![allow(clippy::too_many_lines)]
+
 pub mod core;
 pub mod logging;
 pub mod pom;
