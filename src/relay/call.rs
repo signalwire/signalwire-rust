@@ -66,10 +66,10 @@ impl Call {
                     .to_string(),
             ),
             device: Mutex::new(
-                params.get("device").cloned().unwrap_or(Value::Object(Default::default())),
+                params.get("device").cloned().unwrap_or(Value::Object(serde_json::Map::new())),
             ),
             peer: Mutex::new(
-                params.get("peer").cloned().unwrap_or(Value::Object(Default::default())),
+                params.get("peer").cloned().unwrap_or(Value::Object(serde_json::Map::new())),
             ),
             end_reason: Mutex::new(None),
             context: params
@@ -196,15 +196,15 @@ impl Call {
     // ------------------------------------------------------------------
 
     pub fn answer(&self) -> Value {
-        self.execute("calling.answer", Value::Object(Default::default()))
+        self.execute("calling.answer", Value::Object(serde_json::Map::new()))
     }
 
     pub fn hangup(&self) -> Value {
-        self.execute("calling.hangup", Value::Object(Default::default()))
+        self.execute("calling.hangup", Value::Object(serde_json::Map::new()))
     }
 
     pub fn pass(&self) -> Value {
-        self.execute("calling.pass", Value::Object(Default::default()))
+        self.execute("calling.pass", Value::Object(serde_json::Map::new()))
     }
 
     pub fn connect(&self, params: Value) -> Value {
@@ -212,23 +212,23 @@ impl Call {
     }
 
     pub fn disconnect(&self) -> Value {
-        self.execute("calling.disconnect", Value::Object(Default::default()))
+        self.execute("calling.disconnect", Value::Object(serde_json::Map::new()))
     }
 
     pub fn hold(&self) -> Value {
-        self.execute("calling.hold", Value::Object(Default::default()))
+        self.execute("calling.hold", Value::Object(serde_json::Map::new()))
     }
 
     pub fn unhold(&self) -> Value {
-        self.execute("calling.unhold", Value::Object(Default::default()))
+        self.execute("calling.unhold", Value::Object(serde_json::Map::new()))
     }
 
     pub fn denoise(&self) -> Value {
-        self.execute("calling.denoise", Value::Object(Default::default()))
+        self.execute("calling.denoise", Value::Object(serde_json::Map::new()))
     }
 
     pub fn denoise_stop(&self) -> Value {
-        self.execute("calling.denoise.stop", Value::Object(Default::default()))
+        self.execute("calling.denoise.stop", Value::Object(serde_json::Map::new()))
     }
 
     pub fn transfer(&self, params: Value) -> Value {
@@ -240,11 +240,11 @@ impl Call {
     }
 
     pub fn leave_conference(&self) -> Value {
-        self.execute("calling.conference.leave", Value::Object(Default::default()))
+        self.execute("calling.conference.leave", Value::Object(serde_json::Map::new()))
     }
 
     pub fn echo_call(&self) -> Value {
-        self.execute("calling.echo", Value::Object(Default::default()))
+        self.execute("calling.echo", Value::Object(serde_json::Map::new()))
     }
 
     pub fn bind_digit(&self, params: Value) -> Value {
@@ -252,7 +252,7 @@ impl Call {
     }
 
     pub fn clear_digit_bindings(&self) -> Value {
-        self.execute("calling.clear_digit_bindings", Value::Object(Default::default()))
+        self.execute("calling.clear_digit_bindings", Value::Object(serde_json::Map::new()))
     }
 
     pub fn live_transcribe(&self, params: Value) -> Value {
@@ -268,7 +268,7 @@ impl Call {
     }
 
     pub fn leave_room(&self) -> Value {
-        self.execute("calling.room.leave", Value::Object(Default::default()))
+        self.execute("calling.room.leave", Value::Object(serde_json::Map::new()))
     }
 
     pub fn amazon_bedrock(&self, params: Value) -> Value {
@@ -280,11 +280,11 @@ impl Call {
     }
 
     pub fn ai_hold(&self) -> Value {
-        self.execute("calling.ai.hold", Value::Object(Default::default()))
+        self.execute("calling.ai.hold", Value::Object(serde_json::Map::new()))
     }
 
     pub fn ai_unhold(&self) -> Value {
-        self.execute("calling.ai.unhold", Value::Object(Default::default()))
+        self.execute("calling.ai.unhold", Value::Object(serde_json::Map::new()))
     }
 
     pub fn user_event(&self, params: Value) -> Value {
@@ -296,7 +296,7 @@ impl Call {
     }
 
     pub fn queue_leave(&self) -> Value {
-        self.execute("calling.queue.leave", Value::Object(Default::default()))
+        self.execute("calling.queue.leave", Value::Object(serde_json::Map::new()))
     }
 
     pub fn refer_call(&self, params: Value) -> Value {

@@ -515,15 +515,13 @@ impl AgentServer {
                     // be needed in a real server. Here we lossy-convert for the test harness.
                     let body = String::from_utf8_lossy(&content).to_string();
                     return Some((200, resp_headers, body));
-                } else {
-                    let mut resp_headers = HashMap::new();
-                    resp_headers
-                        .insert("Content-Type".to_string(), "text/plain".to_string());
-                    for (k, v) in security_headers() {
-                        resp_headers.insert(k, v);
-                    }
-                    return Some((500, resp_headers, "Internal Server Error".to_string()));
                 }
+                let mut resp_headers = HashMap::new();
+                resp_headers.insert("Content-Type".to_string(), "text/plain".to_string());
+                for (k, v) in security_headers() {
+                    resp_headers.insert(k, v);
+                }
+                return Some((500, resp_headers, "Internal Server Error".to_string()));
             }
         }
 
