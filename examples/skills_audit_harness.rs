@@ -115,7 +115,7 @@ fn main() {
             let mut effective = args.clone();
             if effective
                 .as_object()
-                .map_or(true, |o| !o.contains_key("category"))
+                .is_none_or(|o| !o.contains_key("category"))
                 && let Some(o) = effective.as_object_mut() {
                     o.insert("category".to_string(), json!("general"));
                 }

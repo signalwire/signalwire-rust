@@ -461,7 +461,7 @@ mod tests {
         // Ensure no item still carries an `ai` verb.
         assert!(
             main.iter()
-                .all(|v| v.as_object().map_or(true, |o| !o.contains_key("ai"))),
+                .all(|v| v.as_object().is_none_or(|o| !o.contains_key("ai"))),
             "ai verb should have been replaced"
         );
     }

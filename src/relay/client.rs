@@ -921,7 +921,7 @@ impl Client {
         tags: Option<&[String]>,
         context: Option<&str>,
     ) -> Result<Arc<Message>, RelayError> {
-        if body.unwrap_or("").is_empty() && media.map_or(true, <[String]>::is_empty) {
+        if body.unwrap_or("").is_empty() && media.is_none_or(<[String]>::is_empty) {
             return Err(RelayError::InvalidArgument {
                 message: "At least one of body or media is required".to_string(),
             });
