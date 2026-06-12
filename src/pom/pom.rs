@@ -260,6 +260,7 @@ impl PromptObjectModel {
 
     /// Render the entire model as markdown. Matches Python's
     /// `render_markdown` byte-for-byte.
+    #[must_use]
     pub fn render_markdown(&self) -> String {
         let any_section_numbered = self.sections.iter().any(|s| s.numbered == Some(true));
 
@@ -284,6 +285,7 @@ impl PromptObjectModel {
 
     /// Render the entire model as XML. Matches Python's
     /// `render_xml` byte-for-byte.
+    #[must_use]
     pub fn render_xml(&self) -> String {
         let mut xml: Vec<String> = vec![
             r#"<?xml version="1.0" encoding="UTF-8"?>"#.to_string(),

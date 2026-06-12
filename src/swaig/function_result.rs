@@ -147,6 +147,7 @@ impl FunctionResult {
     /// - `response` is always included.
     /// - `action` is only included if at least one action exists.
     /// - `post_process` is only included if `true`.
+    #[must_use]
     pub fn to_value(&self) -> Value {
         let mut map = Map::new();
         // response is omitted when empty (Python parity).
@@ -181,6 +182,7 @@ impl FunctionResult {
     /// Does not panic in practice: the underlying `serde_json::to_string`
     /// only fails on serialisation errors (e.g. non-string map keys), which
     /// cannot arise from the well-formed `Value` produced by `to_value`.
+    #[must_use]
     pub fn to_json(&self) -> String {
         serde_json::to_string(&self.to_value()).expect("FunctionResult serialisation should not fail")
     }

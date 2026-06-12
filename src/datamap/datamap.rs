@@ -224,6 +224,7 @@ impl DataMap {
     // ── Serialisation ────────────────────────────────────────────────────
 
     /// Serialise to a SWAIG function definition.
+    #[must_use]
     pub fn to_swaig_function(&self) -> Value {
         let mut func = Map::new();
         func.insert("function".to_string(), json!(self.function_name));

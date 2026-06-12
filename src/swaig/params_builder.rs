@@ -98,6 +98,7 @@ pub enum ParamKind {
 
 impl ParamKind {
     /// The canonical JSON-Schema `"type"` string for this kind.
+    #[must_use]
     pub fn as_str(&self) -> &'static str {
         match self {
             ParamKind::String => "string",

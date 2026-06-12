@@ -1230,6 +1230,7 @@ impl AgentBase {
     ///   4. Post-answer verbs
     ///   5. AI verb (via `build_ai_verb`)
     ///   6. Post-AI verbs
+    #[must_use]
     pub fn render_swml(&self, headers: &HashMap<String, String>) -> Value {
         let mut main = Vec::new();
 
@@ -1280,6 +1281,7 @@ impl AgentBase {
     }
 
     /// Build the AI verb configuration block.
+    #[must_use]
     pub fn build_ai_verb(&self, headers: &HashMap<String, String>) -> Value {
         let mut ai = Map::new();
 

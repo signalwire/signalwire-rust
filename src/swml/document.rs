@@ -88,6 +88,7 @@ impl Document {
     }
 
     /// Build the document as a `serde_json::Value`.
+    #[must_use]
     pub fn to_value(&self) -> Value {
         let mut sections_map = serde_json::Map::new();
         // Sort keys for deterministic output
@@ -110,6 +111,7 @@ impl Document {
     /// Does not panic in practice: the underlying `serde_json::to_string`
     /// only fails on serialisation errors (e.g. non-string map keys), which
     /// cannot arise from the well-formed `Value` produced by `to_value`.
+    #[must_use]
     pub fn render(&self) -> String {
         serde_json::to_string(&self.to_value()).expect("Document serialisation should not fail")
     }
@@ -121,6 +123,7 @@ impl Document {
     /// Does not panic in practice: the underlying `serde_json::to_string_pretty`
     /// only fails on serialisation errors (e.g. non-string map keys), which
     /// cannot arise from the well-formed `Value` produced by `to_value`.
+    #[must_use]
     pub fn render_pretty(&self) -> String {
         serde_json::to_string_pretty(&self.to_value())
             .expect("Document serialisation should not fail")

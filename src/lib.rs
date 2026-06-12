@@ -24,6 +24,23 @@
 // reference's shape wins (the parity meta-rule).
 #![allow(clippy::too_many_lines)]
 
+// `must_use_candidate` is allowed crate-wide; `#[must_use]` is added by hand
+// instead. The lint's own docs say "Not bad at all, this lint just shows
+// places where you could add the attribute" and "Expect many false positives"
+// — it's allow-by-default in `pedantic` for exactly that reason, because it
+// can't tell a function called for its return value from one called for a side
+// effect. We follow the std-dev-guide test ("add #[must_use] when failing to
+// consider the output is almost certainly a bug") and the practice of every
+// comparable public SDK (reqwest / octocrab / aws-sdk / clap / uuid / chrono
+// all decline this lint): `#[must_use]` lives on the value producers where
+// dropping the result is meaningless — `render*` / `to_value` / `to_json` /
+// `render_swml` / `build_ai_verb` / `to_swaig_function` / the enum `as_str`
+// conversions / the schema code-gen — not on field getters or sub-namespace
+// accessors, where discarding the result can be legitimate (the noise std and
+// aws-sdk deliberately avoid). Per RULES.md this is a parity-neutral idiom
+// choice governed by PORT_PHILOSOPHY_RUST.md.
+#![allow(clippy::must_use_candidate)]
+
 pub mod core;
 pub mod logging;
 pub mod pom;

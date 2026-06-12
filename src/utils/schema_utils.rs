@@ -202,6 +202,7 @@ impl SchemaUtils {
     /// Does not panic in practice: the internal `params.get(name).unwrap()`
     /// looks up keys taken directly from `params.keys()`, so every lookup is
     /// guaranteed to be present.
+    #[must_use]
     pub fn generate_method_signature(&self, verb_name: &str) -> String {
         let params = self.get_verb_parameters(verb_name);
         let required: std::collections::HashSet<String> =
@@ -238,6 +239,7 @@ impl SchemaUtils {
 
     /// Generate a Python-style method body string for a verb.  Mirrors
     /// Python's `generate_method_body(verb_name)`.
+    #[must_use]
     pub fn generate_method_body(&self, verb_name: &str) -> String {
         let params = self.get_verb_parameters(verb_name);
         let mut keys: Vec<&String> = params.keys().collect();

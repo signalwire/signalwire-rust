@@ -113,6 +113,7 @@ impl RecordFormat {
     /// This is exactly the string the raw-`str` call style carries, so
     /// `record_call(.., RecordFormat::Mp3, ..)` emits the same SWML as
     /// `record_call(.., "mp3", ..)` — both resolve here via [`MediaArg`].
+    #[must_use]
     pub fn as_str(&self) -> &'static str {
         match self {
             RecordFormat::Wav => "wav",
@@ -195,6 +196,7 @@ pub enum RecordDirection {
 
 impl RecordDirection {
     /// The canonical wire string for this direction (e.g. `"both"`).
+    #[must_use]
     pub fn as_str(&self) -> &'static str {
         match self {
             RecordDirection::Speak => "speak",
@@ -282,6 +284,7 @@ pub enum TapDirection {
 
 impl TapDirection {
     /// The canonical wire string for this direction (e.g. `"both"`).
+    #[must_use]
     pub fn as_str(&self) -> &'static str {
         match self {
             TapDirection::Speak => "speak",
@@ -362,6 +365,7 @@ pub enum Codec {
 
 impl Codec {
     /// The canonical (upper-case) wire string for this codec (e.g. `"PCMU"`).
+    #[must_use]
     pub fn as_str(&self) -> &'static str {
         match self {
             Codec::Pcmu => "PCMU",

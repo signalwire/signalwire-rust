@@ -173,6 +173,7 @@ impl Section {
     /// `Section.render_markdown` byte-for-byte — see
     /// `signalwire-python/tests/unit/pom/test_pom_render_parity.py`
     /// for the cross-port contract.
+    #[must_use]
     pub fn render_markdown(&self) -> String {
         self.render_markdown_at(2, &[])
     }
@@ -235,6 +236,7 @@ impl Section {
 
     /// Render this section as XML. Matches Python's
     /// `Section.render_xml` byte-for-byte.
+    #[must_use]
     pub fn render_xml(&self) -> String {
         self.render_xml_at(0, &[])
     }

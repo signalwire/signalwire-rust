@@ -19,6 +19,7 @@ pub enum RuntimeEnvironment {
 }
 
 impl RuntimeEnvironment {
+    #[must_use]
     pub fn as_str(&self) -> &'static str {
         match self {
             RuntimeEnvironment::Lambda => "lambda",

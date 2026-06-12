@@ -94,6 +94,7 @@ impl Event {
     }
 
     /// Serialize back to a JSON-compatible map.
+    #[must_use]
     pub fn to_value(&self) -> serde_json::Value {
         serde_json::json!({
             "event_type": self.event_type,

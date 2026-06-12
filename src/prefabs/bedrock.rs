@@ -198,6 +198,7 @@ impl BedrockAgent {
     /// Render SWML, transforming the `ai` verb into an
     /// `amazon_bedrock` verb that carries the Bedrock voice and
     /// inference parameters. Mirrors Python's `_render_swml`.
+    #[must_use]
     pub fn render_swml(&self, headers: &HashMap<String, String>) -> Value {
         let mut swml = self.agent.render_swml(headers);
 

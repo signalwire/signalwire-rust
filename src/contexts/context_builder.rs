@@ -55,6 +55,7 @@ impl GatherQuestion {
         &self.key
     }
 
+    #[must_use]
     pub fn to_value(&self) -> Value {
         let mut map = Map::new();
         map.insert("key".to_string(), json!(self.key));
@@ -383,6 +384,7 @@ impl Step {
         parts.join("\n").trim_end().to_string()
     }
 
+    #[must_use]
     pub fn to_value(&self) -> Value {
         let mut map = Map::new();
         map.insert("name".to_string(), json!(self.name));
@@ -889,6 +891,7 @@ impl ContextBuilder {
     /// misconfigured (no contexts, a lone non-`"default"` context, a context
     /// with no steps, a bad `initial_step`, or an invalid `valid_steps`
     /// reference).
+    #[must_use]
     pub fn to_value(&self) -> Value {
         if let Err(errors) = self.validate() {
             panic!("Validation failed: {}", errors.join("; "));
@@ -1302,7 +1305,7 @@ mod tests {
     #[should_panic(expected = "Validation failed")]
     fn test_builder_to_value_invalid_panics() {
         let builder = ContextBuilder::new();
-        builder.to_value();
+        let _ = builder.to_value();
     }
 
     #[test]

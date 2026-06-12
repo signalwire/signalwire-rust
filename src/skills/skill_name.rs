@@ -111,6 +111,7 @@ impl SkillName {
     /// This is exactly the string the bare-`str` API expects, so
     /// `agent.add_skill(SkillName::Datetime.as_str(), params)` loads the same
     /// skill as `agent.add_skill("datetime", params)`.
+    #[must_use]
     pub fn as_str(&self) -> &'static str {
         match self {
             SkillName::ApiNinjasTrivia => "api_ninjas_trivia",

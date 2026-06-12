@@ -421,10 +421,12 @@ impl Service {
             && constant_time_eq(password, &self.basic_auth_password)
     }
 
+    #[must_use]
     pub fn render(&self) -> String {
         self.document.render()
     }
 
+    #[must_use]
     pub fn render_pretty(&self) -> String {
         self.document.render_pretty()
     }
