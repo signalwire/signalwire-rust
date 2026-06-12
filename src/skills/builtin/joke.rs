@@ -17,11 +17,11 @@ impl Joke {
 }
 
 impl SkillBase for Joke {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "joke"
     }
 
-    fn description(&self) -> &str {
+    fn description(&self) -> &'static str {
         "Tell jokes using the API Ninjas joke API"
     }
 

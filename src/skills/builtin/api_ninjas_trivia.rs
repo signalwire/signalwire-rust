@@ -34,11 +34,11 @@ impl ApiNinjasTrivia {
 }
 
 impl SkillBase for ApiNinjasTrivia {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "api_ninjas_trivia"
     }
 
-    fn description(&self) -> &str {
+    fn description(&self) -> &'static str {
         "Get trivia questions from API Ninjas"
     }
 

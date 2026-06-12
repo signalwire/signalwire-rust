@@ -22,8 +22,7 @@ fn main() {
         |query_params, _body_params, _headers, agent| {
             let is_vip = query_params
                 .get("vip")
-                .map(|v| v.as_str() == Some("true"))
-                .unwrap_or(false);
+                .is_some_and(|v| v.as_str() == Some("true"));
             let department = query_params
                 .get("department")
                 .and_then(|v| v.as_str())

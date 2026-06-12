@@ -319,8 +319,7 @@ fn test_jwt_only_connect_accepted_by_mock() {
     assert!(
         parsed["result"]["protocol"]
             .as_str()
-            .map(|s| s.starts_with("signalwire_"))
-            .unwrap_or(false)
+            .is_some_and(|s| s.starts_with("signalwire_"))
     );
     let _ = sock.close(None);
 }

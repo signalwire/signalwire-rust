@@ -345,10 +345,10 @@ impl AgentServer {
         // Run any global routing callbacks registered for this path.
         // The longest matching path wins (so a callback at "/api/v2"
         // takes precedence over one at "/api").
-        let parsed_body: Option<Value> = if !body.is_empty() {
-            serde_json::from_str::<Value>(body).ok()
-        } else {
+        let parsed_body: Option<Value> = if body.is_empty() {
             None
+        } else {
+            serde_json::from_str::<Value>(body).ok()
         };
         if let Some(redirected_route) =
             self.dispatch_global_routing_callbacks(&path, headers, &parsed_body)
@@ -497,36 +497,32 @@ impl AgentServer {
                 let content_type = MIME_TYPES
                     .iter()
                     .find(|(e, _)| *e == ext)
-                    .map(|(_, mime)| *mime)
-                    .unwrap_or("application/octet-stream");
+                    .map_or("application/octet-stream", |(_, mime)| *mime);
 
-                match fs::read(&abs_path) {
-                    Ok(content) => {
-                        let mut resp_headers = HashMap::new();
-                        resp_headers
-                            .insert("Content-Type".to_string(), content_type.to_string());
-                        resp_headers.insert(
-                            "Content-Length".to_string(),
-                            content.len().to_string(),
-                        );
-                        for (k, v) in security_headers() {
-                            resp_headers.insert(k, v);
-                        }
+                if let Ok(content) = fs::read(&abs_path) {
+                    let mut resp_headers = HashMap::new();
+                    resp_headers
+                        .insert("Content-Type".to_string(), content_type.to_string());
+                    resp_headers.insert(
+                        "Content-Length".to_string(),
+                        content.len().to_string(),
+                    );
+                    for (k, v) in security_headers() {
+                        resp_headers.insert(k, v);
+                    }
 
-                        // For text-based content, convert to string; for binary, base64 would
-                        // be needed in a real server. Here we lossy-convert for the test harness.
-                        let body = String::from_utf8_lossy(&content).to_string();
-                        return Some((200, resp_headers, body));
+                    // For text-based content, convert to string; for binary, base64 would
+                    // be needed in a real server. Here we lossy-convert for the test harness.
+                    let body = String::from_utf8_lossy(&content).to_string();
+                    return Some((200, resp_headers, body));
+                } else {
+                    let mut resp_headers = HashMap::new();
+                    resp_headers
+                        .insert("Content-Type".to_string(), "text/plain".to_string());
+                    for (k, v) in security_headers() {
+                        resp_headers.insert(k, v);
                     }
-                    Err(_) => {
-                        let mut resp_headers = HashMap::new();
-                        resp_headers
-                            .insert("Content-Type".to_string(), "text/plain".to_string());
-                        for (k, v) in security_headers() {
-                            resp_headers.insert(k, v);
-                        }
-                        return Some((500, resp_headers, "Internal Server Error".to_string()));
-                    }
+                    return Some((500, resp_headers, "Internal Server Error".to_string()));
                 }
             }
         }
@@ -567,10 +563,10 @@ impl AgentServer {
     /// Normalize a request path: strip trailing slashes (unless root).
     #[allow(clippy::unused_self)] // private helper kept on the self-method family for consistency
     fn normalize_path(&self, path: &str) -> String {
-        let p = if path != "/" {
-            path.trim_end_matches('/').to_string()
-        } else {
+        let p = if path == "/" {
             path.to_string()
+        } else {
+            path.trim_end_matches('/').to_string()
         };
         if p.is_empty() {
             "/".to_string()

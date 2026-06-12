@@ -169,12 +169,12 @@ impl Section {
         let mut md: Vec<String> = Vec::new();
 
         if let Some(title) = &self.title {
-            let prefix = if !section_number.is_empty() {
+            let prefix = if section_number.is_empty() {
+                String::new()
+            } else {
                 let nums: Vec<String> =
                     section_number.iter().map(std::string::ToString::to_string).collect();
                 format!("{}. ", nums.join("."))
-            } else {
-                String::new()
             };
             md.push(format!("{} {}{}\n", "#".repeat(level), prefix, title));
         }
@@ -234,12 +234,12 @@ impl Section {
         xml.push(format!("{indent_str}<section>"));
 
         if let Some(title) = &self.title {
-            let prefix = if !section_number.is_empty() {
+            let prefix = if section_number.is_empty() {
+                String::new()
+            } else {
                 let nums: Vec<String> =
                     section_number.iter().map(std::string::ToString::to_string).collect();
                 format!("{}. ", nums.join("."))
-            } else {
-                String::new()
             };
             xml.push(format!("{indent_str}  <title>{prefix}{title}</title>"));
         }

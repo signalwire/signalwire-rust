@@ -17,11 +17,11 @@ impl SwmlTransfer {
 }
 
 impl SkillBase for SwmlTransfer {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "swml_transfer"
     }
 
-    fn description(&self) -> &str {
+    fn description(&self) -> &'static str {
         "Transfer calls between agents based on pattern matching"
     }
 
@@ -38,8 +38,7 @@ impl SkillBase for SwmlTransfer {
             .params
             .get("transfers")
             .and_then(|v| v.as_object())
-            .map(|o| !o.is_empty())
-            .unwrap_or(false)
+            .is_some_and(|o| !o.is_empty())
     }
 
     fn register_tools(&self, agent: &mut AgentBase) {
@@ -200,10 +199,10 @@ impl SkillBase for SwmlTransfer {
                 .get("message")
                 .and_then(|v| v.as_str())
                 .unwrap_or("");
-            let entry = if !message.is_empty() {
-                format!("{pattern} - {message}")
-            } else {
+            let entry = if message.is_empty() {
                 pattern.clone()
+            } else {
+                format!("{pattern} - {message}")
             };
             destinations.push(entry);
         }

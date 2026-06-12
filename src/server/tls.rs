@@ -41,8 +41,7 @@ struct TlsMaterial {
 /// misconfigured deployment fails loudly instead of silently serving HTTP.
 fn resolve_tls_material() -> Result<Option<TlsMaterial>, ServerError> {
     let enabled = env::var(SSL_ENABLED_ENV)
-        .map(|v| matches!(v.to_ascii_lowercase().as_str(), "true" | "1" | "yes"))
-        .unwrap_or(false);
+        .is_ok_and(|v| matches!(v.to_ascii_lowercase().as_str(), "true" | "1" | "yes"));
     if !enabled {
         return Ok(None);
     }
@@ -80,25 +79,22 @@ fn resolve_tls_material() -> Result<Option<TlsMaterial>, ServerError> {
 /// genuine bind error; SSL-misconfiguration is reported through the returned
 /// `Result` so callers can choose how to fail.
 pub(crate) fn bind_server(addr: &str) -> Result<(tiny_http::Server, bool), ServerError> {
-    match resolve_tls_material()? {
-        Some(material) => {
-            let config = tiny_http::SslConfig {
-                certificate: material.certificate,
-                private_key: material.private_key,
-            };
-            let server =
-                tiny_http::Server::https(addr, config).map_err(|e| ServerError::Bind {
-                    addr: addr.to_string(),
-                    source: e.to_string(),
-                })?;
-            Ok((server, true))
-        }
-        None => {
-            let server = tiny_http::Server::http(addr).map_err(|e| ServerError::Bind {
+    if let Some(material) = resolve_tls_material()? {
+        let config = tiny_http::SslConfig {
+            certificate: material.certificate,
+            private_key: material.private_key,
+        };
+        let server =
+            tiny_http::Server::https(addr, config).map_err(|e| ServerError::Bind {
                 addr: addr.to_string(),
                 source: e.to_string(),
             })?;
-            Ok((server, false))
-        }
+        Ok((server, true))
+    } else {
+        let server = tiny_http::Server::http(addr).map_err(|e| ServerError::Bind {
+            addr: addr.to_string(),
+            source: e.to_string(),
+        })?;
+        Ok((server, false))
     }
 }

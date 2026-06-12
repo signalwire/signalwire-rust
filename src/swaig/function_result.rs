@@ -543,10 +543,10 @@ impl FunctionResult {
     /// Mirrors the Python reference: the verb is wrapped in a SWML document. The
     /// params are `{"control_id": ...}` when supplied, else `{}` (most-recent).
     pub fn stop_record_call(&mut self, control_id: &str) -> &mut Self {
-        let params = if !control_id.is_empty() {
-            json!({"control_id": control_id})
-        } else {
+        let params = if control_id.is_empty() {
             json!({})
+        } else {
+            json!({"control_id": control_id})
         };
         self.push_swml_verb("stop_record_call", params);
         self
@@ -634,13 +634,10 @@ impl FunctionResult {
             Value::String(s) => {
                 // Raw SWML string — parse to an object so the transfer key can be
                 // added; on parse failure fall back to the raw_swml wrapper.
-                match serde_json::from_str::<Value>(&s) {
-                    Ok(Value::Object(m)) => m,
-                    _ => {
-                        let mut m = Map::new();
-                        m.insert("raw_swml".to_string(), Value::String(s));
-                        m
-                    }
+                if let Ok(Value::Object(m)) = serde_json::from_str::<Value>(&s) { m } else {
+                    let mut m = Map::new();
+                    m.insert("raw_swml".to_string(), Value::String(s));
+                    m
                 }
             }
             Value::Object(m) => m,
@@ -940,10 +937,10 @@ impl FunctionResult {
     /// Stop an active tap stream (SWML `stop_tap`). Wrapped in a SWML document,
     /// matching the Python reference.
     pub fn stop_tap(&mut self, control_id: &str) -> &mut Self {
-        let params = if !control_id.is_empty() {
-            json!({"control_id": control_id})
-        } else {
+        let params = if control_id.is_empty() {
             json!({})
+        } else {
+            json!({"control_id": control_id})
         };
         self.push_swml_verb("stop_tap", params);
         self

@@ -18,11 +18,11 @@ impl ClaudeSkills {
 }
 
 impl SkillBase for ClaudeSkills {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "claude_skills"
     }
 
-    fn description(&self) -> &str {
+    fn description(&self) -> &'static str {
         "Load Claude SKILL.md files as agent tools"
     }
 

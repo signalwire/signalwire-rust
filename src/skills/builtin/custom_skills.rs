@@ -17,11 +17,11 @@ impl CustomSkills {
 }
 
 impl SkillBase for CustomSkills {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "custom_skills"
     }
 
-    fn description(&self) -> &str {
+    fn description(&self) -> &'static str {
         "Register user-defined custom tools"
     }
 

@@ -152,16 +152,14 @@ pub struct ToolDef {
 impl Service {
     pub fn new(options: ServiceOptions) -> Self {
         let route = options
-            .route
-            .map(|r| {
+            .route.map_or_else(|| "/".to_string(), |r| {
                 let trimmed = r.trim_end_matches('/');
                 if trimmed.is_empty() {
                     "/".to_string()
                 } else {
                     trimmed.to_string()
                 }
-            })
-            .unwrap_or_else(|| "/".to_string());
+            });
 
         let host = options.host.unwrap_or_else(|| "0.0.0.0".to_string());
 
@@ -545,13 +543,10 @@ impl Service {
             None
         };
 
-        let sub_path = match sub_path {
-            Some(p) => p,
-            None => {
-                self.logger
-                    .debug(&format!("path {} did not match route {}", path, self.route));
-                return self.json_response(404, &serde_json::json!({"error": "Not found"}));
-            }
+        let sub_path = if let Some(p) = sub_path { p } else {
+            self.logger
+                .debug(&format!("path {} did not match route {}", path, self.route));
+            return self.json_response(404, &serde_json::json!({"error": "Not found"}));
         };
 
         // Auth required for everything under the route
@@ -571,7 +566,9 @@ impl Service {
         }
 
         // Parse body
-        let request_data: Option<Value> = if !body.is_empty() {
+        let request_data: Option<Value> = if body.is_empty() {
+            None
+        } else {
             if body.len() > MAX_BODY_SIZE {
                 self.logger.warn(&format!(
                     "request body {} bytes exceeds limit {}",
@@ -589,8 +586,6 @@ impl Service {
                     None
                 }
             }
-        } else {
-            None
         };
 
         // Route dispatch
@@ -847,26 +842,23 @@ impl Service {
         // tools that the platform executes server-side), return a SWAIG
         // response saying so — the platform expects a `{response: ...}`
         // shape, not a 404.
-        match self.tools.get(function_name).and_then(|t| t.handler.as_ref()) {
-            Some(handler) => {
-                let result = handler(&args, &raw_data);
-                self.logger
-                    .debug(&format!("/swaig dispatched: function={function_name} ok"));
-                self.json_response(200, &result.to_value())
-            }
-            None => {
-                // Differentiate "name not in registry" from "name in registry
-                // but DataMap (no local handler)" so the response is honest.
-                let msg = if self.tools.contains_key(function_name) {
-                    format!(
-                        "Function '{function_name}' is registered but has no local handler (DataMap tool runs server-side)"
-                    )
-                } else {
-                    format!("Function '{function_name}' not found")
-                };
-                self.logger.warn(&format!("/swaig {msg}"));
-                self.json_response(200, &serde_json::json!({"response": msg}))
-            }
+        if let Some(handler) = self.tools.get(function_name).and_then(|t| t.handler.as_ref()) {
+            let result = handler(&args, &raw_data);
+            self.logger
+                .debug(&format!("/swaig dispatched: function={function_name} ok"));
+            self.json_response(200, &result.to_value())
+        } else {
+            // Differentiate "name not in registry" from "name in registry
+            // but DataMap (no local handler)" so the response is honest.
+            let msg = if self.tools.contains_key(function_name) {
+                format!(
+                    "Function '{function_name}' is registered but has no local handler (DataMap tool runs server-side)"
+                )
+            } else {
+                format!("Function '{function_name}' not found")
+            };
+            self.logger.warn(&format!("/swaig {msg}"));
+            self.json_response(200, &serde_json::json!({"response": msg}))
         }
     }
 

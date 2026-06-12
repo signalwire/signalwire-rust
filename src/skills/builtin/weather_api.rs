@@ -17,11 +17,11 @@ impl WeatherApi {
 }
 
 impl SkillBase for WeatherApi {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "weather_api"
     }
 
-    fn description(&self) -> &str {
+    fn description(&self) -> &'static str {
         "Get current weather information from WeatherAPI.com"
     }
 

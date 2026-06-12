@@ -19,11 +19,11 @@ impl DatasphereServerless {
 }
 
 impl SkillBase for DatasphereServerless {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "datasphere_serverless"
     }
 
-    fn description(&self) -> &str {
+    fn description(&self) -> &'static str {
         "Search knowledge using SignalWire DataSphere with serverless DataMap execution"
     }
 

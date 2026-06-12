@@ -461,7 +461,7 @@ mod tests {
         // Ensure no item still carries an `ai` verb.
         assert!(
             main.iter()
-                .all(|v| v.as_object().map(|o| !o.contains_key("ai")).unwrap_or(true)),
+                .all(|v| v.as_object().map_or(true, |o| !o.contains_key("ai"))),
             "ai verb should have been replaced"
         );
     }
@@ -546,7 +546,7 @@ mod tests {
             .as_array()
             .unwrap()
             .iter()
-            .any(|i| i.as_object().map(|o| o.contains_key("amazon_bedrock")).unwrap_or(false)));
+            .any(|i| i.as_object().is_some_and(|o| o.contains_key("amazon_bedrock"))));
     }
 
     #[test]

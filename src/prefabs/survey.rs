@@ -61,10 +61,10 @@ impl SurveyAgent {
         }));
 
         // Introduction section
-        let intro_text = if !introduction.is_empty() {
-            introduction.clone()
-        } else {
+        let intro_text = if introduction.is_empty() {
             format!("Welcome to the {survey_name}.")
+        } else {
+            introduction.clone()
         };
 
         agent.prompt_add_section(

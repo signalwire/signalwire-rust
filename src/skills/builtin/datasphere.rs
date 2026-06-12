@@ -29,11 +29,11 @@ impl Datasphere {
 }
 
 impl SkillBase for Datasphere {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "datasphere"
     }
 
-    fn description(&self) -> &str {
+    fn description(&self) -> &'static str {
         "Search knowledge using SignalWire DataSphere RAG stack"
     }
 

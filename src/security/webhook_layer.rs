@@ -146,8 +146,7 @@ where
                     u.trim_end_matches('/'),
                     req.uri()
                         .path_and_query()
-                        .map(http::uri::PathAndQuery::as_str)
-                        .unwrap_or("/")
+                        .map_or("/", http::uri::PathAndQuery::as_str)
                 ),
                 None => reconstruct_url_from_request(req.headers(), req.uri()),
             };
@@ -213,7 +212,7 @@ fn reconstruct_url_from_request(headers: &HeaderMap, uri: &axum::http::Uri) -> S
     let host = header_str(headers, "x-forwarded-host")
         .or_else(|| header_str(headers, "host"))
         .unwrap_or("unknown");
-    let path_and_query = uri.path_and_query().map(http::uri::PathAndQuery::as_str).unwrap_or("/");
+    let path_and_query = uri.path_and_query().map_or("/", http::uri::PathAndQuery::as_str);
     format!("{proto}://{host}{path_and_query}")
 }
 

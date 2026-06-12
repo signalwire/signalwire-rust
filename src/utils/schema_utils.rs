@@ -174,7 +174,7 @@ impl SchemaUtils {
         let mut errors = Vec::new();
         let cfg_obj = verb_config.as_object();
         for prop in self.get_verb_required_properties(verb_name) {
-            let present = cfg_obj.map(|o| o.contains_key(&prop)).unwrap_or(false);
+            let present = cfg_obj.is_some_and(|o| o.contains_key(&prop));
             if !present {
                 errors.push(format!(
                     "Missing required property '{prop}' for verb '{verb_name}'"
@@ -330,9 +330,7 @@ fn python_type_annotation(def: &Value) -> String {
         Some("boolean") => "bool".to_string(),
         Some("array") => {
             let item = obj
-                .get("items")
-                .map(python_type_annotation)
-                .unwrap_or_else(|| "Any".to_string());
+                .get("items").map_or_else(|| "Any".to_string(), python_type_annotation);
             format!("List[{item}]")
         }
         Some("object") => "Dict[str, Any]".to_string(),

@@ -1438,10 +1438,10 @@ impl AgentBase {
                 }
 
         // Parse body
-        let request_data: Option<Value> = if !body.is_empty() {
-            serde_json::from_str(body).ok()
-        } else {
+        let request_data: Option<Value> = if body.is_empty() {
             None
+        } else {
+            serde_json::from_str(body).ok()
         };
 
         match sub_path.as_str() {

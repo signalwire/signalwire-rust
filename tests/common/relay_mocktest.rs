@@ -148,8 +148,7 @@ fn wait_for_no_sessions(budget: Duration) {
         let sessions = body
             .get("sessions")
             .and_then(Value::as_array)
-            .map(std::vec::Vec::len)
-            .unwrap_or(0);
+            .map_or(0, std::vec::Vec::len);
         if sessions == 0 {
             return;
         }

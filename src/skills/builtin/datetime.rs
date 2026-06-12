@@ -18,11 +18,11 @@ impl Datetime {
 }
 
 impl SkillBase for Datetime {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "datetime"
     }
 
-    fn description(&self) -> &str {
+    fn description(&self) -> &'static str {
         "Get current date, time, and timezone information"
     }
 

@@ -18,11 +18,11 @@ impl NativeVectorSearch {
 }
 
 impl SkillBase for NativeVectorSearch {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "native_vector_search"
     }
 
-    fn description(&self) -> &str {
+    fn description(&self) -> &'static str {
         "Search document indexes using vector similarity and keyword search (local or remote)"
     }
 
@@ -74,16 +74,16 @@ impl SkillBase for NativeVectorSearch {
                     return result;
                 }
 
-                if !remote_url.is_empty() {
+                if remote_url.is_empty() {
                     result.set_response(&format!(
                         "Vector search results for \"{query}\": \
-                         Searched remote endpoint \"{remote_url}\" with count={count}. \
+                         Searched index \"{index_name}\" with count={count}. \
                          In production, this would return vector similarity search results."
                     ));
                 } else {
                     result.set_response(&format!(
                         "Vector search results for \"{query}\": \
-                         Searched index \"{index_name}\" with count={count}. \
+                         Searched remote endpoint \"{remote_url}\" with count={count}. \
                          In production, this would return vector similarity search results."
                     ));
                 }

@@ -617,12 +617,9 @@ impl Client {
     pub fn handle_message(&self, raw: &str) {
         self.logger.debug(&format!("<< {raw}"));
 
-        let data: Value = match serde_json::from_str(raw) {
-            Ok(d) => d,
-            Err(_) => {
-                self.logger.warn("Received unparseable message");
-                return;
-            }
+        let data: Value = if let Ok(d) = serde_json::from_str(raw) { d } else {
+            self.logger.warn("Received unparseable message");
+            return;
         };
 
         // ── response to a pending request ────────────────────────────
@@ -924,7 +921,7 @@ impl Client {
         tags: Option<&[String]>,
         context: Option<&str>,
     ) -> Result<Arc<Message>, RelayError> {
-        if body.unwrap_or("").is_empty() && media.map(<[String]>::is_empty).unwrap_or(true) {
+        if body.unwrap_or("").is_empty() && media.map_or(true, <[String]>::is_empty) {
             return Err(RelayError::InvalidArgument {
                 message: "At least one of body or media is required".to_string(),
             });
@@ -1006,9 +1003,7 @@ impl Client {
         max_duration: Option<u32>,
         dial_timeout: Duration,
     ) -> Result<Arc<Call>, RelayError> {
-        let dial_tag = tag
-            .map(str::to_string)
-            .unwrap_or_else(generate_uuid);
+        let dial_tag = tag.map_or_else(generate_uuid, str::to_string);
 
         let (resolve_tx, resolve_rx) = mpsc::channel::<Arc<Call>>();
         // Fail channel — when the SDK observes a `failed` dial event for
@@ -1042,17 +1037,14 @@ impl Client {
         // Wait for either the resolved call or the timeout. The
         // existing `handle_dial_event` resolves only on the
         // `calling.call.dial` event with a `call.call_id` in `params.call`.
-        match resolve_rx.recv_timeout(dial_timeout) {
-            Ok(call) => Ok(call),
-            Err(_) => {
-                self.remove_pending_dial(&dial_tag);
-                if let Some(reason) = dial_failed.lock().unwrap().clone() {
-                    Err(RelayError::DialFailed { reason })
-                } else {
-                    Err(RelayError::DialFailed {
-                        reason: format!("timed out waiting for answer (tag={dial_tag})"),
-                    })
-                }
+        if let Ok(call) = resolve_rx.recv_timeout(dial_timeout) { Ok(call) } else {
+            self.remove_pending_dial(&dial_tag);
+            if let Some(reason) = dial_failed.lock().unwrap().clone() {
+                Err(RelayError::DialFailed { reason })
+            } else {
+                Err(RelayError::DialFailed {
+                    reason: format!("timed out waiting for answer (tag={dial_tag})"),
+                })
             }
         }
     }
@@ -1062,12 +1054,9 @@ impl Client {
     // ══════════════════════════════════════════════════════════════════
 
     fn handle_inbound_call(&self, event: &Event, params: &Value) {
-        let call_id = match params.get("call_id").and_then(|v| v.as_str()) {
-            Some(id) => id,
-            None => {
-                self.logger.warn("Inbound call event missing call_id");
-                return;
-            }
+        let call_id = if let Some(id) = params.get("call_id").and_then(|v| v.as_str()) { id } else {
+            self.logger.warn("Inbound call event missing call_id");
+            return;
         };
 
         let call = Arc::new(Call::new(params));

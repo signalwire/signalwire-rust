@@ -18,11 +18,11 @@ impl Spider {
 }
 
 impl SkillBase for Spider {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "spider"
     }
 
-    fn description(&self) -> &str {
+    fn description(&self) -> &'static str {
         "Fast web scraping and crawling capabilities"
     }
 

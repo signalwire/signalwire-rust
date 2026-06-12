@@ -125,8 +125,7 @@ impl Logger {
 
         let suppressed = env::var("SIGNALWIRE_LOG_MODE")
             .ok()
-            .map(|s| s.eq_ignore_ascii_case("off"))
-            .unwrap_or(false);
+            .is_some_and(|s| s.eq_ignore_ascii_case("off"));
 
         Logger {
             name: name.to_string(),

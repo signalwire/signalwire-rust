@@ -14,7 +14,7 @@ pub trait SkillBase: Send + Sync {
     fn description(&self) -> &str;
 
     /// Semantic version string.
-    fn version(&self) -> &str {
+    fn version(&self) -> &'static str {
         "1.0.0"
     }
 

@@ -23,11 +23,11 @@ impl WikipediaSearch {
 }
 
 impl SkillBase for WikipediaSearch {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "wikipedia_search"
     }
 
-    fn description(&self) -> &str {
+    fn description(&self) -> &'static str {
         "Search Wikipedia for information about a topic and get article summaries"
     }
 

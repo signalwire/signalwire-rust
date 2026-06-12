@@ -18,11 +18,11 @@ impl McpGateway {
 }
 
 impl SkillBase for McpGateway {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "mcp_gateway"
     }
 
-    fn description(&self) -> &str {
+    fn description(&self) -> &'static str {
         "Bridge MCP servers with SWAIG functions"
     }
 
@@ -231,10 +231,10 @@ impl SkillBase for McpGateway {
                 .unwrap_or("");
 
             if !name.is_empty() {
-                let bullet = if !description.is_empty() {
-                    format!("Service: {name} - {description}")
-                } else {
+                let bullet = if description.is_empty() {
                     format!("Service: {name}")
+                } else {
+                    format!("Service: {name} - {description}")
                 };
                 bullets.push(bullet);
             }

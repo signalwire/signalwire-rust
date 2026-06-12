@@ -37,15 +37,15 @@ impl WebSearch {
 }
 
 impl SkillBase for WebSearch {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "web_search"
     }
 
-    fn description(&self) -> &str {
+    fn description(&self) -> &'static str {
         "Search the web for information using Google Custom Search API"
     }
 
-    fn version(&self) -> &str {
+    fn version(&self) -> &'static str {
         "2.0.0"
     }
 

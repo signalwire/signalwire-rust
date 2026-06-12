@@ -17,11 +17,11 @@ impl PlayBackgroundFile {
 }
 
 impl SkillBase for PlayBackgroundFile {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "play_background_file"
     }
 
-    fn description(&self) -> &str {
+    fn description(&self) -> &'static str {
         "Control background file playback"
     }
 

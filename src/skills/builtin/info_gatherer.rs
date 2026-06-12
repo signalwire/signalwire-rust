@@ -18,11 +18,11 @@ impl InfoGatherer {
 }
 
 impl SkillBase for InfoGatherer {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "info_gatherer"
     }
 
-    fn description(&self) -> &str {
+    fn description(&self) -> &'static str {
         "Gather answers to a configurable list of questions"
     }
 
@@ -47,15 +47,15 @@ impl SkillBase for InfoGatherer {
             .get_str_or("completion_message", "All questions have been answered. Thank you!");
         let namespace = self.get_instance_key();
 
-        let start_tool = if !prefix.is_empty() {
-            format!("{prefix}_start_questions")
-        } else {
+        let start_tool = if prefix.is_empty() {
             "start_questions".to_string()
-        };
-        let submit_tool = if !prefix.is_empty() {
-            format!("{prefix}_submit_answer")
         } else {
+            format!("{prefix}_start_questions")
+        };
+        let submit_tool = if prefix.is_empty() {
             "submit_answer".to_string()
+        } else {
+            format!("{prefix}_submit_answer")
         };
 
         // start_questions tool

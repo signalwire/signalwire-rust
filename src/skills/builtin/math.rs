@@ -18,11 +18,11 @@ impl Math {
 }
 
 impl SkillBase for Math {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "math"
     }
 
-    fn description(&self) -> &str {
+    fn description(&self) -> &'static str {
         "Perform basic mathematical calculations"
     }
 

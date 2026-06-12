@@ -17,11 +17,11 @@ impl GoogleMaps {
 }
 
 impl SkillBase for GoogleMaps {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "google_maps"
     }
 
-    fn description(&self) -> &str {
+    fn description(&self) -> &'static str {
         "Validate addresses and compute driving routes using Google Maps"
     }
 

@@ -117,12 +117,9 @@ fn main() {
         return;
     }
 
-    let url = match url {
-        Some(u) => u,
-        None => {
-            eprintln!("Error: --url or --example is required");
-            process::exit(1);
-        }
+    let url = if let Some(u) = url { u } else {
+        eprintln!("Error: --url or --example is required");
+        process::exit(1);
     };
 
     // Extract auth from URL if embedded
@@ -202,17 +199,14 @@ fn do_list_tools_via_introspect(example_name: &str, raw: bool, verbose: bool) {
         process::exit(1);
     }
     let stdout = String::from_utf8_lossy(&output.stdout);
-    let body = match extract_introspect_payload(&stdout) {
-        Some(s) => s,
-        None => {
-            eprintln!(
-                "Error: example `{example_name}` did not emit __SWAIG_TOOLS_BEGIN__/__SWAIG_TOOLS_END__ markers. Make sure it calls service.run()."
-            );
-            if verbose {
-                eprintln!("--- raw stdout ---\n{stdout}");
-            }
-            process::exit(1);
+    let body = if let Some(s) = extract_introspect_payload(&stdout) { s } else {
+        eprintln!(
+            "Error: example `{example_name}` did not emit __SWAIG_TOOLS_BEGIN__/__SWAIG_TOOLS_END__ markers. Make sure it calls service.run()."
+        );
+        if verbose {
+            eprintln!("--- raw stdout ---\n{stdout}");
         }
+        process::exit(1);
     };
     let parsed: Value = match serde_json::from_str(body) {
         Ok(v) => v,
@@ -227,12 +221,9 @@ fn do_list_tools_via_introspect(example_name: &str, raw: bool, verbose: bool) {
         return;
     }
     let tools = parsed.get("tools").and_then(|v| v.as_array());
-    let tools = match tools {
-        Some(a) => a,
-        None => {
-            println!("{}", serde_json::to_string_pretty(&parsed).unwrap_or_default());
-            return;
-        }
+    let tools = if let Some(a) = tools { a } else {
+        println!("{}", serde_json::to_string_pretty(&parsed).unwrap_or_default());
+        return;
     };
     if tools.is_empty() {
         println!("No tools registered.");

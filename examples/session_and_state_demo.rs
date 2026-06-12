@@ -74,9 +74,7 @@ fn main() {
         "Get all information collected in this session",
         json!({}),
         Box::new(|_args, raw_data| {
-            let global_data = raw_data.get("global_data")
-                .map(|v| serde_json::to_string_pretty(v).unwrap_or_default())
-                .unwrap_or_else(|| "{}".to_string());
+            let global_data = raw_data.get("global_data").map_or_else(|| "{}".to_string(), |v| serde_json::to_string_pretty(v).unwrap_or_default());
             FunctionResult::with_response(&format!("Session data: {global_data}"))
         }),
         false,
