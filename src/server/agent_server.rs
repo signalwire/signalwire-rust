@@ -254,6 +254,11 @@ impl AgentServer {
     /// Mirrors Python's `AgentServer.run(host, port)`. The optional
     /// `host` and `port` arguments override the values supplied at
     /// construction time (matching the Python contract).
+    ///
+    /// # Panics
+    ///
+    /// Panics if the resolved `host:port` cannot be bound (e.g. the port is
+    /// already in use or permission is denied).
     pub fn run(&self, host: Option<&str>, port: Option<u16>) {
         let bind_host = host.unwrap_or(self.host.as_str());
         let bind_port = port.unwrap_or(self.port);

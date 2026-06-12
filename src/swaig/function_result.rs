@@ -175,6 +175,12 @@ impl FunctionResult {
     }
 
     /// Compact JSON string.
+    ///
+    /// # Panics
+    ///
+    /// Does not panic in practice: the underlying `serde_json::to_string`
+    /// only fails on serialisation errors (e.g. non-string map keys), which
+    /// cannot arise from the well-formed `Value` produced by `to_value`.
     pub fn to_json(&self) -> String {
         serde_json::to_string(&self.to_value()).expect("FunctionResult serialisation should not fail")
     }

@@ -193,6 +193,11 @@ impl Step {
     }
 
     /// Set the step's prompt text directly. Mutually exclusive with POM sections.
+    ///
+    /// # Panics
+    ///
+    /// Panics if POM sections have already been added to this step
+    /// (`set_text` and `add_section` are mutually exclusive).
     pub fn set_text(&mut self, text: &str) -> &mut Self {
         assert!(
             self.sections.is_empty(),
@@ -203,6 +208,11 @@ impl Step {
     }
 
     /// Add a POM section with title and body.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `set_text` has already been used on this step
+    /// (`add_section` and `set_text` are mutually exclusive).
     pub fn add_section(&mut self, title: &str, body: &str) -> &mut Self {
         assert!(
             self.text.is_none(),
@@ -443,6 +453,13 @@ impl Context {
 
     // ── Steps ────────────────────────────────────────────────────────────
 
+    /// Add a step to this context.
+    ///
+    /// # Panics
+    ///
+    /// Panics if a step with `name` already exists in this context, or if
+    /// adding it would exceed `MAX_STEPS_PER_CONTEXT`. (The trailing
+    /// `.unwrap()` cannot fail: it reads back the step just inserted.)
     pub fn add_step(&mut self, name: &str) -> &mut Step {
         assert!(
             !self.steps.contains_key(name),
@@ -477,6 +494,11 @@ impl Context {
         self
     }
 
+    /// Move a step to a new position in this context's step order.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `name` does not name an existing step in this context.
     pub fn move_step(&mut self, name: &str, position: usize) -> &mut Self {
         assert!(
             self.steps.contains_key(name),
@@ -652,6 +674,13 @@ impl ContextBuilder {
         self
     }
 
+    /// Add a context by name.
+    ///
+    /// # Panics
+    ///
+    /// Panics if a context with `name` already exists, or if adding it would
+    /// exceed `MAX_CONTEXTS`. (The trailing `.unwrap()` cannot fail: it reads
+    /// back the context just inserted.)
     pub fn add_context(&mut self, name: &str) -> &mut Context {
         assert!(
             !self.contexts.contains_key(name),
@@ -692,6 +721,12 @@ impl ContextBuilder {
     /// a context's `initial_step` names a step that does not exist, or a
     /// step's `valid_steps` references a step that is neither `"next"`
     /// nor a real step in that context.
+    ///
+    /// # Panics
+    ///
+    /// Does not panic in practice: the internal `context_order.first().unwrap()`
+    /// runs only inside the `self.contexts.len() == 1` branch, so the order
+    /// vector is guaranteed to be non-empty there.
     pub fn validate(&self) -> Result<(), Vec<String>> {
         let mut errors = Vec::new();
 
@@ -847,6 +882,13 @@ impl ContextBuilder {
     }
 
     /// Serialise all contexts in order. Validates before converting.
+    ///
+    /// # Panics
+    ///
+    /// Panics if [`ContextBuilder::validate`] fails — i.e. the contexts are
+    /// misconfigured (no contexts, a lone non-`"default"` context, a context
+    /// with no steps, a bad `initial_step`, or an invalid `valid_steps`
+    /// reference).
     pub fn to_value(&self) -> Value {
         if let Err(errors) = self.validate() {
             panic!("Validation failed: {}", errors.join("; "));

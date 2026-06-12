@@ -173,6 +173,10 @@ impl StubTransport {
         }
     }
 
+    /// # Panics
+    ///
+    /// Panics if the internal response lock is poisoned (another thread
+    /// panicked while holding it). This does not occur under normal operation.
     pub fn set_response(&self, status: u16, body: &str) {
         *self.response.lock().unwrap() = (status, body.to_string());
     }

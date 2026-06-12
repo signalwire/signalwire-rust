@@ -80,22 +80,37 @@ impl Action {
         &self.node_id
     }
 
+    /// # Panics
+    /// Panics if an internal mutex is poisoned (i.e. another thread panicked
+    /// while holding the lock). This does not occur under normal operation.
     pub fn is_done(&self) -> bool {
         *self.completed.lock().unwrap()
     }
 
+    /// # Panics
+    /// Panics if an internal mutex is poisoned (i.e. another thread panicked
+    /// while holding the lock). This does not occur under normal operation.
     pub fn state(&self) -> Option<String> {
         self.state.lock().unwrap().clone()
     }
 
+    /// # Panics
+    /// Panics if an internal mutex is poisoned (i.e. another thread panicked
+    /// while holding the lock). This does not occur under normal operation.
     pub fn result(&self) -> Option<Value> {
         self.result.lock().unwrap().clone()
     }
 
+    /// # Panics
+    /// Panics if an internal mutex is poisoned (i.e. another thread panicked
+    /// while holding the lock). This does not occur under normal operation.
     pub fn payload(&self) -> HashMap<String, Value> {
         self.payload.lock().unwrap().clone()
     }
 
+    /// # Panics
+    /// Panics if an internal mutex is poisoned (i.e. another thread panicked
+    /// while holding the lock). This does not occur under normal operation.
     pub fn events(&self) -> Vec<Event> {
         self.events.lock().unwrap().clone()
     }
@@ -110,6 +125,10 @@ impl Action {
 
     /// Install a channel sender so that `wait_sync()` can block until
     /// the action resolves.
+    ///
+    /// # Panics
+    /// Panics if an internal mutex is poisoned (i.e. another thread panicked
+    /// while holding the lock). This does not occur under normal operation.
     pub fn set_notify_sender(&self, tx: OneshotSender) {
         *self.notify_tx.lock().unwrap() = Some(tx);
     }
@@ -120,6 +139,10 @@ impl Action {
 
     /// Register a callback to fire when the action completes.
     /// If the action is already done, the callback fires immediately.
+    ///
+    /// # Panics
+    /// Panics if an internal mutex is poisoned (i.e. another thread panicked
+    /// while holding the lock). This does not occur under normal operation.
     pub fn on_completed<F: FnOnce(&Action) + Send + 'static>(&self, cb: F) {
         let mut guard = self.on_completed.lock().unwrap();
         *guard = Some(Box::new(cb));
@@ -136,6 +159,10 @@ impl Action {
 
     /// Append an incoming event and update local state / payload.
     /// Subclasses override `should_handle_event` to filter.
+    ///
+    /// # Panics
+    /// Panics if an internal mutex is poisoned (i.e. another thread panicked
+    /// while holding the lock). This does not occur under normal operation.
     pub fn handle_event(&self, event: &Event) {
         if !self.should_handle_event(event) {
             return;
@@ -168,6 +195,10 @@ impl Action {
     // ------------------------------------------------------------------
 
     /// Mark this action as completed.
+    ///
+    /// # Panics
+    /// Panics if an internal mutex is poisoned (i.e. another thread panicked
+    /// while holding the lock). This does not occur under normal operation.
     pub fn resolve(&self, result: Option<Value>) {
         {
             let mut completed = self.completed.lock().unwrap();
@@ -199,6 +230,10 @@ impl Action {
     }
 
     /// Send a sub-command RPC through the client.
+    ///
+    /// # Panics
+    /// Panics if an internal mutex is poisoned (i.e. another thread panicked
+    /// while holding the lock). This does not occur under normal operation.
     pub fn execute_subcommand(&self, method: &str, extra: HashMap<String, Value>) {
         let mut params = HashMap::new();
         params.insert(

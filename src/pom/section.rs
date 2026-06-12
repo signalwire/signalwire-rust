@@ -82,6 +82,12 @@ impl Section {
     /// subsection so the caller can keep configuring it. (Python
     /// returns the `Section` object directly; Rust's borrow checker
     /// makes a `&mut` reference the equivalent shape.)
+    ///
+    /// # Panics
+    ///
+    /// Does not panic in practice: the internal `.expect("just pushed")`
+    /// reads back the subsection pushed on the line above, so `last_mut()`
+    /// is always `Some`.
     pub fn add_subsection(&mut self, title: impl Into<String>) -> &mut Section {
         self.subsections.push(Section::new(Some(title.into())));
         self.subsections.last_mut().expect("just pushed")
@@ -90,6 +96,12 @@ impl Section {
     /// Add a fully-specified subsection. Convenience that mirrors
     /// Python's keyword-argument form
     /// `add_subsection(title=..., body=..., bullets=..., numbered=..., numberedBullets=...)`.
+    ///
+    /// # Panics
+    ///
+    /// Does not panic in practice: the internal `.expect("just pushed")`
+    /// reads back the subsection pushed on the line above, so `last_mut()`
+    /// is always `Some`.
     pub fn add_subsection_full(
         &mut self,
         title: impl Into<String>,

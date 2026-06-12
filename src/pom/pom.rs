@@ -132,6 +132,12 @@ impl PromptObjectModel {
     /// Returns `Err("Only the first section can have no title")` when
     /// `title` is `None` but the model already contains at least one
     /// section — only the very first section may be untitled.
+    ///
+    /// # Panics
+    ///
+    /// Does not panic in practice: the internal `.expect("just pushed")`
+    /// reads back the section pushed on the line above, so the `last_mut()`
+    /// is always `Some`.
     pub fn add_section(&mut self, title: Option<String>) -> Result<&mut Section, String> {
         if title.is_none() && !self.sections.is_empty() {
             return Err("Only the first section can have no title".to_string());

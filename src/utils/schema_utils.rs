@@ -196,6 +196,12 @@ impl SchemaUtils {
 
     /// Generate a Python-style method signature string for a verb.
     /// Mirrors Python's `generate_method_signature(verb_name)`.
+    ///
+    /// # Panics
+    ///
+    /// Does not panic in practice: the internal `params.get(name).unwrap()`
+    /// looks up keys taken directly from `params.keys()`, so every lookup is
+    /// guaranteed to be present.
     pub fn generate_method_signature(&self, verb_name: &str) -> String {
         let params = self.get_verb_parameters(verb_name);
         let required: std::collections::HashSet<String> =

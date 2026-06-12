@@ -147,18 +147,30 @@ impl Message {
         self.to_number.as_deref()
     }
 
+    /// # Panics
+    /// Panics if an internal mutex is poisoned (i.e. another thread panicked
+    /// while holding the lock). This does not occur under normal operation.
     pub fn body(&self) -> Option<String> {
         self.body.lock().unwrap().clone()
     }
 
+    /// # Panics
+    /// Panics if an internal mutex is poisoned (i.e. another thread panicked
+    /// while holding the lock). This does not occur under normal operation.
     pub fn media(&self) -> Vec<String> {
         self.media.lock().unwrap().clone()
     }
 
+    /// # Panics
+    /// Panics if an internal mutex is poisoned (i.e. another thread panicked
+    /// while holding the lock). This does not occur under normal operation.
     pub fn tags(&self) -> Vec<String> {
         self.tags.lock().unwrap().clone()
     }
 
+    /// # Panics
+    /// Panics if an internal mutex is poisoned (i.e. another thread panicked
+    /// while holding the lock). This does not occur under normal operation.
     pub fn state(&self) -> Option<String> {
         self.state.lock().unwrap().clone()
     }
@@ -172,6 +184,10 @@ impl Message {
     /// value parses to [`MessageState::Other`] rather than panicking. Enables
     /// `msg.message_state().map(|s| s.is_terminal())` and `match` instead of
     /// stringly comparisons.
+    ///
+    /// # Panics
+    /// Panics if an internal mutex is poisoned (i.e. another thread panicked
+    /// while holding the lock). This does not occur under normal operation.
     #[must_use]
     pub fn message_state(&self) -> Option<super::state_enums::MessageState> {
         self.state
@@ -181,14 +197,23 @@ impl Message {
             .map(super::state_enums::MessageState::from_str)
     }
 
+    /// # Panics
+    /// Panics if an internal mutex is poisoned (i.e. another thread panicked
+    /// while holding the lock). This does not occur under normal operation.
     pub fn reason(&self) -> Option<String> {
         self.reason.lock().unwrap().clone()
     }
 
+    /// # Panics
+    /// Panics if an internal mutex is poisoned (i.e. another thread panicked
+    /// while holding the lock). This does not occur under normal operation.
     pub fn is_done(&self) -> bool {
         *self.completed.lock().unwrap()
     }
 
+    /// # Panics
+    /// Panics if an internal mutex is poisoned (i.e. another thread panicked
+    /// while holding the lock). This does not occur under normal operation.
     pub fn result(&self) -> Option<Value> {
         self.result.lock().unwrap().clone()
     }
@@ -198,6 +223,10 @@ impl Message {
     // ------------------------------------------------------------------
 
     /// Process an inbound event for this message.
+    ///
+    /// # Panics
+    /// Panics if an internal mutex is poisoned (i.e. another thread panicked
+    /// while holding the lock). This does not occur under normal operation.
     pub fn dispatch_event(&self, event: &Event) {
         let params = event.params();
 
@@ -242,6 +271,10 @@ impl Message {
     // ------------------------------------------------------------------
 
     /// Register a listener that fires on every state-change event.
+    ///
+    /// # Panics
+    /// Panics if an internal mutex is poisoned (i.e. another thread panicked
+    /// while holding the lock). This does not occur under normal operation.
     pub fn on<F: Fn(&Message, &Event) + Send + Sync + 'static>(&self, cb: F) {
         self.on_event_callbacks
             .lock()
@@ -250,6 +283,10 @@ impl Message {
     }
 
     /// Register a callback to fire when the message reaches a terminal state.
+    ///
+    /// # Panics
+    /// Panics if an internal mutex is poisoned (i.e. another thread panicked
+    /// while holding the lock). This does not occur under normal operation.
     pub fn on_completed<F: FnOnce(&Message) + Send + 'static>(&self, cb: F) {
         *self.on_completed.lock().unwrap() = Some(Box::new(cb));
 
@@ -263,6 +300,10 @@ impl Message {
     // ------------------------------------------------------------------
 
     /// Mark this message as completed.
+    ///
+    /// # Panics
+    /// Panics if an internal mutex is poisoned (i.e. another thread panicked
+    /// while holding the lock). This does not occur under normal operation.
     pub fn resolve(&self, result: Option<Value>) {
         {
             let mut completed = self.completed.lock().unwrap();

@@ -608,6 +608,11 @@ impl Service {
 
     /// Extract SIP username from a request body.
     /// Validates format: only `[a-zA-Z0-9._-]`, max 64 chars.
+    ///
+    /// # Panics
+    ///
+    /// Panics only if the built-in `^[a-zA-Z0-9._-]+$` validation regex
+    /// fails to compile, which cannot happen for that fixed pattern.
     pub fn extract_sip_username(body: &Value) -> Option<String> {
         // Look for SIP URI in common locations
         let sip_uri = body
@@ -898,6 +903,10 @@ impl Service {
         std::process::exit(0);
     }
 
+    /// # Panics
+    ///
+    /// Panics if the configured `host:port` cannot be bound (e.g. the port
+    /// is already in use or permission is denied).
     pub fn run(&self) {
         if std::env::var("SWAIG_LIST_TOOLS").is_ok() {
             self.print_tool_registry_and_exit();

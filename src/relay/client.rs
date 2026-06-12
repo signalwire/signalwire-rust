@@ -309,6 +309,12 @@ impl Client {
     /// handshake; or `RelayError::Timeout` if no handshake response
     /// arrives within `HANDSHAKE_TIMEOUT` (the auth failure paths are
     /// surfaced through the delegated [`authenticate_blocking`]).
+    ///
+    /// # Panics
+    ///
+    /// Panics if an internal mutex is poisoned (i.e. another thread
+    /// panicked while holding the lock). This does not occur under
+    /// normal operation.
     pub fn connect(self: &Arc<Self>) -> Result<(), RelayError> {
         self.logger.info(&format!("Connecting to {}", self.host));
 
@@ -379,6 +385,12 @@ impl Client {
     /// (TCP/WS upgrade or thread spawn failure), `RelayError::Auth`
     /// (handshake rejected), or `RelayError::Timeout` (no handshake
     /// response within `HANDSHAKE_TIMEOUT`).
+    ///
+    /// # Panics
+    ///
+    /// Panics if an internal mutex is poisoned (i.e. another thread
+    /// panicked while holding the lock). This does not occur under
+    /// normal operation.
     pub fn connect_fresh(self: &Arc<Self>) -> Result<(), RelayError> {
         *self.reconnect_delay.lock().unwrap() = 1;
         self.connect()
@@ -396,6 +408,12 @@ impl Client {
     /// `Err(RelayError::Timeout)` if no response is received within
     /// `HANDSHAKE_TIMEOUT` (in which case the pending request is cleaned
     /// up so a late reply cannot fire a stale callback).
+    ///
+    /// # Panics
+    ///
+    /// Panics if an internal mutex is poisoned (i.e. another thread
+    /// panicked while holding the lock). This does not occur under
+    /// normal operation.
     pub fn authenticate_blocking(&self) -> Result<(), RelayError> {
         self.logger.info("Authenticating");
 
@@ -531,6 +549,12 @@ impl Client {
 
     /// Gracefully close the connection. Signals the reader thread to
     /// exit, sends a WS close frame, and joins the thread.
+    ///
+    /// # Panics
+    ///
+    /// Panics if an internal mutex is poisoned (i.e. another thread
+    /// panicked while holding the lock). This does not occur under
+    /// normal operation.
     pub fn disconnect(&self) {
         self.logger.info("Disconnecting");
         self.closing.store(true, Ordering::SeqCst);
@@ -560,6 +584,12 @@ impl Client {
     /// `RelayError::Auth` if the re-handshake is rejected, or
     /// `RelayError::Timeout` if the handshake response does not arrive
     /// within `HANDSHAKE_TIMEOUT`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if an internal mutex is poisoned (i.e. another thread
+    /// panicked while holding the lock). This does not occur under
+    /// normal operation.
     pub fn reconnect(self: &Arc<Self>) -> Result<(), RelayError> {
         *self.connected.lock().unwrap() = false;
 
@@ -576,6 +606,12 @@ impl Client {
     /// `RECONNECT_MIN_DELAY` / `RECONNECT_MAX_DELAY` / backoff factor.
     /// Exposed (and tested) separately from [`reconnect`] so the math
     /// is verifiable without opening a real socket.
+    ///
+    /// # Panics
+    ///
+    /// Panics if an internal mutex is poisoned (i.e. another thread
+    /// panicked while holding the lock). This does not occur under
+    /// normal operation.
     pub fn bump_reconnect_delay(&self) -> u64 {
         let mut rd = self.reconnect_delay.lock().unwrap();
         let cur = *rd;
@@ -583,10 +619,24 @@ impl Client {
         cur
     }
 
+    /// Returns whether the client currently considers itself connected.
+    ///
+    /// # Panics
+    ///
+    /// Panics if an internal mutex is poisoned (i.e. another thread
+    /// panicked while holding the lock). This does not occur under
+    /// normal operation.
     pub fn is_connected(&self) -> bool {
         *self.connected.lock().unwrap()
     }
 
+    /// Returns whether the client's reader loop is still running.
+    ///
+    /// # Panics
+    ///
+    /// Panics if an internal mutex is poisoned (i.e. another thread
+    /// panicked while holding the lock). This does not occur under
+    /// normal operation.
     pub fn is_running(&self) -> bool {
         *self.running.lock().unwrap()
     }
@@ -609,6 +659,12 @@ impl Client {
     }
 
     /// Register a pending-response slot for a request ID.
+    ///
+    /// # Panics
+    ///
+    /// Panics if an internal mutex is poisoned (i.e. another thread
+    /// panicked while holding the lock). This does not occur under
+    /// normal operation.
     pub fn register_pending<R, E>(&self, id: &str, resolve: R, reject: E)
     where
         R: FnOnce(Value) + Send + 'static,
@@ -630,6 +686,12 @@ impl Client {
     /// frame on the writer channel so the reader thread flushes it to
     /// the WebSocket. With no live socket attached the call is purely
     /// in-memory — that's the path the dispatch unit tests below take.
+    ///
+    /// # Panics
+    ///
+    /// Panics if an internal mutex is poisoned (i.e. another thread
+    /// panicked while holding the lock). This does not occur under
+    /// normal operation.
     pub fn send(&self, msg: &Value) {
         self.logger.debug(&format!(">> {msg}"));
         self.sent_messages.lock().unwrap().push(msg.clone());
@@ -656,6 +718,12 @@ impl Client {
     // ══════════════════════════════════════════════════════════════════
 
     /// Parse a raw JSON string from the server and route it.
+    ///
+    /// # Panics
+    ///
+    /// Panics if an internal mutex is poisoned (i.e. another thread
+    /// panicked while holding the lock). This does not occur under
+    /// normal operation.
     pub fn handle_message(&self, raw: &str) {
         self.logger.debug(&format!("<< {raw}"));
 
@@ -706,6 +774,12 @@ impl Client {
     }
 
     /// Route a signalwire.event payload to the appropriate handler.
+    ///
+    /// # Panics
+    ///
+    /// Panics if an internal mutex is poisoned (i.e. another thread
+    /// panicked while holding the lock). This does not occur under
+    /// normal operation.
     pub fn handle_event(&self, outer_params: &Value) {
         let event_type = outer_params
             .get("event_type")
@@ -808,6 +882,12 @@ impl Client {
     // ══════════════════════════════════════════════════════════════════
 
     /// Subscribe to one or more inbound contexts.
+    ///
+    /// # Panics
+    ///
+    /// Panics if an internal mutex is poisoned (i.e. another thread
+    /// panicked while holding the lock). This does not occur under
+    /// normal operation.
     pub fn receive(&self, contexts: &[String]) {
         {
             let mut ctx = self.contexts.lock().unwrap();
@@ -822,6 +902,12 @@ impl Client {
     }
 
     /// Unsubscribe from one or more contexts.
+    ///
+    /// # Panics
+    ///
+    /// Panics if an internal mutex is poisoned (i.e. another thread
+    /// panicked while holding the lock). This does not occur under
+    /// normal operation.
     pub fn unreceive(&self, contexts: &[String]) {
         {
             let mut ctx = self.contexts.lock().unwrap();
@@ -832,31 +918,67 @@ impl Client {
     }
 
     /// Register a handler for inbound calls.
+    ///
+    /// # Panics
+    ///
+    /// Panics if an internal mutex is poisoned (i.e. another thread
+    /// panicked while holding the lock). This does not occur under
+    /// normal operation.
     pub fn on_call<F: Fn(Arc<Call>, &Event) + Send + Sync + 'static>(&self, cb: F) {
         *self.on_call_handler.lock().unwrap() = Some(Box::new(cb));
     }
 
     /// Register a handler for inbound messages.
+    ///
+    /// # Panics
+    ///
+    /// Panics if an internal mutex is poisoned (i.e. another thread
+    /// panicked while holding the lock). This does not occur under
+    /// normal operation.
     pub fn on_message<F: Fn(&Event, &Value) + Send + Sync + 'static>(&self, cb: F) {
         *self.on_message_handler.lock().unwrap() = Some(Box::new(cb));
     }
 
     /// Register a generic event handler.
+    ///
+    /// # Panics
+    ///
+    /// Panics if an internal mutex is poisoned (i.e. another thread
+    /// panicked while holding the lock). This does not occur under
+    /// normal operation.
     pub fn on_event<F: Fn(&Event, &Value) + Send + Sync + 'static>(&self, cb: F) {
         *self.on_event_handler.lock().unwrap() = Some(Box::new(cb));
     }
 
     /// Get a call by ID.
+    ///
+    /// # Panics
+    ///
+    /// Panics if an internal mutex is poisoned (i.e. another thread
+    /// panicked while holding the lock). This does not occur under
+    /// normal operation.
     pub fn get_call(&self, call_id: &str) -> Option<Arc<Call>> {
         self.calls.lock().unwrap().get(call_id).cloned()
     }
 
     /// Get a message by ID.
+    ///
+    /// # Panics
+    ///
+    /// Panics if an internal mutex is poisoned (i.e. another thread
+    /// panicked while holding the lock). This does not occur under
+    /// normal operation.
     pub fn get_message(&self, message_id: &str) -> Option<Arc<Message>> {
         self.messages.lock().unwrap().get(message_id).cloned()
     }
 
     /// Track a new message.
+    ///
+    /// # Panics
+    ///
+    /// Panics if an internal mutex is poisoned (i.e. another thread
+    /// panicked while holding the lock). This does not occur under
+    /// normal operation.
     pub fn track_message(&self, message_id: &str, msg: Arc<Message>) {
         self.messages
             .lock()
@@ -865,6 +987,12 @@ impl Client {
     }
 
     /// Register a pending dial.
+    ///
+    /// # Panics
+    ///
+    /// Panics if an internal mutex is poisoned (i.e. another thread
+    /// panicked while holding the lock). This does not occur under
+    /// normal operation.
     pub fn register_dial<F: FnOnce(Arc<Call>) + Send + 'static>(
         &self,
         tag: &str,
@@ -880,6 +1008,12 @@ impl Client {
     }
 
     /// Remove a pending dial.
+    ///
+    /// # Panics
+    ///
+    /// Panics if an internal mutex is poisoned (i.e. another thread
+    /// panicked while holding the lock). This does not occur under
+    /// normal operation.
     pub fn remove_pending_dial(&self, tag: &str) {
         self.pending_dials.lock().unwrap().remove(tag);
     }
@@ -908,6 +1042,12 @@ impl Client {
     /// `"execute failed"`), or `Err(RelayError::Timeout)` if no response
     /// for the request id arrives within `HANDSHAKE_TIMEOUT` (the
     /// pending entry is removed on timeout).
+    ///
+    /// # Panics
+    ///
+    /// Panics if an internal mutex is poisoned (i.e. another thread
+    /// panicked while holding the lock). This does not occur under
+    /// normal operation.
     pub fn execute_blocking(
         &self,
         method: &str,
@@ -972,6 +1112,12 @@ impl Client {
     /// `messaging.send` call via [`execute_blocking`]:
     /// `RelayError::Rpc` if the server rejects the send, or
     /// `RelayError::Timeout` if no response arrives in time.
+    ///
+    /// # Panics
+    ///
+    /// Panics if an internal mutex is poisoned (i.e. another thread
+    /// panicked while holding the lock). This does not occur under
+    /// normal operation.
     pub fn send_message_blocking(
         &self,
         to_number: &str,
@@ -1066,6 +1212,12 @@ impl Client {
     /// `"timed out waiting for answer (tag=...)"`. The fire-and-forget
     /// `calling.dial` RPC's own result is intentionally not gated on, so
     /// it does not surface as an error here.
+    ///
+    /// # Panics
+    ///
+    /// Panics if an internal mutex is poisoned (i.e. another thread
+    /// panicked while holding the lock). This does not occur under
+    /// normal operation.
     pub fn dial_blocking(
         self: &Arc<Self>,
         devices: Value,

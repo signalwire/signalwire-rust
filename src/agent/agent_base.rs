@@ -1021,6 +1021,12 @@ impl AgentBase {
     /// included in that snapshot — call [`AgentBase::refresh_context_tools`]
     /// to update it, or call `define_contexts` only after defining all
     /// tools.
+    ///
+    /// # Panics
+    ///
+    /// Does not panic in practice: the internal `.unwrap()` reads back the
+    /// `context_builder` that is initialised to `Some` immediately above when
+    /// it was `None`, so it is always `Some` by that point.
     pub fn define_contexts(&mut self) -> &mut ContextBuilder {
         let tool_names: Vec<String> = self.tool_order.clone();
         if self.context_builder.is_none() {
@@ -1715,6 +1721,11 @@ impl AgentBase {
     /// Serves HTTPS instead when `SWML_SSL_ENABLED` is set together with
     /// `SWML_SSL_CERT_PATH` / `SWML_SSL_KEY_PATH` (mirrors Python's
     /// `SecurityConfig` / uvicorn `ssl_*` contract).
+    ///
+    /// # Panics
+    ///
+    /// Panics if the configured `host:port` cannot be bound (e.g. the port
+    /// is already in use or permission is denied).
     pub fn run(&self) {
         let addr = format!("{}:{}", self.service.host(), self.service.port());
         let (server, _is_https) = crate::server::tls::bind_server(&addr)

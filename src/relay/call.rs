@@ -85,6 +85,10 @@ impl Call {
     }
 
     /// Current call state.
+    ///
+    /// # Panics
+    /// Panics if an internal mutex is poisoned (i.e. another thread panicked
+    /// while holding the lock). This does not occur under normal operation.
     pub fn current_state(&self) -> String {
         self.state.lock().unwrap().clone()
     }
@@ -97,6 +101,10 @@ impl Call {
     /// unrecognised server value parses to [`CallState::Other`] rather than
     /// panicking. Enables `match call.call_state() { CallState::Ended => …, … }`
     /// and `call.call_state().is_terminal()` instead of stringly comparisons.
+    ///
+    /// # Panics
+    /// Panics if an internal mutex is poisoned (i.e. another thread panicked
+    /// while holding the lock). This does not occur under normal operation.
     pub fn call_state(&self) -> super::state_enums::CallState {
         super::state_enums::CallState::from_str(&self.state.lock().unwrap())
     }
@@ -117,6 +125,10 @@ impl Call {
 
     /// Central event router invoked by the Client whenever a server event
     /// targets this call.
+    ///
+    /// # Panics
+    /// Panics if an internal mutex is poisoned (i.e. another thread panicked
+    /// while holding the lock). This does not occur under normal operation.
     pub fn dispatch_event(&self, event: &Event) {
         let event_type = event.event_type();
         let params = event.params();
@@ -176,6 +188,10 @@ impl Call {
     }
 
     /// Register a generic event listener on this call.
+    ///
+    /// # Panics
+    /// Panics if an internal mutex is poisoned (i.e. another thread panicked
+    /// while holding the lock). This does not occur under normal operation.
     pub fn on<F: Fn(&Event, &Call) + Send + Sync + 'static>(&self, cb: F) {
         self.on_event_callbacks
             .lock()
@@ -184,6 +200,10 @@ impl Call {
     }
 
     /// Mark every outstanding action as completed.
+    ///
+    /// # Panics
+    /// Panics if an internal mutex is poisoned (i.e. another thread panicked
+    /// while holding the lock). This does not occur under normal operation.
     pub fn resolve_all_actions(&self) {
         let mut actions = self.actions.lock().unwrap();
         for (_id, action) in actions.drain() {

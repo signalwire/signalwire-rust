@@ -42,6 +42,11 @@ static RESOLVER: Mutex<Option<ResolverFn>> = Mutex::new(None);
 
 /// Install a custom resolver (for tests). Pass `None` to clear. `_`-prefixed
 /// deliberately — a test-only seam, not part of the public API surface.
+///
+/// # Panics
+///
+/// Panics if the internal `RESOLVER` lock is poisoned (another thread
+/// panicked while holding it). This does not occur under normal operation.
 pub fn _set_resolver(resolver: Option<ResolverFn>) {
     *RESOLVER.lock().unwrap() = resolver;
 }

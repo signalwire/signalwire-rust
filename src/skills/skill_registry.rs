@@ -121,12 +121,22 @@ pub struct SkillRegistry;
 
 impl SkillRegistry {
     /// Register a custom skill factory.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the global registry lock is poisoned (another thread
+    /// panicked while holding it). This does not occur under normal operation.
     pub fn register_skill(name: &str, factory: SkillFactory) {
         let mut inner = REGISTRY.lock().expect("skill registry poisoned");
         inner.skills.insert(name.to_string(), factory);
     }
 
     /// Get the factory for a skill by name.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the global registry lock is poisoned (another thread
+    /// panicked while holding it). This does not occur under normal operation.
     pub fn get_factory(name: &str) -> Option<SkillFactory> {
         // We can't return a reference to the factory because it's behind
         // a Mutex, so we check if it exists and then call it through a
@@ -147,6 +157,11 @@ impl SkillRegistry {
     }
 
     /// List all registered skill names (sorted).
+    ///
+    /// # Panics
+    ///
+    /// Panics if the global registry lock is poisoned (another thread
+    /// panicked while holding it). This does not occur under normal operation.
     pub fn list_skills() -> Vec<String> {
         let inner = REGISTRY.lock().expect("skill registry poisoned");
         let mut names: Vec<String> = inner.skills.keys().cloned().collect();
@@ -169,6 +184,11 @@ impl SkillRegistry {
     /// # Errors
     /// Returns an error string if the directory does not exist or is
     /// not a directory.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the global registry lock is poisoned (another thread
+    /// panicked while holding it). This does not occur under normal operation.
     pub fn add_skill_directory(path: &str) -> Result<(), String> {
         let p = PathBuf::from(path);
         if !p.exists() {
@@ -187,6 +207,11 @@ impl SkillRegistry {
 
     /// Read the list of external skill directories registered via
     /// [`SkillRegistry::add_skill_directory`].
+    ///
+    /// # Panics
+    ///
+    /// Panics if the global registry lock is poisoned (another thread
+    /// panicked while holding it). This does not occur under normal operation.
     pub fn external_paths() -> Vec<PathBuf> {
         let inner = REGISTRY.lock().expect("skill registry poisoned");
         inner.external_paths.clone()
