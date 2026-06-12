@@ -9,15 +9,19 @@ name: Doc audit
 #
 # The audit is JSON-driven (audit_docs.py reads port_surface.json) and
 # language-agnostic, so we only need Python here, not a Rust toolchain.
+#
+# NIGHTLY-ONLY. The PR/push path is covered by the unified `scripts/run-ci.sh`
+# (gate 8 DOC-AUDIT, invoked by test.yml) — running it here too would just
+# duplicate that work on every PR. This workflow is kept solely for its cron:
+# the nightly run re-checks doc<->code alignment against a MOVING upstream
+# (porting-sdk's audit_docs.py / python surface), catching drift introduced
+# with no push to this repo. See CI_PLAN.md "no drift local vs CI".
 
 env:
   # Opt into Node.js 24 ahead of GitHub's 2026-06-02 default switch.
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
 on:
-  pull_request:
-  push:
-    branches: [main]
   schedule:
     # Nightly at 06:30 UTC — runs right after the Layer B surface audit so
     # doc drift surfaces alongside surface drift.

@@ -7,15 +7,19 @@ name: Surface audit
 #
 # The enumerator is pure Python (regex over src/**/*.rs) so we don't need
 # a Rust toolchain for this workflow.
+#
+# NIGHTLY-ONLY. The PR/push path is covered by the unified `scripts/run-ci.sh`
+# (gate 9 SURFACE-DIFF, invoked by test.yml) — running it here too would just
+# duplicate that work on every PR. This workflow is kept solely for its cron:
+# the nightly run re-diffs against a MOVING upstream (porting-sdk's
+# python_surface.json, which tracks signalwire-python additions), catching
+# drift introduced with no push to this repo. See CI_PLAN.md "no drift".
 
 env:
   # Opt into Node.js 24 ahead of GitHub's 2026-06-02 default switch.
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
 on:
-  pull_request:
-  push:
-    branches: [main]
   schedule:
     # Nightly at 06:00 UTC — keeps us in sync with porting-sdk updates that
     # follow upstream signalwire-python additions.

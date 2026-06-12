@@ -11,6 +11,13 @@
 #   4. surface-fresh gate                       — porting-sdk check_surface_freshness.py
 #   5. no-cheat gate                            — porting-sdk audit_no_cheat_tests.py
 #   6. emission gate                            — porting-sdk diff_port_emission.py
+#   7. clippy gate                              — cargo clippy (Cargo.toml [lints] deny)
+#   8. doc-audit gate                           — porting-sdk audit_docs.py
+#   9. surface-diff gate                        — porting-sdk diff_port_surface.py
+#
+# Gates 7-9 were previously CI-only (separate doc-audit.yml / surface-audit.yml
+# workflows + an unenforced clippy table); folding them in restores the
+# "run-ci.sh is canonical, CI just invokes it — no drift local vs CI" design.
 
 set -u
 set -o pipefail
@@ -116,6 +123,34 @@ run_gate "EMISSION" "diff_port_emission vs python to_dict() oracle" \
     python3 "$PORTING_SDK_DIR/scripts/diff_port_emission.py" \
         --dump-cmd 'cargo run --quiet --example emit_corpus' \
         --port-repo "$PORT_ROOT"
+
+# Gate 7: clippy — the lint gate. Cargo.toml [lints.clippy] denies `all` +
+# `pedantic` (with the documented per-lint allows), so any new finding is an
+# `error`. `-D warnings` also promotes rustc warnings. `--all-targets` covers
+# lib + bins + tests + examples (the same scope the burn-down cleared).
+run_gate "CLIPPY" "cargo clippy --all-targets (lints gate)" \
+    cargo clippy --all-targets --all-features -- -D warnings
+
+# Gate 8: doc-audit — every method/class referenced in docs/ + examples/ fenced
+# code blocks must resolve to a real symbol in port_surface.json (catches
+# phantom-API doc promises). Mirrors .github/workflows/doc-audit.yml exactly.
+# Uses the COMMITTED port_surface.json — Gate 4 already proved it's fresh.
+run_gate "DOC-AUDIT" "audit_docs vs port_surface.json" \
+    python3 "$PORTING_SDK_DIR/scripts/audit_docs.py" \
+        --root "$PORT_ROOT" \
+        --surface "$PORT_ROOT/port_surface.json" \
+        --ignore "$PORT_ROOT/DOC_AUDIT_IGNORE.md"
+
+# Gate 9: surface-diff — diff the port surface against the Python reference
+# (omissions/additions accounted for in PORT_OMISSIONS.md / PORT_ADDITIONS.md).
+# Gate 4 only checks the committed surface is FRESH (matches a regen); this
+# checks it MATCHES PYTHON. Mirrors .github/workflows/surface-audit.yml.
+run_gate "SURFACE-DIFF" "diff_port_surface vs python_surface.json" \
+    python3 "$PORTING_SDK_DIR/scripts/diff_port_surface.py" \
+        --reference "$PORTING_SDK_DIR/python_surface.json" \
+        --port-surface "$PORT_ROOT/port_surface.json" \
+        --omissions "$PORT_ROOT/PORT_OMISSIONS.md" \
+        --additions "$PORT_ROOT/PORT_ADDITIONS.md"
 
 if [ -z "$FAILED_GATES" ]; then
     echo "==> CI PASS"
