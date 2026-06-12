@@ -133,7 +133,10 @@ impl RecordFormat {
     // companion that returns `Option` (a non-member is `None`, not an error).
     #[allow(clippy::should_implement_trait)]
     pub fn from_str(s: &str) -> Option<RecordFormat> {
-        RecordFormat::all().iter().copied().find(|f| f.as_str() == s)
+        RecordFormat::all()
+            .iter()
+            .copied()
+            .find(|f| f.as_str() == s)
     }
 }
 
@@ -220,7 +223,10 @@ impl RecordDirection {
     // companion that returns `Option` (a non-member is `None`, not an error).
     #[allow(clippy::should_implement_trait)]
     pub fn from_str(s: &str) -> Option<RecordDirection> {
-        RecordDirection::all().iter().copied().find(|d| d.as_str() == s)
+        RecordDirection::all()
+            .iter()
+            .copied()
+            .find(|d| d.as_str() == s)
     }
 }
 
@@ -304,7 +310,10 @@ impl TapDirection {
     // companion that returns `Option` (a non-member is `None`, not an error).
     #[allow(clippy::should_implement_trait)]
     pub fn from_str(s: &str) -> Option<TapDirection> {
-        TapDirection::all().iter().copied().find(|d| d.as_str() == s)
+        TapDirection::all()
+            .iter()
+            .copied()
+            .find(|d| d.as_str() == s)
     }
 }
 
@@ -330,9 +339,7 @@ impl FromStr for TapDirection {
             .iter()
             .copied()
             .find(|d| d.as_str() == s)
-            .ok_or_else(|| {
-                ParseMediaEnumError::new(s, "TapDirection", &["speak", "hear", "both"])
-            })
+            .ok_or_else(|| ParseMediaEnumError::new(s, "TapDirection", &["speak", "hear", "both"]))
     }
 }
 
@@ -546,11 +553,25 @@ mod tests {
         // action as the bare string (real wire output, not just the name).
         let mut enum_fr = FunctionResult::new();
         enum_fr
-            .record_call("rec1", true, RecordFormat::Mp3.as_str(), "both", "", false, 44.0, None, None, None, "")
+            .record_call(
+                "rec1",
+                true,
+                RecordFormat::Mp3.as_str(),
+                "both",
+                "",
+                false,
+                44.0,
+                None,
+                None,
+                None,
+                "",
+            )
             .unwrap();
         let mut str_fr = FunctionResult::new();
         str_fr
-            .record_call("rec1", true, "mp3", "both", "", false, 44.0, None, None, None, "")
+            .record_call(
+                "rec1", true, "mp3", "both", "", false, 44.0, None, None, None, "",
+            )
             .unwrap();
         assert_eq!(enum_fr.to_value(), str_fr.to_value());
 
@@ -590,11 +611,25 @@ mod tests {
 
         let mut enum_fr = FunctionResult::new();
         enum_fr
-            .record_call("rec1", false, "wav", RecordDirection::Listen.as_str(), "", false, 44.0, None, None, None, "")
+            .record_call(
+                "rec1",
+                false,
+                "wav",
+                RecordDirection::Listen.as_str(),
+                "",
+                false,
+                44.0,
+                None,
+                None,
+                None,
+                "",
+            )
             .unwrap();
         let mut str_fr = FunctionResult::new();
         str_fr
-            .record_call("rec1", false, "wav", "listen", "", false, 44.0, None, None, None, "")
+            .record_call(
+                "rec1", false, "wav", "listen", "", false, 44.0, None, None, None, "",
+            )
             .unwrap();
         assert_eq!(enum_fr.to_value(), str_fr.to_value());
 
@@ -607,9 +642,18 @@ mod tests {
 
     #[test]
     fn test_record_direction_from_str_roundtrips_and_rejects_typo() {
-        assert_eq!(RecordDirection::from_str("speak"), Some(RecordDirection::Speak));
-        assert_eq!(RecordDirection::from_str("listen"), Some(RecordDirection::Listen));
-        assert_eq!(RecordDirection::from_str("both"), Some(RecordDirection::Both));
+        assert_eq!(
+            RecordDirection::from_str("speak"),
+            Some(RecordDirection::Speak)
+        );
+        assert_eq!(
+            RecordDirection::from_str("listen"),
+            Some(RecordDirection::Listen)
+        );
+        assert_eq!(
+            RecordDirection::from_str("both"),
+            Some(RecordDirection::Both)
+        );
         // `hear` is valid for tap but NOT for record_call — reject it here.
         assert_eq!(RecordDirection::from_str("hear"), None);
         assert_eq!(RecordDirection::from_str("listenn"), None);
@@ -630,7 +674,14 @@ mod tests {
 
         let mut enum_fr = FunctionResult::new();
         enum_fr
-            .tap("wss://example.com", "t1", TapDirection::Hear.as_str(), "PCMU", 20, "")
+            .tap(
+                "wss://example.com",
+                "t1",
+                TapDirection::Hear.as_str(),
+                "PCMU",
+                20,
+                "",
+            )
             .unwrap();
         let mut str_fr = FunctionResult::new();
         str_fr
@@ -670,7 +721,14 @@ mod tests {
 
         let mut enum_fr = FunctionResult::new();
         enum_fr
-            .tap("wss://example.com", "t1", "both", Codec::Pcma.as_str(), 20, "")
+            .tap(
+                "wss://example.com",
+                "t1",
+                "both",
+                Codec::Pcma.as_str(),
+                20,
+                "",
+            )
             .unwrap();
         let mut str_fr = FunctionResult::new();
         str_fr
@@ -727,9 +785,18 @@ mod tests {
         let err = "ogg".parse::<RecordFormat>().unwrap_err();
         assert_eq!(err.input(), "ogg");
         let msg = err.to_string();
-        assert!(msg.contains("ogg"), "message should echo the bad input: {msg}");
-        assert!(msg.contains("RecordFormat"), "message should name the enum: {msg}");
-        assert!(msg.contains("wav"), "message should list accepted values: {msg}");
+        assert!(
+            msg.contains("ogg"),
+            "message should echo the bad input: {msg}"
+        );
+        assert!(
+            msg.contains("RecordFormat"),
+            "message should name the enum: {msg}"
+        );
+        assert!(
+            msg.contains("wav"),
+            "message should list accepted values: {msg}"
+        );
         // It is a real std::error::Error.
         let _: &dyn std::error::Error = &err;
         // Case-sensitivity preserved through the trait too.
@@ -740,7 +807,10 @@ mod tests {
     fn test_parse_directions_enforce_the_three_vocabularies() {
         // The whole point of two direction enums: `listen` belongs to
         // record_call, `hear` to tap. `.parse()` enforces the split.
-        assert_eq!("listen".parse::<RecordDirection>(), Ok(RecordDirection::Listen));
+        assert_eq!(
+            "listen".parse::<RecordDirection>(),
+            Ok(RecordDirection::Listen)
+        );
         assert!("hear".parse::<RecordDirection>().is_err());
 
         assert_eq!("hear".parse::<TapDirection>(), Ok(TapDirection::Hear));
@@ -758,7 +828,10 @@ mod tests {
         assert_eq!("PCMU".parse::<Codec>(), Ok(Codec::Pcmu));
         assert_eq!(<Codec as FromStr>::from_str("PCMA"), Ok(Codec::Pcma));
         assert!("pcmu".parse::<Codec>().is_err());
-        assert!("OPUS".parse::<Codec>().is_err(), "the 7-value RELAY codec OPUS is not a SWAIG tap codec");
+        assert!(
+            "OPUS".parse::<Codec>().is_err(),
+            "the 7-value RELAY codec OPUS is not a SWAIG tap codec"
+        );
     }
 
     // ── MediaArg<E> wrapper (the typed-or-raw record_call/tap param type) ──
@@ -796,11 +869,25 @@ mod tests {
         // SWML is byte-for-byte identical.
         let mut typed_fr = FunctionResult::new();
         typed_fr
-            .record_call("r", true, RecordFormat::Mp3, RecordDirection::Speak, "", false, 44.0, None, None, None, "")
+            .record_call(
+                "r",
+                true,
+                RecordFormat::Mp3,
+                RecordDirection::Speak,
+                "",
+                false,
+                44.0,
+                None,
+                None,
+                None,
+                "",
+            )
             .unwrap();
         let mut raw_fr = FunctionResult::new();
         raw_fr
-            .record_call("r", true, "mp3", "speak", "", false, 44.0, None, None, None, "")
+            .record_call(
+                "r", true, "mp3", "speak", "", false, 44.0, None, None, None, "",
+            )
             .unwrap();
         assert_eq!(typed_fr.to_value(), raw_fr.to_value());
 
@@ -815,7 +902,14 @@ mod tests {
     fn test_tap_typed_enum_and_raw_str_emit_identical_swml() {
         let mut typed_fr = FunctionResult::new();
         typed_fr
-            .tap("wss://example.com", "t1", TapDirection::Hear, Codec::Pcma, 20, "")
+            .tap(
+                "wss://example.com",
+                "t1",
+                TapDirection::Hear,
+                Codec::Pcma,
+                20,
+                "",
+            )
             .unwrap();
         let mut raw_fr = FunctionResult::new();
         raw_fr
@@ -837,11 +931,25 @@ mod tests {
         // (tap omits direction/codec at default — the typed path must too).
         let mut typed_rec = FunctionResult::new();
         typed_rec
-            .record_call("", false, RecordFormat::Wav, RecordDirection::Both, "", false, 44.0, None, None, None, "")
+            .record_call(
+                "",
+                false,
+                RecordFormat::Wav,
+                RecordDirection::Both,
+                "",
+                false,
+                44.0,
+                None,
+                None,
+                None,
+                "",
+            )
             .unwrap();
         let mut raw_rec = FunctionResult::new();
         raw_rec
-            .record_call("", false, "wav", "both", "", false, 44.0, None, None, None, "")
+            .record_call(
+                "", false, "wav", "both", "", false, 44.0, None, None, None, "",
+            )
             .unwrap();
         assert_eq!(typed_rec.to_value(), raw_rec.to_value());
 
@@ -867,19 +975,24 @@ mod tests {
         // default). The typed enum arm makes this state unrepresentable.
         let mut fr = FunctionResult::new();
         assert_eq!(
-            fr.record_call("", false, "ogg", "both", "", false, 44.0, None, None, None, "")
-                .unwrap_err(),
+            fr.record_call(
+                "", false, "ogg", "both", "", false, 44.0, None, None, None, ""
+            )
+            .unwrap_err(),
             "format must be 'wav', 'mp3', or 'mp4'"
         );
         let mut fr = FunctionResult::new();
         assert_eq!(
-            fr.record_call("", false, "wav", "left", "", false, 44.0, None, None, None, "")
-                .unwrap_err(),
+            fr.record_call(
+                "", false, "wav", "left", "", false, 44.0, None, None, None, ""
+            )
+            .unwrap_err(),
             "direction must be 'speak', 'listen', or 'both'"
         );
         let mut fr = FunctionResult::new();
         assert_eq!(
-            fr.tap("wss://x", "", "sideways", "PCMU", 20, "").unwrap_err(),
+            fr.tap("wss://x", "", "sideways", "PCMU", 20, "")
+                .unwrap_err(),
             "direction must be one of ['speak', 'hear', 'both']"
         );
         let mut fr = FunctionResult::new();

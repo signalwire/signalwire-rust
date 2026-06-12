@@ -138,11 +138,7 @@ impl<'a> VideoRooms<'a> {
     /// Returns [`SignalWireRestError`] if the request cannot reach the Space
     /// (transport failure), the API responds with a non-2xx status (404 if
     /// `room_id` is unknown), or the response body is not valid JSON.
-    pub fn update(
-        &self,
-        room_id: &str,
-        params: &Value,
-    ) -> Result<Value, SignalWireRestError> {
+    pub fn update(&self, room_id: &str, params: &Value) -> Result<Value, SignalWireRestError> {
         let p = join(&[&self.base_path, room_id]);
         self.client.put(&p, params)
     }
@@ -546,11 +542,7 @@ impl<'a> VideoStreams<'a> {
     /// Returns [`SignalWireRestError`] if the request cannot reach the Space
     /// (transport failure), the API responds with a non-2xx status (404 if
     /// `stream_id` is unknown), or the response body is not valid JSON.
-    pub fn update(
-        &self,
-        stream_id: &str,
-        params: &Value,
-    ) -> Result<Value, SignalWireRestError> {
+    pub fn update(&self, stream_id: &str, params: &Value) -> Result<Value, SignalWireRestError> {
         let p = join(&[&self.base_path, stream_id]);
         self.client.put(&p, params)
     }

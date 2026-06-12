@@ -1,4 +1,4 @@
-use serde_json::{json, Map, Value};
+use serde_json::{Map, Value, json};
 
 use crate::agent::AgentBase;
 use crate::skills::skill_base::{SkillBase, SkillParams};
@@ -44,12 +44,16 @@ impl SkillBase for SwmlTransfer {
     fn register_tools(&self, agent: &mut AgentBase) {
         let tool_name = self.get_tool_name("transfer_call");
         let transfers = self.sp.get_object("transfers");
-        let description = self.sp.get_str_or("description", "Transfer call based on pattern matching");
+        let description = self
+            .sp
+            .get_str_or("description", "Transfer call based on pattern matching");
         let param_name = self.sp.get_str_or("parameter_name", "transfer_type");
-        let param_description =
-            self.sp.get_str_or("parameter_description", "The type of transfer to perform");
-        let default_message =
-            self.sp.get_str_or("default_message", "Transferring your call, please hold.");
+        let param_description = self
+            .sp
+            .get_str_or("parameter_description", "The type of transfer to perform");
+        let default_message = self
+            .sp
+            .get_str_or("default_message", "Transferring your call, please hold.");
 
         let transfer_keys: Vec<Value> = transfers.keys().map(|k| json!(k)).collect();
 
@@ -194,10 +198,7 @@ impl SkillBase for SwmlTransfer {
         let mut destinations = Vec::new();
 
         for (pattern, config) in &transfers {
-            let message = config
-                .get("message")
-                .and_then(|v| v.as_str())
-                .unwrap_or("");
+            let message = config.get("message").and_then(|v| v.as_str()).unwrap_or("");
             let entry = if message.is_empty() {
                 pattern.clone()
             } else {

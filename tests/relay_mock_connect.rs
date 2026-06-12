@@ -182,10 +182,7 @@ fn test_reconnect_with_protocol_string_includes_protocol_in_frame() {
     // matches the issued value (we'll add support in the SDK below).
     let connects = relay_mocktest::journal_recv(Some("signalwire.connect"));
     let has_resume = connects.iter().any(|e| {
-        e.frame["params"]
-            .get("protocol")
-            .and_then(Value::as_str)
-            == Some(issued.as_str())
+        e.frame["params"].get("protocol").and_then(Value::as_str) == Some(issued.as_str())
     });
     assert!(
         has_resume,

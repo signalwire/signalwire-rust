@@ -1,4 +1,4 @@
-use serde_json::{json, Map, Value};
+use serde_json::{Map, Value, json};
 
 use crate::swaig::media_enums::{Codec, MediaArg, RecordDirection, RecordFormat, TapDirection};
 
@@ -184,7 +184,8 @@ impl FunctionResult {
     /// cannot arise from the well-formed `Value` produced by `to_value`.
     #[must_use]
     pub fn to_json(&self) -> String {
-        serde_json::to_string(&self.to_value()).expect("FunctionResult serialisation should not fail")
+        serde_json::to_string(&self.to_value())
+            .expect("FunctionResult serialisation should not fail")
     }
 
     /// Build the canonical SWML document that wraps a single verb and push it
@@ -394,8 +395,7 @@ impl FunctionResult {
             && !isolated
         {
             // Simple string context switch.
-            self.actions
-                .push(json!({"context_switch": system_prompt}));
+            self.actions.push(json!({"context_switch": system_prompt}));
             return self;
         }
 
@@ -416,7 +416,8 @@ impl FunctionResult {
             ctx.insert("isolated".to_string(), json!(true));
         }
 
-        self.actions.push(json!({"context_switch": Value::Object(ctx)}));
+        self.actions
+            .push(json!({"context_switch": Value::Object(ctx)}));
         self
     }
 
@@ -651,7 +652,9 @@ impl FunctionResult {
             Value::String(s) => {
                 // Raw SWML string — parse to an object so the transfer key can be
                 // added; on parse failure fall back to the raw_swml wrapper.
-                if let Ok(Value::Object(m)) = serde_json::from_str::<Value>(&s) { m } else {
+                if let Ok(Value::Object(m)) = serde_json::from_str::<Value>(&s) {
+                    m
+                } else {
                     let mut m = Map::new();
                     m.insert("raw_swml".to_string(), Value::String(s));
                     m
@@ -677,7 +680,8 @@ impl FunctionResult {
             swml_data.insert("transfer".to_string(), json!("true"));
         }
 
-        self.actions.push(json!({ "SWML": Value::Object(swml_data) }));
+        self.actions
+            .push(json!({ "SWML": Value::Object(swml_data) }));
         self
     }
 
@@ -757,7 +761,10 @@ impl FunctionResult {
 
         let valid_record = ["do-not-record", "record-from-start"];
         if !valid_record.contains(&record) {
-            return Err(format!("record must be one of {}", render_list(&valid_record)));
+            return Err(format!(
+                "record must be one of {}",
+                render_list(&valid_record)
+            ));
         }
 
         let valid_trim = ["trim-silence", "do-not-trim"];
@@ -943,7 +950,10 @@ impl FunctionResult {
         }
         let valid_codecs = ["PCMU", "PCMA"];
         if !valid_codecs.contains(&codec) {
-            return Err(format!("codec must be one of {}", render_list(&valid_codecs)));
+            return Err(format!(
+                "codec must be one of {}",
+                render_list(&valid_codecs)
+            ));
         }
         if rtp_ptime <= 0 {
             return Err("rtp_ptime must be a positive integer".to_string());
@@ -1294,7 +1304,6 @@ impl Default for FunctionResult {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1348,7 +1357,8 @@ mod tests {
         // Parity: post_process only appears in to_dict() when there is at
         // least one action (Python to_dict: `if self.post_process and self.action`).
         let mut fr = FunctionResult::new();
-        fr.set_post_process(true).add_action(json!({"test": "value"}));
+        fr.set_post_process(true)
+            .add_action(json!({"test": "value"}));
         assert_eq!(fr.to_value()["post_process"], true);
     }
 
@@ -1383,7 +1393,10 @@ mod tests {
     fn test_add_action() {
         let mut fr = FunctionResult::new();
         fr.add_action(json!({"play": {"url": "https://example.com/audio.mp3"}}));
-        assert_eq!(action0(&fr), json!({"play": {"url": "https://example.com/audio.mp3"}}));
+        assert_eq!(
+            action0(&fr),
+            json!({"play": {"url": "https://example.com/audio.mp3"}})
+        );
     }
 
     #[test]
@@ -1426,8 +1439,15 @@ mod tests {
         let a = action0(&fr);
         assert_eq!(a["transfer"], "true");
         assert_eq!(a["SWML"]["version"], "1.0.0");
-        assert_eq!(a["SWML"]["sections"]["main"][0]["connect"]["to"], "+15551234567");
-        assert!(a["SWML"]["sections"]["main"][0]["connect"].get("from").is_none());
+        assert_eq!(
+            a["SWML"]["sections"]["main"][0]["connect"]["to"],
+            "+15551234567"
+        );
+        assert!(
+            a["SWML"]["sections"]["main"][0]["connect"]
+                .get("from")
+                .is_none()
+        );
     }
 
     #[test]
@@ -1453,7 +1473,10 @@ mod tests {
         assert_eq!(a["SWML"]["version"], "1.0.0");
         let main = &a["SWML"]["sections"]["main"];
         assert_eq!(main[0], json!({"set": {"ai_response": "Goodbye!"}}));
-        assert_eq!(main[1], json!({"transfer": {"dest": "https://example.com/swml"}}));
+        assert_eq!(
+            main[1],
+            json!({"transfer": {"dest": "https://example.com/swml"}})
+        );
         // response untouched by swml_transfer.
         assert_eq!(fr.to_value()["response"], "Transferring");
     }
@@ -1610,7 +1633,10 @@ mod tests {
         fr.swml_user_event(event.clone());
         let a = action0(&fr);
         assert_eq!(a["SWML"]["version"], "1.0.0");
-        assert_eq!(a["SWML"]["sections"]["main"][0]["user_event"]["event"], event);
+        assert_eq!(
+            a["SWML"]["sections"]["main"][0]["user_event"]["event"],
+            event
+        );
     }
 
     #[test]
@@ -1719,8 +1745,10 @@ mod tests {
         // Python record_call(): SWML-wrapped; always emits stereo/format/
         // direction/beep/input_sensitivity; control_id absent at default.
         let mut fr = FunctionResult::new();
-        fr.record_call("", false, "wav", "both", "", false, 44.0, None, None, None, "")
-            .unwrap();
+        fr.record_call(
+            "", false, "wav", "both", "", false, 44.0, None, None, None, "",
+        )
+        .unwrap();
         let rec = &swml_main(&fr)[0]["record_call"];
         assert_eq!(rec["stereo"], false);
         assert_eq!(rec["format"], "wav");
@@ -1737,8 +1765,17 @@ mod tests {
     fn test_record_call_custom_params() {
         let mut fr = FunctionResult::new();
         fr.record_call(
-            "rec-1", true, "mp3", "speak", "#", true, 50.0,
-            Some(10.0), Some(5.0), Some(600.0), "https://example.com/rec-status",
+            "rec-1",
+            true,
+            "mp3",
+            "speak",
+            "#",
+            true,
+            50.0,
+            Some(10.0),
+            Some(5.0),
+            Some(600.0),
+            "https://example.com/rec-status",
         )
         .unwrap();
         let rec = &swml_main(&fr)[0]["record_call"];
@@ -1758,8 +1795,10 @@ mod tests {
     #[test]
     fn test_record_call_accepts_mp4() {
         let mut fr = FunctionResult::new();
-        fr.record_call("", false, "mp4", "both", "", false, 44.0, None, None, None, "")
-            .unwrap();
+        fr.record_call(
+            "", false, "mp4", "both", "", false, 44.0, None, None, None, "",
+        )
+        .unwrap();
         assert_eq!(swml_main(&fr)[0]["record_call"]["format"], "mp4");
     }
 
@@ -1767,7 +1806,9 @@ mod tests {
     fn test_record_call_invalid_format_err() {
         let mut fr = FunctionResult::new();
         let err = fr
-            .record_call("", false, "ogg", "both", "", false, 44.0, None, None, None, "")
+            .record_call(
+                "", false, "ogg", "both", "", false, 44.0, None, None, None, "",
+            )
             .unwrap_err();
         assert_eq!(err, "format must be 'wav', 'mp3', or 'mp4'");
         assert!(fr.to_value().get("action").is_none());
@@ -1777,7 +1818,9 @@ mod tests {
     fn test_record_call_invalid_direction_err() {
         let mut fr = FunctionResult::new();
         let err = fr
-            .record_call("", false, "wav", "left", "", false, 44.0, None, None, None, "")
+            .record_call(
+                "", false, "wav", "left", "", false, 44.0, None, None, None, "",
+            )
             .unwrap_err();
         assert_eq!(err, "direction must be 'speak', 'listen', or 'both'");
     }
@@ -1786,7 +1829,10 @@ mod tests {
     fn test_stop_record_call_with_and_without_id() {
         let mut with = FunctionResult::new();
         with.stop_record_call("rec-1");
-        assert_eq!(swml_main(&with)[0]["stop_record_call"]["control_id"], "rec-1");
+        assert_eq!(
+            swml_main(&with)[0]["stop_record_call"]["control_id"],
+            "rec-1"
+        );
 
         let mut without = FunctionResult::new();
         without.stop_record_call("");
@@ -1799,7 +1845,10 @@ mod tests {
     fn test_add_dynamic_hints() {
         let mut fr = FunctionResult::new();
         fr.add_dynamic_hints(vec![json!("Cabby"), json!({"pattern": "cab bee"})]);
-        assert_eq!(action0(&fr)["add_dynamic_hints"].as_array().unwrap().len(), 2);
+        assert_eq!(
+            action0(&fr)["add_dynamic_hints"].as_array().unwrap().len(),
+            2
+        );
     }
 
     #[test]
@@ -1860,7 +1909,10 @@ mod tests {
 
         let mut off = FunctionResult::new();
         off.enable_functions_on_timeout(false);
-        assert_eq!(action0(&off), json!({"functions_on_speaker_timeout": false}));
+        assert_eq!(
+            action0(&off),
+            json!({"functions_on_speaker_timeout": false})
+        );
     }
 
     #[test]
@@ -1911,7 +1963,8 @@ mod tests {
     #[test]
     fn test_execute_swml_string_valid_json() {
         let mut fr = FunctionResult::new();
-        let s = serde_json::to_string(&json!({"version": "1.0.0", "sections": {"main": []}})).unwrap();
+        let s =
+            serde_json::to_string(&json!({"version": "1.0.0", "sections": {"main": []}})).unwrap();
         fr.execute_swml(json!(s), false);
         assert_eq!(action0(&fr)["SWML"]["version"], "1.0.0");
     }
@@ -1923,8 +1976,24 @@ mod tests {
         name: &str,
     ) -> Result<&'a mut FunctionResult, String> {
         fr.join_conference(
-            name, false, "true", true, false, None, 250, "do-not-record", None,
-            "trim-silence", None, None, None, "POST", None, "POST", "completed", None,
+            name,
+            false,
+            "true",
+            true,
+            false,
+            None,
+            250,
+            "do-not-record",
+            None,
+            "trim-silence",
+            None,
+            None,
+            None,
+            "POST",
+            None,
+            "POST",
+            "completed",
+            None,
         )
     }
 
@@ -1939,11 +2008,23 @@ mod tests {
     fn test_join_conference_full_object_form() {
         let mut fr = FunctionResult::new();
         fr.join_conference(
-            "team-meeting", true, "onEnter", false, true,
-            Some("https://example.com/hold-music"), 50, "record-from-start",
-            Some("us-east"), "do-not-trim", Some("call-id-123"),
-            Some("start end"), Some("https://example.com/callback"), "GET",
-            Some("https://example.com/rec-callback"), "GET", "in-progress",
+            "team-meeting",
+            true,
+            "onEnter",
+            false,
+            true,
+            Some("https://example.com/hold-music"),
+            50,
+            "record-from-start",
+            Some("us-east"),
+            "do-not-trim",
+            Some("call-id-123"),
+            Some("start end"),
+            Some("https://example.com/callback"),
+            "GET",
+            Some("https://example.com/rec-callback"),
+            "GET",
+            "in-progress",
             Some(json!({"key": "value"})),
         )
         .unwrap();
@@ -1962,7 +2043,10 @@ mod tests {
         assert_eq!(jc["status_callback_event"], "start end");
         assert_eq!(jc["status_callback"], "https://example.com/callback");
         assert_eq!(jc["status_callback_method"], "GET");
-        assert_eq!(jc["recording_status_callback"], "https://example.com/rec-callback");
+        assert_eq!(
+            jc["recording_status_callback"],
+            "https://example.com/rec-callback"
+        );
         assert_eq!(jc["recording_status_callback_method"], "GET");
         assert_eq!(jc["recording_status_callback_event"], "in-progress");
         assert_eq!(jc["result"], json!({"key": "value"}));
@@ -1973,12 +2057,30 @@ mod tests {
         let mut fr = FunctionResult::new();
         let err = fr
             .join_conference(
-                "conf", false, "invalid", true, false, None, 250, "do-not-record",
-                None, "trim-silence", None, None, None, "POST", None, "POST",
-                "completed", None,
+                "conf",
+                false,
+                "invalid",
+                true,
+                false,
+                None,
+                250,
+                "do-not-record",
+                None,
+                "trim-silence",
+                None,
+                None,
+                None,
+                "POST",
+                None,
+                "POST",
+                "completed",
+                None,
             )
             .unwrap_err();
-        assert_eq!(err, "beep must be one of ['true', 'false', 'onEnter', 'onExit']");
+        assert_eq!(
+            err,
+            "beep must be one of ['true', 'false', 'onEnter', 'onExit']"
+        );
         assert!(fr.to_value().get("action").is_none());
     }
 
@@ -1988,9 +2090,24 @@ mod tests {
             let mut fr = FunctionResult::new();
             let err = fr
                 .join_conference(
-                    "conf", false, "true", true, false, None, bad, "do-not-record",
-                    None, "trim-silence", None, None, None, "POST", None, "POST",
-                    "completed", None,
+                    "conf",
+                    false,
+                    "true",
+                    true,
+                    false,
+                    None,
+                    bad,
+                    "do-not-record",
+                    None,
+                    "trim-silence",
+                    None,
+                    None,
+                    None,
+                    "POST",
+                    None,
+                    "POST",
+                    "completed",
+                    None,
                 )
                 .unwrap_err();
             assert_eq!(err, "max_participants must be a positive integer <= 250");
@@ -2002,11 +2119,30 @@ mod tests {
         let mut fr = FunctionResult::new();
         let err = fr
             .join_conference(
-                "conf", false, "true", true, false, None, 250, "always", None,
-                "trim-silence", None, None, None, "POST", None, "POST", "completed", None,
+                "conf",
+                false,
+                "true",
+                true,
+                false,
+                None,
+                250,
+                "always",
+                None,
+                "trim-silence",
+                None,
+                None,
+                None,
+                "POST",
+                None,
+                "POST",
+                "completed",
+                None,
             )
             .unwrap_err();
-        assert_eq!(err, "record must be one of ['do-not-record', 'record-from-start']");
+        assert_eq!(
+            err,
+            "record must be one of ['do-not-record', 'record-from-start']"
+        );
     }
 
     #[test]
@@ -2014,8 +2150,24 @@ mod tests {
         let mut fr = FunctionResult::new();
         let err = fr
             .join_conference(
-                "conf", false, "true", true, false, None, 250, "do-not-record", None,
-                "bad-value", None, None, None, "POST", None, "POST", "completed", None,
+                "conf",
+                false,
+                "true",
+                true,
+                false,
+                None,
+                250,
+                "do-not-record",
+                None,
+                "bad-value",
+                None,
+                None,
+                None,
+                "POST",
+                None,
+                "POST",
+                "completed",
+                None,
             )
             .unwrap_err();
         assert_eq!(err, "trim must be one of ['trim-silence', 'do-not-trim']");
@@ -2026,8 +2178,24 @@ mod tests {
         let mut fr = FunctionResult::new();
         let err = fr
             .join_conference(
-                "conf", false, "true", true, false, None, 250, "do-not-record", None,
-                "trim-silence", None, None, None, "PUT", None, "POST", "completed", None,
+                "conf",
+                false,
+                "true",
+                true,
+                false,
+                None,
+                250,
+                "do-not-record",
+                None,
+                "trim-silence",
+                None,
+                None,
+                None,
+                "PUT",
+                None,
+                "POST",
+                "completed",
+                None,
             )
             .unwrap_err();
         assert_eq!(err, "status_callback_method must be one of ['GET', 'POST']");
@@ -2035,19 +2203,44 @@ mod tests {
         let mut fr2 = FunctionResult::new();
         let err2 = fr2
             .join_conference(
-                "conf", false, "true", true, false, None, 250, "do-not-record", None,
-                "trim-silence", None, None, None, "POST", None, "DELETE", "completed", None,
+                "conf",
+                false,
+                "true",
+                true,
+                false,
+                None,
+                250,
+                "do-not-record",
+                None,
+                "trim-silence",
+                None,
+                None,
+                None,
+                "POST",
+                None,
+                "DELETE",
+                "completed",
+                None,
             )
             .unwrap_err();
-        assert_eq!(err2, "recording_status_callback_method must be one of ['GET', 'POST']");
+        assert_eq!(
+            err2,
+            "recording_status_callback_method must be one of ['GET', 'POST']"
+        );
     }
 
     #[test]
     fn test_join_conference_empty_and_whitespace_name_err() {
         let mut fr = FunctionResult::new();
-        assert_eq!(jc_defaults(&mut fr, "").unwrap_err(), "name cannot be empty");
+        assert_eq!(
+            jc_defaults(&mut fr, "").unwrap_err(),
+            "name cannot be empty"
+        );
         let mut fr2 = FunctionResult::new();
-        assert_eq!(jc_defaults(&mut fr2, "   ").unwrap_err(), "name cannot be empty");
+        assert_eq!(
+            jc_defaults(&mut fr2, "   ").unwrap_err(),
+            "name cannot be empty"
+        );
     }
 
     // ── join_room / sip_refer ─────────────────────────────────────────────
@@ -2063,7 +2256,10 @@ mod tests {
     fn test_sip_refer() {
         let mut fr = FunctionResult::new();
         fr.sip_refer("sip:alice@example.com");
-        assert_eq!(swml_main(&fr)[0]["sip_refer"]["to_uri"], "sip:alice@example.com");
+        assert_eq!(
+            swml_main(&fr)[0]["sip_refer"]["to_uri"],
+            "sip:alice@example.com"
+        );
     }
 
     // ── tap ───────────────────────────────────────────────────────────────
@@ -2073,7 +2269,8 @@ mod tests {
         // Python tap(): only `uri` always present; direction/codec/rtp_ptime
         // omitted at their defaults; SWML-wrapped.
         let mut fr = FunctionResult::new();
-        fr.tap("rtp://192.168.1.1:5000", "", "both", "PCMU", 20, "").unwrap();
+        fr.tap("rtp://192.168.1.1:5000", "", "both", "PCMU", 20, "")
+            .unwrap();
         let tap = &swml_main(&fr)[0]["tap"];
         assert_eq!(tap["uri"], "rtp://192.168.1.1:5000");
         assert!(tap.get("direction").is_none());
@@ -2086,8 +2283,15 @@ mod tests {
     #[test]
     fn test_tap_custom_params() {
         let mut fr = FunctionResult::new();
-        fr.tap("ws://example.com/tap", "my-tap-1", "speak", "PCMA", 30, "https://example.com/status")
-            .unwrap();
+        fr.tap(
+            "ws://example.com/tap",
+            "my-tap-1",
+            "speak",
+            "PCMA",
+            30,
+            "https://example.com/status",
+        )
+        .unwrap();
         let tap = &swml_main(&fr)[0]["tap"];
         assert_eq!(tap["uri"], "ws://example.com/tap");
         assert_eq!(tap["control_id"], "my-tap-1");
@@ -2100,14 +2304,17 @@ mod tests {
     #[test]
     fn test_tap_direction_hear_allowed() {
         let mut fr = FunctionResult::new();
-        fr.tap("rtp://1.2.3.4:5000", "", "hear", "PCMU", 20, "").unwrap();
+        fr.tap("rtp://1.2.3.4:5000", "", "hear", "PCMU", 20, "")
+            .unwrap();
         assert_eq!(swml_main(&fr)[0]["tap"]["direction"], "hear");
     }
 
     #[test]
     fn test_tap_invalid_direction_err() {
         let mut fr = FunctionResult::new();
-        let err = fr.tap("rtp://1.2.3.4:5000", "", "invalid", "PCMU", 20, "").unwrap_err();
+        let err = fr
+            .tap("rtp://1.2.3.4:5000", "", "invalid", "PCMU", 20, "")
+            .unwrap_err();
         assert_eq!(err, "direction must be one of ['speak', 'hear', 'both']");
         assert!(fr.to_value().get("action").is_none());
     }
@@ -2115,7 +2322,9 @@ mod tests {
     #[test]
     fn test_tap_invalid_codec_err() {
         let mut fr = FunctionResult::new();
-        let err = fr.tap("rtp://1.2.3.4:5000", "", "both", "G729", 20, "").unwrap_err();
+        let err = fr
+            .tap("rtp://1.2.3.4:5000", "", "both", "G729", 20, "")
+            .unwrap_err();
         assert_eq!(err, "codec must be one of ['PCMU', 'PCMA']");
     }
 
@@ -2123,7 +2332,9 @@ mod tests {
     fn test_tap_invalid_rtp_ptime_err() {
         for bad in [0_i64, -10] {
             let mut fr = FunctionResult::new();
-            let err = fr.tap("rtp://1.2.3.4:5000", "", "both", "PCMU", bad, "").unwrap_err();
+            let err = fr
+                .tap("rtp://1.2.3.4:5000", "", "both", "PCMU", bad, "")
+                .unwrap_err();
             assert_eq!(err, "rtp_ptime must be a positive integer");
         }
     }
@@ -2144,8 +2355,15 @@ mod tests {
     #[test]
     fn test_send_sms_with_body() {
         let mut fr = FunctionResult::new();
-        fr.send_sms("+15551234567", "+15559876543", "Hello from AI", vec![], vec![], "")
-            .unwrap();
+        fr.send_sms(
+            "+15551234567",
+            "+15559876543",
+            "Hello from AI",
+            vec![],
+            vec![],
+            "",
+        )
+        .unwrap();
         let sms = &swml_main(&fr)[0]["send_sms"];
         assert_eq!(sms["to_number"], "+15551234567");
         assert_eq!(sms["from_number"], "+15559876543");
@@ -2156,8 +2374,15 @@ mod tests {
     #[test]
     fn test_send_sms_media_only_omits_body() {
         let mut fr = FunctionResult::new();
-        fr.send_sms("+15551234567", "+15559876543", "", vec!["https://example.com/image.png"], vec![], "")
-            .unwrap();
+        fr.send_sms(
+            "+15551234567",
+            "+15559876543",
+            "",
+            vec!["https://example.com/image.png"],
+            vec![],
+            "",
+        )
+        .unwrap();
         let sms = &swml_main(&fr)[0]["send_sms"];
         assert!(sms.get("body").is_none());
         assert_eq!(sms["media"], json!(["https://example.com/image.png"]));
@@ -2166,8 +2391,15 @@ mod tests {
     #[test]
     fn test_send_sms_tags_and_region() {
         let mut fr = FunctionResult::new();
-        fr.send_sms("+15551234567", "+15559876543", "Tagged", vec![], vec!["support", "urgent"], "us-east")
-            .unwrap();
+        fr.send_sms(
+            "+15551234567",
+            "+15559876543",
+            "Tagged",
+            vec![],
+            vec!["support", "urgent"],
+            "us-east",
+        )
+        .unwrap();
         let sms = &swml_main(&fr)[0]["send_sms"];
         assert_eq!(sms["tags"], json!(["support", "urgent"]));
         assert_eq!(sms["region"], "us-east");
@@ -2190,9 +2422,25 @@ mod tests {
     // wire string "true"; the Rust port takes the pre-rendered &str.
     fn pay_defaults(fr: &mut FunctionResult, connector: &str) {
         fr.pay(
-            connector, "dtmf", "", "credit-card", 5, 1, true, "true", 0,
-            "reusable", "", "usd", "en-US", "woman", "", "visa mastercard amex",
-            Value::Null, Value::Null, "",
+            connector,
+            "dtmf",
+            "",
+            "credit-card",
+            5,
+            1,
+            true,
+            "true",
+            0,
+            "reusable",
+            "",
+            "usd",
+            "en-US",
+            "woman",
+            "",
+            "visa mastercard amex",
+            Value::Null,
+            Value::Null,
+            "",
         );
     }
 
@@ -2204,7 +2452,10 @@ mod tests {
         // First verb sets ai_response (default status message).
         assert!(main[0]["set"]["ai_response"].is_string());
         let p = &main[1]["pay"];
-        assert_eq!(p["payment_connector_url"], "https://pay.example.com/connector");
+        assert_eq!(
+            p["payment_connector_url"],
+            "https://pay.example.com/connector"
+        );
         assert_eq!(p["input"], "dtmf");
         assert_eq!(p["payment_method"], "credit-card");
         assert_eq!(p["timeout"], "5");
@@ -2233,10 +2484,25 @@ mod tests {
     fn test_pay_all_custom_params() {
         let mut fr = FunctionResult::new();
         fr.pay(
-            "https://pay.example.com", "voice", "https://status.example.com",
-            "credit-card", 10, 3, false, "90210", 5, "one-time", "49.99", "eur",
-            "fr-FR", "man", "Monthly subscription", "visa amex",
-            Value::Null, Value::Null, "Payment processed.",
+            "https://pay.example.com",
+            "voice",
+            "https://status.example.com",
+            "credit-card",
+            10,
+            3,
+            false,
+            "90210",
+            5,
+            "one-time",
+            "49.99",
+            "eur",
+            "fr-FR",
+            "man",
+            "Monthly subscription",
+            "visa amex",
+            Value::Null,
+            Value::Null,
+            "Payment processed.",
         );
         let main = swml_main(&fr);
         let p = &main[1]["pay"];
@@ -2263,9 +2529,25 @@ mod tests {
         let parameters = json!([{"name": "store_id", "value": "123"}]);
         let mut fr = FunctionResult::new();
         fr.pay(
-            "https://pay.example.com", "dtmf", "", "credit-card", 5, 1, true, "true",
-            0, "reusable", "", "usd", "en-US", "woman", "", "visa mastercard amex",
-            parameters.clone(), prompts.clone(), "",
+            "https://pay.example.com",
+            "dtmf",
+            "",
+            "credit-card",
+            5,
+            1,
+            true,
+            "true",
+            0,
+            "reusable",
+            "",
+            "usd",
+            "en-US",
+            "woman",
+            "",
+            "visa mastercard amex",
+            parameters.clone(),
+            prompts.clone(),
+            "",
         );
         let p = &swml_main(&fr)[1]["pay"];
         assert_eq!(p["prompts"], prompts);
@@ -2276,9 +2558,25 @@ mod tests {
     fn test_pay_postal_code_false() {
         let mut fr = FunctionResult::new();
         fr.pay(
-            "https://pay.example.com", "dtmf", "", "credit-card", 5, 1, true, "false",
-            0, "reusable", "", "usd", "en-US", "woman", "", "visa mastercard amex",
-            Value::Null, Value::Null, "",
+            "https://pay.example.com",
+            "dtmf",
+            "",
+            "credit-card",
+            5,
+            1,
+            true,
+            "false",
+            0,
+            "reusable",
+            "",
+            "usd",
+            "en-US",
+            "woman",
+            "",
+            "visa mastercard amex",
+            Value::Null,
+            Value::Null,
+            "",
         );
         assert_eq!(swml_main(&fr)[1]["pay"]["postal_code"], "false");
     }
@@ -2313,7 +2611,10 @@ mod tests {
         // call_id / node_id are TOP-LEVEL siblings of params.
         assert_eq!(rpc["call_id"], "call-123");
         assert_eq!(rpc["node_id"], "node-456");
-        assert_eq!(rpc["params"], json!({"role": "system", "message_text": "Hello"}));
+        assert_eq!(
+            rpc["params"],
+            json!({"role": "system", "message_text": "Hello"})
+        );
     }
 
     #[test]
@@ -2328,7 +2629,12 @@ mod tests {
     #[test]
     fn test_rpc_dial_basic() {
         let mut fr = FunctionResult::new();
-        fr.rpc_dial("+15551234567", "+15559876543", "https://example.com/call-agent", "phone");
+        fr.rpc_dial(
+            "+15551234567",
+            "+15559876543",
+            "https://example.com/call-agent",
+            "phone",
+        );
         let rpc = &swml_main(&fr)[0]["execute_rpc"];
         assert_eq!(rpc["method"], "dial");
         let params = &rpc["params"];
@@ -2343,7 +2649,12 @@ mod tests {
     #[test]
     fn test_rpc_dial_custom_device_type() {
         let mut fr = FunctionResult::new();
-        fr.rpc_dial("+15551234567", "+15559876543", "https://example.com/swml", "sip");
+        fr.rpc_dial(
+            "+15551234567",
+            "+15559876543",
+            "https://example.com/swml",
+            "sip",
+        );
         let params = &swml_main(&fr)[0]["execute_rpc"]["params"];
         assert_eq!(params["devices"]["type"], "sip");
     }
@@ -2363,10 +2674,7 @@ mod tests {
     fn test_rpc_ai_message_custom_role() {
         let mut fr = FunctionResult::new();
         fr.rpc_ai_message("call-xyz", "User said hello", "user");
-        assert_eq!(
-            swml_main(&fr)[0]["execute_rpc"]["params"]["role"],
-            "user"
-        );
+        assert_eq!(swml_main(&fr)[0]["execute_rpc"]["params"]["role"], "user");
     }
 
     #[test]
@@ -2385,7 +2693,10 @@ mod tests {
         // Python action key is "user_input".
         let mut fr = FunctionResult::new();
         fr.simulate_user_input("I want to book a flight");
-        assert_eq!(action0(&fr), json!({"user_input": "I want to book a flight"}));
+        assert_eq!(
+            action0(&fr),
+            json!({"user_input": "I want to book a flight"})
+        );
     }
 
     // ── Payment helpers (static) ──────────────────────────────────────────
@@ -2393,7 +2704,8 @@ mod tests {
     #[test]
     fn test_create_payment_prompt_basic() {
         let actions = json!([{"type": "Say", "phrase": "Enter your card number"}]);
-        let prompt = FunctionResult::create_payment_prompt("payment-card-number", actions.clone(), "", "");
+        let prompt =
+            FunctionResult::create_payment_prompt("payment-card-number", actions.clone(), "", "");
         assert_eq!(prompt["for"], "payment-card-number");
         assert_eq!(prompt["actions"], actions);
         assert!(prompt.get("card_type").is_none());
@@ -2404,7 +2716,10 @@ mod tests {
     fn test_create_payment_prompt_with_card_and_error_type() {
         let actions = json!([{"type": "Say", "phrase": "Try again"}]);
         let prompt = FunctionResult::create_payment_prompt(
-            "payment-card-number", actions, "visa", "timeout",
+            "payment-card-number",
+            actions,
+            "visa",
+            "timeout",
         );
         assert_eq!(prompt["card_type"], "visa");
         assert_eq!(prompt["error_type"], "timeout");
@@ -2415,7 +2730,10 @@ mod tests {
         let say = FunctionResult::create_payment_action("Say", "Enter card number");
         assert_eq!(say, json!({"type": "Say", "phrase": "Enter card number"}));
         let play = FunctionResult::create_payment_action("Play", "https://example.com/prompt.mp3");
-        assert_eq!(play, json!({"type": "Play", "phrase": "https://example.com/prompt.mp3"}));
+        assert_eq!(
+            play,
+            json!({"type": "Play", "phrase": "https://example.com/prompt.mp3"})
+        );
     }
 
     #[test]
@@ -2462,7 +2780,10 @@ mod tests {
         assert_eq!(acts.len(), 3);
         assert_eq!(acts[0], json!({"say": "Please hold"}));
         assert_eq!(acts[1], json!({"hold": 60}));
-        assert_eq!(acts[2], json!({"set_global_data": {"status": "processing"}}));
+        assert_eq!(
+            acts[2],
+            json!({"set_global_data": {"status": "processing"}})
+        );
     }
 
     #[test]

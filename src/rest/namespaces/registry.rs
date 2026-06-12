@@ -196,11 +196,7 @@ impl<'a> RegistryCampaigns<'a> {
     /// (transport failure), the API responds with a non-2xx status (e.g. 404
     /// for an unknown `campaign_id` or 422 when `params` fails validation), or
     /// the response body is not valid JSON.
-    pub fn update(
-        &self,
-        campaign_id: &str,
-        params: &Value,
-    ) -> Result<Value, SignalWireRestError> {
+    pub fn update(&self, campaign_id: &str, params: &Value) -> Result<Value, SignalWireRestError> {
         let p = join(&[&self.base_path, campaign_id]);
         self.client.put(&p, params)
     }

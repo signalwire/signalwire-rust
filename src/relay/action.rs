@@ -240,14 +240,8 @@ impl Action {
             "control_id".to_string(),
             Value::String(self.control_id.clone()),
         );
-        params.insert(
-            "call_id".to_string(),
-            Value::String(self.call_id.clone()),
-        );
-        params.insert(
-            "node_id".to_string(),
-            Value::String(self.node_id.clone()),
-        );
+        params.insert("call_id".to_string(), Value::String(self.call_id.clone()));
+        params.insert("node_id".to_string(), Value::String(self.node_id.clone()));
         for (k, v) in extra {
             params.insert(k, v);
         }
@@ -353,11 +347,15 @@ impl RecordAction {
     }
 
     pub fn duration(&self) -> Option<f64> {
-        self.payload().get("duration").and_then(serde_json::Value::as_f64)
+        self.payload()
+            .get("duration")
+            .and_then(serde_json::Value::as_f64)
     }
 
     pub fn size(&self) -> Option<u64> {
-        self.payload().get("size").and_then(serde_json::Value::as_u64)
+        self.payload()
+            .get("size")
+            .and_then(serde_json::Value::as_u64)
     }
 }
 

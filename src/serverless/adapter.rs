@@ -188,8 +188,7 @@ impl Adapter {
             })
             .unwrap_or_default();
 
-        let (status, resp_headers, resp_body) =
-            agent.handle_request(&method, path, &headers, body);
+        let (status, resp_headers, resp_body) = agent.handle_request(&method, path, &headers, body);
 
         serde_json::json!({
             "status": status,
@@ -283,27 +282,37 @@ mod tests {
 
         // -- lambda --
         clear_detect_env();
-        unsafe { env::set_var("AWS_LAMBDA_FUNCTION_NAME", "my-func"); }
+        unsafe {
+            env::set_var("AWS_LAMBDA_FUNCTION_NAME", "my-func");
+        }
         assert_eq!(Adapter::detect(), RuntimeEnvironment::Lambda);
 
         // -- gcf (FUNCTION_TARGET) --
         clear_detect_env();
-        unsafe { env::set_var("FUNCTION_TARGET", "myHandler"); }
+        unsafe {
+            env::set_var("FUNCTION_TARGET", "myHandler");
+        }
         assert_eq!(Adapter::detect(), RuntimeEnvironment::Gcf);
 
         // -- gcf (K_SERVICE) --
         clear_detect_env();
-        unsafe { env::set_var("K_SERVICE", "my-service"); }
+        unsafe {
+            env::set_var("K_SERVICE", "my-service");
+        }
         assert_eq!(Adapter::detect(), RuntimeEnvironment::Gcf);
 
         // -- azure --
         clear_detect_env();
-        unsafe { env::set_var("AZURE_FUNCTIONS_ENVIRONMENT", "Production"); }
+        unsafe {
+            env::set_var("AZURE_FUNCTIONS_ENVIRONMENT", "Production");
+        }
         assert_eq!(Adapter::detect(), RuntimeEnvironment::Azure);
 
         // -- cgi --
         clear_detect_env();
-        unsafe { env::set_var("GATEWAY_INTERFACE", "CGI/1.1"); }
+        unsafe {
+            env::set_var("GATEWAY_INTERFACE", "CGI/1.1");
+        }
         assert_eq!(Adapter::detect(), RuntimeEnvironment::Cgi);
 
         // cleanup

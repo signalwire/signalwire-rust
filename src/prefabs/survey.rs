@@ -1,4 +1,4 @@
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 use crate::agent::{AgentBase, AgentOptions};
 use crate::swaig::FunctionResult;
@@ -82,7 +82,10 @@ impl SurveyAgent {
         let mut q_bullets: Vec<String> = Vec::new();
         for q in &questions {
             let text = q.get("text").and_then(|v| v.as_str()).unwrap_or("?");
-            let qtype = q.get("type").and_then(|v| v.as_str()).unwrap_or("open_ended");
+            let qtype = q
+                .get("type")
+                .and_then(|v| v.as_str())
+                .unwrap_or("open_ended");
             let required = q
                 .get("required")
                 .and_then(serde_json::Value::as_bool)
@@ -110,15 +113,12 @@ impl SurveyAgent {
                     .get("question_id")
                     .and_then(|v| v.as_str())
                     .unwrap_or("");
-                let answer = args
-                    .get("answer")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("");
+                let answer = args.get("answer").and_then(|v| v.as_str()).unwrap_or("");
 
                 // Find the question
-                let question = q_clone.iter().find(|q| {
-                    q.get("id").and_then(|v| v.as_str()) == Some(question_id)
-                });
+                let question = q_clone
+                    .iter()
+                    .find(|q| q.get("id").and_then(|v| v.as_str()) == Some(question_id));
 
                 let Some(question) = question else {
                     return FunctionResult::with_response(&format!(
@@ -138,11 +138,9 @@ impl SurveyAgent {
                             .and_then(serde_json::Value::as_i64)
                             .unwrap_or(5);
                         match answer.parse::<i64>() {
-                            Ok(val) if val >= 1 && val <= scale => {
-                                FunctionResult::with_response(&format!(
-                                    "Valid rating: {val}/{scale}"
-                                ))
-                            }
+                            Ok(val) if val >= 1 && val <= scale => FunctionResult::with_response(
+                                &format!("Valid rating: {val}/{scale}"),
+                            ),
                             _ => FunctionResult::with_response(&format!(
                                 "Invalid rating. Please provide a number between 1 and {scale}."
                             )),
@@ -157,11 +155,12 @@ impl SurveyAgent {
                         let lower_answer = answer.trim().to_lowercase();
                         for choice in &choices {
                             if let Some(c) = choice.as_str()
-                                && c.trim().to_lowercase() == lower_answer {
-                                    return FunctionResult::with_response(&format!(
-                                        "Valid choice: {c}"
-                                    ));
-                                }
+                                && c.trim().to_lowercase() == lower_answer
+                            {
+                                return FunctionResult::with_response(&format!(
+                                    "Valid choice: {c}"
+                                ));
+                            }
                         }
                         let choice_list: Vec<&str> =
                             choices.iter().filter_map(|v| v.as_str()).collect();
@@ -173,9 +172,7 @@ impl SurveyAgent {
                     "yes_no" => {
                         let normalized = answer.trim().to_lowercase();
                         if ["yes", "no", "y", "n"].contains(&normalized.as_str()) {
-                            FunctionResult::with_response(&format!(
-                                "Valid response: {normalized}"
-                            ))
+                            FunctionResult::with_response(&format!("Valid response: {normalized}"))
                         } else {
                             FunctionResult::with_response("Please respond with yes or no.")
                         }
@@ -185,9 +182,7 @@ impl SurveyAgent {
                         if answer.trim().is_empty() {
                             FunctionResult::with_response("Please provide a non-empty response.")
                         } else {
-                            FunctionResult::with_response(&format!(
-                                "Response accepted: {answer}"
-                            ))
+                            FunctionResult::with_response(&format!("Response accepted: {answer}"))
                         }
                     }
                 }
@@ -208,13 +203,8 @@ impl SurveyAgent {
                     .get("question_id")
                     .and_then(|v| v.as_str())
                     .unwrap_or("");
-                let answer = args
-                    .get("answer")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("");
-                FunctionResult::with_response(&format!(
-                    "Survey answer for {question_id}: {answer}"
-                ))
+                let answer = args.get("answer").and_then(|v| v.as_str()).unwrap_or("");
+                FunctionResult::with_response(&format!("Survey answer for {question_id}: {answer}"))
             }),
             false,
         );
@@ -269,7 +259,9 @@ mod tests {
         let agent = SurveyAgent::new("test", sample_questions(), None);
         let args = serde_json::Map::new();
         let raw = serde_json::Map::new();
-        let result = agent.agent().on_function_call("validate_response", &args, &raw);
+        let result = agent
+            .agent()
+            .on_function_call("validate_response", &args, &raw);
         assert!(result.is_some());
     }
 
@@ -279,9 +271,10 @@ mod tests {
         let mut args = serde_json::Map::new();
         args.insert("question_id".to_string(), json!("q1"));
         args.insert("answer".to_string(), json!("3"));
-        let result = agent
-            .agent()
-            .on_function_call("validate_response", &args, &serde_json::Map::new());
+        let result =
+            agent
+                .agent()
+                .on_function_call("validate_response", &args, &serde_json::Map::new());
         assert!(result.is_some());
         let json_str = result.unwrap().to_json();
         assert!(json_str.contains("Valid rating"));
@@ -293,9 +286,10 @@ mod tests {
         let mut args = serde_json::Map::new();
         args.insert("question_id".to_string(), json!("q2"));
         args.insert("answer".to_string(), json!("yes"));
-        let result = agent
-            .agent()
-            .on_function_call("validate_response", &args, &serde_json::Map::new());
+        let result =
+            agent
+                .agent()
+                .on_function_call("validate_response", &args, &serde_json::Map::new());
         assert!(result.is_some());
         let json_str = result.unwrap().to_json();
         assert!(json_str.contains("Valid response"));

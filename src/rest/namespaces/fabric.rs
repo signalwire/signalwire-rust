@@ -117,10 +117,7 @@ impl<'a> Fabric<'a> {
 
     /// cXML applications — read/update/delete only (no create).
     pub fn cxml_applications(&self) -> CxmlApplicationsResource<'a> {
-        CxmlApplicationsResource::new(
-            self.client,
-            &format!("{BASE}/cxml_applications"),
-        )
+        CxmlApplicationsResource::new(self.client, &format!("{BASE}/cxml_applications"))
     }
 
     /// Generic resource operations across every fabric resource type.
@@ -393,11 +390,7 @@ impl<'a> CallFlowsResource<'a> {
     /// (transport failure), the API responds with a non-2xx status (notably
     /// 404 if `resource_id` is unknown or 422 if the server rejects the
     /// supplied fields), or the response body is not valid JSON.
-    pub fn update(
-        &self,
-        resource_id: &str,
-        params: &Value,
-    ) -> Result<Value, SignalWireRestError> {
+    pub fn update(&self, resource_id: &str, params: &Value) -> Result<Value, SignalWireRestError> {
         let p = join(&[&self.base_path, resource_id]);
         self.client.put(&p, params)
     }
@@ -484,7 +477,8 @@ impl<'a> ConferenceRoomsResource<'a> {
     }
 
     fn singular(&self) -> String {
-        self.base_path.replace("/conference_rooms", "/conference_room")
+        self.base_path
+            .replace("/conference_rooms", "/conference_room")
     }
 
     /// # Errors
@@ -520,11 +514,7 @@ impl<'a> ConferenceRoomsResource<'a> {
     /// (transport failure), the API responds with a non-2xx status (notably
     /// 404 if `resource_id` is unknown or 422 if the server rejects the
     /// supplied fields), or the response body is not valid JSON.
-    pub fn update(
-        &self,
-        resource_id: &str,
-        params: &Value,
-    ) -> Result<Value, SignalWireRestError> {
+    pub fn update(&self, resource_id: &str, params: &Value) -> Result<Value, SignalWireRestError> {
         let p = join(&[&self.base_path, resource_id]);
         self.client.put(&p, params)
     }
@@ -601,11 +591,7 @@ impl<'a> CxmlApplicationsResource<'a> {
     /// (transport failure), the API responds with a non-2xx status (notably
     /// 404 if `resource_id` is unknown or 422 if the server rejects the
     /// supplied fields), or the response body is not valid JSON.
-    pub fn update(
-        &self,
-        resource_id: &str,
-        params: &Value,
-    ) -> Result<Value, SignalWireRestError> {
+    pub fn update(&self, resource_id: &str, params: &Value) -> Result<Value, SignalWireRestError> {
         let p = join(&[&self.base_path, resource_id]);
         self.client.put(&p, params)
     }
@@ -737,12 +723,8 @@ impl<'a> FabricTokens<'a> {
     /// (transport failure), the API responds with a non-2xx status (notably
     /// 422 if the server rejects the supplied fields), or the response body is
     /// not valid JSON.
-    pub fn create_subscriber_token(
-        &self,
-        params: &Value,
-    ) -> Result<Value, SignalWireRestError> {
-        self.client
-            .post("/api/fabric/subscribers/tokens", params)
+    pub fn create_subscriber_token(&self, params: &Value) -> Result<Value, SignalWireRestError> {
+        self.client.post("/api/fabric/subscribers/tokens", params)
     }
 
     /// # Errors
@@ -750,10 +732,7 @@ impl<'a> FabricTokens<'a> {
     /// (transport failure), the API responds with a non-2xx status (notably
     /// 422 if the supplied token cannot be refreshed), or the response body is
     /// not valid JSON.
-    pub fn refresh_subscriber_token(
-        &self,
-        params: &Value,
-    ) -> Result<Value, SignalWireRestError> {
+    pub fn refresh_subscriber_token(&self, params: &Value) -> Result<Value, SignalWireRestError> {
         self.client
             .post("/api/fabric/subscribers/tokens/refresh", params)
     }
@@ -765,10 +744,7 @@ impl<'a> FabricTokens<'a> {
     /// (transport failure), the API responds with a non-2xx status (notably
     /// 422 if the server rejects the supplied fields), or the response body is
     /// not valid JSON.
-    pub fn create_invite_token(
-        &self,
-        params: &Value,
-    ) -> Result<Value, SignalWireRestError> {
+    pub fn create_invite_token(&self, params: &Value) -> Result<Value, SignalWireRestError> {
         self.client.post("/api/fabric/subscriber/invites", params)
     }
 
@@ -777,10 +753,7 @@ impl<'a> FabricTokens<'a> {
     /// (transport failure), the API responds with a non-2xx status (notably
     /// 422 if the server rejects the supplied fields), or the response body is
     /// not valid JSON.
-    pub fn create_guest_token(
-        &self,
-        params: &Value,
-    ) -> Result<Value, SignalWireRestError> {
+    pub fn create_guest_token(&self, params: &Value) -> Result<Value, SignalWireRestError> {
         self.client.post("/api/fabric/guests/tokens", params)
     }
 
@@ -789,10 +762,7 @@ impl<'a> FabricTokens<'a> {
     /// (transport failure), the API responds with a non-2xx status (notably
     /// 422 if the server rejects the supplied fields), or the response body is
     /// not valid JSON.
-    pub fn create_embed_token(
-        &self,
-        params: &Value,
-    ) -> Result<Value, SignalWireRestError> {
+    pub fn create_embed_token(&self, params: &Value) -> Result<Value, SignalWireRestError> {
         self.client.post("/api/fabric/embeds/tokens", params)
     }
 }

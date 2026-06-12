@@ -66,10 +66,16 @@ impl Call {
                     .to_string(),
             ),
             device: Mutex::new(
-                params.get("device").cloned().unwrap_or(Value::Object(serde_json::Map::new())),
+                params
+                    .get("device")
+                    .cloned()
+                    .unwrap_or(Value::Object(serde_json::Map::new())),
             ),
             peer: Mutex::new(
-                params.get("peer").cloned().unwrap_or(Value::Object(serde_json::Map::new())),
+                params
+                    .get("peer")
+                    .cloned()
+                    .unwrap_or(Value::Object(serde_json::Map::new())),
             ),
             end_reason: Mutex::new(None),
             context: params
@@ -115,7 +121,8 @@ impl Call {
     pub fn repr(&self) -> String {
         format!(
             "Call(call_id={:?}, state={:?})",
-            self.call_id, self.current_state()
+            self.call_id,
+            self.current_state()
         )
     }
 
@@ -155,9 +162,10 @@ impl Call {
 
         // ── connect events carry peer info ───────────────────────────
         if event_type == "calling.call.connect"
-            && let Some(p) = params.get("peer") {
-                *self.peer.lock().unwrap() = p.clone();
-            }
+            && let Some(p) = params.get("peer")
+        {
+            *self.peer.lock().unwrap() = p.clone();
+        }
 
         // ── route by control_id to the owning Action ─────────────────
         if let Some(control_id) = event.control_id() {
@@ -170,13 +178,11 @@ impl Call {
 
                 // Check whether the action has reached a terminal state
                 if let Some(action_state) = params.get("state").and_then(|v| v.as_str())
-                    && constants::is_action_terminal(event_type, action_state) {
-                        action.resolve(None);
-                        self.actions
-                            .lock()
-                            .unwrap()
-                            .remove(control_id);
-                    }
+                    && constants::is_action_terminal(event_type, action_state)
+                {
+                    action.resolve(None);
+                    self.actions.lock().unwrap().remove(control_id);
+                }
             }
         }
 
@@ -193,10 +199,7 @@ impl Call {
     /// Panics if an internal mutex is poisoned (i.e. another thread panicked
     /// while holding the lock). This does not occur under normal operation.
     pub fn on<F: Fn(&Event, &Call) + Send + Sync + 'static>(&self, cb: F) {
-        self.on_event_callbacks
-            .lock()
-            .unwrap()
-            .push(Arc::new(cb));
+        self.on_event_callbacks.lock().unwrap().push(Arc::new(cb));
     }
 
     /// Mark every outstanding action as completed.
@@ -248,7 +251,10 @@ impl Call {
     }
 
     pub fn denoise_stop(&self) -> Value {
-        self.execute("calling.denoise.stop", Value::Object(serde_json::Map::new()))
+        self.execute(
+            "calling.denoise.stop",
+            Value::Object(serde_json::Map::new()),
+        )
     }
 
     pub fn transfer(&self, params: Value) -> Value {
@@ -260,7 +266,10 @@ impl Call {
     }
 
     pub fn leave_conference(&self) -> Value {
-        self.execute("calling.conference.leave", Value::Object(serde_json::Map::new()))
+        self.execute(
+            "calling.conference.leave",
+            Value::Object(serde_json::Map::new()),
+        )
     }
 
     pub fn echo_call(&self) -> Value {
@@ -272,7 +281,10 @@ impl Call {
     }
 
     pub fn clear_digit_bindings(&self) -> Value {
-        self.execute("calling.clear_digit_bindings", Value::Object(serde_json::Map::new()))
+        self.execute(
+            "calling.clear_digit_bindings",
+            Value::Object(serde_json::Map::new()),
+        )
     }
 
     pub fn live_transcribe(&self, params: Value) -> Value {
@@ -623,9 +635,7 @@ impl Call {
     /// Send a simple (non-action) RPC call.
     fn execute(&self, method: &str, extra: Value) -> Value {
         let mut base = self.base_params();
-        if let (Some(base_map), Some(extra_map)) =
-            (base.as_object_mut(), extra.as_object())
-        {
+        if let (Some(base_map), Some(extra_map)) = (base.as_object_mut(), extra.as_object()) {
             for (k, v) in extra_map {
                 base_map.insert(k.clone(), v.clone());
             }
@@ -638,18 +648,16 @@ impl Call {
     }
 
     /// Spin up a long-running action tracked by a unique `control_id`.
-    fn start_action(
-        &self,
-        method: &str,
-        stop_method: &str,
-        extra: Value,
-    ) -> Arc<Action> {
+    fn start_action(&self, method: &str, stop_method: &str, extra: Value) -> Arc<Action> {
         let control_id = generate_uuid();
         let call_id = self.call_id.as_deref().unwrap_or("");
         let node_id = self.node_id.as_deref().unwrap_or("");
 
         let action = Arc::new(Action::with_stop_method(
-            &control_id, call_id, node_id, stop_method,
+            &control_id,
+            call_id,
+            node_id,
+            stop_method,
         ));
 
         self.actions
@@ -767,10 +775,7 @@ mod tests {
             json!({"state": "ended", "end_reason": "hangup"}),
         );
         call.dispatch_event(&ev);
-        assert_eq!(
-            *call.end_reason.lock().unwrap(),
-            Some("hangup".to_string())
-        );
+        assert_eq!(*call.end_reason.lock().unwrap(), Some("hangup".to_string()));
     }
 
     #[test]

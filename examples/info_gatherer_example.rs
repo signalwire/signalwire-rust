@@ -17,7 +17,9 @@ fn main() {
         Some("/contact"),
     );
 
-    agent.agent_mut().add_language("English", "en-US", "inworld.Mark");
+    agent
+        .agent_mut()
+        .add_language("English", "en-US", "inworld.Mark");
 
     agent.agent_mut().prompt_add_section(
         "Introduction",
@@ -26,7 +28,9 @@ fn main() {
         vec![],
     );
 
-    agent.agent_mut().set_post_prompt("Summarize the questions and answers in a concise manner.");
+    agent
+        .agent_mut()
+        .set_post_prompt("Summarize the questions and answers in a concise manner.");
 
     let (user, pass) = agent.agent().get_basic_auth_credentials();
     println!("InfoGatherer agent");

@@ -35,7 +35,7 @@ use std::process::{Command, Stdio};
 use std::sync::{Arc, Mutex, MutexGuard, OnceLock};
 use std::time::{Duration, Instant};
 
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use signalwire::relay::Client as RelayClient;
 
 /// Default WebSocket port for the Rust slot in the parallel rollout.
@@ -90,11 +90,7 @@ impl CrossBinaryLock {
             .write(true)
             .truncate(false)
             .open(CROSS_BINARY_LOCK_PATH)
-            .unwrap_or_else(|e| {
-                panic!(
-                    "relay_mocktest: open {CROSS_BINARY_LOCK_PATH}: {e}"
-                )
-            });
+            .unwrap_or_else(|e| panic!("relay_mocktest: open {CROSS_BINARY_LOCK_PATH}: {e}"));
         // LOCK_EX: exclusive lock. Blocks until acquired. Released on
         // close (i.e. when the File drops at the end of the test).
         let fd = file.as_raw_fd();
@@ -141,7 +137,9 @@ fn wait_for_no_sessions(budget: Duration) {
     let url = format!("{}/__mock__/sessions", h.http_url);
     let deadline = Instant::now() + budget;
     while Instant::now() < deadline {
-        let Ok(mut resp) = ureq::get(&url).call() else { return }; // server unreachable — let later code panic with detail
+        let Ok(mut resp) = ureq::get(&url).call() else {
+            return;
+        }; // server unreachable — let later code panic with detail
         let body: Value = match resp.body_mut().read_json::<Value>() {
             Ok(v) => v,
             Err(_) => return,
@@ -460,18 +458,20 @@ pub fn begin() -> TestGuard {
 fn resolve_ws_port() -> u16 {
     if let Ok(raw) = std::env::var("MOCK_RELAY_PORT")
         && let Ok(p) = raw.parse::<u16>()
-            && p != 0 {
-                return p;
-            }
+        && p != 0
+    {
+        return p;
+    }
     DEFAULT_WS_PORT
 }
 
 fn resolve_http_port(ws_port: u16) -> u16 {
     if let Ok(raw) = std::env::var("MOCK_RELAY_HTTP_PORT")
         && let Ok(p) = raw.parse::<u16>()
-            && p != 0 {
-                return p;
-            }
+        && p != 0
+    {
+        return p;
+    }
     // Default convention: WS_PORT + 1000.
     ws_port.saturating_add(1000)
 }
@@ -523,11 +523,15 @@ fn probe_health(http_url: &str) -> bool {
         .timeout_global(Some(Duration::from_secs(2)))
         .build()
         .into();
-    let Ok(mut resp) = agent.get(&url).call() else { return false };
+    let Ok(mut resp) = agent.get(&url).call() else {
+        return false;
+    };
     if resp.status().as_u16() != 200 {
         return false;
     }
-    let Ok(body) = resp.body_mut().read_to_string() else { return false };
+    let Ok(body) = resp.body_mut().read_to_string() else {
+        return false;
+    };
     let parsed: serde_json::Result<Value> = serde_json::from_str(&body);
     match parsed {
         Ok(v) => v.get("schemas_loaded").is_some(),
@@ -626,15 +630,14 @@ fn libc_setsid() -> i32 {
 // ---------------------------------------------------------------------------
 
 fn decode_journal(value: &Value) -> Vec<JournalEntry> {
-    let Some(arr) = value.as_array() else { return Vec::new() };
+    let Some(arr) = value.as_array() else {
+        return Vec::new();
+    };
     arr.iter().map(decode_entry).collect()
 }
 
 fn decode_entry(v: &Value) -> JournalEntry {
-    let timestamp = v
-        .get("timestamp")
-        .and_then(Value::as_f64)
-        .unwrap_or(0.0);
+    let timestamp = v.get("timestamp").and_then(Value::as_f64).unwrap_or(0.0);
     let direction = v
         .get("direction")
         .and_then(Value::as_str)

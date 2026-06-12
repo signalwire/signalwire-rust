@@ -13,7 +13,7 @@
 #[path = "common/mod.rs"]
 mod common;
 
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 const CALLS_PATH: &str = "/api/calling/calls";
 
@@ -392,7 +392,10 @@ fn test_calling_collect() {
     let c = common::mocktest::client();
     let body = c
         .calling()
-        .collect("call-1", json!({"initial_timeout": 5, "digits": {"max": 4}}))
+        .collect(
+            "call-1",
+            json!({"initial_timeout": 5, "digits": {"max": 4}}),
+        )
         .expect("collect");
     assert!(body.is_object());
     assert!(body.as_object().unwrap().contains_key("id"));
@@ -474,7 +477,10 @@ fn test_calling_detect() {
     let c = common::mocktest::client();
     let body = c
         .calling()
-        .detect("call-1", json!({"detect": {"type": "machine", "params": {}}}))
+        .detect(
+            "call-1",
+            json!({"detect": {"type": "machine", "params": {}}}),
+        )
         .expect("detect");
     assert!(body.is_object());
     assert!(body.as_object().unwrap().contains_key("id"));
@@ -490,10 +496,7 @@ fn test_calling_detect() {
         .get("detect")
         .and_then(Value::as_object)
         .expect("detect sub-object");
-    assert_eq!(
-        detect.get("type").and_then(Value::as_str),
-        Some("machine")
-    );
+    assert_eq!(detect.get("type").and_then(Value::as_str), Some("machine"));
 }
 
 #[test]
@@ -767,7 +770,10 @@ fn test_calling_ai_hold() {
 fn test_calling_ai_unhold() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let body = c.calling().ai_unhold("call-1", json!({})).expect("ai_unhold");
+    let body = c
+        .calling()
+        .ai_unhold("call-1", json!({}))
+        .expect("ai_unhold");
     assert!(body.is_object());
     assert!(body.as_object().unwrap().contains_key("id"));
 
@@ -926,9 +932,7 @@ fn test_calling_refer() {
     );
     assert_eq!(body_obj.get("id").and_then(Value::as_str), Some("call-1"));
     assert_eq!(
-        params_from_body(body_obj)
-            .get("to")
-            .and_then(Value::as_str),
+        params_from_body(body_obj).get("to").and_then(Value::as_str),
         Some("sip:other@example.com")
     );
 }

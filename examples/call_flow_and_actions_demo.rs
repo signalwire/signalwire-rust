@@ -8,9 +8,9 @@
 // the example's readability, not help it.
 #![allow(clippy::too_many_lines)]
 
+use serde_json::json;
 use signalwire::agent::{AgentBase, AgentOptions};
 use signalwire::swaig::FunctionResult;
-use serde_json::json;
 
 fn main() {
     let mut agent = AgentBase::new(AgentOptions {
@@ -26,16 +26,23 @@ fn main() {
         "You are a call center demo agent that showcases call-flow features.",
         vec![],
     );
-    agent.prompt_add_section("Instructions", "", vec![
-        "Use transfer_to_support when the caller asks to speak to a person",
-        "Use send_confirmation to send the caller an SMS",
-        "Use start_recording when the caller agrees to be recorded",
-        "Use play_hold_music to play background music",
-        "Use adjust_speech when the caller mentions unusual names or terms",
-    ]);
+    agent.prompt_add_section(
+        "Instructions",
+        "",
+        vec![
+            "Use transfer_to_support when the caller asks to speak to a person",
+            "Use send_confirmation to send the caller an SMS",
+            "Use start_recording when the caller agrees to be recorded",
+            "Use play_hold_music to play background music",
+            "Use adjust_speech when the caller mentions unusual names or terms",
+        ],
+    );
 
     // -- Call flow verbs --
-    agent.add_pre_answer_verb("play", json!({"url": "say:Please hold while we connect you."}));
+    agent.add_pre_answer_verb(
+        "play",
+        json!({"url": "say:Please hold while we connect you."}),
+    );
     agent.add_post_answer_verb("record", json!({"stereo": true}));
     agent.add_post_ai_verb("hangup", json!({}));
 
@@ -51,9 +58,8 @@ fn main() {
         "Transfer the call to a support agent",
         json!({}),
         Box::new(|_args, _raw| {
-            let mut result = FunctionResult::with_response(
-                "I'll transfer you to our support team now."
-            );
+            let mut result =
+                FunctionResult::with_response("I'll transfer you to our support team now.");
             result.set_post_process(true);
             result.add_action(json!({
                 "SWML": {

@@ -9,7 +9,7 @@
 #[path = "common/mod.rs"]
 mod common;
 
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -83,7 +83,10 @@ fn test_dial_journal_records_calling_dial_frame() {
     let devices = p.get("devices").and_then(Value::as_array);
     assert!(devices.is_some(), "devices should be array");
     let inner_first = &devices.unwrap()[0][0];
-    assert_eq!(inner_first.get("type").and_then(Value::as_str), Some("phone"));
+    assert_eq!(
+        inner_first.get("type").and_then(Value::as_str),
+        Some("phone")
+    );
     client.disconnect();
 }
 
@@ -111,7 +114,10 @@ fn test_dial_with_max_duration_in_frame() {
         .next()
         .expect("expected calling.dial frame");
     assert_eq!(
-        entry.inner_params().get("max_duration").and_then(Value::as_u64),
+        entry
+            .inner_params()
+            .get("max_duration")
+            .and_then(Value::as_u64),
         Some(300)
     );
     client.disconnect();
@@ -238,22 +244,27 @@ fn test_dial_winner_carries_dial_winner_true() {
     assert!(!sends.is_empty(), "no calling.call.dial event was pushed");
     let answered: Vec<_> = sends
         .iter()
-        .filter(|e| {
-            e.event_params()
-                .get("dial_state")
-                .and_then(Value::as_str)
-                == Some("answered")
-        })
+        .filter(|e| e.event_params().get("dial_state").and_then(Value::as_str) == Some("answered"))
         .collect();
-    assert_eq!(answered.len(), 1, "expected exactly one answered dial event");
+    assert_eq!(
+        answered.len(),
+        1,
+        "expected exactly one answered dial event"
+    );
     let final_evt = answered[0];
     let inner = final_evt.event_params();
     assert_eq!(
-        inner.get("call").and_then(|c| c.get("dial_winner")).and_then(Value::as_bool),
+        inner
+            .get("call")
+            .and_then(|c| c.get("dial_winner"))
+            .and_then(Value::as_bool),
         Some(true)
     );
     assert_eq!(
-        inner.get("call").and_then(|c| c.get("call_id")).and_then(Value::as_str),
+        inner
+            .get("call")
+            .and_then(|c| c.get("call_id"))
+            .and_then(Value::as_str),
         Some("WIN-ID")
     );
     client.disconnect();
@@ -284,14 +295,8 @@ fn test_dial_losers_get_state_events() {
     let state_events = relay_mocktest::journal_send(Some("calling.call.state"));
     let l1_states: Vec<&str> = state_events
         .iter()
-        .filter(|e| {
-            e.event_params().get("call_id").and_then(Value::as_str) == Some("L1")
-        })
-        .filter_map(|e| {
-            e.event_params()
-                .get("call_state")
-                .and_then(Value::as_str)
-        })
+        .filter(|e| e.event_params().get("call_id").and_then(Value::as_str) == Some("L1"))
+        .filter_map(|e| e.event_params().get("call_state").and_then(Value::as_str))
         .collect();
     assert!(
         l1_states.contains(&"ended"),
@@ -326,7 +331,11 @@ fn test_dial_devices_serial_two_legs_on_wire() {
         .into_iter()
         .next()
         .expect("calling.dial frame");
-    let devs_arr = entry.inner_params().get("devices").and_then(Value::as_array).unwrap();
+    let devs_arr = entry
+        .inner_params()
+        .get("devices")
+        .and_then(Value::as_array)
+        .unwrap();
     assert_eq!(devs_arr.len(), 1);
     assert_eq!(devs_arr[0].as_array().unwrap().len(), 2);
     let first_to = devs_arr[0][0]
@@ -359,7 +368,11 @@ fn test_dial_devices_parallel_two_legs_on_wire() {
         .into_iter()
         .next()
         .expect("calling.dial frame");
-    let devs_arr = entry.inner_params().get("devices").and_then(Value::as_array).unwrap();
+    let devs_arr = entry
+        .inner_params()
+        .get("devices")
+        .and_then(Value::as_array)
+        .unwrap();
     assert_eq!(devs_arr.len(), 2);
     client.disconnect();
 }
@@ -390,9 +403,7 @@ fn test_dial_records_call_state_progression_on_winner() {
     let state_events = relay_mocktest::journal_send(Some("calling.call.state"));
     let winner_states: Vec<&str> = state_events
         .iter()
-        .filter(|e| {
-            e.event_params().get("call_id").and_then(Value::as_str) == Some("WIN-PROG")
-        })
+        .filter(|e| e.event_params().get("call_id").and_then(Value::as_str) == Some("WIN-PROG"))
         .filter_map(|e| e.event_params().get("call_state").and_then(Value::as_str))
         .collect();
     assert!(winner_states.contains(&"created"));
@@ -488,10 +499,7 @@ fn test_dialed_call_can_play() {
     let plays = relay_mocktest::journal_recv(Some("calling.play"));
     assert!(!plays.is_empty(), "no calling.play frame in journal");
     let p = plays.last().unwrap().inner_params();
-    assert_eq!(
-        p.get("call_id").and_then(Value::as_str),
-        Some("WIN-PLAY")
-    );
+    assert_eq!(p.get("call_id").and_then(Value::as_str), Some("WIN-PLAY"));
     let play_arr = p.get("play").and_then(Value::as_array).unwrap();
     assert_eq!(play_arr[0].get("type").and_then(Value::as_str), Some("tts"));
     client.disconnect();
@@ -633,10 +641,9 @@ fn test_dial_auto_generates_uuid_tag_when_omitted() {
         .expect("dial");
     let auto_tag = join.join().unwrap();
     assert_eq!(call.call_id.as_deref(), Some("auto-tag-winner"));
-    let uuid_re = regex::Regex::new(
-        r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
-    )
-    .unwrap();
+    let uuid_re =
+        regex::Regex::new(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
+            .unwrap();
     assert!(
         uuid_re.is_match(&auto_tag),
         "expected UUID-shaped tag, got {auto_tag:?}"

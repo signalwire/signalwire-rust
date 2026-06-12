@@ -212,12 +212,16 @@ fn reconstruct_url_from_request(headers: &HeaderMap, uri: &axum::http::Uri) -> S
     let host = header_str(headers, "x-forwarded-host")
         .or_else(|| header_str(headers, "host"))
         .unwrap_or("unknown");
-    let path_and_query = uri.path_and_query().map_or("/", http::uri::PathAndQuery::as_str);
+    let path_and_query = uri
+        .path_and_query()
+        .map_or("/", http::uri::PathAndQuery::as_str);
     format!("{proto}://{host}{path_and_query}")
 }
 
 fn header_str<'a>(headers: &'a HeaderMap, name: &str) -> Option<&'a str> {
-    headers.get(name).and_then(|v: &HeaderValue| v.to_str().ok())
+    headers
+        .get(name)
+        .and_then(|v: &HeaderValue| v.to_str().ok())
 }
 
 #[cfg(test)]

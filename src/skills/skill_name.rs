@@ -166,7 +166,10 @@ impl SkillName {
     // companion that returns `Option` (a non-member is `None`, not an error).
     #[allow(clippy::should_implement_trait)]
     pub fn from_str(name: &str) -> Option<SkillName> {
-        SkillName::all().iter().copied().find(|s| s.as_str() == name)
+        SkillName::all()
+            .iter()
+            .copied()
+            .find(|s| s.as_str() == name)
     }
 }
 

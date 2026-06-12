@@ -163,11 +163,7 @@ impl<'a> VoiceLogs<'a> {
     /// Returns [`SignalWireRestError`] if the request cannot reach the Space
     /// (transport failure), the API responds with a non-2xx status (e.g. 404
     /// for an unknown `log_id`), or the response body is not valid JSON.
-    pub fn list_events(
-        &self,
-        log_id: &str,
-        params: &Value,
-    ) -> Result<Value, SignalWireRestError> {
+    pub fn list_events(&self, log_id: &str, params: &Value) -> Result<Value, SignalWireRestError> {
         let qp = params_to_string_map(params);
         let p = join(&[&self.base_path, log_id, "events"]);
         self.client.get(&p, &qp)

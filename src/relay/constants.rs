@@ -161,7 +161,10 @@ mod tests {
     #[test]
     fn test_action_terminal_transcribe() {
         assert!(is_action_terminal("calling.call.transcribe", "finished"));
-        assert!(!is_action_terminal("calling.call.transcribe", "transcribing"));
+        assert!(!is_action_terminal(
+            "calling.call.transcribe",
+            "transcribing"
+        ));
     }
 
     #[test]

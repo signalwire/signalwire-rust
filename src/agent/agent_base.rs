@@ -1,13 +1,13 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use serde_json::{json, Map, Value};
+use serde_json::{Map, Value, json};
 
 use crate::contexts::ContextBuilder;
 use crate::security::SessionManager;
-use crate::swml::service::{Service, ServiceOptions};
 #[cfg(test)]
 use crate::swaig::FunctionResult;
+use crate::swml::service::{Service, ServiceOptions};
 
 // FunctionHandler and ToolDef are now declared on swml::Service so that
 // tools registered on Service-the-sidecar and AgentBase share storage.
@@ -151,13 +151,9 @@ type DynamicConfigCallback = Box<
         + Sync,
 >;
 
-type SummaryCallback = Box<
-    dyn Fn(&str, &Value, &HashMap<String, String>) + Send + Sync,
->;
+type SummaryCallback = Box<dyn Fn(&str, &Value, &HashMap<String, String>) + Send + Sync>;
 
-type DebugEventCallback = Box<
-    dyn Fn(&Value, &HashMap<String, String>) + Send + Sync,
->;
+type DebugEventCallback = Box<dyn Fn(&Value, &HashMap<String, String>) + Send + Sync>;
 
 /// Core agent that extends `Service` with AI-specific capabilities.
 ///
@@ -420,7 +416,9 @@ impl AgentBase {
     /// tests and dynamic-config flows. Pass an empty string or
     /// `None`-equivalent to disable.
     pub fn set_signing_key(&mut self, key: Option<&str>) -> &mut Self {
-        self.signing_key = key.map(std::string::ToString::to_string).filter(|s| !s.is_empty());
+        self.signing_key = key
+            .map(std::string::ToString::to_string)
+            .filter(|s| !s.is_empty());
         self
     }
 
@@ -465,12 +463,7 @@ impl AgentBase {
     }
 
     /// Add a top-level POM section with an optional body and bullets.
-    pub fn prompt_add_section(
-        &mut self,
-        title: &str,
-        body: &str,
-        bullets: Vec<&str>,
-    ) -> &mut Self {
+    pub fn prompt_add_section(&mut self, title: &str, body: &str, bullets: Vec<&str>) -> &mut Self {
         self.use_pom = true;
         let mut section = Map::new();
         section.insert("title".to_string(), json!(title));
@@ -491,15 +484,16 @@ impl AgentBase {
     ) -> &mut Self {
         for section in &mut self.pom_sections {
             if let Value::Object(map) = section
-                && map.get("title").and_then(|t| t.as_str()) == Some(parent_title) {
-                    let subsections = map
-                        .entry("subsections".to_string())
-                        .or_insert_with(|| Value::Array(Vec::new()));
-                    if let Value::Array(arr) = subsections {
-                        arr.push(json!({"title": title, "body": body}));
-                    }
-                    break;
+                && map.get("title").and_then(|t| t.as_str()) == Some(parent_title)
+            {
+                let subsections = map
+                    .entry("subsections".to_string())
+                    .or_insert_with(|| Value::Array(Vec::new()));
+                if let Value::Array(arr) = subsections {
+                    arr.push(json!({"title": title, "body": body}));
                 }
+                break;
+            }
         }
         self
     }
@@ -513,27 +507,28 @@ impl AgentBase {
     ) -> &mut Self {
         for section in &mut self.pom_sections {
             if let Value::Object(map) = section
-                && map.get("title").and_then(|t| t.as_str()) == Some(title) {
-                    if let Some(b) = body {
-                        let existing = map
-                            .get("body")
-                            .and_then(|v| v.as_str())
-                            .unwrap_or("")
-                            .to_string();
-                        map.insert("body".to_string(), json!(format!("{}{}", existing, b)));
-                    }
-                    if !bullets.is_empty() {
-                        let existing_bullets = map
-                            .entry("bullets".to_string())
-                            .or_insert_with(|| Value::Array(Vec::new()));
-                        if let Value::Array(arr) = existing_bullets {
-                            for bullet in bullets {
-                                arr.push(json!(bullet));
-                            }
+                && map.get("title").and_then(|t| t.as_str()) == Some(title)
+            {
+                if let Some(b) = body {
+                    let existing = map
+                        .get("body")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("")
+                        .to_string();
+                    map.insert("body".to_string(), json!(format!("{}{}", existing, b)));
+                }
+                if !bullets.is_empty() {
+                    let existing_bullets = map
+                        .entry("bullets".to_string())
+                        .or_insert_with(|| Value::Array(Vec::new()));
+                    if let Value::Array(arr) = existing_bullets {
+                        for bullet in bullets {
+                            arr.push(json!(bullet));
                         }
                     }
-                    break;
                 }
+                break;
+            }
         }
         self
     }
@@ -631,7 +626,9 @@ impl AgentBase {
     /// Mirrors Python's `PromptManager.get_contexts` which returns the
     /// contexts dict or `None`.
     pub fn get_contexts(&self) -> Option<Value> {
-        self.context_builder.as_ref().map(super::super::contexts::context_builder::ContextBuilder::to_value)
+        self.context_builder
+            .as_ref()
+            .map(super::super::contexts::context_builder::ContextBuilder::to_value)
     }
 
     // ══════════════════════════════════════════════════════════════════════
@@ -753,18 +750,19 @@ impl AgentBase {
     pub fn set_language_params(&mut self, code: &str, params: Value) -> &mut Self {
         for language in &mut self.languages {
             if let Some(obj) = language.as_object_mut()
-                && obj.get("code").and_then(|v| v.as_str()) == Some(code) {
-                    let non_empty = match &params {
-                        Value::Object(m) => !m.is_empty(),
-                        _ => false,
-                    };
-                    if non_empty {
-                        obj.insert("params".to_string(), params);
-                    } else {
-                        obj.remove("params");
-                    }
-                    break;
+                && obj.get("code").and_then(|v| v.as_str()) == Some(code)
+            {
+                let non_empty = match &params {
+                    Value::Object(m) => !m.is_empty(),
+                    _ => false,
+                };
+                if non_empty {
+                    obj.insert("params".to_string(), params);
+                } else {
+                    obj.remove("params");
                 }
+                break;
+            }
         }
         self
     }
@@ -789,12 +787,7 @@ impl AgentBase {
         self
     }
 
-    pub fn add_pronunciation(
-        &mut self,
-        replace: &str,
-        with: &str,
-        ignore: &str,
-    ) -> &mut Self {
+    pub fn add_pronunciation(&mut self, replace: &str, with: &str, ignore: &str) -> &mut Self {
         let mut entry = Map::new();
         entry.insert("replace".to_string(), json!(replace));
         entry.insert("with".to_string(), json!(with));
@@ -839,7 +832,10 @@ impl AgentBase {
     }
 
     pub fn set_native_functions(&mut self, functions: Vec<&str>) -> &mut Self {
-        self.native_functions = functions.into_iter().map(std::string::ToString::to_string).collect();
+        self.native_functions = functions
+            .into_iter()
+            .map(std::string::ToString::to_string)
+            .collect();
         self
     }
 
@@ -854,19 +850,22 @@ impl AgentBase {
     /// Notable absences: `change_step`, `gather_submit`, and arbitrary
     /// user-defined SWAIG function names are NOT supported.
     pub const SUPPORTED_INTERNAL_FILLER_NAMES: &'static [&'static str] = &[
-        "hangup",                   // AI is hanging up the call
-        "check_time",               // AI is checking the time
-        "wait_for_user",            // AI is waiting for user input
-        "wait_seconds",             // deliberate pause / wait period
-        "adjust_response_latency",  // AI is adjusting response timing
-        "next_step",                // transitioning between steps in prompt.contexts
-        "change_context",           // switching between contexts in prompt.contexts
-        "get_visual_input",         // processing visual input (enable_vision)
-        "get_ideal_strategy",       // thinking (enable_thinking)
+        "hangup",                  // AI is hanging up the call
+        "check_time",              // AI is checking the time
+        "wait_for_user",           // AI is waiting for user input
+        "wait_seconds",            // deliberate pause / wait period
+        "adjust_response_latency", // AI is adjusting response timing
+        "next_step",               // transitioning between steps in prompt.contexts
+        "change_context",          // switching between contexts in prompt.contexts
+        "get_visual_input",        // processing visual input (enable_vision)
+        "get_ideal_strategy",      // thinking (enable_thinking)
     ];
 
     pub fn set_internal_fillers(&mut self, fillers: Vec<&str>) -> &mut Self {
-        self.internal_fillers = fillers.into_iter().map(std::string::ToString::to_string).collect();
+        self.internal_fillers = fillers
+            .into_iter()
+            .map(std::string::ToString::to_string)
+            .collect();
         self
     }
 
@@ -1076,7 +1075,8 @@ impl AgentBase {
         // Register built-in skill functions so they appear in rendered SWML.
         match name {
             "datetime" => {
-                let tz = params.get("default_timezone")
+                let tz = params
+                    .get("default_timezone")
                     .or_else(|| params.get("timezone"))
                     .and_then(|v| v.as_str())
                     .unwrap_or("UTC")
@@ -1149,10 +1149,7 @@ impl AgentBase {
     //  Web / Callback Methods
     // ══════════════════════════════════════════════════════════════════════
 
-    pub fn set_dynamic_config_callback(
-        &mut self,
-        callback: DynamicConfigCallback,
-    ) -> &mut Self {
+    pub fn set_dynamic_config_callback(&mut self, callback: DynamicConfigCallback) -> &mut Self {
         self.dynamic_config_callback = Some(Arc::new(callback));
         self
     }
@@ -1184,18 +1181,12 @@ impl AgentBase {
         self
     }
 
-    pub fn on_summary(
-        &mut self,
-        callback: SummaryCallback,
-    ) -> &mut Self {
+    pub fn on_summary(&mut self, callback: SummaryCallback) -> &mut Self {
         self.summary_callback = Some(Arc::new(callback));
         self
     }
 
-    pub fn on_debug_event(
-        &mut self,
-        callback: DebugEventCallback,
-    ) -> &mut Self {
+    pub fn on_debug_event(&mut self, callback: DebugEventCallback) -> &mut Self {
         self.debug_event_handler = Some(Arc::new(callback));
         self
     }
@@ -1326,10 +1317,7 @@ impl AgentBase {
         // ── Params ──────────────────────────────────────────────────────
         let mut merged_params = self.params.clone();
         if !self.internal_fillers.is_empty() {
-            merged_params.insert(
-                "internal_fillers".to_string(),
-                json!(self.internal_fillers),
-            );
+            merged_params.insert("internal_fillers".to_string(), json!(self.internal_fillers));
         }
         if let Some(ref level) = self.debug_events_level {
             merged_params.insert("debug_events".to_string(), json!(level));
@@ -1349,7 +1337,10 @@ impl AgentBase {
 
         // ── Languages ───────────────────────────────────────────────────
         if !self.languages.is_empty() {
-            ai.insert("languages".to_string(), Value::Array(self.languages.clone()));
+            ai.insert(
+                "languages".to_string(),
+                Value::Array(self.languages.clone()),
+            );
         }
 
         // ── Pronunciations ──────────────────────────────────────────────
@@ -1376,10 +1367,11 @@ impl AgentBase {
 
         // ── Context switch ──────────────────────────────────────────────
         if let Some(ref cb) = self.context_builder
-            && cb.has_contexts() {
-                let ctx_val = cb.to_value();
-                ai.insert("context_switch".to_string(), ctx_val);
-            }
+            && cb.has_contexts()
+        {
+            let ctx_val = cb.to_value();
+            ai.insert("context_switch".to_string(), ctx_val);
+        }
 
         Value::Object(ai)
     }
@@ -1440,9 +1432,10 @@ impl AgentBase {
         if method.eq_ignore_ascii_case("POST")
             && matches!(sub_path.as_str(), "/" | "" | "/swaig" | "/post_prompt")
             && let Some(ref key) = self.signing_key
-                && !self.verify_request_signature(key, headers, path, body) {
-                    return json_response(403, &json!({"error": "Invalid signature"}));
-                }
+            && !self.verify_request_signature(key, headers, path, body)
+        {
+            return json_response(403, &json!({"error": "Invalid signature"}));
+        }
 
         // Parse body
         let request_data: Option<Value> = if body.is_empty() {
@@ -1603,9 +1596,10 @@ impl AgentBase {
 
         match self.on_function_call(function_name, &args, &raw_data) {
             Some(result) => json_response(200, &result.to_value()),
-            None => {
-                json_response(404, &json!({"error": format!("Unknown function: {}", function_name)}))
-            }
+            None => json_response(
+                404,
+                &json!({"error": format!("Unknown function: {}", function_name)}),
+            ),
         }
     }
 
@@ -1680,14 +1674,15 @@ impl AgentBase {
         let (user, pass) = self.service.basic_auth_credentials();
 
         // Parse proxy_base to extract host/port
-        let mut auth_url = if proxy_base.starts_with("http://") || proxy_base.starts_with("https://") {
-            let proto_end = proxy_base.find("://").unwrap() + 3;
-            let proto = &proxy_base[..proto_end];
-            let rest = &proxy_base[proto_end..];
-            format!("{proto}{user}:{pass}@{rest}{route_segment}/swaig")
-        } else {
-            format!("http://{user}:{pass}@{proxy_base}{route_segment}/swaig")
-        };
+        let mut auth_url =
+            if proxy_base.starts_with("http://") || proxy_base.starts_with("https://") {
+                let proto_end = proxy_base.find("://").unwrap() + 3;
+                let proto = &proxy_base[..proto_end];
+                let rest = &proxy_base[proto_end..];
+                format!("{proto}{user}:{pass}@{rest}{route_segment}/swaig")
+            } else {
+                format!("http://{user}:{pass}@{proxy_base}{route_segment}/swaig")
+            };
 
         if !self.swaig_query_params.is_empty() {
             let params: Vec<String> = self
@@ -1751,8 +1746,8 @@ impl AgentBase {
             let (status, resp_headers, resp_body) =
                 self.handle_request(&method, &path, &req_headers, &body_buf);
 
-            let mut response = tiny_http::Response::from_string(&resp_body)
-                .with_status_code(status);
+            let mut response =
+                tiny_http::Response::from_string(&resp_body).with_status_code(status);
             for (k, v) in &resp_headers {
                 if let Ok(header) = tiny_http::Header::from_bytes(k.as_bytes(), v.as_bytes()) {
                     response = response.with_header(header);
@@ -1768,10 +1763,7 @@ fn json_response(status: u16, data: &Value) -> (u16, HashMap<String, String>, St
     let body = serde_json::to_string(data).unwrap_or_else(|_| "{}".to_string());
     let mut headers = HashMap::new();
     headers.insert("Content-Type".to_string(), "application/json".to_string());
-    headers.insert(
-        "X-Content-Type-Options".to_string(),
-        "nosniff".to_string(),
-    );
+    headers.insert("X-Content-Type-Options".to_string(), "nosniff".to_string());
     headers.insert("X-Frame-Options".to_string(), "DENY".to_string());
     headers.insert("Cache-Control".to_string(), "no-store".to_string());
     (status, headers, body)
@@ -1861,7 +1853,10 @@ mod tests {
         let mut opts = default_options();
         opts.use_pom = false;
         let agent = AgentBase::new(opts);
-        assert!(agent.pom().is_none(), "pom() must return None when use_pom is false");
+        assert!(
+            agent.pom().is_none(),
+            "pom() must return None when use_pom is false"
+        );
     }
 
     #[test]
@@ -1871,7 +1866,8 @@ mod tests {
 
         let mut pom = agent.pom().unwrap();
         // Mutate the returned PromptObjectModel; agent state must be unaffected.
-        pom.add_section_with(Some("Injected".to_string()), "ib").unwrap();
+        pom.add_section_with(Some("Injected".to_string()), "ib")
+            .unwrap();
         pom.sections[0].title = Some("Hijacked".to_string());
 
         let fresh = agent.pom().unwrap();
@@ -1890,7 +1886,11 @@ mod tests {
     #[test]
     fn test_pom_with_bullets() {
         let mut agent = AgentBase::new(default_options());
-        agent.prompt_add_section("Rules", "Follow these rules:", vec!["Be polite", "Be helpful"]);
+        agent.prompt_add_section(
+            "Rules",
+            "Follow these rules:",
+            vec!["Be polite", "Be helpful"],
+        );
         let prompt = agent.get_prompt();
         let bullets = prompt[0]["bullets"].as_array().unwrap();
         assert_eq!(bullets.len(), 2);
@@ -2063,10 +2063,7 @@ mod tests {
         let mut agent = AgentBase::new(default_options());
         agent
             .add_language("English", "en-US", "josh")
-            .set_language_params(
-                "en-US",
-                json!({"stability": 0.5, "similarity_boost": 0.75}),
-            );
+            .set_language_params("en-US", json!({"stability": 0.5, "similarity_boost": 0.75}));
         assert_eq!(
             agent.languages[0]["params"],
             json!({"stability": 0.5, "similarity_boost": 0.75})
@@ -2402,21 +2399,30 @@ mod tests {
     fn test_set_webhook_url() {
         let mut agent = AgentBase::new(default_options());
         agent.set_webhook_url("https://webhook.example.com/swaig");
-        assert_eq!(agent.webhook_url, Some("https://webhook.example.com/swaig".to_string()));
+        assert_eq!(
+            agent.webhook_url,
+            Some("https://webhook.example.com/swaig".to_string())
+        );
     }
 
     #[test]
     fn test_set_post_prompt_url() {
         let mut agent = AgentBase::new(default_options());
         agent.set_post_prompt_url("https://example.com/post_prompt");
-        assert_eq!(agent.post_prompt_url, Some("https://example.com/post_prompt".to_string()));
+        assert_eq!(
+            agent.post_prompt_url,
+            Some("https://example.com/post_prompt".to_string())
+        );
     }
 
     #[test]
     fn test_manual_proxy_url() {
         let mut agent = AgentBase::new(default_options());
         agent.manual_set_proxy_url("https://proxy.example.com/");
-        assert_eq!(agent.manual_proxy_url, Some("https://proxy.example.com".to_string()));
+        assert_eq!(
+            agent.manual_proxy_url,
+            Some("https://proxy.example.com".to_string())
+        );
     }
 
     #[test]
@@ -2596,7 +2602,12 @@ mod tests {
         let funcs = ai["SWAIG"]["functions"].as_array().unwrap();
         assert_eq!(funcs.len(), 1);
         assert_eq!(funcs[0]["function"], "lookup");
-        assert!(funcs[0]["web_hook_url"].as_str().unwrap().contains("/swaig"));
+        assert!(
+            funcs[0]["web_hook_url"]
+                .as_str()
+                .unwrap()
+                .contains("/swaig")
+        );
     }
 
     #[test]
@@ -2640,7 +2651,10 @@ mod tests {
         let mut agent = AgentBase::new(default_options());
         agent.manual_set_proxy_url("https://proxy.example.com");
         let ai = agent.build_ai_verb(&HashMap::new());
-        assert_eq!(ai["post_prompt_url"], "https://proxy.example.com/post_prompt");
+        assert_eq!(
+            ai["post_prompt_url"],
+            "https://proxy.example.com/post_prompt"
+        );
     }
 
     #[test]
@@ -2743,12 +2757,8 @@ mod tests {
             "function": "greet",
             "argument": {"parsed": [{}]}
         });
-        let (status, _, resp_body) = agent.handle_request(
-            "POST",
-            "/swaig",
-            &authed_headers(),
-            &body.to_string(),
-        );
+        let (status, _, resp_body) =
+            agent.handle_request("POST", "/swaig", &authed_headers(), &body.to_string());
         assert_eq!(status, 200);
         let parsed: Value = serde_json::from_str(&resp_body).unwrap();
         assert_eq!(parsed["response"], "Hello!");
@@ -2758,12 +2768,8 @@ mod tests {
     fn test_handle_request_swaig_unknown_function() {
         let agent = AgentBase::new(default_options());
         let body = json!({"function": "nonexistent", "argument": {"parsed": [{}]}});
-        let (status, _, _) = agent.handle_request(
-            "POST",
-            "/swaig",
-            &authed_headers(),
-            &body.to_string(),
-        );
+        let (status, _, _) =
+            agent.handle_request("POST", "/swaig", &authed_headers(), &body.to_string());
         assert_eq!(status, 404);
     }
 
@@ -2778,12 +2784,8 @@ mod tests {
     fn test_handle_request_swaig_no_function_name() {
         let agent = AgentBase::new(default_options());
         let body = json!({"argument": {}});
-        let (status, _, _) = agent.handle_request(
-            "POST",
-            "/swaig",
-            &authed_headers(),
-            &body.to_string(),
-        );
+        let (status, _, _) =
+            agent.handle_request("POST", "/swaig", &authed_headers(), &body.to_string());
         assert_eq!(status, 400);
     }
 
@@ -2791,12 +2793,8 @@ mod tests {
     fn test_handle_request_post_prompt() {
         let agent = AgentBase::new(default_options());
         let body = json!({"summary": "Call went well"});
-        let (status, _, resp_body) = agent.handle_request(
-            "POST",
-            "/post_prompt",
-            &authed_headers(),
-            &body.to_string(),
-        );
+        let (status, _, resp_body) =
+            agent.handle_request("POST", "/post_prompt", &authed_headers(), &body.to_string());
         assert_eq!(status, 200);
         let parsed: Value = serde_json::from_str(&resp_body).unwrap();
         assert_eq!(parsed["status"], "ok");
@@ -2914,12 +2912,8 @@ mod tests {
         }));
 
         let body = json!({"summary": "Great call"});
-        let (status, _, _) = agent.handle_request(
-            "POST",
-            "/post_prompt",
-            &authed_headers(),
-            &body.to_string(),
-        );
+        let (status, _, _) =
+            agent.handle_request("POST", "/post_prompt", &authed_headers(), &body.to_string());
         assert_eq!(status, 200);
 
         let guard = captured.lock().unwrap();
@@ -2948,7 +2942,10 @@ mod tests {
     fn test_create_tool_token_round_trip() {
         let a = agent_with_tool();
         let token = a.create_tool_token("test_tool", "call_123");
-        assert!(!token.is_empty(), "expected non-empty SessionManager-issued token");
+        assert!(
+            !token.is_empty(),
+            "expected non-empty SessionManager-issued token"
+        );
         assert!(
             a.validate_tool_token("test_tool", &token, "call_123"),
             "validate_tool_token rejected the token we just created"

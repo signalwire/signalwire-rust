@@ -3,9 +3,9 @@
 //
 //! Web Search Agent — integrate web search into a voice agent.
 
+use serde_json::json;
 use signalwire::agent::{AgentBase, AgentOptions};
 use signalwire::swaig::FunctionResult;
-use serde_json::json;
 
 fn main() {
     let mut agent = AgentBase::new(AgentOptions {
@@ -21,11 +21,15 @@ fn main() {
         "You are a helpful assistant with web search capabilities.",
         vec![],
     );
-    agent.prompt_add_section("Instructions", "", vec![
-        "Use the web_search function to find current information",
-        "Summarize search results concisely for the caller",
-        "Always cite the source when providing information",
-    ]);
+    agent.prompt_add_section(
+        "Instructions",
+        "",
+        vec![
+            "Use the web_search function to find current information",
+            "Summarize search results concisely for the caller",
+            "Always cite the source when providing information",
+        ],
+    );
 
     agent.add_hints(vec!["search", "look up", "find", "Google"]);
 

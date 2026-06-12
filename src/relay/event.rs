@@ -42,10 +42,7 @@ impl Event {
     /// Convenience constructor from a `serde_json::Value` params object.
     pub fn parse(event_type: &str, params_value: &serde_json::Value) -> Self {
         let params = match params_value.as_object() {
-            Some(map) => map
-                .iter()
-                .map(|(k, v)| (k.clone(), v.clone()))
-                .collect(),
+            Some(map) => map.iter().map(|(k, v)| (k.clone(), v.clone())).collect(),
             None => HashMap::new(),
         };
         Self::new(event_type, params, 0.0)
@@ -68,21 +65,15 @@ impl Event {
     }
 
     pub fn call_id(&self) -> Option<&str> {
-        self.params
-            .get("call_id")
-            .and_then(|v| v.as_str())
+        self.params.get("call_id").and_then(|v| v.as_str())
     }
 
     pub fn node_id(&self) -> Option<&str> {
-        self.params
-            .get("node_id")
-            .and_then(|v| v.as_str())
+        self.params.get("node_id").and_then(|v| v.as_str())
     }
 
     pub fn control_id(&self) -> Option<&str> {
-        self.params
-            .get("control_id")
-            .and_then(|v| v.as_str())
+        self.params.get("control_id").and_then(|v| v.as_str())
     }
 
     pub fn tag(&self) -> Option<&str> {

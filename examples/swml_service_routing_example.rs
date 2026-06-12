@@ -3,8 +3,8 @@
 //
 //! SWML Service Routing — route calls based on caller ID or time of day.
 
-use signalwire::swml::service::{Service, ServiceOptions};
 use serde_json::json;
+use signalwire::swml::service::{Service, ServiceOptions};
 
 fn business_hours_document() -> serde_json::Value {
     json!({
@@ -53,10 +53,16 @@ fn vip_document() -> serde_json::Value {
 
 fn main() {
     println!("=== Business Hours SWML ===");
-    println!("{}", serde_json::to_string_pretty(&business_hours_document()).unwrap());
+    println!(
+        "{}",
+        serde_json::to_string_pretty(&business_hours_document()).unwrap()
+    );
 
     println!("\n=== After Hours SWML ===");
-    println!("{}", serde_json::to_string_pretty(&after_hours_document()).unwrap());
+    println!(
+        "{}",
+        serde_json::to_string_pretty(&after_hours_document()).unwrap()
+    );
 
     println!("\n=== VIP SWML ===");
     println!("{}", serde_json::to_string_pretty(&vip_document()).unwrap());

@@ -40,7 +40,10 @@ fn test_duplicate_route_yields_route_already_registered() {
 
     match &err {
         ServerError::RouteAlreadyRegistered { route } => {
-            assert_eq!(route, "/bot", "the conflicting route is carried in the variant");
+            assert_eq!(
+                route, "/bot",
+                "the conflicting route is carried in the variant"
+            );
         }
         other => panic!("expected RouteAlreadyRegistered, got {other:?}"),
     }

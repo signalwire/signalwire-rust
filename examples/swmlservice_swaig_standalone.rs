@@ -27,9 +27,9 @@
 //!     swaig-test --url <http://user:pass@localhost:3000/standalone> \
 //!         --exec `lookup_competitor` --param competitor=ACME
 
+use serde_json::json;
 use signalwire::swaig::FunctionResult;
 use signalwire::swml::service::{Service, ServiceOptions};
-use serde_json::json;
 
 fn main() {
     // Port from PORT env var (set by the audit harness or by `cargo run`

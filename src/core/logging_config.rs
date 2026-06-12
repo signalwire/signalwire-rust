@@ -24,10 +24,7 @@ pub fn get_execution_mode() -> String {
     if is_set("AWS_LAMBDA_FUNCTION_NAME") || is_set("LAMBDA_TASK_ROOT") {
         return String::from("lambda");
     }
-    if is_set("FUNCTION_TARGET")
-        || is_set("K_SERVICE")
-        || is_set("GOOGLE_CLOUD_PROJECT")
-    {
+    if is_set("FUNCTION_TARGET") || is_set("K_SERVICE") || is_set("GOOGLE_CLOUD_PROJECT") {
         return String::from("google_cloud_function");
     }
     if is_set("AZURE_FUNCTIONS_ENVIRONMENT")
@@ -79,47 +76,65 @@ mod tests {
 
         // -- cgi via GATEWAY_INTERFACE --
         clear_env();
-        unsafe { env::set_var("GATEWAY_INTERFACE", "CGI/1.1"); }
+        unsafe {
+            env::set_var("GATEWAY_INTERFACE", "CGI/1.1");
+        }
         assert_eq!(get_execution_mode(), "cgi");
 
         // -- lambda via AWS_LAMBDA_FUNCTION_NAME --
         clear_env();
-        unsafe { env::set_var("AWS_LAMBDA_FUNCTION_NAME", "my-fn"); }
+        unsafe {
+            env::set_var("AWS_LAMBDA_FUNCTION_NAME", "my-fn");
+        }
         assert_eq!(get_execution_mode(), "lambda");
 
         // -- lambda via LAMBDA_TASK_ROOT --
         clear_env();
-        unsafe { env::set_var("LAMBDA_TASK_ROOT", "/var/task"); }
+        unsafe {
+            env::set_var("LAMBDA_TASK_ROOT", "/var/task");
+        }
         assert_eq!(get_execution_mode(), "lambda");
 
         // -- google_cloud_function via FUNCTION_TARGET --
         clear_env();
-        unsafe { env::set_var("FUNCTION_TARGET", "my_handler"); }
+        unsafe {
+            env::set_var("FUNCTION_TARGET", "my_handler");
+        }
         assert_eq!(get_execution_mode(), "google_cloud_function");
 
         // -- google_cloud_function via K_SERVICE --
         clear_env();
-        unsafe { env::set_var("K_SERVICE", "svc"); }
+        unsafe {
+            env::set_var("K_SERVICE", "svc");
+        }
         assert_eq!(get_execution_mode(), "google_cloud_function");
 
         // -- google_cloud_function via GOOGLE_CLOUD_PROJECT --
         clear_env();
-        unsafe { env::set_var("GOOGLE_CLOUD_PROJECT", "proj"); }
+        unsafe {
+            env::set_var("GOOGLE_CLOUD_PROJECT", "proj");
+        }
         assert_eq!(get_execution_mode(), "google_cloud_function");
 
         // -- azure_function via AZURE_FUNCTIONS_ENVIRONMENT --
         clear_env();
-        unsafe { env::set_var("AZURE_FUNCTIONS_ENVIRONMENT", "Production"); }
+        unsafe {
+            env::set_var("AZURE_FUNCTIONS_ENVIRONMENT", "Production");
+        }
         assert_eq!(get_execution_mode(), "azure_function");
 
         // -- azure_function via FUNCTIONS_WORKER_RUNTIME --
         clear_env();
-        unsafe { env::set_var("FUNCTIONS_WORKER_RUNTIME", "rust"); }
+        unsafe {
+            env::set_var("FUNCTIONS_WORKER_RUNTIME", "rust");
+        }
         assert_eq!(get_execution_mode(), "azure_function");
 
         // -- azure_function via AzureWebJobsStorage --
         clear_env();
-        unsafe { env::set_var("AzureWebJobsStorage", "DefaultEndpointsProtocol=https"); }
+        unsafe {
+            env::set_var("AzureWebJobsStorage", "DefaultEndpointsProtocol=https");
+        }
         assert_eq!(get_execution_mode(), "azure_function");
 
         // -- precedence: CGI > Lambda --

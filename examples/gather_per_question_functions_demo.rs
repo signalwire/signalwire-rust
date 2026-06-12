@@ -106,10 +106,7 @@ fn main() {
     // Outside of the gather (which is the entire step here), these
     // would be available. During the gather they are forcibly hidden in
     // favor of the per-question whitelists.
-    onboard.set_functions(json!([
-        "escalate_to_human",
-        "lookup_existing_account",
-    ]));
+    onboard.set_functions(json!(["escalate_to_human", "lookup_existing_account",]));
     onboard.set_gather_info(
         Some("customer"),
         Some("next_step"),

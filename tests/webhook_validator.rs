@@ -11,7 +11,7 @@
 //! no patches, no stubbing.
 
 use signalwire::security::webhook::{
-    validate_request, validate_webhook_signature, ParamsOrBody, WebhookError,
+    ParamsOrBody, WebhookError, validate_request, validate_webhook_signature,
 };
 
 // ---------------------------------------------------------------------------
@@ -80,8 +80,12 @@ fn scheme_a_negative_tampered_body() {
 
 #[test]
 fn scheme_a_negative_wrong_key() {
-    let r =
-        validate_webhook_signature("not-the-real-key", VECTOR_A_SIG, VECTOR_A_URL, VECTOR_A_BODY);
+    let r = validate_webhook_signature(
+        "not-the-real-key",
+        VECTOR_A_SIG,
+        VECTOR_A_URL,
+        VECTOR_A_BODY,
+    );
     assert_eq!(r, Ok(false));
 }
 
@@ -239,8 +243,7 @@ fn repeated_form_keys_swapped_order_yields_different_signature() {
     let data_ab = format!("{url}ToaTob");
     let mut mac = HmacSha1::new_from_slice(key.as_bytes()).unwrap();
     mac.update(data_ab.as_bytes());
-    let sig_for_ab =
-        base64::engine::general_purpose::STANDARD.encode(mac.finalize().into_bytes());
+    let sig_for_ab = base64::engine::general_purpose::STANDARD.encode(mac.finalize().into_bytes());
 
     // body_ab matches the signature; body_ba must NOT.
     assert_eq!(

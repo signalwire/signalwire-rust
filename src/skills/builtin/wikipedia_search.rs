@@ -1,6 +1,6 @@
 use std::fmt::Write as _;
 
-use serde_json::{json, Map, Value};
+use serde_json::{Map, Value, json};
 
 use crate::agent::AgentBase;
 use crate::skills::skill_base::{SkillBase, SkillParams};
@@ -70,10 +70,7 @@ impl SkillBase for WikipediaSearch {
                 //   check passes. Production keeps the canonical path.
                 let (base, path) = match std::env::var("WIKIPEDIA_BASE_URL") {
                     Ok(b) => (b, "/wikipedia/api.php"),
-                    Err(_) => (
-                        "https://en.wikipedia.org".to_string(),
-                        "/w/api.php",
-                    ),
+                    Err(_) => ("https://en.wikipedia.org".to_string(), "/w/api.php"),
                 };
                 let url = format!(
                     "{}{}?action=query&list=search&srsearch={}&format=json&srlimit={}",
@@ -163,8 +160,7 @@ fn http_get_json(url: &str) -> Result<Value, String> {
     if !(200..300).contains(&status) {
         return Err(format!("HTTP GET {url} returned {status}: {body}"));
     }
-    serde_json::from_str(&body)
-        .map_err(|e| format!("HTTP GET {url} returned non-JSON: {e}"))
+    serde_json::from_str(&body).map_err(|e| format!("HTTP GET {url} returned non-JSON: {e}"))
 }
 
 fn url_encode(s: &str) -> String {

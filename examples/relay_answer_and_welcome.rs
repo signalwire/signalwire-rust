@@ -13,7 +13,9 @@ use std::sync::Arc;
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     if env::var("SIGNALWIRE_LOG_LEVEL").is_err() {
         // SAFETY: Single-threaded init; no other threads are spawned yet.
-        unsafe { env::set_var("SIGNALWIRE_LOG_LEVEL", "debug"); }
+        unsafe {
+            env::set_var("SIGNALWIRE_LOG_LEVEL", "debug");
+        }
     }
 
     let client = Arc::new(Client::from_env()?);

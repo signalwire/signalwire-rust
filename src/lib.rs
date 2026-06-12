@@ -9,7 +9,6 @@
 // the lint also flags (e.g. functions that genuinely consume the value) are
 // consuming-by-design, so a blanket allow loses nothing real.
 #![allow(clippy::needless_pass_by_value)]
-
 // `too_many_lines` is allowed crate-wide. The functions it flags are all
 // configuration/registration builders whose length is inherent: prefab
 // constructors (ConciergeAgent::new etc.) and skill `register_tools` mirror
@@ -23,7 +22,6 @@
 // a readability proxy that doesn't fit builder/registration code; keeping the
 // reference's shape wins (the parity meta-rule).
 #![allow(clippy::too_many_lines)]
-
 // `must_use_candidate` is allowed crate-wide; `#[must_use]` is added by hand
 // instead. The lint's own docs say "Not bad at all, this lint just shows
 // places where you could add the attribute" and "Expect many false positives"
@@ -53,9 +51,9 @@ pub mod datamap;
 pub mod security;
 pub mod swaig;
 
-pub mod skills;
 pub mod prefabs;
 pub mod server;
+pub mod skills;
 
 pub mod relay;
 pub mod rest;
@@ -150,7 +148,10 @@ pub struct SkillSpec {
 impl SkillSpec {
     /// Convenience constructor.
     pub fn new(name: impl Into<String>, factory: skills::skill_registry::SkillFactory) -> Self {
-        SkillSpec { name: name.into(), factory }
+        SkillSpec {
+            name: name.into(),
+            factory,
+        }
     }
 }
 
@@ -193,16 +194,22 @@ pub fn RestClient(
     //   1. positional args[0..3] = (project, token, space)
     //   2. kwargs["project"|"project_id"], kwargs["token"], kwargs["space"|"host"]
     //   3. environment variables (via from_env)
-    let project = args.first().cloned()
+    let project = args
+        .first()
+        .cloned()
         .or_else(|| kwargs.get("project").cloned())
         .or_else(|| kwargs.get("project_id").cloned())
         .or_else(|| std::env::var("SIGNALWIRE_PROJECT_ID").ok())
         .unwrap_or_default();
-    let token = args.get(1).cloned()
+    let token = args
+        .get(1)
+        .cloned()
         .or_else(|| kwargs.get("token").cloned())
         .or_else(|| std::env::var("SIGNALWIRE_API_TOKEN").ok())
         .unwrap_or_default();
-    let space = args.get(2).cloned()
+    let space = args
+        .get(2)
+        .cloned()
         .or_else(|| kwargs.get("space").cloned())
         .or_else(|| kwargs.get("host").cloned())
         .or_else(|| std::env::var("SIGNALWIRE_SPACE").ok())
@@ -219,7 +226,10 @@ mod top_level_tests {
         // Smoke test: the top-level helper forwards to SkillRegistry.
         let dir = std::env::current_dir().unwrap().join("src");
         let result = add_skill_directory(dir.to_str().unwrap());
-        assert!(result.is_ok(), "top-level add_skill_directory failed: {result:?}");
+        assert!(
+            result.is_ok(),
+            "top-level add_skill_directory failed: {result:?}"
+        );
     }
 
     #[test]
@@ -240,9 +250,14 @@ mod top_level_tests {
     fn test_top_level_rest_client_factory_positional() {
         // Positional form: args=[project, token, space].
         let client = RestClient(
-            vec!["proj".to_string(), "tok".to_string(), "test.signalwire.com".to_string()],
+            vec![
+                "proj".to_string(),
+                "tok".to_string(),
+                "test.signalwire.com".to_string(),
+            ],
             std::collections::HashMap::new(),
-        ).expect("factory should succeed with positional args");
+        )
+        .expect("factory should succeed with positional args");
         assert_eq!(client.project_id(), "proj");
         assert_eq!(client.token(), "tok");
         assert_eq!(client.space(), "test.signalwire.com");
@@ -255,8 +270,7 @@ mod top_level_tests {
         kw.insert("project".to_string(), "kproj".to_string());
         kw.insert("token".to_string(), "ktok".to_string());
         kw.insert("host".to_string(), "kw.signalwire.com".to_string());
-        let client = RestClient(vec![], kw)
-            .expect("factory should succeed with kwargs");
+        let client = RestClient(vec![], kw).expect("factory should succeed with kwargs");
         assert_eq!(client.project_id(), "kproj");
         assert_eq!(client.token(), "ktok");
         assert_eq!(client.space(), "kw.signalwire.com");
@@ -266,8 +280,10 @@ mod top_level_tests {
     fn test_top_level_rest_client_factory_rejects_empty() {
         // Validation matches RestClient::new — empty credentials are
         // rejected with a descriptive error.
-        let r = RestClient(vec![String::new(), "tok".to_string(), "space".to_string()],
-                           std::collections::HashMap::new());
+        let r = RestClient(
+            vec![String::new(), "tok".to_string(), "space".to_string()],
+            std::collections::HashMap::new(),
+        );
         assert!(r.is_err());
     }
 

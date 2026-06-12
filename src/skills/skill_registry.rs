@@ -4,8 +4,8 @@ use std::sync::{LazyLock, Mutex};
 
 use serde_json::{Map, Value};
 
-use crate::skills::skill_base::SkillBase;
 use crate::skills::builtin;
+use crate::skills::skill_base::SkillBase;
 
 /// Factory function that creates a new skill instance given parameters.
 pub type SkillFactory = Box<dyn Fn(Map<String, Value>) -> Box<dyn SkillBase> + Send + Sync>;
@@ -146,11 +146,16 @@ impl SkillRegistry {
         if inner.skills.contains_key(name) {
             // Clone the name for the closure.
             let skill_name = name.to_string();
-            Some(Box::new(move |params: Map<String, Value>| -> Box<dyn SkillBase> {
-                let inner = REGISTRY.lock().expect("skill registry poisoned");
-                let factory = inner.skills.get(&skill_name).expect("skill removed during call");
-                factory(params)
-            }))
+            Some(Box::new(
+                move |params: Map<String, Value>| -> Box<dyn SkillBase> {
+                    let inner = REGISTRY.lock().expect("skill registry poisoned");
+                    let factory = inner
+                        .skills
+                        .get(&skill_name)
+                        .expect("skill removed during call");
+                    factory(params)
+                },
+            ))
         } else {
             None
         }
@@ -199,7 +204,11 @@ impl SkillRegistry {
         }
         let mut inner = REGISTRY.lock().expect("skill registry poisoned");
         let canonical = std::fs::canonicalize(&p).unwrap_or_else(|_| p.clone());
-        if !inner.external_paths.iter().any(|existing| existing == &canonical) {
+        if !inner
+            .external_paths
+            .iter()
+            .any(|existing| existing == &canonical)
+        {
             inner.external_paths.push(canonical);
         }
         Ok(())
@@ -321,7 +330,9 @@ mod tests {
         assert!(r.is_ok(), "add_skill_directory failed: {r:?}");
         let canonical = std::fs::canonicalize(&dir).unwrap();
         assert!(
-            SkillRegistry::external_paths().iter().any(|p| p == &canonical),
+            SkillRegistry::external_paths()
+                .iter()
+                .any(|p| p == &canonical),
             "external_paths should contain registered directory"
         );
     }

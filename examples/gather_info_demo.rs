@@ -35,10 +35,38 @@ fn main() {
         None,
         Some("Please collect the following patient information."),
     );
-    step1.add_gather_question("full_name", "What is your full name?", "string", false, None, None);
-    step1.add_gather_question("date_of_birth", "What is your date of birth?", "string", false, None, None);
-    step1.add_gather_question("phone_number", "What is your phone number?", "string", true, None, None);
-    step1.add_gather_question("email", "What is your email address?", "string", false, None, None);
+    step1.add_gather_question(
+        "full_name",
+        "What is your full name?",
+        "string",
+        false,
+        None,
+        None,
+    );
+    step1.add_gather_question(
+        "date_of_birth",
+        "What is your date of birth?",
+        "string",
+        false,
+        None,
+        None,
+    );
+    step1.add_gather_question(
+        "phone_number",
+        "What is your phone number?",
+        "string",
+        true,
+        None,
+        None,
+    );
+    step1.add_gather_question(
+        "email",
+        "What is your email address?",
+        "string",
+        false,
+        None,
+        None,
+    );
     step1.set_valid_steps(vec!["symptoms"]);
 
     // Step 2: Symptoms

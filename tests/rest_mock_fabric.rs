@@ -8,7 +8,7 @@
 #[path = "common/mod.rs"]
 mod common;
 
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 // ---------------------------------------------------------------------------
 // Fabric Addresses (read-only, /api/fabric/addresses)
@@ -109,10 +109,7 @@ fn test_fabric_call_flows_list_addresses_uses_singular_path() {
     let entry = common::mocktest::journal_last();
     assert_eq!(entry.method, "GET");
     // singular 'call_flow' (NOT 'call_flows') in the addresses sub-path.
-    assert_eq!(
-        entry.path,
-        "/api/fabric/resources/call_flow/cf-1/addresses"
-    );
+    assert_eq!(entry.path, "/api/fabric/resources/call_flow/cf-1/addresses");
     assert!(
         entry.matched_route.is_some(),
         "spec gap: call-flow addresses sub-path"
@@ -311,11 +308,7 @@ fn test_fabric_resources_list_returns_data_collection() {
 fn test_fabric_resources_get_returns_single() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let body = c
-        .fabric()
-        .resources()
-        .get("res-1")
-        .expect("resources.get");
+    let body = c.fabric().resources().get("res-1").expect("resources.get");
     assert!(body.is_object());
 
     let entry = common::mocktest::journal_last();

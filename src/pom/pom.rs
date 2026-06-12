@@ -64,8 +64,8 @@ impl PromptObjectModel {
     ///
     /// [`from_value`]: PromptObjectModel::from_value
     pub fn from_json(json_str: &str) -> Result<Self, String> {
-        let value: Value = serde_json::from_str(json_str)
-            .map_err(|e| format!("invalid JSON: {e}"))?;
+        let value: Value =
+            serde_json::from_str(json_str).map_err(|e| format!("invalid JSON: {e}"))?;
         Self::from_value(&value)
     }
 
@@ -81,8 +81,8 @@ impl PromptObjectModel {
     ///
     /// [`from_value`]: PromptObjectModel::from_value
     pub fn from_yaml(yaml_str: &str) -> Result<Self, String> {
-        let value: Value = serde_norway::from_str(yaml_str)
-            .map_err(|e| format!("invalid YAML: {e}"))?;
+        let value: Value =
+            serde_norway::from_str(yaml_str).map_err(|e| format!("invalid YAML: {e}"))?;
         Self::from_value(&value)
     }
 
@@ -208,7 +208,12 @@ impl PromptObjectModel {
     /// follows serde idiom (`to_value`) but the cross-port surface
     /// audit treats `to_value` ≡ `to_dict`.
     pub fn to_value(&self) -> Value {
-        Value::Array(self.sections.iter().map(super::section::Section::to_value).collect())
+        Value::Array(
+            self.sections
+                .iter()
+                .map(super::section::Section::to_value)
+                .collect(),
+        )
     }
 
     /// Render the model as a JSON string (indent=2). Matches
@@ -351,25 +356,30 @@ fn build_section(value: &Value, is_subsection: bool, top_index: usize) -> Result
         .ok_or_else(|| "Each section must be an object/dict.".to_string())?;
 
     if let Some(t) = map.get("title")
-        && !t.is_string() {
-            return Err("'title' must be a string if present.".to_string());
-        }
+        && !t.is_string()
+    {
+        return Err("'title' must be a string if present.".to_string());
+    }
     if let Some(s) = map.get("subsections")
-        && !s.is_array() {
-            return Err("'subsections' must be a list if provided.".to_string());
-        }
+        && !s.is_array()
+    {
+        return Err("'subsections' must be a list if provided.".to_string());
+    }
     if let Some(b) = map.get("bullets")
-        && !b.is_array() {
-            return Err("'bullets' must be a list if provided.".to_string());
-        }
+        && !b.is_array()
+    {
+        return Err("'bullets' must be a list if provided.".to_string());
+    }
     if let Some(n) = map.get("numbered")
-        && !n.is_boolean() {
-            return Err("'numbered' must be a boolean if provided.".to_string());
-        }
+        && !n.is_boolean()
+    {
+        return Err("'numbered' must be a boolean if provided.".to_string());
+    }
     if let Some(nb) = map.get("numberedBullets")
-        && !nb.is_boolean() {
-            return Err("'numberedBullets' must be a boolean if provided.".to_string());
-        }
+        && !nb.is_boolean()
+    {
+        return Err("'numberedBullets' must be a boolean if provided.".to_string());
+    }
 
     // Validate body / bullets / subsections present (Python rule)
     let has_body = map
@@ -579,8 +589,26 @@ fn needs_yaml_quoting(s: &str) -> bool {
     let first = s.chars().next().unwrap();
     if matches!(
         first,
-        '!' | '&' | '*' | '?' | '|' | '-' | '<' | '>' | '=' | '%' | '@' | '`' | '"' | '\'' | '['
-            | ']' | '{' | '}' | '#' | ',' | ' '
+        '!' | '&'
+            | '*'
+            | '?'
+            | '|'
+            | '-'
+            | '<'
+            | '>'
+            | '='
+            | '%'
+            | '@'
+            | '`'
+            | '"'
+            | '\''
+            | '['
+            | ']'
+            | '{'
+            | '}'
+            | '#'
+            | ','
+            | ' '
     ) {
         return true;
     }

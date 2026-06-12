@@ -9,7 +9,7 @@
 #[path = "common/mod.rs"]
 mod common;
 
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::sync::{Arc, Mutex};
 
 use common::relay_mocktest;
@@ -203,8 +203,7 @@ fn test_answer_in_handler_journals_calling_answer() {
 fn test_answer_then_state_event_advances_call_state() {
     let _g = relay_mocktest::begin();
     let client = relay_mocktest::connected_client(&["default"]);
-    let captured: Arc<Mutex<Option<Arc<signalwire::relay::Call>>>> =
-        Arc::new(Mutex::new(None));
+    let captured: Arc<Mutex<Option<Arc<signalwire::relay::Call>>>> = Arc::new(Mutex::new(None));
     let cap2 = captured.clone();
     let client2 = client.clone();
     client.on_call(move |call, _ev| {
@@ -348,13 +347,13 @@ fn test_inbound_call_journal_send_records_calling_call_receive() {
     }));
     assert!(wait_until(2000, || *fired.lock().unwrap()));
     let sends = relay_mocktest::journal_send(Some("calling.call.receive"));
-    assert!(!sends.is_empty(), "no calling.call.receive frame in journal");
+    assert!(
+        !sends.is_empty(),
+        "no calling.call.receive frame in journal"
+    );
     let ev = sends.last().unwrap();
     let inner = ev.event_params();
-    assert_eq!(
-        inner.get("call_id").and_then(Value::as_str),
-        Some("c-wire")
-    );
+    assert_eq!(inner.get("call_id").and_then(Value::as_str), Some("c-wire"));
     assert_eq!(
         inner.get("direction").and_then(Value::as_str),
         Some("inbound")
@@ -388,8 +387,7 @@ fn test_inbound_without_handler_does_not_crash() {
 fn test_scenario_play_full_inbound_flow() {
     let _g = relay_mocktest::begin();
     let client = relay_mocktest::connected_client(&["default"]);
-    let captured: Arc<Mutex<Option<Arc<signalwire::relay::Call>>>> =
-        Arc::new(Mutex::new(None));
+    let captured: Arc<Mutex<Option<Arc<signalwire::relay::Call>>>> = Arc::new(Mutex::new(None));
     let cap2 = captured.clone();
     let client2 = client.clone();
     client.on_call(move |call, _ev| {

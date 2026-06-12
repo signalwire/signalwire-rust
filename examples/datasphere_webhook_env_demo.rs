@@ -7,16 +7,15 @@
 //!   `DATASPHERE_WEBHOOK_URL` — webhook URL for Datasphere search
 //!   `DATASPHERE_API_KEY`     — API key
 
+use serde_json::json;
 use signalwire::agent::{AgentBase, AgentOptions};
 use signalwire::swaig::FunctionResult;
-use serde_json::json;
 use std::env;
 
 fn main() {
     let webhook_url = env::var("DATASPHERE_WEBHOOK_URL")
         .unwrap_or_else(|_| "https://example.signalwire.com/api/datasphere/search".into());
-    let _api_key = env::var("DATASPHERE_API_KEY")
-        .unwrap_or_else(|_| "your-api-key".into());
+    let _api_key = env::var("DATASPHERE_API_KEY").unwrap_or_else(|_| "your-api-key".into());
 
     let mut agent = AgentBase::new(AgentOptions {
         name: "datasphere-webhook-env".to_string(),
@@ -31,10 +30,14 @@ fn main() {
         "You are a knowledge assistant backed by Datasphere webhooks.",
         vec![],
     );
-    agent.prompt_add_section("Instructions", "", vec![
-        "Use the search_knowledge function to find information",
-        "Summarize search results clearly",
-    ]);
+    agent.prompt_add_section(
+        "Instructions",
+        "",
+        vec![
+            "Use the search_knowledge function to find information",
+            "Summarize search results clearly",
+        ],
+    );
 
     // Webhook-based SWAIG tool for Datasphere
     let url = webhook_url.clone();
@@ -47,7 +50,10 @@ fn main() {
         }),
         Box::new(move |args, _raw| {
             let query = args.get("query").and_then(|v| v.as_str()).unwrap_or("");
-            let max = args.get("max_results").and_then(serde_json::Value::as_u64).unwrap_or(5);
+            let max = args
+                .get("max_results")
+                .and_then(serde_json::Value::as_u64)
+                .unwrap_or(5);
             // In production, this would make an HTTP request to the webhook URL
             FunctionResult::with_response(&format!(
                 "Datasphere search for '{query}' (max {max} results) via {url}: [simulated results]"

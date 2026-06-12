@@ -103,8 +103,7 @@ pub fn client() -> RestClient {
     let h = harness();
     // Use with_base_url so the http:// prefix and explicit host:port survive
     // the constructor's https:// resolution.
-    RestClient::with_base_url("test_proj", "test_tok", &h.url)
-        .expect("RestClient::with_base_url")
+    RestClient::with_base_url("test_proj", "test_tok", &h.url).expect("RestClient::with_base_url")
 }
 
 /// Return the singleton harness, spawning the mock server if necessary.
@@ -204,9 +203,10 @@ pub fn scenario_set(endpoint_id: &str, status: u16, body: Value) {
 fn resolve_port() -> u16 {
     if let Ok(raw) = std::env::var("MOCK_SIGNALWIRE_PORT")
         && let Ok(p) = raw.parse::<u16>()
-            && p != 0 {
-                return p;
-            }
+        && p != 0
+    {
+        return p;
+    }
     DEFAULT_PORT
 }
 
@@ -242,11 +242,15 @@ fn probe_health(base_url: &str) -> bool {
         .timeout_global(Some(Duration::from_secs(2)))
         .build()
         .into();
-    let Ok(mut resp) = agent.get(&url).call() else { return false };
+    let Ok(mut resp) = agent.get(&url).call() else {
+        return false;
+    };
     if resp.status().as_u16() != 200 {
         return false;
     }
-    let Ok(body) = resp.body_mut().read_to_string() else { return false };
+    let Ok(body) = resp.body_mut().read_to_string() else {
+        return false;
+    };
     let parsed: serde_json::Result<Value> = serde_json::from_str(&body);
     match parsed {
         Ok(v) => v.get("specs_loaded").is_some(),
@@ -331,10 +335,7 @@ fn discover_porting_sdk_package(name: &str) -> Option<String> {
             Some(p) => p.to_path_buf(),
             None => return None,
         };
-        let candidate = parent
-            .join("porting-sdk")
-            .join("test_harness")
-            .join(name);
+        let candidate = parent.join("porting-sdk").join("test_harness").join(name);
         let init = candidate.join(name).join("__init__.py");
         if init.is_file() {
             return Some(candidate.to_string_lossy().into_owned());
@@ -371,7 +372,9 @@ fn libc_setsid() -> i32 {
 // ---------------------------------------------------------------------------
 
 fn decode_journal(value: &Value) -> Vec<JournalEntry> {
-    let Some(arr) = value.as_array() else { return Vec::new() };
+    let Some(arr) = value.as_array() else {
+        return Vec::new();
+    };
     arr.iter().map(decode_entry).collect()
 }
 

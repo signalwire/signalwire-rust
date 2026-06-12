@@ -13,7 +13,7 @@
 #[path = "common/mod.rs"]
 mod common;
 
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::sync::{Arc, Mutex};
 
 use common::relay_mocktest;
@@ -34,8 +34,7 @@ fn answered_inbound_call(
     client: &Arc<signalwire::relay::Client>,
     call_id: &str,
 ) -> Arc<signalwire::relay::Call> {
-    let captured: Arc<Mutex<Option<Arc<signalwire::relay::Call>>>> =
-        Arc::new(Mutex::new(None));
+    let captured: Arc<Mutex<Option<Arc<signalwire::relay::Call>>>> = Arc::new(Mutex::new(None));
     let cap2 = captured.clone();
     let client2 = client.clone();
     client.on_call(move |call, _ev| {
@@ -125,8 +124,14 @@ fn test_record_pause_journals_record_pause() {
     let pauses = relay_mocktest::journal_recv(Some("calling.record.pause"));
     assert!(!pauses.is_empty());
     let p = pauses.last().unwrap().inner_params();
-    assert_eq!(p.get("control_id").and_then(Value::as_str), Some("ec-rec-pa-1"));
-    assert_eq!(p.get("behavior").and_then(Value::as_str), Some("continuous"));
+    assert_eq!(
+        p.get("control_id").and_then(Value::as_str),
+        Some("ec-rec-pa-1")
+    );
+    assert_eq!(
+        p.get("behavior").and_then(Value::as_str),
+        Some("continuous")
+    );
     client.disconnect();
 }
 
@@ -142,7 +147,13 @@ fn test_record_resume_journals_record_resume() {
         "ec-rec-re-1",
         json!({"record": {"audio": {"format": "wav"}}}),
     );
-    send_action_frame(&client, &call, "calling.record.resume", "ec-rec-re-1", json!({}));
+    send_action_frame(
+        &client,
+        &call,
+        "calling.record.resume",
+        "ec-rec-re-1",
+        json!({}),
+    );
     std::thread::sleep(std::time::Duration::from_millis(150));
     let resumes = relay_mocktest::journal_recv(Some("calling.record.resume"));
     assert!(!resumes.is_empty());
@@ -214,7 +225,12 @@ fn test_play_volume_carries_negative_value() {
     std::thread::sleep(std::time::Duration::from_millis(150));
     let vol = relay_mocktest::journal_recv(Some("calling.play.volume"));
     assert!(!vol.is_empty());
-    let v = vol.last().unwrap().inner_params().get("volume").and_then(Value::as_f64);
+    let v = vol
+        .last()
+        .unwrap()
+        .inner_params()
+        .get("volume")
+        .and_then(Value::as_f64);
     assert_eq!(v, Some(-5.5));
     client.disconnect();
 }

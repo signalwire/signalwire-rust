@@ -10,7 +10,7 @@ mod common;
 
 use std::collections::HashMap;
 
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 // ---------------------------------------------------------------------------
 // Addresses
@@ -273,10 +273,7 @@ fn test_small_mfa_call() {
     assert_eq!(entry.method, "POST");
     assert_eq!(entry.path, "/api/relay/rest/mfa/call");
     let sent = entry.body_object().expect("body");
-    assert_eq!(
-        sent.get("to").and_then(Value::as_str),
-        Some("+15551234567")
-    );
+    assert_eq!(sent.get("to").and_then(Value::as_str), Some("+15551234567"));
     assert_eq!(
         sent.get("from_").and_then(Value::as_str),
         Some("+15559876543")
@@ -443,7 +440,10 @@ fn test_small_datasphere_get_chunk() {
 
     let entry = common::mocktest::journal_last();
     assert_eq!(entry.method, "GET");
-    assert_eq!(entry.path, "/api/datasphere/documents/doc-1/chunks/chunk-99");
+    assert_eq!(
+        entry.path,
+        "/api/datasphere/documents/doc-1/chunks/chunk-99"
+    );
 }
 
 // ---------------------------------------------------------------------------

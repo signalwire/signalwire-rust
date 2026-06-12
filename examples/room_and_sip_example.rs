@@ -3,8 +3,8 @@
 //
 //! Room and SIP Example — `join_room` and `sip_refer` virtual helpers.
 
-use signalwire::swaig::FunctionResult;
 use serde_json::json;
+use signalwire::swaig::FunctionResult;
 
 fn main() {
     // Basic room join

@@ -35,10 +35,10 @@ fn main() {
         }
     }
 
-    let operation = env::var("REST_OPERATION")
-        .unwrap_or_else(|_| die("REST_OPERATION env var required"));
-    let fixture_url = env::var("REST_FIXTURE_URL")
-        .unwrap_or_else(|_| die("REST_FIXTURE_URL env var required"));
+    let operation =
+        env::var("REST_OPERATION").unwrap_or_else(|_| die("REST_OPERATION env var required"));
+    let fixture_url =
+        env::var("REST_FIXTURE_URL").unwrap_or_else(|_| die("REST_FIXTURE_URL env var required"));
     let args_raw = env::var("REST_OPERATION_ARGS").unwrap_or_else(|_| "{}".to_string());
     let args: Value = serde_json::from_str(&args_raw)
         .unwrap_or_else(|e| die(&format!("REST_OPERATION_ARGS not JSON: {e}")));
@@ -111,7 +111,9 @@ fn dispatch(client: &RestClient, op: &str, args: &Value) -> Result<Value, String
                 .list(args)
                 .map_err(|e| format!("{}: {}", op, e.message()))
         }
-        other => Err(format!("rest_audit_harness: unsupported operation '{other}'")),
+        other => Err(format!(
+            "rest_audit_harness: unsupported operation '{other}'"
+        )),
     }
 }
 

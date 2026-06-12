@@ -1,4 +1,4 @@
-use serde_json::{json, Map, Value};
+use serde_json::{Map, Value, json};
 
 use crate::agent::AgentBase;
 use crate::skills::skill_base::{SkillBase, SkillParams};
@@ -40,8 +40,10 @@ impl SkillBase for NativeVectorSearch {
 
     fn register_tools(&self, agent: &mut AgentBase) {
         let tool_name = self.get_tool_name("search_knowledge");
-        let tool_description =
-            self.sp.get_str_or("description", "Search the local knowledge base for information");
+        let tool_description = self.sp.get_str_or(
+            "description",
+            "Search the local knowledge base for information",
+        );
         let default_count = self.sp.get_i64("count", 5).max(1);
         let remote_url = self.sp.get_str_or("remote_url", "");
         let index_name = self.sp.get_str_or("index_name", "");

@@ -1,4 +1,4 @@
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 use crate::rest::error::SignalWireRestError;
 use crate::rest::http_client::HttpClient;
@@ -218,11 +218,7 @@ impl<'a> Calling<'a> {
     /// (transport failure), the API responds with a non-2xx status (for
     /// example if the call has already ended or `call_id` is not active), or
     /// the response body is not valid JSON.
-    pub fn collect_stop(
-        &self,
-        call_id: &str,
-        params: Value,
-    ) -> Result<Value, SignalWireRestError> {
+    pub fn collect_stop(&self, call_id: &str, params: Value) -> Result<Value, SignalWireRestError> {
         self.execute("calling.collect.stop", Some(call_id), params)
     }
 
@@ -301,11 +297,7 @@ impl<'a> Calling<'a> {
     /// (transport failure), the API responds with a non-2xx status (for
     /// example if the call has already ended or `call_id` is not active), or
     /// the response body is not valid JSON.
-    pub fn stream_stop(
-        &self,
-        call_id: &str,
-        params: Value,
-    ) -> Result<Value, SignalWireRestError> {
+    pub fn stream_stop(&self, call_id: &str, params: Value) -> Result<Value, SignalWireRestError> {
         self.execute("calling.stream.stop", Some(call_id), params)
     }
 
@@ -327,11 +319,7 @@ impl<'a> Calling<'a> {
     /// (transport failure), the API responds with a non-2xx status (for
     /// example if the call has already ended or `call_id` is not active), or
     /// the response body is not valid JSON.
-    pub fn denoise_stop(
-        &self,
-        call_id: &str,
-        params: Value,
-    ) -> Result<Value, SignalWireRestError> {
+    pub fn denoise_stop(&self, call_id: &str, params: Value) -> Result<Value, SignalWireRestError> {
         self.execute("calling.denoise.stop", Some(call_id), params)
     }
 
@@ -344,11 +332,7 @@ impl<'a> Calling<'a> {
     /// (transport failure), the API responds with a non-2xx status (for
     /// example if the call has already ended or `call_id` is not active), or
     /// the response body is not valid JSON.
-    pub fn transcribe(
-        &self,
-        call_id: &str,
-        params: Value,
-    ) -> Result<Value, SignalWireRestError> {
+    pub fn transcribe(&self, call_id: &str, params: Value) -> Result<Value, SignalWireRestError> {
         self.execute("calling.transcribe", Some(call_id), params)
     }
 
@@ -374,11 +358,7 @@ impl<'a> Calling<'a> {
     /// (transport failure), the API responds with a non-2xx status (for
     /// example if the call has already ended or `call_id` is not active), or
     /// the response body is not valid JSON.
-    pub fn ai_message(
-        &self,
-        call_id: &str,
-        params: Value,
-    ) -> Result<Value, SignalWireRestError> {
+    pub fn ai_message(&self, call_id: &str, params: Value) -> Result<Value, SignalWireRestError> {
         self.execute("calling.ai_message", Some(call_id), params)
     }
 
@@ -491,11 +471,7 @@ impl<'a> Calling<'a> {
     /// (transport failure), the API responds with a non-2xx status (for
     /// example if the call has already ended or `call_id` is not active), or
     /// the response body is not valid JSON.
-    pub fn user_event(
-        &self,
-        call_id: &str,
-        params: Value,
-    ) -> Result<Value, SignalWireRestError> {
+    pub fn user_event(&self, call_id: &str, params: Value) -> Result<Value, SignalWireRestError> {
         self.execute("calling.user_event", Some(call_id), params)
     }
 }
@@ -509,7 +485,10 @@ mod tests {
     use super::*;
     use crate::rest::http_client::StubTransport;
 
-    fn make_calling() -> (crate::rest::http_client::HttpClient, std::sync::Arc<StubTransport>) {
+    fn make_calling() -> (
+        crate::rest::http_client::HttpClient,
+        std::sync::Arc<StubTransport>,
+    ) {
         crate::rest::http_client::HttpClient::with_stub(
             "proj",
             "tok",

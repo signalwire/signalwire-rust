@@ -32,7 +32,8 @@ impl<'a> SipProfile<'a> {
     /// (transport failure), the API responds with a non-2xx status, or the
     /// response body is not valid JSON.
     pub fn get(&self) -> Result<Value, SignalWireRestError> {
-        self.client.get(&self.base_path, &std::collections::HashMap::new())
+        self.client
+            .get(&self.base_path, &std::collections::HashMap::new())
     }
 
     /// PUT `/api/relay/rest/sip_profile` — update the SIP profile.

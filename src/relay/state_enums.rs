@@ -427,8 +427,13 @@ mod tests {
         }
         // Typed predicate agrees with the string predicate it wraps.
         for wire in [
-            "queued", "initiated", "sent", "delivered", "undelivered",
-            "failed", "received",
+            "queued",
+            "initiated",
+            "sent",
+            "delivered",
+            "undelivered",
+            "failed",
+            "received",
         ] {
             assert_eq!(
                 MessageState::from_str(wire).is_terminal(),

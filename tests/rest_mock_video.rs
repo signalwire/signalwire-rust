@@ -7,7 +7,7 @@
 #[path = "common/mod.rs"]
 mod common;
 
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 // ---------------------------------------------------------------------------
 // Rooms — streams sub-resource
@@ -34,7 +34,10 @@ fn test_video_rooms_list_streams_returns_data_collection() {
     let entry = common::mocktest::journal_last();
     assert_eq!(entry.method, "GET");
     assert_eq!(entry.path, "/api/video/rooms/room-1/streams");
-    assert!(entry.matched_route.is_some(), "spec gap: rooms streams list");
+    assert!(
+        entry.matched_route.is_some(),
+        "spec gap: rooms streams list"
+    );
 }
 
 #[test]
@@ -286,8 +289,8 @@ fn test_video_conference_tokens_reset_posts_to_subpath() {
     assert_eq!(entry.method, "POST");
     assert_eq!(entry.path, "/api/video/conference_tokens/tok-2/reset");
     // reset is no-body POST — body should be empty/{} on the wire.
-    let body_is_empty = entry.body.is_null()
-        || matches!(&entry.body, Value::Object(o) if o.is_empty());
+    let body_is_empty =
+        entry.body.is_null() || matches!(&entry.body, Value::Object(o) if o.is_empty());
     assert!(body_is_empty, "expected empty body, got {:?}", entry.body);
 }
 
@@ -332,7 +335,11 @@ fn test_video_streams_update_uses_put_with_kwargs() {
 fn test_video_streams_delete_returns_dict() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let body = c.video().streams().delete("stream-3").expect("streams.delete");
+    let body = c
+        .video()
+        .streams()
+        .delete("stream-3")
+        .expect("streams.delete");
     assert!(body.is_object());
 
     let entry = common::mocktest::journal_last();

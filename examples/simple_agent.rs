@@ -10,9 +10,9 @@
 //! 4. LLM parameter tuning
 //! 5. Speech recognition hints
 
+use serde_json::json;
 use signalwire::agent::{AgentBase, AgentOptions};
 use signalwire::swaig::FunctionResult;
-use serde_json::json;
 
 fn main() {
     let mut agent = AgentBase::new(AgentOptions::new("simple-agent"));
@@ -28,12 +28,16 @@ fn main() {
         vec![],
     );
 
-    agent.prompt_add_section("Instructions", "", vec![
-        "Greet users warmly",
-        "Use get_time when asked about the current time",
-        "Be concise in responses",
-        "If you don't know something, say so",
-    ]);
+    agent.prompt_add_section(
+        "Instructions",
+        "",
+        vec![
+            "Greet users warmly",
+            "Use get_time when asked about the current time",
+            "Be concise in responses",
+            "If you don't know something, say so",
+        ],
+    );
 
     agent.prompt_add_subsection(
         "Role",

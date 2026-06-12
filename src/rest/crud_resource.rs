@@ -103,7 +103,10 @@ mod tests {
     use crate::rest::http_client::StubTransport;
     use serde_json::json;
 
-    fn make_resource() -> (crate::rest::http_client::HttpClient, std::sync::Arc<StubTransport>) {
+    fn make_resource() -> (
+        crate::rest::http_client::HttpClient,
+        std::sync::Arc<StubTransport>,
+    ) {
         crate::rest::http_client::HttpClient::with_stub(
             "proj",
             "tok",

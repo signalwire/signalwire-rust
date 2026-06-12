@@ -24,12 +24,12 @@
 //! issuing the HTTP call itself, satisfying the audit's contract that
 //! "the SDK contacted the upstream" via real bytes on the wire.
 
-use serde_json::{json, Map, Value};
+use serde_json::{Map, Value, json};
 use signalwire::agent::{AgentBase, AgentOptions};
 use signalwire::skills::skill_registry::SkillRegistry;
 use std::collections::HashMap;
-use std::fmt::Write as _;
 use std::env;
+use std::fmt::Write as _;
 use std::process;
 use std::time::Duration;
 
@@ -117,9 +117,10 @@ fn main() {
             if effective
                 .as_object()
                 .is_none_or(|o| !o.contains_key("category"))
-                && let Some(o) = effective.as_object_mut() {
-                    o.insert("category".to_string(), json!("general"));
-                }
+                && let Some(o) = effective.as_object_mut()
+            {
+                o.insert("category".to_string(), json!("general"));
+            }
             execute_datamap(&agent, "get_trivia", &effective)
         }
         other => Err(format!("unsupported skill '{other}'")),
@@ -138,10 +139,7 @@ fn main() {
 /// The SWAIG dispatcher invokes the handler, which issues a real HTTP
 /// request to the configured upstream (the audit fixture).
 fn dispatch_handler(agent: &AgentBase, tool_name: &str, args: &Value) -> Result<Value, String> {
-    let args_map: Map<String, Value> = args
-        .as_object()
-        .cloned()
-        .unwrap_or_default();
+    let args_map: Map<String, Value> = args.as_object().cloned().unwrap_or_default();
     let raw_data: Map<String, Value> = Map::new();
 
     let r = agent

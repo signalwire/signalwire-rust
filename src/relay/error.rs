@@ -138,7 +138,12 @@ mod tests {
     #[test]
     fn test_variants_carry_their_data() {
         let e = RelayError::missing_env("SIGNALWIRE_PROJECT_ID");
-        assert_eq!(e, RelayError::MissingEnv { var: "SIGNALWIRE_PROJECT_ID".into() });
+        assert_eq!(
+            e,
+            RelayError::MissingEnv {
+                var: "SIGNALWIRE_PROJECT_ID".into()
+            }
+        );
 
         let t = RelayError::transport("WS connect to wss://x", "handshake refused");
         match t {
@@ -152,23 +157,35 @@ mod tests {
 
     #[test]
     fn test_display_is_actionable() {
-        assert!(RelayError::Auth { message: "bad token".into() }
+        assert!(
+            RelayError::Auth {
+                message: "bad token".into()
+            }
             .to_string()
-            .contains("bad token"));
-        assert!(RelayError::Timeout { what: "signalwire.connect".into() }
+            .contains("bad token")
+        );
+        assert!(
+            RelayError::Timeout {
+                what: "signalwire.connect".into()
+            }
             .to_string()
-            .contains("signalwire.connect"));
-        assert!(RelayError::Rpc {
-            method: "messaging.send".into(),
-            message: "rejected".into()
-        }
-        .to_string()
-        .contains("messaging.send"));
+            .contains("signalwire.connect")
+        );
+        assert!(
+            RelayError::Rpc {
+                method: "messaging.send".into(),
+                message: "rejected".into()
+            }
+            .to_string()
+            .contains("messaging.send")
+        );
     }
 
     #[test]
     fn test_is_std_error() {
-        let e = RelayError::DialFailed { reason: "no answer".into() };
+        let e = RelayError::DialFailed {
+            reason: "no answer".into(),
+        };
         let _: &dyn std::error::Error = &e;
     }
 }

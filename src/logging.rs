@@ -209,26 +209,38 @@ mod tests {
 
     #[test]
     fn test_env_level_debug() {
-        unsafe { env::set_var("SIGNALWIRE_LOG_LEVEL", "debug"); }
+        unsafe {
+            env::set_var("SIGNALWIRE_LOG_LEVEL", "debug");
+        }
         let logger = Logger::new("test");
         assert_eq!(logger.level, Level::Debug);
-        unsafe { env::remove_var("SIGNALWIRE_LOG_LEVEL"); }
+        unsafe {
+            env::remove_var("SIGNALWIRE_LOG_LEVEL");
+        }
     }
 
     #[test]
     fn test_env_level_case_insensitive() {
-        unsafe { env::set_var("SIGNALWIRE_LOG_LEVEL", "WARN"); }
+        unsafe {
+            env::set_var("SIGNALWIRE_LOG_LEVEL", "WARN");
+        }
         let logger = Logger::new("test");
         assert_eq!(logger.level, Level::Warn);
-        unsafe { env::remove_var("SIGNALWIRE_LOG_LEVEL"); }
+        unsafe {
+            env::remove_var("SIGNALWIRE_LOG_LEVEL");
+        }
     }
 
     #[test]
     fn test_env_level_invalid_falls_back() {
-        unsafe { env::set_var("SIGNALWIRE_LOG_LEVEL", "bogus"); }
+        unsafe {
+            env::set_var("SIGNALWIRE_LOG_LEVEL", "bogus");
+        }
         let logger = Logger::new("test");
         assert_eq!(logger.level, Level::Info);
-        unsafe { env::remove_var("SIGNALWIRE_LOG_LEVEL"); }
+        unsafe {
+            env::remove_var("SIGNALWIRE_LOG_LEVEL");
+        }
     }
 
     #[test]
@@ -241,18 +253,26 @@ mod tests {
 
     #[test]
     fn test_env_suppression() {
-        unsafe { env::set_var("SIGNALWIRE_LOG_MODE", "off"); }
+        unsafe {
+            env::set_var("SIGNALWIRE_LOG_MODE", "off");
+        }
         let logger = Logger::new("test");
         assert!(logger.suppressed);
-        unsafe { env::remove_var("SIGNALWIRE_LOG_MODE"); }
+        unsafe {
+            env::remove_var("SIGNALWIRE_LOG_MODE");
+        }
     }
 
     #[test]
     fn test_env_suppression_case_insensitive() {
-        unsafe { env::set_var("SIGNALWIRE_LOG_MODE", "OFF"); }
+        unsafe {
+            env::set_var("SIGNALWIRE_LOG_MODE", "OFF");
+        }
         let logger = Logger::new("test");
         assert!(logger.suppressed);
-        unsafe { env::remove_var("SIGNALWIRE_LOG_MODE"); }
+        unsafe {
+            env::remove_var("SIGNALWIRE_LOG_MODE");
+        }
     }
 
     #[test]

@@ -52,7 +52,10 @@ fn test_compat_messages_update_journal_records_post_to_message() {
     );
     let body = entry.body_object().expect("body object");
     assert_eq!(body.get("Body").and_then(|v| v.as_str()), Some("x"));
-    assert_eq!(body.get("Status").and_then(|v| v.as_str()), Some("canceled"));
+    assert_eq!(
+        body.get("Status").and_then(|v| v.as_str()),
+        Some("canceled")
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -186,7 +189,10 @@ fn test_compat_faxes_update_journal_records_post_with_status() {
         "/api/laml/2010-04-01/Accounts/test_proj/Faxes/FX_U2"
     );
     let body = entry.body_object().expect("body object");
-    assert_eq!(body.get("Status").and_then(|v| v.as_str()), Some("canceled"));
+    assert_eq!(
+        body.get("Status").and_then(|v| v.as_str()),
+        Some("canceled")
+    );
 }
 
 // ---------------------------------------------------------------------------

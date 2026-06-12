@@ -193,17 +193,12 @@ fn parse_next_url(url: &str, base_url: &str) -> (String, HashMap<String, String>
             let slash = after_scheme.find('/').unwrap_or(0);
             after_scheme[slash..].to_string()
         };
-        let params = query_part
-            .map(parse_query_string)
-            .unwrap_or_default();
+        let params = query_part.map(parse_query_string).unwrap_or_default();
         (path, params)
     } else {
         let mut iter = url.splitn(2, '?');
         let path = iter.next().unwrap_or("").to_string();
-        let params = iter
-            .next()
-            .map(parse_query_string)
-            .unwrap_or_default();
+        let params = iter.next().map(parse_query_string).unwrap_or_default();
         (path, params)
     }
 }
@@ -262,8 +257,7 @@ mod tests {
 
     #[test]
     fn test_parse_next_url_relative() {
-        let (path, params) =
-            parse_next_url("/api/foo?cursor=p2", "https://test.signalwire.com");
+        let (path, params) = parse_next_url("/api/foo?cursor=p2", "https://test.signalwire.com");
         assert_eq!(path, "/api/foo");
         assert_eq!(params.get("cursor").map(String::as_str), Some("p2"));
     }

@@ -4,7 +4,7 @@ use std::fs;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 use crate::agent::AgentBase;
 use crate::logging::Logger;
@@ -92,14 +92,8 @@ impl AgentServer {
     ///
     /// # Errors
     /// Returns [`ServerError::RouteAlreadyRegistered`] if the route is taken.
-    pub fn register(
-        &mut self,
-        agent: AgentBase,
-        route: Option<&str>,
-    ) -> Result<(), ServerError> {
-        let route = self.normalize_route(
-            route.unwrap_or_else(|| agent.service().route()),
-        );
+    pub fn register(&mut self, agent: AgentBase, route: Option<&str>) -> Result<(), ServerError> {
+        let route = self.normalize_route(route.unwrap_or_else(|| agent.service().route()));
 
         if self.agents.contains_key(&route) {
             return Err(ServerError::RouteAlreadyRegistered { route });
@@ -178,11 +172,7 @@ impl AgentServer {
     /// # Errors
     /// Returns [`ServerError::StaticDir`] if the directory does not exist or is
     /// not a directory.
-    pub fn serve_static(
-        &mut self,
-        directory: &str,
-        url_prefix: &str,
-    ) -> Result<(), ServerError> {
+    pub fn serve_static(&mut self, directory: &str, url_prefix: &str) -> Result<(), ServerError> {
         let real_dir = fs::canonicalize(directory).map_err(|_| ServerError::StaticDir {
             path: directory.to_string(),
             reason: "does not exist".to_string(),
@@ -210,11 +200,7 @@ impl AgentServer {
     ///
     /// # Errors
     /// Returns [`ServerError::StaticDir`] if the directory does not exist.
-    pub fn serve_static_files(
-        &mut self,
-        directory: &str,
-        route: &str,
-    ) -> Result<(), ServerError> {
+    pub fn serve_static_files(&mut self, directory: &str, route: &str) -> Result<(), ServerError> {
         self.serve_static(directory, route)
     }
 
@@ -294,8 +280,8 @@ impl AgentServer {
             let (status, resp_headers, resp_body) =
                 self.handle_request(&method, &path, &req_headers, &body_buf);
 
-            let mut response = tiny_http::Response::from_string(&resp_body)
-                .with_status_code(status);
+            let mut response =
+                tiny_http::Response::from_string(&resp_body).with_status_code(status);
             for (k, v) in &resp_headers {
                 if let Ok(header) = tiny_http::Header::from_bytes(k.as_bytes(), v.as_bytes()) {
                     response = response.with_header(header);
@@ -407,9 +393,10 @@ impl AgentServer {
                 continue;
             }
             if let Some(cb) = self.global_routing_callbacks.get(key)
-                && let Some(route) = cb(path, headers, body) {
-                    return Some(route);
-                }
+                && let Some(route) = cb(path, headers, body)
+            {
+                return Some(route);
+            }
         }
         None
     }
@@ -448,10 +435,7 @@ impl AgentServer {
     }
 
     /// Attempt to serve a static file for the given path.
-    fn handle_static_file(
-        &self,
-        path: &str,
-    ) -> Option<(u16, HashMap<String, String>, String)> {
+    fn handle_static_file(&self, path: &str) -> Option<(u16, HashMap<String, String>, String)> {
         // Sort by longest prefix first
         let mut routes: Vec<&String> = self.static_routes.keys().collect();
         routes.sort_by_key(|b| std::cmp::Reverse(b.len()));
@@ -460,8 +444,7 @@ impl AgentServer {
             let normal_prefix = if prefix == "/" { "" } else { prefix.as_str() };
 
             // Check if path starts with this prefix
-            if prefix != "/" && path != prefix && !path.starts_with(&format!("{normal_prefix}/"))
-            {
+            if prefix != "/" && path != prefix && !path.starts_with(&format!("{normal_prefix}/")) {
                 continue;
             }
             // Don't serve root path as a static file
@@ -475,9 +458,7 @@ impl AgentServer {
             // Path traversal protection: reject ".." components
             if rel_path.contains("..") {
                 // More thorough check: reject any ".." path component
-                let has_traversal = rel_path
-                    .split('/')
-                    .any(|component| component == "..");
+                let has_traversal = rel_path.split('/').any(|component| component == "..");
                 if has_traversal {
                     return Some(self.forbidden_response());
                 }
@@ -510,12 +491,8 @@ impl AgentServer {
 
                 if let Ok(content) = fs::read(&abs_path) {
                     let mut resp_headers = HashMap::new();
-                    resp_headers
-                        .insert("Content-Type".to_string(), content_type.to_string());
-                    resp_headers.insert(
-                        "Content-Length".to_string(),
-                        content.len().to_string(),
-                    );
+                    resp_headers.insert("Content-Type".to_string(), content_type.to_string());
+                    resp_headers.insert("Content-Length".to_string(), content.len().to_string());
                     for (k, v) in security_headers() {
                         resp_headers.insert(k, v);
                     }
@@ -575,11 +552,7 @@ impl AgentServer {
         } else {
             path.trim_end_matches('/').to_string()
         };
-        if p.is_empty() {
-            "/".to_string()
-        } else {
-            p
-        }
+        if p.is_empty() { "/".to_string() } else { p }
     }
 
     /// Build a 403 Forbidden response with security headers.
@@ -595,11 +568,7 @@ impl AgentServer {
 
     /// Build a JSON response tuple.
     #[allow(clippy::unused_self)] // private helper kept on the self-method family for consistency
-    fn json_response(
-        &self,
-        status: u16,
-        data: &Value,
-    ) -> (u16, HashMap<String, String>, String) {
+    fn json_response(&self, status: u16, data: &Value) -> (u16, HashMap<String, String>, String) {
         let body = serde_json::to_string(data).unwrap_or_else(|_| "{}".to_string());
         let mut headers = HashMap::new();
         headers.insert("Content-Type".to_string(), "application/json".to_string());
@@ -613,10 +582,7 @@ impl AgentServer {
 /// Security headers applied to all responses.
 fn security_headers() -> Vec<(String, String)> {
     vec![
-        (
-            "X-Content-Type-Options".to_string(),
-            "nosniff".to_string(),
-        ),
+        ("X-Content-Type-Options".to_string(), "nosniff".to_string()),
         ("X-Frame-Options".to_string(), "DENY".to_string()),
         ("Cache-Control".to_string(), "no-store".to_string()),
     ]
@@ -689,8 +655,7 @@ mod tests {
         let agent = make_agent("bot1", "/bot1");
         server.register(agent, None).unwrap();
 
-        let (status, headers, body) =
-            server.handle_request("GET", "/health", &HashMap::new(), "");
+        let (status, headers, body) = server.handle_request("GET", "/health", &HashMap::new(), "");
         assert_eq!(status, 200);
         assert_eq!(headers["Content-Type"], "application/json");
         let parsed: Value = serde_json::from_str(&body).unwrap();
@@ -728,16 +693,14 @@ mod tests {
         server.register(agent, None).unwrap();
 
         // No auth -> should get 401 from the agent
-        let (status, _, _) =
-            server.handle_request("POST", "/bot1", &HashMap::new(), "");
+        let (status, _, _) = server.handle_request("POST", "/bot1", &HashMap::new(), "");
         assert_eq!(status, 401);
     }
 
     #[test]
     fn test_not_found() {
         let server = AgentServer::new(None, Some(3000));
-        let (status, _, _) =
-            server.handle_request("GET", "/nonexistent", &HashMap::new(), "");
+        let (status, _, _) = server.handle_request("GET", "/nonexistent", &HashMap::new(), "");
         assert_eq!(status, 404);
     }
 
@@ -847,27 +810,31 @@ mod tests {
     #[test]
     fn test_register_global_routing_callback_redirects_to_target() {
         let mut server = AgentServer::new(None, Some(3000));
-        server.register(make_agent("primary", "/primary"), None).unwrap();
-        server.register(make_agent("redirected", "/redirected"), None).unwrap();
+        server
+            .register(make_agent("primary", "/primary"), None)
+            .unwrap();
+        server
+            .register(make_agent("redirected", "/redirected"), None)
+            .unwrap();
 
-        let cb: GlobalRoutingCallback = Arc::new(|_path, _hdrs, _body| {
-            Some("/redirected".to_string())
-        });
+        let cb: GlobalRoutingCallback =
+            Arc::new(|_path, _hdrs, _body| Some("/redirected".to_string()));
         server.register_global_routing_callback(cb, "/primary");
 
         // Without auth headers we still expect dispatch to land on the
         // redirected agent (which will return 401 because it has auth
         // configured). The point is that the callback fired and the
         // request reached an agent.
-        let (status, _, _) =
-            server.handle_request("POST", "/primary", &HashMap::new(), "");
+        let (status, _, _) = server.handle_request("POST", "/primary", &HashMap::new(), "");
         assert_eq!(status, 401);
     }
 
     #[test]
     fn test_register_global_routing_callback_none_falls_through() {
         let mut server = AgentServer::new(None, Some(3000));
-        server.register(make_agent("primary", "/primary"), None).unwrap();
+        server
+            .register(make_agent("primary", "/primary"), None)
+            .unwrap();
 
         let cb: GlobalRoutingCallback = Arc::new(|_path, _hdrs, _body| None);
         server.register_global_routing_callback(cb, "/primary");
@@ -875,25 +842,24 @@ mod tests {
         // Returning None from the callback falls through to normal
         // dispatch — the agent at /primary handles the request and
         // returns 401 (no auth).
-        let (status, _, _) =
-            server.handle_request("POST", "/primary", &HashMap::new(), "");
+        let (status, _, _) = server.handle_request("POST", "/primary", &HashMap::new(), "");
         assert_eq!(status, 401);
     }
 
     #[test]
     fn test_register_global_routing_callback_unknown_target_falls_through() {
         let mut server = AgentServer::new(None, Some(3000));
-        server.register(make_agent("primary", "/primary"), None).unwrap();
+        server
+            .register(make_agent("primary", "/primary"), None)
+            .unwrap();
 
         // Callback points at a route that does not exist; handler
         // should log a warning and proceed with normal dispatch.
-        let cb: GlobalRoutingCallback = Arc::new(|_path, _hdrs, _body| {
-            Some("/does-not-exist".to_string())
-        });
+        let cb: GlobalRoutingCallback =
+            Arc::new(|_path, _hdrs, _body| Some("/does-not-exist".to_string()));
         server.register_global_routing_callback(cb, "/primary");
 
-        let (status, _, _) =
-            server.handle_request("POST", "/primary", &HashMap::new(), "");
+        let (status, _, _) = server.handle_request("POST", "/primary", &HashMap::new(), "");
         // /primary still resolves and returns 401 (auth required).
         assert_eq!(status, 401);
     }
@@ -903,7 +869,9 @@ mod tests {
         use std::sync::atomic::{AtomicBool, Ordering};
 
         let mut server = AgentServer::new(None, Some(3000));
-        server.register(make_agent("primary", "/primary"), None).unwrap();
+        server
+            .register(make_agent("primary", "/primary"), None)
+            .unwrap();
 
         let fired = Arc::new(AtomicBool::new(false));
         let fired_for_cb = fired.clone();
@@ -924,7 +892,9 @@ mod tests {
         use std::sync::Mutex;
 
         let mut server = AgentServer::new(None, Some(3000));
-        server.register(make_agent("primary", "/primary"), None).unwrap();
+        server
+            .register(make_agent("primary", "/primary"), None)
+            .unwrap();
 
         let captured_body: Arc<Mutex<Option<Value>>> = Arc::new(Mutex::new(None));
         let cap = captured_body.clone();
@@ -938,7 +908,10 @@ mod tests {
         let _ = server.handle_request("POST", "/primary", &HashMap::new(), body_json);
 
         let captured = captured_body.lock().unwrap();
-        assert!(captured.is_some(), "callback should have received parsed body");
+        assert!(
+            captured.is_some(),
+            "callback should have received parsed body"
+        );
         let v = captured.as_ref().unwrap();
         assert_eq!(v["call"]["to"], "sip:alice@example.com");
     }

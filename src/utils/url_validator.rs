@@ -96,7 +96,11 @@ fn cidr_contains(cidr: &str, ip: &IpAddr) -> bool {
             if prefix > 32 {
                 return false;
             }
-            let mask: u32 = if prefix == 0 { 0 } else { !0u32 << (32 - prefix) };
+            let mask: u32 = if prefix == 0 {
+                0
+            } else {
+                !0u32 << (32 - prefix)
+            };
             (u32::from(*ip4) & mask) == (u32::from(net4) & mask)
         }
         IpAddr::V6(ip6) => {
@@ -109,7 +113,11 @@ fn cidr_contains(cidr: &str, ip: &IpAddr) -> bool {
             }
             let ip_bits = u128::from(*ip6);
             let net_bits = u128::from(net6);
-            let mask: u128 = if prefix == 0 { 0 } else { !0u128 << (128 - prefix) };
+            let mask: u128 = if prefix == 0 {
+                0
+            } else {
+                !0u128 << (128 - prefix)
+            };
             (ip_bits & mask) == (net_bits & mask)
         }
     }
@@ -150,7 +158,9 @@ pub fn validate_url(url: &str, allow_private: bool) -> bool {
     let ips = match resolve(&hostname) {
         Some(v) if !v.is_empty() => v,
         _ => {
-            log.warn(&format!("URL rejected: could not resolve hostname {hostname}"));
+            log.warn(&format!(
+                "URL rejected: could not resolve hostname {hostname}"
+            ));
             return false;
         }
     };

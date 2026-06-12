@@ -6,9 +6,9 @@
 //! Usage:
 //!   `PORT=8080 cargo run --example kubernetes_ready_agent`
 
+use serde_json::json;
 use signalwire::agent::{AgentBase, AgentOptions};
 use signalwire::swaig::FunctionResult;
-use serde_json::json;
 use std::env;
 
 fn main() {

@@ -6,7 +6,7 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
 
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use tungstenite::stream::MaybeTlsStream;
 use tungstenite::{Message as WsMessage, WebSocket};
 
@@ -47,7 +47,7 @@ mod tls {
 
     use tungstenite::client::uri_mode;
     use tungstenite::stream::{MaybeTlsStream, Mode};
-    use tungstenite::{client_tls_with_config, Connector};
+    use tungstenite::{Connector, client_tls_with_config};
 
     use super::RelayError;
     use super::WsStream;
@@ -318,8 +318,7 @@ impl Client {
     pub fn connect(self: &Arc<Self>) -> Result<(), RelayError> {
         self.logger.info(&format!("Connecting to {}", self.host));
 
-        let scheme = std::env::var("SIGNALWIRE_RELAY_SCHEME")
-            .unwrap_or_else(|_| "wss".to_string());
+        let scheme = std::env::var("SIGNALWIRE_RELAY_SCHEME").unwrap_or_else(|_| "wss".to_string());
         let host_override = std::env::var("SIGNALWIRE_RELAY_HOST").ok();
         let endpoint_host = host_override.as_deref().unwrap_or(self.host.as_str());
         let url = format!("{scheme}://{endpoint_host}{RELAY_PATH}");
@@ -444,21 +443,24 @@ impl Client {
         // dynamically add more.
         let ctxs: Vec<String> = self.contexts.lock().unwrap().clone();
         if !ctxs.is_empty()
-            && let Value::Object(ref mut obj) = params {
-                obj.insert("contexts".to_string(), json!(ctxs));
-            }
+            && let Value::Object(ref mut obj) = params
+        {
+            obj.insert("contexts".to_string(), json!(ctxs));
+        }
         // Re-send authorization state on reconnect for fast resume.
         if let Some(state) = self.authorization_state.lock().unwrap().clone()
-            && let Value::Object(ref mut obj) = params {
-                obj.insert("authorization_state".to_string(), json!(state));
-            }
+            && let Value::Object(ref mut obj) = params
+        {
+            obj.insert("authorization_state".to_string(), json!(state));
+        }
         // Re-send the previously-issued protocol string on reconnect so
         // the server can restore the session. Mirrors Python's
         // `RelayClient.connect` behaviour when `_relay_protocol` is set.
         if let Some(p) = self.protocol.lock().unwrap().clone()
-            && let Value::Object(ref mut obj) = params {
-                obj.insert("protocol".to_string(), json!(p));
-            }
+            && let Value::Object(ref mut obj) = params
+        {
+            obj.insert("protocol".to_string(), json!(p));
+        }
 
         let msg = json!({
             "jsonrpc": "2.0",
@@ -513,9 +515,7 @@ impl Client {
                 // late response doesn't trip into a stale callback.
                 self.pending.lock().unwrap().remove(&id);
                 Err(RelayError::Timeout {
-                    what: format!(
-                        "signalwire.connect response (after {HANDSHAKE_TIMEOUT:?})"
-                    ),
+                    what: format!("signalwire.connect response (after {HANDSHAKE_TIMEOUT:?})"),
                 })
             }
         }
@@ -594,8 +594,7 @@ impl Client {
         *self.connected.lock().unwrap() = false;
 
         let delay = self.bump_reconnect_delay();
-        self.logger
-            .warn(&format!("Reconnecting in {delay}s"));
+        self.logger.warn(&format!("Reconnecting in {delay}s"));
         thread::sleep(Duration::from_secs(delay));
 
         self.connect()
@@ -698,8 +697,7 @@ impl Client {
         if let Some(tx) = self.write_tx.lock().unwrap().as_ref() {
             let raw = msg.to_string();
             if let Err(e) = tx.send(WsMessage::Text(raw.into())) {
-                self.logger
-                    .warn(&format!("write channel closed: {e}"));
+                self.logger.warn(&format!("write channel closed: {e}"));
             }
         }
     }
@@ -727,7 +725,9 @@ impl Client {
     pub fn handle_message(&self, raw: &str) {
         self.logger.debug(&format!("<< {raw}"));
 
-        let data: Value = if let Ok(d) = serde_json::from_str(raw) { d } else {
+        let data: Value = if let Ok(d) = serde_json::from_str(raw) {
+            d
+        } else {
             self.logger.warn("Received unparseable message");
             return;
         };
@@ -749,10 +749,7 @@ impl Client {
 
         // ── server-initiated request ─────────────────────────────────
         let method = data.get("method").and_then(|v| v.as_str()).unwrap_or("");
-        let id = data
-            .get("id")
-            .and_then(|v| v.as_str())
-            .unwrap_or("");
+        let id = data.get("id").and_then(|v| v.as_str()).unwrap_or("");
 
         match method {
             "signalwire.ping" => {
@@ -767,8 +764,7 @@ impl Client {
                 self.handle_event(&outer_params);
             }
             _ => {
-                self.logger
-                    .debug(&format!("Unhandled method: {method}"));
+                self.logger.debug(&format!("Unhandled method: {method}"));
             }
         }
     }
@@ -795,7 +791,10 @@ impl Client {
                 .get("authorization_state")
                 .and_then(|v| v.as_str())
                 .map(std::string::ToString::to_string);
-            self.authorization_state.lock().unwrap().clone_from(&auth_state);
+            self.authorization_state
+                .lock()
+                .unwrap()
+                .clone_from(&auth_state);
             self.logger
                 .info(&format!("Authorization state: {auth_state:?}"));
             return;
@@ -818,18 +817,14 @@ impl Client {
         // ── message state updates ────────────────────────────────────
         if event_type == "messaging.state" {
             if let Some(msg_id) = params.get("message_id").and_then(|v| v.as_str()) {
-                let msg = self
-                    .messages
-                    .lock()
-                    .unwrap()
-                    .get(msg_id)
-                    .cloned();
+                let msg = self.messages.lock().unwrap().get(msg_id).cloned();
                 if let Some(msg) = msg {
                     msg.dispatch_event(&event);
                     if let Some(s) = params.get("state").and_then(|v| v.as_str())
-                        && constants::is_message_terminal(s) {
-                            self.messages.lock().unwrap().remove(msg_id);
-                        }
+                        && constants::is_message_terminal(s)
+                    {
+                        self.messages.lock().unwrap().remove(msg_id);
+                    }
                 }
             }
             return;
@@ -837,17 +832,17 @@ impl Client {
 
         // ── call state with a pending dial tag ───────────────────────
         if event_type == "calling.call.state"
-            && let Some(tag) = params.get("tag").and_then(|v| v.as_str()) {
-                let has_dial = self.pending_dials.lock().unwrap().contains_key(tag);
-                if has_dial
-                    && let Some(call_id) = params.get("call_id").and_then(|v| v.as_str()) {
-                        let mut calls = self.calls.lock().unwrap();
-                        if !calls.contains_key(call_id) {
-                            let call = Arc::new(Call::new(&params));
-                            calls.insert(call_id.to_string(), call);
-                        }
-                    }
+            && let Some(tag) = params.get("tag").and_then(|v| v.as_str())
+        {
+            let has_dial = self.pending_dials.lock().unwrap().contains_key(tag);
+            if has_dial && let Some(call_id) = params.get("call_id").and_then(|v| v.as_str()) {
+                let mut calls = self.calls.lock().unwrap();
+                if !calls.contains_key(call_id) {
+                    let call = Arc::new(Call::new(&params));
+                    calls.insert(call_id.to_string(), call);
+                }
             }
+        }
 
         // ── dial completion event ────────────────────────────────────
         if event_type == "calling.call.dial" {
@@ -856,10 +851,7 @@ impl Client {
         }
 
         // ── default: route to the Call by call_id ────────────────────
-        if let Some(call_id) = params
-            .get("call_id")
-            .and_then(|v| v.as_str())
-        {
+        if let Some(call_id) = params.get("call_id").and_then(|v| v.as_str()) {
             let call = self.calls.lock().unwrap().get(call_id).cloned();
             if let Some(call) = call {
                 call.dispatch_event(&event);
@@ -993,11 +985,7 @@ impl Client {
     /// Panics if an internal mutex is poisoned (i.e. another thread
     /// panicked while holding the lock). This does not occur under
     /// normal operation.
-    pub fn register_dial<F: FnOnce(Arc<Call>) + Send + 'static>(
-        &self,
-        tag: &str,
-        resolve: F,
-    ) {
+    pub fn register_dial<F: FnOnce(Arc<Call>) + Send + 'static>(&self, tag: &str, resolve: F) {
         self.pending_dials.lock().unwrap().insert(
             tag.to_string(),
             PendingDial {
@@ -1048,11 +1036,7 @@ impl Client {
     /// Panics if an internal mutex is poisoned (i.e. another thread
     /// panicked while holding the lock). This does not occur under
     /// normal operation.
-    pub fn execute_blocking(
-        &self,
-        method: &str,
-        inner_params: Value,
-    ) -> Result<Value, RelayError> {
+    pub fn execute_blocking(&self, method: &str, inner_params: Value) -> Result<Value, RelayError> {
         let id = generate_uuid();
         let frame = json!({
             "jsonrpc": "2.0",
@@ -1144,17 +1128,20 @@ impl Client {
             "from_number": from_number,
         });
         if let Some(b) = body
-            && !b.is_empty() {
-                params["body"] = json!(b);
-            }
+            && !b.is_empty()
+        {
+            params["body"] = json!(b);
+        }
         if let Some(m) = media
-            && !m.is_empty() {
-                params["media"] = json!(m);
-            }
+            && !m.is_empty()
+        {
+            params["media"] = json!(m);
+        }
         if let Some(t) = tags
-            && !t.is_empty() {
-                params["tags"] = json!(t);
-            }
+            && !t.is_empty()
+        {
+            params["tags"] = json!(t);
+        }
 
         let result = self.execute_blocking("messaging.send", params)?;
 
@@ -1259,7 +1246,9 @@ impl Client {
         // Wait for either the resolved call or the timeout. The
         // existing `handle_dial_event` resolves only on the
         // `calling.call.dial` event with a `call.call_id` in `params.call`.
-        if let Ok(call) = resolve_rx.recv_timeout(dial_timeout) { Ok(call) } else {
+        if let Ok(call) = resolve_rx.recv_timeout(dial_timeout) {
+            Ok(call)
+        } else {
             self.remove_pending_dial(&dial_tag);
             if let Some(reason) = dial_failed.lock().unwrap().clone() {
                 Err(RelayError::DialFailed { reason })
@@ -1287,8 +1276,7 @@ impl Client {
             .unwrap()
             .insert(call_id.to_string(), call.clone());
 
-        self.logger
-            .info(&format!("Inbound call {call_id}"));
+        self.logger.info(&format!("Inbound call {call_id}"));
 
         if let Some(handler) = self.on_call_handler.lock().unwrap().as_ref() {
             handler(call, event);
@@ -1307,7 +1295,9 @@ impl Client {
         // nested `call` object as the construction params so the resulting
         // Call carries device/tag fields too.
         let call_obj = params.get("call");
-        let nested_call_id = call_obj.and_then(|c| c.get("call_id")).and_then(|v| v.as_str());
+        let nested_call_id = call_obj
+            .and_then(|c| c.get("call_id"))
+            .and_then(|v| v.as_str());
         let top_level_call_id = params.get("call_id").and_then(|v| v.as_str());
         let call_id = nested_call_id.or(top_level_call_id);
 
@@ -1367,11 +1357,7 @@ impl Client {
     /// dispatching every inbound text frame through `handle_message`.
     /// Exits when the closing flag is set, the write channel is
     /// dropped, or the socket reports a fatal error.
-    fn reader_loop(
-        client: Arc<Self>,
-        mut socket: WsStream,
-        write_rx: Receiver<WsMessage>,
-    ) {
+    fn reader_loop(client: Arc<Self>, mut socket: WsStream, write_rx: Receiver<WsMessage>) {
         // Track whether we observed a clean close so the disconnect
         // logic can decide whether to attempt a reconnect later.
         loop {
@@ -1390,9 +1376,7 @@ impl Client {
                 match write_rx.try_recv() {
                     Ok(frame) => {
                         if let Err(e) = socket.send(frame) {
-                            client
-                                .logger
-                                .warn(&format!("WS send error: {e}"));
+                            client.logger.warn(&format!("WS send error: {e}"));
                             break;
                         }
                         wrote_any = true;
@@ -1423,9 +1407,7 @@ impl Client {
                     // log and drop.
                     match std::str::from_utf8(&b) {
                         Ok(s) => client.handle_message(s),
-                        Err(_) => client
-                            .logger
-                            .debug("ignoring non-UTF8 binary WS frame"),
+                        Err(_) => client.logger.debug("ignoring non-UTF8 binary WS frame"),
                     }
                 }
                 Ok(WsMessage::Ping(p)) => {
@@ -1641,7 +1623,10 @@ mod tests {
         let msgs = c.sent_messages.lock().unwrap();
         assert_eq!(msgs.len(), 1);
         assert_eq!(msgs[0]["method"], "signalwire.connect");
-        assert_eq!(msgs[0]["params"]["authentication"]["project"], "test-project");
+        assert_eq!(
+            msgs[0]["params"]["authentication"]["project"],
+            "test-project"
+        );
     }
 
     #[test]

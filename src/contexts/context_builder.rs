@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use serde_json::{json, Map, Value};
+use serde_json::{Map, Value, json};
 
 /// Reserved tool names auto-injected by the runtime when contexts/steps are
 /// present. User-defined SWAIG tools must not collide with these names:
@@ -13,11 +13,7 @@ use serde_json::{json, Map, Value};
 /// [`ContextBuilder::validate`] rejects any agent that registers a user
 /// tool sharing one of these names — the runtime would never call the
 /// user tool because the native one wins.
-pub const RESERVED_NATIVE_TOOL_NAMES: &[&str] = &[
-    "next_step",
-    "change_context",
-    "gather_submit",
-];
+pub const RESERVED_NATIVE_TOOL_NAMES: &[&str] = &["next_step", "change_context", "gather_submit"];
 
 // ── GatherQuestion ──────────────────────────────────────────────────────────
 
@@ -71,9 +67,10 @@ impl GatherQuestion {
             map.insert("prompt".to_string(), json!(p));
         }
         if let Some(ref f) = self.functions
-            && !f.is_empty() {
-                map.insert("functions".to_string(), json!(f));
-            }
+            && !f.is_empty()
+        {
+            map.insert("functions".to_string(), json!(f));
+        }
 
         Value::Object(map)
     }
@@ -135,7 +132,11 @@ impl GatherInfo {
     pub fn to_value(&self) -> Value {
         let mut map = Map::new();
 
-        let q_arr: Vec<Value> = self.questions.iter().map(GatherQuestion::to_value).collect();
+        let q_arr: Vec<Value> = self
+            .questions
+            .iter()
+            .map(GatherQuestion::to_value)
+            .collect();
         map.insert("questions".to_string(), Value::Array(q_arr));
 
         if let Some(ref p) = self.prompt {
@@ -266,12 +267,22 @@ impl Step {
     }
 
     pub fn set_valid_steps(&mut self, steps: Vec<&str>) -> &mut Self {
-        self.valid_steps = Some(steps.into_iter().map(std::string::ToString::to_string).collect());
+        self.valid_steps = Some(
+            steps
+                .into_iter()
+                .map(std::string::ToString::to_string)
+                .collect(),
+        );
         self
     }
 
     pub fn set_valid_contexts(&mut self, contexts: Vec<&str>) -> &mut Self {
-        self.valid_contexts = Some(contexts.into_iter().map(std::string::ToString::to_string).collect());
+        self.valid_contexts = Some(
+            contexts
+                .into_iter()
+                .map(std::string::ToString::to_string)
+                .collect(),
+        );
         self
     }
 
@@ -741,9 +752,7 @@ impl ContextBuilder {
         if self.contexts.len() == 1 {
             let name = self.context_order.first().unwrap();
             if name != "default" {
-                errors.push(
-                    "When using a single context, it must be named 'default'".to_string(),
-                );
+                errors.push("When using a single context, it must be named 'default'".to_string());
             }
         }
 
@@ -757,14 +766,15 @@ impl ContextBuilder {
         // Validate initial_step references a real step in the context
         for (name, ctx) in &self.contexts {
             if let Some(ref is) = ctx.initial_step
-                && !ctx.steps.contains_key(is) {
-                    let mut available: Vec<&String> = ctx.steps.keys().collect();
-                    available.sort();
-                    errors.push(format!(
-                        "Context '{name}' has initial_step='{is}' but that step does not exist. \
+                && !ctx.steps.contains_key(is)
+            {
+                let mut available: Vec<&String> = ctx.steps.keys().collect();
+                available.sort();
+                errors.push(format!(
+                    "Context '{name}' has initial_step='{is}' but that step does not exist. \
                          Available steps: {available:?}"
-                    ));
-                }
+                ));
+            }
         }
 
         // Validate step references in valid_steps
@@ -824,8 +834,9 @@ impl ContextBuilder {
                         if action == "next_step" {
                             let idx = ctx.step_order.iter().position(|n| n == step_name);
                             if let Some(i) = idx
-                                && i + 1 >= ctx.step_order.len() {
-                                    errors.push(format!(
+                                && i + 1 >= ctx.step_order.len()
+                            {
+                                errors.push(format!(
                                         "Step '{step_name}' in context '{ctx_name}' has gather_info \
                                          completion_action='next_step' but it is the last \
                                          step in the context. Either (1) add another step \
@@ -834,7 +845,7 @@ impl ContextBuilder {
                                          or (3) set completion_action=None (default) to stay \
                                          in '{step_name}' after gathering completes."
                                     ));
-                                }
+                            }
                         } else if !ctx.steps.contains_key(action) {
                             let mut available: Vec<&String> = ctx.steps.keys().collect();
                             available.sort();
@@ -1234,7 +1245,10 @@ mod tests {
     #[test]
     fn test_builder_validate_valid() {
         let mut builder = ContextBuilder::new();
-        builder.add_context("default").add_step("intro").set_text("Hello");
+        builder
+            .add_context("default")
+            .add_step("intro")
+            .set_text("Hello");
         assert!(builder.validate().is_ok());
     }
 
@@ -1242,7 +1256,9 @@ mod tests {
     fn test_builder_validate_unknown_step_ref() {
         let mut builder = ContextBuilder::new();
         let ctx = builder.add_context("default");
-        ctx.add_step("s1").set_text("a").set_valid_steps(vec!["nonexistent"]);
+        ctx.add_step("s1")
+            .set_text("a")
+            .set_valid_steps(vec!["nonexistent"]);
         let result = builder.validate();
         assert!(result.is_err());
         let errors = result.unwrap_err();
@@ -1253,7 +1269,9 @@ mod tests {
     fn test_builder_validate_next_step_ref_allowed() {
         let mut builder = ContextBuilder::new();
         let ctx = builder.add_context("default");
-        ctx.add_step("s1").set_text("a").set_valid_steps(vec!["next"]);
+        ctx.add_step("s1")
+            .set_text("a")
+            .set_valid_steps(vec!["next"]);
         assert!(builder.validate().is_ok());
     }
 
@@ -1261,7 +1279,9 @@ mod tests {
     fn test_builder_validate_unknown_context_ref() {
         let mut builder = ContextBuilder::new();
         let ctx = builder.add_context("default");
-        ctx.add_step("s1").set_text("a").set_valid_contexts(vec!["nonexistent"]);
+        ctx.add_step("s1")
+            .set_text("a")
+            .set_valid_contexts(vec!["nonexistent"]);
         let result = builder.validate();
         assert!(result.is_err());
     }
@@ -1296,7 +1316,10 @@ mod tests {
     #[test]
     fn test_builder_to_value() {
         let mut builder = ContextBuilder::new();
-        builder.add_context("default").add_step("intro").set_text("Hello");
+        builder
+            .add_context("default")
+            .add_step("intro")
+            .set_text("Hello");
         let val = builder.to_value();
         assert!(val["default"]["steps"].is_array());
     }
@@ -1311,8 +1334,14 @@ mod tests {
     #[test]
     fn test_builder_multiple_contexts() {
         let mut builder = ContextBuilder::new();
-        builder.add_context("greeting").add_step("s1").set_text("Hi");
-        builder.add_context("farewell").add_step("s1").set_text("Bye");
+        builder
+            .add_context("greeting")
+            .add_step("s1")
+            .set_text("Hi");
+        builder
+            .add_context("farewell")
+            .add_step("s1")
+            .set_text("Bye");
         assert!(builder.validate().is_ok());
         let val = builder.to_value();
         assert!(val["greeting"].is_object());
@@ -1326,7 +1355,11 @@ mod tests {
         let mut builder = create_simple_context("default");
         assert!(builder.has_contexts());
         // Add a step so it validates
-        builder.get_context_mut("default").unwrap().add_step("s1").set_text("Hi");
+        builder
+            .get_context_mut("default")
+            .unwrap()
+            .add_step("s1")
+            .set_text("Hi");
         assert!(builder.validate().is_ok());
     }
 
@@ -1400,7 +1433,11 @@ mod tests {
         let result = builder.validate();
         assert!(result.is_err());
         let errors = result.unwrap_err();
-        assert!(errors.iter().any(|e| e.contains("initial_step='nonexistent'")));
+        assert!(
+            errors
+                .iter()
+                .any(|e| e.contains("initial_step='nonexistent'"))
+        );
     }
 
     // ── reset tests ─────────────────────────────────────────────────────
@@ -1419,7 +1456,10 @@ mod tests {
         let mut builder = ContextBuilder::new();
         builder.add_context("default").add_step("s1").set_text("Hi");
         builder.reset();
-        builder.add_context("default").add_step("s1").set_text("New");
+        builder
+            .add_context("default")
+            .add_step("s1")
+            .set_text("New");
         assert!(builder.validate().is_ok());
     }
 }

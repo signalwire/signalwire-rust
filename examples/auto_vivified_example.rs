@@ -3,8 +3,8 @@
 //
 //! Auto-Vivified SWML Service — verb methods called directly on the service.
 
-use signalwire::swml::service::{Service, ServiceOptions};
 use serde_json::json;
+use signalwire::swml::service::{Service, ServiceOptions};
 
 fn main() {
     let mut service = Service::new(ServiceOptions {
@@ -21,33 +21,49 @@ fn main() {
     service.add_verb("answer", "main", json!({}));
 
     // Play greeting
-    service.add_verb("play", "main", json!({
-        "url": "say:Hello! You've reached our voicemail. Please leave a message after the beep."
-    }));
+    service.add_verb(
+        "play",
+        "main",
+        json!({
+            "url": "say:Hello! You've reached our voicemail. Please leave a message after the beep."
+        }),
+    );
 
     // Pause
     service.sleep(1000, "main");
 
     // Beep
-    service.add_verb("play", "main", json!({
-        "url": "https://example.com/beep.wav"
-    }));
+    service.add_verb(
+        "play",
+        "main",
+        json!({
+            "url": "https://example.com/beep.wav"
+        }),
+    );
 
     // Record
-    service.add_verb("record", "main", json!({
-        "stereo": true,
-        "format": "wav",
-        "direction": "speak",
-        "terminators": "#",
-        "beep": false,
-        "max_length": 120,
-        "end_silence_timeout": 3.0
-    }));
+    service.add_verb(
+        "record",
+        "main",
+        json!({
+            "stereo": true,
+            "format": "wav",
+            "direction": "speak",
+            "terminators": "#",
+            "beep": false,
+            "max_length": 120,
+            "end_silence_timeout": 3.0
+        }),
+    );
 
     // Thank and hang up
-    service.add_verb("play", "main", json!({
-        "url": "say:Thank you. Goodbye!"
-    }));
+    service.add_verb(
+        "play",
+        "main",
+        json!({
+            "url": "say:Thank you. Goodbye!"
+        }),
+    );
     service.add_verb("hangup", "main", json!({}));
 
     // Dump the document

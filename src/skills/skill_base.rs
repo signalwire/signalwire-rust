@@ -56,7 +56,12 @@ pub trait SkillBase: Send + Sync {
 
     /// POM sections merged into the agent's prompt.
     fn get_prompt_sections(&self) -> Vec<Value> {
-        if self.params().get("skip_prompt").and_then(serde_json::Value::as_bool).unwrap_or(false) {
+        if self
+            .params()
+            .get("skip_prompt")
+            .and_then(serde_json::Value::as_bool)
+            .unwrap_or(false)
+        {
             return Vec::new();
         }
         Vec::new()
@@ -145,22 +150,34 @@ impl SkillParams {
     }
 
     pub fn get_bool(&self, key: &str) -> bool {
-        self.params.get(key).and_then(serde_json::Value::as_bool).unwrap_or(false)
+        self.params
+            .get(key)
+            .and_then(serde_json::Value::as_bool)
+            .unwrap_or(false)
     }
 
     /// Like [`get_bool`](Self::get_bool) but returns `default` when the key is
     /// absent (or not a boolean). Needed for params whose documented default
     /// is `true` — `get_bool` always falls back to `false`.
     pub fn get_bool_or(&self, key: &str, default: bool) -> bool {
-        self.params.get(key).and_then(serde_json::Value::as_bool).unwrap_or(default)
+        self.params
+            .get(key)
+            .and_then(serde_json::Value::as_bool)
+            .unwrap_or(default)
     }
 
     pub fn get_i64(&self, key: &str, default: i64) -> i64 {
-        self.params.get(key).and_then(serde_json::Value::as_i64).unwrap_or(default)
+        self.params
+            .get(key)
+            .and_then(serde_json::Value::as_i64)
+            .unwrap_or(default)
     }
 
     pub fn get_f64(&self, key: &str, default: f64) -> f64 {
-        self.params.get(key).and_then(serde_json::Value::as_f64).unwrap_or(default)
+        self.params
+            .get(key)
+            .and_then(serde_json::Value::as_f64)
+            .unwrap_or(default)
     }
 
     pub fn get_array(&self, key: &str) -> Vec<Value> {

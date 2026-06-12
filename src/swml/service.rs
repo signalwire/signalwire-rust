@@ -101,9 +101,8 @@ impl ServiceOptions {
 /// Rust has no method overriding via inheritance — the function-field
 /// hook is the idiomatic equivalent of Python's overridable
 /// `on_swml_request`. Set via `Service::set_on_swml_request_hook`.
-pub type OnSwmlRequestHook = Box<
-    dyn Fn(Option<&Value>, Option<&str>) -> Option<Value> + Send + Sync,
->;
+pub type OnSwmlRequestHook =
+    Box<dyn Fn(Option<&Value>, Option<&str>) -> Option<Value> + Send + Sync>;
 
 /// SWML service: holds a document, auth credentials, and handles HTTP requests.
 pub struct Service {
@@ -151,15 +150,17 @@ pub struct ToolDef {
 
 impl Service {
     pub fn new(options: ServiceOptions) -> Self {
-        let route = options
-            .route.map_or_else(|| "/".to_string(), |r| {
+        let route = options.route.map_or_else(
+            || "/".to_string(),
+            |r| {
                 let trimmed = r.trim_end_matches('/');
                 if trimmed.is_empty() {
                     "/".to_string()
                 } else {
                     trimmed.to_string()
                 }
-            });
+            },
+        );
 
         let host = options.host.unwrap_or_else(|| "0.0.0.0".to_string());
 
@@ -391,7 +392,10 @@ impl Service {
     /// Get (user, password) — Python-canonical name.
     /// Python parity: ``AuthMixin.get_basic_auth_credentials``.
     pub fn get_basic_auth_credentials(&self) -> (String, String) {
-        (self.basic_auth_user.clone(), self.basic_auth_password.clone())
+        (
+            self.basic_auth_user.clone(),
+            self.basic_auth_password.clone(),
+        )
     }
 
     /// Get (user, password, source) where source is one of "provided",
@@ -402,15 +406,15 @@ impl Service {
         let pass = self.basic_auth_password.clone();
         let env_user = env::var("SWML_BASIC_AUTH_USER").unwrap_or_default();
         let env_pass = env::var("SWML_BASIC_AUTH_PASSWORD").unwrap_or_default();
-        let source = if !env_user.is_empty() && !env_pass.is_empty()
-            && user == env_user && pass == env_pass
-        {
-            "environment".to_string()
-        } else if user.starts_with("user_") && pass.len() > 20 {
-            "generated".to_string()
-        } else {
-            "provided".to_string()
-        };
+        let source =
+            if !env_user.is_empty() && !env_pass.is_empty() && user == env_user && pass == env_pass
+            {
+                "environment".to_string()
+            } else if user.starts_with("user_") && pass.len() > 20 {
+                "generated".to_string()
+            } else {
+                "provided".to_string()
+            };
         (user, pass, source)
     }
 
@@ -583,8 +587,11 @@ impl Service {
             match serde_json::from_str(body) {
                 Ok(v) => Some(v),
                 Err(e) => {
-                    self.logger
-                        .debug(&format!("body JSON parse failed: {} ({} bytes)", e, body.len()));
+                    self.logger.debug(&format!(
+                        "body JSON parse failed: {} ({} bytes)",
+                        e,
+                        body.len()
+                    ));
                     None
                 }
             }
@@ -657,9 +664,10 @@ impl Service {
     pub fn get_proxy_url_base(&self, headers: &HashMap<String, String>) -> String {
         // 1. Explicit env var
         if let Ok(env_proxy) = env::var("SWML_PROXY_URL_BASE")
-            && !env_proxy.is_empty() {
-                return env_proxy.trim_end_matches('/').to_string();
-            }
+            && !env_proxy.is_empty()
+        {
+            return env_proxy.trim_end_matches('/').to_string();
+        }
 
         // 2. X-Forwarded-Proto + X-Forwarded-Host
         let proto = headers
@@ -779,20 +787,15 @@ impl Service {
         }
 
         let Some(body) = request_data else {
-            return self.json_response(
-                400,
-                &serde_json::json!({"error": "Missing request body"}),
-            );
+            return self.json_response(400, &serde_json::json!({"error": "Missing request body"}));
         };
 
         let function_name = match body.get("function").and_then(|v| v.as_str()) {
             Some(name) if !name.is_empty() => name,
             _ => {
                 self.logger.warn("/swaig POST missing function name");
-                return self.json_response(
-                    400,
-                    &serde_json::json!({"error": "Missing function name"}),
-                );
+                return self
+                    .json_response(400, &serde_json::json!({"error": "Missing function name"}));
             }
         };
 
@@ -824,11 +827,12 @@ impl Service {
                 }
             } else if let Some(raw_str) = arg_obj.get("raw").and_then(|v| v.as_str())
                 && !raw_str.is_empty()
-                    && let Ok(Value::Object(parsed)) = serde_json::from_str::<Value>(raw_str) {
-                        for (k, v) in &parsed {
-                            args.insert(k.clone(), v.clone());
-                        }
-                    }
+                && let Ok(Value::Object(parsed)) = serde_json::from_str::<Value>(raw_str)
+            {
+                for (k, v) in &parsed {
+                    args.insert(k.clone(), v.clone());
+                }
+            }
         } else if let Some(flat) = body.get("arguments").and_then(|v| v.as_object()) {
             for (k, v) in flat {
                 args.insert(k.clone(), v.clone());
@@ -847,7 +851,11 @@ impl Service {
         // tools that the platform executes server-side), return a SWAIG
         // response saying so — the platform expects a `{response: ...}`
         // shape, not a 404.
-        if let Some(handler) = self.tools.get(function_name).and_then(|t| t.handler.as_ref()) {
+        if let Some(handler) = self
+            .tools
+            .get(function_name)
+            .and_then(|t| t.handler.as_ref())
+        {
             let result = handler(&args, &raw_data);
             self.logger
                 .debug(&format!("/swaig dispatched: function={function_name} ok"));
@@ -868,11 +876,7 @@ impl Service {
     }
 
     #[allow(clippy::unused_self)] // private helper kept on the self-method family for consistency
-    fn json_response(
-        &self,
-        status: u16,
-        data: &Value,
-    ) -> (u16, HashMap<String, String>, String) {
+    fn json_response(&self, status: u16, data: &Value) -> (u16, HashMap<String, String>, String) {
         let body = serde_json::to_string(data).unwrap_or_else(|_| "{}".to_string());
         let mut headers = HashMap::new();
         headers.insert("Content-Type".to_string(), "application/json".to_string());
@@ -900,7 +904,10 @@ impl Service {
             .collect();
         let body = serde_json::json!({ "tools": signatures });
         println!("__SWAIG_TOOLS_BEGIN__");
-        println!("{}", serde_json::to_string(&body).unwrap_or_else(|_| "{}".to_string()));
+        println!(
+            "{}",
+            serde_json::to_string(&body).unwrap_or_else(|_| "{}".to_string())
+        );
         println!("__SWAIG_TOOLS_END__");
         std::process::exit(0);
     }
@@ -937,8 +944,8 @@ impl Service {
             let (status, resp_headers, resp_body) =
                 self.handle_request(&method, &path, &req_headers, &body_buf);
 
-            let mut response = tiny_http::Response::from_string(&resp_body)
-                .with_status_code(status);
+            let mut response =
+                tiny_http::Response::from_string(&resp_body).with_status_code(status);
             for (k, v) in &resp_headers {
                 if let Ok(header) = tiny_http::Header::from_bytes(k.as_bytes(), v.as_bytes()) {
                     response = response.with_header(header);
@@ -976,10 +983,7 @@ fn function_name_is_valid(name: &str) -> bool {
 
 fn security_headers() -> Vec<(String, String)> {
     vec![
-        (
-            "X-Content-Type-Options".to_string(),
-            "nosniff".to_string(),
-        ),
+        ("X-Content-Type-Options".to_string(), "nosniff".to_string()),
         ("X-Frame-Options".to_string(), "DENY".to_string()),
         ("Cache-Control".to_string(), "no-store".to_string()),
     ]
@@ -987,13 +991,11 @@ fn security_headers() -> Vec<(String, String)> {
 
 /// Timing-safe string comparison using HMAC.
 fn constant_time_eq(a: &str, b: &str) -> bool {
-    let mut mac_a =
-        HmacSha256::new_from_slice(HMAC_KEY).expect("HMAC key should be valid");
+    let mut mac_a = HmacSha256::new_from_slice(HMAC_KEY).expect("HMAC key should be valid");
     mac_a.update(a.as_bytes());
     let digest_a = mac_a.finalize().into_bytes();
 
-    let mut mac_b =
-        HmacSha256::new_from_slice(HMAC_KEY).expect("HMAC key should be valid");
+    let mut mac_b = HmacSha256::new_from_slice(HMAC_KEY).expect("HMAC key should be valid");
     mac_b.update(b.as_bytes());
     let digest_b = mac_b.finalize().into_bytes();
 
@@ -1120,8 +1122,7 @@ mod tests {
     #[test]
     fn test_health_endpoint() {
         let svc = Service::new(default_options("svc"));
-        let (status, headers, body) =
-            svc.handle_request("GET", "/health", &HashMap::new(), "");
+        let (status, headers, body) = svc.handle_request("GET", "/health", &HashMap::new(), "");
         assert_eq!(status, 200);
         let parsed: Value = serde_json::from_str(&body).unwrap();
         assert_eq!(parsed["status"], "healthy");
@@ -1131,8 +1132,7 @@ mod tests {
     #[test]
     fn test_ready_endpoint() {
         let svc = Service::new(default_options("svc"));
-        let (status, _headers, body) =
-            svc.handle_request("GET", "/ready", &HashMap::new(), "");
+        let (status, _headers, body) = svc.handle_request("GET", "/ready", &HashMap::new(), "");
         assert_eq!(status, 200);
         let parsed: Value = serde_json::from_str(&body).unwrap();
         assert_eq!(parsed["status"], "ready");
@@ -1258,30 +1258,47 @@ mod tests {
 
     #[test]
     fn test_proxy_url_env() {
-        let _guard = ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
-        unsafe { env::set_var("SWML_PROXY_URL_BASE", "https://proxy.example.com/"); }
+        let _guard = ENV_LOCK
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        unsafe {
+            env::set_var("SWML_PROXY_URL_BASE", "https://proxy.example.com/");
+        }
         let svc = Service::new(default_options("svc"));
         let result = svc.get_proxy_url_base(&HashMap::new());
-        unsafe { env::remove_var("SWML_PROXY_URL_BASE"); }
+        unsafe {
+            env::remove_var("SWML_PROXY_URL_BASE");
+        }
         assert_eq!(result, "https://proxy.example.com");
     }
 
     #[test]
     fn test_proxy_url_forwarded_headers() {
-        let _guard = ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
-        unsafe { env::remove_var("SWML_PROXY_URL_BASE"); }
+        let _guard = ENV_LOCK
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        unsafe {
+            env::remove_var("SWML_PROXY_URL_BASE");
+        }
         let svc = Service::new(default_options("svc"));
         let mut headers = HashMap::new();
         headers.insert("X-Forwarded-Proto".to_string(), "https".to_string());
-        headers.insert("X-Forwarded-Host".to_string(), "app.example.com".to_string());
+        headers.insert(
+            "X-Forwarded-Host".to_string(),
+            "app.example.com".to_string(),
+        );
         let result = svc.get_proxy_url_base(&headers);
         assert_eq!(result, "https://app.example.com");
     }
 
     #[test]
     fn test_proxy_url_fallback() {
-        let _guard = ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
-        unsafe { env::remove_var("SWML_PROXY_URL_BASE"); }
+        let _guard = ENV_LOCK
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        unsafe {
+            env::remove_var("SWML_PROXY_URL_BASE");
+        }
         let svc = Service::new(ServiceOptions {
             name: "svc".to_string(),
             route: None,
@@ -1315,7 +1332,10 @@ mod tests {
         assert_eq!(status, 200);
         let parsed: Value = serde_json::from_str(&body).unwrap();
         assert!(parsed.is_object(), "SWML doc must be an object, got {body}");
-        assert!(parsed.get("sections").is_some(), "SWML doc must have a sections key");
+        assert!(
+            parsed.get("sections").is_some(),
+            "SWML doc must have a sections key"
+        );
     }
 
     #[test]
@@ -1357,8 +1377,14 @@ mod tests {
         assert_eq!(status, 200);
         let parsed: Value = serde_json::from_str(&resp).unwrap();
         let msg = parsed["response"].as_str().unwrap_or("");
-        assert!(msg.contains("never_registered"), "response should name the missing function: {msg}");
-        assert!(msg.contains("not found"), "response should say 'not found': {msg}");
+        assert!(
+            msg.contains("never_registered"),
+            "response should name the missing function: {msg}"
+        );
+        assert!(
+            msg.contains("not found"),
+            "response should say 'not found': {msg}"
+        );
     }
 
     #[test]
@@ -1524,7 +1550,10 @@ mod tests {
         assert!(result.is_some());
         let v = result.unwrap().to_value();
         assert_eq!(v["response"], "ok");
-        assert_eq!(captured.lock().unwrap().get("x").unwrap(), &Value::String("y".to_string()));
+        assert_eq!(
+            captured.lock().unwrap().get("x").unwrap(),
+            &Value::String("y".to_string())
+        );
     }
 
     #[test]
@@ -1555,7 +1584,10 @@ mod tests {
             Box::new(|_, _| FunctionResult::default()),
             false,
         );
-        assert_eq!(svc.list_tool_names(), vec!["first".to_string(), "second".to_string()]);
+        assert_eq!(
+            svc.list_tool_names(),
+            vec!["first".to_string(), "second".to_string()]
+        );
     }
 
     #[test]

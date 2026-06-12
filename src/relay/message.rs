@@ -127,7 +127,10 @@ impl Message {
     pub fn repr(&self) -> String {
         format!(
             "Message(message_id={:?}, from={:?}, to={:?}, state={:?})",
-            self.message_id, self.from_number, self.to_number, self.state()
+            self.message_id,
+            self.from_number,
+            self.to_number,
+            self.state()
         )
     }
 
@@ -261,9 +264,10 @@ impl Message {
         // Auto-resolve on terminal state
         let current_state = self.state.lock().unwrap().clone();
         if let Some(ref s) = current_state
-            && constants::is_message_terminal(s) {
-                self.resolve(Some(serde_json::json!(s)));
-            }
+            && constants::is_message_terminal(s)
+        {
+            self.resolve(Some(serde_json::json!(s)));
+        }
     }
 
     // ------------------------------------------------------------------
@@ -276,10 +280,7 @@ impl Message {
     /// Panics if an internal mutex is poisoned (i.e. another thread panicked
     /// while holding the lock). This does not occur under normal operation.
     pub fn on<F: Fn(&Message, &Event) + Send + Sync + 'static>(&self, cb: F) {
-        self.on_event_callbacks
-            .lock()
-            .unwrap()
-            .push(Arc::new(cb));
+        self.on_event_callbacks.lock().unwrap().push(Arc::new(cb));
     }
 
     /// Register a callback to fire when the message reaches a terminal state.

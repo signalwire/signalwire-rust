@@ -13,8 +13,8 @@
 
 use std::collections::HashMap;
 
-use signalwire::agent::AgentBase;
 use signalwire::AgentOptions;
+use signalwire::agent::AgentBase;
 
 use base64::Engine as _;
 use hmac::{Hmac, KeyInit, Mac};

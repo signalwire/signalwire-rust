@@ -9,7 +9,7 @@ use std::process;
 
 use base64::Engine;
 use base64::engine::general_purpose::STANDARD as BASE64;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 /// CLI entry point for the `swaig-test` tool.
 ///
@@ -143,7 +143,14 @@ fn main() {
     } else if list_tools {
         do_list_tools(&base_url, auth_header.as_deref(), raw, verbose);
     } else if let Some(tool) = exec_tool {
-        do_exec_tool(&base_url, auth_header.as_deref(), &tool, &params, raw, verbose);
+        do_exec_tool(
+            &base_url,
+            auth_header.as_deref(),
+            &tool,
+            &params,
+            raw,
+            verbose,
+        );
     } else {
         eprintln!("Error: specify --dump-swml, --list-tools, or --exec <tool>");
         process::exit(1);
@@ -227,7 +234,10 @@ fn do_list_tools_via_introspect(example_name: &str, raw: bool, verbose: bool) {
     }
     let tools = parsed.get("tools").and_then(|v| v.as_array());
     let Some(tools) = tools else {
-        println!("{}", serde_json::to_string_pretty(&parsed).unwrap_or_default());
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&parsed).unwrap_or_default()
+        );
         return;
     };
     if tools.is_empty() {
@@ -249,13 +259,17 @@ fn do_list_tools_via_introspect(example_name: &str, raw: bool, verbose: bool) {
         println!("  {}. {} — {}", i + 1, name, desc);
         let argument = tool.get("argument").or_else(|| tool.get("parameters"));
         if let Some(arg) = argument
-            && let Some(props) = arg.get("properties").and_then(|v| v.as_object()) {
-                for (pname, pdef) in props {
-                    let ptype = pdef.get("type").and_then(|v| v.as_str()).unwrap_or("");
-                    let pdesc = pdef.get("description").and_then(|v| v.as_str()).unwrap_or("");
-                    println!("       - {pname} ({ptype}): {pdesc}");
-                }
+            && let Some(props) = arg.get("properties").and_then(|v| v.as_object())
+        {
+            for (pname, pdef) in props {
+                let ptype = pdef.get("type").and_then(|v| v.as_str()).unwrap_or("");
+                let pdesc = pdef
+                    .get("description")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("");
+                println!("       - {pname} ({ptype}): {pdesc}");
             }
+        }
     }
 }
 
@@ -423,9 +437,7 @@ fn do_list_tools(base_url: &str, auth: Option<&str>, raw: bool, verbose: bool) {
                                         .get("function")
                                         .and_then(|f| f.get("name"))
                                         .and_then(|n| n.as_str())
-                                        .or_else(|| {
-                                            tool.get("name").and_then(|n| n.as_str())
-                                        })
+                                        .or_else(|| tool.get("name").and_then(|n| n.as_str()))
                                         .unwrap_or("<unnamed>");
                                     let desc = tool
                                         .get("function")
@@ -604,8 +616,7 @@ mod tests {
                 let mut body = String::new();
                 let _ = req.as_reader().read_to_string(&mut body);
                 cap_clone.lock().unwrap().push((method, path, hmap, body));
-                let resp = tiny_http::Response::from_string(response_body)
-                    .with_status_code(status);
+                let resp = tiny_http::Response::from_string(response_body).with_status_code(status);
                 let _ = req.respond(resp);
             }
         });
@@ -632,10 +643,8 @@ mod tests {
 
     #[test]
     fn test_http_request_post_forwards_body_and_basic_auth() {
-        let (base, captured, _h) = spawn_test_server(
-            200,
-            r#"{"function":"lookup","response":"ACME"}"#,
-        );
+        let (base, captured, _h) =
+            spawn_test_server(200, r#"{"function":"lookup","response":"ACME"}"#);
         let url = format!("{base}/swaig");
         let mut headers = build_headers(Some("Basic dGVzdDp0ZXN0"));
         headers.insert("Content-Type".to_string(), "application/json".to_string());
@@ -665,8 +674,14 @@ mod tests {
         // 4xx is NOT a transport failure — http_request returns (status, body)
         // and lets the caller decide how to react. Asserts that contract.
         let (base, _captured, _h) = spawn_test_server(404, r#"{"error":"not found"}"#);
-        let (status, body) = http_request("GET", &format!("{base}/missing"), &HashMap::new(), None, false)
-            .expect("4xx is not an Err — it's a status the caller will handle");
+        let (status, body) = http_request(
+            "GET",
+            &format!("{base}/missing"),
+            &HashMap::new(),
+            None,
+            false,
+        )
+        .expect("4xx is not an Err — it's a status the caller will handle");
         assert_eq!(status, 404);
         assert!(body.contains("not found"));
     }
@@ -686,7 +701,8 @@ mod tests {
 
     #[test]
     fn test_extract_introspect_payload_happy_path() {
-        let stdout = "noise line\n__SWAIG_TOOLS_BEGIN__\n{\"tools\":[]}\n__SWAIG_TOOLS_END__\nmore noise\n";
+        let stdout =
+            "noise line\n__SWAIG_TOOLS_BEGIN__\n{\"tools\":[]}\n__SWAIG_TOOLS_END__\nmore noise\n";
         let payload = extract_introspect_payload(stdout).unwrap();
         assert_eq!(payload, "{\"tools\":[]}");
     }
@@ -710,7 +726,10 @@ mod tests {
         // round-trip succeeds the same way it does in non-verbose mode.
         let (base, _captured, _h) = spawn_test_server(200, r#"{"ok":true}"#);
         let mut headers = build_headers(None);
-        headers.insert("Authorization".to_string(), "Basic dGVzdDp0ZXN0".to_string());
+        headers.insert(
+            "Authorization".to_string(),
+            "Basic dGVzdDp0ZXN0".to_string(),
+        );
         let (status, body) = http_request(
             "POST",
             &format!("{base}/swaig"),

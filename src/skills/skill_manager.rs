@@ -30,30 +30,30 @@ impl SkillManager {
         agent: &mut AgentBase,
     ) -> (bool, String) {
         let Some(factory) = SkillRegistry::get_factory(skill_name) else {
-            return (
-                false,
-                format!("Skill '{skill_name}' not found in registry"),
-            );
+            return (false, format!("Skill '{skill_name}' not found in registry"));
         };
 
         let mut instance = factory(params);
         let instance_key = instance.get_instance_key();
 
-        if self.loaded_skills.contains_key(&instance_key)
-            && !instance.supports_multiple_instances() {
-                return (
-                    false,
-                    format!(
-                        "Skill '{instance_key}' is already loaded and does not support multiple instances"
-                    ),
-                );
-            }
+        if self.loaded_skills.contains_key(&instance_key) && !instance.supports_multiple_instances()
+        {
+            return (
+                false,
+                format!(
+                    "Skill '{instance_key}' is already loaded and does not support multiple instances"
+                ),
+            );
+        }
 
         let missing = instance.validate_env_vars();
         if !missing.is_empty() {
             return (
                 false,
-                format!("Missing required environment variables: {}", missing.join(", ")),
+                format!(
+                    "Missing required environment variables: {}",
+                    missing.join(", ")
+                ),
             );
         }
 
@@ -86,10 +86,7 @@ impl SkillManager {
                         .get("title")
                         .and_then(|t| t.as_str())
                         .unwrap_or("Untitled");
-                    let body = obj
-                        .get("body")
-                        .and_then(|b| b.as_str())
-                        .unwrap_or("");
+                    let body = obj.get("body").and_then(|b| b.as_str()).unwrap_or("");
                     let bullets: Vec<&str> = obj
                         .get("bullets")
                         .and_then(|b| b.as_array())
@@ -112,29 +109,29 @@ impl SkillManager {
     ) -> (bool, String) {
         let instance_key = instance.get_instance_key();
 
-        if self.loaded_skills.contains_key(&instance_key)
-            && !instance.supports_multiple_instances() {
-                return (
-                    false,
-                    format!(
-                        "Skill '{instance_key}' is already loaded and does not support multiple instances"
-                    ),
-                );
-            }
+        if self.loaded_skills.contains_key(&instance_key) && !instance.supports_multiple_instances()
+        {
+            return (
+                false,
+                format!(
+                    "Skill '{instance_key}' is already loaded and does not support multiple instances"
+                ),
+            );
+        }
 
         let missing = instance.validate_env_vars();
         if !missing.is_empty() {
             return (
                 false,
-                format!("Missing required environment variables: {}", missing.join(", ")),
+                format!(
+                    "Missing required environment variables: {}",
+                    missing.join(", ")
+                ),
             );
         }
 
         if !instance.setup() {
-            return (
-                false,
-                format!("Skill '{}' setup failed", instance.name()),
-            );
+            return (false, format!("Skill '{}' setup failed", instance.name()));
         }
 
         instance.register_tools(agent);
@@ -156,10 +153,7 @@ impl SkillManager {
                     .get("title")
                     .and_then(|t| t.as_str())
                     .unwrap_or("Untitled");
-                let body = obj
-                    .get("body")
-                    .and_then(|b| b.as_str())
-                    .unwrap_or("");
+                let body = obj.get("body").and_then(|b| b.as_str()).unwrap_or("");
                 let bullets: Vec<&str> = obj
                     .get("bullets")
                     .and_then(|b| b.as_array())

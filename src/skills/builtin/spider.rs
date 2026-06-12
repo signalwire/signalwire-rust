@@ -1,4 +1,4 @@
-use serde_json::{json, Map, Value};
+use serde_json::{Map, Value, json};
 
 use crate::agent::AgentBase;
 use crate::skills::skill_base::{SkillBase, SkillParams};
@@ -74,9 +74,7 @@ impl SkillBase for Spider {
                 };
                 let extracted = extract_text_from_html(&body, max_length);
                 let mut r = FunctionResult::new();
-                r.set_response(&format!(
-                    "Scraped content from {url_arg}:\n{extracted}"
-                ));
+                r.set_response(&format!("Scraped content from {url_arg}:\n{extracted}"));
                 r
             }),
             false,
@@ -147,9 +145,7 @@ impl SkillBase for Spider {
                 };
                 let extracted = extract_text_from_html(&body, max_length);
                 let mut r = FunctionResult::new();
-                r.set_response(&format!(
-                    "Extracted from {url_arg}:\n{extracted}"
-                ));
+                r.set_response(&format!("Extracted from {url_arg}:\n{extracted}"));
                 r
             }),
             false,

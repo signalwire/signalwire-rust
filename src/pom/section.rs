@@ -9,7 +9,7 @@
 //! `to_value`) walk the tree and emit byte-for-byte the same output
 //! as Python's reference implementation.
 
-use serde_json::{json, Map, Value};
+use serde_json::{Map, Value, json};
 
 /// One node in a Prompt Object Model tree.
 ///
@@ -185,8 +185,10 @@ impl Section {
             let prefix = if section_number.is_empty() {
                 String::new()
             } else {
-                let nums: Vec<String> =
-                    section_number.iter().map(std::string::ToString::to_string).collect();
+                let nums: Vec<String> = section_number
+                    .iter()
+                    .map(std::string::ToString::to_string)
+                    .collect();
                 format!("{}. ", nums.join("."))
             };
             md.push(format!("{} {}{}\n", "#".repeat(level), prefix, title));
@@ -251,8 +253,10 @@ impl Section {
             let prefix = if section_number.is_empty() {
                 String::new()
             } else {
-                let nums: Vec<String> =
-                    section_number.iter().map(std::string::ToString::to_string).collect();
+                let nums: Vec<String> = section_number
+                    .iter()
+                    .map(std::string::ToString::to_string)
+                    .collect();
                 format!("{}. ", nums.join("."))
             };
             xml.push(format!("{indent_str}  <title>{prefix}{title}</title>"));
@@ -281,8 +285,7 @@ impl Section {
 
         if !self.subsections.is_empty() {
             xml.push(format!("{indent_str}  <subsections>"));
-            let any_subsection_numbered =
-                self.subsections.iter().any(|s| s.numbered == Some(true));
+            let any_subsection_numbered = self.subsections.iter().any(|s| s.numbered == Some(true));
 
             for (i, subsection) in self.subsections.iter().enumerate() {
                 let new_section_number: Vec<usize> =

@@ -3,8 +3,8 @@
 //
 //! SWML Service Example — full SWML service patterns.
 
-use signalwire::swml::service::{Service, ServiceOptions};
 use serde_json::json;
+use signalwire::swml::service::{Service, ServiceOptions};
 
 fn main() {
     let mut service = Service::new(ServiceOptions {
@@ -21,9 +21,13 @@ fn main() {
     service.add_verb("answer", "main", json!({}));
 
     // Welcome message
-    service.add_verb("play", "main", json!({
-        "url": "say:Welcome to the SWML service demo."
-    }));
+    service.add_verb(
+        "play",
+        "main",
+        json!({
+            "url": "say:Welcome to the SWML service demo."
+        }),
+    );
 
     // Collect DTMF input
     service.add_verb("prompt", "main", json!({
@@ -34,15 +38,23 @@ fn main() {
     }));
 
     // Set a variable
-    service.add_verb("set", "main", json!({
-        "call_status": "active",
-        "menu_selection": "pending"
-    }));
+    service.add_verb(
+        "set",
+        "main",
+        json!({
+            "call_status": "active",
+            "menu_selection": "pending"
+        }),
+    );
 
     // Conditional routing would happen on the platform side via switch verb
-    service.add_verb("play", "main", json!({
-        "url": "say:Thank you for using the SWML service demo."
-    }));
+    service.add_verb(
+        "play",
+        "main",
+        json!({
+            "url": "say:Thank you for using the SWML service demo."
+        }),
+    );
 
     service.add_verb("hangup", "main", json!({}));
 

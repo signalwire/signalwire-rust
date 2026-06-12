@@ -233,10 +233,11 @@ fn wait_health_plain(http_url: &str, expect_key: &str) -> bool {
     while Instant::now() < deadline {
         if let Ok(mut resp) = agent.get(&url).call()
             && resp.status().as_u16() == 200
-                && let Ok(v) = resp.body_mut().read_json::<Value>()
-                    && v.get(expect_key).is_some() {
-                        return true;
-                    }
+            && let Ok(v) = resp.body_mut().read_json::<Value>()
+            && v.get(expect_key).is_some()
+        {
+            return true;
+        }
         std::thread::sleep(Duration::from_millis(150));
     }
     false
@@ -248,10 +249,11 @@ fn wait_health_https(agent: &ureq::Agent, base_url: &str, expect_key: &str) -> b
     while Instant::now() < deadline {
         if let Ok(mut resp) = agent.get(&url).call()
             && resp.status().as_u16() == 200
-                && let Ok(v) = resp.body_mut().read_json::<Value>()
-                    && v.get(expect_key).is_some() {
-                        return true;
-                    }
+            && let Ok(v) = resp.body_mut().read_json::<Value>()
+            && v.get(expect_key).is_some()
+        {
+            return true;
+        }
         std::thread::sleep(Duration::from_millis(150));
     }
     false

@@ -3,8 +3,8 @@
 //
 //! Skills Demo — loading built-in skills (datetime, math).
 
-use signalwire::agent::{AgentBase, AgentOptions};
 use serde_json::json;
+use signalwire::agent::{AgentBase, AgentOptions};
 
 fn main() {
     let mut agent = AgentBase::new(AgentOptions {
@@ -20,11 +20,15 @@ fn main() {
         "You are a helpful assistant with date/time and math skills.",
         vec![],
     );
-    agent.prompt_add_section("Instructions", "", vec![
-        "Use get_current_time when asked about the time",
-        "Use get_current_date when asked about today's date",
-        "Use calculate when asked to do math",
-    ]);
+    agent.prompt_add_section(
+        "Instructions",
+        "",
+        vec![
+            "Use get_current_time when asked about the time",
+            "Use get_current_date when asked about today's date",
+            "Use calculate when asked to do math",
+        ],
+    );
 
     // Add built-in skills
     agent.add_skill("datetime", json!({"timezone": "America/Chicago"}));

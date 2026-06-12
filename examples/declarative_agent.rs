@@ -6,9 +6,9 @@
 //! Demonstrates building a complete agent from a static prompt definition,
 //! then adding tools programmatically.
 
+use serde_json::json;
 use signalwire::agent::{AgentBase, AgentOptions};
 use signalwire::swaig::FunctionResult;
-use serde_json::json;
 
 /// Prompt sections defined declaratively.
 fn prompt_sections() -> Vec<(&'static str, &'static str, Vec<&'static str>)> {
@@ -69,9 +69,7 @@ fn main() {
                 .get("location")
                 .and_then(|v| v.as_str())
                 .unwrap_or("unknown location");
-            FunctionResult::with_response(&format!(
-                "It is currently 72F and sunny in {location}."
-            ))
+            FunctionResult::with_response(&format!("It is currently 72F and sunny in {location}."))
         }),
         false,
     );

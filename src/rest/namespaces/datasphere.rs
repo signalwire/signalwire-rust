@@ -86,8 +86,10 @@ impl<'a> DatasphereDocuments<'a> {
     /// (transport failure), the API responds with a non-2xx status (e.g. 404
     /// for an unknown `document_id`), or the response body is not valid JSON.
     pub fn get(&self, document_id: &str) -> Result<Value, SignalWireRestError> {
-        self.client
-            .get(&format!("{}/{}", self.base_path, document_id), &HashMap::new())
+        self.client.get(
+            &format!("{}/{}", self.base_path, document_id),
+            &HashMap::new(),
+        )
     }
 
     /// PUT `/api/datasphere/documents/{document_id}` — update a document.
@@ -97,11 +99,7 @@ impl<'a> DatasphereDocuments<'a> {
     /// (transport failure), the API responds with a non-2xx status (e.g. 404
     /// for an unknown `document_id` or 422 when `params` fails validation), or
     /// the response body is not valid JSON.
-    pub fn update(
-        &self,
-        document_id: &str,
-        params: &Value,
-    ) -> Result<Value, SignalWireRestError> {
+    pub fn update(&self, document_id: &str, params: &Value) -> Result<Value, SignalWireRestError> {
         self.client
             .put(&format!("{}/{}", self.base_path, document_id), params)
     }
@@ -124,7 +122,8 @@ impl<'a> DatasphereDocuments<'a> {
     /// (transport failure), the API responds with a non-2xx status (e.g. 422
     /// when `params` fails validation), or the response body is not valid JSON.
     pub fn search(&self, params: &Value) -> Result<Value, SignalWireRestError> {
-        self.client.post(&format!("{}/search", self.base_path), params)
+        self.client
+            .post(&format!("{}/search", self.base_path), params)
     }
 
     /// GET `/api/datasphere/documents/{document_id}/chunks` — list chunks of a
@@ -140,8 +139,7 @@ impl<'a> DatasphereDocuments<'a> {
         params: &Value,
     ) -> Result<Value, SignalWireRestError> {
         let path = format!("{}/{}/chunks", self.base_path, document_id);
-        self.client
-            .get(&path, &Self::params_to_string_map(params))
+        self.client.get(&path, &Self::params_to_string_map(params))
     }
 
     /// GET `/api/datasphere/documents/{document_id}/chunks/{chunk_id}` — fetch

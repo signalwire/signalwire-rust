@@ -10,7 +10,7 @@
 
 use std::collections::HashMap;
 
-use serde_json::{json, Map, Value};
+use serde_json::{Map, Value, json};
 
 use crate::agent::{AgentBase, AgentOptions};
 use crate::logging::Logger;
@@ -205,25 +205,26 @@ impl BedrockAgent {
         // Locate the `main` section list and rewrite the first `ai`
         // verb in-place into an `amazon_bedrock` verb.
         if let Some(sections) = swml.get_mut("sections").and_then(|v| v.as_object_mut())
-            && let Some(main) = sections.get_mut("main").and_then(|v| v.as_array_mut()) {
-                for item in main.iter_mut() {
-                    let Some(obj) = item.as_object_mut() else {
-                        continue;
-                    };
-                    if !obj.contains_key("ai") {
-                        continue;
-                    }
-                    let ai_value = obj.remove("ai").unwrap_or(Value::Null);
-                    let ai_obj = match ai_value {
-                        Value::Object(m) => m,
-                        _ => Map::new(),
-                    };
-
-                    let bedrock_obj = self.build_bedrock_block(ai_obj);
-                    obj.insert("amazon_bedrock".to_string(), Value::Object(bedrock_obj));
-                    break;
+            && let Some(main) = sections.get_mut("main").and_then(|v| v.as_array_mut())
+        {
+            for item in main.iter_mut() {
+                let Some(obj) = item.as_object_mut() else {
+                    continue;
+                };
+                if !obj.contains_key("ai") {
+                    continue;
                 }
+                let ai_value = obj.remove("ai").unwrap_or(Value::Null);
+                let ai_obj = match ai_value {
+                    Value::Object(m) => m,
+                    _ => Map::new(),
+                };
+
+                let bedrock_obj = self.build_bedrock_block(ai_obj);
+                obj.insert("amazon_bedrock".to_string(), Value::Object(bedrock_obj));
+                break;
             }
+        }
 
         swml
     }
@@ -263,13 +264,15 @@ impl BedrockAgent {
         }
 
         if let Some(pp) = ai.get("post_prompt")
-            && !pp.is_null() {
-                out.insert("post_prompt".to_string(), pp.clone());
-            }
+            && !pp.is_null()
+        {
+            out.insert("post_prompt".to_string(), pp.clone());
+        }
         if let Some(ppu) = ai.get("post_prompt_url")
-            && !ppu.is_null() {
-                out.insert("post_prompt_url".to_string(), ppu.clone());
-            }
+            && !ppu.is_null()
+        {
+            out.insert("post_prompt_url".to_string(), ppu.clone());
+        }
 
         // Drop None-valued entries (mirrors Python's filter).
         out.retain(|_, v| !v.is_null());
@@ -507,7 +510,13 @@ mod tests {
         }));
 
         let swml = agent.render_swml(&HashMap::new());
-        let main = swml.get("sections").unwrap().get("main").unwrap().as_array().unwrap();
+        let main = swml
+            .get("sections")
+            .unwrap()
+            .get("main")
+            .unwrap()
+            .as_array()
+            .unwrap();
         let prompt = main
             .iter()
             .find_map(|i| i.as_object().and_then(|o| o.get("amazon_bedrock")))
@@ -539,15 +548,18 @@ mod tests {
         agent.prompt_add_section("intro", "say hi", vec![]);
         // Functional: render still emits amazon_bedrock verb.
         let swml = agent.render_swml(&HashMap::new());
-        assert!(swml
-            .get("sections")
-            .unwrap()
-            .get("main")
-            .unwrap()
-            .as_array()
-            .unwrap()
-            .iter()
-            .any(|i| i.as_object().is_some_and(|o| o.contains_key("amazon_bedrock"))));
+        assert!(
+            swml.get("sections")
+                .unwrap()
+                .get("main")
+                .unwrap()
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|i| i
+                    .as_object()
+                    .is_some_and(|o| o.contains_key("amazon_bedrock")))
+        );
     }
 
     #[test]
@@ -562,14 +574,30 @@ mod tests {
             false,
         );
         let swml = agent.render_swml(&HashMap::new());
-        let main = swml.get("sections").unwrap().get("main").unwrap().as_array().unwrap();
+        let main = swml
+            .get("sections")
+            .unwrap()
+            .get("main")
+            .unwrap()
+            .as_array()
+            .unwrap();
         let bedrock = main
             .iter()
             .find_map(|i| i.as_object().and_then(|o| o.get("amazon_bedrock")))
             .expect("amazon_bedrock verb");
-        let swaig = bedrock.get("SWAIG").and_then(|v| v.as_object()).expect("SWAIG");
+        let swaig = bedrock
+            .get("SWAIG")
+            .and_then(|v| v.as_object())
+            .expect("SWAIG");
         // The AgentBase build_ai_verb populates SWAIG.functions for registered tools.
-        let funcs = swaig.get("functions").and_then(|v| v.as_array()).expect("functions");
-        assert!(funcs.iter().any(|f| f.get("function").and_then(|n| n.as_str()) == Some("lookup")));
+        let funcs = swaig
+            .get("functions")
+            .and_then(|v| v.as_array())
+            .expect("functions");
+        assert!(
+            funcs
+                .iter()
+                .any(|f| f.get("function").and_then(|n| n.as_str()) == Some("lookup"))
+        );
     }
 }

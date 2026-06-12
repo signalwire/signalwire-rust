@@ -81,11 +81,10 @@ pub(crate) fn bind_server(addr: &str) -> Result<(tiny_http::Server, bool), Serve
             certificate: material.certificate,
             private_key: material.private_key,
         };
-        let server =
-            tiny_http::Server::https(addr, config).map_err(|e| ServerError::Bind {
-                addr: addr.to_string(),
-                source: e.to_string(),
-            })?;
+        let server = tiny_http::Server::https(addr, config).map_err(|e| ServerError::Bind {
+            addr: addr.to_string(),
+            source: e.to_string(),
+        })?;
         Ok((server, true))
     } else {
         let server = tiny_http::Server::http(addr).map_err(|e| ServerError::Bind {

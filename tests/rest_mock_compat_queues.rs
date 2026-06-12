@@ -6,7 +6,7 @@
 #[path = "common/mod.rs"]
 mod common;
 
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 const BASE: &str = "/api/laml/2010-04-01/Accounts/test_proj/Queues";
 
@@ -38,10 +38,7 @@ fn test_compat_queues_update_journal_records_post() {
     let c = common::mocktest::client();
     c.compat()
         .queues()
-        .update(
-            "QU_UU",
-            &json!({"FriendlyName": "renamed", "MaxSize": 200}),
-        )
+        .update("QU_UU", &json!({"FriendlyName": "renamed", "MaxSize": 200}))
         .expect("queues.update");
 
     let entry = common::mocktest::journal_last();
@@ -125,10 +122,7 @@ fn test_compat_queues_get_member_journal_records_get() {
 
     let entry = common::mocktest::journal_last();
     assert_eq!(entry.method, "GET");
-    assert_eq!(
-        entry.path,
-        format!("{BASE}/QU_GMX/Members/CA_GMX")
-    );
+    assert_eq!(entry.path, format!("{BASE}/QU_GMX/Members/CA_GMX"));
 }
 
 // ---------------------------------------------------------------------------
@@ -168,17 +162,11 @@ fn test_compat_queues_dequeue_member_journal_records_post() {
 
     let entry = common::mocktest::journal_last();
     assert_eq!(entry.method, "POST");
-    assert_eq!(
-        entry.path,
-        format!("{BASE}/QU_DMX/Members/CA_DMX")
-    );
+    assert_eq!(entry.path, format!("{BASE}/QU_DMX/Members/CA_DMX"));
     let body = entry.body_object().expect("body");
     assert_eq!(
         body.get("Url").and_then(Value::as_str),
         Some("https://a.b/url")
     );
-    assert_eq!(
-        body.get("Method").and_then(Value::as_str),
-        Some("POST")
-    );
+    assert_eq!(body.get("Method").and_then(Value::as_str), Some("POST"));
 }

@@ -56,9 +56,7 @@ impl SessionManager {
         let message = format!("{call_id}:{function_name}:{expiry}:{nonce}");
         let signature = self.hmac_hex(&message);
 
-        let payload = format!(
-            "{call_id}.{function_name}.{expiry}.{nonce}.{signature}"
-        );
+        let payload = format!("{call_id}.{function_name}.{expiry}.{nonce}.{signature}");
 
         URL_SAFE_NO_PAD.encode(payload.as_bytes())
     }
@@ -101,9 +99,7 @@ impl SessionManager {
         }
 
         // Recreate the signature with the extracted nonce and compare
-        let message = format!(
-            "{token_call_id}:{token_function}:{token_expiry}:{token_nonce}"
-        );
+        let message = format!("{token_call_id}:{token_function}:{token_expiry}:{token_nonce}");
         let expected_signature = self.hmac_hex(&message);
 
         if !constant_time_eq(&expected_signature, token_signature) {
@@ -121,8 +117,7 @@ impl SessionManager {
     // ── Private helpers ──────────────────────────────────────────────────
 
     fn hmac_hex(&self, message: &str) -> String {
-        let mut mac =
-            HmacSha256::new_from_slice(&self.secret).expect("HMAC key should be valid");
+        let mut mac = HmacSha256::new_from_slice(&self.secret).expect("HMAC key should be valid");
         mac.update(message.as_bytes());
         let result = mac.finalize().into_bytes();
         hex_encode(&result)
@@ -152,13 +147,11 @@ impl SessionManager {
 /// Timing-safe string comparison using HMAC.
 fn constant_time_eq(a: &str, b: &str) -> bool {
     let key = b"signalwire-session-manager-compare";
-    let mut mac_a =
-        HmacSha256::new_from_slice(key).expect("HMAC key should be valid");
+    let mut mac_a = HmacSha256::new_from_slice(key).expect("HMAC key should be valid");
     mac_a.update(a.as_bytes());
     let digest_a = mac_a.finalize().into_bytes();
 
-    let mut mac_b =
-        HmacSha256::new_from_slice(key).expect("HMAC key should be valid");
+    let mut mac_b = HmacSha256::new_from_slice(key).expect("HMAC key should be valid");
     mac_b.update(b.as_bytes());
     let digest_b = mac_b.finalize().into_bytes();
 

@@ -58,11 +58,7 @@ impl<'a> ProjectTokens<'a> {
     /// (transport failure), the API responds with a non-2xx status (e.g. 404
     /// for an unknown `token_id` or 422 when `params` fails validation), or the
     /// response body is not valid JSON.
-    pub fn update(
-        &self,
-        token_id: &str,
-        params: &Value,
-    ) -> Result<Value, SignalWireRestError> {
+    pub fn update(&self, token_id: &str, params: &Value) -> Result<Value, SignalWireRestError> {
         self.client
             .patch(&format!("{}/{}", self.base_path, token_id), params)
     }

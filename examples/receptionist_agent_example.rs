@@ -3,8 +3,8 @@
 //
 //! Receptionist Agent — route calls to departments.
 
-use signalwire::prefabs::ReceptionistAgent;
 use serde_json::json;
+use signalwire::prefabs::ReceptionistAgent;
 
 fn main() {
     let departments = vec![
@@ -40,7 +40,9 @@ fn main() {
         Some("/reception"),
     );
 
-    agent.agent_mut().add_language("English", "en-US", "inworld.Mark");
+    agent
+        .agent_mut()
+        .add_language("English", "en-US", "inworld.Mark");
 
     agent.agent_mut().prompt_add_section(
         "Company Information",
@@ -50,9 +52,11 @@ fn main() {
     );
 
     // Summary callback
-    agent.agent_mut().on_summary(Box::new(|summary, _raw, _headers| {
-        println!("Call summary: {summary}");
-    }));
+    agent
+        .agent_mut()
+        .on_summary(Box::new(|summary, _raw, _headers| {
+            println!("Call summary: {summary}");
+        }));
 
     let (user, pass) = agent.agent().get_basic_auth_credentials();
     println!("Receptionist agent");

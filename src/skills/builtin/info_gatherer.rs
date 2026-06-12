@@ -1,4 +1,4 @@
-use serde_json::{json, Map, Value};
+use serde_json::{Map, Value, json};
 
 use crate::agent::AgentBase;
 use crate::skills::skill_base::{SkillBase, SkillParams};
@@ -42,9 +42,10 @@ impl SkillBase for InfoGatherer {
     fn register_tools(&self, agent: &mut AgentBase) {
         let prefix = self.sp.get_str_or("prefix", "");
         let questions = self.sp.get_array("questions");
-        let completion_message = self
-            .sp
-            .get_str_or("completion_message", "All questions have been answered. Thank you!");
+        let completion_message = self.sp.get_str_or(
+            "completion_message",
+            "All questions have been answered. Thank you!",
+        );
         let namespace = self.get_instance_key();
 
         let start_tool = if prefix.is_empty() {
@@ -199,9 +200,10 @@ impl SkillBase for InfoGatherer {
 
         for q in &questions {
             if let Some(prompt_add) = q.get("prompt_add").and_then(|v| v.as_str())
-                && !prompt_add.is_empty() {
-                    bullets.push(prompt_add.to_string());
-                }
+                && !prompt_add.is_empty()
+            {
+                bullets.push(prompt_add.to_string());
+            }
         }
 
         let bullet_values: Vec<Value> = bullets.into_iter().map(|b| json!(b)).collect();

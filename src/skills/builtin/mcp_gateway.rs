@@ -1,4 +1,4 @@
-use serde_json::{json, Map, Value};
+use serde_json::{Map, Value, json};
 
 use crate::agent::AgentBase;
 use crate::skills::skill_base::{SkillBase, SkillParams};
@@ -85,10 +85,7 @@ impl SkillBase for McpGateway {
 
         // Register one tool per service/tool pair
         for service in &services {
-            let service_name = service
-                .get("name")
-                .and_then(|v| v.as_str())
-                .unwrap_or("");
+            let service_name = service.get("name").and_then(|v| v.as_str()).unwrap_or("");
             let service_tools = service
                 .get("tools")
                 .and_then(|v| v.as_array())
@@ -100,10 +97,7 @@ impl SkillBase for McpGateway {
             }
 
             for tool in &service_tools {
-                let tool_name = tool
-                    .get("name")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("");
+                let tool_name = tool.get("name").and_then(|v| v.as_str()).unwrap_or("");
                 let tool_description = tool
                     .get("description")
                     .and_then(|v| v.as_str())
@@ -118,18 +112,12 @@ impl SkillBase for McpGateway {
                     continue;
                 }
 
-                let full_tool_name = format!(
-                    "{tool_prefix}{service_name}_{tool_name}"
-                );
-                let full_description =
-                    format!("[{service_name}] {tool_description}");
+                let full_tool_name = format!("{tool_prefix}{service_name}_{tool_name}");
+                let full_description = format!("[{service_name}] {tool_description}");
 
                 let mut properties = Map::new();
                 for param in &tool_params {
-                    let param_name = param
-                        .get("name")
-                        .and_then(|v| v.as_str())
-                        .unwrap_or("");
+                    let param_name = param.get("name").and_then(|v| v.as_str()).unwrap_or("");
                     if param_name.is_empty() {
                         continue;
                     }
@@ -221,10 +209,7 @@ impl SkillBase for McpGateway {
         let mut bullets = Vec::new();
 
         for service in &services {
-            let name = service
-                .get("name")
-                .and_then(|v| v.as_str())
-                .unwrap_or("");
+            let name = service.get("name").and_then(|v| v.as_str()).unwrap_or("");
             let description = service
                 .get("description")
                 .and_then(|v| v.as_str())

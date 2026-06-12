@@ -68,14 +68,16 @@ mod tests {
     #[test]
     fn test_simple_render_markdown_exact() {
         let mut pom = PromptObjectModel::new();
-        pom.add_section_with(Some("Greeting".into()), "Hello world").unwrap();
+        pom.add_section_with(Some("Greeting".into()), "Hello world")
+            .unwrap();
         assert_eq!(pom.render_markdown(), "## Greeting\n\nHello world\n");
     }
 
     #[test]
     fn test_simple_render_xml_exact() {
         let mut pom = PromptObjectModel::new();
-        pom.add_section_with(Some("Greeting".into()), "Hello world").unwrap();
+        pom.add_section_with(Some("Greeting".into()), "Hello world")
+            .unwrap();
         let expected = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n\
                         <prompt>\n  \
                         <section>\n    \
@@ -91,7 +93,9 @@ mod tests {
     #[test]
     fn test_render_markdown_with_bullets() {
         let mut pom = PromptObjectModel::new();
-        let sec = pom.add_section_with(Some("Goals".into()), "Be helpful").unwrap();
+        let sec = pom
+            .add_section_with(Some("Goals".into()), "Be helpful")
+            .unwrap();
         sec.add_bullets(vec!["Be concise".to_string(), "Be clear".to_string()]);
         assert_eq!(
             pom.render_markdown(),
@@ -102,7 +106,9 @@ mod tests {
     #[test]
     fn test_render_xml_with_bullets() {
         let mut pom = PromptObjectModel::new();
-        let sec = pom.add_section_with(Some("Goals".into()), "Be helpful").unwrap();
+        let sec = pom
+            .add_section_with(Some("Goals".into()), "Be helpful")
+            .unwrap();
         sec.add_bullets(vec!["Be concise".to_string(), "Be clear".to_string()]);
         let expected = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n\
                         <prompt>\n  \
@@ -123,7 +129,9 @@ mod tests {
     #[test]
     fn test_render_markdown_with_subsection() {
         let mut pom = PromptObjectModel::new();
-        let sec = pom.add_section_with(Some("Top".into()), "Top body").unwrap();
+        let sec = pom
+            .add_section_with(Some("Top".into()), "Top body")
+            .unwrap();
         let sub = sec.add_subsection("Sub1");
         sub.add_body("Sub1 body");
         sub.add_bullets(vec!["a".to_string(), "b".to_string()]);
@@ -136,7 +144,9 @@ mod tests {
     #[test]
     fn test_render_xml_with_subsection() {
         let mut pom = PromptObjectModel::new();
-        let sec = pom.add_section_with(Some("Top".into()), "Top body").unwrap();
+        let sec = pom
+            .add_section_with(Some("Top".into()), "Top body")
+            .unwrap();
         let sub = sec.add_subsection("Sub1");
         sub.add_body("Sub1 body");
         sub.add_bullets(vec!["a".to_string(), "b".to_string()]);
@@ -168,10 +178,7 @@ mod tests {
         let s1 = pom.add_section_with(Some("S1".into()), "b1").unwrap();
         s1.numbered = Some(true);
         pom.add_section_with(Some("S2".into()), "b2").unwrap();
-        assert_eq!(
-            pom.render_markdown(),
-            "## 1. S1\n\nb1\n\n## 2. S2\n\nb2\n"
-        );
+        assert_eq!(pom.render_markdown(), "## 1. S1\n\nb1\n\n## 2. S2\n\nb2\n");
     }
 
     #[test]
@@ -407,10 +414,7 @@ mod tests {
         pom.add_section_with(Some("A".into()), "ba").unwrap();
         pom.add_section_with(Some("B".into()), "bb").unwrap();
         let titles: Vec<_> = pom.sections.iter().map(|s| s.title.clone()).collect();
-        assert_eq!(
-            titles,
-            vec![Some("A".to_string()), Some("B".to_string())]
-        );
+        assert_eq!(titles, vec![Some("A".to_string()), Some("B".to_string())]);
     }
 
     #[test]

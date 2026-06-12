@@ -3,7 +3,7 @@ use std::sync::mpsc;
 use std::thread;
 use std::time::{Duration, Instant};
 
-use serde_json::{json, Map, Value};
+use serde_json::{Map, Value, json};
 
 use crate::agent::AgentBase;
 use crate::skills::skill_base::{SkillBase, SkillParams};
@@ -12,8 +12,7 @@ use crate::swaig::FunctionResult;
 /// Default `no_results_message` (mirrors Python's `WebSearchSkill` default).
 /// Returned by the snippet fallback when CSE yields nothing at all or the
 /// `overall_deadline` fires before any item arrives.
-const DEFAULT_NO_RESULTS_MESSAGE: &str =
-    "I couldn't find quality results for '{query}'. The search returned only \
+const DEFAULT_NO_RESULTS_MESSAGE: &str = "I couldn't find quality results for '{query}'. The search returned only \
 low-quality or inaccessible pages. Try rephrasing your search or asking about \
 a different topic.";
 
@@ -74,19 +73,21 @@ impl SkillBase for WebSearch {
     fn register_tools(&self, agent: &mut AgentBase) {
         let tool_name = self.get_tool_name("web_search");
         let num_results = self.sp.get_i64("num_results", 3).clamp(1, 10);
-        let api_key = self.sp.get_str("api_key").map(std::string::ToString::to_string);
-        let cse_id = self.sp.get_str("search_engine_id").map(std::string::ToString::to_string);
+        let api_key = self
+            .sp
+            .get_str("api_key")
+            .map(std::string::ToString::to_string);
+        let cse_id = self
+            .sp
+            .get_str("search_engine_id")
+            .map(std::string::ToString::to_string);
 
         // Optional prefix/postfix wrapped around every non-empty search
         // result. Use these to give the calling agent a mechanical cue
         // (e.g. "tell the user this came from a public web search") without
         // needing prompt-side rules. Mirrors Python's `response_prefix` /
         // `response_postfix` on `WebSearchSkill`.
-        let response_prefix = self
-            .sp
-            .get_str("response_prefix")
-            .unwrap_or("")
-            .to_string();
+        let response_prefix = self.sp.get_str("response_prefix").unwrap_or("").to_string();
         let response_postfix = self
             .sp
             .get_str("response_postfix")
@@ -152,7 +153,11 @@ impl SkillBase for WebSearch {
                 // handler must return by `deadline_at` even if the CSE fetch
                 // stalls, so a slow upstream can't blow past the kernel webhook
                 // timeout (~55s). Clamp to >= 1.0s to match the schema `min`.
-                let overall = if overall_deadline >= 1.0 { overall_deadline } else { 1.0 };
+                let overall = if overall_deadline >= 1.0 {
+                    overall_deadline
+                } else {
+                    1.0
+                };
                 let deadline_at = Instant::now() + Duration::from_secs_f64(overall);
 
                 // Resolve credentials at call time so env-var overrides
@@ -371,7 +376,11 @@ fn format_web_search_response(
             format!("- {title} ({link})\n  {snippet}")
         })
         .collect();
-    let mut response = format!("Web search results for \"{}\":\n{}", query, lines.join("\n"));
+    let mut response = format!(
+        "Web search results for \"{}\":\n{}",
+        query,
+        lines.join("\n")
+    );
     if !response_prefix.is_empty() {
         response = format!("{response_prefix}\n\n{response}");
     }
@@ -472,8 +481,7 @@ fn http_get_json(url: &str, per_page_timeout: f64) -> Result<Value, String> {
     if !(200..300).contains(&status) {
         return Err(format!("HTTP GET {url} returned {status}: {body}"));
     }
-    serde_json::from_str(&body)
-        .map_err(|e| format!("HTTP GET {url} returned non-JSON: {e}"))
+    serde_json::from_str(&body).map_err(|e| format!("HTTP GET {url} returned non-JSON: {e}"))
 }
 
 /// Minimal URL-encode for query-string values. Encodes the small set
@@ -592,8 +600,7 @@ mod tests {
     #[test]
     fn test_format_both_prefix_and_postfix_wrap() {
         let items = sample_items();
-        let out =
-            format_web_search_response("rust", &items, 3, "PREFIX_LINE", "POSTFIX_LINE");
+        let out = format_web_search_response("rust", &items, 3, "PREFIX_LINE", "POSTFIX_LINE");
         assert!(out.starts_with("PREFIX_LINE\n\nWeb search results for"));
         assert!(out.ends_with("\n\nPOSTFIX_LINE"));
         // Both wrappers must appear exactly once.
@@ -648,7 +655,9 @@ mod tests {
 
     impl BaseUrlGuard {
         fn set(url: &str) -> Self {
-            let lock = env_lock().lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+            let lock = env_lock()
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
             let prev = std::env::var("WEB_SEARCH_BASE_URL").ok();
             unsafe {
                 std::env::set_var("WEB_SEARCH_BASE_URL", url);
@@ -812,8 +821,14 @@ mod tests {
     fn test_format_snippet_results_empty_returns_no_results_message_unwrapped() {
         // No items -> the configured no-results message with {query} filled,
         // and NOT wrapped by prefix/postfix (matches the scraped empty path).
-        let out =
-            format_snippet_results("rust", &[], 3, DEFAULT_NO_RESULTS_MESSAGE, "PREFIX", "POSTFIX");
+        let out = format_snippet_results(
+            "rust",
+            &[],
+            3,
+            DEFAULT_NO_RESULTS_MESSAGE,
+            "PREFIX",
+            "POSTFIX",
+        );
         assert!(out.contains("I couldn't find quality results for 'rust'"));
         assert!(!out.contains("PREFIX"));
         assert!(!out.contains("POSTFIX"));
@@ -823,8 +838,7 @@ mod tests {
     #[test]
     fn test_format_snippet_results_wraps_nonempty_body() {
         let items = vec![json!({"title":"T","link":"https://x.com","snippet":"s"})];
-        let out =
-            format_snippet_results("q", &items, 3, DEFAULT_NO_RESULTS_MESSAGE, "PRE", "POST");
+        let out = format_snippet_results("q", &items, 3, DEFAULT_NO_RESULTS_MESSAGE, "PRE", "POST");
         assert!(out.starts_with("PRE\n\n"));
         assert!(out.ends_with("\n\nPOST"));
     }

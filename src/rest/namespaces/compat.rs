@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
+use serde_json::Value;
 #[cfg(test)]
 use serde_json::json;
-use serde_json::Value;
 
 use crate::rest::error::SignalWireRestError;
 use crate::rest::http_client::HttpClient;
@@ -61,7 +61,10 @@ impl<'a> Compat<'a> {
     }
 
     pub fn phone_numbers(&self) -> CompatPhoneNumbers<'a> {
-        CompatPhoneNumbers::new(self.client, &format!("{}/IncomingPhoneNumbers", self.base()))
+        CompatPhoneNumbers::new(
+            self.client,
+            &format!("{}/IncomingPhoneNumbers", self.base()),
+        )
     }
 
     pub fn applications(&self) -> CompatApplications<'a> {
@@ -159,7 +162,8 @@ impl<'a> CompatAccounts<'a> {
     /// (transport failure), the API responds with a non-2xx status (notably
     /// 404 if `sid` does not exist), or the response body is not valid JSON.
     pub fn get(&self, sid: &str) -> Result<Value, SignalWireRestError> {
-        self.client.get(&join_path(&self.base_path, &[sid]), &HashMap::new())
+        self.client
+            .get(&join_path(&self.base_path, &[sid]), &HashMap::new())
     }
 
     /// # Errors
@@ -168,7 +172,8 @@ impl<'a> CompatAccounts<'a> {
     /// 404 if `sid` does not exist, or 422 if a parameter fails server-side
     /// validation), or the response body is not valid JSON.
     pub fn update(&self, sid: &str, params: &Value) -> Result<Value, SignalWireRestError> {
-        self.client.post(&join_path(&self.base_path, &[sid]), params)
+        self.client
+            .post(&join_path(&self.base_path, &[sid]), params)
     }
 }
 
@@ -199,7 +204,8 @@ impl<'a> CompatCalls<'a> {
     /// 404 if `sid` does not name an existing call, or 422 if a parameter
     /// fails server-side validation), or the response body is not valid JSON.
     pub fn update(&self, sid: &str, params: &Value) -> Result<Value, SignalWireRestError> {
-        self.client.post(&join_path(&self.base_path, &[sid]), params)
+        self.client
+            .post(&join_path(&self.base_path, &[sid]), params)
     }
 
     /// POST /Calls/{sid}/Recordings — start a new recording on the call.
@@ -314,7 +320,8 @@ impl<'a> CompatMessages<'a> {
     /// (transport failure), the API responds with a non-2xx status (notably
     /// 404 if `sid` does not exist), or the response body is not valid JSON.
     pub fn get(&self, sid: &str) -> Result<Value, SignalWireRestError> {
-        self.client.get(&join_path(&self.base_path, &[sid]), &HashMap::new())
+        self.client
+            .get(&join_path(&self.base_path, &[sid]), &HashMap::new())
     }
 
     /// # Errors
@@ -323,7 +330,8 @@ impl<'a> CompatMessages<'a> {
     /// 404 if `sid` does not exist, or 422 if a parameter fails server-side
     /// validation), or the response body is not valid JSON.
     pub fn update(&self, sid: &str, params: &Value) -> Result<Value, SignalWireRestError> {
-        self.client.post(&join_path(&self.base_path, &[sid]), params)
+        self.client
+            .post(&join_path(&self.base_path, &[sid]), params)
     }
 
     /// # Errors
@@ -425,7 +433,8 @@ impl<'a> CompatFaxes<'a> {
     /// (transport failure), the API responds with a non-2xx status (notably
     /// 404 if `sid` does not exist), or the response body is not valid JSON.
     pub fn get(&self, sid: &str) -> Result<Value, SignalWireRestError> {
-        self.client.get(&join_path(&self.base_path, &[sid]), &HashMap::new())
+        self.client
+            .get(&join_path(&self.base_path, &[sid]), &HashMap::new())
     }
 
     /// # Errors
@@ -434,7 +443,8 @@ impl<'a> CompatFaxes<'a> {
     /// 404 if `sid` does not exist, or 422 if a parameter fails server-side
     /// validation), or the response body is not valid JSON.
     pub fn update(&self, sid: &str, params: &Value) -> Result<Value, SignalWireRestError> {
-        self.client.post(&join_path(&self.base_path, &[sid]), params)
+        self.client
+            .post(&join_path(&self.base_path, &[sid]), params)
     }
 
     /// # Errors
@@ -463,11 +473,7 @@ impl<'a> CompatFaxes<'a> {
     /// (transport failure), the API responds with a non-2xx status (notably
     /// 404 if `fax_sid` or `media_sid` does not exist), or the response body
     /// is not valid JSON.
-    pub fn get_media(
-        &self,
-        fax_sid: &str,
-        media_sid: &str,
-    ) -> Result<Value, SignalWireRestError> {
+    pub fn get_media(&self, fax_sid: &str, media_sid: &str) -> Result<Value, SignalWireRestError> {
         let path = join_path(&self.base_path, &[fax_sid, "Media", media_sid]);
         self.client.get(&path, &HashMap::new())
     }
@@ -523,7 +529,8 @@ impl<'a> CompatConferences<'a> {
     /// (transport failure), the API responds with a non-2xx status (notably
     /// 404 if `sid` does not exist), or the response body is not valid JSON.
     pub fn get(&self, sid: &str) -> Result<Value, SignalWireRestError> {
-        self.client.get(&join_path(&self.base_path, &[sid]), &HashMap::new())
+        self.client
+            .get(&join_path(&self.base_path, &[sid]), &HashMap::new())
     }
 
     /// # Errors
@@ -532,7 +539,8 @@ impl<'a> CompatConferences<'a> {
     /// 404 if `sid` does not exist, or 422 if a parameter fails server-side
     /// validation), or the response body is not valid JSON.
     pub fn update(&self, sid: &str, params: &Value) -> Result<Value, SignalWireRestError> {
-        self.client.post(&join_path(&self.base_path, &[sid]), params)
+        self.client
+            .post(&join_path(&self.base_path, &[sid]), params)
     }
 
     /// # Errors
@@ -620,7 +628,10 @@ impl<'a> CompatConferences<'a> {
         conference_sid: &str,
         recording_sid: &str,
     ) -> Result<Value, SignalWireRestError> {
-        let path = join_path(&self.base_path, &[conference_sid, "Recordings", recording_sid]);
+        let path = join_path(
+            &self.base_path,
+            &[conference_sid, "Recordings", recording_sid],
+        );
         self.client.get(&path, &HashMap::new())
     }
 
@@ -636,7 +647,10 @@ impl<'a> CompatConferences<'a> {
         recording_sid: &str,
         params: &Value,
     ) -> Result<Value, SignalWireRestError> {
-        let path = join_path(&self.base_path, &[conference_sid, "Recordings", recording_sid]);
+        let path = join_path(
+            &self.base_path,
+            &[conference_sid, "Recordings", recording_sid],
+        );
         self.client.post(&path, params)
     }
 
@@ -651,7 +665,10 @@ impl<'a> CompatConferences<'a> {
         conference_sid: &str,
         recording_sid: &str,
     ) -> Result<Value, SignalWireRestError> {
-        let path = join_path(&self.base_path, &[conference_sid, "Recordings", recording_sid]);
+        let path = join_path(
+            &self.base_path,
+            &[conference_sid, "Recordings", recording_sid],
+        );
         self.client.delete(&path)
     }
 
@@ -699,8 +716,7 @@ pub struct CompatPhoneNumbers<'a> {
 
 impl<'a> CompatPhoneNumbers<'a> {
     pub fn new(client: &'a HttpClient, base_path: &str) -> Self {
-        let available_base =
-            base_path.replace("/IncomingPhoneNumbers", "/AvailablePhoneNumbers");
+        let available_base = base_path.replace("/IncomingPhoneNumbers", "/AvailablePhoneNumbers");
         CompatPhoneNumbers {
             client,
             base_path: base_path.to_string(),
@@ -739,7 +755,8 @@ impl<'a> CompatPhoneNumbers<'a> {
     /// (transport failure), the API responds with a non-2xx status (notably
     /// 404 if `sid` does not exist), or the response body is not valid JSON.
     pub fn get(&self, sid: &str) -> Result<Value, SignalWireRestError> {
-        self.client.get(&join_path(&self.base_path, &[sid]), &HashMap::new())
+        self.client
+            .get(&join_path(&self.base_path, &[sid]), &HashMap::new())
     }
 
     /// # Errors
@@ -748,7 +765,8 @@ impl<'a> CompatPhoneNumbers<'a> {
     /// 404 if `sid` does not exist, or 422 if a parameter fails server-side
     /// validation), or the response body is not valid JSON.
     pub fn update(&self, sid: &str, params: &Value) -> Result<Value, SignalWireRestError> {
-        self.client.post(&join_path(&self.base_path, &[sid]), params)
+        self.client
+            .post(&join_path(&self.base_path, &[sid]), params)
     }
 
     /// # Errors
@@ -779,10 +797,7 @@ impl<'a> CompatPhoneNumbers<'a> {
     /// Returns [`SignalWireRestError`] if the request cannot reach the Space
     /// (transport failure), the API responds with a non-2xx status, or the
     /// response body is not valid JSON.
-    pub fn list_available_countries(
-        &self,
-        params: &Value,
-    ) -> Result<Value, SignalWireRestError> {
+    pub fn list_available_countries(&self, params: &Value) -> Result<Value, SignalWireRestError> {
         let qp = params_to_string_map(params);
         self.client.get(&self.available_base, &qp)
     }
@@ -862,7 +877,8 @@ impl<'a> CompatApplications<'a> {
     /// (transport failure), the API responds with a non-2xx status (notably
     /// 404 if `sid` does not exist), or the response body is not valid JSON.
     pub fn get(&self, sid: &str) -> Result<Value, SignalWireRestError> {
-        self.client.get(&join_path(&self.base_path, &[sid]), &HashMap::new())
+        self.client
+            .get(&join_path(&self.base_path, &[sid]), &HashMap::new())
     }
 
     /// # Errors
@@ -871,7 +887,8 @@ impl<'a> CompatApplications<'a> {
     /// 404 if `sid` does not exist, or 422 if a parameter fails server-side
     /// validation), or the response body is not valid JSON.
     pub fn update(&self, sid: &str, params: &Value) -> Result<Value, SignalWireRestError> {
-        self.client.post(&join_path(&self.base_path, &[sid]), params)
+        self.client
+            .post(&join_path(&self.base_path, &[sid]), params)
     }
 
     /// # Errors
@@ -929,7 +946,8 @@ impl<'a> CompatLamlBins<'a> {
     /// (transport failure), the API responds with a non-2xx status (notably
     /// 404 if `sid` does not exist), or the response body is not valid JSON.
     pub fn get(&self, sid: &str) -> Result<Value, SignalWireRestError> {
-        self.client.get(&join_path(&self.base_path, &[sid]), &HashMap::new())
+        self.client
+            .get(&join_path(&self.base_path, &[sid]), &HashMap::new())
     }
 
     /// # Errors
@@ -938,7 +956,8 @@ impl<'a> CompatLamlBins<'a> {
     /// 404 if `sid` does not exist, or 422 if a parameter fails server-side
     /// validation), or the response body is not valid JSON.
     pub fn update(&self, sid: &str, params: &Value) -> Result<Value, SignalWireRestError> {
-        self.client.post(&join_path(&self.base_path, &[sid]), params)
+        self.client
+            .post(&join_path(&self.base_path, &[sid]), params)
     }
 
     /// # Errors
@@ -996,7 +1015,8 @@ impl<'a> CompatQueues<'a> {
     /// (transport failure), the API responds with a non-2xx status (notably
     /// 404 if `sid` does not exist), or the response body is not valid JSON.
     pub fn get(&self, sid: &str) -> Result<Value, SignalWireRestError> {
-        self.client.get(&join_path(&self.base_path, &[sid]), &HashMap::new())
+        self.client
+            .get(&join_path(&self.base_path, &[sid]), &HashMap::new())
     }
 
     /// # Errors
@@ -1005,7 +1025,8 @@ impl<'a> CompatQueues<'a> {
     /// 404 if `sid` does not exist, or 422 if a parameter fails server-side
     /// validation), or the response body is not valid JSON.
     pub fn update(&self, sid: &str, params: &Value) -> Result<Value, SignalWireRestError> {
-        self.client.post(&join_path(&self.base_path, &[sid]), params)
+        self.client
+            .post(&join_path(&self.base_path, &[sid]), params)
     }
 
     /// # Errors
@@ -1099,7 +1120,8 @@ impl<'a> CompatRecordings<'a> {
     /// (transport failure), the API responds with a non-2xx status (notably
     /// 404 if `sid` does not exist), or the response body is not valid JSON.
     pub fn get(&self, sid: &str) -> Result<Value, SignalWireRestError> {
-        self.client.get(&join_path(&self.base_path, &[sid]), &HashMap::new())
+        self.client
+            .get(&join_path(&self.base_path, &[sid]), &HashMap::new())
     }
 
     /// # Errors
@@ -1148,7 +1170,8 @@ impl<'a> CompatTranscriptions<'a> {
     /// (transport failure), the API responds with a non-2xx status (notably
     /// 404 if `sid` does not exist), or the response body is not valid JSON.
     pub fn get(&self, sid: &str) -> Result<Value, SignalWireRestError> {
-        self.client.get(&join_path(&self.base_path, &[sid]), &HashMap::new())
+        self.client
+            .get(&join_path(&self.base_path, &[sid]), &HashMap::new())
     }
 
     /// # Errors
@@ -1197,12 +1220,9 @@ impl<'a> CompatTokens<'a> {
     /// (transport failure), the API responds with a non-2xx status (notably
     /// 404 if `token_id` does not exist, or 422 if a parameter fails
     /// server-side validation), or the response body is not valid JSON.
-    pub fn update(
-        &self,
-        token_id: &str,
-        params: &Value,
-    ) -> Result<Value, SignalWireRestError> {
-        self.client.patch(&join_path(&self.base_path, &[token_id]), params)
+    pub fn update(&self, token_id: &str, params: &Value) -> Result<Value, SignalWireRestError> {
+        self.client
+            .patch(&join_path(&self.base_path, &[token_id]), params)
     }
 
     /// # Errors
@@ -1274,9 +1294,11 @@ mod tests {
             .unwrap();
         let reqs = stub.requests.lock().unwrap();
         assert_eq!(reqs[0].0, "POST");
-        assert!(reqs[0]
-            .1
-            .contains("/api/laml/2010-04-01/Accounts/test_proj/Calls/CA_X/Streams"));
+        assert!(
+            reqs[0]
+                .1
+                .contains("/api/laml/2010-04-01/Accounts/test_proj/Calls/CA_X/Streams")
+        );
     }
 
     #[test]
@@ -1289,8 +1311,10 @@ mod tests {
             .unwrap();
         let reqs = stub.requests.lock().unwrap();
         assert_eq!(reqs[0].0, "POST");
-        assert!(reqs[0]
-            .1
-            .contains("/api/laml/2010-04-01/Accounts/test_proj/ImportedPhoneNumbers"));
+        assert!(
+            reqs[0]
+                .1
+                .contains("/api/laml/2010-04-01/Accounts/test_proj/ImportedPhoneNumbers")
+        );
     }
 }

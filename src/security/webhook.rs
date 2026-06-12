@@ -90,8 +90,8 @@ pub enum ParamsOrBody {
 
 /// Scheme-A digest: lowercase hex of HMAC-SHA1.
 fn hex_hmac_sha1(key: &str, message: &str) -> String {
-    let mut mac = HmacSha1::new_from_slice(key.as_bytes())
-        .expect("HMAC-SHA1 accepts any key length");
+    let mut mac =
+        HmacSha1::new_from_slice(key.as_bytes()).expect("HMAC-SHA1 accepts any key length");
     mac.update(message.as_bytes());
     let digest = mac.finalize().into_bytes();
     let mut out = String::with_capacity(digest.len() * 2);
@@ -103,8 +103,8 @@ fn hex_hmac_sha1(key: &str, message: &str) -> String {
 
 /// Scheme-B digest: standard base64 of HMAC-SHA1.
 fn b64_hmac_sha1(key: &str, message: &str) -> String {
-    let mut mac = HmacSha1::new_from_slice(key.as_bytes())
-        .expect("HMAC-SHA1 accepts any key length");
+    let mut mac =
+        HmacSha1::new_from_slice(key.as_bytes()).expect("HMAC-SHA1 accepts any key length");
     mac.update(message.as_bytes());
     let digest = mac.finalize().into_bytes();
     BASE64_STANDARD.encode(digest)
@@ -232,8 +232,7 @@ fn candidate_urls(url: &str) -> Vec<String> {
     let port_colon = if authority.starts_with('[') {
         match authority.find(']') {
             Some(close) => {
-                if close + 1 < authority.len()
-                    && authority.as_bytes().get(close + 1) == Some(&b':')
+                if close + 1 < authority.len() && authority.as_bytes().get(close + 1) == Some(&b':')
                 {
                     Some(close + 1)
                 } else {
@@ -650,7 +649,11 @@ mod tests {
         // Wrong length, weird chars, base64 noise — none should panic.
         for garbage in ["xyz", "!!!!", &"a".repeat(100), "%%notbase64%%"] {
             let r = validate_webhook_signature(VECTOR_A_KEY, garbage, VECTOR_A_URL, VECTOR_A_BODY);
-            assert_eq!(r, Ok(false), "garbage {garbage:?} should not panic and should not validate");
+            assert_eq!(
+                r,
+                Ok(false),
+                "garbage {garbage:?} should not panic and should not validate"
+            );
         }
     }
 

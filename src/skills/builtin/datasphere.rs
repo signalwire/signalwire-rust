@@ -1,6 +1,6 @@
-use base64::engine::general_purpose::STANDARD as BASE64;
 use base64::Engine;
-use serde_json::{json, Map, Value};
+use base64::engine::general_purpose::STANDARD as BASE64;
+use serde_json::{Map, Value, json};
 
 use crate::agent::AgentBase;
 use crate::skills::skill_base::{SkillBase, SkillParams};
@@ -52,9 +52,7 @@ impl SkillBase for Datasphere {
             }
         }
         // Token can come from params OR DATASPHERE_TOKEN env var.
-        if self.sp.get_str("token").is_none()
-            && std::env::var("DATASPHERE_TOKEN").is_err()
-        {
+        if self.sp.get_str("token").is_none() && std::env::var("DATASPHERE_TOKEN").is_err() {
             return false;
         }
         true
@@ -64,7 +62,10 @@ impl SkillBase for Datasphere {
         let tool_name = self.get_tool_name("search_knowledge");
         let space_name = self.sp.get_str_or("space_name", "");
         let project_id = self.sp.get_str_or("project_id", "");
-        let token_param = self.sp.get_str("token").map(std::string::ToString::to_string);
+        let token_param = self
+            .sp
+            .get_str("token")
+            .map(std::string::ToString::to_string);
         let document_id = self.sp.get_str_or("document_id", "");
         let count = self.sp.get_i64("count", 1).clamp(1, 10);
         let distance = self.sp.get_f64("distance", 3.0);
@@ -92,9 +93,8 @@ impl SkillBase for Datasphere {
                     .or_else(|| std::env::var("DATASPHERE_TOKEN").ok())
                     .unwrap_or_default();
 
-                let base = std::env::var("DATASPHERE_BASE_URL").unwrap_or_else(|_| {
-                    format!("https://{space_name}.signalwire.com")
-                });
+                let base = std::env::var("DATASPHERE_BASE_URL")
+                    .unwrap_or_else(|_| format!("https://{space_name}.signalwire.com"));
                 let url = format!(
                     "{}/api/datasphere/documents/search",
                     base.trim_end_matches('/')
@@ -126,9 +126,7 @@ impl SkillBase for Datasphere {
                     .unwrap_or_default();
 
                 let formatted = if entries.is_empty() {
-                    format!(
-                        "No DataSphere knowledge results for \"{query}\"."
-                    )
+                    format!("No DataSphere knowledge results for \"{query}\".")
                 } else {
                     let lines: Vec<String> = entries
                         .iter()
@@ -192,12 +190,7 @@ impl SkillBase for Datasphere {
 }
 
 /// Issue an HTTP POST with Basic auth and a JSON body, parse JSON response.
-fn http_post_json(
-    url: &str,
-    project: &str,
-    token: &str,
-    payload: &Value,
-) -> Result<Value, String> {
+fn http_post_json(url: &str, project: &str, token: &str, payload: &Value) -> Result<Value, String> {
     let agent: ureq::Agent = ureq::Agent::config_builder()
         .timeout_global(Some(std::time::Duration::from_secs(30)))
         .http_status_as_error(false)
@@ -226,8 +219,7 @@ fn http_post_json(
         return Err(format!("POST {url} returned {status}: {body_str}"));
     }
 
-    serde_json::from_str(&body_str)
-        .map_err(|e| format!("POST {url} returned non-JSON: {e}"))
+    serde_json::from_str(&body_str).map_err(|e| format!("POST {url} returned non-JSON: {e}"))
 }
 
 #[cfg(test)]

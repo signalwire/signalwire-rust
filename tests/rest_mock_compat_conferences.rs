@@ -7,7 +7,7 @@
 #[path = "common/mod.rs"]
 mod common;
 
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 const BASE: &str = "/api/laml/2010-04-01/Accounts/test_proj/Conferences";
 
@@ -51,10 +51,7 @@ fn test_compat_conferences_list_journal_records_get() {
     let entry = common::mocktest::journal_last();
     assert_eq!(entry.method, "GET");
     assert_eq!(entry.path, BASE);
-    assert!(
-        entry.matched_route.is_some(),
-        "spec gap: conferences.list"
-    );
+    assert!(entry.matched_route.is_some(), "spec gap: conferences.list");
 }
 
 #[test]
@@ -163,10 +160,7 @@ fn test_compat_conferences_get_participant_journal_records_get() {
 
     let entry = common::mocktest::journal_last();
     assert_eq!(entry.method, "GET");
-    assert_eq!(
-        entry.path,
-        format!("{BASE}/CF_GP/Participants/CA_GP")
-    );
+    assert_eq!(entry.path, format!("{BASE}/CF_GP/Participants/CA_GP"));
 }
 
 #[test]
@@ -192,19 +186,12 @@ fn test_compat_conferences_update_participant_journal_records_post() {
     let c = common::mocktest::client();
     c.compat()
         .conferences()
-        .update_participant(
-            "CF_M",
-            "CA_M",
-            &json!({"Muted": true, "Hold": false}),
-        )
+        .update_participant("CF_M", "CA_M", &json!({"Muted": true, "Hold": false}))
         .expect("update_participant");
 
     let entry = common::mocktest::journal_last();
     assert_eq!(entry.method, "POST");
-    assert_eq!(
-        entry.path,
-        format!("{BASE}/CF_M/Participants/CA_M")
-    );
+    assert_eq!(entry.path, format!("{BASE}/CF_M/Participants/CA_M"));
     let body = entry.body_object().expect("body");
     assert_eq!(body.get("Muted").and_then(Value::as_bool), Some(true));
     assert_eq!(body.get("Hold").and_then(Value::as_bool), Some(false));
@@ -233,10 +220,7 @@ fn test_compat_conferences_remove_participant_journal_records_delete() {
 
     let entry = common::mocktest::journal_last();
     assert_eq!(entry.method, "DELETE");
-    assert_eq!(
-        entry.path,
-        format!("{BASE}/CF_RM/Participants/CA_RM")
-    );
+    assert_eq!(entry.path, format!("{BASE}/CF_RM/Participants/CA_RM"));
 }
 
 // ---- Recordings ----------------------------------------------------------
@@ -303,10 +287,7 @@ fn test_compat_conferences_get_recording_journal_records_get() {
 
     let entry = common::mocktest::journal_last();
     assert_eq!(entry.method, "GET");
-    assert_eq!(
-        entry.path,
-        format!("{BASE}/CF_GRX/Recordings/RE_GRX")
-    );
+    assert_eq!(entry.path, format!("{BASE}/CF_GRX/Recordings/RE_GRX"));
 }
 
 #[test]
@@ -316,11 +297,7 @@ fn test_compat_conferences_update_recording_returns_resource() {
     let result = c
         .compat()
         .conferences()
-        .update_recording(
-            "CF_URC",
-            "RE_URC",
-            &json!({"Status": "paused"}),
-        )
+        .update_recording("CF_URC", "RE_URC", &json!({"Status": "paused"}))
         .expect("update_recording");
     assert!(result.is_object());
     let obj = result.as_object().unwrap();
@@ -342,15 +319,9 @@ fn test_compat_conferences_update_recording_journal_records_post() {
 
     let entry = common::mocktest::journal_last();
     assert_eq!(entry.method, "POST");
-    assert_eq!(
-        entry.path,
-        format!("{BASE}/CF_UR/Recordings/RE_UR")
-    );
+    assert_eq!(entry.path, format!("{BASE}/CF_UR/Recordings/RE_UR"));
     let body = entry.body_object().expect("body");
-    assert_eq!(
-        body.get("Status").and_then(Value::as_str),
-        Some("paused")
-    );
+    assert_eq!(body.get("Status").and_then(Value::as_str), Some("paused"));
 }
 
 #[test]
@@ -376,10 +347,7 @@ fn test_compat_conferences_delete_recording_journal_records_delete() {
 
     let entry = common::mocktest::journal_last();
     assert_eq!(entry.method, "DELETE");
-    assert_eq!(
-        entry.path,
-        format!("{BASE}/CF_DRX/Recordings/RE_DRX")
-    );
+    assert_eq!(entry.path, format!("{BASE}/CF_DRX/Recordings/RE_DRX"));
 }
 
 // ---- Streams -------------------------------------------------------------
@@ -408,20 +376,14 @@ fn test_compat_conferences_start_stream_journal_records_post() {
     let c = common::mocktest::client();
     c.compat()
         .conferences()
-        .start_stream(
-            "CF_SSX",
-            &json!({"Url": "wss://a.b/s", "Name": "strm"}),
-        )
+        .start_stream("CF_SSX", &json!({"Url": "wss://a.b/s", "Name": "strm"}))
         .expect("start_stream");
 
     let entry = common::mocktest::journal_last();
     assert_eq!(entry.method, "POST");
     assert_eq!(entry.path, format!("{BASE}/CF_SSX/Streams"));
     let body = entry.body_object().expect("body");
-    assert_eq!(
-        body.get("Url").and_then(Value::as_str),
-        Some("wss://a.b/s")
-    );
+    assert_eq!(body.get("Url").and_then(Value::as_str), Some("wss://a.b/s"));
 }
 
 #[test]
@@ -453,13 +415,7 @@ fn test_compat_conferences_stop_stream_journal_records_post() {
 
     let entry = common::mocktest::journal_last();
     assert_eq!(entry.method, "POST");
-    assert_eq!(
-        entry.path,
-        format!("{BASE}/CF_TSX/Streams/ST_TSX")
-    );
+    assert_eq!(entry.path, format!("{BASE}/CF_TSX/Streams/ST_TSX"));
     let body = entry.body_object().expect("body");
-    assert_eq!(
-        body.get("Status").and_then(Value::as_str),
-        Some("stopped")
-    );
+    assert_eq!(body.get("Status").and_then(Value::as_str), Some("stopped"));
 }

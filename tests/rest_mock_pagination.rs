@@ -12,7 +12,7 @@ mod common;
 
 use std::collections::HashMap;
 
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use signalwire::rest::pagination::PaginatedIterator;
 
 const FABRIC_ADDRESSES_PATH: &str = "/api/fabric/addresses";
@@ -138,14 +138,10 @@ fn test_pagination_terminal_page_then_exhausted() {
         json!({"data": [{"id": "only-one"}], "links": {}}),
     );
 
-    let mut it =
-        PaginatedIterator::new(c.http(), FABRIC_ADDRESSES_PATH, HashMap::new(), "data");
+    let mut it = PaginatedIterator::new(c.http(), FABRIC_ADDRESSES_PATH, HashMap::new(), "data");
     // First call returns the single item.
     let first = it.next_item().expect("first").expect("item present");
-    assert_eq!(
-        first.get("id").and_then(Value::as_str),
-        Some("only-one")
-    );
+    assert_eq!(first.get("id").and_then(Value::as_str), Some("only-one"));
     // Second call returns Ok(None) (no more items).
     let second = it.next_item().expect("second");
     assert!(second.is_none(), "expected None, got {second:?}");

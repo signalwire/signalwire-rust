@@ -80,11 +80,7 @@ impl<'a> Queues<'a> {
     /// (transport failure), the API responds with a non-2xx status (e.g. 404
     /// for an unknown `queue_id` or 422 when `params` fails validation), or the
     /// response body is not valid JSON.
-    pub fn update(
-        &self,
-        queue_id: &str,
-        params: &Value,
-    ) -> Result<Value, SignalWireRestError> {
+    pub fn update(&self, queue_id: &str, params: &Value) -> Result<Value, SignalWireRestError> {
         self.client
             .put(&format!("{}/{}", self.base_path, queue_id), params)
     }
@@ -112,8 +108,7 @@ impl<'a> Queues<'a> {
         params: &Value,
     ) -> Result<Value, SignalWireRestError> {
         let path = format!("{}/{}/members", self.base_path, queue_id);
-        self.client
-            .get(&path, &Self::params_to_string_map(params))
+        self.client.get(&path, &Self::params_to_string_map(params))
     }
 
     /// GET `/api/relay/rest/queues/{queue_id}/members/next` — fetch the next
@@ -123,10 +118,7 @@ impl<'a> Queues<'a> {
     /// Returns [`SignalWireRestError`] if the request cannot reach the Space
     /// (transport failure), the API responds with a non-2xx status (e.g. 404
     /// for an unknown `queue_id`), or the response body is not valid JSON.
-    pub fn get_next_member(
-        &self,
-        queue_id: &str,
-    ) -> Result<Value, SignalWireRestError> {
+    pub fn get_next_member(&self, queue_id: &str) -> Result<Value, SignalWireRestError> {
         let path = format!("{}/{}/members/next", self.base_path, queue_id);
         self.client.get(&path, &HashMap::new())
     }

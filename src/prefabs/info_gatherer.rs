@@ -1,4 +1,4 @@
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 use crate::agent::{AgentBase, AgentOptions};
 use crate::swaig::FunctionResult;
@@ -80,10 +80,7 @@ impl InfoGathererAgent {
                 },
             }),
             Box::new(|args, _raw| {
-                let answer = args
-                    .get("answer")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("");
+                let answer = args.get("answer").and_then(|v| v.as_str()).unwrap_or("");
                 FunctionResult::with_response(&format!("Answer recorded: {answer}"))
             }),
             false,
@@ -132,7 +129,9 @@ mod tests {
         let agent = InfoGathererAgent::new("test", sample_questions(), None);
         let args = serde_json::Map::new();
         let raw = serde_json::Map::new();
-        let result = agent.agent().on_function_call("start_questions", &args, &raw);
+        let result = agent
+            .agent()
+            .on_function_call("start_questions", &args, &raw);
         assert!(result.is_some());
     }
 

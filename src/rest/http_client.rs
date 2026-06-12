@@ -145,8 +145,8 @@ impl HttpTransport for UreqTransport {
             }
         };
 
-        let mut response = response_result
-            .map_err(|e| format!("HTTP {method} {url} failed: {e}"))?;
+        let mut response =
+            response_result.map_err(|e| format!("HTTP {method} {url} failed: {e}"))?;
         let status = response.status().as_u16();
         let body_str = response
             .body_mut()
@@ -220,10 +220,7 @@ impl HttpClient {
         base_url: &str,
         transport: Box<dyn HttpTransport>,
     ) -> Self {
-        let auth_header = format!(
-            "Basic {}",
-            BASE64.encode(format!("{project_id}:{token}"))
-        );
+        let auth_header = format!("Basic {}", BASE64.encode(format!("{project_id}:{token}")));
         HttpClient {
             project_id: project_id.to_string(),
             token: token.to_string(),
@@ -235,7 +232,11 @@ impl HttpClient {
     }
 
     /// Create with a stub transport for testing.
-    pub fn with_stub(project_id: &str, token: &str, base_url: &str) -> (Self, std::sync::Arc<StubTransport>) {
+    pub fn with_stub(
+        project_id: &str,
+        token: &str,
+        base_url: &str,
+    ) -> (Self, std::sync::Arc<StubTransport>) {
         let stub = std::sync::Arc::new(StubTransport::new(200, "{}"));
         let client = HttpClient::new(
             project_id,
@@ -275,7 +276,11 @@ impl HttpClient {
     /// 404 when the addressed resource does not exist), or a 2xx response body
     /// is present but not valid JSON. This is the authoritative description of
     /// the three failure modes shared by every HTTP method on this client.
-    pub fn get(&self, path: &str, params: &HashMap<String, String>) -> Result<Value, SignalWireRestError> {
+    pub fn get(
+        &self,
+        path: &str,
+        params: &HashMap<String, String>,
+    ) -> Result<Value, SignalWireRestError> {
         self.request("GET", path, params, None)
     }
 
@@ -336,7 +341,11 @@ impl HttpClient {
     /// status, or a 2xx response body is not valid JSON. Pagination follows the
     /// `links.next` cursor returned by each page; a malformed or unreachable
     /// next-page URL surfaces as the underlying request error for that page.
-    pub fn list_all(&self, path: &str, params: &HashMap<String, String>) -> Result<Vec<Value>, SignalWireRestError> {
+    pub fn list_all(
+        &self,
+        path: &str,
+        params: &HashMap<String, String>,
+    ) -> Result<Vec<Value>, SignalWireRestError> {
         let mut all_pages = Vec::new();
         let mut current_path = path.to_string();
         let mut current_params = params.clone();
@@ -425,11 +434,7 @@ impl HttpClient {
             .transport
             .execute(method, &url, &headers, body)
             .map_err(|e| {
-                SignalWireRestError::new(
-                    &format!("{method} {path} failed: {e}"),
-                    0,
-                    "",
-                )
+                SignalWireRestError::new(&format!("{method} {path} failed: {e}"), 0, "")
             })?;
 
         // Non-2xx
@@ -557,7 +562,9 @@ mod tests {
         let (client, stub) = make_client();
         stub.set_response(200, r#"{"updated":true}"#);
 
-        let result = client.put("/api/test/1", &json!({"name": "updated"})).unwrap();
+        let result = client
+            .put("/api/test/1", &json!({"name": "updated"}))
+            .unwrap();
         assert_eq!(result["updated"], true);
 
         let reqs = stub.requests.lock().unwrap();
@@ -569,7 +576,9 @@ mod tests {
         let (client, stub) = make_client();
         stub.set_response(200, r#"{"patched":true}"#);
 
-        let result = client.patch("/api/test/1", &json!({"field": "val"})).unwrap();
+        let result = client
+            .patch("/api/test/1", &json!({"field": "val"}))
+            .unwrap();
         assert_eq!(result["patched"], true);
 
         let reqs = stub.requests.lock().unwrap();

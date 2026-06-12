@@ -5,8 +5,8 @@
 //!
 //! Usage: `API_NINJAS_KEY=your_key cargo run --example joke_agent`
 
-use signalwire::agent::{AgentBase, AgentOptions};
 use serde_json::json;
+use signalwire::agent::{AgentBase, AgentOptions};
 use std::env;
 
 fn main() {
@@ -24,13 +24,21 @@ fn main() {
 
     agent.add_language("English", "en-US", "rime.spore");
 
-    agent.prompt_add_section("Personality", "You are a funny assistant who loves to tell jokes.", vec![]);
+    agent.prompt_add_section(
+        "Personality",
+        "You are a funny assistant who loves to tell jokes.",
+        vec![],
+    );
     agent.prompt_add_section("Goal", "Make people laugh with great jokes.", vec![]);
-    agent.prompt_add_section("Instructions", "", vec![
-        "Use the get_joke function to tell jokes when asked",
-        "You can tell either regular jokes or dad jokes",
-        "Be enthusiastic about sharing humor",
-    ]);
+    agent.prompt_add_section(
+        "Instructions",
+        "",
+        vec![
+            "Use the get_joke function to tell jokes when asked",
+            "You can tell either regular jokes or dad jokes",
+            "Be enthusiastic about sharing humor",
+        ],
+    );
 
     // Raw data_map tool
     agent.register_swaig_function(json!({

@@ -42,7 +42,8 @@ impl<'a> Mfa<'a> {
     /// (transport failure), the API responds with a non-2xx status (e.g. 422
     /// when `params` fails validation), or the response body is not valid JSON.
     pub fn call(&self, params: &Value) -> Result<Value, SignalWireRestError> {
-        self.client.post(&format!("{}/call", self.base_path), params)
+        self.client
+            .post(&format!("{}/call", self.base_path), params)
     }
 
     /// POST `/api/relay/rest/mfa/{request_id}/verify` — verify a code.
@@ -52,11 +53,7 @@ impl<'a> Mfa<'a> {
     /// (transport failure), the API responds with a non-2xx status (e.g. 404
     /// for an unknown `request_id`, or a non-2xx status when the code is
     /// rejected), or the response body is not valid JSON.
-    pub fn verify(
-        &self,
-        request_id: &str,
-        params: &Value,
-    ) -> Result<Value, SignalWireRestError> {
+    pub fn verify(&self, request_id: &str, params: &Value) -> Result<Value, SignalWireRestError> {
         self.client
             .post(&format!("{}/{}/verify", self.base_path, request_id), params)
     }

@@ -31,9 +31,9 @@
 //!     swaig-test --url <http://user:pass@localhost:3000/sales-sidecar> \
 //!         --exec `lookup_competitor` --param competitor=ACME
 
+use serde_json::json;
 use signalwire::swaig::FunctionResult;
 use signalwire::swml::service::{Service, ServiceOptions};
-use serde_json::json;
 
 fn main() {
     // In production, set this to your externally reachable URL so the

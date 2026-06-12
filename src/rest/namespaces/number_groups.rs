@@ -82,11 +82,7 @@ impl<'a> NumberGroups<'a> {
     /// (transport failure), the API responds with a non-2xx status (e.g. 404
     /// for an unknown `group_id` or 422 when `params` fails validation), or the
     /// response body is not valid JSON.
-    pub fn update(
-        &self,
-        group_id: &str,
-        params: &Value,
-    ) -> Result<Value, SignalWireRestError> {
+    pub fn update(&self, group_id: &str, params: &Value) -> Result<Value, SignalWireRestError> {
         self.client
             .put(&format!("{}/{}", self.base_path, group_id), params)
     }
@@ -113,12 +109,8 @@ impl<'a> NumberGroups<'a> {
         group_id: &str,
         params: &Value,
     ) -> Result<Value, SignalWireRestError> {
-        let path = format!(
-            "{}/{}/number_group_memberships",
-            self.base_path, group_id
-        );
-        self.client
-            .get(&path, &Self::params_to_string_map(params))
+        let path = format!("{}/{}/number_group_memberships", self.base_path, group_id);
+        self.client.get(&path, &Self::params_to_string_map(params))
     }
 
     /// POST `/api/relay/rest/number_groups/{id}/number_group_memberships` — add
@@ -134,10 +126,7 @@ impl<'a> NumberGroups<'a> {
         group_id: &str,
         params: &Value,
     ) -> Result<Value, SignalWireRestError> {
-        let path = format!(
-            "{}/{}/number_group_memberships",
-            self.base_path, group_id
-        );
+        let path = format!("{}/{}/number_group_memberships", self.base_path, group_id);
         self.client.post(&path, params)
     }
 
@@ -148,13 +137,8 @@ impl<'a> NumberGroups<'a> {
     /// Returns [`SignalWireRestError`] if the request cannot reach the Space
     /// (transport failure), the API responds with a non-2xx status (e.g. 404
     /// for an unknown `membership_id`), or the response body is not valid JSON.
-    pub fn get_membership(
-        &self,
-        membership_id: &str,
-    ) -> Result<Value, SignalWireRestError> {
-        let path = format!(
-            "/api/relay/rest/number_group_memberships/{membership_id}"
-        );
+    pub fn get_membership(&self, membership_id: &str) -> Result<Value, SignalWireRestError> {
+        let path = format!("/api/relay/rest/number_group_memberships/{membership_id}");
         self.client.get(&path, &HashMap::new())
     }
 
@@ -165,13 +149,8 @@ impl<'a> NumberGroups<'a> {
     /// Returns [`SignalWireRestError`] if the request cannot reach the Space
     /// (transport failure), the API responds with a non-2xx status (e.g. 404
     /// for an unknown `membership_id`), or the response body is not valid JSON.
-    pub fn delete_membership(
-        &self,
-        membership_id: &str,
-    ) -> Result<Value, SignalWireRestError> {
-        let path = format!(
-            "/api/relay/rest/number_group_memberships/{membership_id}"
-        );
+    pub fn delete_membership(&self, membership_id: &str) -> Result<Value, SignalWireRestError> {
+        let path = format!("/api/relay/rest/number_group_memberships/{membership_id}");
         self.client.delete(&path)
     }
 }

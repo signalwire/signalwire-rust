@@ -3,9 +3,9 @@
 //
 //! Local Search Agent — search local documents with graceful fallback.
 
+use serde_json::json;
 use signalwire::agent::{AgentBase, AgentOptions};
 use signalwire::swaig::FunctionResult;
-use serde_json::json;
 
 fn main() {
     let mut agent = AgentBase::new(AgentOptions {
@@ -21,11 +21,15 @@ fn main() {
         "You are a helpful assistant with access to local document search.",
         vec![],
     );
-    agent.prompt_add_section("Instructions", "", vec![
-        "Use the search_documents function to find relevant information",
-        "Provide helpful answers based on the search results",
-        "If no results are found, let the user know politely",
-    ]);
+    agent.prompt_add_section(
+        "Instructions",
+        "",
+        vec![
+            "Use the search_documents function to find relevant information",
+            "Provide helpful answers based on the search results",
+            "If no results are found, let the user know politely",
+        ],
+    );
 
     // Simulated search tool
     agent.define_tool(
@@ -37,11 +41,18 @@ fn main() {
         }),
         Box::new(|args, _raw| {
             let query = args.get("query").and_then(|v| v.as_str()).unwrap_or("");
-            let max = args.get("max_results").and_then(serde_json::Value::as_u64).unwrap_or(3);
+            let max = args
+                .get("max_results")
+                .and_then(serde_json::Value::as_u64)
+                .unwrap_or(3);
 
             // Simulated search results
             let results = [
-                ("Getting Started Guide", "Installation steps and first configuration.", 0.95),
+                (
+                    "Getting Started Guide",
+                    "Installation steps and first configuration.",
+                    0.95,
+                ),
                 ("API Reference", "Complete type and method reference.", 0.87),
                 ("Troubleshooting FAQ", "Common issues and solutions.", 0.82),
             ];

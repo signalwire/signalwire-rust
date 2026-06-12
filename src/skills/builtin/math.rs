@@ -1,4 +1,4 @@
-use serde_json::{json, Map, Value};
+use serde_json::{Map, Value, json};
 
 use crate::agent::AgentBase;
 use crate::skills::skill_base::{SkillBase, SkillParams};
@@ -209,11 +209,12 @@ fn parse_mul_div(tokens: &[Token], pos: &mut usize) -> Option<f64> {
 fn parse_power(tokens: &[Token], pos: &mut usize) -> Option<f64> {
     let base = parse_unary(tokens, pos)?;
     if *pos < tokens.len()
-        && let Token::Op('^') = &tokens[*pos] {
-            *pos += 1;
-            let exp = parse_power(tokens, pos)?;
-            return Some(base.powf(exp));
-        }
+        && let Token::Op('^') = &tokens[*pos]
+    {
+        *pos += 1;
+        let exp = parse_power(tokens, pos)?;
+        return Some(base.powf(exp));
+    }
     Some(base)
 }
 
@@ -246,10 +247,11 @@ fn parse_atom(tokens: &[Token], pos: &mut usize) -> Option<f64> {
             *pos += 1;
             let val = parse_add_sub(tokens, pos)?;
             if *pos < tokens.len()
-                && let Token::RParen = &tokens[*pos] {
-                    *pos += 1;
-                    return Some(val);
-                }
+                && let Token::RParen = &tokens[*pos]
+            {
+                *pos += 1;
+                return Some(val);
+            }
             None
         }
         _ => None,

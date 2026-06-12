@@ -38,7 +38,7 @@
 
 use std::collections::BTreeMap;
 
-use serde_json::{json, Map, Value};
+use serde_json::{Map, Value, json};
 use signalwire::swaig::{Codec, FunctionResult, RecordDirection, RecordFormat, TapDirection};
 
 /// Build a fresh `FunctionResult` with the given response text (mirrors
@@ -97,7 +97,6 @@ fn corpus() -> Vec<Entry> {
         entry!("envelope.response_and_action", "Goodbye", |fr| {
             fr.hangup();
         }),
-
         // ---- connect (final true/false, from override) ----------------------
         entry!("connect.final_true", "", |fr| {
             fr.connect("+15551234567", true, "");
@@ -108,7 +107,6 @@ fn corpus() -> Vec<Entry> {
         entry!("connect.from_addr", "", |fr| {
             fr.connect("support@example.com", false, "+15559876543");
         }),
-
         // ---- swml_transfer --------------------------------------------------
         entry!("swml_transfer.default", "", |fr| {
             fr.swml_transfer("https://dest.example.com/swml", "Goodbye!", true);
@@ -120,7 +118,6 @@ fn corpus() -> Vec<Entry> {
                 false,
             );
         }),
-
         // ---- simple call-control actions ------------------------------------
         entry!("hangup", "", |fr| {
             fr.hangup();
@@ -144,7 +141,6 @@ fn corpus() -> Vec<Entry> {
         entry!("say", "", |fr| {
             fr.say("Please hold while I connect you.");
         }),
-
         // ---- wait_for_user (each branch) ------------------------------------
         entry!("wait_for_user.default", "", |fr| {
             fr.wait_for_user(None, None, None);
@@ -161,7 +157,6 @@ fn corpus() -> Vec<Entry> {
         entry!("wait_for_user.enabled_false", "", |fr| {
             fr.wait_for_user(Some(false), None, None);
         }),
-
         // ---- global data / metadata (set/unset, str + list) -----------------
         entry!("set_global_data", "", |fr| {
             fr.update_global_data(json!({"plan": "premium", "chips": 1000}));
@@ -185,7 +180,6 @@ fn corpus() -> Vec<Entry> {
             // str arm -> bare string {"unset_meta_data": "token"} (not a list).
             fr.remove_metadata("token");
         }),
-
         // ---- swml_user_event ------------------------------------------------
         entry!("swml_user_event", "", |fr| {
             fr.swml_user_event(json!({
@@ -194,7 +188,6 @@ fn corpus() -> Vec<Entry> {
                 "player_score": 21
             }));
         }),
-
         // ---- step / context changes -----------------------------------------
         entry!("change_step", "", |fr| {
             fr.swml_change_step("collect_payment");
@@ -202,7 +195,6 @@ fn corpus() -> Vec<Entry> {
         entry!("change_context", "", |fr| {
             fr.swml_change_context("billing");
         }),
-
         // ---- switch_context (simple-string vs object branches) --------------
         // Rust's switch_context has a trailing isolated param (a documented
         // PORT_ADDITION); the corpus exercises the Python-equivalent paths with
@@ -211,12 +203,17 @@ fn corpus() -> Vec<Entry> {
             fr.switch_context("You are now a billing agent.", "", false, false, false);
         }),
         entry!("switch_context.object", "", |fr| {
-            fr.switch_context("New system prompt", "User said something", true, false, false);
+            fr.switch_context(
+                "New system prompt",
+                "User said something",
+                true,
+                false,
+                false,
+            );
         }),
         entry!("switch_context.full_reset", "", |fr| {
             fr.switch_context("Reset prompt", "", false, true, false);
         }),
-
         // ---- background file play/stop --------------------------------------
         entry!("playback_bg.simple", "", |fr| {
             fr.play_background_file("music.mp3", false);
@@ -227,7 +224,6 @@ fn corpus() -> Vec<Entry> {
         entry!("stop_playback_bg", "", |fr| {
             fr.stop_background_file();
         }),
-
         // ---- join_room / sip_refer ------------------------------------------
         entry!("join_room", "", |fr| {
             fr.join_room("team-standup");
@@ -235,7 +231,6 @@ fn corpus() -> Vec<Entry> {
         entry!("sip_refer", "", |fr| {
             fr.sip_refer("sip:agent@example.com");
         }),
-
         // ---- send_sms -------------------------------------------------------
         entry!("send_sms.body", "", |fr| {
             fr.send_sms(
@@ -259,7 +254,6 @@ fn corpus() -> Vec<Entry> {
             )
             .expect("send_sms.full");
         }),
-
         // ---- pay (full + helper-shaped prompts/parameters) ------------------
         entry!("pay.minimal", "", |fr| {
             // Python pay() with only the connector URL: every other arg defaults.
@@ -271,24 +265,24 @@ fn corpus() -> Vec<Entry> {
             // valid_card_types="visa mastercard amex").
             fr.pay(
                 "https://pay.example.com/connector",
-                "dtmf",         // input_method
-                "",             // status_url
-                "credit-card",  // payment_method
-                5,              // timeout
-                1,              // max_attempts
-                true,           // security_code
-                "true",         // postal_code (bool True -> wire "true")
-                0,              // min_postal_code_length
-                "reusable",     // token_type
-                "",             // charge_amount
-                "usd",          // currency
-                "en-US",        // language
-                "woman",        // voice
-                "",             // description
+                "dtmf",                 // input_method
+                "",                     // status_url
+                "credit-card",          // payment_method
+                5,                      // timeout
+                1,                      // max_attempts
+                true,                   // security_code
+                "true",                 // postal_code (bool True -> wire "true")
+                0,                      // min_postal_code_length
+                "reusable",             // token_type
+                "",                     // charge_amount
+                "usd",                  // currency
+                "en-US",                // language
+                "woman",                // voice
+                "",                     // description
                 "visa mastercard amex", // valid_card_types
-                Value::Null,    // parameters
-                Value::Null,    // prompts
-                "",             // ai_response (-> default)
+                Value::Null,            // parameters
+                Value::Null,            // prompts
+                "",                     // ai_response (-> default)
             );
         }),
         entry!("pay.full", "", |fr| {
@@ -344,21 +338,26 @@ fn corpus() -> Vec<Entry> {
                 "",
             );
         }),
-
         // ---- record_call (incl. mp4 + each direction) -----------------------
         entry!("record_call.defaults", "", |fr| {
             // Python defaults: format="wav", direction="both",
             // input_sensitivity=44.0; everything else unset.
-            fr.record_call("", false, "wav", "both", "", false, 44.0, None, None, None, "")
-                .expect("record_call.defaults");
+            fr.record_call(
+                "", false, "wav", "both", "", false, 44.0, None, None, None, "",
+            )
+            .expect("record_call.defaults");
         }),
         entry!("record_call.wav_speak", "", |fr| {
-            fr.record_call("", false, "wav", "speak", "", false, 44.0, None, None, None, "")
-                .expect("record_call.wav_speak");
+            fr.record_call(
+                "", false, "wav", "speak", "", false, 44.0, None, None, None, "",
+            )
+            .expect("record_call.wav_speak");
         }),
         entry!("record_call.mp3_listen", "", |fr| {
-            fr.record_call("", false, "mp3", "listen", "", false, 44.0, None, None, None, "")
-                .expect("record_call.mp3_listen");
+            fr.record_call(
+                "", false, "mp3", "listen", "", false, 44.0, None, None, None, "",
+            )
+            .expect("record_call.mp3_listen");
         }),
         entry!("record_call.mp4_both", "", |fr| {
             // Typed path: prove RecordFormat::Mp4 / RecordDirection::Both emit
@@ -400,7 +399,6 @@ fn corpus() -> Vec<Entry> {
         entry!("stop_record_call.id", "", |fr| {
             fr.stop_record_call("rec1");
         }),
-
         // ---- tap (each direction / codec) -----------------------------------
         entry!("tap.defaults", "", |fr| {
             // Python tap defaults: direction="both", codec="PCMU", rtp_ptime=20.
@@ -441,7 +439,6 @@ fn corpus() -> Vec<Entry> {
         entry!("stop_tap.id", "", |fr| {
             fr.stop_tap("tap1");
         }),
-
         // ---- join_conference (simple + full) --------------------------------
         entry!("join_conference.simple", "", |fr| {
             // All-default params -> simple bare-string form. Rust's defaults:
@@ -451,50 +448,49 @@ fn corpus() -> Vec<Entry> {
             // methods "POST", recording_status_callback_event="completed".
             fr.join_conference(
                 "sales-floor",
-                false,            // muted
-                "true",           // beep
-                true,             // start_on_enter
-                false,            // end_on_exit
-                None,             // wait_url
-                250,              // max_participants
-                "do-not-record",  // record
-                None,             // region
-                "trim-silence",   // trim
-                None,             // coach
-                None,             // status_callback_event
-                None,             // status_callback
-                "POST",           // status_callback_method
-                None,             // recording_status_callback
-                "POST",           // recording_status_callback_method
-                "completed",      // recording_status_callback_event
-                None,             // result
+                false,           // muted
+                "true",          // beep
+                true,            // start_on_enter
+                false,           // end_on_exit
+                None,            // wait_url
+                250,             // max_participants
+                "do-not-record", // record
+                None,            // region
+                "trim-silence",  // trim
+                None,            // coach
+                None,            // status_callback_event
+                None,            // status_callback
+                "POST",          // status_callback_method
+                None,            // recording_status_callback
+                "POST",          // recording_status_callback_method
+                "completed",     // recording_status_callback_event
+                None,            // result
             )
             .expect("join_conference.simple");
         }),
         entry!("join_conference.full", "", |fr| {
             fr.join_conference(
                 "sales-floor",
-                true,                 // muted
-                "onEnter",            // beep
-                false,                // start_on_enter
-                true,                 // end_on_exit
+                true,      // muted
+                "onEnter", // beep
+                false,     // start_on_enter
+                true,      // end_on_exit
                 Some("https://ex.com/hold"),
-                50,                   // max_participants
-                "record-from-start",  // record
+                50,                  // max_participants
+                "record-from-start", // record
                 Some("us-east"),
-                "do-not-trim",        // trim
-                Some("call-123"),     // coach
+                "do-not-trim",    // trim
+                Some("call-123"), // coach
                 Some("start end join leave"),
                 Some("https://ex.com/cb"),
-                "GET",                // status_callback_method
+                "GET", // status_callback_method
                 Some("https://ex.com/rcb"),
-                "GET",                // recording_status_callback_method
+                "GET", // recording_status_callback_method
                 "in-progress completed",
-                None,                 // result
+                None, // result
             )
             .expect("join_conference.full");
         }),
-
         // ---- execute_rpc + the three rpc helpers ----------------------------
         entry!("execute_rpc.minimal", "", |fr| {
             fr.execute_rpc("ai_unhold", Value::Null, "", "");
@@ -523,12 +519,10 @@ fn corpus() -> Vec<Entry> {
         entry!("rpc_ai_unhold", "", |fr| {
             fr.rpc_ai_unhold("call-abc");
         }),
-
         // ---- simulate_user_input --------------------------------------------
         entry!("simulate_user_input", "", |fr| {
             fr.simulate_user_input("I'd like to pay my bill.");
         }),
-
         // ---- dynamic hints --------------------------------------------------
         entry!("add_dynamic_hints", "", |fr| {
             fr.add_dynamic_hints(vec![
@@ -539,7 +533,6 @@ fn corpus() -> Vec<Entry> {
         entry!("clear_dynamic_hints", "", |fr| {
             fr.clear_dynamic_hints();
         }),
-
         // ---- toggle_functions / functions-on-timeout ------------------------
         entry!("toggle_functions", "", |fr| {
             // The corpus passes an ORDERED list of {function, active} dicts.
@@ -557,7 +550,6 @@ fn corpus() -> Vec<Entry> {
         entry!("functions_on_speaker_timeout.false", "", |fr| {
             fr.enable_functions_on_timeout(false);
         }),
-
         // ---- extensive_data -------------------------------------------------
         entry!("extensive_data.true", "", |fr| {
             fr.enable_extensive_data(true);
@@ -565,7 +557,6 @@ fn corpus() -> Vec<Entry> {
         entry!("extensive_data.false", "", |fr| {
             fr.enable_extensive_data(false);
         }),
-
         // ---- replace_in_history (str + bool branches) -----------------------
         entry!("replace_in_history.bool", "", |fr| {
             // Python replace_in_history() with no arg -> the bool-true branch.
@@ -574,12 +565,10 @@ fn corpus() -> Vec<Entry> {
         entry!("replace_in_history.str", "", |fr| {
             fr.replace_in_history(Some("Summarized the order."));
         }),
-
         // ---- settings -------------------------------------------------------
         entry!("settings", "", |fr| {
             fr.update_settings(json!({"temperature": 0.7, "max-tokens": 256, "top-p": 0.9}));
         }),
-
         // ---- speech timeouts ------------------------------------------------
         entry!("end_of_speech_timeout", "", |fr| {
             fr.set_end_of_speech_timeout(800);
@@ -587,7 +576,6 @@ fn corpus() -> Vec<Entry> {
         entry!("speech_event_timeout", "", |fr| {
             fr.set_speech_event_timeout(1200);
         }),
-
         // ---- execute_swml (dict + JSON-string + transfer) -------------------
         entry!("execute_swml.dict", "", |fr| {
             fr.execute_swml(
