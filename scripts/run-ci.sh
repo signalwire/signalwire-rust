@@ -133,8 +133,11 @@ run_gate "EMISSION" "diff_port_emission vs python to_dict() oracle" \
 # `cargo fmt --all -- --check`, governed by rustfmt.toml (style_edition 2024).
 # Source-style only — proven surface/emission-neutral (a reformat leaves
 # port_signatures.json byte-identical); a Rust-internal idiom gate, not parity.
+# Pinned to +stable: the SIGNATURES gate installs nightly (for rustdoc-json),
+# which can become the default toolchain — and nightly may lack the rustfmt /
+# clippy components. +stable makes FMT/LINT independent of the default.
 run_gate "FMT" "cargo fmt --all -- --check (format gate)" \
-    cargo fmt --all -- --check
+    cargo +stable fmt --all -- --check
 
 # Gate 8: LINT — the language lint gate (rust: clippy). The canonical gate name
 # is language-neutral (LINT); each port runs its own linter under it. Here that
@@ -143,7 +146,7 @@ run_gate "FMT" "cargo fmt --all -- --check (format gate)" \
 # also promotes rustc warnings. `--all-targets` covers lib + bins + tests +
 # examples (the same scope the burn-down cleared).
 run_gate "LINT" "cargo clippy --all-targets (lint gate)" \
-    cargo clippy --all-targets --all-features -- -D warnings
+    cargo +stable clippy --all-targets --all-features -- -D warnings
 
 # Gate 9: doc-audit — every method/class referenced in docs/ + examples/ fenced
 # code blocks must resolve to a real symbol in port_surface.json (catches
