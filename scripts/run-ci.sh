@@ -11,13 +11,17 @@
 #   4. surface-fresh gate                       — porting-sdk check_surface_freshness.py
 #   5. no-cheat gate                            — porting-sdk audit_no_cheat_tests.py
 #   6. emission gate                            — porting-sdk diff_port_emission.py
-#   7. lint gate                                — cargo clippy (Cargo.toml [lints] deny)
-#   8. doc-audit gate                           — porting-sdk audit_docs.py
-#   9. surface-diff gate                        — porting-sdk diff_port_surface.py
+#   7. fmt gate                                 — cargo fmt --check (rustfmt.toml)
+#   8. lint gate                                — cargo clippy (Cargo.toml [lints] deny)
+#   9. doc-audit gate                           — porting-sdk audit_docs.py
+#  10. surface-diff gate                        — porting-sdk diff_port_surface.py
 #
-# Gates 7-9 were previously CI-only (separate doc-audit.yml / surface-audit.yml
-# workflows + an unenforced clippy table); folding them in restores the
-# "run-ci.sh is canonical, CI just invokes it — no drift local vs CI" design.
+# Gates 7-10 were previously CI-only or unenforced (FMT not gated anywhere;
+# clippy [lints] table unenforced; separate doc-audit.yml / surface-audit.yml
+# workflows); folding them in restores the "run-ci.sh is canonical, CI just
+# invokes it — no drift local vs CI" design. FMT + LINT are the Rust-internal
+# source-quality pair (governed by PORT_PHILOSOPHY_RUST.md, not the parity
+# gates); DOC-AUDIT + SURFACE-DIFF are cross-port parity checks.
 
 set -u
 set -o pipefail
@@ -124,7 +128,15 @@ run_gate "EMISSION" "diff_port_emission vs python to_dict() oracle" \
         --dump-cmd 'cargo run --quiet --example emit_corpus' \
         --port-repo "$PORT_ROOT"
 
-# Gate 7: LINT — the language lint gate (rust: clippy). The canonical gate name
+# Gate 7: FMT — the language format gate (rust: rustfmt). Canonical gate name is
+# language-neutral (FMT); each port runs its own formatter under it. Here that is
+# `cargo fmt --all -- --check`, governed by rustfmt.toml (style_edition 2024).
+# Source-style only — proven surface/emission-neutral (a reformat leaves
+# port_signatures.json byte-identical); a Rust-internal idiom gate, not parity.
+run_gate "FMT" "cargo fmt --all -- --check (format gate)" \
+    cargo fmt --all -- --check
+
+# Gate 8: LINT — the language lint gate (rust: clippy). The canonical gate name
 # is language-neutral (LINT); each port runs its own linter under it. Here that
 # is clippy: Cargo.toml [lints.clippy] denies `all` + `pedantic` (with the
 # documented per-lint allows), so any new finding is an `error`. `-D warnings`
@@ -133,7 +145,7 @@ run_gate "EMISSION" "diff_port_emission vs python to_dict() oracle" \
 run_gate "LINT" "cargo clippy --all-targets (lint gate)" \
     cargo clippy --all-targets --all-features -- -D warnings
 
-# Gate 8: doc-audit — every method/class referenced in docs/ + examples/ fenced
+# Gate 9: doc-audit — every method/class referenced in docs/ + examples/ fenced
 # code blocks must resolve to a real symbol in port_surface.json (catches
 # phantom-API doc promises). Mirrors .github/workflows/doc-audit.yml exactly.
 # Uses the COMMITTED port_surface.json — Gate 4 already proved it's fresh.
@@ -143,7 +155,7 @@ run_gate "DOC-AUDIT" "audit_docs vs port_surface.json" \
         --surface "$PORT_ROOT/port_surface.json" \
         --ignore "$PORT_ROOT/DOC_AUDIT_IGNORE.md"
 
-# Gate 9: surface-diff — diff the port surface against the Python reference
+# Gate 10: surface-diff — diff the port surface against the Python reference
 # (omissions/additions accounted for in PORT_OMISSIONS.md / PORT_ADDITIONS.md).
 # Gate 4 only checks the committed surface is FRESH (matches a regen); this
 # checks it MATCHES PYTHON. Mirrors .github/workflows/surface-audit.yml.
