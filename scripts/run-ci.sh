@@ -11,7 +11,7 @@
 #   4. surface-fresh gate                       — porting-sdk check_surface_freshness.py
 #   5. no-cheat gate                            — porting-sdk audit_no_cheat_tests.py
 #   6. emission gate                            — porting-sdk diff_port_emission.py
-#   7. fmt gate                                 — cargo fmt --check (rustfmt.toml)
+#   7. fmt gate                                 — rustfmt (local: auto-fix; CI: --check)
 #   8. lint gate                                — cargo clippy (Cargo.toml [lints] deny)
 #   9. doc-audit gate                           — porting-sdk audit_docs.py
 #  10. surface-diff gate                        — porting-sdk diff_port_surface.py
@@ -129,15 +129,37 @@ run_gate "EMISSION" "diff_port_emission vs python to_dict() oracle" \
         --port-repo "$PORT_ROOT"
 
 # Gate 7: FMT — the language format gate (rust: rustfmt). Canonical gate name is
-# language-neutral (FMT); each port runs its own formatter under it. Here that is
-# `cargo fmt --all -- --check`, governed by rustfmt.toml (style_edition 2024).
-# Source-style only — proven surface/emission-neutral (a reformat leaves
-# port_signatures.json byte-identical); a Rust-internal idiom gate, not parity.
-# Pinned to +stable: the SIGNATURES gate installs nightly (for rustdoc-json),
-# which can become the default toolchain — and nightly may lack the rustfmt /
-# clippy components. +stable makes FMT/LINT independent of the default.
-run_gate "FMT" "cargo fmt --all -- --check (format gate)" \
-    cargo +stable fmt --all -- --check
+# language-neutral (FMT); each port runs its own formatter under it. Governed by
+# rustfmt.toml (style_edition 2024). Source-style only — proven surface/emission-
+# neutral (a reformat leaves port_signatures.json byte-identical); a Rust-internal
+# idiom gate, not parity.
+#
+# CI-AWARE behaviour (so the gate "just fixes it" locally but still guards CI):
+#   * LOCAL ($CI unset)  → `cargo fmt --all` in FIX mode: silently reformats your
+#     working tree. No error, no manual step — you never have to run cargo fmt by
+#     hand. If it had to rewrite anything, we still PASS (the files are now clean)
+#     but print a note so you know to stage them.
+#   * CI ($CI=true)      → `cargo fmt --all -- --check`: read-only safety net that
+#     FAILS if unformatted code reached CI (a committer who didn't run run-ci.sh).
+# Pinned to +stable: the SIGNATURES gate installs nightly (rustdoc-json) which can
+# become the default toolchain and may lack rustfmt/clippy; +stable is robust.
+fmt_gate() {
+    if [ -n "${CI:-}" ]; then
+        cargo +stable fmt --all -- --check
+    else
+        cargo +stable fmt --all
+        local rc=$?
+        if [ "$rc" -eq 0 ]; then
+            # fmt rewrites in place and exits 0 whether or not it changed files;
+            # surface any reformatting so the dev knows to `git add` it.
+            if ! git diff --quiet 2>/dev/null; then
+                echo "    (FMT auto-applied formatting to your working tree — review & stage)"
+            fi
+        fi
+        return $rc
+    fi
+}
+run_gate "FMT" "rustfmt (local: auto-fix; CI: --check)" fmt_gate
 
 # Gate 8: LINT — the language lint gate (rust: clippy). The canonical gate name
 # is language-neutral (LINT); each port runs its own linter under it. Here that
