@@ -48,15 +48,12 @@ fn resolve_tls_material() -> Result<Option<TlsMaterial>, ServerError> {
 
     let cert_path = env::var(SSL_CERT_PATH_ENV).ok().filter(|s| !s.is_empty());
     let key_path = env::var(SSL_KEY_PATH_ENV).ok().filter(|s| !s.is_empty());
-    let (cert_path, key_path) = match (cert_path, key_path) {
-        (Some(c), Some(k)) => (c, k),
-        _ => {
-            return Err(ServerError::TlsConfig {
-                message: format!(
-                    "{SSL_ENABLED_ENV} is set but {SSL_CERT_PATH_ENV} / {SSL_KEY_PATH_ENV} are not both provided"
-                ),
-            });
-        }
+    let (Some(cert_path), Some(key_path)) = (cert_path, key_path) else {
+        return Err(ServerError::TlsConfig {
+            message: format!(
+                "{SSL_ENABLED_ENV} is set but {SSL_CERT_PATH_ENV} / {SSL_KEY_PATH_ENV} are not both provided"
+            ),
+        });
     };
 
     let certificate = std::fs::read(&cert_path).map_err(|e| ServerError::TlsConfig {

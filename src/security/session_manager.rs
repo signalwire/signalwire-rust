@@ -67,14 +67,12 @@ impl SessionManager {
     ///
     /// Uses timing-safe comparison for all security-critical fields.
     pub fn validate_token(&self, function_name: &str, call_id: &str, token: &str) -> bool {
-        let decoded = match URL_SAFE_NO_PAD.decode(token) {
-            Ok(d) => d,
-            Err(_) => return false,
+        let Ok(decoded) = URL_SAFE_NO_PAD.decode(token) else {
+            return false;
         };
 
-        let decoded_str = match String::from_utf8(decoded) {
-            Ok(s) => s,
-            Err(_) => return false,
+        let Ok(decoded_str) = String::from_utf8(decoded) else {
+            return false;
         };
 
         let parts: Vec<&str> = decoded_str.split('.').collect();

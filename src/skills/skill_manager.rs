@@ -29,14 +29,11 @@ impl SkillManager {
         params: Map<String, Value>,
         agent: &mut AgentBase,
     ) -> (bool, String) {
-        let factory = match SkillRegistry::get_factory(skill_name) {
-            Some(f) => f,
-            None => {
-                return (
-                    false,
-                    format!("Skill '{skill_name}' not found in registry"),
-                );
-            }
+        let Some(factory) = SkillRegistry::get_factory(skill_name) else {
+            return (
+                false,
+                format!("Skill '{skill_name}' not found in registry"),
+            );
         };
 
         let mut instance = factory(params);

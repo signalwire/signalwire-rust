@@ -115,10 +115,7 @@ impl SchemaUtils {
     /// The `properties[verb_name]` block for a verb, or empty when
     /// unknown.  Mirrors Python's `get_verb_properties(verb_name)`.
     pub fn get_verb_properties(&self, verb_name: &str) -> Map<String, Value> {
-        let v = match self.verbs.get(verb_name) {
-            Some(v) => v,
-            None => return Map::new(),
-        };
+        let Some(v) = self.verbs.get(verb_name) else { return Map::new() };
         let outer_props = v.definition.get("properties").and_then(|p| p.as_object());
         let inner = outer_props.and_then(|p| p.get(verb_name));
         match inner.and_then(|i| i.as_object()) {
@@ -258,28 +255,16 @@ impl SchemaUtils {
     }
 
     fn extract_verbs(&mut self) {
-        let defs = match self.schema.get("$defs").and_then(|d| d.as_object()) {
-            Some(d) => d,
-            None => return,
-        };
-        let any_of = match defs.get("SWMLMethod").and_then(|m| m.get("anyOf")).and_then(|a| a.as_array()) {
-            Some(a) => a,
-            None => return,
-        };
+        let Some(defs) = self.schema.get("$defs").and_then(|d| d.as_object()) else { return };
+        let Some(any_of) = defs.get("SWMLMethod").and_then(|m| m.get("anyOf")).and_then(|a| a.as_array()) else { return };
         for entry in any_of {
-            let ref_str = match entry.get("$ref").and_then(|r| r.as_str()) {
-                Some(s) => s,
-                None => continue,
-            };
+            let Some(ref_str) = entry.get("$ref").and_then(|r| r.as_str()) else { continue };
             let prefix = "#/$defs/";
             if !ref_str.starts_with(prefix) {
                 continue;
             }
             let schema_name = &ref_str[prefix.len()..];
-            let def_schema = match defs.get(schema_name) {
-                Some(d) => d,
-                None => continue,
-            };
+            let Some(def_schema) = defs.get(schema_name) else { continue };
             let props = match def_schema.get("properties").and_then(|p| p.as_object()) {
                 Some(p) if !p.is_empty() => p,
                 _ => continue,
@@ -320,10 +305,7 @@ fn env_boolish(value: &str) -> bool {
 }
 
 fn python_type_annotation(def: &Value) -> String {
-    let obj = match def.as_object() {
-        Some(o) => o,
-        None => return "Any".to_string(),
-    };
+    let Some(obj) = def.as_object() else { return "Any".to_string() };
     match obj.get("type").and_then(|t| t.as_str()) {
         Some("string") => "str".to_string(),
         Some("integer") => "int".to_string(),

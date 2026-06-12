@@ -242,17 +242,11 @@ fn probe_health(base_url: &str) -> bool {
         .timeout_global(Some(Duration::from_secs(2)))
         .build()
         .into();
-    let mut resp = match agent.get(&url).call() {
-        Ok(r) => r,
-        Err(_) => return false,
-    };
+    let Ok(mut resp) = agent.get(&url).call() else { return false };
     if resp.status().as_u16() != 200 {
         return false;
     }
-    let body = match resp.body_mut().read_to_string() {
-        Ok(b) => b,
-        Err(_) => return false,
-    };
+    let Ok(body) = resp.body_mut().read_to_string() else { return false };
     let parsed: serde_json::Result<Value> = serde_json::from_str(&body);
     match parsed {
         Ok(v) => v.get("specs_loaded").is_some(),
@@ -377,10 +371,7 @@ fn libc_setsid() -> i32 {
 // ---------------------------------------------------------------------------
 
 fn decode_journal(value: &Value) -> Vec<JournalEntry> {
-    let arr = match value.as_array() {
-        Some(a) => a,
-        None => return Vec::new(),
-    };
+    let Some(arr) = value.as_array() else { return Vec::new() };
     arr.iter().map(decode_entry).collect()
 }
 

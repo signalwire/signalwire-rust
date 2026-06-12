@@ -117,7 +117,7 @@ fn main() {
         return;
     }
 
-    let url = if let Some(u) = url { u } else {
+    let Some(url) = url else {
         eprintln!("Error: --url or --example is required");
         process::exit(1);
     };
@@ -199,7 +199,7 @@ fn do_list_tools_via_introspect(example_name: &str, raw: bool, verbose: bool) {
         process::exit(1);
     }
     let stdout = String::from_utf8_lossy(&output.stdout);
-    let body = if let Some(s) = extract_introspect_payload(&stdout) { s } else {
+    let Some(body) = extract_introspect_payload(&stdout) else {
         eprintln!(
             "Error: example `{example_name}` did not emit __SWAIG_TOOLS_BEGIN__/__SWAIG_TOOLS_END__ markers. Make sure it calls service.run()."
         );
@@ -221,7 +221,7 @@ fn do_list_tools_via_introspect(example_name: &str, raw: bool, verbose: bool) {
         return;
     }
     let tools = parsed.get("tools").and_then(|v| v.as_array());
-    let tools = if let Some(a) = tools { a } else {
+    let Some(tools) = tools else {
         println!("{}", serde_json::to_string_pretty(&parsed).unwrap_or_default());
         return;
     };

@@ -42,9 +42,8 @@ impl SkillBase for CustomSkills {
         let swaig_fields = self.get_swaig_fields();
 
         for tool_def in &tools {
-            let tool_obj = match tool_def.as_object() {
-                Some(o) => o,
-                None => continue,
+            let Some(tool_obj) = tool_def.as_object() else {
+                continue;
             };
 
             if tool_obj.contains_key("function") {

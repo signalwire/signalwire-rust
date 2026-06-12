@@ -196,9 +196,8 @@ fn candidate_urls(url: &str) -> Vec<String> {
     // Find scheme and the host portion in the raw string. We need the
     // start index of the host (after `scheme://`) so we can splice
     // `:<port>` in/out without disturbing the rest of the URL.
-    let scheme_sep = match url.find("://") {
-        Some(i) => i,
-        None => return vec![url.to_string()],
+    let Some(scheme_sep) = url.find("://") else {
+        return vec![url.to_string()];
     };
     let scheme = &url[..scheme_sep];
     let standard_port = match scheme {
@@ -277,17 +276,15 @@ fn candidate_urls(url: &str) -> Vec<String> {
 /// If the URL has `?bodySHA256=<hex>`, verify `sha256_hex(raw_body) == bodySHA256`.
 /// Returns `true` when the param is absent (no constraint) or matches.
 fn check_body_sha256(url: &str, raw_body: &str) -> bool {
-    let parsed = match Url::parse(url) {
-        Ok(u) => u,
-        Err(_) => return true, // unparseable URL — let Scheme B fail naturally elsewhere
+    let Ok(parsed) = Url::parse(url) else {
+        return true; // unparseable URL — let Scheme B fail naturally elsewhere
     };
     let expected = parsed
         .query_pairs()
         .find(|(k, _)| k == "bodySHA256")
         .map(|(_, v)| v.into_owned());
-    let expected = match expected {
-        Some(e) => e,
-        None => return true,
+    let Some(expected) = expected else {
+        return true;
     };
     let mut hasher = Sha256::new();
     hasher.update(raw_body.as_bytes());

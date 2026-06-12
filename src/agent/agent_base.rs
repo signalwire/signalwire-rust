@@ -1409,9 +1409,8 @@ impl AgentBase {
             None
         };
 
-        let sub_path = match sub_path {
-            Some(p) => p,
-            None => return json_response(404, &json!({"error": "Not found"})),
+        let Some(sub_path) = sub_path else {
+            return json_response(404, &json!({"error": "Not found"}));
         };
 
         // Auth
@@ -1511,26 +1510,22 @@ impl AgentBase {
             .get("Authorization")
             .or_else(|| headers.get("authorization"));
 
-        let auth_header = match auth_header {
-            Some(h) => h,
-            None => return false,
+        let Some(auth_header) = auth_header else {
+            return false;
         };
 
         if !auth_header.starts_with("Basic ") {
             return false;
         }
 
-        let decoded = match BASE64.decode(&auth_header[6..]) {
-            Ok(d) => d,
-            Err(_) => return false,
+        let Ok(decoded) = BASE64.decode(&auth_header[6..]) else {
+            return false;
         };
-        let decoded_str = match String::from_utf8(decoded) {
-            Ok(s) => s,
-            Err(_) => return false,
+        let Ok(decoded_str) = String::from_utf8(decoded) else {
+            return false;
         };
-        let colon_pos = match decoded_str.find(':') {
-            Some(p) => p,
-            None => return false,
+        let Some(colon_pos) = decoded_str.find(':') else {
+            return false;
         };
         let input_user = &decoded_str[..colon_pos];
         let input_pass = &decoded_str[colon_pos + 1..];
@@ -1580,9 +1575,8 @@ impl AgentBase {
         request_data: &Option<Value>,
         _headers: &HashMap<String, String>,
     ) -> (u16, HashMap<String, String>, String) {
-        let data = match request_data {
-            Some(d) => d,
-            None => return json_response(400, &json!({"error": "Missing request body"})),
+        let Some(data) = request_data else {
+            return json_response(400, &json!({"error": "Missing request body"}));
         };
 
         let function_name = data["function"].as_str().unwrap_or("");

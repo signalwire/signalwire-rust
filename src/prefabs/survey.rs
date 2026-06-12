@@ -120,13 +120,10 @@ impl SurveyAgent {
                     q.get("id").and_then(|v| v.as_str()) == Some(question_id)
                 });
 
-                let question = match question {
-                    Some(q) => q,
-                    None => {
-                        return FunctionResult::with_response(&format!(
-                            "Unknown question ID: {question_id}"
-                        ));
-                    }
+                let Some(question) = question else {
+                    return FunctionResult::with_response(&format!(
+                        "Unknown question ID: {question_id}"
+                    ));
                 };
 
                 let qtype = question

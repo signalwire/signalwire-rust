@@ -1054,7 +1054,7 @@ impl Client {
     // ══════════════════════════════════════════════════════════════════
 
     fn handle_inbound_call(&self, event: &Event, params: &Value) {
-        let call_id = if let Some(id) = params.get("call_id").and_then(|v| v.as_str()) { id } else {
+        let Some(call_id) = params.get("call_id").and_then(|v| v.as_str()) else {
             self.logger.warn("Inbound call event missing call_id");
             return;
         };

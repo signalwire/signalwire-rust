@@ -75,9 +75,8 @@ fn env_allows_private() -> bool {
 }
 
 fn cidr_contains(cidr: &str, ip: &IpAddr) -> bool {
-    let (net_str, prefix_str) = match cidr.split_once('/') {
-        Some(p) => p,
-        None => return false,
+    let Some((net_str, prefix_str)) = cidr.split_once('/') else {
+        return false;
     };
     let prefix: u32 = match prefix_str.parse() {
         Ok(p) => p,

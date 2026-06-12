@@ -92,9 +92,8 @@ impl SkillBase for SwmlTransfer {
         // Build DataMap expressions
         let mut expressions = Vec::new();
         for (pattern, config) in &transfers {
-            let config_obj = match config.as_object() {
-                Some(o) => o,
-                None => continue,
+            let Some(config_obj) = config.as_object() else {
+                continue;
             };
             let url = config_obj
                 .get("url")

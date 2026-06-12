@@ -543,7 +543,7 @@ impl Service {
             None
         };
 
-        let sub_path = if let Some(p) = sub_path { p } else {
+        let Some(sub_path) = sub_path else {
             self.logger
                 .debug(&format!("path {} did not match route {}", path, self.route));
             return self.json_response(404, &serde_json::json!({"error": "Not found"}));
@@ -687,28 +687,24 @@ impl Service {
             .get("Authorization")
             .or_else(|| headers.get("authorization"));
 
-        let auth_header = match auth_header {
-            Some(h) => h,
-            None => return false,
+        let Some(auth_header) = auth_header else {
+            return false;
         };
 
         if !auth_header.starts_with("Basic ") {
             return false;
         }
 
-        let decoded = match BASE64.decode(&auth_header[6..]) {
-            Ok(d) => d,
-            Err(_) => return false,
+        let Ok(decoded) = BASE64.decode(&auth_header[6..]) else {
+            return false;
         };
 
-        let decoded_str = match String::from_utf8(decoded) {
-            Ok(s) => s,
-            Err(_) => return false,
+        let Ok(decoded_str) = String::from_utf8(decoded) else {
+            return false;
         };
 
-        let colon_pos = match decoded_str.find(':') {
-            Some(p) => p,
-            None => return false,
+        let Some(colon_pos) = decoded_str.find(':') else {
+            return false;
         };
 
         let input_user = &decoded_str[..colon_pos];
@@ -775,14 +771,11 @@ impl Service {
             return self.json_response(200, &self.document.to_value());
         }
 
-        let body = match request_data {
-            Some(b) => b,
-            None => {
-                return self.json_response(
-                    400,
-                    &serde_json::json!({"error": "Missing request body"}),
-                );
-            }
+        let Some(body) = request_data else {
+            return self.json_response(
+                400,
+                &serde_json::json!({"error": "Missing request body"}),
+            );
         };
 
         let function_name = match body.get("function").and_then(|v| v.as_str()) {
@@ -956,9 +949,8 @@ impl Service {
 /// a character other than ASCII letters / digits / underscore.
 fn function_name_is_valid(name: &str) -> bool {
     let mut chars = name.chars();
-    let first = match chars.next() {
-        Some(c) => c,
-        None => return false,
+    let Some(first) = chars.next() else {
+        return false;
     };
     if !(first.is_ascii_alphabetic() || first == '_') {
         return false;

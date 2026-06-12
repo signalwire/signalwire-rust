@@ -141,10 +141,7 @@ fn wait_for_no_sessions(budget: Duration) {
     let url = format!("{}/__mock__/sessions", h.http_url);
     let deadline = Instant::now() + budget;
     while Instant::now() < deadline {
-        let mut resp = match ureq::get(&url).call() {
-            Ok(r) => r,
-            Err(_) => return, // server unreachable — let later code panic with detail
-        };
+        let Ok(mut resp) = ureq::get(&url).call() else { return }; // server unreachable — let later code panic with detail
         let body: Value = match resp.body_mut().read_json::<Value>() {
             Ok(v) => v,
             Err(_) => return,
@@ -313,10 +310,7 @@ pub fn journal_send(event_type: Option<&str>) -> Vec<JournalEntry> {
         .into_iter()
         .filter(|e| e.direction == "send")
         .filter(|e| {
-            let want = match event_type {
-                Some(t) => t,
-                None => return true,
-            };
+            let Some(want) = event_type else { return true };
             // Only signalwire.event carries an event_type.
             if e.frame.get("method").and_then(Value::as_str) != Some("signalwire.event") {
                 return false;
@@ -529,17 +523,11 @@ fn probe_health(http_url: &str) -> bool {
         .timeout_global(Some(Duration::from_secs(2)))
         .build()
         .into();
-    let mut resp = match agent.get(&url).call() {
-        Ok(r) => r,
-        Err(_) => return false,
-    };
+    let Ok(mut resp) = agent.get(&url).call() else { return false };
     if resp.status().as_u16() != 200 {
         return false;
     }
-    let body = match resp.body_mut().read_to_string() {
-        Ok(b) => b,
-        Err(_) => return false,
-    };
+    let Ok(body) = resp.body_mut().read_to_string() else { return false };
     let parsed: serde_json::Result<Value> = serde_json::from_str(&body);
     match parsed {
         Ok(v) => v.get("schemas_loaded").is_some(),
@@ -638,10 +626,7 @@ fn libc_setsid() -> i32 {
 // ---------------------------------------------------------------------------
 
 fn decode_journal(value: &Value) -> Vec<JournalEntry> {
-    let arr = match value.as_array() {
-        Some(a) => a,
-        None => return Vec::new(),
-    };
+    let Some(arr) = value.as_array() else { return Vec::new() };
     arr.iter().map(decode_entry).collect()
 }
 

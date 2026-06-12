@@ -482,9 +482,8 @@ impl AgentServer {
             let file_path = base_dir.join(rel_path.replace('/', std::path::MAIN_SEPARATOR_STR));
 
             // Resolve to absolute and verify it's within the base directory
-            let abs_path = match fs::canonicalize(&file_path) {
-                Ok(p) => p,
-                Err(_) => continue, // file doesn't exist
+            let Ok(abs_path) = fs::canonicalize(&file_path) else {
+                continue; // file doesn't exist
             };
 
             if !abs_path.starts_with(base_dir) {
