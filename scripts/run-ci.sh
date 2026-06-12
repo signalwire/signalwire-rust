@@ -11,7 +11,7 @@
 #   4. surface-fresh gate                       — porting-sdk check_surface_freshness.py
 #   5. no-cheat gate                            — porting-sdk audit_no_cheat_tests.py
 #   6. emission gate                            — porting-sdk diff_port_emission.py
-#   7. clippy gate                              — cargo clippy (Cargo.toml [lints] deny)
+#   7. lint gate                                — cargo clippy (Cargo.toml [lints] deny)
 #   8. doc-audit gate                           — porting-sdk audit_docs.py
 #   9. surface-diff gate                        — porting-sdk diff_port_surface.py
 #
@@ -124,11 +124,13 @@ run_gate "EMISSION" "diff_port_emission vs python to_dict() oracle" \
         --dump-cmd 'cargo run --quiet --example emit_corpus' \
         --port-repo "$PORT_ROOT"
 
-# Gate 7: clippy — the lint gate. Cargo.toml [lints.clippy] denies `all` +
-# `pedantic` (with the documented per-lint allows), so any new finding is an
-# `error`. `-D warnings` also promotes rustc warnings. `--all-targets` covers
-# lib + bins + tests + examples (the same scope the burn-down cleared).
-run_gate "CLIPPY" "cargo clippy --all-targets (lints gate)" \
+# Gate 7: LINT — the language lint gate (rust: clippy). The canonical gate name
+# is language-neutral (LINT); each port runs its own linter under it. Here that
+# is clippy: Cargo.toml [lints.clippy] denies `all` + `pedantic` (with the
+# documented per-lint allows), so any new finding is an `error`. `-D warnings`
+# also promotes rustc warnings. `--all-targets` covers lib + bins + tests +
+# examples (the same scope the burn-down cleared).
+run_gate "LINT" "cargo clippy --all-targets (lint gate)" \
     cargo clippy --all-targets --all-features -- -D warnings
 
 # Gate 8: doc-audit — every method/class referenced in docs/ + examples/ fenced
