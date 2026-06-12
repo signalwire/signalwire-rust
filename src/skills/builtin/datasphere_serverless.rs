@@ -5,7 +5,7 @@ use serde_json::{json, Map, Value};
 use crate::agent::AgentBase;
 use crate::skills::skill_base::{SkillBase, SkillParams};
 
-/// Search knowledge using SignalWire DataSphere with serverless DataMap execution.
+/// Search knowledge using SignalWire DataSphere with serverless `DataMap` execution.
 pub struct DatasphereServerless {
     sp: SkillParams,
 }

@@ -1,7 +1,7 @@
 // Copyright (c) 2025 SignalWire
 // SPDX-License-Identifier: MIT
 //
-//! Room and SIP Example — join_room and sip_refer virtual helpers.
+//! Room and SIP Example — `join_room` and `sip_refer` virtual helpers.
 
 use signalwire::swaig::FunctionResult;
 use serde_json::json;

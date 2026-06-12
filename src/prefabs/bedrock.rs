@@ -1,7 +1,7 @@
 //! Amazon Bedrock voice-to-voice agent.
 //!
 //! `BedrockAgent` extends [`AgentBase`] (via composition + `Deref`) so it
-//! shares all of AgentBase's features (prompt building, skills, tools,
+//! shares all of `AgentBase`'s features (prompt building, skills, tools,
 //! post-prompt, dynamic configuration) but emits an `amazon_bedrock`
 //! verb in the rendered SWML document instead of the standard `ai`
 //! verb.
@@ -91,7 +91,7 @@ impl BedrockOptions {
 }
 
 impl BedrockAgent {
-    /// Construct a new BedrockAgent.
+    /// Construct a new `BedrockAgent`.
     ///
     /// Mirrors Python's
     /// `BedrockAgent(name=..., route=..., system_prompt=..., voice_id=...,
@@ -228,8 +228,8 @@ impl BedrockAgent {
     }
 
     /// Build the Bedrock verb body from the AI-verb body, copying the
-    /// fields that survive (prompt, SWAIG, params, global_data,
-    /// post_prompt, post_prompt_url) and rewriting `prompt` so the
+    /// fields that survive (prompt, SWAIG, params, `global_data`,
+    /// `post_prompt`, `post_prompt_url`) and rewriting `prompt` so the
     /// voice configuration and inference params live inside it.
     fn build_bedrock_block(&self, ai: Map<String, Value>) -> Map<String, Value> {
         let mut out: Map<String, Value> = Map::new();

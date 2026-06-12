@@ -5,7 +5,7 @@
 //!
 //! Demonstrates:
 //! 1. Structured prompt via POM (Prompt Object Model)
-//! 2. SWAIG tool with FunctionResult
+//! 2. SWAIG tool with `FunctionResult`
 //! 3. Multiple languages/voices
 //! 4. LLM parameter tuning
 //! 5. Speech recognition hints

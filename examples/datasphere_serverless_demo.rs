@@ -1,7 +1,7 @@
 // Copyright (c) 2025 SignalWire
 // SPDX-License-Identifier: MIT
 //
-//! Datasphere Serverless Demo — Datasphere search via DataMap (no webhook needed).
+//! Datasphere Serverless Demo — Datasphere search via `DataMap` (no webhook needed).
 
 use signalwire::agent::{AgentBase, AgentOptions};
 use signalwire::datamap::DataMap;

@@ -1,11 +1,11 @@
 // Copyright (c) 2025 SignalWire
 // SPDX-License-Identifier: MIT
 //
-//! Joke Skill Demo — using the modular skills system with DataMap.
+//! Joke Skill Demo — using the modular skills system with `DataMap`.
 //!
-//! Compare with joke_agent.rs to see the benefits of the skills system.
+//! Compare with `joke_agent.rs` to see the benefits of the skills system.
 //!
-//! Usage: API_NINJAS_KEY=your_key cargo run --example joke_skill_demo
+//! Usage: `API_NINJAS_KEY=your_key` cargo run --example `joke_skill_demo`
 
 use signalwire::agent::{AgentBase, AgentOptions};
 use serde_json::json;

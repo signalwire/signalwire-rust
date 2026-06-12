@@ -173,7 +173,7 @@ impl PromptObjectModel {
     ///
     /// We hand-emit YAML rather than rely on `serde_norway::to_string`
     /// because the latter (a) sorts keys alphabetically when fed a
-    /// `serde_json::Value` (which uses BTreeMap internally) and
+    /// `serde_json::Value` (which uses `BTreeMap` internally) and
     /// (b) doesn't expose a switch to disable that. The POM
     /// document shape is fully constrained — list of dicts with
     /// known string/list-of-string/list-of-dict values — so a

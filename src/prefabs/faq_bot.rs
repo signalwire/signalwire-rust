@@ -11,7 +11,7 @@ pub struct FAQBotAgent {
 }
 
 impl FAQBotAgent {
-    /// Create a new FAQBotAgent.
+    /// Create a new `FAQBotAgent`.
     ///
     /// # Arguments
     /// - `name` — agent name (defaults to `"faq_bot"` if empty).

@@ -12,11 +12,11 @@
 //! JSON-RPC actually serialized, real bytes on the wire.
 //!
 //! Environment variables (set by the audit fixture):
-//!   - SIGNALWIRE_RELAY_HOST     `127.0.0.1:NNNN` (the fixture's bind port)
-//!   - SIGNALWIRE_RELAY_SCHEME   `ws` (audit) or `wss` (production)
-//!   - SIGNALWIRE_PROJECT_ID     `audit`
-//!   - SIGNALWIRE_API_TOKEN      `audit`
-//!   - SIGNALWIRE_CONTEXTS       `audit_ctx` (comma-separated)
+//!   - `SIGNALWIRE_RELAY_HOST`     `127.0.0.1:NNNN` (the fixture's bind port)
+//!   - `SIGNALWIRE_RELAY_SCHEME`   `ws` (audit) or `wss` (production)
+//!   - `SIGNALWIRE_PROJECT_ID`     `audit`
+//!   - `SIGNALWIRE_API_TOKEN`      `audit`
+//!   - `SIGNALWIRE_CONTEXTS`       `audit_ctx` (comma-separated)
 //!
 //! Exit codes:
 //!   - 0  on a clean handshake + subscribe + event dispatch

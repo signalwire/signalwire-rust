@@ -1,7 +1,7 @@
 // Copyright (c) 2025 SignalWire
 // SPDX-License-Identifier: MIT
 //
-//! DataMap Demo — server-side API tools without webhooks.
+//! `DataMap` Demo — server-side API tools without webhooks.
 //!
 //! Shows:
 //! 1. Simple API call (weather)

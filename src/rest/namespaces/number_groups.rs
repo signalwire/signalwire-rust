@@ -71,7 +71,7 @@ impl<'a> NumberGroups<'a> {
             .delete(&format!("{}/{}", self.base_path, group_id))
     }
 
-    /// GET /api/relay/rest/number_groups/{id}/number_group_memberships
+    /// GET `/api/relay/rest/number_groups/{id}/number_group_memberships`
     pub fn list_memberships(
         &self,
         group_id: &str,

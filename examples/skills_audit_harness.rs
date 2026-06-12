@@ -4,23 +4,23 @@
 //! `skills_audit_harness` — runtime probe for the skills system.
 //!
 //! Driven by porting-sdk's `audit_skills_dispatch.py`. Reads:
-//!   - SKILL_NAME            e.g. `web_search`, `datasphere`
-//!   - SKILL_FIXTURE_URL     `http://127.0.0.1:NNNN`
-//!   - SKILL_HANDLER_ARGS    JSON dict of args for the skill handler
-//!   - per-skill upstream env (e.g. WEB_SEARCH_BASE_URL); the audit
+//!   - `SKILL_NAME`            e.g. `web_search`, `datasphere`
+//!   - `SKILL_FIXTURE_URL`     `http://127.0.0.1:NNNN`
+//!   - `SKILL_HANDLER_ARGS`    JSON dict of args for the skill handler
+//!   - per-skill upstream env (e.g. `WEB_SEARCH_BASE_URL`); the audit
 //!     sets these to point the skill at its loopback fixture
-//!   - per-skill credential env vars (e.g. GOOGLE_API_KEY)
+//!   - per-skill credential env vars (e.g. `GOOGLE_API_KEY`)
 //!
 //! For handler-based skills (`web_search`, `wikipedia_search`,
 //! `datasphere`, `spider`) the harness instantiates the skill, registers
-//! its tools on a temporary AgentBase, and dispatches the documented
+//! its tools on a temporary `AgentBase`, and dispatches the documented
 //! tool name with the parsed args. The skill's handler issues real
 //! HTTP through ureq (proven by the audit's fixture seeing the request).
 //!
 //! For DataMap-based skills (`api_ninjas_trivia`, `weather_api`) the
 //! SignalWire platform — not the SDK — would normally fetch the
 //! configured webhook URL. The harness simulates that platform behavior
-//! by extracting the webhook URL from the registered DataMap and
+//! by extracting the webhook URL from the registered `DataMap` and
 //! issuing the HTTP call itself, satisfying the audit's contract that
 //! "the SDK contacted the upstream" via real bytes on the wire.
 
@@ -151,7 +151,7 @@ fn dispatch_handler(agent: &AgentBase, tool_name: &str, args: &Value) -> Result<
 }
 
 /// For DataMap-based tools, extract the webhook URL from the registered
-/// DataMap config and execute the GET ourselves. This is what the
+/// `DataMap` config and execute the GET ourselves. This is what the
 /// SignalWire platform does in production; the audit verifies the URL
 /// shape and the SDK's parsing.
 fn execute_datamap(agent: &AgentBase, tool_name: &str, args: &Value) -> Result<Value, String> {
@@ -230,7 +230,7 @@ fn execute_datamap(agent: &AgentBase, tool_name: &str, args: &Value) -> Result<V
     }))
 }
 
-/// Naive template expansion for DataMap webhook URLs:
+/// Naive template expansion for `DataMap` webhook URLs:
 ///   `%{args.foo}`  → string from `args["foo"]`
 ///   `${...}`       → left as-is (it's an SWML reference resolved at
 ///                    runtime by the platform; the audit fixture

@@ -9,7 +9,7 @@
 //! - Raw body forwarded — handler can re-read the body bytes.
 //! - URL reconstruction honors `X-Forwarded-Proto` / `X-Forwarded-Host`.
 //!
-//! These exercise the real tower::Service glue; nothing is mocked.
+//! These exercise the real `tower::Service` glue; nothing is mocked.
 //!
 //! Gated on the `tower-middleware` feature (default-enabled).
 

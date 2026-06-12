@@ -189,7 +189,7 @@ impl<'a> CompatCalls<'a> {
         self.client.post(&path, params)
     }
 
-    /// POST /Calls/{sid}/Recordings/{rec_sid} — update a specific recording.
+    /// POST `/Calls/{sid}/Recordings/{rec_sid}` — update a specific recording.
     pub fn update_recording(
         &self,
         call_sid: &str,
@@ -210,7 +210,7 @@ impl<'a> CompatCalls<'a> {
         self.client.post(&path, params)
     }
 
-    /// POST /Calls/{sid}/Streams/{stream_sid} — stop / update a stream.
+    /// POST `/Calls/{sid}/Streams/{stream_sid}` — stop / update a stream.
     pub fn stop_stream(
         &self,
         call_sid: &str,
@@ -540,7 +540,7 @@ impl<'a> CompatPhoneNumbers<'a> {
         self.client.delete(&join_path(&self.base_path, &[sid]))
     }
 
-    /// POST /ImportedPhoneNumbers — note the path is *Imported*, not *Incoming*.
+    /// POST `/ImportedPhoneNumbers` — note the path is *Imported*, not *Incoming*.
     pub fn import_number(&self, params: &Value) -> Result<Value, SignalWireRestError> {
         let path = self
             .base_path

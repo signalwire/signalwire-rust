@@ -10,7 +10,7 @@ pub struct InfoGathererAgent {
 }
 
 impl InfoGathererAgent {
-    /// Create a new InfoGathererAgent.
+    /// Create a new `InfoGathererAgent`.
     ///
     /// # Arguments
     /// - `name` — agent name (defaults to `"info_gatherer"` if empty).

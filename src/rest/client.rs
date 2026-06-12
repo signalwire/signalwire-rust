@@ -6,7 +6,7 @@ use super::http_client::{HttpClient, UreqTransport};
 /// Top-level SignalWire REST client.
 ///
 /// Provides lazy access to every API namespace (fabric, calling,
-/// phone_numbers, datasphere, video, compat, etc.). Credentials can
+/// `phone_numbers`, datasphere, video, compat, etc.). Credentials can
 /// be supplied explicitly or pulled from environment variables.
 ///
 /// Production HTTP transport is `ureq` (sync, blocking, real network
@@ -144,7 +144,7 @@ impl RestClient {
     // returned resources live as long as `&self`.
     // -----------------------------------------------------------------
 
-    /// Fabric API (sub-resources: subscribers, sip_endpoints, call_flows, ...).
+    /// Fabric API (sub-resources: subscribers, `sip_endpoints`, `call_flows`, ...).
     pub fn fabric(&self) -> super::namespaces::fabric::Fabric<'_> {
         super::namespaces::fabric::Fabric::new(&self.http)
     }

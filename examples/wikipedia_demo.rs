@@ -1,7 +1,7 @@
 // Copyright (c) 2025 SignalWire
 // SPDX-License-Identifier: MIT
 //
-//! Wikipedia Demo — search Wikipedia via DataMap.
+//! Wikipedia Demo — search Wikipedia via `DataMap`.
 
 use signalwire::agent::{AgentBase, AgentOptions};
 use signalwire::datamap::DataMap;

@@ -617,7 +617,7 @@ impl Call {
         base
     }
 
-    /// Spin up a long-running action tracked by a unique control_id.
+    /// Spin up a long-running action tracked by a unique `control_id`.
     fn start_action(
         &self,
         method: &str,

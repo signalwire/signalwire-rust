@@ -59,7 +59,7 @@ impl std::error::Error for ParseSkillNameError {}
 
 /// The closed set of skill names that ship built in with this SDK.
 ///
-/// Each variant maps to the canonical snake_case wire name returned by
+/// Each variant maps to the canonical `snake_case` wire name returned by
 /// [`SkillName::as_str`] — the same string the [`SkillRegistry`] is keyed by
 /// and that a skill reports from `SkillBase::name`.
 ///
@@ -106,7 +106,7 @@ pub enum SkillName {
 }
 
 impl SkillName {
-    /// The canonical snake_case wire name for this skill (e.g. `"datetime"`).
+    /// The canonical `snake_case` wire name for this skill (e.g. `"datetime"`).
     ///
     /// This is exactly the string the bare-`str` API expects, so
     /// `agent.add_skill(SkillName::Datetime.as_str(), params)` loads the same

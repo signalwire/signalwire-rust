@@ -11,7 +11,7 @@ pub struct SurveyAgent {
 }
 
 impl SurveyAgent {
-    /// Create a new SurveyAgent.
+    /// Create a new `SurveyAgent`.
     ///
     /// # Arguments
     /// - `name` — agent name (defaults to `"survey"` if empty).

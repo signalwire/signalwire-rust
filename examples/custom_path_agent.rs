@@ -4,9 +4,9 @@
 //! Custom Path Agent — agent at /chat with query-parameter personalization.
 //!
 //! Try:
-//!   curl "http://localhost:3000/chat"
-//!   curl "http://localhost:3000/chat?user_name=Alice&topic=AI"
-//!   curl "http://localhost:3000/chat?mood=professional"
+//!   curl "<http://localhost:3000/chat>"
+//!   curl "<http://localhost:3000/chat?user_name=Alice&topic=AI>"
+//!   curl "<http://localhost:3000/chat?mood=professional>"
 
 use signalwire::agent::{AgentBase, AgentOptions};
 

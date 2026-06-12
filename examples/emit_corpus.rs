@@ -1,10 +1,10 @@
 // Copyright (c) 2025 SignalWire
 // SPDX-License-Identifier: MIT
 //
-//! emit_corpus — the Rust port's EMISSION-DUMP program for the cross-port
+//! `emit_corpus` — the Rust port's EMISSION-DUMP program for the cross-port
 //! emission differ (porting-sdk/scripts/diff_port_emission.py).
 //!
-//! It builds the shared FunctionResult corpus
+//! It builds the shared `FunctionResult` corpus
 //! (porting-sdk/scripts/emission_corpus.py — the single source of truth) using
 //! the Rust SDK's native `swaig::FunctionResult` API, serialises each entry the
 //! same way the SDK serialises on the wire (`to_value()`), and prints ONE JSON
@@ -14,7 +14,7 @@
 //!
 //! to stdout. The differ runs this program, parses that object, and
 //! byte-compares each entry against Python's `to_dict()`. See the "per-port dump
-//! contract" in the differ's `--help` and IDIOM_PASS_JOURNAL.md §4 Tier-0.
+//! contract" in the differ's `--help` and `IDIOM_PASS_JOURNAL.md` §4 Tier-0.
 //!
 //! CONTRACT (why this file looks the way it does):
 //!   - Every corpus id in `emission_corpus.corpus_ids()` MUST appear here exactly
@@ -22,8 +22,8 @@
 //!     set would mask real diffs). When the shared corpus grows, add the new id
 //!     here.
 //!   - The argument VALUES are the WIRE values (plain strings/numbers/bools/maps).
-//!     Where the Rust API types a closed set (RecordFormat, RecordDirection,
-//!     TapDirection, Codec) we pass the typed constant whose string value is the
+//!     Where the Rust API types a closed set (`RecordFormat`, `RecordDirection`,
+//!     `TapDirection`, Codec) we pass the typed constant whose string value is the
 //!     wire value, proving the typed path emits byte-identically to the string.
 //!   - Only stdout carries the JSON object; nothing else is printed there.
 //!

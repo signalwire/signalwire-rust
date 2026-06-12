@@ -1,7 +1,7 @@
 // Copyright (c) 2025 SignalWire
 // SPDX-License-Identifier: MIT
 //
-//! Session and State Demo — on_summary, global data, post-prompt features.
+//! Session and State Demo — `on_summary`, global data, post-prompt features.
 
 use signalwire::agent::{AgentBase, AgentOptions};
 use signalwire::swaig::FunctionResult;

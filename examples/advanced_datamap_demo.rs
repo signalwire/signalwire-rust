@@ -1,7 +1,7 @@
 // Copyright (c) 2025 SignalWire
 // SPDX-License-Identifier: MIT
 //
-//! Advanced DataMap — expressions, webhooks, auth headers, fallback chains.
+//! Advanced `DataMap` — expressions, webhooks, auth headers, fallback chains.
 
 use signalwire::datamap::DataMap;
 use signalwire::swaig::FunctionResult;

@@ -10,7 +10,7 @@ use crate::skills::builtin;
 /// Factory function that creates a new skill instance given parameters.
 pub type SkillFactory = Box<dyn Fn(Map<String, Value>) -> Box<dyn SkillBase> + Send + Sync>;
 
-/// Thread-safe global registry mapping snake_case skill names to factory functions.
+/// Thread-safe global registry mapping `snake_case` skill names to factory functions.
 ///
 /// All 18 builtin skills are auto-registered on first access.
 static REGISTRY: LazyLock<Mutex<SkillRegistryInner>> = LazyLock::new(|| {

@@ -1,7 +1,7 @@
 // Copyright (c) 2025 SignalWire
 // SPDX-License-Identifier: MIT
 //
-//! Survey Agent — conduct a survey using the SurveyAgent prefab.
+//! Survey Agent — conduct a survey using the `SurveyAgent` prefab.
 
 use signalwire::prefabs::SurveyAgent;
 use serde_json::{json, Map, Value};

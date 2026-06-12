@@ -1,13 +1,13 @@
 // Copyright (c) 2025 SignalWire
 // SPDX-License-Identifier: MIT
 //
-//! Dynamic InfoGatherer — question sets chosen per-request via query parameter.
+//! Dynamic `InfoGatherer` — question sets chosen per-request via query parameter.
 //!
 //! Try:
-//!   curl "http://localhost:3000/contact"              (default questions)
-//!   curl "http://localhost:3000/contact?set=support"  (support questions)
-//!   curl "http://localhost:3000/contact?set=medical"  (medical intake)
-//!   curl "http://localhost:3000/contact?set=onboarding" (employee onboarding)
+//!   curl "<http://localhost:3000/contact>"              (default questions)
+//!   curl "<http://localhost:3000/contact?set=support>"  (support questions)
+//!   curl "<http://localhost:3000/contact?set=medical>"  (medical intake)
+//!   curl "<http://localhost:3000/contact?set=onboarding>" (employee onboarding)
 
 use signalwire::prefabs::InfoGathererAgent;
 use serde_json::json;

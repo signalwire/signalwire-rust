@@ -1,7 +1,7 @@
 // Copyright (c) 2025 SignalWire
 // SPDX-License-Identifier: MIT
 //
-//! Call Flow and Actions Demo — call-flow verbs, debug events, FunctionResult actions.
+//! Call Flow and Actions Demo — call-flow verbs, debug events, `FunctionResult` actions.
 
 // A linear demo `main` that walks through many verbs in sequence — its length
 // is the point (it shows the full flow top-to-bottom); splitting it would hurt

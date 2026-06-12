@@ -164,7 +164,7 @@ type DebugEventCallback = Box<
 /// Manages prompt configuration, tool registration, SWML rendering,
 /// and HTTP request handling for AI agent endpoints.
 ///
-/// AgentBase implements `Deref<Target = Service>` (Rust's idiomatic
+/// `AgentBase` implements `Deref<Target = Service>` (Rust's idiomatic
 /// equivalent of inheritance) so `Service` methods like `set_route`,
 /// `define_tool`, `on_function_call`, etc. are usable on `AgentBase`
 /// instances directly without needing forwarding wrappers.
@@ -210,7 +210,7 @@ pub struct AgentBase {
     // ── Native functions / fillers / debug ───────────────────────────────
     native_functions: Vec<String>,
     internal_fillers: Vec<String>,
-    /// Structured internal fillers keyed by function_name → language_code
+    /// Structured internal fillers keyed by `function_name` → `language_code`
     /// → phrases. Populated by `set_internal_fillers_map` and
     /// `add_internal_filler_for`. Separate from the legacy
     /// `internal_fillers: Vec<String>` above to preserve backward
@@ -424,7 +424,7 @@ impl AgentBase {
         self
     }
 
-    /// Mint a per-call SWAIG-function token via the agent's SessionManager.
+    /// Mint a per-call SWAIG-function token via the agent's `SessionManager`.
     ///
     /// Python parity: `state_mixin.StateMixin._create_tool_token` —
     /// delegates to `SessionManager::create_token` and returns `String::new()`
@@ -434,13 +434,13 @@ impl AgentBase {
     }
 
     /// Validate a per-call SWAIG-function token. Returns `false` when the
-    /// function is not registered or when the SessionManager rejects the
+    /// function is not registered or when the `SessionManager` rejects the
     /// token.
     ///
     /// Python parity: `state_mixin.StateMixin.validate_tool_token` —
     /// rejects unknown function names up-front. Rust's
     /// `SessionManager::validate_token` returns `bool` (no panics on bad
-    /// input — see security/session_manager.rs), so no try/catch is
+    /// input — see `security/session_manager.rs`), so no try/catch is
     /// required for parity.
     pub fn validate_tool_token(&self, function_name: &str, token: &str, call_id: &str) -> bool {
         if !self.service.has_function(function_name) {
@@ -560,7 +560,7 @@ impl AgentBase {
     /// Read-only snapshot of the agent's POM as a typed
     /// [`PromptObjectModel`].
     ///
-    /// Python parity: `agent.pom` instance attribute (agent_base.py
+    /// Python parity: `agent.pom` instance attribute (`agent_base.py`
     /// line 209). Returns `None` when `use_pom` is `false` (mirroring
     /// Python's `self.pom = None`); otherwise returns a freshly built
     /// [`PromptObjectModel`] populated from the agent's stored
@@ -614,7 +614,7 @@ impl AgentBase {
 
     /// Sets the prompt as a list of POM section objects. Each section
     /// supports keys "title", "body", "bullets", "numbered",
-    /// "numbered_bullets", and "subsections". Switches the agent to POM
+    /// `"numbered_bullets"`, and "subsections". Switches the agent to POM
     /// mode.
     ///
     /// Mirrors Python's `PromptManager.set_prompt_pom` — accepts a list
@@ -749,7 +749,7 @@ impl AgentBase {
     ///   - Returns `&mut Self` for chaining.
     ///
     /// Python parity: the per-language params are emitted as the language
-    /// object's `params` key in SWML and use snake_case wire shape.
+    /// object's `params` key in SWML and use `snake_case` wire shape.
     pub fn set_language_params(&mut self, code: &str, params: Value) -> &mut Self {
         for language in &mut self.languages {
             if let Some(obj) = language.as_object_mut()
@@ -844,7 +844,7 @@ impl AgentBase {
     }
 
     /// The complete set of internal SWAIG function names that accept
-    /// fillers, matching the SWAIGInternalFiller schema definition.
+    /// fillers, matching the `SWAIGInternalFiller` schema definition.
     ///
     /// Any name outside this set is silently ignored by the runtime —
     /// [`Self::set_internal_fillers_map`] and
@@ -876,7 +876,7 @@ impl AgentBase {
     /// while an internal/native function is running, so the caller
     /// doesn't hear dead air during transitions or background work.
     ///
-    /// Supported function names (match the SWAIGInternalFiller schema):
+    /// Supported function names (match the `SWAIGInternalFiller` schema):
     /// `hangup`, `check_time`, `wait_for_user`, `wait_seconds`,
     /// `adjust_response_latency`, `next_step`, `change_context`,
     /// `get_visual_input`, `get_ideal_strategy`. See
@@ -1011,7 +1011,7 @@ impl AgentBase {
     //  Context Methods
     // ══════════════════════════════════════════════════════════════════════
 
-    /// Return the ContextBuilder, creating it lazily on first access.
+    /// Return the `ContextBuilder`, creating it lazily on first access.
     ///
     /// The builder's tool-name supplier is set to a snapshot of the
     /// currently registered tool names so [`ContextBuilder::validate`]
@@ -1031,7 +1031,7 @@ impl AgentBase {
         self.context_builder.as_mut().unwrap()
     }
 
-    /// Refresh the ContextBuilder's tool-name supplier with the current
+    /// Refresh the `ContextBuilder`'s tool-name supplier with the current
     /// list of registered SWAIG tools. Call this if you define new tools
     /// after the first `define_contexts()` call and want the next
     /// `validate()` to see them.
@@ -1219,10 +1219,10 @@ impl AgentBase {
     ///
     /// Phases:
     ///   1. Pre-answer verbs
-    ///   2. Answer verb (if auto_answer)
-    ///   3. Record call verb (if record_call)
+    ///   2. Answer verb (if `auto_answer`)
+    ///   3. Record call verb (if `record_call`)
     ///   4. Post-answer verbs
-    ///   5. AI verb (via build_ai_verb)
+    ///   5. AI verb (via `build_ai_verb`)
     ///   6. Post-AI verbs
     pub fn render_swml(&self, headers: &HashMap<String, String>) -> Value {
         let mut main = Vec::new();

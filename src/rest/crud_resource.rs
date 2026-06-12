@@ -5,7 +5,7 @@ use serde_json::Value;
 use super::error::SignalWireRestError;
 use super::http_client::HttpClient;
 
-/// Generic CRUD wrapper around an HttpClient and a base API path.
+/// Generic CRUD wrapper around an `HttpClient` and a base API path.
 ///
 /// Provides list / create / get / update / delete for any REST resource
 /// that follows the standard SignalWire collection+item URL pattern.

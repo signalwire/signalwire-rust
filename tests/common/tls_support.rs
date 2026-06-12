@@ -36,7 +36,7 @@ use std::time::{Duration, Instant};
 use serde_json::Value;
 
 /// Dedicated TLS-mode ports, disjoint from the plain-mock default slots
-/// (mock_signalwire 8771; mock_relay WS 8781 / HTTP 9781).
+/// (`mock_signalwire` 8771; `mock_relay` WS 8781 / HTTP 9781).
 pub const TLS_RELAY_WS_PORT: u16 = 18781;
 pub const TLS_RELAY_HTTP_PORT: u16 = 19781;
 pub const TLS_SIGNALWIRE_PORT: u16 = 18771;

@@ -1,7 +1,7 @@
 // Copyright (c) 2025 SignalWire
 // SPDX-License-Identifier: MIT
 //
-//! Record Call Example — record_call and stop_record_call virtual helpers.
+//! Record Call Example — `record_call` and `stop_record_call` virtual helpers.
 
 use signalwire::swaig::FunctionResult;
 use serde_json::json;

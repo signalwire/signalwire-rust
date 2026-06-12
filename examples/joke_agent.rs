@@ -1,9 +1,9 @@
 // Copyright (c) 2025 SignalWire
 // SPDX-License-Identifier: MIT
 //
-//! Joke Agent — raw data_map integration with API Ninjas joke API.
+//! Joke Agent — raw `data_map` integration with API Ninjas joke API.
 //!
-//! Usage: API_NINJAS_KEY=your_key cargo run --example joke_agent
+//! Usage: `API_NINJAS_KEY=your_key cargo run --example joke_agent`
 
 use signalwire::agent::{AgentBase, AgentOptions};
 use serde_json::json;

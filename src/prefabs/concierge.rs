@@ -16,7 +16,7 @@ pub struct ConciergeAgent {
 }
 
 impl ConciergeAgent {
-    /// Create a new ConciergeAgent.
+    /// Create a new `ConciergeAgent`.
     ///
     /// # Arguments
     /// - `name` — agent name (defaults to `"concierge"` if empty).

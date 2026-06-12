@@ -187,7 +187,7 @@ pub fn begin() -> TestGuard {
 }
 
 /// Stage a one-shot response override for the route identified by
-/// `endpoint_id` (Spectral OperationId from the OpenAPI spec).
+/// `endpoint_id` (Spectral `OperationId` from the `OpenAPI` spec).
 pub fn scenario_set(endpoint_id: &str, status: u16, body: Value) {
     let h = harness();
     let url = format!("{}/__mock__/scenarios/{endpoint_id}", h.url);

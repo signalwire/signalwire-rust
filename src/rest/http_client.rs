@@ -151,7 +151,7 @@ impl HttpTransport for UreqTransport {
 /// A stub transport that records requests and returns canned responses.
 /// Useful for unit testing without network access.
 pub struct StubTransport {
-    /// Canned response: (status_code, body).
+    /// Canned response: (`status_code`, body).
     pub response: std::sync::Mutex<(u16, String)>,
     /// Recorded requests: (method, url, body).
     pub requests: std::sync::Mutex<Vec<(String, String, Option<String>)>>,
@@ -190,7 +190,7 @@ impl HttpTransport for StubTransport {
 
 /// Low-level HTTP client for SignalWire REST APIs.
 ///
-/// Uses Basic Auth with project_id:token and returns parsed JSON
+/// Uses Basic Auth with `project_id:token` and returns parsed JSON
 /// responses as `serde_json::Value`.
 pub struct HttpClient {
     project_id: String,
@@ -400,7 +400,7 @@ impl HttpClient {
     }
 }
 
-/// Wrapper so Arc<StubTransport> implements HttpTransport.
+/// Wrapper so `Arc<StubTransport>` implements `HttpTransport`.
 struct StubTransportWrapper(std::sync::Arc<StubTransport>);
 
 impl HttpTransport for StubTransportWrapper {
@@ -415,7 +415,7 @@ impl HttpTransport for StubTransportWrapper {
     }
 }
 
-/// Parse a query string into a HashMap.
+/// Parse a query string into a `HashMap`.
 fn parse_query_string(qs: &str) -> HashMap<String, String> {
     let mut map = HashMap::new();
     for pair in qs.split('&') {

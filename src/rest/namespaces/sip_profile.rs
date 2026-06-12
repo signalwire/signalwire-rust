@@ -25,12 +25,12 @@ impl<'a> SipProfile<'a> {
         &self.base_path
     }
 
-    /// GET /api/relay/rest/sip_profile — fetch the current profile.
+    /// GET `/api/relay/rest/sip_profile` — fetch the current profile.
     pub fn get(&self) -> Result<Value, SignalWireRestError> {
         self.client.get(&self.base_path, &std::collections::HashMap::new())
     }
 
-    /// PUT /api/relay/rest/sip_profile — update the SIP profile.
+    /// PUT `/api/relay/rest/sip_profile` — update the SIP profile.
     pub fn update(&self, params: &Value) -> Result<Value, SignalWireRestError> {
         self.client.put(&self.base_path, params)
     }

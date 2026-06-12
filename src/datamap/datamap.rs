@@ -3,7 +3,7 @@ use serde_json::{json, Map, Value};
 
 /// Fluent builder for DataMap-based SWAIG function definitions.
 ///
-/// A DataMap tool defines its behaviour declaratively (expressions, webhooks)
+/// A `DataMap` tool defines its behaviour declaratively (expressions, webhooks)
 /// instead of with a code handler.
 #[derive(Debug, Clone)]
 #[must_use]
@@ -207,7 +207,7 @@ impl DataMap {
         self
     }
 
-    /// Set error_keys on the last webhook.
+    /// Set `error_keys` on the last webhook.
     pub fn error_keys(&mut self, keys: Vec<&str>) -> &mut Self {
         if let Some(Value::Object(map)) = self.webhooks.last_mut() {
             map.insert("error_keys".to_string(), json!(keys));
@@ -215,7 +215,7 @@ impl DataMap {
         self
     }
 
-    /// Set global error_keys.
+    /// Set global `error_keys`.
     pub fn global_error_keys(&mut self, keys: Vec<&str>) -> &mut Self {
         self.global_error_keys = Some(keys.into_iter().map(std::string::ToString::to_string).collect());
         self

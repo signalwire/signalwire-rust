@@ -120,7 +120,7 @@ impl<'a> VideoRooms<'a> {
         self.client.get(&p, &HashMap::new())
     }
 
-    /// VideoRooms uses PUT for update.
+    /// `VideoRooms` uses PUT for update.
     pub fn update(
         &self,
         room_id: &str,

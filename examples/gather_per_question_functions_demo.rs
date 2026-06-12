@@ -1,10 +1,10 @@
 // Copyright (c) 2025 SignalWire
 // SPDX-License-Identifier: MIT
 //
-//! Per-Question Function Whitelist Demo (gather_info)
+//! Per-Question Function Whitelist Demo (`gather_info`)
 //!
 //! This example exists to teach one specific gotcha: while a step's
-//! gather_info is asking questions, ALL of the step's other functions
+//! `gather_info` is asking questions, ALL of the step's other functions
 //! are forcibly deactivated. The only callable tools during a gather
 //! question are:
 //!
@@ -24,7 +24,7 @@
 //!
 //! Below: a customer-onboarding gather flow where each question
 //! unlocks a different validation tool, and where the step's own
-//! non-gather tools (escalate_to_human, lookup_existing_account) are
+//! non-gather tools (`escalate_to_human`, `lookup_existing_account`) are
 //! LOCKED OUT during gather because they aren't whitelisted on any
 //! question.
 //!

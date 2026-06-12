@@ -1,7 +1,7 @@
 // Copyright (c) 2025 SignalWire
 // SPDX-License-Identifier: MIT
 //
-//! InfoGatherer Example — collect answers to a set of questions using the prefab.
+//! `InfoGatherer` Example — collect answers to a set of questions using the prefab.
 
 use signalwire::prefabs::InfoGathererAgent;
 

@@ -4,7 +4,7 @@
 //! RELAY: Answer an inbound call and say "Welcome to SignalWire!"
 //!
 //! Environment:
-//!   SIGNALWIRE_PROJECT_ID, SIGNALWIRE_API_TOKEN, SIGNALWIRE_SPACE
+//!   `SIGNALWIRE_PROJECT_ID`, `SIGNALWIRE_API_TOKEN`, `SIGNALWIRE_SPACE`
 
 use signalwire::relay::Client;
 use std::env;

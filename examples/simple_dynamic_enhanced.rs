@@ -4,9 +4,9 @@
 //! Enhanced Dynamic Agent — adapts based on request parameters.
 //!
 //! Try:
-//!   curl "http://localhost:3000?vip=true&customer_id=CUST123"
-//!   curl "http://localhost:3000?department=sales&language=es"
-//!   curl "http://localhost:3000?department=billing&vip=true"
+//!   curl "<http://localhost:3000?vip=true&customer_id=CUST123>"
+//!   curl "<http://localhost:3000?department=sales&language=es>"
+//!   curl "<http://localhost:3000?department=billing&vip=true>"
 
 use signalwire::agent::{AgentBase, AgentOptions};
 use serde_json::json;

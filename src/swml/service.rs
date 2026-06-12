@@ -131,7 +131,7 @@ pub struct Service {
 /// Handler type for SWAIG function callbacks.
 ///
 /// Receives `(args, raw_data)` and returns a `FunctionResult`. Same signature
-/// AgentBase uses, so handlers are interchangeable between the two paths.
+/// `AgentBase` uses, so handlers are interchangeable between the two paths.
 pub type FunctionHandler = Box<
     dyn Fn(&serde_json::Map<String, Value>, &serde_json::Map<String, Value>) -> FunctionResult
         + Send
@@ -231,7 +231,7 @@ impl Service {
 
     /// Define a SWAIG function the AI can call. Tool descriptions and
     /// parameter descriptions are LLM-facing prompt engineering — see
-    /// PORTING_GUIDE for guidance.
+    /// `PORTING_GUIDE` for guidance.
     ///
     /// Same shape as `AgentBase::define_tool` — a tool registered here is
     /// usable on both sidecar and agent paths because they share storage.
@@ -265,7 +265,7 @@ impl Service {
         self
     }
 
-    /// Register a raw SWAIG function definition (e.g. DataMap tools that
+    /// Register a raw SWAIG function definition (e.g. `DataMap` tools that
     /// have no local handler).
     pub fn register_swaig_function(&mut self, func_def: Value) -> &mut Self {
         let name = func_def["function"].as_str().unwrap_or("").to_string();
@@ -318,7 +318,7 @@ impl Service {
 
     /// Dispatch a function call to the registered handler. Returns
     /// `None` for unknown functions or registered functions with no
-    /// local handler (e.g. DataMap tools that execute server-side).
+    /// local handler (e.g. `DataMap` tools that execute server-side).
     pub fn on_function_call(
         &self,
         name: &str,
@@ -342,7 +342,7 @@ impl Service {
 
     /// Look up a registered tool's full SWAIG definition (the JSON
     /// shape returned to the SignalWire platform). Used by audit
-    /// harnesses that need to inspect the DataMap webhook URL of a
+    /// harnesses that need to inspect the `DataMap` webhook URL of a
     /// registered tool without invoking it.
     pub fn tool_definition(&self, name: &str) -> Option<Value> {
         self.tools.get(name).map(|t| t.definition.clone())
@@ -368,7 +368,7 @@ impl Service {
         self.port
     }
 
-    /// SchemaUtils helper bound to this Service.  Mirrors Python's
+    /// `SchemaUtils` helper bound to this Service.  Mirrors Python's
     /// `self.schema_utils` instance attribute on `SWMLService`.
     /// Returns a freshly-built helper each call — the underlying
     /// schema is `LazyLock`-cached, so this is cheap.
@@ -510,7 +510,7 @@ impl Service {
     // HTTP handling
     // ------------------------------------------------------------------
 
-    /// Handle an HTTP request. Returns (status_code, headers, body).
+    /// Handle an HTTP request. Returns `(status_code, headers, body)`.
     pub fn handle_request(
         &self,
         method: &str,
@@ -733,7 +733,7 @@ impl Service {
     /// Handle `/swaig` — the SWAIG dispatch endpoint.
     ///
     /// GET: returns the rendered SWML document. This mirrors what
-    /// AgentBase serves and lets the platform fetch the doc from either
+    /// `AgentBase` serves and lets the platform fetch the doc from either
     /// `/` or `/swaig?call_id=...`.
     ///
     /// POST: dispatches a tool call. Expected body shape:
@@ -883,7 +883,7 @@ impl Service {
     /// Introspect path: when invoked with `SWAIG_LIST_TOOLS=1`, print the
     /// runtime tool registry as JSON to stdout (between sentinel markers so
     /// the swaig-test CLI can extract it past any user log noise) and exit.
-    /// This is how the CLI lists tools on a compiled SWMLService example
+    /// This is how the CLI lists tools on a compiled `SWMLService` example
     /// without standing up an HTTP server.
     fn print_tool_registry_and_exit(&self) -> ! {
         let signatures: Vec<&serde_json::Value> = self
@@ -1006,7 +1006,7 @@ fn hex_encode(bytes: &[u8]) -> String {
 }
 
 /// Build a Basic auth header value. Test-only — Service consumes incoming
-/// Authorization headers via check_basic_auth and never builds outgoing
+/// Authorization headers via `check_basic_auth` and never builds outgoing
 /// ones in production code.
 #[cfg(test)]
 fn make_basic_auth(user: &str, pass: &str) -> String {

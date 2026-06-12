@@ -4,9 +4,9 @@
 //! Datasphere Serverless Environment Demo — config from environment variables.
 //!
 //! Environment:
-//!   DATASPHERE_SPACE    — SignalWire space URL
-//!   DATASPHERE_TOKEN    — API token for Datasphere
-//!   DATASPHERE_DOC_ID   — Document collection ID
+//!   `DATASPHERE_SPACE`    — SignalWire space URL
+//!   `DATASPHERE_TOKEN`    — API token for Datasphere
+//!   `DATASPHERE_DOC_ID`   — Document collection ID
 
 use signalwire::agent::{AgentBase, AgentOptions};
 use signalwire::datamap::DataMap;

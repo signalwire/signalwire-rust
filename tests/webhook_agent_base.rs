@@ -1,4 +1,4 @@
-//! Integration tests: AgentBase auto-mounts webhook signature
+//! Integration tests: `AgentBase` auto-mounts webhook signature
 //! validation when a Signing Key is configured.
 //!
 //! Drives the agent's `handle_request` directly with crafted POSTs
@@ -8,7 +8,7 @@
 //! - signed-but-tampered POSTs return 403 with no handler side-effect
 //! - missing header on POST returns 403
 //! - GETs are not signature-checked (would break `/health`, `/ready`)
-//! - signing_key resolves from explicit option THEN env var
+//! - `signing_key` resolves from explicit option THEN env var
 //! - `signing_key=None` bypasses validation entirely
 
 use std::collections::HashMap;

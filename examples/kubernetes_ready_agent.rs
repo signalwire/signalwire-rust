@@ -4,7 +4,7 @@
 //! Kubernetes-Ready Agent — health checks, structured logging, env-based config.
 //!
 //! Usage:
-//!   PORT=8080 cargo run --example kubernetes_ready_agent
+//!   `PORT=8080 cargo run --example kubernetes_ready_agent`
 
 use signalwire::agent::{AgentBase, AgentOptions};
 use signalwire::swaig::FunctionResult;

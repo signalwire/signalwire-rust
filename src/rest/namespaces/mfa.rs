@@ -35,7 +35,7 @@ impl<'a> Mfa<'a> {
         self.client.post(&format!("{}/call", self.base_path), params)
     }
 
-    /// POST /api/relay/rest/mfa/{request_id}/verify — verify a code.
+    /// POST `/api/relay/rest/mfa/{request_id}/verify` — verify a code.
     pub fn verify(
         &self,
         request_id: &str,

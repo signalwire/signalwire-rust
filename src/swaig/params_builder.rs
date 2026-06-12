@@ -45,7 +45,7 @@
 //! - [`build_schema`](ParamsBuilder::build_schema) returns the **full** JSON
 //!   schema `{"type":"object","properties":{…},"required":[…]}` — exactly the
 //!   shape the Python reference's `_ensure_parameter_structure` emits and the
-//!   shape hand-written for `register_swaig_function` / DataMap full
+//!   shape hand-written for `register_swaig_function` / `DataMap` full
 //!   definitions. This is the form that carries a top-level
 //!   [`required`](ParamsBuilder::required) list.
 //!
@@ -382,7 +382,7 @@ impl ParamsBuilder {
     ///
     /// Byte-identical to the Python reference's `_ensure_parameter_structure`
     /// output and to the hand-written full-schema forms used with
-    /// `register_swaig_function` / DataMap definitions.
+    /// `register_swaig_function` / `DataMap` definitions.
     #[must_use]
     pub fn build_schema(self) -> Value {
         let mut schema = Map::new();

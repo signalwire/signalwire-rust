@@ -18,10 +18,10 @@ use serde_json::{json, Value};
 ///   swaig-test --url <URL> [options]
 ///
 /// Options:
-///   --example <NAME>     SWMLService example to introspect by name (e.g.
+///   --example <NAME>     `SWMLService` example to introspect by name (e.g.
 ///                        `swmlservice_swaig_standalone`). Runs the example
 ///                        in-process via `cargo run --example` with the
-///                        `SWAIG_LIST_TOOLS=1` env var; the SDK's serve()
+///                        `SWAIG_LIST_TOOLS=1` env var; the SDK's `serve()`
 ///                        dumps the runtime registry instead of binding a
 ///                        port.
 ///   --url <URL>          SWAIG endpoint URL. Basic auth can be embedded as
@@ -176,7 +176,7 @@ fn print_help() {
     println!("  Embed credentials in the URL: http://user:pass@host:port/path");
 }
 
-/// Introspect a SWMLService example by spawning `cargo run --example NAME`
+/// Introspect a `SWMLService` example by spawning `cargo run --example NAME`
 /// with `SWAIG_LIST_TOOLS=1`. The SDK's `Service::run()` honors that env var
 /// by printing the registry to stdout between sentinels and exiting before
 /// it would have bound any port. We capture stdout, slice out the JSON, and
@@ -259,8 +259,8 @@ fn do_list_tools_via_introspect(example_name: &str, raw: bool, verbose: bool) {
     }
 }
 
-/// Extract the JSON payload between __SWAIG_TOOLS_BEGIN__ and
-/// __SWAIG_TOOLS_END__ markers in the example's stdout. Returns None if
+/// Extract the JSON payload between `__SWAIG_TOOLS_BEGIN__` and
+/// `__SWAIG_TOOLS_END__` markers in the example's stdout. Returns None if
 /// either marker is missing.
 fn extract_introspect_payload(stdout: &str) -> Option<&str> {
     let begin = stdout.find("__SWAIG_TOOLS_BEGIN__")?;
@@ -577,9 +577,9 @@ mod tests {
         assert_eq!(headers["Content-Type"], "application/json");
     }
 
-    /// Spawn a tiny_http server on an ephemeral port that responds with the
+    /// Spawn a `tiny_http` server on an ephemeral port that responds with the
     /// given fixed status + body, capturing whatever the request was. Returns
-    /// (base_url, request_capture). Used by the http_request behavior tests
+    /// (`base_url`, `request_capture`). Used by the `http_request` behavior tests
     /// below. Killed when the returned guard drops.
     fn spawn_test_server(
         status: u16,

@@ -1,0 +1,22 @@
+# Clippy configuration for signalwire-rust.
+#
+# doc-valid-idents extends Clippy's built-in allow-list of identifiers that
+# `clippy::doc_markdown` must NOT demand backticks around. The leading ".."
+# inherits Clippy's defaults (OAuth, WebSocket, OpenGL, GitHub, …); the entries
+# below are project-specific proper nouns / brand names that appear in prose in
+# our doc comments and are not Rust code symbols. Keep alphabetized.
+#
+# These are deliberately NOT backticked: backticking a brand name renders it as
+# inline code, which is wrong for prose. Genuine code identifiers (types,
+# functions, fields, env-var names) ARE backticked in the source instead.
+doc-valid-idents = [
+    "..",
+    "DataSphere",
+    "FaaS",
+    "FastAPI",
+    "OpenAI",
+    "POSTed",
+    "PubSub",
+    "PyYAML",
+    "SignalWire",
+]

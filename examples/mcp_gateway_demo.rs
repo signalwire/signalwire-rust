@@ -1,16 +1,16 @@
 // Copyright (c) 2025 SignalWire
 // SPDX-License-Identifier: MIT
 //
-//! MCP Gateway Demo — connect to MCP servers via the mcp_gateway skill.
+//! MCP Gateway Demo — connect to MCP servers via the `mcp_gateway` skill.
 //!
 //! Prerequisites:
 //!   cargo install signalwire-mcp-gateway
 //!   mcp-gateway -c config.json
 //!
 //! Environment:
-//!   MCP_GATEWAY_URL           (default: http://localhost:8080)
-//!   MCP_GATEWAY_AUTH_USER     (default: admin)
-//!   MCP_GATEWAY_AUTH_PASSWORD (default: changeme)
+//!   `MCP_GATEWAY_URL`           (default: <http://localhost:8080>)
+//!   `MCP_GATEWAY_AUTH_USER`     (default: admin)
+//!   `MCP_GATEWAY_AUTH_PASSWORD` (default: changeme)
 
 use signalwire::agent::{AgentBase, AgentOptions};
 use serde_json::json;

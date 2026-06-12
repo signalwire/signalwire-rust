@@ -12,7 +12,7 @@
 //! `ssl_certfile` / `ssl_keyfile` to uvicorn so the server speaks real HTTPS.
 //! The Rust port serves with `tiny_http`; this helper mirrors the *same env
 //! contract* and binds either a plain (`Server::http`) or a TLS
-//! (`Server::https`, via tiny_http's `ssl-rustls` feature) listener.
+//! (`Server::https`, via `tiny_http`'s `ssl-rustls` feature) listener.
 //!
 //! Kept as a `pub(crate)` helper so the three server entry points
 //! (`AgentServer::run`, `Service::run`, `AgentBase::run`) share one code path

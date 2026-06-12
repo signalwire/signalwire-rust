@@ -4,8 +4,8 @@
 //! Datasphere Webhook Environment Demo — Datasphere via webhook with env config.
 //!
 //! Environment:
-//!   DATASPHERE_WEBHOOK_URL — webhook URL for Datasphere search
-//!   DATASPHERE_API_KEY     — API key
+//!   `DATASPHERE_WEBHOOK_URL` — webhook URL for Datasphere search
+//!   `DATASPHERE_API_KEY`     — API key
 
 use signalwire::agent::{AgentBase, AgentOptions};
 use signalwire::swaig::FunctionResult;

@@ -33,7 +33,7 @@ impl RuntimeEnvironment {
 /// Trait that the agent/service must implement so the adapter can
 /// forward requests to it.
 pub trait RequestHandler {
-    /// Handle an HTTP request, returning (status_code, headers, body).
+    /// Handle an HTTP request, returning (`status_code`, headers, body).
     fn handle_request(
         &self,
         method: &str,
@@ -69,7 +69,7 @@ impl Adapter {
     /// Handle an AWS Lambda (API Gateway) invocation.
     ///
     /// Extracts method, path, headers, and body from the API Gateway event
-    /// format, calls agent.handle_request(), and returns an API Gateway
+    /// format, calls `agent.handle_request()`, and returns an API Gateway
     /// compatible response.
     pub fn handle_lambda(
         agent: &dyn RequestHandler,

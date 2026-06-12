@@ -5,9 +5,9 @@ use serde_json::{json, Map, Value};
 /// Reserved tool names auto-injected by the runtime when contexts/steps are
 /// present. User-defined SWAIG tools must not collide with these names:
 ///
-///   - `next_step` / `change_context` are injected when valid_steps or
-///     valid_contexts is set so the model can navigate the flow.
-///   - `gather_submit` is injected while a step's gather_info is collecting
+///   - `next_step` / `change_context` are injected when `valid_steps` or
+///     `valid_contexts` is set so the model can navigate the flow.
+///   - `gather_submit` is injected while a step's `gather_info` is collecting
 ///     answers.
 ///
 /// [`ContextBuilder::validate`] rejects any agent that registers a user
@@ -21,7 +21,7 @@ pub const RESERVED_NATIVE_TOOL_NAMES: &[&str] = &[
 
 // ── GatherQuestion ──────────────────────────────────────────────────────────
 
-/// A single question within a gather_info block.
+/// A single question within a `gather_info` block.
 #[derive(Debug, Clone)]
 pub struct GatherQuestion {
     key: String,
@@ -269,7 +269,7 @@ impl Step {
     /// **IMPORTANT**: `end = true` does NOT end the conversation or
     /// hang up the call. It exits step mode entirely after this step
     /// executes — clearing the steps list, current step index,
-    /// valid_steps, and valid_contexts. The agent keeps running, but
+    /// `valid_steps`, and `valid_contexts`. The agent keeps running, but
     /// operates only under the base system prompt and the context-level
     /// prompt; no more step instructions are injected and no more
     /// `next_step` tool is offered.
@@ -286,7 +286,7 @@ impl Step {
         self
     }
 
-    /// Initialise gather_info for this step.
+    /// Initialise `gather_info` for this step.
     pub fn set_gather_info(
         &mut self,
         output_key: Option<&str>,
@@ -297,8 +297,8 @@ impl Step {
         self
     }
 
-    /// Add a question to this step's gather_info. Initialises
-    /// gather_info if needed.
+    /// Add a question to this step's `gather_info`. Initialises
+    /// `gather_info` if needed.
     ///
     /// # Gather mode locks function access (IMPORTANT)
     ///
@@ -572,22 +572,22 @@ const MAX_CONTEXTS: usize = 50;
 
 /// Builder for multi-step, multi-context AI agent workflows.
 ///
-/// A ContextBuilder owns one or more [`Context`]s; each Context owns an
+/// A `ContextBuilder` owns one or more [`Context`]s; each Context owns an
 /// ordered list of [`Step`]s. Only one context and one step is active at
 /// a time. Per chat turn, the runtime injects the current step's
 /// instructions as a system message, then asks the LLM for a response.
 ///
 /// # Native tools auto-injected by the runtime
 ///
-/// When a step (or its enclosing context) declares valid_steps or
-/// valid_contexts, the runtime auto-injects two native tools so the
+/// When a step (or its enclosing context) declares `valid_steps` or
+/// `valid_contexts`, the runtime auto-injects two native tools so the
 /// model can navigate the flow:
 ///
-///   - `next_step(step: enum)`         — present when valid_steps is set
-///   - `change_context(context: enum)` — present when valid_contexts is set
+///   - `next_step(step: enum)`         — present when `valid_steps` is set
+///   - `change_context(context: enum)` — present when `valid_contexts` is set
 ///
 /// A third native tool — `gather_submit` — is injected during
-/// gather_info questioning. These three names are reserved: see
+/// `gather_info` questioning. These three names are reserved: see
 /// [`RESERVED_NATIVE_TOOL_NAMES`]. [`ContextBuilder::validate`] rejects
 /// any agent that defines a SWAIG tool with one of these names.
 ///

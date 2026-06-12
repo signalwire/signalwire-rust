@@ -1,7 +1,7 @@
 // Copyright (c) 2025 SignalWire
 // SPDX-License-Identifier: MIT
 //
-//! swmlservice_swaig_standalone — proves that `signalwire::swml::Service`
+//! `swmlservice_swaig_standalone` — proves that `signalwire::swml::Service`
 //! can host SWAIG functions on its own `/swaig` endpoint with NO
 //! `signalwire::agent::AgentBase` involved.
 //!
@@ -12,20 +12,20 @@
 //! prompts, AI config, dynamic config, and token validation.
 //!
 //! Run:
-//!     cargo run --example swmlservice_swaig_standalone
+//!     cargo run --example `swmlservice_swaig_standalone`
 //!
 //! Then exercise the endpoints (Basic auth user/pass come from
 //! `SWML_BASIC_AUTH_USER` / `SWML_BASIC_AUTH_PASSWORD` env vars or the
 //! auto-generated values logged at startup):
-//!     curl -u user:pass http://localhost:3000/standalone
-//!     curl -u user:pass http://localhost:3000/standalone/swaig \
+//!     curl -u user:pass <http://localhost:3000/standalone>
+//!     curl -u user:pass <http://localhost:3000/standalone/swaig> \
 //!         -H 'Content-Type: application/json' \
-//!         -d '{"function":"lookup_competitor","argument":{"parsed":[{"competitor":"ACME"}]}}'
+//!         -d `'{"function":"lookup_competitor","argument":{"parsed":[{"competitor":"ACME"}]}}'`
 //!
 //! Or drive it through the SDK CLI without standing up the server:
-//!     swaig-test --url http://user:pass@localhost:3000/standalone --list-tools
-//!     swaig-test --url http://user:pass@localhost:3000/standalone \
-//!         --exec lookup_competitor --param competitor=ACME
+//!     swaig-test --url <http://user:pass@localhost:3000/standalone> --list-tools
+//!     swaig-test --url <http://user:pass@localhost:3000/standalone> \
+//!         --exec `lookup_competitor` --param competitor=ACME
 
 use signalwire::swaig::FunctionResult;
 use signalwire::swml::service::{Service, ServiceOptions};

@@ -119,7 +119,7 @@ impl Section {
     /// The Python name is `to_dict`; in Rust the natural name for
     /// a `serde_json::Value` is `to_value`. The cross-port surface
     /// audit treats the two as equivalent (see
-    /// `enumerate_surface.py` METHOD_RENAMES).
+    /// `enumerate_surface.py` `METHOD_RENAMES`).
     pub fn to_value(&self) -> Value {
         let mut data = Map::new();
 

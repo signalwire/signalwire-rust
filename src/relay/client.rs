@@ -261,7 +261,7 @@ impl Client {
         }
     }
 
-    /// Create from env vars SIGNALWIRE_PROJECT_ID, SIGNALWIRE_API_TOKEN, SIGNALWIRE_SPACE.
+    /// Create from env vars `SIGNALWIRE_PROJECT_ID`, `SIGNALWIRE_API_TOKEN`, `SIGNALWIRE_SPACE`.
     pub fn from_env() -> Result<Self, RelayError> {
         let project = std::env::var("SIGNALWIRE_PROJECT_ID")
             .map_err(|_| RelayError::missing_env("SIGNALWIRE_PROJECT_ID"))?;

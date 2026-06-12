@@ -11,7 +11,7 @@ pub struct ReceptionistAgent {
 }
 
 impl ReceptionistAgent {
-    /// Create a new ReceptionistAgent.
+    /// Create a new `ReceptionistAgent`.
     ///
     /// # Arguments
     /// - `name` — agent name (defaults to `"receptionist"` if empty).

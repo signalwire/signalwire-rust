@@ -7,7 +7,7 @@ use crate::agent::AgentBase;
 /// A skill encapsulates tools, hints, global data, and prompt sections that can
 /// be loaded into an `AgentBase` via the `SkillManager`.
 pub trait SkillBase: Send + Sync {
-    /// Unique snake_case name of this skill (e.g. `"datetime"`).
+    /// Unique `snake_case` name of this skill (e.g. `"datetime"`).
     fn name(&self) -> &str;
 
     /// Human-readable description.
@@ -28,7 +28,7 @@ pub trait SkillBase: Send + Sync {
         false
     }
 
-    /// Instance key used to track loaded skills (allows tool_name overrides).
+    /// Instance key used to track loaded skills (allows `tool_name` overrides).
     fn get_instance_key(&self) -> String {
         let mut key = self.name().to_string();
         if let Some(tn) = self.params().get("tool_name").and_then(|v| v.as_str()) {

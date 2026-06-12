@@ -254,7 +254,7 @@ pub fn harness() -> HarnessHandle {
 ///
 /// Each test should call [`begin`] first to acquire the global mutex and
 /// reset journal/scenarios. The returned client should be `disconnect()`ed
-/// (typically through a `let client = ...; defer-style block) before the
+/// (typically through a `let client = ...;` defer-style block) before the
 /// `TestGuard` drops — see the integration tests for the canonical pattern.
 pub fn connected_client(contexts: &[&str]) -> Arc<RelayClient> {
     let h = harness();

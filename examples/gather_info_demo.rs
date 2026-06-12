@@ -3,7 +3,7 @@
 //
 //! Gather Info Demo — structured data collection using low-level contexts API.
 //!
-//! Uses set_gather_info() and add_gather_question() on steps to collect
+//! Uses `set_gather_info()` and `add_gather_question()` on steps to collect
 //! patient intake information one question at a time.
 
 use signalwire::agent::{AgentBase, AgentOptions};

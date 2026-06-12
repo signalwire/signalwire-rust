@@ -4,12 +4,12 @@
 //! `rest_audit_harness` — runtime probe for the REST transport.
 //!
 //! Driven by porting-sdk's `audit_rest_transport.py`. Reads:
-//!   - REST_OPERATION       dotted name (e.g. `calling.list_calls`)
-//!   - REST_FIXTURE_URL     `http://127.0.0.1:NNNN`
-//!   - REST_OPERATION_ARGS  JSON dict of args for the operation
-//!   - SIGNALWIRE_PROJECT_ID, SIGNALWIRE_API_TOKEN
+//!   - `REST_OPERATION`       dotted name (e.g. `calling.list_calls`)
+//!   - `REST_FIXTURE_URL`     `http://127.0.0.1:NNNN`
+//!   - `REST_OPERATION_ARGS`  JSON dict of args for the operation
+//!   - `SIGNALWIRE_PROJECT_ID`, `SIGNALWIRE_API_TOKEN`
 //!
-//! Constructs a `RestClient` pointed at REST_FIXTURE_URL (NOT through
+//! Constructs a `RestClient` pointed at `REST_FIXTURE_URL` (NOT through
 //! the usual `https://{space}` resolution — the audit needs to inject
 //! its loopback fixture URL), invokes the named operation, and prints
 //! the parsed return value as JSON to stdout. Exits non-zero on any
@@ -18,7 +18,7 @@
 //! Operations supported by this harness:
 //!   - `calling.list_calls`           GET  /api/laml/2010-04-01/Accounts/{proj}/Calls.json
 //!   - `messaging.send`               POST /api/laml/2010-04-01/Accounts/{proj}/Messages.json
-//!   - `phone_numbers.list`           GET  /api/relay/rest/phone_numbers
+//!   - `phone_numbers.list`           GET  `/api/relay/rest/phone_numbers`
 //!   - `fabric.subscribers.list`      GET  /api/fabric/resources/subscribers
 //!   - `compatibility.calls.list`     GET  /api/laml/2010-04-01/Accounts/{proj}/Calls.json
 

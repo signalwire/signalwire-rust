@@ -4,7 +4,7 @@
 //! AWS Lambda Agent — serverless deployment example.
 //!
 //! Deploy to Lambda with API Gateway. Set environment variables:
-//!   SWML_BASIC_AUTH_USER, SWML_BASIC_AUTH_PASSWORD
+//!   `SWML_BASIC_AUTH_USER`, `SWML_BASIC_AUTH_PASSWORD`
 
 use signalwire::agent::{AgentBase, AgentOptions};
 use signalwire::swaig::FunctionResult;

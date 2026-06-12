@@ -11,7 +11,7 @@ use crate::swaig::FunctionResult;
 
 /// Default `no_results_message` (mirrors Python's `WebSearchSkill` default).
 /// Returned by the snippet fallback when CSE yields nothing at all or the
-/// overall_deadline fires before any item arrives.
+/// `overall_deadline` fires before any item arrives.
 const DEFAULT_NO_RESULTS_MESSAGE: &str =
     "I couldn't find quality results for '{query}'. The search returned only \
 low-quality or inaccessible pages. Try rephrasing your search or asking about \
@@ -670,8 +670,8 @@ mod tests {
 
     /// A local TCP server that accepts every connection and NEVER sends a
     /// response (it reads the request bytes, then holds the socket open).
-    /// ureq's per-request `timeout_global` (per_page_timeout) and the
-    /// handler's `recv_timeout` (overall_deadline) are the only things that
+    /// ureq's per-request `timeout_global` (`per_page_timeout`) and the
+    /// handler's `recv_timeout` (`overall_deadline`) are the only things that
     /// can end a fetch against it — exactly what the deadline tests need.
     /// Returns the bound `http://127.0.0.1:<port>` base URL.
     fn spawn_blackhole_server() -> String {
@@ -696,7 +696,7 @@ mod tests {
 
     /// A local TCP server that answers EVERY request with a fixed HTTP/1.1
     /// 200 carrying `json_body`. Stands in for Google CSE so the happy-path
-    /// and snippets_only tests get real `items` back without hitting the
+    /// and `snippets_only` tests get real `items` back without hitting the
     /// network. Returns the bound base URL.
     fn spawn_cse_server(json_body: &'static str) -> String {
         let listener = TcpListener::bind("127.0.0.1:0").expect("bind cse");
@@ -721,7 +721,7 @@ mod tests {
         format!("http://127.0.0.1:{port}")
     }
 
-    /// Build + register the web_search skill on a throwaway agent and invoke
+    /// Build + register the `web_search` skill on a throwaway agent and invoke
     /// its tool, returning the response string the model would see.
     fn run_web_search(params: Map<String, Value>, query: &str) -> String {
         let skill = WebSearch::new(params);

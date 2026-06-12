@@ -22,7 +22,7 @@ use std::path::Path;
 
 use serde_json::{Map, Value};
 
-/// SchemaValidationError — Rust port of
+/// `SchemaValidationError` — Rust port of
 /// `signalwire.utils.schema_utils.SchemaValidationError`.
 #[derive(Debug, Clone)]
 pub struct SchemaValidationError {
@@ -31,7 +31,7 @@ pub struct SchemaValidationError {
 }
 
 impl SchemaValidationError {
-    /// Construct a SchemaValidationError. Mirrors Python's
+    /// Construct a `SchemaValidationError`. Mirrors Python's
     /// `SchemaValidationError(verb_name, errors)`.
     pub fn new(verb_name: String, errors: Vec<String>) -> Self {
         Self { verb_name, errors }
@@ -59,7 +59,7 @@ pub struct VerbDefinition {
     pub definition: Value,
 }
 
-/// SchemaUtils — Rust port of
+/// `SchemaUtils` — Rust port of
 /// `signalwire.utils.schema_utils.SchemaUtils`.
 pub struct SchemaUtils {
     schema: Value,
@@ -70,7 +70,7 @@ pub struct SchemaUtils {
 }
 
 impl SchemaUtils {
-    /// Construct a SchemaUtils.  Mirrors Python's
+    /// Construct a `SchemaUtils`.  Mirrors Python's
     /// `SchemaUtils(schema_path=None, schema_validation=True)`.
     pub fn new(schema_path: Option<String>, schema_validation: bool) -> Self {
         let env_skip = env_boolish(&env::var("SWML_SKIP_SCHEMA_VALIDATION").unwrap_or_default());
@@ -326,8 +326,8 @@ mod tests {
     use super::*;
     use serde_json::json;
 
-    /// Build a SchemaUtils after locking the env-mutex and removing
-    /// SWML_SKIP_SCHEMA_VALIDATION, so this test sees a clean env even
+    /// Build a `SchemaUtils` after locking the env-mutex and removing
+    /// `SWML_SKIP_SCHEMA_VALIDATION`, so this test sees a clean env even
     /// when running in parallel with `env_skip_disables_validation`.
     fn fresh() -> (std::sync::MutexGuard<'static, ()>, SchemaUtils) {
         let g = ENV_MTX.lock().unwrap();

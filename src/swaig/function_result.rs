@@ -304,7 +304,7 @@ impl FunctionResult {
         self
     }
 
-    /// Python: add_action("unset_global_data", keys) — the value is the bare key
+    /// Python: `add_action("unset_global_data", keys)` — the value is the bare key
     /// (Python's `Union[str, List[str]]`, passed through verbatim): a single key
     /// emits the **bare string** (`"plan"`), a list emits the **array**
     /// (`["plan", "chips"]`); no `{"keys": ...}` wrapper. Accepts both call
@@ -320,7 +320,7 @@ impl FunctionResult {
         self
     }
 
-    /// Python: add_action("unset_meta_data", keys) — the value is the bare key
+    /// Python: `add_action("unset_meta_data", keys)` — the value is the bare key
     /// (Python's `Union[str, List[str]]`, passed through verbatim): a single key
     /// emits the **bare string** (`"token"`), a list emits the **array**
     /// (`["token", "count"]`); no `{"keys": ...}` wrapper. Accepts both call
@@ -349,14 +349,14 @@ impl FunctionResult {
         self
     }
 
-    /// Python: add_action("change_step", step_name) — the value is the bare step
+    /// Python: `add_action("change_step", step_name)` — the value is the bare step
     /// name string (not a `context_switch` dict).
     pub fn swml_change_step(&mut self, step_name: &str) -> &mut Self {
         self.actions.push(json!({"change_step": step_name}));
         self
     }
 
-    /// Python: add_action("change_context", context_name) — the value is the
+    /// Python: `add_action("change_context", context_name)` — the value is the
     /// bare context name string (not a `context_switch` dict).
     pub fn swml_change_context(&mut self, context_name: &str) -> &mut Self {
         self.actions.push(json!({"change_context": context_name}));
@@ -412,14 +412,14 @@ impl FunctionResult {
         self
     }
 
-    /// After first send, replace the tool_call+result pair in conversation
+    /// After first send, replace the `tool_call+result` pair in conversation
     /// history.
     ///
     /// Mirrors the Python reference (`FunctionResult.replace_in_history`, whose
     /// `text` parameter is `Union[str, bool] = True`): the action key is
     /// `"replace_in_history"`. `Some(t)` replaces the tool call with an assistant
     /// message containing `t`; `None` uses the default `true`, which removes the
-    /// tool_call+result pair from history entirely.
+    /// `tool_call+result` pair from history entirely.
     pub fn replace_in_history(&mut self, text: Option<&str>) -> &mut Self {
         match text {
             Some(t) => self.actions.push(json!({"replace_in_history": t})),
@@ -451,7 +451,7 @@ impl FunctionResult {
         self
     }
 
-    /// Python: add_action("stop_playback_bg", True).
+    /// Python: `add_action("stop_playback_bg", True)`.
     pub fn stop_background_file(&mut self) -> &mut Self {
         self.actions.push(json!({"stop_playback_bg": true}));
         self
@@ -595,7 +595,7 @@ impl FunctionResult {
         self
     }
 
-    /// Python: add_action("functions_on_speaker_timeout", enabled).
+    /// Python: `add_action("functions_on_speaker_timeout", enabled)`.
     pub fn enable_functions_on_timeout(&mut self, enabled: bool) -> &mut Self {
         self.actions
             .push(json!({"functions_on_speaker_timeout": enabled}));
@@ -607,7 +607,7 @@ impl FunctionResult {
         self
     }
 
-    /// Python: add_action("settings", settings).
+    /// Python: `add_action("settings", settings)`.
     pub fn update_settings(&mut self, settings: Value) -> &mut Self {
         self.actions.push(json!({"settings": settings}));
         self
@@ -688,10 +688,10 @@ impl FunctionResult {
     ///
     /// When every parameter is left at its default the `join_conference` value
     /// is the bare conference name string; otherwise it is a `{"name": ...}`
-    /// object carrying every non-default parameter under its snake_case wire
+    /// object carrying every non-default parameter under its `snake_case` wire
     /// key. Either way the verb is wrapped in the canonical SWML document
     /// (`{"SWML": {version, sections: {main: [{join_conference: ...}]}}}`),
-    /// matching the reference (which routes join_conference through
+    /// matching the reference (which routes `join_conference` through
     /// `execute_swml`) — never a bare verb.
     #[allow(clippy::too_many_arguments)]
     pub fn join_conference(
@@ -1162,7 +1162,7 @@ impl FunctionResult {
     /// Inject a message into an AI agent on another call (via `execute_rpc`).
     ///
     /// Mirrors the Python reference (`FunctionResult.rpc_ai_message`): method
-    /// `"ai_message"`, `call_id` carried as the TOP-LEVEL execute_rpc sibling,
+    /// `"ai_message"`, `call_id` carried as the TOP-LEVEL `execute_rpc` sibling,
     /// params `{role, message_text}`. `role` defaults to `"system"` and is
     /// caller-overridable (the previous port omitted `role` and mis-nested
     /// `call_id` — fixed).
@@ -1177,7 +1177,7 @@ impl FunctionResult {
     /// Unhold another call (via `execute_rpc`).
     ///
     /// Mirrors the Python reference (`FunctionResult.rpc_ai_unhold`): method
-    /// `"ai_unhold"`, `call_id` as the TOP-LEVEL execute_rpc sibling, params
+    /// `"ai_unhold"`, `call_id` as the TOP-LEVEL `execute_rpc` sibling, params
     /// `{}` (which `execute_rpc` drops, since it is empty).
     pub fn rpc_ai_unhold(&mut self, call_id: &str) -> &mut Self {
         self.execute_rpc("ai_unhold", json!({}), call_id, "")
