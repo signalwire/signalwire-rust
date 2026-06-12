@@ -34,7 +34,7 @@ impl SkillManager {
             None => {
                 return (
                     false,
-                    format!("Skill '{}' not found in registry", skill_name),
+                    format!("Skill '{skill_name}' not found in registry"),
                 );
             }
         };
@@ -47,8 +47,7 @@ impl SkillManager {
                 return (
                     false,
                     format!(
-                        "Skill '{}' is already loaded and does not support multiple instances",
-                        instance_key
+                        "Skill '{instance_key}' is already loaded and does not support multiple instances"
                     ),
                 );
             }
@@ -62,7 +61,7 @@ impl SkillManager {
         }
 
         if !instance.setup() {
-            return (false, format!("Skill '{}' setup failed", skill_name));
+            return (false, format!("Skill '{skill_name}' setup failed"));
         }
 
         instance.register_tools(agent);
@@ -121,8 +120,7 @@ impl SkillManager {
                 return (
                     false,
                     format!(
-                        "Skill '{}' is already loaded and does not support multiple instances",
-                        instance_key
+                        "Skill '{instance_key}' is already loaded and does not support multiple instances"
                     ),
                 );
             }
@@ -224,7 +222,7 @@ mod tests {
         let mut mgr = SkillManager::new();
         let mut agent = AgentBase::new(AgentOptions::new("test"));
         let (ok, msg) = mgr.load_skill("datetime", Map::new(), &mut agent);
-        assert!(ok, "load_skill failed: {}", msg);
+        assert!(ok, "load_skill failed: {msg}");
         assert!(mgr.has_skill("datetime"));
         assert_eq!(mgr.list_skills(), vec!["datetime"]);
     }
@@ -265,7 +263,7 @@ mod tests {
         let mut mgr = SkillManager::new();
         let mut agent = AgentBase::new(AgentOptions::new("test"));
         let (ok, msg) = mgr.load_skill("math", Map::new(), &mut agent);
-        assert!(ok, "load_skill failed: {}", msg);
+        assert!(ok, "load_skill failed: {msg}");
         assert!(mgr.has_skill("math"));
     }
 

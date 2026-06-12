@@ -214,7 +214,7 @@ fn reconstruct_url_from_request(headers: &HeaderMap, uri: &axum::http::Uri) -> S
         .or_else(|| header_str(headers, "host"))
         .unwrap_or("unknown");
     let path_and_query = uri.path_and_query().map(|pq| pq.as_str()).unwrap_or("/");
-    format!("{}://{}{}", proto, host, path_and_query)
+    format!("{proto}://{host}{path_and_query}")
 }
 
 fn header_str<'a>(headers: &'a HeaderMap, name: &str) -> Option<&'a str> {

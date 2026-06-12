@@ -53,12 +53,11 @@ impl SessionManager {
         let expiry = current_time_secs() + self.token_expiry_secs;
         let nonce = hex_encode(&random_bytes(8));
 
-        let message = format!("{}:{}:{}:{}", call_id, function_name, expiry, nonce);
+        let message = format!("{call_id}:{function_name}:{expiry}:{nonce}");
         let signature = self.hmac_hex(&message);
 
         let payload = format!(
-            "{}.{}.{}.{}.{}",
-            call_id, function_name, expiry, nonce, signature
+            "{call_id}.{function_name}.{expiry}.{nonce}.{signature}"
         );
 
         URL_SAFE_NO_PAD.encode(payload.as_bytes())
@@ -105,8 +104,7 @@ impl SessionManager {
 
         // Recreate the signature with the extracted nonce and compare
         let message = format!(
-            "{}:{}:{}:{}",
-            token_call_id, token_function, token_expiry, token_nonce
+            "{token_call_id}:{token_function}:{token_expiry}:{token_nonce}"
         );
         let expected_signature = self.hmac_hex(&message);
 

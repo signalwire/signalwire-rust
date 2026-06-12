@@ -42,9 +42,9 @@ impl SkillBase for Spider {
         let prefix = self.sp.get_str_or("tool_prefix", "");
         let max_length = usize::try_from(self.sp.get_i64("max_text_length", 5000)).unwrap_or(5000);
 
-        let scrape_name = format!("{}scrape_url", prefix);
-        let crawl_name = format!("{}crawl_site", prefix);
-        let extract_name = format!("{}extract_structured_data", prefix);
+        let scrape_name = format!("{prefix}scrape_url");
+        let crawl_name = format!("{prefix}crawl_site");
+        let extract_name = format!("{prefix}extract_structured_data");
 
         agent.define_tool(
             &scrape_name,
@@ -68,15 +68,14 @@ impl SkillBase for Spider {
                     Ok(t) => t,
                     Err(e) => {
                         let mut r = FunctionResult::new();
-                        r.set_response(&format!("Spider scrape error: {}", e));
+                        r.set_response(&format!("Spider scrape error: {e}"));
                         return r;
                     }
                 };
                 let extracted = extract_text_from_html(&body, max_length);
                 let mut r = FunctionResult::new();
                 r.set_response(&format!(
-                    "Scraped content from {}:\n{}",
-                    url_arg, extracted
+                    "Scraped content from {url_arg}:\n{extracted}"
                 ));
                 r
             }),
@@ -108,13 +107,13 @@ impl SkillBase for Spider {
                     Ok(t) => t,
                     Err(e) => {
                         let mut r = FunctionResult::new();
-                        r.set_response(&format!("Spider crawl error: {}", e));
+                        r.set_response(&format!("Spider crawl error: {e}"));
                         return r;
                     }
                 };
                 let extracted = extract_text_from_html(&body, max_length);
                 let mut r = FunctionResult::new();
-                r.set_response(&format!("Crawled {}:\n{}", start_url, extracted));
+                r.set_response(&format!("Crawled {start_url}:\n{extracted}"));
                 r
             }),
             false,
@@ -142,15 +141,14 @@ impl SkillBase for Spider {
                     Ok(t) => t,
                     Err(e) => {
                         let mut r = FunctionResult::new();
-                        r.set_response(&format!("Spider extract error: {}", e));
+                        r.set_response(&format!("Spider extract error: {e}"));
                         return r;
                     }
                 };
                 let extracted = extract_text_from_html(&body, max_length);
                 let mut r = FunctionResult::new();
                 r.set_response(&format!(
-                    "Extracted from {}:\n{}",
-                    url_arg, extracted
+                    "Extracted from {url_arg}:\n{extracted}"
                 ));
                 r
             }),
@@ -201,7 +199,7 @@ fn target_path(target: &str) -> String {
         if target.starts_with('/') {
             target.to_string()
         } else {
-            format!("/{}", target)
+            format!("/{target}")
         }
     }
 }
@@ -216,14 +214,14 @@ fn http_get_text(url: &str) -> Result<String, String> {
         .get(url)
         .header("User-Agent", "signalwire-agents-rust-skills/1.0")
         .call()
-        .map_err(|e| format!("HTTP GET {} failed: {}", url, e))?;
+        .map_err(|e| format!("HTTP GET {url} failed: {e}"))?;
     let status = resp.status().as_u16();
     let body = resp
         .body_mut()
         .read_to_string()
-        .map_err(|e| format!("HTTP GET {} body read failed: {}", url, e))?;
+        .map_err(|e| format!("HTTP GET {url} body read failed: {e}"))?;
     if !(200..300).contains(&status) {
-        return Err(format!("HTTP GET {} returned {}: {}", url, status, body));
+        return Err(format!("HTTP GET {url} returned {status}: {body}"));
     }
     Ok(body)
 }

@@ -94,7 +94,7 @@ fn hex_hmac_sha1(key: &str, message: &str) -> String {
     let digest = mac.finalize().into_bytes();
     let mut out = String::with_capacity(digest.len() * 2);
     for b in &digest {
-        out.push_str(&format!("{:02x}", b));
+        out.push_str(&format!("{b:02x}"));
     }
     out
 }
@@ -255,14 +255,14 @@ fn candidate_urls(url: &str) -> Vec<String> {
     match current_port {
         None => {
             // No port → also try with the standard port.
-            let with_port = format!("{}://{}:{}{}", scheme, host_part, standard_port, tail);
+            let with_port = format!("{scheme}://{host_part}:{standard_port}{tail}");
             if with_port != url {
                 candidates.push(with_port);
             }
         }
         Some(p) if p == standard_port => {
             // Standard port present → also try without it.
-            let without_port = format!("{}://{}{}", scheme, host_part, tail);
+            let without_port = format!("{scheme}://{host_part}{tail}");
             if without_port != url {
                 candidates.push(without_port);
             }
@@ -292,7 +292,7 @@ fn check_body_sha256(url: &str, raw_body: &str) -> bool {
     let digest = hasher.finalize();
     let mut hex = String::with_capacity(digest.len() * 2);
     for b in &digest {
-        hex.push_str(&format!("{:02x}", b));
+        hex.push_str(&format!("{b:02x}"));
     }
     safe_eq(&hex, &expected)
 }
@@ -598,7 +598,7 @@ mod tests {
         let key = "test-key";
         let url = "https://example.com/hook";
         let body = "To=a&To=b";
-        let expected_data = format!("{}ToaTob", url);
+        let expected_data = format!("{url}ToaTob");
         let sig = b64_hmac_sha1(key, &expected_data);
         let r = validate_webhook_signature(key, &sig, url, body);
         assert_eq!(r, Ok(true));
@@ -609,7 +609,7 @@ mod tests {
         // To=b&To=a is a different submission and yields a different digest.
         let key = "test-key";
         let url = "https://example.com/hook";
-        let data_ab = format!("{}ToaTob", url);
+        let data_ab = format!("{url}ToaTob");
         let sig_for_ab = b64_hmac_sha1(key, &data_ab);
         let r_match = validate_webhook_signature(key, &sig_for_ab, url, "To=a&To=b");
         let r_mismatch = validate_webhook_signature(key, &sig_for_ab, url, "To=b&To=a");

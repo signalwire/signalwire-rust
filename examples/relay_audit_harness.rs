@@ -90,7 +90,7 @@ fn main() {
     }
 
     if let Err(e) = client.connect() {
-        eprintln!("relay_audit_harness: connect failed: {}", e);
+        eprintln!("relay_audit_harness: connect failed: {e}");
         std::process::exit(1);
     }
 

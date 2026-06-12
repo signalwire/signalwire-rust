@@ -185,8 +185,7 @@ mod tests {
         for verb in &expected {
             assert!(
                 is_valid_verb(verb),
-                "Expected verb '{}' to be valid",
-                verb
+                "Expected verb '{verb}' to be valid"
             );
         }
     }

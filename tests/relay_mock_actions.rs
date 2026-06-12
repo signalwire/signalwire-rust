@@ -51,8 +51,7 @@ fn answered_inbound_call(
     let cid = call_id.to_string();
     assert!(
         wait_until(3000, || captured.lock().unwrap().is_some()),
-        "on_call did not fire for {}",
-        cid
+        "on_call did not fire for {cid}"
     );
     let call = captured.lock().unwrap().clone().unwrap();
     *call.state.lock().unwrap() = "answered".to_string();
@@ -76,7 +75,7 @@ fn send_action_frame(
             obj.insert(k.clone(), v.clone());
         }
     }
-    let id = format!("rpc-{}-{}", method, control_id);
+    let id = format!("rpc-{method}-{control_id}");
     let frame = json!({
         "jsonrpc": "2.0",
         "id": id.clone(),

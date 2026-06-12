@@ -121,7 +121,7 @@ impl Call {
         let event_type = event.event_type();
         let params = event.params();
 
-        self.logger.debug(&format!("dispatchEvent: {}", event_type));
+        self.logger.debug(&format!("dispatchEvent: {event_type}"));
 
         // ── call-level state events ──────────────────────────────────
         if event_type == "calling.call.state" {

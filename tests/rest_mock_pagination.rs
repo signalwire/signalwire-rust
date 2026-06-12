@@ -119,8 +119,7 @@ fn test_pagination_walks_pages_and_terminates() {
     assert_eq!(
         cursor.as_slice(),
         &["page2".to_string()],
-        "expected cursor=[page2], got {:?}",
-        cursor
+        "expected cursor=[page2], got {cursor:?}"
     );
 }
 
@@ -149,6 +148,6 @@ fn test_pagination_terminal_page_then_exhausted() {
     );
     // Second call returns Ok(None) (no more items).
     let second = it.next_item().expect("second");
-    assert!(second.is_none(), "expected None, got {:?}", second);
+    assert!(second.is_none(), "expected None, got {second:?}");
     assert!(it.is_done(), "iterator must be done");
 }

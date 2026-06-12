@@ -93,7 +93,7 @@ impl SkillBase for Datasphere {
                     .unwrap_or_default();
 
                 let base = std::env::var("DATASPHERE_BASE_URL").unwrap_or_else(|_| {
-                    format!("https://{}.signalwire.com", space_name)
+                    format!("https://{space_name}.signalwire.com")
                 });
                 let url = format!(
                     "{}/api/datasphere/documents/search",
@@ -111,7 +111,7 @@ impl SkillBase for Datasphere {
                     Ok(v) => v,
                     Err(e) => {
                         let mut r = FunctionResult::new();
-                        r.set_response(&format!("DataSphere error: {}", e));
+                        r.set_response(&format!("DataSphere error: {e}"));
                         return r;
                     }
                 };
@@ -127,8 +127,7 @@ impl SkillBase for Datasphere {
 
                 let formatted = if entries.is_empty() {
                     format!(
-                        "No DataSphere knowledge results for \"{}\".",
-                        query
+                        "No DataSphere knowledge results for \"{query}\"."
                     )
                 } else {
                     let lines: Vec<String> = entries
@@ -205,7 +204,7 @@ fn http_post_json(
         .build()
         .into();
 
-    let auth = format!("Basic {}", BASE64.encode(format!("{}:{}", project, token)));
+    let auth = format!("Basic {}", BASE64.encode(format!("{project}:{token}")));
     let body = serde_json::to_string(payload).unwrap_or_else(|_| "{}".to_string());
 
     let mut resp = agent
@@ -215,20 +214,20 @@ fn http_post_json(
         .header("Authorization", &auth)
         .header("User-Agent", "signalwire-agents-rust-skills/1.0")
         .send(&body)
-        .map_err(|e| format!("POST {} failed: {}", url, e))?;
+        .map_err(|e| format!("POST {url} failed: {e}"))?;
 
     let status = resp.status().as_u16();
     let body_str = resp
         .body_mut()
         .read_to_string()
-        .map_err(|e| format!("POST {} body read failed: {}", url, e))?;
+        .map_err(|e| format!("POST {url} body read failed: {e}"))?;
 
     if !(200..300).contains(&status) {
-        return Err(format!("POST {} returned {}: {}", url, status, body_str));
+        return Err(format!("POST {url} returned {status}: {body_str}"));
     }
 
     serde_json::from_str(&body_str)
-        .map_err(|e| format!("POST {} returned non-JSON: {}", url, e))
+        .map_err(|e| format!("POST {url} returned non-JSON: {e}"))
 }
 
 #[cfg(test)]

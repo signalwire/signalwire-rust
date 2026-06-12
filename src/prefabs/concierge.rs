@@ -88,7 +88,7 @@ impl ConciergeAgent {
 
         let welcome = welcome_message
             .clone()
-            .unwrap_or_else(|| format!("Welcome to {}. How can I assist you today?", venue_name));
+            .unwrap_or_else(|| format!("Welcome to {venue_name}. How can I assist you today?"));
 
         // Global data
         agent.set_global_data(json!({
@@ -101,8 +101,7 @@ impl ConciergeAgent {
         agent.prompt_add_section(
             "Concierge Role",
             &format!(
-                "You are the virtual concierge for {}. {}",
-                venue_name, welcome
+                "You are the virtual concierge for {venue_name}. {welcome}"
             ),
             vec![
                 "Welcome users and explain available services",
@@ -124,10 +123,10 @@ impl ConciergeAgent {
             for (amenity_name, info) in &amenities {
                 let mut desc = amenity_name.clone();
                 if let Some(hours) = info.get("hours").and_then(|v| v.as_str()) {
-                    desc.push_str(&format!(" - Hours: {}", hours));
+                    desc.push_str(&format!(" - Hours: {hours}"));
                 }
                 if let Some(location) = info.get("location").and_then(|v| v.as_str()) {
-                    desc.push_str(&format!(" - Location: {}", location));
+                    desc.push_str(&format!(" - Location: {location}"));
                 }
                 amenity_bullets.push(desc);
             }
@@ -139,7 +138,7 @@ impl ConciergeAgent {
         if !hours_of_operation.is_empty() {
             let mut hour_bullets: Vec<String> = Vec::new();
             for (day, hours) in &hours_of_operation {
-                hour_bullets.push(format!("{}: {}", day, hours));
+                hour_bullets.push(format!("{day}: {hours}"));
             }
             let bullet_refs: Vec<&str> = hour_bullets.iter().map(|s| s.as_str()).collect();
             agent.prompt_add_section("Hours of Operation", "", bullet_refs);
@@ -170,9 +169,9 @@ impl ConciergeAgent {
                     .get("date")
                     .and_then(|v| v.as_str())
                     .unwrap_or("");
-                let mut response = format!("Checking availability for {} at {}", service, vn);
+                let mut response = format!("Checking availability for {service} at {vn}");
                 if !date.is_empty() {
-                    response.push_str(&format!(" on {}", date));
+                    response.push_str(&format!(" on {date}"));
                 }
                 FunctionResult::with_response(&response)
             }),
@@ -202,15 +201,13 @@ impl ConciergeAgent {
                             .and_then(|v| v.as_str())
                             .unwrap_or("location not specified");
                         return FunctionResult::with_response(&format!(
-                            "The {} at {} is located at: {}",
-                            amenity_name, vn2, location
+                            "The {amenity_name} at {vn2} is located at: {location}"
                         ));
                     }
                 }
 
                 FunctionResult::with_response(&format!(
-                    "Directions to {} at {}: please ask the front desk for assistance.",
-                    destination, vn2
+                    "Directions to {destination} at {vn2}: please ask the front desk for assistance."
                 ))
             }),
             false,

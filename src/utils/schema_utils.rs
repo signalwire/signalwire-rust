@@ -177,8 +177,7 @@ impl SchemaUtils {
             let present = cfg_obj.map(|o| o.contains_key(&prop)).unwrap_or(false);
             if !present {
                 errors.push(format!(
-                    "Missing required property '{}' for verb '{}'",
-                    prop, verb_name
+                    "Missing required property '{prop}' for verb '{verb_name}'"
                 ));
             }
         }
@@ -209,15 +208,14 @@ impl SchemaUtils {
         for name in &keys {
             let t = python_type_annotation(params.get(*name).unwrap());
             if required.contains(*name) {
-                parts.push(format!("{}: {}", name, t));
+                parts.push(format!("{name}: {t}"));
             } else {
-                parts.push(format!("{}: Optional[{}] = None", name, t));
+                parts.push(format!("{name}: Optional[{t}] = None"));
             }
         }
         parts.push("**kwargs".to_string());
         let mut doc = format!(
-            "\"\"\"\n        Add the {} verb to the current document\n        \n",
-            verb_name
+            "\"\"\"\n        Add the {verb_name} verb to the current document\n        \n"
         );
         for name in &keys {
             let desc = params
@@ -226,7 +224,7 @@ impl SchemaUtils {
                 .and_then(|d| d.as_str())
                 .map(|s| s.replace('\n', " ").trim().to_string())
                 .unwrap_or_default();
-            doc.push_str(&format!("        Args:\n            {}: {}\n", name, desc));
+            doc.push_str(&format!("        Args:\n            {name}: {desc}\n"));
         }
         doc.push_str(
             "        \n        Returns:\n            True if the verb was added successfully, False otherwise\n        \"\"\"\n",
@@ -245,16 +243,16 @@ impl SchemaUtils {
             "        config = {}".to_string(),
         ];
         for name in &keys {
-            lines.push(format!("        if {} is not None:", name));
-            lines.push(format!("            config['{}'] = {}", name, name));
+            lines.push(format!("        if {name} is not None:"));
+            lines.push(format!("            config['{name}'] = {name}"));
         }
         lines.push("        # Add any additional parameters from kwargs".to_string());
         lines.push("        for key, value in kwargs.items():".to_string());
         lines.push("            if value is not None:".to_string());
         lines.push("                config[key] = value".to_string());
         lines.push(String::new());
-        lines.push(format!("        # Add the {} verb", verb_name));
-        lines.push(format!("        return self.add_verb('{}', config)", verb_name));
+        lines.push(format!("        # Add the {verb_name} verb"));
+        lines.push(format!("        return self.add_verb('{verb_name}', config)"));
         lines.join("\n")
     }
 
@@ -335,7 +333,7 @@ fn python_type_annotation(def: &Value) -> String {
                 .get("items")
                 .map(python_type_annotation)
                 .unwrap_or_else(|| "Any".to_string());
-            format!("List[{}]", item)
+            format!("List[{item}]")
         }
         Some("object") => "Dict[str, Any]".to_string(),
         _ => "Any".to_string(),
@@ -438,7 +436,7 @@ mod tests {
     fn generate_method_signature_shape() {
         let (_g, su) = fresh();
         let sig = su.generate_method_signature("answer");
-        assert!(sig.starts_with("def answer("), "got: {}", sig);
+        assert!(sig.starts_with("def answer("), "got: {sig}");
         assert!(sig.contains("**kwargs"));
     }
 
@@ -456,7 +454,7 @@ mod tests {
             "ai".to_string(),
             vec!["missing prompt".to_string(), "bad type".to_string()],
         );
-        let msg = format!("{}", err);
+        let msg = format!("{err}");
         assert!(msg.contains("ai"));
         assert!(msg.contains("missing prompt"));
         assert_eq!(err.verb_name, "ai");

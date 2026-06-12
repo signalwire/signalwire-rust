@@ -191,7 +191,7 @@ mod tests {
     #[test]
     fn test_debug_format() {
         let ev = Event::new("test.event", HashMap::new(), 1.0);
-        let dbg = format!("{:?}", ev);
+        let dbg = format!("{ev:?}");
         assert!(dbg.contains("test.event"));
     }
 }

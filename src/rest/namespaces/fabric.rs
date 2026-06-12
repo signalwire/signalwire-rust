@@ -658,6 +658,6 @@ mod tests {
             .cxml_applications()
             .create(&serde_json::json!({}))
             .unwrap_err();
-        assert!(format!("{:?}", err).contains("cXML applications"));
+        assert!(format!("{err:?}").contains("cXML applications"));
     }
 }

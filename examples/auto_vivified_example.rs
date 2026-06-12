@@ -53,7 +53,7 @@ fn main() {
     // Dump the document
     let doc = service.render_pretty();
     println!("Generated SWML:");
-    println!("{}", doc);
+    println!("{doc}");
 
     // Serve
     println!("\nStarting voicemail service at http://localhost:3000/voicemail");

@@ -80,12 +80,11 @@ impl SkillBase for Math {
                         result.set_response("Error: Result is not a number.");
                     }
                     Some(val) => {
-                        result.set_response(&format!("The result of {} is {}", expression, val));
+                        result.set_response(&format!("The result of {expression} is {val}"));
                     }
                     None => {
                         result.set_response(&format!(
-                            "Error: Could not evaluate expression \"{}\".",
-                            expression
+                            "Error: Could not evaluate expression \"{expression}\"."
                         ));
                     }
                 }

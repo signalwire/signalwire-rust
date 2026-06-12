@@ -201,7 +201,7 @@ impl SkillBase for SwmlTransfer {
                 .and_then(|v| v.as_str())
                 .unwrap_or("");
             let entry = if !message.is_empty() {
-                format!("{} - {}", pattern, message)
+                format!("{pattern} - {message}")
             } else {
                 pattern.clone()
             };

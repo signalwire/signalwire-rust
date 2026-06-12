@@ -64,7 +64,7 @@ impl SurveyAgent {
         let intro_text = if !introduction.is_empty() {
             introduction.clone()
         } else {
-            format!("Welcome to the {}.", survey_name)
+            format!("Welcome to the {survey_name}.")
         };
 
         agent.prompt_add_section(
@@ -87,7 +87,7 @@ impl SurveyAgent {
                 .get("required")
                 .and_then(|v| v.as_bool())
                 .unwrap_or(false);
-            let mut desc = format!("Q: {} (type: {})", text, qtype);
+            let mut desc = format!("Q: {text} (type: {qtype})");
             if required {
                 desc.push_str(" [required]");
             }
@@ -124,8 +124,7 @@ impl SurveyAgent {
                     Some(q) => q,
                     None => {
                         return FunctionResult::with_response(&format!(
-                            "Unknown question ID: {}",
-                            question_id
+                            "Unknown question ID: {question_id}"
                         ));
                     }
                 };
@@ -144,13 +143,11 @@ impl SurveyAgent {
                         match answer.parse::<i64>() {
                             Ok(val) if val >= 1 && val <= scale => {
                                 FunctionResult::with_response(&format!(
-                                    "Valid rating: {}/{}",
-                                    val, scale
+                                    "Valid rating: {val}/{scale}"
                                 ))
                             }
                             _ => FunctionResult::with_response(&format!(
-                                "Invalid rating. Please provide a number between 1 and {}.",
-                                scale
+                                "Invalid rating. Please provide a number between 1 and {scale}."
                             )),
                         }
                     }
@@ -165,8 +162,7 @@ impl SurveyAgent {
                             if let Some(c) = choice.as_str()
                                 && c.trim().to_lowercase() == lower_answer {
                                     return FunctionResult::with_response(&format!(
-                                        "Valid choice: {}",
-                                        c
+                                        "Valid choice: {c}"
                                     ));
                                 }
                         }
@@ -181,8 +177,7 @@ impl SurveyAgent {
                         let normalized = answer.trim().to_lowercase();
                         if ["yes", "no", "y", "n"].contains(&normalized.as_str()) {
                             FunctionResult::with_response(&format!(
-                                "Valid response: {}",
-                                normalized
+                                "Valid response: {normalized}"
                             ))
                         } else {
                             FunctionResult::with_response("Please respond with yes or no.")
@@ -194,8 +189,7 @@ impl SurveyAgent {
                             FunctionResult::with_response("Please provide a non-empty response.")
                         } else {
                             FunctionResult::with_response(&format!(
-                                "Response accepted: {}",
-                                answer
+                                "Response accepted: {answer}"
                             ))
                         }
                     }
@@ -222,8 +216,7 @@ impl SurveyAgent {
                     .and_then(|v| v.as_str())
                     .unwrap_or("");
                 FunctionResult::with_response(&format!(
-                    "Survey answer for {}: {}",
-                    question_id, answer
+                    "Survey answer for {question_id}: {answer}"
                 ))
             }),
             false,

@@ -40,7 +40,7 @@ impl RestClient {
             );
         }
 
-        let base_url = format!("https://{}", space);
+        let base_url = format!("https://{space}");
         let http = HttpClient::new(
             project_id,
             token,
@@ -100,7 +100,7 @@ impl RestClient {
             project_id: project_id.to_string(),
             token: token.to_string(),
             space: space.to_string(),
-            base_url: format!("https://{}", space),
+            base_url: format!("https://{space}"),
             http,
         })
     }

@@ -67,7 +67,7 @@ impl SkillBase for PlayBackgroundFile {
                 "play_background_file"
             };
 
-            action_enum.push(format!("start_{}", key));
+            action_enum.push(format!("start_{key}"));
 
             expressions.push(json!({
                 "string": "${args.action}",

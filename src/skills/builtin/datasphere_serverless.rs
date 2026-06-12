@@ -57,7 +57,7 @@ impl SkillBase for DatasphereServerless {
             "No results found in the knowledge base for the given query.",
         );
 
-        let auth_string = BASE64.encode(format!("{}:{}", project_id, token));
+        let auth_string = BASE64.encode(format!("{project_id}:{token}"));
 
         let mut body_payload = json!({
             "document_id": document_id,

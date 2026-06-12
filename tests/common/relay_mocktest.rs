@@ -88,8 +88,7 @@ impl CrossBinaryLock {
             .open(CROSS_BINARY_LOCK_PATH)
             .unwrap_or_else(|e| {
                 panic!(
-                    "relay_mocktest: open {}: {}",
-                    CROSS_BINARY_LOCK_PATH, e
+                    "relay_mocktest: open {CROSS_BINARY_LOCK_PATH}: {e}"
                 )
             });
         // LOCK_EX: exclusive lock. Blocks until acquired. Released on

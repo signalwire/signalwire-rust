@@ -48,12 +48,12 @@ impl SkillBase for InfoGatherer {
         let namespace = self.get_instance_key();
 
         let start_tool = if !prefix.is_empty() {
-            format!("{}_start_questions", prefix)
+            format!("{prefix}_start_questions")
         } else {
             "start_questions".to_string()
         };
         let submit_tool = if !prefix.is_empty() {
-            format!("{}_submit_answer", prefix)
+            format!("{prefix}_submit_answer")
         } else {
             "submit_answer".to_string()
         };
@@ -78,7 +78,7 @@ impl SkillBase for InfoGatherer {
                     .and_then(|v| v.as_str())
                     .unwrap_or("No question text.");
 
-                result.set_response(&format!("Starting questions. First question: {}", first));
+                result.set_response(&format!("Starting questions. First question: {first}"));
                 result.add_action(json!({
                     "set_global_data": {
                         namespace_clone.clone(): {
@@ -142,8 +142,7 @@ impl SkillBase for InfoGatherer {
                         .and_then(|v| v.as_str())
                         .unwrap_or("");
                     result.set_response(&format!(
-                        "You answered \"{}\" for: {}. Can you confirm this is correct?",
-                        answer, question_text
+                        "You answered \"{answer}\" for: {question_text}. Can you confirm this is correct?"
                     ));
                     return result;
                 }
@@ -157,8 +156,7 @@ impl SkillBase for InfoGatherer {
                         .and_then(|v| v.as_str())
                         .unwrap_or("No question text.");
                     result.set_response(&format!(
-                        "Answer recorded. Next question: {}",
-                        next_question
+                        "Answer recorded. Next question: {next_question}"
                     ));
                 }
 

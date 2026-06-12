@@ -358,7 +358,7 @@ fn format_web_search_response(
     response_postfix: &str,
 ) -> String {
     if items.is_empty() {
-        return format!("No web results for \"{}\".", query);
+        return format!("No web results for \"{query}\".");
     }
     let lines: Vec<String> = items
         .iter()
@@ -367,15 +367,15 @@ fn format_web_search_response(
             let title = it.get("title").and_then(|v| v.as_str()).unwrap_or("");
             let link = it.get("link").and_then(|v| v.as_str()).unwrap_or("");
             let snippet = it.get("snippet").and_then(|v| v.as_str()).unwrap_or("");
-            format!("- {} ({})\n  {}", title, link, snippet)
+            format!("- {title} ({link})\n  {snippet}")
         })
         .collect();
     let mut response = format!("Web search results for \"{}\":\n{}", query, lines.join("\n"));
     if !response_prefix.is_empty() {
-        response = format!("{}\n\n{}", response_prefix, response);
+        response = format!("{response_prefix}\n\n{response}");
     }
     if !response_postfix.is_empty() {
-        response = format!("{}\n\n{}", response, response_postfix);
+        response = format!("{response}\n\n{response_postfix}");
     }
     response
 }
@@ -426,17 +426,17 @@ fn format_snippet_results(
             .unwrap_or("")
             .trim();
         lines.push(format!("=== RESULT {} ===", i + 1));
-        lines.push(format!("Title: {}", title));
-        lines.push(format!("URL: {}", link));
-        lines.push(format!("Snippet: {}", snippet));
+        lines.push(format!("Title: {title}"));
+        lines.push(format!("URL: {link}"));
+        lines.push(format!("Snippet: {snippet}"));
         lines.push(String::new());
     }
     let mut response = lines.join("\n");
     if !response_prefix.is_empty() {
-        response = format!("{}\n\n{}", response_prefix, response);
+        response = format!("{response_prefix}\n\n{response}");
     }
     if !response_postfix.is_empty() {
-        response = format!("{}\n\n{}", response, response_postfix);
+        response = format!("{response}\n\n{response_postfix}");
     }
     response
 }
@@ -462,17 +462,17 @@ fn http_get_json(url: &str, per_page_timeout: f64) -> Result<Value, String> {
         .get(url)
         .header("User-Agent", "signalwire-agents-rust-skills/1.0")
         .call()
-        .map_err(|e| format!("HTTP GET {} failed: {}", url, e))?;
+        .map_err(|e| format!("HTTP GET {url} failed: {e}"))?;
     let status = resp.status().as_u16();
     let body = resp
         .body_mut()
         .read_to_string()
-        .map_err(|e| format!("HTTP GET {} body read failed: {}", url, e))?;
+        .map_err(|e| format!("HTTP GET {url} body read failed: {e}"))?;
     if !(200..300).contains(&status) {
-        return Err(format!("HTTP GET {} returned {}: {}", url, status, body));
+        return Err(format!("HTTP GET {url} returned {status}: {body}"));
     }
     serde_json::from_str(&body)
-        .map_err(|e| format!("HTTP GET {} returned non-JSON: {}", url, e))
+        .map_err(|e| format!("HTTP GET {url} returned non-JSON: {e}"))
 }
 
 /// Minimal URL-encode for query-string values. Encodes the small set
@@ -485,7 +485,7 @@ fn url_encode(s: &str) -> String {
             b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
                 out.push(b as char);
             }
-            _ => out.push_str(&format!("%{:02X}", b)),
+            _ => out.push_str(&format!("%{b:02X}")),
         }
     }
     out
@@ -688,7 +688,7 @@ mod tests {
                 });
             }
         });
-        format!("http://127.0.0.1:{}", port)
+        format!("http://127.0.0.1:{port}")
     }
 
     /// A local TCP server that answers EVERY request with a fixed HTTP/1.1
@@ -715,7 +715,7 @@ mod tests {
                 });
             }
         });
-        format!("http://127.0.0.1:{}", port)
+        format!("http://127.0.0.1:{port}")
     }
 
     /// Build + register the web_search skill on a throwaway agent and invoke

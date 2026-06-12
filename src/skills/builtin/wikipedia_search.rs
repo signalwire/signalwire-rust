@@ -85,7 +85,7 @@ impl SkillBase for WikipediaSearch {
                     Ok(v) => v,
                     Err(e) => {
                         let mut r = FunctionResult::new();
-                        r.set_response(&format!("Wikipedia search error: {}", e));
+                        r.set_response(&format!("Wikipedia search error: {e}"));
                         return r;
                     }
                 };
@@ -100,7 +100,7 @@ impl SkillBase for WikipediaSearch {
                     .unwrap_or_default();
 
                 let formatted = if entries.is_empty() {
-                    format!("No Wikipedia results for \"{}\".", query)
+                    format!("No Wikipedia results for \"{query}\".")
                 } else {
                     let lines: Vec<String> = entries
                         .iter()
@@ -108,7 +108,7 @@ impl SkillBase for WikipediaSearch {
                         .map(|e| {
                             let title = e.get("title").and_then(|v| v.as_str()).unwrap_or("");
                             let snippet = e.get("snippet").and_then(|v| v.as_str()).unwrap_or("");
-                            format!("- {}: {}", title, snippet)
+                            format!("- {title}: {snippet}")
                         })
                         .collect();
                     format!(
@@ -152,17 +152,17 @@ fn http_get_json(url: &str) -> Result<Value, String> {
         .get(url)
         .header("User-Agent", "signalwire-agents-rust-skills/1.0")
         .call()
-        .map_err(|e| format!("HTTP GET {} failed: {}", url, e))?;
+        .map_err(|e| format!("HTTP GET {url} failed: {e}"))?;
     let status = resp.status().as_u16();
     let body = resp
         .body_mut()
         .read_to_string()
-        .map_err(|e| format!("HTTP GET {} body read failed: {}", url, e))?;
+        .map_err(|e| format!("HTTP GET {url} body read failed: {e}"))?;
     if !(200..300).contains(&status) {
-        return Err(format!("HTTP GET {} returned {}: {}", url, status, body));
+        return Err(format!("HTTP GET {url} returned {status}: {body}"));
     }
     serde_json::from_str(&body)
-        .map_err(|e| format!("HTTP GET {} returned non-JSON: {}", url, e))
+        .map_err(|e| format!("HTTP GET {url} returned non-JSON: {e}"))
 }
 
 fn url_encode(s: &str) -> String {
@@ -172,7 +172,7 @@ fn url_encode(s: &str) -> String {
             b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
                 out.push(b as char);
             }
-            _ => out.push_str(&format!("%{:02X}", b)),
+            _ => out.push_str(&format!("%{b:02X}")),
         }
     }
     out

@@ -219,7 +219,7 @@ fn repeated_form_keys_concat_in_submission_order() {
     let key = "test-key";
     let url = "https://example.com/hook";
     let body = "To=a&To=b";
-    let expected_data = format!("{}ToaTob", url);
+    let expected_data = format!("{url}ToaTob");
     let mut mac = HmacSha1::new_from_slice(key.as_bytes()).unwrap();
     mac.update(expected_data.as_bytes());
     let sig = base64::engine::general_purpose::STANDARD.encode(mac.finalize().into_bytes());
@@ -236,7 +236,7 @@ fn repeated_form_keys_swapped_order_yields_different_signature() {
 
     let key = "test-key";
     let url = "https://example.com/hook";
-    let data_ab = format!("{}ToaTob", url);
+    let data_ab = format!("{url}ToaTob");
     let mut mac = HmacSha1::new_from_slice(key.as_bytes()).unwrap();
     mac.update(data_ab.as_bytes());
     let sig_for_ab =

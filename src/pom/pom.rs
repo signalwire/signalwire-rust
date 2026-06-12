@@ -54,7 +54,7 @@ impl PromptObjectModel {
     /// errors, matching Python's `ValueError`.
     pub fn from_json(json_str: &str) -> Result<Self, String> {
         let value: Value = serde_json::from_str(json_str)
-            .map_err(|e| format!("invalid JSON: {}", e))?;
+            .map_err(|e| format!("invalid JSON: {e}"))?;
         Self::from_value(&value)
     }
 
@@ -62,7 +62,7 @@ impl PromptObjectModel {
     /// Python's `PromptObjectModel.from_yaml(yaml_data)`.
     pub fn from_yaml(yaml_str: &str) -> Result<Self, String> {
         let value: Value = serde_norway::from_str(yaml_str)
-            .map_err(|e| format!("invalid YAML: {}", e))?;
+            .map_err(|e| format!("invalid YAML: {e}"))?;
         Self::from_value(&value)
     }
 
@@ -165,7 +165,7 @@ impl PromptObjectModel {
         // serde_json::to_string_pretty uses indent=2 by default,
         // matching Python's json.dumps(..., indent=2).
         serde_json::to_string_pretty(&self.to_value())
-            .map_err(|e| format!("failed to serialize JSON: {}", e))
+            .map_err(|e| format!("failed to serialize JSON: {e}"))
     }
 
     /// Render the model as a YAML string. Matches PyYAML's output
@@ -256,7 +256,7 @@ impl PromptObjectModel {
     ) -> Result<(), String> {
         let target = self
             .find_section_mut(target_title)
-            .ok_or_else(|| format!("No section with title '{}' found.", target_title))?;
+            .ok_or_else(|| format!("No section with title '{target_title}' found."))?;
         for section in &pom_to_add.sections {
             target.subsections.push(section.clone());
         }
@@ -487,7 +487,7 @@ fn yaml_scalar(s: &str) -> String {
         // double-quoted form because POM round-trips don't carry
         // through the *style*, only the *value* (which `from_yaml`
         // reads back identically).
-        serde_json::to_string(s).unwrap_or_else(|_| format!("\"{}\"", s))
+        serde_json::to_string(s).unwrap_or_else(|_| format!("\"{s}\""))
     } else {
         s.to_string()
     }

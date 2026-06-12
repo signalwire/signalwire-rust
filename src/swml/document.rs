@@ -55,7 +55,7 @@ impl Document {
         let verbs = self
             .sections
             .get_mut(section)
-            .unwrap_or_else(|| panic!("Section '{}' does not exist", section));
+            .unwrap_or_else(|| panic!("Section '{section}' does not exist"));
         let mut map = serde_json::Map::new();
         map.insert(verb_name.to_string(), config);
         verbs.push(Value::Object(map));
@@ -70,7 +70,7 @@ impl Document {
         let verbs = self
             .sections
             .get_mut(section)
-            .unwrap_or_else(|| panic!("Section '{}' does not exist", section));
+            .unwrap_or_else(|| panic!("Section '{section}' does not exist"));
         verbs.push(verb_hash);
     }
 

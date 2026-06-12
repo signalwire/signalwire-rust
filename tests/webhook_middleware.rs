@@ -184,7 +184,7 @@ async fn url_reconstructed_from_x_forwarded_headers_when_no_override() {
     let url = "https://tunnel.example.com/webhook";
     let body = r#"{"hello":"world"}"#;
     let mut mac = HmacSha1::new_from_slice(key.as_bytes()).unwrap();
-    mac.update(format!("{}{}", url, body).as_bytes());
+    mac.update(format!("{url}{body}").as_bytes());
     let sig: String = mac
         .finalize()
         .into_bytes()

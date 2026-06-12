@@ -298,7 +298,7 @@ impl Client {
             .unwrap_or_else(|_| "wss".to_string());
         let host_override = std::env::var("SIGNALWIRE_RELAY_HOST").ok();
         let endpoint_host = host_override.as_deref().unwrap_or(self.host.as_str());
-        let url = format!("{}://{}{}", scheme, endpoint_host, RELAY_PATH);
+        let url = format!("{scheme}://{endpoint_host}{RELAY_PATH}");
 
         // ws_connect already returns a `RelayError::Transport`; keep its
         // (richer) context rather than re-wrapping it.
@@ -462,8 +462,7 @@ impl Client {
                 self.pending.lock().unwrap().remove(&id);
                 Err(RelayError::Timeout {
                     what: format!(
-                        "signalwire.connect response (after {:?})",
-                        HANDSHAKE_TIMEOUT
+                        "signalwire.connect response (after {HANDSHAKE_TIMEOUT:?})"
                     ),
                 })
             }
@@ -524,7 +523,7 @@ impl Client {
 
         let delay = self.bump_reconnect_delay();
         self.logger
-            .warn(&format!("Reconnecting in {}s", delay));
+            .warn(&format!("Reconnecting in {delay}s"));
         thread::sleep(Duration::from_secs(delay));
 
         self.connect()
@@ -590,13 +589,13 @@ impl Client {
     /// the WebSocket. With no live socket attached the call is purely
     /// in-memory — that's the path the dispatch unit tests below take.
     pub fn send(&self, msg: &Value) {
-        self.logger.debug(&format!(">> {}", msg));
+        self.logger.debug(&format!(">> {msg}"));
         self.sent_messages.lock().unwrap().push(msg.clone());
         if let Some(tx) = self.write_tx.lock().unwrap().as_ref() {
             let raw = msg.to_string();
             if let Err(e) = tx.send(WsMessage::Text(raw.into())) {
                 self.logger
-                    .warn(&format!("write channel closed: {}", e));
+                    .warn(&format!("write channel closed: {e}"));
             }
         }
     }
@@ -616,7 +615,7 @@ impl Client {
 
     /// Parse a raw JSON string from the server and route it.
     pub fn handle_message(&self, raw: &str) {
-        self.logger.debug(&format!("<< {}", raw));
+        self.logger.debug(&format!("<< {raw}"));
 
         let data: Value = match serde_json::from_str(raw) {
             Ok(d) => d,
@@ -662,7 +661,7 @@ impl Client {
             }
             _ => {
                 self.logger
-                    .debug(&format!("Unhandled method: {}", method));
+                    .debug(&format!("Unhandled method: {method}"));
             }
         }
     }
@@ -685,7 +684,7 @@ impl Client {
                 .map(|s| s.to_string());
             self.authorization_state.lock().unwrap().clone_from(&auth_state);
             self.logger
-                .info(&format!("Authorization state: {:?}", auth_state));
+                .info(&format!("Authorization state: {auth_state:?}"));
             return;
         }
 
@@ -1078,7 +1077,7 @@ impl Client {
             .insert(call_id.to_string(), call.clone());
 
         self.logger
-            .info(&format!("Inbound call {}", call_id));
+            .info(&format!("Inbound call {call_id}"));
 
         if let Some(handler) = self.on_call_handler.lock().unwrap().as_ref() {
             handler(call, event);
@@ -1116,7 +1115,7 @@ impl Client {
             .unwrap_or("");
 
         if dial_state == "failed" {
-            self.logger.warn(&format!("dial failed for tag={}", tag));
+            self.logger.warn(&format!("dial failed for tag={tag}"));
             self.pending_dials.lock().unwrap().remove(&tag);
             return;
         }
@@ -1182,7 +1181,7 @@ impl Client {
                         if let Err(e) = socket.send(frame) {
                             client
                                 .logger
-                                .warn(&format!("WS send error: {}", e));
+                                .warn(&format!("WS send error: {e}"));
                             break;
                         }
                         wrote_any = true;
@@ -1249,7 +1248,7 @@ impl Client {
                     break;
                 }
                 Err(e) => {
-                    client.logger.warn(&format!("WS read error: {}", e));
+                    client.logger.warn(&format!("WS read error: {e}"));
                     *client.connected.lock().unwrap() = false;
                     break;
                 }
@@ -1397,12 +1396,12 @@ mod tests {
         // vars. Other tests in this module don't touch them.
         unsafe {
             std::env::set_var("SIGNALWIRE_RELAY_SCHEME", "ws");
-            std::env::set_var("SIGNALWIRE_RELAY_HOST", format!("127.0.0.1:{}", port));
+            std::env::set_var("SIGNALWIRE_RELAY_HOST", format!("127.0.0.1:{port}"));
         }
 
         let client = Arc::new(Client::new("test-project", "test-token", "ignored"));
         let res = client.connect();
-        assert!(res.is_ok(), "connect failed: {:?}", res);
+        assert!(res.is_ok(), "connect failed: {res:?}");
         // Authorization state should have been captured from the
         // fixture's response — proves the client parsed
         // `result.authorization.authorization_state`.

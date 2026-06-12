@@ -132,7 +132,7 @@ impl BedrockAgent {
     /// Set the Bedrock voice id (e.g. `"matthew"`, `"joanna"`).
     pub fn set_voice(&mut self, voice_id: &str) -> &mut Self {
         self.voice_id = voice_id.to_string();
-        self.logger.debug(&format!("Voice set to: {}", voice_id));
+        self.logger.debug(&format!("Voice set to: {voice_id}"));
         self
     }
 
@@ -165,8 +165,7 @@ impl BedrockAgent {
     /// Python's documented behavior.
     pub fn set_llm_model(&mut self, model: &str) -> &mut Self {
         self.logger.warn(&format!(
-            "set_llm_model('{}') called but Bedrock uses a fixed voice-to-voice model",
-            model
+            "set_llm_model('{model}') called but Bedrock uses a fixed voice-to-voice model"
         ));
         self
     }

@@ -54,7 +54,7 @@ fn resolve(hostname: &str) -> Option<Vec<IpAddr>> {
     if let Ok(ip) = hostname.parse::<IpAddr>() {
         return Some(vec![ip]);
     }
-    let with_port = format!("{}:0", hostname);
+    let with_port = format!("{hostname}:0");
     match with_port.to_socket_addrs() {
         Ok(addrs) => {
             let v: Vec<IpAddr> = addrs.map(|sa| sa.ip()).collect();
@@ -120,7 +120,7 @@ pub fn validate_url(url: &str, allow_private: bool) -> bool {
     let parsed = match Url::parse(url) {
         Ok(u) => u,
         Err(e) => {
-            log.warn(&format!("URL validation error: {}", e));
+            log.warn(&format!("URL validation error: {e}"));
             return false;
         }
     };
@@ -146,7 +146,7 @@ pub fn validate_url(url: &str, allow_private: bool) -> bool {
     let ips = match resolve(&hostname) {
         Some(v) if !v.is_empty() => v,
         _ => {
-            log.warn(&format!("URL rejected: could not resolve hostname {}", hostname));
+            log.warn(&format!("URL rejected: could not resolve hostname {hostname}"));
             return false;
         }
     };
@@ -155,8 +155,7 @@ pub fn validate_url(url: &str, allow_private: bool) -> bool {
         for cidr in BLOCKED_NETWORKS {
             if cidr_contains(cidr, ip) {
                 log.warn(&format!(
-                    "URL rejected: {} resolves to blocked IP {} (in {})",
-                    hostname, ip, cidr
+                    "URL rejected: {hostname} resolves to blocked IP {ip} (in {cidr})"
                 ));
                 return false;
             }

@@ -6,7 +6,7 @@ use crate::swaig::media_enums::{Codec, MediaArg, RecordDirection, RecordFormat, 
 /// an f-string — `['a', 'b', 'c']` — so the `join_conference` validation
 /// error messages are byte-identical to the reference's `ValueError` text.
 fn render_list(values: &[&str]) -> String {
-    let items: Vec<String> = values.iter().map(|v| format!("'{}'", v)).collect();
+    let items: Vec<String> = values.iter().map(|v| format!("'{v}'")).collect();
     format!("[{}]", items.join(", "))
 }
 

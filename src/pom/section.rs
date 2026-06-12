@@ -187,7 +187,7 @@ impl Section {
             if self.numbered_bullets {
                 md.push(format!("{}. {}", i + 1, bullet));
             } else {
-                md.push(format!("- {}", bullet));
+                md.push(format!("- {bullet}"));
             }
         }
 
@@ -231,7 +231,7 @@ impl Section {
         let indent_str = "  ".repeat(indent);
         let mut xml: Vec<String> = Vec::new();
 
-        xml.push(format!("{}<section>", indent_str));
+        xml.push(format!("{indent_str}<section>"));
 
         if let Some(title) = &self.title {
             let prefix = if !section_number.is_empty() {
@@ -241,7 +241,7 @@ impl Section {
             } else {
                 String::new()
             };
-            xml.push(format!("{}  <title>{}{}</title>", indent_str, prefix, title));
+            xml.push(format!("{indent_str}  <title>{prefix}{title}</title>"));
         }
 
         if !self.body.is_empty() {
@@ -249,7 +249,7 @@ impl Section {
         }
 
         if !self.bullets.is_empty() {
-            xml.push(format!("{}  <bullets>", indent_str));
+            xml.push(format!("{indent_str}  <bullets>"));
             for (i, bullet) in self.bullets.iter().enumerate() {
                 if self.numbered_bullets {
                     xml.push(format!(
@@ -259,14 +259,14 @@ impl Section {
                         bullet
                     ));
                 } else {
-                    xml.push(format!("{}    <bullet>{}</bullet>", indent_str, bullet));
+                    xml.push(format!("{indent_str}    <bullet>{bullet}</bullet>"));
                 }
             }
-            xml.push(format!("{}  </bullets>", indent_str));
+            xml.push(format!("{indent_str}  </bullets>"));
         }
 
         if !self.subsections.is_empty() {
-            xml.push(format!("{}  <subsections>", indent_str));
+            xml.push(format!("{indent_str}  <subsections>"));
             let any_subsection_numbered =
                 self.subsections.iter().any(|s| s.numbered == Some(true));
 
@@ -286,10 +286,10 @@ impl Section {
 
                 xml.push(subsection.render_xml_at(indent + 2, &new_section_number));
             }
-            xml.push(format!("{}  </subsections>", indent_str));
+            xml.push(format!("{indent_str}  </subsections>"));
         }
 
-        xml.push(format!("{}</section>", indent_str));
+        xml.push(format!("{indent_str}</section>"));
 
         xml.join("\n")
     }

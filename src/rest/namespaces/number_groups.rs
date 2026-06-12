@@ -102,8 +102,7 @@ impl<'a> NumberGroups<'a> {
         membership_id: &str,
     ) -> Result<Value, SignalWireRestError> {
         let path = format!(
-            "/api/relay/rest/number_group_memberships/{}",
-            membership_id
+            "/api/relay/rest/number_group_memberships/{membership_id}"
         );
         self.client.get(&path, &HashMap::new())
     }
@@ -113,8 +112,7 @@ impl<'a> NumberGroups<'a> {
         membership_id: &str,
     ) -> Result<Value, SignalWireRestError> {
         let path = format!(
-            "/api/relay/rest/number_group_memberships/{}",
-            membership_id
+            "/api/relay/rest/number_group_memberships/{membership_id}"
         );
         self.client.delete(&path)
     }

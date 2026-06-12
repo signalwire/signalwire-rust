@@ -176,7 +176,7 @@ mod top_level_tests {
         // Smoke test: the top-level helper forwards to SkillRegistry.
         let dir = std::env::current_dir().unwrap().join("src");
         let result = add_skill_directory(dir.to_str().unwrap());
-        assert!(result.is_ok(), "top-level add_skill_directory failed: {:?}", result);
+        assert!(result.is_ok(), "top-level add_skill_directory failed: {result:?}");
     }
 
     #[test]

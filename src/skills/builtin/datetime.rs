@@ -56,8 +56,7 @@ impl SkillBase for Datetime {
                 // Use the timezone name in the response; actual tz conversion is best-effort
                 let time_str = now.format("%H:%M:%S UTC").to_string();
                 result.set_response(&format!(
-                    "The current time in {} is {} (server UTC reference)",
-                    tz_name, time_str
+                    "The current time in {tz_name} is {time_str} (server UTC reference)"
                 ));
                 result
             }),
@@ -84,8 +83,7 @@ impl SkillBase for Datetime {
                 let now = chrono::Utc::now();
                 let date_str = now.format("%Y-%m-%d (%A, %B %e, %Y)").to_string();
                 result.set_response(&format!(
-                    "The current date in {} is {} (server UTC reference)",
-                    tz_name, date_str
+                    "The current date in {tz_name} is {date_str} (server UTC reference)"
                 ));
                 result
             }),

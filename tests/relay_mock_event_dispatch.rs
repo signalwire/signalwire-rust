@@ -52,8 +52,7 @@ fn answered_inbound_call(
     let cid = call_id.to_string();
     assert!(
         wait_until(3000, || captured.lock().unwrap().is_some()),
-        "on_call did not fire for {}",
-        cid
+        "on_call did not fire for {cid}"
     );
     let call = captured.lock().unwrap().clone().unwrap();
     *call.state.lock().unwrap() = "answered".to_string();
@@ -337,8 +336,7 @@ fn test_event_ack_sent_back_to_server() {
         .collect();
     assert!(
         !acks.is_empty(),
-        "no event ACK with id={:?} found in journal",
-        evt_id
+        "no event ACK with id={evt_id:?} found in journal"
     );
     client.disconnect();
 }
@@ -370,8 +368,7 @@ fn test_server_ping_acked_by_sdk() {
         .collect();
     assert!(
         !pongs.is_empty(),
-        "SDK did not respond to ping with id={:?}",
-        ping_id
+        "SDK did not respond to ping with id={ping_id:?}"
     );
     client.disconnect();
 }

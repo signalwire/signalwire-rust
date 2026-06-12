@@ -37,7 +37,7 @@ fn main() {
     // -- Debug events --
     agent.enable_debug_events("all");
     agent.on_debug_event(Box::new(|event, _headers| {
-        println!("Debug event: {}", event);
+        println!("Debug event: {event}");
     }));
 
     // -- Tools demonstrating FunctionResult actions --

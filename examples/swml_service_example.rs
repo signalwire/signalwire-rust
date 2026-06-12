@@ -49,7 +49,7 @@ fn main() {
     // Render and display
     let doc = service.render_pretty();
     println!("SWML document:");
-    println!("{}", doc);
+    println!("{doc}");
 
     println!("\nServing at http://localhost:3000/swml-demo");
     service.run();

@@ -441,8 +441,7 @@ fn test_scenario_play_full_inbound_flow() {
     assert_eq!(
         result.get("status").and_then(Value::as_str),
         Some("completed"),
-        "scenario_play did not complete: {}",
-        result
+        "scenario_play did not complete: {result}"
     );
     assert!(captured.lock().unwrap().is_some());
     let _call = captured.lock().unwrap().clone().unwrap();

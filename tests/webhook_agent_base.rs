@@ -42,13 +42,13 @@ fn make_agent(signing_key: Option<&str>) -> AgentBase {
 fn auth_headers() -> HashMap<String, String> {
     let mut h = HashMap::new();
     let token = base64::engine::general_purpose::STANDARD.encode("user:pass");
-    h.insert("Authorization".into(), format!("Basic {}", token));
+    h.insert("Authorization".into(), format!("Basic {token}"));
     h
 }
 
 fn hex_sig(key: &str, url: &str, body: &str) -> String {
     let mut mac = HmacSha1::new_from_slice(key.as_bytes()).unwrap();
-    mac.update(format!("{}{}", url, body).as_bytes());
+    mac.update(format!("{url}{body}").as_bytes());
     mac.finalize()
         .into_bytes()
         .iter()

@@ -172,10 +172,10 @@ impl SkillRegistry {
     pub fn add_skill_directory(path: &str) -> Result<(), String> {
         let p = PathBuf::from(path);
         if !p.exists() {
-            return Err(format!("Skill directory does not exist: {}", path));
+            return Err(format!("Skill directory does not exist: {path}"));
         }
         if !p.is_dir() {
-            return Err(format!("Path is not a directory: {}", path));
+            return Err(format!("Path is not a directory: {path}"));
         }
         let mut inner = REGISTRY.lock().expect("skill registry poisoned");
         let canonical = std::fs::canonicalize(&p).unwrap_or_else(|_| p.clone());
@@ -271,7 +271,7 @@ mod tests {
         ];
         for name in builtins {
             let factory = SkillRegistry::get_factory(name);
-            assert!(factory.is_some(), "Factory missing for builtin: {}", name);
+            assert!(factory.is_some(), "Factory missing for builtin: {name}");
             let instance = factory.unwrap()(Map::new());
             assert_eq!(instance.name(), name);
         }
@@ -293,7 +293,7 @@ mod tests {
         // Use the project's `src/skills` directory — known to exist.
         let dir = std::env::current_dir().unwrap().join("src").join("skills");
         let r = SkillRegistry::add_skill_directory(dir.to_str().unwrap());
-        assert!(r.is_ok(), "add_skill_directory failed: {:?}", r);
+        assert!(r.is_ok(), "add_skill_directory failed: {r:?}");
         let canonical = std::fs::canonicalize(&dir).unwrap();
         assert!(
             SkillRegistry::external_paths().iter().any(|p| p == &canonical),

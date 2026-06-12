@@ -1398,7 +1398,7 @@ impl AgentBase {
         let route = self.service.route();
         let sub_path = if route == "/" {
             Some(path.to_string())
-        } else if path == route || path.starts_with(&format!("{}/", route)) {
+        } else if path == route || path.starts_with(&format!("{route}/")) {
             let rest = &path[route.len()..];
             if rest.is_empty() {
                 Some("/".to_string())
@@ -1480,7 +1480,7 @@ impl AgentBase {
         let url_base = self.resolve_proxy_base(headers);
         // Strip a trailing slash on the base so we don't double-up.
         let base = url_base.trim_end_matches('/');
-        let full_url = format!("{}{}", base, path);
+        let full_url = format!("{base}{path}");
 
         crate::security::webhook::validate_webhook_signature(
             signing_key,
@@ -1672,16 +1672,16 @@ impl AgentBase {
             let proto_end = proxy_base.find("://").unwrap() + 3;
             let proto = &proxy_base[..proto_end];
             let rest = &proxy_base[proto_end..];
-            format!("{}{}:{}@{}{}/swaig", proto, user, pass, rest, route_segment)
+            format!("{proto}{user}:{pass}@{rest}{route_segment}/swaig")
         } else {
-            format!("http://{}:{}@{}{}/swaig", user, pass, proxy_base, route_segment)
+            format!("http://{user}:{pass}@{proxy_base}{route_segment}/swaig")
         };
 
         if !self.swaig_query_params.is_empty() {
             let params: Vec<String> = self
                 .swaig_query_params
                 .iter()
-                .map(|(k, v)| format!("{}={}", k, v))
+                .map(|(k, v)| format!("{k}={v}"))
                 .collect();
             auth_url = format!("{}?{}", auth_url, params.join("&"));
         }
@@ -1714,7 +1714,7 @@ impl AgentBase {
     pub fn run(&self) {
         let addr = format!("{}:{}", self.service.host(), self.service.port());
         let (server, _is_https) = crate::server::tls::bind_server(&addr)
-            .unwrap_or_else(|e| panic!("Failed to bind {}: {}", addr, e));
+            .unwrap_or_else(|e| panic!("Failed to bind {addr}: {e}"));
 
         for mut request in server.incoming_requests() {
             let method = request.method().as_str().to_string();
@@ -1948,7 +1948,7 @@ mod tests {
             json!({}),
             Box::new(|args, _raw| {
                 let name = args.get("name").and_then(|v| v.as_str()).unwrap_or("world");
-                FunctionResult::with_response(&format!("Hello, {}!", name))
+                FunctionResult::with_response(&format!("Hello, {name}!"))
             }),
             false,
         );

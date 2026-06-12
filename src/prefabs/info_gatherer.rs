@@ -84,7 +84,7 @@ impl InfoGathererAgent {
                     .get("answer")
                     .and_then(|v| v.as_str())
                     .unwrap_or("");
-                FunctionResult::with_response(&format!("Answer recorded: {}", answer))
+                FunctionResult::with_response(&format!("Answer recorded: {answer}"))
             }),
             false,
         );

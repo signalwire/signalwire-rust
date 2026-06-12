@@ -74,7 +74,7 @@ fn run_server(server: AgentServer) {
 
     let addr = format!("{}:{}", server.host(), server.port());
     let http = tiny_http::Server::http(&addr)
-        .unwrap_or_else(|e| panic!("Failed to bind {}: {}", addr, e));
+        .unwrap_or_else(|e| panic!("Failed to bind {addr}: {e}"));
 
     for mut request in http.incoming_requests() {
         let method = request.method().as_str().to_string();

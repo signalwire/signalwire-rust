@@ -57,7 +57,7 @@ impl FAQBotAgent {
                 .get("answer")
                 .and_then(|v| v.as_str())
                 .unwrap_or("?");
-            faq_bullets.push(format!("Q: {} A: {}", q, a));
+            faq_bullets.push(format!("Q: {q} A: {a}"));
         }
         let bullet_refs: Vec<&str> = faq_bullets.iter().map(|s| s.as_str()).collect();
         agent.prompt_add_section(

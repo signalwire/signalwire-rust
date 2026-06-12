@@ -103,9 +103,8 @@ fn main() {
                 .and_then(|v| v.as_str())
                 .unwrap_or("<unknown>");
             FunctionResult::with_response(&format!(
-                "Pricing for {}: $99/seat. Our equivalent plan is $79/seat \
-                 with the same SLA.",
-                competitor
+                "Pricing for {competitor}: $99/seat. Our equivalent plan is $79/seat \
+                 with the same SLA."
             ))
         }),
         false,
@@ -128,7 +127,7 @@ fn main() {
     println!();
     println!("=== Registered SWAIG tools ===");
     for name in service.list_tool_names() {
-        println!("  - {}", name);
+        println!("  - {name}");
     }
     println!();
     let (user, pass) = service.basic_auth_credentials();

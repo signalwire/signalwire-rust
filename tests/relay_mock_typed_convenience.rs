@@ -60,8 +60,7 @@ fn answered_inbound_call(
     }));
     assert!(
         wait_until(3000, || captured.lock().unwrap().is_some()),
-        "on_call did not fire for {}",
-        call_id
+        "on_call did not fire for {call_id}"
     );
     let call = captured.lock().unwrap().clone().unwrap();
     *call.state.lock().unwrap() = "answered".to_string();
@@ -84,7 +83,7 @@ fn send_built(
     method: &str,
     params: &Value,
 ) -> String {
-    let id = format!("rpc-{}", method);
+    let id = format!("rpc-{method}");
     let frame = json!({
         "jsonrpc": "2.0",
         "id": id.clone(),
@@ -108,7 +107,7 @@ fn journal_built(
     let entry = relay_mocktest::journal_recv(Some(method))
         .into_iter()
         .next()
-        .unwrap_or_else(|| panic!("expected one {} frame in mock journal", method));
+        .unwrap_or_else(|| panic!("expected one {method} frame in mock journal"));
     entry.inner_params().clone()
 }
 

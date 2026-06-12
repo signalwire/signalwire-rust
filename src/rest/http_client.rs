@@ -133,17 +133,17 @@ impl HttpTransport for UreqTransport {
                 req.call()
             }
             other => {
-                return Err(format!("Unsupported HTTP method: {}", other));
+                return Err(format!("Unsupported HTTP method: {other}"));
             }
         };
 
         let mut response = response_result
-            .map_err(|e| format!("HTTP {} {} failed: {}", method, url, e))?;
+            .map_err(|e| format!("HTTP {method} {url} failed: {e}"))?;
         let status = response.status().as_u16();
         let body_str = response
             .body_mut()
             .read_to_string()
-            .map_err(|e| format!("HTTP {} {} body read failed: {}", method, url, e))?;
+            .map_err(|e| format!("HTTP {method} {url} body read failed: {e}"))?;
         Ok((status, body_str))
     }
 }
@@ -210,7 +210,7 @@ impl HttpClient {
     ) -> Self {
         let auth_header = format!(
             "Basic {}",
-            BASE64.encode(format!("{}:{}", project_id, token))
+            BASE64.encode(format!("{project_id}:{token}"))
         );
         HttpClient {
             project_id: project_id.to_string(),
@@ -353,10 +353,10 @@ impl HttpClient {
         if !params.is_empty() {
             let qs: String = params
                 .iter()
-                .map(|(k, v)| format!("{}={}", k, v))
+                .map(|(k, v)| format!("{k}={v}"))
                 .collect::<Vec<_>>()
                 .join("&");
-            url = format!("{}?{}", url, qs);
+            url = format!("{url}?{qs}");
         }
 
         let mut headers = HashMap::new();
@@ -370,7 +370,7 @@ impl HttpClient {
             .execute(method, &url, &headers, body)
             .map_err(|e| {
                 SignalWireRestError::new(
-                    &format!("{} {} failed: {}", method, path, e),
+                    &format!("{method} {path} failed: {e}"),
                     0,
                     "",
                 )
@@ -379,7 +379,7 @@ impl HttpClient {
         // Non-2xx
         if !(200..300).contains(&status) {
             return Err(SignalWireRestError::new(
-                &format!("{} {} returned {}", method, path, status),
+                &format!("{method} {path} returned {status}"),
                 status,
                 &response_body,
             ));
@@ -392,7 +392,7 @@ impl HttpClient {
 
         serde_json::from_str(&response_body).map_err(|_| {
             SignalWireRestError::new(
-                &format!("{} {} returned non-JSON", method, path),
+                &format!("{method} {path} returned non-JSON"),
                 status,
                 &response_body,
             )

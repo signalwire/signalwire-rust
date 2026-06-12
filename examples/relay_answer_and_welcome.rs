@@ -20,7 +20,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     client.on_call(|call, _event| {
         let id = call.call_id.clone().unwrap_or_default();
-        println!("Incoming call: {}", id);
+        println!("Incoming call: {id}");
         let _ = call.answer();
 
         let _ = call.play(serde_json::json!({
@@ -31,7 +31,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }));
 
         let _ = call.hangup();
-        println!("Call ended: {}", id);
+        println!("Call ended: {id}");
     });
 
     println!("Waiting for inbound calls on context 'default' ...");

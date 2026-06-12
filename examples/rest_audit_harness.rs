@@ -41,14 +41,14 @@ fn main() {
         .unwrap_or_else(|_| die("REST_FIXTURE_URL env var required"));
     let args_raw = env::var("REST_OPERATION_ARGS").unwrap_or_else(|_| "{}".to_string());
     let args: Value = serde_json::from_str(&args_raw)
-        .unwrap_or_else(|e| die(&format!("REST_OPERATION_ARGS not JSON: {}", e)));
+        .unwrap_or_else(|e| die(&format!("REST_OPERATION_ARGS not JSON: {e}")));
     let project = env::var("SIGNALWIRE_PROJECT_ID")
         .unwrap_or_else(|_| die("SIGNALWIRE_PROJECT_ID env var required"));
     let token = env::var("SIGNALWIRE_API_TOKEN")
         .unwrap_or_else(|_| die("SIGNALWIRE_API_TOKEN env var required"));
 
     let client = RestClient::with_base_url(&project, &token, &fixture_url)
-        .unwrap_or_else(|e| die(&format!("RestClient init: {}", e)));
+        .unwrap_or_else(|e| die(&format!("RestClient init: {e}")));
 
     let result = dispatch(&client, &operation, &args).unwrap_or_else(|e| die(&e));
 
@@ -111,7 +111,7 @@ fn dispatch(client: &RestClient, op: &str, args: &Value) -> Result<Value, String
                 .list(args)
                 .map_err(|e| format!("{}: {}", op, e.message()))
         }
-        other => Err(format!("rest_audit_harness: unsupported operation '{}'", other)),
+        other => Err(format!("rest_audit_harness: unsupported operation '{other}'")),
     }
 }
 
@@ -133,6 +133,6 @@ fn args_to_string_map(args: &Value) -> HashMap<String, String> {
 }
 
 fn die(msg: &str) -> ! {
-    eprintln!("rest_audit_harness: {}", msg);
+    eprintln!("rest_audit_harness: {msg}");
     process::exit(1);
 }

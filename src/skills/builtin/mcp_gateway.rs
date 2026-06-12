@@ -43,7 +43,7 @@ impl SkillBase for McpGateway {
             // Register a generic gateway tool
             let gw_url = gateway_url.clone();
             agent.define_tool(
-                &format!("{}call", tool_prefix),
+                &format!("{tool_prefix}call"),
                 "Call an MCP service through the gateway",
                 json!({
                     "service": {
@@ -73,9 +73,8 @@ impl SkillBase for McpGateway {
                         .unwrap_or("unknown");
 
                     result.set_response(&format!(
-                        "MCP gateway call to service \"{}\", tool \"{}\" via gateway at \"{}\". \
-                         In production, this would forward the request to the MCP gateway service.",
-                        service, tool, gw_url
+                        "MCP gateway call to service \"{service}\", tool \"{tool}\" via gateway at \"{gw_url}\". \
+                         In production, this would forward the request to the MCP gateway service."
                     ));
                     result
                 }),
@@ -120,11 +119,10 @@ impl SkillBase for McpGateway {
                 }
 
                 let full_tool_name = format!(
-                    "{}{}_{}",
-                    tool_prefix, service_name, tool_name
+                    "{tool_prefix}{service_name}_{tool_name}"
                 );
                 let full_description =
-                    format!("[{}] {}", service_name, tool_description);
+                    format!("[{service_name}] {tool_description}");
 
                 let mut properties = Map::new();
                 for param in &tool_params {
@@ -169,10 +167,9 @@ impl SkillBase for McpGateway {
                     Box::new(move |args, _raw| {
                         let mut result = FunctionResult::new();
                         result.set_response(&format!(
-                            "MCP gateway call to service \"{}\", tool \"{}\" via gateway at \"{}\". \
-                             Arguments: {:?}. \
-                             In production, this would forward the request to the MCP gateway service.",
-                            svc, tn, gw, args
+                            "MCP gateway call to service \"{svc}\", tool \"{tn}\" via gateway at \"{gw}\". \
+                             Arguments: {args:?}. \
+                             In production, this would forward the request to the MCP gateway service."
                         ));
                         result
                     }),
@@ -235,9 +232,9 @@ impl SkillBase for McpGateway {
 
             if !name.is_empty() {
                 let bullet = if !description.is_empty() {
-                    format!("Service: {} - {}", name, description)
+                    format!("Service: {name} - {description}")
                 } else {
-                    format!("Service: {}", name)
+                    format!("Service: {name}")
                 };
                 bullets.push(bullet);
             }

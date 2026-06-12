@@ -617,7 +617,7 @@ mod tests {
             built.clone(),
             Box::new(|args, _raw| {
                 let q = args.get("query").and_then(|v| v.as_str()).unwrap_or("");
-                FunctionResult::with_response(&format!("searched: {}", q))
+                FunctionResult::with_response(&format!("searched: {q}"))
             }),
             false,
         );
@@ -678,7 +678,7 @@ mod tests {
             built,
             Box::new(|args, _raw| {
                 let q = args.get("query").and_then(|v| v.as_str()).unwrap_or("");
-                FunctionResult::with_response(&format!("hit: {}", q))
+                FunctionResult::with_response(&format!("hit: {q}"))
             }),
             false,
         );

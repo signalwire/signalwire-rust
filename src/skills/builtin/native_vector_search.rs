@@ -76,17 +76,15 @@ impl SkillBase for NativeVectorSearch {
 
                 if !remote_url.is_empty() {
                     result.set_response(&format!(
-                        "Vector search results for \"{}\": \
-                         Searched remote endpoint \"{}\" with count={}. \
-                         In production, this would return vector similarity search results.",
-                        query, remote_url, count
+                        "Vector search results for \"{query}\": \
+                         Searched remote endpoint \"{remote_url}\" with count={count}. \
+                         In production, this would return vector similarity search results."
                     ));
                 } else {
                     result.set_response(&format!(
-                        "Vector search results for \"{}\": \
-                         Searched index \"{}\" with count={}. \
-                         In production, this would return vector similarity search results.",
-                        query, index_name, count
+                        "Vector search results for \"{query}\": \
+                         Searched index \"{index_name}\" with count={count}. \
+                         In production, this would return vector similarity search results."
                     ));
                 }
                 result

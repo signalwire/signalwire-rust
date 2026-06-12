@@ -368,7 +368,7 @@ impl Step {
         for section in &self.sections {
             let title = section["title"].as_str().unwrap_or("");
             let body = section["body"].as_str().unwrap_or("");
-            parts.push(format!("## {}\n{}\n", title, body));
+            parts.push(format!("## {title}\n{body}\n"));
         }
         parts.join("\n").trim_end().to_string()
     }
@@ -452,8 +452,7 @@ impl Context {
         );
         assert!(
             self.steps.len() < MAX_STEPS_PER_CONTEXT,
-            "Maximum steps per context ({}) exceeded",
-            MAX_STEPS_PER_CONTEXT
+            "Maximum steps per context ({MAX_STEPS_PER_CONTEXT}) exceeded"
         );
 
         let step = Step::new(name);
@@ -656,13 +655,11 @@ impl ContextBuilder {
     pub fn add_context(&mut self, name: &str) -> &mut Context {
         assert!(
             !self.contexts.contains_key(name),
-            "Context '{}' already exists",
-            name
+            "Context '{name}' already exists"
         );
         assert!(
             self.contexts.len() < MAX_CONTEXTS,
-            "Maximum number of contexts ({}) exceeded",
-            MAX_CONTEXTS
+            "Maximum number of contexts ({MAX_CONTEXTS}) exceeded"
         );
 
         let context = Context::new(name);
@@ -707,7 +704,7 @@ impl ContextBuilder {
         // Each context must have at least one step
         for (name, ctx) in &self.contexts {
             if ctx.steps.is_empty() {
-                errors.push(format!("Context '{}' must have at least one step", name));
+                errors.push(format!("Context '{name}' must have at least one step"));
             }
         }
 
@@ -718,9 +715,8 @@ impl ContextBuilder {
                     let mut available: Vec<&String> = ctx.steps.keys().collect();
                     available.sort();
                     errors.push(format!(
-                        "Context '{}' has initial_step='{}' but that step does not exist. \
-                         Available steps: {:?}",
-                        name, is, available
+                        "Context '{name}' has initial_step='{is}' but that step does not exist. \
+                         Available steps: {available:?}"
                     ));
                 }
         }
@@ -732,8 +728,7 @@ impl ContextBuilder {
                     for valid_step in vs {
                         if valid_step != "next" && !ctx.steps.contains_key(valid_step) {
                             errors.push(format!(
-                                "Step '{}' in context '{}' references unknown step '{}'",
-                                step_name, ctx_name, valid_step
+                                "Step '{step_name}' in context '{ctx_name}' references unknown step '{valid_step}'"
                             ));
                         }
                     }
@@ -748,8 +743,7 @@ impl ContextBuilder {
                     for valid_ctx in vc {
                         if !self.contexts.contains_key(valid_ctx) {
                             errors.push(format!(
-                                "Step '{}' in context '{}' references unknown context '{}'",
-                                step_name, ctx_name, valid_ctx
+                                "Step '{step_name}' in context '{ctx_name}' references unknown context '{valid_ctx}'"
                             ));
                         }
                     }
@@ -763,8 +757,7 @@ impl ContextBuilder {
                 if let Some(ref gi) = step.gather_info {
                     if gi.questions.is_empty() {
                         errors.push(format!(
-                            "Step '{}' in context '{}' has gather_info with no questions",
-                            step_name, ctx_name
+                            "Step '{step_name}' in context '{ctx_name}' has gather_info with no questions"
                         ));
                     }
 
@@ -787,26 +780,24 @@ impl ContextBuilder {
                             if let Some(i) = idx
                                 && i + 1 >= ctx.step_order.len() {
                                     errors.push(format!(
-                                        "Step '{}' in context '{}' has gather_info \
+                                        "Step '{step_name}' in context '{ctx_name}' has gather_info \
                                          completion_action='next_step' but it is the last \
                                          step in the context. Either (1) add another step \
-                                         after '{}', (2) set completion_action to the name \
+                                         after '{step_name}', (2) set completion_action to the name \
                                          of an existing step in this context to jump to it, \
                                          or (3) set completion_action=None (default) to stay \
-                                         in '{}' after gathering completes.",
-                                        step_name, ctx_name, step_name, step_name
+                                         in '{step_name}' after gathering completes."
                                     ));
                                 }
                         } else if !ctx.steps.contains_key(action) {
                             let mut available: Vec<&String> = ctx.steps.keys().collect();
                             available.sort();
                             errors.push(format!(
-                                "Step '{}' in context '{}' has gather_info \
-                                 completion_action='{}' but '{}' is not a step in this \
+                                "Step '{step_name}' in context '{ctx_name}' has gather_info \
+                                 completion_action='{action}' but '{action}' is not a step in this \
                                  context. Valid options: 'next_step' (advance to the next \
                                  sequential step), None (stay in the current step), or one \
-                                 of {:?}.",
-                                step_name, ctx_name, action, action, available
+                                 of {available:?}."
                             ));
                         }
                     }
@@ -830,12 +821,11 @@ impl ContextBuilder {
                 let mut reserved: Vec<&&str> = RESERVED_NATIVE_TOOL_NAMES.iter().collect();
                 reserved.sort();
                 errors.push(format!(
-                    "Tool name(s) {:?} collide with reserved native tools \
-                     auto-injected by contexts/steps. The names {:?} are \
+                    "Tool name(s) {colliding:?} collide with reserved native tools \
+                     auto-injected by contexts/steps. The names {reserved:?} are \
                      reserved and cannot be used for user-defined SWAIG tools \
                      when contexts/steps are in use. Rename your tool(s) to \
-                     avoid the collision.",
-                    colliding, reserved
+                     avoid the collision."
                 ));
             }
         }

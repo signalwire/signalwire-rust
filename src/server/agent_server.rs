@@ -242,8 +242,7 @@ impl AgentServer {
     ) -> &mut Self {
         let normalized = self.normalize_route(path);
         self.logger.info(&format!(
-            "Registered global routing callback at {}",
-            normalized
+            "Registered global routing callback at {normalized}"
         ));
         self.global_routing_callbacks.insert(normalized, callback);
         self
@@ -258,11 +257,11 @@ impl AgentServer {
     pub fn run(&self, host: Option<&str>, port: Option<u16>) {
         let bind_host = host.unwrap_or(self.host.as_str());
         let bind_port = port.unwrap_or(self.port);
-        let addr = format!("{}:{}", bind_host, bind_port);
+        let addr = format!("{bind_host}:{bind_port}");
         // HTTP, or HTTPS when SWML_SSL_ENABLED + SWML_SSL_CERT_PATH/KEY_PATH are
         // set (mirrors Python's SecurityConfig / uvicorn ssl_* contract).
         let (server, is_https) = crate::server::tls::bind_server(&addr)
-            .unwrap_or_else(|e| panic!("Failed to bind {}: {}", addr, e));
+            .unwrap_or_else(|e| panic!("Failed to bind {addr}: {e}"));
 
         self.logger.info(&format!(
             "AgentServer running on {}://{} ({} agent{})",
@@ -364,8 +363,7 @@ impl AgentServer {
             }
             // Configured route does not resolve — log and fall through.
             self.logger.warn(&format!(
-                "Routing callback returned route '{}' which is not registered",
-                redirected_route
+                "Routing callback returned route '{redirected_route}' which is not registered"
             ));
         }
 
@@ -393,7 +391,7 @@ impl AgentServer {
             let matches = if key_str == "/" {
                 true
             } else {
-                path == key_str || path.starts_with(&format!("{}/", key_str))
+                path == key_str || path.starts_with(&format!("{key_str}/"))
             };
             if !matches {
                 continue;
@@ -452,7 +450,7 @@ impl AgentServer {
             let normal_prefix = if prefix == "/" { "" } else { prefix.as_str() };
 
             // Check if path starts with this prefix
-            if prefix != "/" && path != prefix && !path.starts_with(&format!("{}/", normal_prefix))
+            if prefix != "/" && path != prefix && !path.starts_with(&format!("{normal_prefix}/"))
             {
                 continue;
             }
@@ -545,7 +543,7 @@ impl AgentServer {
             if route == "/" {
                 return Some(route.clone());
             }
-            if path == route.as_str() || path.starts_with(&format!("{}/", route)) {
+            if path == route.as_str() || path.starts_with(&format!("{route}/")) {
                 return Some(route.clone());
             }
         }
@@ -839,7 +837,7 @@ mod tests {
         let dir = project.join("src");
         let mut server = AgentServer::new(None, Some(3000));
         let r = server.serve_static_files(dir.to_str().unwrap(), "/static");
-        assert!(r.is_ok(), "serve_static_files unexpectedly errored: {:?}", r);
+        assert!(r.is_ok(), "serve_static_files unexpectedly errored: {r:?}");
         assert!(server.static_routes.contains_key("/static"));
     }
 

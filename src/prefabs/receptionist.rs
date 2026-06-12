@@ -60,7 +60,7 @@ impl ReceptionistAgent {
                 .get("description")
                 .and_then(|v| v.as_str())
                 .unwrap_or("");
-            dept_bullets.push(format!("{}: {}", dept_name, dept_desc));
+            dept_bullets.push(format!("{dept_name}: {dept_desc}"));
         }
 
         let bullet_refs: Vec<&str> = dept_bullets.iter().map(|s| s.as_str()).collect();
@@ -85,8 +85,7 @@ impl ReceptionistAgent {
                     .and_then(|v| v.as_str())
                     .unwrap_or("Not specified");
                 FunctionResult::with_response(&format!(
-                    "Caller info recorded: {}, reason: {}",
-                    caller_name, reason
+                    "Caller info recorded: {caller_name}, reason: {reason}"
                 ))
             }),
             false,
@@ -118,13 +117,13 @@ impl ReceptionistAgent {
                             .unwrap_or("phone");
 
                         let mut result =
-                            FunctionResult::with_response(&format!("Transferring to {}", name));
+                            FunctionResult::with_response(&format!("Transferring to {name}"));
 
                         if transfer_type == "swml" {
                             if let Some(swml_url) = dept.get("swml_url").and_then(|v| v.as_str()) {
                                 result.swml_transfer(
                                     swml_url,
-                                    &format!("Transferring you to {} now.", name),
+                                    &format!("Transferring you to {name} now."),
                                     // final=true: permanent transfer (Python's
                                     // swml_transfer default) — the receptionist
                                     // hands the call off entirely.
@@ -139,7 +138,7 @@ impl ReceptionistAgent {
                     }
                 }
 
-                FunctionResult::with_response(&format!("Department '{}' not found", dept_name))
+                FunctionResult::with_response(&format!("Department '{dept_name}' not found"))
             }),
             false,
         );

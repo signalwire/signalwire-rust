@@ -61,7 +61,7 @@ mod tests {
     #[test]
     fn test_display() {
         let e = SignalWireRestError::new("fail", 500, "body");
-        let s = format!("{}", e);
+        let s = format!("{e}");
         assert!(s.contains("SignalWireRestError"));
         assert!(s.contains("500"));
         assert!(s.contains("fail"));
@@ -71,7 +71,7 @@ mod tests {
     #[test]
     fn test_debug() {
         let e = SignalWireRestError::new("err", 400, "");
-        let dbg = format!("{:?}", e);
+        let dbg = format!("{e:?}");
         assert!(dbg.contains("SignalWireRestError"));
     }
 

@@ -295,8 +295,7 @@ fn test_dial_losers_get_state_events() {
         .collect();
     assert!(
         l1_states.contains(&"ended"),
-        "loser L1 never reached 'ended'; saw: {:?}",
-        l1_states
+        "loser L1 never reached 'ended'; saw: {l1_states:?}"
     );
     client.disconnect();
 }
@@ -640,8 +639,7 @@ fn test_dial_auto_generates_uuid_tag_when_omitted() {
     .unwrap();
     assert!(
         uuid_re.is_match(&auto_tag),
-        "expected UUID-shaped tag, got {:?}",
-        auto_tag
+        "expected UUID-shaped tag, got {auto_tag:?}"
     );
     assert_eq!(call.tag.as_deref(), Some(auto_tag.as_str()));
     client.disconnect();
