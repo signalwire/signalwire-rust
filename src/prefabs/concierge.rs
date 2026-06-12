@@ -34,7 +34,7 @@ impl ConciergeAgent {
             .and_then(|v| v.as_array())
             .map(|arr| {
                 arr.iter()
-                    .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                    .filter_map(|v| v.as_str().map(std::string::ToString::to_string))
                     .collect()
             })
             .unwrap_or_default();
@@ -64,7 +64,7 @@ impl ConciergeAgent {
             .and_then(|v| v.as_array())
             .map(|arr| {
                 arr.iter()
-                    .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                    .filter_map(|v| v.as_str().map(std::string::ToString::to_string))
                     .collect()
             })
             .unwrap_or_default();
@@ -72,7 +72,7 @@ impl ConciergeAgent {
         let welcome_message = venue_info
             .get("welcome_message")
             .and_then(|v| v.as_str())
-            .map(|s| s.to_string());
+            .map(std::string::ToString::to_string);
 
         let agent_name = if name.is_empty() {
             "concierge"
@@ -113,7 +113,7 @@ impl ConciergeAgent {
 
         // Services section
         if !services.is_empty() {
-            let svc_refs: Vec<&str> = services.iter().map(|s| s.as_str()).collect();
+            let svc_refs: Vec<&str> = services.iter().map(std::string::String::as_str).collect();
             agent.prompt_add_section("Available Services", "", svc_refs);
         }
 
@@ -130,7 +130,7 @@ impl ConciergeAgent {
                 }
                 amenity_bullets.push(desc);
             }
-            let bullet_refs: Vec<&str> = amenity_bullets.iter().map(|s| s.as_str()).collect();
+            let bullet_refs: Vec<&str> = amenity_bullets.iter().map(std::string::String::as_str).collect();
             agent.prompt_add_section("Amenities", "", bullet_refs);
         }
 
@@ -140,14 +140,14 @@ impl ConciergeAgent {
             for (day, hours) in &hours_of_operation {
                 hour_bullets.push(format!("{day}: {hours}"));
             }
-            let bullet_refs: Vec<&str> = hour_bullets.iter().map(|s| s.as_str()).collect();
+            let bullet_refs: Vec<&str> = hour_bullets.iter().map(std::string::String::as_str).collect();
             agent.prompt_add_section("Hours of Operation", "", bullet_refs);
         }
 
         // Special instructions section
         if !special_instructions.is_empty() {
             let bullet_refs: Vec<&str> =
-                special_instructions.iter().map(|s| s.as_str()).collect();
+                special_instructions.iter().map(std::string::String::as_str).collect();
             agent.prompt_add_section("Special Instructions", "", bullet_refs);
         }
 

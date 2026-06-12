@@ -1258,7 +1258,7 @@ mod tests {
 
     #[test]
     fn test_proxy_url_env() {
-        let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let _guard = ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
         unsafe { env::set_var("SWML_PROXY_URL_BASE", "https://proxy.example.com/"); }
         let svc = Service::new(default_options("svc"));
         let result = svc.get_proxy_url_base(&HashMap::new());
@@ -1268,7 +1268,7 @@ mod tests {
 
     #[test]
     fn test_proxy_url_forwarded_headers() {
-        let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let _guard = ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
         unsafe { env::remove_var("SWML_PROXY_URL_BASE"); }
         let svc = Service::new(default_options("svc"));
         let mut headers = HashMap::new();
@@ -1280,7 +1280,7 @@ mod tests {
 
     #[test]
     fn test_proxy_url_fallback() {
-        let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let _guard = ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
         unsafe { env::remove_var("SWML_PROXY_URL_BASE"); }
         let svc = Service::new(ServiceOptions {
             name: "svc".to_string(),
@@ -1623,7 +1623,7 @@ mod tests {
         svc.set_on_swml_request_hook(move |rd, cb| {
             let mut g = cap.lock().unwrap();
             g.0 = rd.cloned();
-            g.1 = cb.map(|s| s.to_string());
+            g.1 = cb.map(std::string::ToString::to_string);
             Some(serde_json::json!({"custom": true}))
         });
 

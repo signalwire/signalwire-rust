@@ -181,7 +181,7 @@ impl HttpTransport for StubTransport {
         self.requests.lock().unwrap().push((
             method.to_string(),
             url.to_string(),
-            body.map(|s| s.to_string()),
+            body.map(std::string::ToString::to_string),
         ));
         let resp = self.response.lock().unwrap().clone();
         Ok(resp)

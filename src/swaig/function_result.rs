@@ -84,7 +84,7 @@ impl From<Vec<String>> for KeysArg {
 
 impl From<&[&str]> for KeysArg {
     fn from(v: &[&str]) -> Self {
-        KeysArg::Many(v.iter().map(|s| s.to_string()).collect())
+        KeysArg::Many(v.iter().map(std::string::ToString::to_string).collect())
     }
 }
 

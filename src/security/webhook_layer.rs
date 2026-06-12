@@ -137,7 +137,7 @@ where
                 .iter()
                 .find_map(|name| req.headers().get(*name))
                 .and_then(|v| v.to_str().ok())
-                .map(|s| s.to_string());
+                .map(std::string::ToString::to_string);
 
             // Reconstruct the URL the platform signed.
             let url = match cfg.url_override.as_ref() {
@@ -146,7 +146,7 @@ where
                     u.trim_end_matches('/'),
                     req.uri()
                         .path_and_query()
-                        .map(|pq| pq.as_str())
+                        .map(http::uri::PathAndQuery::as_str)
                         .unwrap_or("/")
                 ),
                 None => reconstruct_url_from_request(req.headers(), req.uri()),
@@ -213,7 +213,7 @@ fn reconstruct_url_from_request(headers: &HeaderMap, uri: &axum::http::Uri) -> S
     let host = header_str(headers, "x-forwarded-host")
         .or_else(|| header_str(headers, "host"))
         .unwrap_or("unknown");
-    let path_and_query = uri.path_and_query().map(|pq| pq.as_str()).unwrap_or("/");
+    let path_and_query = uri.path_and_query().map(http::uri::PathAndQuery::as_str).unwrap_or("/");
     format!("{proto}://{host}{path_and_query}")
 }
 

@@ -59,7 +59,7 @@ impl FAQBotAgent {
                 .unwrap_or("?");
             faq_bullets.push(format!("Q: {q} A: {a}"));
         }
-        let bullet_refs: Vec<&str> = faq_bullets.iter().map(|s| s.as_str()).collect();
+        let bullet_refs: Vec<&str> = faq_bullets.iter().map(std::string::String::as_str).collect();
         agent.prompt_add_section(
             "FAQ Knowledge Base",
             "You have knowledge of the following frequently asked questions.",

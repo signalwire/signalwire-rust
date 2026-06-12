@@ -34,7 +34,7 @@ fn test_compat_conferences_list_returns_paginated_list() {
         "expected 'conferences' array"
     );
     assert!(
-        obj.get("page").map(|v| v.is_number()).unwrap_or(false),
+        obj.get("page").map(serde_json::Value::is_number).unwrap_or(false),
         "expected numeric 'page'"
     );
 }

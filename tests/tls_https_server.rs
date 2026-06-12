@@ -39,7 +39,7 @@ static SERVER_TEST_LOCK: Mutex<()> = Mutex::new(());
 
 #[test]
 fn tls_sdk_server_serves_verified_https() {
-    let _g = SERVER_TEST_LOCK.lock().unwrap_or_else(|p| p.into_inner());
+    let _g = SERVER_TEST_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
 
     let Some(certs) = tls_support::certs_dir() else {
         eprintln!("skip: porting-sdk/test_harness/tls not adjacent");

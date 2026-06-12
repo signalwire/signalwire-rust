@@ -46,7 +46,7 @@ impl GatherQuestion {
             question: question.to_string(),
             question_type: question_type.to_string(),
             confirm,
-            prompt: prompt.map(|s| s.to_string()),
+            prompt: prompt.map(std::string::ToString::to_string),
             functions,
         }
     }
@@ -97,9 +97,9 @@ impl GatherInfo {
     ) -> Self {
         GatherInfo {
             questions: Vec::new(),
-            output_key: output_key.map(|s| s.to_string()),
-            completion_action: completion_action.map(|s| s.to_string()),
-            prompt: prompt.map(|s| s.to_string()),
+            output_key: output_key.map(std::string::ToString::to_string),
+            completion_action: completion_action.map(std::string::ToString::to_string),
+            prompt: prompt.map(std::string::ToString::to_string),
         }
     }
 
@@ -134,7 +134,7 @@ impl GatherInfo {
     pub fn to_value(&self) -> Value {
         let mut map = Map::new();
 
-        let q_arr: Vec<Value> = self.questions.iter().map(|q| q.to_value()).collect();
+        let q_arr: Vec<Value> = self.questions.iter().map(GatherQuestion::to_value).collect();
         map.insert("questions".to_string(), Value::Array(q_arr));
 
         if let Some(ref p) = self.prompt {
@@ -255,12 +255,12 @@ impl Step {
     }
 
     pub fn set_valid_steps(&mut self, steps: Vec<&str>) -> &mut Self {
-        self.valid_steps = Some(steps.into_iter().map(|s| s.to_string()).collect());
+        self.valid_steps = Some(steps.into_iter().map(std::string::ToString::to_string).collect());
         self
     }
 
     pub fn set_valid_contexts(&mut self, contexts: Vec<&str>) -> &mut Self {
-        self.valid_contexts = Some(contexts.into_iter().map(|s| s.to_string()).collect());
+        self.valid_contexts = Some(contexts.into_iter().map(std::string::ToString::to_string).collect());
         self
     }
 
@@ -542,7 +542,7 @@ impl Context {
             .step_order
             .iter()
             .filter_map(|name| self.steps.get(name))
-            .map(|s| s.to_value())
+            .map(Step::to_value)
             .collect();
         map.insert("steps".to_string(), Value::Array(step_arr));
 

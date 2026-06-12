@@ -39,7 +39,7 @@ impl SkillBase for WeatherApi {
         let api_key = self
             .sp
             .get_str("api_key")
-            .map(|s| s.to_string())
+            .map(std::string::ToString::to_string)
             .or_else(|| std::env::var("WEATHER_API_KEY").ok())
             .unwrap_or_default();
         let unit = self.sp.get_str_or("temperature_unit", "fahrenheit");

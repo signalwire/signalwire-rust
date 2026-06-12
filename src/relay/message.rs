@@ -46,30 +46,30 @@ impl Message {
                 .get("message_id")
                 .or_else(|| params.get("id"))
                 .and_then(|v| v.as_str())
-                .map(|s| s.to_string()),
+                .map(std::string::ToString::to_string),
             context: params
                 .get("context")
                 .and_then(|v| v.as_str())
-                .map(|s| s.to_string()),
+                .map(std::string::ToString::to_string),
             direction: params
                 .get("direction")
                 .and_then(|v| v.as_str())
-                .map(|s| s.to_string()),
+                .map(std::string::ToString::to_string),
             from_number: params
                 .get("from_number")
                 .or_else(|| params.get("from"))
                 .and_then(|v| v.as_str())
-                .map(|s| s.to_string()),
+                .map(std::string::ToString::to_string),
             to_number: params
                 .get("to_number")
                 .or_else(|| params.get("to"))
                 .and_then(|v| v.as_str())
-                .map(|s| s.to_string()),
+                .map(std::string::ToString::to_string),
             body: Mutex::new(
                 params
                     .get("body")
                     .and_then(|v| v.as_str())
-                    .map(|s| s.to_string()),
+                    .map(std::string::ToString::to_string),
             ),
             media: Mutex::new(
                 params
@@ -77,7 +77,7 @@ impl Message {
                     .and_then(|v| v.as_array())
                     .map(|a| {
                         a.iter()
-                            .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                            .filter_map(|v| v.as_str().map(std::string::ToString::to_string))
                             .collect()
                     })
                     .unwrap_or_default(),
@@ -88,7 +88,7 @@ impl Message {
                     .and_then(|v| v.as_array())
                     .map(|a| {
                         a.iter()
-                            .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                            .filter_map(|v| v.as_str().map(std::string::ToString::to_string))
                             .collect()
                     })
                     .unwrap_or_default(),
@@ -97,13 +97,13 @@ impl Message {
                 params
                     .get("state")
                     .and_then(|v| v.as_str())
-                    .map(|s| s.to_string()),
+                    .map(std::string::ToString::to_string),
             ),
             reason: Mutex::new(
                 params
                     .get("reason")
                     .and_then(|v| v.as_str())
-                    .map(|s| s.to_string()),
+                    .map(std::string::ToString::to_string),
             ),
             completed: Mutex::new(false),
             result: Mutex::new(None),
@@ -213,13 +213,13 @@ impl Message {
         if let Some(m) = params.get("media").and_then(|v| v.as_array()) {
             *self.media.lock().unwrap() = m
                 .iter()
-                .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                .filter_map(|v| v.as_str().map(std::string::ToString::to_string))
                 .collect();
         }
         if let Some(t) = params.get("tags").and_then(|v| v.as_array()) {
             *self.tags.lock().unwrap() = t
                 .iter()
-                .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                .filter_map(|v| v.as_str().map(std::string::ToString::to_string))
                 .collect();
         }
 

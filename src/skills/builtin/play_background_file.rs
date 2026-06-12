@@ -54,7 +54,7 @@ impl SkillBase for PlayBackgroundFile {
                 .unwrap_or(key);
             let wait = file
                 .get("wait")
-                .and_then(|v| v.as_bool())
+                .and_then(serde_json::Value::as_bool)
                 .unwrap_or(false);
 
             if key.is_empty() || url.is_empty() {

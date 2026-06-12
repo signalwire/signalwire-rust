@@ -681,7 +681,7 @@ impl Client {
             let auth_state = params
                 .get("authorization_state")
                 .and_then(|v| v.as_str())
-                .map(|s| s.to_string());
+                .map(std::string::ToString::to_string);
             self.authorization_state.lock().unwrap().clone_from(&auth_state);
             self.logger
                 .info(&format!("Authorization state: {auth_state:?}"));

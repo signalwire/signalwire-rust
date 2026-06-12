@@ -63,7 +63,7 @@ impl ReceptionistAgent {
             dept_bullets.push(format!("{dept_name}: {dept_desc}"));
         }
 
-        let bullet_refs: Vec<&str> = dept_bullets.iter().map(|s| s.as_str()).collect();
+        let bullet_refs: Vec<&str> = dept_bullets.iter().map(std::string::String::as_str).collect();
         agent.prompt_add_section("Receptionist Role", &greeting_text, bullet_refs);
 
         // Tool: collect_caller_info

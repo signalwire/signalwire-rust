@@ -241,7 +241,7 @@ fn extract_text_from_html(input: &str, max_length: usize) -> String {
         .and_then(|v| {
             v.get("_raw_html")
                 .and_then(|h| h.as_str())
-                .map(|s| s.to_string())
+                .map(std::string::ToString::to_string)
         })
         .unwrap_or_else(|| input.to_string());
 

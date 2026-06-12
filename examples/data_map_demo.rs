@@ -38,7 +38,7 @@ fn main() {
         }),
         Box::new(|args, _raw| {
             let msg = args.get("message").and_then(|v| v.as_str()).unwrap_or("");
-            let repeat = args.get("repeat").and_then(|v| v.as_u64()).unwrap_or(1);
+            let repeat = args.get("repeat").and_then(serde_json::Value::as_u64).unwrap_or(1);
             let output = (0..repeat).map(|_| msg).collect::<Vec<_>>().join(" ");
             FunctionResult::with_response(&output)
         }),

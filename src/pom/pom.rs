@@ -156,7 +156,7 @@ impl PromptObjectModel {
     /// follows serde idiom (`to_value`) but the cross-port surface
     /// audit treats `to_value` ≡ `to_dict`.
     pub fn to_value(&self) -> Value {
-        Value::Array(self.sections.iter().map(|s| s.to_value()).collect())
+        Value::Array(self.sections.iter().map(super::section::Section::to_value).collect())
     }
 
     /// Render the model as a JSON string (indent=2). Matches
@@ -343,14 +343,14 @@ fn build_section(value: &Value, is_subsection: bool, top_index: usize) -> Result
         .and_then(|b| b.as_array())
         .map(|arr| {
             arr.iter()
-                .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                .filter_map(|v| v.as_str().map(std::string::ToString::to_string))
                 .collect()
         })
         .unwrap_or_default();
-    let numbered = map.get("numbered").and_then(|v| v.as_bool());
+    let numbered = map.get("numbered").and_then(serde_json::Value::as_bool);
     let numbered_bullets = map
         .get("numberedBullets")
-        .and_then(|v| v.as_bool())
+        .and_then(serde_json::Value::as_bool)
         .unwrap_or(false);
 
     let mut section = Section {

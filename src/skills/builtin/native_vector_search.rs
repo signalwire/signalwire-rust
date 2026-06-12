@@ -66,7 +66,7 @@ impl SkillBase for NativeVectorSearch {
                 let query = args.get("query").and_then(|v| v.as_str()).unwrap_or("");
                 let count = args
                     .get("count")
-                    .and_then(|v| v.as_i64())
+                    .and_then(serde_json::Value::as_i64)
                     .unwrap_or(default_count);
 
                 if query.is_empty() {

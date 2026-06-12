@@ -314,15 +314,15 @@ impl RecordAction {
         self.payload()
             .get("url")
             .and_then(|v| v.as_str())
-            .map(|s| s.to_string())
+            .map(std::string::ToString::to_string)
     }
 
     pub fn duration(&self) -> Option<f64> {
-        self.payload().get("duration").and_then(|v| v.as_f64())
+        self.payload().get("duration").and_then(serde_json::Value::as_f64)
     }
 
     pub fn size(&self) -> Option<u64> {
-        self.payload().get("size").and_then(|v| v.as_u64())
+        self.payload().get("size").and_then(serde_json::Value::as_u64)
     }
 }
 

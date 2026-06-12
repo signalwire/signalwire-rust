@@ -99,7 +99,7 @@ impl Adapter {
         // Decode base64-encoded bodies
         let decoded_body = if event
             .get("isBase64Encoded")
-            .and_then(|v| v.as_bool())
+            .and_then(serde_json::Value::as_bool)
             .unwrap_or(false)
         {
             use base64::Engine;

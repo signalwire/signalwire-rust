@@ -118,7 +118,7 @@ fn main() {
         }),
         Box::new(|args, _raw| {
             let terms = args.get("terms").and_then(|v| v.as_str()).unwrap_or("");
-            let hints: Vec<&str> = terms.split(',').map(|s| s.trim()).collect();
+            let hints: Vec<&str> = terms.split(',').map(str::trim).collect();
             let mut result = FunctionResult::with_response("Speech hints updated.");
             result.add_action(json!({"add_dynamic_hints": hints}));
             result

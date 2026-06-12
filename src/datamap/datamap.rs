@@ -217,7 +217,7 @@ impl DataMap {
 
     /// Set global error_keys.
     pub fn global_error_keys(&mut self, keys: Vec<&str>) -> &mut Self {
-        self.global_error_keys = Some(keys.into_iter().map(|s| s.to_string()).collect());
+        self.global_error_keys = Some(keys.into_iter().map(std::string::ToString::to_string).collect());
         self
     }
 

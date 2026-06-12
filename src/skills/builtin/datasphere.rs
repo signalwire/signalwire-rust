@@ -64,7 +64,7 @@ impl SkillBase for Datasphere {
         let tool_name = self.get_tool_name("search_knowledge");
         let space_name = self.sp.get_str_or("space_name", "");
         let project_id = self.sp.get_str_or("project_id", "");
-        let token_param = self.sp.get_str("token").map(|s| s.to_string());
+        let token_param = self.sp.get_str("token").map(std::string::ToString::to_string);
         let document_id = self.sp.get_str_or("document_id", "");
         let count = self.sp.get_i64("count", 1).clamp(1, 10);
         let distance = self.sp.get_f64("distance", 3.0);

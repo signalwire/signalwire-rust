@@ -141,7 +141,7 @@ impl Section {
         if !self.subsections.is_empty() {
             data.insert(
                 "subsections".to_string(),
-                Value::Array(self.subsections.iter().map(|s| s.to_value()).collect()),
+                Value::Array(self.subsections.iter().map(Section::to_value).collect()),
             );
         }
 
@@ -171,7 +171,7 @@ impl Section {
         if let Some(title) = &self.title {
             let prefix = if !section_number.is_empty() {
                 let nums: Vec<String> =
-                    section_number.iter().map(|n| n.to_string()).collect();
+                    section_number.iter().map(std::string::ToString::to_string).collect();
                 format!("{}. ", nums.join("."))
             } else {
                 String::new()
@@ -236,7 +236,7 @@ impl Section {
         if let Some(title) = &self.title {
             let prefix = if !section_number.is_empty() {
                 let nums: Vec<String> =
-                    section_number.iter().map(|n| n.to_string()).collect();
+                    section_number.iter().map(std::string::ToString::to_string).collect();
                 format!("{}. ", nums.join("."))
             } else {
                 String::new()

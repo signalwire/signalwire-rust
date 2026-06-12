@@ -47,7 +47,7 @@ fn main() {
         }),
         Box::new(move |args, _raw| {
             let query = args.get("query").and_then(|v| v.as_str()).unwrap_or("");
-            let max = args.get("max_results").and_then(|v| v.as_u64()).unwrap_or(5);
+            let max = args.get("max_results").and_then(serde_json::Value::as_u64).unwrap_or(5);
             // In production, this would make an HTTP request to the webhook URL
             FunctionResult::with_response(&format!(
                 "Datasphere search for '{query}' (max {max} results) via {url}: [simulated results]"

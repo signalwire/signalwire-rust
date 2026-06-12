@@ -85,7 +85,7 @@ impl SurveyAgent {
             let qtype = q.get("type").and_then(|v| v.as_str()).unwrap_or("open_ended");
             let required = q
                 .get("required")
-                .and_then(|v| v.as_bool())
+                .and_then(serde_json::Value::as_bool)
                 .unwrap_or(false);
             let mut desc = format!("Q: {text} (type: {qtype})");
             if required {
@@ -93,7 +93,7 @@ impl SurveyAgent {
             }
             q_bullets.push(desc);
         }
-        let bullet_refs: Vec<&str> = q_bullets.iter().map(|s| s.as_str()).collect();
+        let bullet_refs: Vec<&str> = q_bullets.iter().map(std::string::String::as_str).collect();
         agent.prompt_add_section("Survey Questions", "", bullet_refs);
 
         // Tool: validate_response
@@ -138,7 +138,7 @@ impl SurveyAgent {
                     "rating" => {
                         let scale = question
                             .get("scale")
-                            .and_then(|v| v.as_i64())
+                            .and_then(serde_json::Value::as_i64)
                             .unwrap_or(5);
                         match answer.parse::<i64>() {
                             Ok(val) if val >= 1 && val <= scale => {

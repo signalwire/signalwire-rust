@@ -49,15 +49,15 @@ impl Call {
             call_id: params
                 .get("call_id")
                 .and_then(|v| v.as_str())
-                .map(|s| s.to_string()),
+                .map(std::string::ToString::to_string),
             node_id: params
                 .get("node_id")
                 .and_then(|v| v.as_str())
-                .map(|s| s.to_string()),
+                .map(std::string::ToString::to_string),
             tag: params
                 .get("tag")
                 .and_then(|v| v.as_str())
-                .map(|s| s.to_string()),
+                .map(std::string::ToString::to_string),
             state: Mutex::new(
                 params
                     .get("state")
@@ -75,7 +75,7 @@ impl Call {
             context: params
                 .get("context")
                 .and_then(|v| v.as_str())
-                .map(|s| s.to_string()),
+                .map(std::string::ToString::to_string),
             dial_winner: Mutex::new(false),
             actions: Mutex::new(HashMap::new()),
             on_event_callbacks: Mutex::new(Vec::new()),

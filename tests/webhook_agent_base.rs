@@ -35,7 +35,7 @@ fn make_agent(signing_key: Option<&str>) -> AgentBase {
     if signing_key.is_some() {
         // Set per-test below so we can sweep.
     }
-    opts.signing_key = signing_key.map(|s| s.to_string());
+    opts.signing_key = signing_key.map(std::string::ToString::to_string);
     AgentBase::new(opts)
 }
 

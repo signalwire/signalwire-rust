@@ -59,7 +59,7 @@ fn lock_journal() -> MutexGuard<'static, ()> {
     SERIALIZE
         .get_or_init(|| Mutex::new(()))
         .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
 }
 
 /// Path of the cross-binary advisory file lock. Located in `/tmp` so each
@@ -148,7 +148,7 @@ fn wait_for_no_sessions(budget: Duration) {
         let sessions = body
             .get("sessions")
             .and_then(Value::as_array)
-            .map(|a| a.len())
+            .map(std::vec::Vec::len)
             .unwrap_or(0);
         if sessions == 0 {
             return;

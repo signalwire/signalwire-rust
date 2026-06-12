@@ -108,7 +108,7 @@ impl SkillBase for SwmlTransfer {
                 .unwrap_or(&default_message);
             let post_process = config_obj
                 .get("post_process")
-                .and_then(|v| v.as_bool())
+                .and_then(serde_json::Value::as_bool)
                 .unwrap_or(false);
 
             let mut actions = Vec::new();

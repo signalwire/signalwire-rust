@@ -60,7 +60,7 @@ impl SkillBase for ApiNinjasTrivia {
         let api_key = self
             .sp
             .get_str("api_key")
-            .map(|s| s.to_string())
+            .map(std::string::ToString::to_string)
             .or_else(|| std::env::var("API_NINJAS_KEY").ok())
             .unwrap_or_default();
 

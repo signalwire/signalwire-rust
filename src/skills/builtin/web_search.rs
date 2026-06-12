@@ -73,8 +73,8 @@ impl SkillBase for WebSearch {
     fn register_tools(&self, agent: &mut AgentBase) {
         let tool_name = self.get_tool_name("web_search");
         let num_results = self.sp.get_i64("num_results", 3).clamp(1, 10);
-        let api_key = self.sp.get_str("api_key").map(|s| s.to_string());
-        let cse_id = self.sp.get_str("search_engine_id").map(|s| s.to_string());
+        let api_key = self.sp.get_str("api_key").map(std::string::ToString::to_string);
+        let cse_id = self.sp.get_str("search_engine_id").map(std::string::ToString::to_string);
 
         // Optional prefix/postfix wrapped around every non-empty search
         // result. Use these to give the calling agent a mechanical cue
@@ -645,7 +645,7 @@ mod tests {
 
     impl BaseUrlGuard {
         fn set(url: &str) -> Self {
-            let lock = env_lock().lock().unwrap_or_else(|p| p.into_inner());
+            let lock = env_lock().lock().unwrap_or_else(std::sync::PoisonError::into_inner);
             let prev = std::env::var("WEB_SEARCH_BASE_URL").ok();
             unsafe {
                 std::env::set_var("WEB_SEARCH_BASE_URL", url);

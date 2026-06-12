@@ -134,7 +134,7 @@ impl SchemaUtils {
         match inner.get("required").and_then(|r| r.as_array()) {
             Some(arr) => arr
                 .iter()
-                .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                .filter_map(|v| v.as_str().map(std::string::ToString::to_string))
                 .collect(),
             None => Vec::new(),
         }

@@ -119,7 +119,7 @@ impl SkillBase for InfoGatherer {
                     .unwrap_or("");
                 let confirmed = args
                     .get("confirmed_by_user")
-                    .and_then(|v| v.as_bool())
+                    .and_then(serde_json::Value::as_bool)
                     .unwrap_or(false);
 
                 if answer.is_empty() {
@@ -133,7 +133,7 @@ impl SkillBase for InfoGatherer {
                 let current_question = questions_clone2.get(current_index);
                 let needs_confirm = current_question
                     .and_then(|q| q.get("confirm"))
-                    .and_then(|v| v.as_bool())
+                    .and_then(serde_json::Value::as_bool)
                     .unwrap_or(false);
 
                 if needs_confirm && !confirmed {

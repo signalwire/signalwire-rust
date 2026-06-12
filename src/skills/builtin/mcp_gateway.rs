@@ -143,7 +143,7 @@ impl SkillBase for McpGateway {
                         .unwrap_or(param_name);
                     let is_required = param
                         .get("required")
-                        .and_then(|v| v.as_bool())
+                        .and_then(serde_json::Value::as_bool)
                         .unwrap_or(false);
 
                     let mut prop = json!({

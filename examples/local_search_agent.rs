@@ -37,7 +37,7 @@ fn main() {
         }),
         Box::new(|args, _raw| {
             let query = args.get("query").and_then(|v| v.as_str()).unwrap_or("");
-            let max = args.get("max_results").and_then(|v| v.as_u64()).unwrap_or(3);
+            let max = args.get("max_results").and_then(serde_json::Value::as_u64).unwrap_or(3);
 
             // Simulated search results
             let results = [

@@ -47,7 +47,7 @@ fn lock_journal() -> MutexGuard<'static, ()> {
     SERIALIZE
         .get_or_init(|| Mutex::new(()))
         .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
 }
 
 /// Default port for the Rust slot in the parallel parallel-port lineup.

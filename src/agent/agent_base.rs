@@ -420,7 +420,7 @@ impl AgentBase {
     /// tests and dynamic-config flows. Pass an empty string or
     /// `None`-equivalent to disable.
     pub fn set_signing_key(&mut self, key: Option<&str>) -> &mut Self {
-        self.signing_key = key.map(|s| s.to_string()).filter(|s| !s.is_empty());
+        self.signing_key = key.map(std::string::ToString::to_string).filter(|s| !s.is_empty());
         self
     }
 
@@ -631,7 +631,7 @@ impl AgentBase {
     /// Mirrors Python's `PromptManager.get_contexts` which returns the
     /// contexts dict or `None`.
     pub fn get_contexts(&self) -> Option<Value> {
-        self.context_builder.as_ref().map(|cb| cb.to_value())
+        self.context_builder.as_ref().map(super::super::contexts::context_builder::ContextBuilder::to_value)
     }
 
     // ══════════════════════════════════════════════════════════════════════
@@ -839,7 +839,7 @@ impl AgentBase {
     }
 
     pub fn set_native_functions(&mut self, functions: Vec<&str>) -> &mut Self {
-        self.native_functions = functions.into_iter().map(|s| s.to_string()).collect();
+        self.native_functions = functions.into_iter().map(std::string::ToString::to_string).collect();
         self
     }
 
@@ -866,7 +866,7 @@ impl AgentBase {
     ];
 
     pub fn set_internal_fillers(&mut self, fillers: Vec<&str>) -> &mut Self {
-        self.internal_fillers = fillers.into_iter().map(|s| s.to_string()).collect();
+        self.internal_fillers = fillers.into_iter().map(std::string::ToString::to_string).collect();
         self
     }
 
