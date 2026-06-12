@@ -52,6 +52,17 @@ impl PromptObjectModel {
     ///
     /// Returns `Err(String)` with a descriptive message on parse
     /// errors, matching Python's `ValueError`.
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err(String)` if `json_str` is not well-formed JSON
+    /// (the message is `"invalid JSON: <serde error>"`), or if the
+    /// parsed document fails POM structural validation — see
+    /// [`from_value`], which this delegates to (e.g. the top level is
+    /// not an array, a section is not an object, or a section has no
+    /// body/bullets/subsections).
+    ///
+    /// [`from_value`]: PromptObjectModel::from_value
     pub fn from_json(json_str: &str) -> Result<Self, String> {
         let value: Value = serde_json::from_str(json_str)
             .map_err(|e| format!("invalid JSON: {e}"))?;
@@ -60,6 +71,15 @@ impl PromptObjectModel {
 
     /// Parse a YAML string into a [`PromptObjectModel`]. Mirrors
     /// Python's `PromptObjectModel.from_yaml(yaml_data)`.
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err(String)` if `yaml_str` is not well-formed YAML
+    /// (the message is `"invalid YAML: <serde error>"`), or if the
+    /// parsed document fails POM structural validation — see
+    /// [`from_value`], which this delegates to.
+    ///
+    /// [`from_value`]: PromptObjectModel::from_value
     pub fn from_yaml(yaml_str: &str) -> Result<Self, String> {
         let value: Value = serde_norway::from_str(yaml_str)
             .map_err(|e| format!("invalid YAML: {e}"))?;
@@ -71,6 +91,18 @@ impl PromptObjectModel {
     ///
     /// [`from_json`]: PromptObjectModel::from_json
     /// [`from_yaml`]: PromptObjectModel::from_yaml
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err(String)` when the value violates the POM document
+    /// shape. The top level must be an array (else `"POM document must
+    /// be an array of sections"`); each element is validated by
+    /// `build_section`, which rejects non-object sections (`"Each
+    /// section must be an object/dict."`), wrong-typed fields (e.g.
+    /// `"'title' must be a string if present."`, `"'subsections' must
+    /// be a list if provided."`), a section lacking any of a non-empty
+    /// body, non-empty bullets, or subsections, and a subsection
+    /// missing its required `title`.
     pub fn from_value(value: &Value) -> Result<Self, String> {
         let arr = value
             .as_array()
@@ -94,6 +126,12 @@ impl PromptObjectModel {
     /// can keep configuring it (Python returns the `Section` object
     /// — Rust's borrow checker makes a `&mut` reference the
     /// equivalent shape).
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err("Only the first section can have no title")` when
+    /// `title` is `None` but the model already contains at least one
+    /// section — only the very first section may be untitled.
     pub fn add_section(&mut self, title: Option<String>) -> Result<&mut Section, String> {
         if title.is_none() && !self.sections.is_empty() {
             return Err("Only the first section can have no title".to_string());
@@ -105,6 +143,14 @@ impl PromptObjectModel {
     /// Append a top-level section with title + body in one call.
     /// Convenience wrapper that mirrors Python's keyword-style
     /// `add_section(title=..., body=...)`.
+    ///
+    /// # Errors
+    ///
+    /// Propagates the error from [`add_section`]: returns
+    /// `Err("Only the first section can have no title")` when `title`
+    /// is `None` and the model already has a section.
+    ///
+    /// [`add_section`]: PromptObjectModel::add_section
     pub fn add_section_with(
         &mut self,
         title: Option<String>,
@@ -161,6 +207,14 @@ impl PromptObjectModel {
 
     /// Render the model as a JSON string (indent=2). Matches
     /// Python's `to_json` byte-for-byte: `json.dumps([...], indent=2)`.
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err("failed to serialize JSON: <serde error>")` if
+    /// `serde_json` fails to serialize the section tree. In practice
+    /// the POM value is always serializable, so this is effectively
+    /// infallible, but the fallible signature is preserved to mirror
+    /// Python's `to_json`.
     pub fn to_json(&self) -> Result<String, String> {
         // serde_json::to_string_pretty uses indent=2 by default,
         // matching Python's json.dumps(..., indent=2).
@@ -178,6 +232,14 @@ impl PromptObjectModel {
     /// document shape is fully constrained — list of dicts with
     /// known string/list-of-string/list-of-dict values — so a
     /// targeted emitter is straightforward and guarantees parity.
+    ///
+    /// # Errors
+    ///
+    /// The fallible `Result` signature mirrors Python's `to_yaml`. The
+    /// hand-rolled emitter walks a fully-constrained document shape and
+    /// always succeeds, so no `Err` is currently produced; the
+    /// signature is retained for cross-port surface parity and to allow
+    /// future emit failures to surface without an API break.
     pub fn to_yaml(&self) -> Result<String, String> {
         if self.sections.is_empty() {
             // PyYAML emits `[]\n` for an empty list.
@@ -249,6 +311,12 @@ impl PromptObjectModel {
     /// Mirrors Python's `add_pom_as_subsection(target, pom_to_add)`
     /// where `target` is a section title. Returns `Err` when no
     /// section with the given title exists.
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err("No section with title '<target_title>' found.")`
+    /// when no section (at any depth) matches `target_title`, so there
+    /// is nowhere to attach the incoming sections.
     pub fn add_pom_as_subsection(
         &mut self,
         target_title: &str,

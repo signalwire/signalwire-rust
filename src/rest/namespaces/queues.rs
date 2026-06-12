@@ -41,20 +41,45 @@ impl<'a> Queues<'a> {
         out
     }
 
+    /// GET `/api/relay/rest/queues` — list queues.
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status, or the
+    /// response body is not valid JSON.
     pub fn list(&self, params: &Value) -> Result<Value, SignalWireRestError> {
         self.client
             .get(&self.base_path, &Self::params_to_string_map(params))
     }
 
+    /// POST `/api/relay/rest/queues` — create a queue.
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (e.g. 422
+    /// when `params` fails validation), or the response body is not valid JSON.
     pub fn create(&self, params: &Value) -> Result<Value, SignalWireRestError> {
         self.client.post(&self.base_path, params)
     }
 
+    /// GET `/api/relay/rest/queues/{queue_id}` — fetch one queue.
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (e.g. 404
+    /// for an unknown `queue_id`), or the response body is not valid JSON.
     pub fn get(&self, queue_id: &str) -> Result<Value, SignalWireRestError> {
         self.client
             .get(&format!("{}/{}", self.base_path, queue_id), &HashMap::new())
     }
 
+    /// PUT `/api/relay/rest/queues/{queue_id}` — update a queue.
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (e.g. 404
+    /// for an unknown `queue_id` or 422 when `params` fails validation), or the
+    /// response body is not valid JSON.
     pub fn update(
         &self,
         queue_id: &str,
@@ -64,11 +89,23 @@ impl<'a> Queues<'a> {
             .put(&format!("{}/{}", self.base_path, queue_id), params)
     }
 
+    /// DELETE `/api/relay/rest/queues/{queue_id}` — delete a queue.
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (e.g. 404
+    /// for an unknown `queue_id`), or the response body is not valid JSON.
     pub fn delete(&self, queue_id: &str) -> Result<Value, SignalWireRestError> {
         self.client
             .delete(&format!("{}/{}", self.base_path, queue_id))
     }
 
+    /// GET `/api/relay/rest/queues/{queue_id}/members` — list queue members.
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (e.g. 404
+    /// for an unknown `queue_id`), or the response body is not valid JSON.
     pub fn list_members(
         &self,
         queue_id: &str,
@@ -79,6 +116,13 @@ impl<'a> Queues<'a> {
             .get(&path, &Self::params_to_string_map(params))
     }
 
+    /// GET `/api/relay/rest/queues/{queue_id}/members/next` — fetch the next
+    /// member to be served.
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (e.g. 404
+    /// for an unknown `queue_id`), or the response body is not valid JSON.
     pub fn get_next_member(
         &self,
         queue_id: &str,
@@ -87,6 +131,14 @@ impl<'a> Queues<'a> {
         self.client.get(&path, &HashMap::new())
     }
 
+    /// GET `/api/relay/rest/queues/{queue_id}/members/{member_id}` — fetch one
+    /// queue member.
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (e.g. 404
+    /// for an unknown `queue_id` or `member_id`), or the response body is not
+    /// valid JSON.
     pub fn get_member(
         &self,
         queue_id: &str,

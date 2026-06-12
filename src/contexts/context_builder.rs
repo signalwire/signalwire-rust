@@ -683,6 +683,15 @@ impl ContextBuilder {
 
     /// Validate the contexts configuration.
     /// Returns `Ok(())` if valid, `Err(errors)` with a list of error messages.
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err(Vec<String>)` — one entry per validation failure —
+    /// when the context map is misconfigured: no contexts are defined,
+    /// a lone context is not named `"default"`, a context has no steps,
+    /// a context's `initial_step` names a step that does not exist, or a
+    /// step's `valid_steps` references a step that is neither `"next"`
+    /// nor a real step in that context.
     pub fn validate(&self) -> Result<(), Vec<String>> {
         let mut errors = Vec::new();
 

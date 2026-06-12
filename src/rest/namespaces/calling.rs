@@ -60,6 +60,10 @@ impl<'a> Calling<'a> {
     // Call lifecycle (5)
     // -----------------------------------------------------------------
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status, or the
+    /// response body is not valid JSON.
     pub fn dial(&self, params: Value) -> Result<Value, SignalWireRestError> {
         self.execute("dial", None, params)
     }
@@ -67,18 +71,38 @@ impl<'a> Calling<'a> {
     /// POST /api/calling/calls with `command="update"` — mirrors the Python
     /// `client.calling.update(id=..., state=...)` shape: caller-supplied
     /// `id` lives **inside** params, not as the top-level body field.
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status, or the
+    /// response body is not valid JSON.
     pub fn update(&self, params: Value) -> Result<Value, SignalWireRestError> {
         self.execute("update", None, params)
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (for
+    /// example if the call has already ended or `call_id` is not active), or
+    /// the response body is not valid JSON.
     pub fn end(&self, call_id: &str, params: Value) -> Result<Value, SignalWireRestError> {
         self.execute("calling.end", Some(call_id), params)
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (for
+    /// example if the call has already ended or `call_id` is not active), or
+    /// the response body is not valid JSON.
     pub fn transfer(&self, call_id: &str, params: Value) -> Result<Value, SignalWireRestError> {
         self.execute("calling.transfer", Some(call_id), params)
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (for
+    /// example if the call has already ended or `call_id` is not active), or
+    /// the response body is not valid JSON.
     pub fn disconnect(&self, call_id: &str, params: Value) -> Result<Value, SignalWireRestError> {
         self.execute("calling.disconnect", Some(call_id), params)
     }
@@ -87,22 +111,47 @@ impl<'a> Calling<'a> {
     // Play (5)
     // -----------------------------------------------------------------
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (for
+    /// example if the call has already ended or `call_id` is not active), or
+    /// the response body is not valid JSON.
     pub fn play(&self, call_id: &str, params: Value) -> Result<Value, SignalWireRestError> {
         self.execute("calling.play", Some(call_id), params)
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (for
+    /// example if the call has already ended or `call_id` is not active), or
+    /// the response body is not valid JSON.
     pub fn play_pause(&self, call_id: &str, params: Value) -> Result<Value, SignalWireRestError> {
         self.execute("calling.play.pause", Some(call_id), params)
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (for
+    /// example if the call has already ended or `call_id` is not active), or
+    /// the response body is not valid JSON.
     pub fn play_resume(&self, call_id: &str, params: Value) -> Result<Value, SignalWireRestError> {
         self.execute("calling.play.resume", Some(call_id), params)
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (for
+    /// example if the call has already ended or `call_id` is not active), or
+    /// the response body is not valid JSON.
     pub fn play_stop(&self, call_id: &str, params: Value) -> Result<Value, SignalWireRestError> {
         self.execute("calling.play.stop", Some(call_id), params)
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (for
+    /// example if the call has already ended or `call_id` is not active), or
+    /// the response body is not valid JSON.
     pub fn play_volume(&self, call_id: &str, params: Value) -> Result<Value, SignalWireRestError> {
         self.execute("calling.play.volume", Some(call_id), params)
     }
@@ -111,14 +160,29 @@ impl<'a> Calling<'a> {
     // Record (4)
     // -----------------------------------------------------------------
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (for
+    /// example if the call has already ended or `call_id` is not active), or
+    /// the response body is not valid JSON.
     pub fn record(&self, call_id: &str, params: Value) -> Result<Value, SignalWireRestError> {
         self.execute("calling.record", Some(call_id), params)
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (for
+    /// example if the call has already ended or `call_id` is not active), or
+    /// the response body is not valid JSON.
     pub fn record_pause(&self, call_id: &str, params: Value) -> Result<Value, SignalWireRestError> {
         self.execute("calling.record.pause", Some(call_id), params)
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (for
+    /// example if the call has already ended or `call_id` is not active), or
+    /// the response body is not valid JSON.
     pub fn record_resume(
         &self,
         call_id: &str,
@@ -127,6 +191,11 @@ impl<'a> Calling<'a> {
         self.execute("calling.record.resume", Some(call_id), params)
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (for
+    /// example if the call has already ended or `call_id` is not active), or
+    /// the response body is not valid JSON.
     pub fn record_stop(&self, call_id: &str, params: Value) -> Result<Value, SignalWireRestError> {
         self.execute("calling.record.stop", Some(call_id), params)
     }
@@ -135,10 +204,20 @@ impl<'a> Calling<'a> {
     // Collect (3)
     // -----------------------------------------------------------------
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (for
+    /// example if the call has already ended or `call_id` is not active), or
+    /// the response body is not valid JSON.
     pub fn collect(&self, call_id: &str, params: Value) -> Result<Value, SignalWireRestError> {
         self.execute("calling.collect", Some(call_id), params)
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (for
+    /// example if the call has already ended or `call_id` is not active), or
+    /// the response body is not valid JSON.
     pub fn collect_stop(
         &self,
         call_id: &str,
@@ -147,6 +226,11 @@ impl<'a> Calling<'a> {
         self.execute("calling.collect.stop", Some(call_id), params)
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (for
+    /// example if the call has already ended or `call_id` is not active), or
+    /// the response body is not valid JSON.
     pub fn collect_start_input_timers(
         &self,
         call_id: &str,
@@ -159,10 +243,20 @@ impl<'a> Calling<'a> {
     // Detect (2)
     // -----------------------------------------------------------------
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (for
+    /// example if the call has already ended or `call_id` is not active), or
+    /// the response body is not valid JSON.
     pub fn detect(&self, call_id: &str, params: Value) -> Result<Value, SignalWireRestError> {
         self.execute("calling.detect", Some(call_id), params)
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (for
+    /// example if the call has already ended or `call_id` is not active), or
+    /// the response body is not valid JSON.
     pub fn detect_stop(&self, call_id: &str, params: Value) -> Result<Value, SignalWireRestError> {
         self.execute("calling.detect.stop", Some(call_id), params)
     }
@@ -171,10 +265,20 @@ impl<'a> Calling<'a> {
     // Tap (2)
     // -----------------------------------------------------------------
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (for
+    /// example if the call has already ended or `call_id` is not active), or
+    /// the response body is not valid JSON.
     pub fn tap(&self, call_id: &str, params: Value) -> Result<Value, SignalWireRestError> {
         self.execute("calling.tap", Some(call_id), params)
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (for
+    /// example if the call has already ended or `call_id` is not active), or
+    /// the response body is not valid JSON.
     pub fn tap_stop(&self, call_id: &str, params: Value) -> Result<Value, SignalWireRestError> {
         self.execute("calling.tap.stop", Some(call_id), params)
     }
@@ -183,10 +287,20 @@ impl<'a> Calling<'a> {
     // Stream (2)
     // -----------------------------------------------------------------
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (for
+    /// example if the call has already ended or `call_id` is not active), or
+    /// the response body is not valid JSON.
     pub fn stream(&self, call_id: &str, params: Value) -> Result<Value, SignalWireRestError> {
         self.execute("calling.stream", Some(call_id), params)
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (for
+    /// example if the call has already ended or `call_id` is not active), or
+    /// the response body is not valid JSON.
     pub fn stream_stop(
         &self,
         call_id: &str,
@@ -199,10 +313,20 @@ impl<'a> Calling<'a> {
     // Denoise (2)
     // -----------------------------------------------------------------
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (for
+    /// example if the call has already ended or `call_id` is not active), or
+    /// the response body is not valid JSON.
     pub fn denoise(&self, call_id: &str, params: Value) -> Result<Value, SignalWireRestError> {
         self.execute("calling.denoise", Some(call_id), params)
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (for
+    /// example if the call has already ended or `call_id` is not active), or
+    /// the response body is not valid JSON.
     pub fn denoise_stop(
         &self,
         call_id: &str,
@@ -215,6 +339,11 @@ impl<'a> Calling<'a> {
     // Transcribe (2)
     // -----------------------------------------------------------------
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (for
+    /// example if the call has already ended or `call_id` is not active), or
+    /// the response body is not valid JSON.
     pub fn transcribe(
         &self,
         call_id: &str,
@@ -223,6 +352,11 @@ impl<'a> Calling<'a> {
         self.execute("calling.transcribe", Some(call_id), params)
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (for
+    /// example if the call has already ended or `call_id` is not active), or
+    /// the response body is not valid JSON.
     pub fn transcribe_stop(
         &self,
         call_id: &str,
@@ -235,6 +369,11 @@ impl<'a> Calling<'a> {
     // AI (4)
     // -----------------------------------------------------------------
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (for
+    /// example if the call has already ended or `call_id` is not active), or
+    /// the response body is not valid JSON.
     pub fn ai_message(
         &self,
         call_id: &str,
@@ -243,14 +382,29 @@ impl<'a> Calling<'a> {
         self.execute("calling.ai_message", Some(call_id), params)
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (for
+    /// example if the call has already ended or `call_id` is not active), or
+    /// the response body is not valid JSON.
     pub fn ai_hold(&self, call_id: &str, params: Value) -> Result<Value, SignalWireRestError> {
         self.execute("calling.ai_hold", Some(call_id), params)
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (for
+    /// example if the call has already ended or `call_id` is not active), or
+    /// the response body is not valid JSON.
     pub fn ai_unhold(&self, call_id: &str, params: Value) -> Result<Value, SignalWireRestError> {
         self.execute("calling.ai_unhold", Some(call_id), params)
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (for
+    /// example if the call has already ended or `call_id` is not active), or
+    /// the response body is not valid JSON.
     pub fn ai_stop(&self, call_id: &str, params: Value) -> Result<Value, SignalWireRestError> {
         self.execute("calling.ai.stop", Some(call_id), params)
     }
@@ -259,6 +413,11 @@ impl<'a> Calling<'a> {
     // Live transcribe / translate (2)
     // -----------------------------------------------------------------
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (for
+    /// example if the call has already ended or `call_id` is not active), or
+    /// the response body is not valid JSON.
     pub fn live_transcribe(
         &self,
         call_id: &str,
@@ -267,6 +426,11 @@ impl<'a> Calling<'a> {
         self.execute("calling.live_transcribe", Some(call_id), params)
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (for
+    /// example if the call has already ended or `call_id` is not active), or
+    /// the response body is not valid JSON.
     pub fn live_translate(
         &self,
         call_id: &str,
@@ -279,6 +443,11 @@ impl<'a> Calling<'a> {
     // Fax (2)
     // -----------------------------------------------------------------
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (for
+    /// example if the call has already ended or `call_id` is not active), or
+    /// the response body is not valid JSON.
     pub fn send_fax_stop(
         &self,
         call_id: &str,
@@ -287,6 +456,11 @@ impl<'a> Calling<'a> {
         self.execute("calling.send_fax.stop", Some(call_id), params)
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (for
+    /// example if the call has already ended or `call_id` is not active), or
+    /// the response body is not valid JSON.
     pub fn receive_fax_stop(
         &self,
         call_id: &str,
@@ -299,6 +473,11 @@ impl<'a> Calling<'a> {
     // SIP (1)
     // -----------------------------------------------------------------
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (for
+    /// example if the call has already ended or `call_id` is not active), or
+    /// the response body is not valid JSON.
     pub fn refer(&self, call_id: &str, params: Value) -> Result<Value, SignalWireRestError> {
         self.execute("calling.refer", Some(call_id), params)
     }
@@ -307,6 +486,11 @@ impl<'a> Calling<'a> {
     // Custom events (1)
     // -----------------------------------------------------------------
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (for
+    /// example if the call has already ended or `call_id` is not active), or
+    /// the response body is not valid JSON.
     pub fn user_event(
         &self,
         call_id: &str,

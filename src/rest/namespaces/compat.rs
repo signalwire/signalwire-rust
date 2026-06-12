@@ -136,19 +136,37 @@ impl<'a> CompatAccounts<'a> {
         &self.base_path
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status, or the
+    /// response body is not valid JSON.
     pub fn list(&self, params: &Value) -> Result<Value, SignalWireRestError> {
         let qp = params_to_string_map(params);
         self.client.get(&self.base_path, &qp)
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (e.g. 422
+    /// if a parameter fails server-side validation), or the response body is
+    /// not valid JSON.
     pub fn create(&self, params: &Value) -> Result<Value, SignalWireRestError> {
         self.client.post(&self.base_path, params)
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (notably
+    /// 404 if `sid` does not exist), or the response body is not valid JSON.
     pub fn get(&self, sid: &str) -> Result<Value, SignalWireRestError> {
         self.client.get(&join_path(&self.base_path, &[sid]), &HashMap::new())
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (notably
+    /// 404 if `sid` does not exist, or 422 if a parameter fails server-side
+    /// validation), or the response body is not valid JSON.
     pub fn update(&self, sid: &str, params: &Value) -> Result<Value, SignalWireRestError> {
         self.client.post(&join_path(&self.base_path, &[sid]), params)
     }
@@ -175,11 +193,22 @@ impl<'a> CompatCalls<'a> {
         &self.base_path
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (notably
+    /// 404 if `sid` does not name an existing call, or 422 if a parameter
+    /// fails server-side validation), or the response body is not valid JSON.
     pub fn update(&self, sid: &str, params: &Value) -> Result<Value, SignalWireRestError> {
         self.client.post(&join_path(&self.base_path, &[sid]), params)
     }
 
     /// POST /Calls/{sid}/Recordings — start a new recording on the call.
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (notably
+    /// 404 if `call_sid` does not name an existing call, or 422 if a parameter
+    /// fails server-side validation), or the response body is not valid JSON.
     pub fn start_recording(
         &self,
         call_sid: &str,
@@ -190,6 +219,13 @@ impl<'a> CompatCalls<'a> {
     }
 
     /// POST `/Calls/{sid}/Recordings/{rec_sid}` — update a specific recording.
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (notably
+    /// 404 if `call_sid` or `recording_sid` does not exist, or 422 if a
+    /// parameter fails server-side validation), or the response body is not
+    /// valid JSON.
     pub fn update_recording(
         &self,
         call_sid: &str,
@@ -201,6 +237,12 @@ impl<'a> CompatCalls<'a> {
     }
 
     /// POST /Calls/{sid}/Streams — start a new stream on the call.
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (notably
+    /// 404 if `call_sid` does not name an existing call, or 422 if a parameter
+    /// fails server-side validation), or the response body is not valid JSON.
     pub fn start_stream(
         &self,
         call_sid: &str,
@@ -211,6 +253,12 @@ impl<'a> CompatCalls<'a> {
     }
 
     /// POST `/Calls/{sid}/Streams/{stream_sid}` — stop / update a stream.
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (notably
+    /// 404 if `call_sid` or `stream_sid` does not exist, or 422 if a parameter
+    /// fails server-side validation), or the response body is not valid JSON.
     pub fn stop_stream(
         &self,
         call_sid: &str,
@@ -243,27 +291,56 @@ impl<'a> CompatMessages<'a> {
         &self.base_path
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status, or the
+    /// response body is not valid JSON.
     pub fn list(&self, params: &Value) -> Result<Value, SignalWireRestError> {
         let qp = params_to_string_map(params);
         self.client.get(&self.base_path, &qp)
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (e.g. 422
+    /// if a parameter fails server-side validation), or the response body is
+    /// not valid JSON.
     pub fn create(&self, params: &Value) -> Result<Value, SignalWireRestError> {
         self.client.post(&self.base_path, params)
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (notably
+    /// 404 if `sid` does not exist), or the response body is not valid JSON.
     pub fn get(&self, sid: &str) -> Result<Value, SignalWireRestError> {
         self.client.get(&join_path(&self.base_path, &[sid]), &HashMap::new())
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (notably
+    /// 404 if `sid` does not exist, or 422 if a parameter fails server-side
+    /// validation), or the response body is not valid JSON.
     pub fn update(&self, sid: &str, params: &Value) -> Result<Value, SignalWireRestError> {
         self.client.post(&join_path(&self.base_path, &[sid]), params)
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure) or the API responds with a non-2xx status; the
+    /// delete is idempotent on the server, so a 404 may be returned for an
+    /// already-deleted `sid`. A malformed response body also surfaces as a
+    /// JSON parse error.
     pub fn delete(&self, sid: &str) -> Result<Value, SignalWireRestError> {
         self.client.delete(&join_path(&self.base_path, &[sid]))
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (notably
+    /// 404 if `message_sid` does not exist), or the response body is not valid
+    /// JSON.
     pub fn list_media(
         &self,
         message_sid: &str,
@@ -274,6 +351,11 @@ impl<'a> CompatMessages<'a> {
         self.client.get(&path, &qp)
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (notably
+    /// 404 if `message_sid` or `media_sid` does not exist), or the response
+    /// body is not valid JSON.
     pub fn get_media(
         &self,
         message_sid: &str,
@@ -283,6 +365,12 @@ impl<'a> CompatMessages<'a> {
         self.client.get(&path, &HashMap::new())
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure) or the API responds with a non-2xx status; the
+    /// delete is idempotent on the server, so a 404 may be returned for an
+    /// already-deleted `media_sid`. A malformed response body also surfaces as
+    /// a JSON parse error.
     pub fn delete_media(
         &self,
         message_sid: &str,
@@ -314,33 +402,67 @@ impl<'a> CompatFaxes<'a> {
         &self.base_path
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status, or the
+    /// response body is not valid JSON.
     pub fn list(&self, params: &Value) -> Result<Value, SignalWireRestError> {
         let qp = params_to_string_map(params);
         self.client.get(&self.base_path, &qp)
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (e.g. 422
+    /// if a parameter fails server-side validation), or the response body is
+    /// not valid JSON.
     pub fn create(&self, params: &Value) -> Result<Value, SignalWireRestError> {
         self.client.post(&self.base_path, params)
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (notably
+    /// 404 if `sid` does not exist), or the response body is not valid JSON.
     pub fn get(&self, sid: &str) -> Result<Value, SignalWireRestError> {
         self.client.get(&join_path(&self.base_path, &[sid]), &HashMap::new())
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (notably
+    /// 404 if `sid` does not exist, or 422 if a parameter fails server-side
+    /// validation), or the response body is not valid JSON.
     pub fn update(&self, sid: &str, params: &Value) -> Result<Value, SignalWireRestError> {
         self.client.post(&join_path(&self.base_path, &[sid]), params)
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure) or the API responds with a non-2xx status; the
+    /// delete is idempotent on the server, so a 404 may be returned for an
+    /// already-deleted `sid`. A malformed response body also surfaces as a
+    /// JSON parse error.
     pub fn delete(&self, sid: &str) -> Result<Value, SignalWireRestError> {
         self.client.delete(&join_path(&self.base_path, &[sid]))
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (notably
+    /// 404 if `fax_sid` does not exist), or the response body is not valid
+    /// JSON.
     pub fn list_media(&self, fax_sid: &str, params: &Value) -> Result<Value, SignalWireRestError> {
         let qp = params_to_string_map(params);
         let path = join_path(&self.base_path, &[fax_sid, "Media"]);
         self.client.get(&path, &qp)
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (notably
+    /// 404 if `fax_sid` or `media_sid` does not exist), or the response body
+    /// is not valid JSON.
     pub fn get_media(
         &self,
         fax_sid: &str,
@@ -350,6 +472,12 @@ impl<'a> CompatFaxes<'a> {
         self.client.get(&path, &HashMap::new())
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure) or the API responds with a non-2xx status; the
+    /// delete is idempotent on the server, so a 404 may be returned for an
+    /// already-deleted `media_sid`. A malformed response body also surfaces as
+    /// a JSON parse error.
     pub fn delete_media(
         &self,
         fax_sid: &str,
@@ -381,19 +509,37 @@ impl<'a> CompatConferences<'a> {
         &self.base_path
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status, or the
+    /// response body is not valid JSON.
     pub fn list(&self, params: &Value) -> Result<Value, SignalWireRestError> {
         let qp = params_to_string_map(params);
         self.client.get(&self.base_path, &qp)
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (notably
+    /// 404 if `sid` does not exist), or the response body is not valid JSON.
     pub fn get(&self, sid: &str) -> Result<Value, SignalWireRestError> {
         self.client.get(&join_path(&self.base_path, &[sid]), &HashMap::new())
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (notably
+    /// 404 if `sid` does not exist, or 422 if a parameter fails server-side
+    /// validation), or the response body is not valid JSON.
     pub fn update(&self, sid: &str, params: &Value) -> Result<Value, SignalWireRestError> {
         self.client.post(&join_path(&self.base_path, &[sid]), params)
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (notably
+    /// 404 if `conference_sid` does not exist), or the response body is not
+    /// valid JSON.
     pub fn list_participants(
         &self,
         conference_sid: &str,
@@ -404,6 +550,11 @@ impl<'a> CompatConferences<'a> {
         self.client.get(&path, &qp)
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (notably
+    /// 404 if `conference_sid` or `call_sid` does not name a current
+    /// participant), or the response body is not valid JSON.
     pub fn get_participant(
         &self,
         conference_sid: &str,
@@ -413,6 +564,12 @@ impl<'a> CompatConferences<'a> {
         self.client.get(&path, &HashMap::new())
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (notably
+    /// 404 if `conference_sid` or `call_sid` does not name a current
+    /// participant, or 422 if a parameter fails server-side validation), or
+    /// the response body is not valid JSON.
     pub fn update_participant(
         &self,
         conference_sid: &str,
@@ -423,6 +580,12 @@ impl<'a> CompatConferences<'a> {
         self.client.post(&path, params)
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure) or the API responds with a non-2xx status; the
+    /// remove is idempotent on the server, so a 404 may be returned if
+    /// `call_sid` is no longer a participant of `conference_sid`. A malformed
+    /// response body also surfaces as a JSON parse error.
     pub fn remove_participant(
         &self,
         conference_sid: &str,
@@ -432,6 +595,11 @@ impl<'a> CompatConferences<'a> {
         self.client.delete(&path)
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (notably
+    /// 404 if `conference_sid` does not exist), or the response body is not
+    /// valid JSON.
     pub fn list_recordings(
         &self,
         conference_sid: &str,
@@ -442,6 +610,11 @@ impl<'a> CompatConferences<'a> {
         self.client.get(&path, &qp)
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (notably
+    /// 404 if `conference_sid` or `recording_sid` does not exist), or the
+    /// response body is not valid JSON.
     pub fn get_recording(
         &self,
         conference_sid: &str,
@@ -451,6 +624,12 @@ impl<'a> CompatConferences<'a> {
         self.client.get(&path, &HashMap::new())
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (notably
+    /// 404 if `conference_sid` or `recording_sid` does not exist, or 422 if a
+    /// parameter fails server-side validation), or the response body is not
+    /// valid JSON.
     pub fn update_recording(
         &self,
         conference_sid: &str,
@@ -461,6 +640,12 @@ impl<'a> CompatConferences<'a> {
         self.client.post(&path, params)
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure) or the API responds with a non-2xx status; the
+    /// delete is idempotent on the server, so a 404 may be returned for an
+    /// already-deleted `recording_sid`. A malformed response body also
+    /// surfaces as a JSON parse error.
     pub fn delete_recording(
         &self,
         conference_sid: &str,
@@ -470,6 +655,12 @@ impl<'a> CompatConferences<'a> {
         self.client.delete(&path)
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (notably
+    /// 404 if `conference_sid` does not name an existing conference, or 422 if
+    /// a parameter fails server-side validation), or the response body is not
+    /// valid JSON.
     pub fn start_stream(
         &self,
         conference_sid: &str,
@@ -479,6 +670,12 @@ impl<'a> CompatConferences<'a> {
         self.client.post(&path, params)
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (notably
+    /// 404 if `conference_sid` or `stream_sid` does not exist, or 422 if a
+    /// parameter fails server-side validation), or the response body is not
+    /// valid JSON.
     pub fn stop_stream(
         &self,
         conference_sid: &str,
@@ -519,28 +716,58 @@ impl<'a> CompatPhoneNumbers<'a> {
         &self.available_base
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status, or the
+    /// response body is not valid JSON.
     pub fn list(&self, params: &Value) -> Result<Value, SignalWireRestError> {
         let qp = params_to_string_map(params);
         self.client.get(&self.base_path, &qp)
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (e.g. 422
+    /// if the requested number is unavailable or a parameter fails
+    /// server-side validation), or the response body is not valid JSON.
     pub fn purchase(&self, params: &Value) -> Result<Value, SignalWireRestError> {
         self.client.post(&self.base_path, params)
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (notably
+    /// 404 if `sid` does not exist), or the response body is not valid JSON.
     pub fn get(&self, sid: &str) -> Result<Value, SignalWireRestError> {
         self.client.get(&join_path(&self.base_path, &[sid]), &HashMap::new())
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (notably
+    /// 404 if `sid` does not exist, or 422 if a parameter fails server-side
+    /// validation), or the response body is not valid JSON.
     pub fn update(&self, sid: &str, params: &Value) -> Result<Value, SignalWireRestError> {
         self.client.post(&join_path(&self.base_path, &[sid]), params)
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure) or the API responds with a non-2xx status; the
+    /// delete is idempotent on the server, so a 404 may be returned for an
+    /// already-released `sid`. A malformed response body also surfaces as a
+    /// JSON parse error.
     pub fn delete(&self, sid: &str) -> Result<Value, SignalWireRestError> {
         self.client.delete(&join_path(&self.base_path, &[sid]))
     }
 
     /// POST `/ImportedPhoneNumbers` — note the path is *Imported*, not *Incoming*.
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (e.g. 422
+    /// if the number cannot be imported or a parameter fails server-side
+    /// validation), or the response body is not valid JSON.
     pub fn import_number(&self, params: &Value) -> Result<Value, SignalWireRestError> {
         let path = self
             .base_path
@@ -548,6 +775,10 @@ impl<'a> CompatPhoneNumbers<'a> {
         self.client.post(&path, params)
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status, or the
+    /// response body is not valid JSON.
     pub fn list_available_countries(
         &self,
         params: &Value,
@@ -556,6 +787,11 @@ impl<'a> CompatPhoneNumbers<'a> {
         self.client.get(&self.available_base, &qp)
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (notably
+    /// 404 if `country` is not a supported ISO country code), or the response
+    /// body is not valid JSON.
     pub fn search_local(
         &self,
         country: &str,
@@ -566,6 +802,11 @@ impl<'a> CompatPhoneNumbers<'a> {
         self.client.get(&path, &qp)
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (notably
+    /// 404 if `country` is not a supported ISO country code), or the response
+    /// body is not valid JSON.
     pub fn search_toll_free(
         &self,
         country: &str,
@@ -598,23 +839,47 @@ impl<'a> CompatApplications<'a> {
         &self.base_path
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status, or the
+    /// response body is not valid JSON.
     pub fn list(&self, params: &Value) -> Result<Value, SignalWireRestError> {
         let qp = params_to_string_map(params);
         self.client.get(&self.base_path, &qp)
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (e.g. 422
+    /// if a parameter fails server-side validation), or the response body is
+    /// not valid JSON.
     pub fn create(&self, params: &Value) -> Result<Value, SignalWireRestError> {
         self.client.post(&self.base_path, params)
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (notably
+    /// 404 if `sid` does not exist), or the response body is not valid JSON.
     pub fn get(&self, sid: &str) -> Result<Value, SignalWireRestError> {
         self.client.get(&join_path(&self.base_path, &[sid]), &HashMap::new())
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (notably
+    /// 404 if `sid` does not exist, or 422 if a parameter fails server-side
+    /// validation), or the response body is not valid JSON.
     pub fn update(&self, sid: &str, params: &Value) -> Result<Value, SignalWireRestError> {
         self.client.post(&join_path(&self.base_path, &[sid]), params)
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure) or the API responds with a non-2xx status; the
+    /// delete is idempotent on the server, so a 404 may be returned for an
+    /// already-deleted `sid`. A malformed response body also surfaces as a
+    /// JSON parse error.
     pub fn delete(&self, sid: &str) -> Result<Value, SignalWireRestError> {
         self.client.delete(&join_path(&self.base_path, &[sid]))
     }
@@ -641,23 +906,47 @@ impl<'a> CompatLamlBins<'a> {
         &self.base_path
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status, or the
+    /// response body is not valid JSON.
     pub fn list(&self, params: &Value) -> Result<Value, SignalWireRestError> {
         let qp = params_to_string_map(params);
         self.client.get(&self.base_path, &qp)
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (e.g. 422
+    /// if a parameter fails server-side validation), or the response body is
+    /// not valid JSON.
     pub fn create(&self, params: &Value) -> Result<Value, SignalWireRestError> {
         self.client.post(&self.base_path, params)
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (notably
+    /// 404 if `sid` does not exist), or the response body is not valid JSON.
     pub fn get(&self, sid: &str) -> Result<Value, SignalWireRestError> {
         self.client.get(&join_path(&self.base_path, &[sid]), &HashMap::new())
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (notably
+    /// 404 if `sid` does not exist, or 422 if a parameter fails server-side
+    /// validation), or the response body is not valid JSON.
     pub fn update(&self, sid: &str, params: &Value) -> Result<Value, SignalWireRestError> {
         self.client.post(&join_path(&self.base_path, &[sid]), params)
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure) or the API responds with a non-2xx status; the
+    /// delete is idempotent on the server, so a 404 may be returned for an
+    /// already-deleted `sid`. A malformed response body also surfaces as a
+    /// JSON parse error.
     pub fn delete(&self, sid: &str) -> Result<Value, SignalWireRestError> {
         self.client.delete(&join_path(&self.base_path, &[sid]))
     }
@@ -684,27 +973,56 @@ impl<'a> CompatQueues<'a> {
         &self.base_path
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status, or the
+    /// response body is not valid JSON.
     pub fn list(&self, params: &Value) -> Result<Value, SignalWireRestError> {
         let qp = params_to_string_map(params);
         self.client.get(&self.base_path, &qp)
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (e.g. 422
+    /// if a parameter fails server-side validation), or the response body is
+    /// not valid JSON.
     pub fn create(&self, params: &Value) -> Result<Value, SignalWireRestError> {
         self.client.post(&self.base_path, params)
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (notably
+    /// 404 if `sid` does not exist), or the response body is not valid JSON.
     pub fn get(&self, sid: &str) -> Result<Value, SignalWireRestError> {
         self.client.get(&join_path(&self.base_path, &[sid]), &HashMap::new())
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (notably
+    /// 404 if `sid` does not exist, or 422 if a parameter fails server-side
+    /// validation), or the response body is not valid JSON.
     pub fn update(&self, sid: &str, params: &Value) -> Result<Value, SignalWireRestError> {
         self.client.post(&join_path(&self.base_path, &[sid]), params)
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure) or the API responds with a non-2xx status; the
+    /// delete is idempotent on the server, so a 404 may be returned for an
+    /// already-deleted `sid`. A malformed response body also surfaces as a
+    /// JSON parse error.
     pub fn delete(&self, sid: &str) -> Result<Value, SignalWireRestError> {
         self.client.delete(&join_path(&self.base_path, &[sid]))
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (notably
+    /// 404 if `queue_sid` does not exist), or the response body is not valid
+    /// JSON.
     pub fn list_members(
         &self,
         queue_sid: &str,
@@ -715,6 +1033,11 @@ impl<'a> CompatQueues<'a> {
         self.client.get(&path, &qp)
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (notably
+    /// 404 if `queue_sid` or `call_sid` does not name a current member), or
+    /// the response body is not valid JSON.
     pub fn get_member(
         &self,
         queue_sid: &str,
@@ -724,6 +1047,12 @@ impl<'a> CompatQueues<'a> {
         self.client.get(&path, &HashMap::new())
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (notably
+    /// 404 if `queue_sid` or `call_sid` does not name a current member, or 422
+    /// if a parameter fails server-side validation), or the response body is
+    /// not valid JSON.
     pub fn dequeue_member(
         &self,
         queue_sid: &str,
@@ -756,15 +1085,29 @@ impl<'a> CompatRecordings<'a> {
         &self.base_path
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status, or the
+    /// response body is not valid JSON.
     pub fn list(&self, params: &Value) -> Result<Value, SignalWireRestError> {
         let qp = params_to_string_map(params);
         self.client.get(&self.base_path, &qp)
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (notably
+    /// 404 if `sid` does not exist), or the response body is not valid JSON.
     pub fn get(&self, sid: &str) -> Result<Value, SignalWireRestError> {
         self.client.get(&join_path(&self.base_path, &[sid]), &HashMap::new())
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure) or the API responds with a non-2xx status; the
+    /// delete is idempotent on the server, so a 404 may be returned for an
+    /// already-deleted `sid`. A malformed response body also surfaces as a
+    /// JSON parse error.
     pub fn delete(&self, sid: &str) -> Result<Value, SignalWireRestError> {
         self.client.delete(&join_path(&self.base_path, &[sid]))
     }
@@ -791,15 +1134,29 @@ impl<'a> CompatTranscriptions<'a> {
         &self.base_path
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status, or the
+    /// response body is not valid JSON.
     pub fn list(&self, params: &Value) -> Result<Value, SignalWireRestError> {
         let qp = params_to_string_map(params);
         self.client.get(&self.base_path, &qp)
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (notably
+    /// 404 if `sid` does not exist), or the response body is not valid JSON.
     pub fn get(&self, sid: &str) -> Result<Value, SignalWireRestError> {
         self.client.get(&join_path(&self.base_path, &[sid]), &HashMap::new())
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure) or the API responds with a non-2xx status; the
+    /// delete is idempotent on the server, so a 404 may be returned for an
+    /// already-deleted `sid`. A malformed response body also surfaces as a
+    /// JSON parse error.
     pub fn delete(&self, sid: &str) -> Result<Value, SignalWireRestError> {
         self.client.delete(&join_path(&self.base_path, &[sid]))
     }
@@ -826,10 +1183,20 @@ impl<'a> CompatTokens<'a> {
         &self.base_path
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (e.g. 422
+    /// if a parameter fails server-side validation), or the response body is
+    /// not valid JSON.
     pub fn create(&self, params: &Value) -> Result<Value, SignalWireRestError> {
         self.client.post(&self.base_path, params)
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (notably
+    /// 404 if `token_id` does not exist, or 422 if a parameter fails
+    /// server-side validation), or the response body is not valid JSON.
     pub fn update(
         &self,
         token_id: &str,
@@ -838,6 +1205,12 @@ impl<'a> CompatTokens<'a> {
         self.client.patch(&join_path(&self.base_path, &[token_id]), params)
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure) or the API responds with a non-2xx status; the
+    /// delete is idempotent on the server, so a 404 may be returned for an
+    /// already-deleted `token_id`. A malformed response body also surfaces as
+    /// a JSON parse error.
     pub fn delete(&self, token_id: &str) -> Result<Value, SignalWireRestError> {
         self.client.delete(&join_path(&self.base_path, &[token_id]))
     }

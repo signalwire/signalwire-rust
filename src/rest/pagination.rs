@@ -94,6 +94,14 @@ impl<'a> PaginatedIterator<'a> {
 
     /// Fetch the next item, dispatching a new page request if needed.
     /// Returns `Ok(None)` when the cursor is exhausted.
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] when a page must be fetched and the
+    /// underlying GET request cannot reach the Space (transport failure), the
+    /// API responds with a non-2xx status, or the response body is not valid
+    /// JSON. Buffered items are yielded without I/O, so an exhausted iterator
+    /// never errors. Paging follows the response's `links.next` cursor; an
+    /// unreachable next-page URL surfaces as the request error for that page.
     pub fn next_item(&mut self) -> Result<Option<Value>, SignalWireRestError> {
         // Buffered item available?
         if self.index < self.items.len() {

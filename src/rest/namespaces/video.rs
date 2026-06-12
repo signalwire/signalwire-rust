@@ -106,21 +106,38 @@ impl<'a> VideoRooms<'a> {
         &self.base_path
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status, or the
+    /// response body is not valid JSON.
     pub fn list(&self, params: &Value) -> Result<Value, SignalWireRestError> {
         let qp = params_to_string_map(params);
         self.client.get(&self.base_path, &qp)
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status, or the
+    /// response body is not valid JSON.
     pub fn create(&self, params: &Value) -> Result<Value, SignalWireRestError> {
         self.client.post(&self.base_path, params)
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (404 if
+    /// `room_id` is unknown), or the response body is not valid JSON.
     pub fn get(&self, room_id: &str) -> Result<Value, SignalWireRestError> {
         let p = join(&[&self.base_path, room_id]);
         self.client.get(&p, &HashMap::new())
     }
 
     /// `VideoRooms` uses PUT for update.
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (404 if
+    /// `room_id` is unknown), or the response body is not valid JSON.
     pub fn update(
         &self,
         room_id: &str,
@@ -130,11 +147,19 @@ impl<'a> VideoRooms<'a> {
         self.client.put(&p, params)
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (404 if
+    /// `room_id` is unknown), or the response body is not valid JSON.
     pub fn delete(&self, room_id: &str) -> Result<Value, SignalWireRestError> {
         let p = join(&[&self.base_path, room_id]);
         self.client.delete(&p)
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (404 if
+    /// `room_id` is unknown), or the response body is not valid JSON.
     pub fn list_streams(
         &self,
         room_id: &str,
@@ -145,6 +170,10 @@ impl<'a> VideoRooms<'a> {
         self.client.get(&p, &qp)
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (404 if
+    /// `room_id` is unknown), or the response body is not valid JSON.
     pub fn create_stream(
         &self,
         room_id: &str,
@@ -176,6 +205,10 @@ impl<'a> VideoRoomTokens<'a> {
         &self.base_path
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status, or the
+    /// response body is not valid JSON.
     pub fn create(&self, params: &Value) -> Result<Value, SignalWireRestError> {
         self.client.post(&self.base_path, params)
     }
@@ -202,16 +235,28 @@ impl<'a> VideoRoomSessions<'a> {
         &self.base_path
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status, or the
+    /// response body is not valid JSON.
     pub fn list(&self, params: &Value) -> Result<Value, SignalWireRestError> {
         let qp = params_to_string_map(params);
         self.client.get(&self.base_path, &qp)
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (404 if
+    /// `session_id` is unknown), or the response body is not valid JSON.
     pub fn get(&self, session_id: &str) -> Result<Value, SignalWireRestError> {
         let p = join(&[&self.base_path, session_id]);
         self.client.get(&p, &HashMap::new())
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (404 if
+    /// `session_id` is unknown), or the response body is not valid JSON.
     pub fn list_events(
         &self,
         session_id: &str,
@@ -222,6 +267,10 @@ impl<'a> VideoRoomSessions<'a> {
         self.client.get(&p, &qp)
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (404 if
+    /// `session_id` is unknown), or the response body is not valid JSON.
     pub fn list_members(
         &self,
         session_id: &str,
@@ -232,6 +281,10 @@ impl<'a> VideoRoomSessions<'a> {
         self.client.get(&p, &qp)
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (404 if
+    /// `session_id` is unknown), or the response body is not valid JSON.
     pub fn list_recordings(
         &self,
         session_id: &str,
@@ -264,21 +317,37 @@ impl<'a> VideoRoomRecordings<'a> {
         &self.base_path
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status, or the
+    /// response body is not valid JSON.
     pub fn list(&self, params: &Value) -> Result<Value, SignalWireRestError> {
         let qp = params_to_string_map(params);
         self.client.get(&self.base_path, &qp)
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (404 if
+    /// `recording_id` is unknown), or the response body is not valid JSON.
     pub fn get(&self, recording_id: &str) -> Result<Value, SignalWireRestError> {
         let p = join(&[&self.base_path, recording_id]);
         self.client.get(&p, &HashMap::new())
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (404 if
+    /// `recording_id` is unknown), or the response body is not valid JSON.
     pub fn delete(&self, recording_id: &str) -> Result<Value, SignalWireRestError> {
         let p = join(&[&self.base_path, recording_id]);
         self.client.delete(&p)
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (404 if
+    /// `recording_id` is unknown), or the response body is not valid JSON.
     pub fn list_events(
         &self,
         recording_id: &str,
@@ -311,20 +380,36 @@ impl<'a> VideoConferences<'a> {
         &self.base_path
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status, or the
+    /// response body is not valid JSON.
     pub fn list(&self, params: &Value) -> Result<Value, SignalWireRestError> {
         let qp = params_to_string_map(params);
         self.client.get(&self.base_path, &qp)
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status, or the
+    /// response body is not valid JSON.
     pub fn create(&self, params: &Value) -> Result<Value, SignalWireRestError> {
         self.client.post(&self.base_path, params)
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (404 if
+    /// `conference_id` is unknown), or the response body is not valid JSON.
     pub fn get(&self, conference_id: &str) -> Result<Value, SignalWireRestError> {
         let p = join(&[&self.base_path, conference_id]);
         self.client.get(&p, &HashMap::new())
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (404 if
+    /// `conference_id` is unknown), or the response body is not valid JSON.
     pub fn update(
         &self,
         conference_id: &str,
@@ -334,11 +419,19 @@ impl<'a> VideoConferences<'a> {
         self.client.put(&p, params)
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (404 if
+    /// `conference_id` is unknown), or the response body is not valid JSON.
     pub fn delete(&self, conference_id: &str) -> Result<Value, SignalWireRestError> {
         let p = join(&[&self.base_path, conference_id]);
         self.client.delete(&p)
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (404 if
+    /// `conference_id` is unknown), or the response body is not valid JSON.
     pub fn list_conference_tokens(
         &self,
         conference_id: &str,
@@ -349,6 +442,10 @@ impl<'a> VideoConferences<'a> {
         self.client.get(&p, &qp)
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (404 if
+    /// `conference_id` is unknown), or the response body is not valid JSON.
     pub fn list_streams(
         &self,
         conference_id: &str,
@@ -359,6 +456,10 @@ impl<'a> VideoConferences<'a> {
         self.client.get(&p, &qp)
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (404 if
+    /// `conference_id` is unknown), or the response body is not valid JSON.
     pub fn create_stream(
         &self,
         conference_id: &str,
@@ -390,12 +491,21 @@ impl<'a> VideoConferenceTokens<'a> {
         &self.base_path
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (404 if
+    /// `token_id` is unknown), or the response body is not valid JSON.
     pub fn get(&self, token_id: &str) -> Result<Value, SignalWireRestError> {
         let p = join(&[&self.base_path, token_id]);
         self.client.get(&p, &HashMap::new())
     }
 
     /// POST {base}/{id}/reset — no-body POST per Python.
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (404 if
+    /// `token_id` is unknown), or the response body is not valid JSON.
     pub fn reset(&self, token_id: &str) -> Result<Value, SignalWireRestError> {
         let p = join(&[&self.base_path, token_id, "reset"]);
         self.client.post(&p, &serde_json::json!({}))
@@ -423,11 +533,19 @@ impl<'a> VideoStreams<'a> {
         &self.base_path
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (404 if
+    /// `stream_id` is unknown), or the response body is not valid JSON.
     pub fn get(&self, stream_id: &str) -> Result<Value, SignalWireRestError> {
         let p = join(&[&self.base_path, stream_id]);
         self.client.get(&p, &HashMap::new())
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (404 if
+    /// `stream_id` is unknown), or the response body is not valid JSON.
     pub fn update(
         &self,
         stream_id: &str,
@@ -437,6 +555,10 @@ impl<'a> VideoStreams<'a> {
         self.client.put(&p, params)
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (404 if
+    /// `stream_id` is unknown), or the response body is not valid JSON.
     pub fn delete(&self, stream_id: &str) -> Result<Value, SignalWireRestError> {
         let p = join(&[&self.base_path, stream_id]);
         self.client.delete(&p)

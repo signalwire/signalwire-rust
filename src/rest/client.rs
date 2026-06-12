@@ -23,6 +23,10 @@ impl RestClient {
     /// Create a new REST client with explicit credentials. The base URL
     /// resolves to `https://{space}`. Use [`with_base_url`] to override
     /// (e.g. for fixture-driven tests pointed at `http://127.0.0.1:N`).
+    ///
+    /// # Errors
+    /// Returns `Err(String)` if any required credential is empty: `project_id`,
+    /// `token`, or `space`. No network request is made here.
     pub fn new(project_id: &str, token: &str, space: &str) -> Result<Self, String> {
         if project_id.is_empty() {
             return Err(
@@ -61,6 +65,10 @@ impl RestClient {
     /// harnesses and integration tests to point at a local fixture
     /// without going through the `https://{space}` resolution. Production
     /// callers should use [`new`] instead.
+    ///
+    /// # Errors
+    /// Returns `Err(String)` if any required argument is empty: `project_id`,
+    /// `token`, or `base_url`. No network request is made here.
     pub fn with_base_url(project_id: &str, token: &str, base_url: &str) -> Result<Self, String> {
         if project_id.is_empty() {
             return Err("projectId is required".to_string());
@@ -87,6 +95,10 @@ impl RestClient {
     }
 
     /// Create a REST client with a specific HTTP client (for testing).
+    ///
+    /// # Errors
+    /// Returns `Err(String)` if any of `project_id`, `token`, or `space` is
+    /// empty. No network request is made here.
     pub fn with_http(
         project_id: &str,
         token: &str,
@@ -106,6 +118,12 @@ impl RestClient {
     }
 
     /// Create from environment variables.
+    ///
+    /// # Errors
+    /// Returns `Err(String)` if any of `SIGNALWIRE_PROJECT_ID`,
+    /// `SIGNALWIRE_API_TOKEN`, or `SIGNALWIRE_SPACE` is unset or empty (they
+    /// default to the empty string, which fails the same validation as
+    /// [`new`](Self::new)). No network request is made here.
     pub fn from_env() -> Result<Self, String> {
         let project_id =
             env::var("SIGNALWIRE_PROJECT_ID").unwrap_or_default();

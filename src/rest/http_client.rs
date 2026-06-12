@@ -11,6 +11,14 @@ use super::error::SignalWireRestError;
 /// Production code uses a real implementation (e.g. ureq), while
 /// tests inject a mock.
 pub trait HttpTransport: Send + Sync {
+    /// Execute a single HTTP request and return `(status_code, body)`.
+    ///
+    /// # Errors
+    /// Returns `Err(String)` describing the failure when the request cannot
+    /// be performed — the method is unsupported, the connection to the Space
+    /// cannot be established (transport/network failure), or the response body
+    /// cannot be read. A non-2xx HTTP status is *not* an error here; it is
+    /// returned as the status code for the caller to interpret.
     fn execute(
         &self,
         method: &str,
@@ -254,25 +262,62 @@ impl HttpClient {
 
     // -- HTTP methods --
 
+    /// Issue a `GET` request to `path` with the given query `params`.
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure, reported with status code 0), the API responds with
+    /// a non-2xx status (the error carries the status and response body — e.g.
+    /// 404 when the addressed resource does not exist), or a 2xx response body
+    /// is present but not valid JSON. This is the authoritative description of
+    /// the three failure modes shared by every HTTP method on this client.
     pub fn get(&self, path: &str, params: &HashMap<String, String>) -> Result<Value, SignalWireRestError> {
         self.request("GET", path, params, None)
     }
 
+    /// Issue a `POST` request to `path` with `data` serialized as the JSON body.
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (e.g. 422
+    /// when the payload fails server-side validation), or a 2xx response body
+    /// is not valid JSON. See [`get`](Self::get) for the canonical description.
     pub fn post(&self, path: &str, data: &Value) -> Result<Value, SignalWireRestError> {
         let body = serde_json::to_string(data).unwrap_or_else(|_| "{}".to_string());
         self.request("POST", path, &HashMap::new(), Some(&body))
     }
 
+    /// Issue a `PUT` request to `path` with `data` serialized as the JSON body.
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (e.g. 404
+    /// for a missing resource or 422 when the payload fails validation), or a
+    /// 2xx response body is not valid JSON. See [`get`](Self::get).
     pub fn put(&self, path: &str, data: &Value) -> Result<Value, SignalWireRestError> {
         let body = serde_json::to_string(data).unwrap_or_else(|_| "{}".to_string());
         self.request("PUT", path, &HashMap::new(), Some(&body))
     }
 
+    /// Issue a `PATCH` request to `path` with `data` serialized as the JSON body.
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (e.g. 404
+    /// for a missing resource or 422 when the payload fails validation), or a
+    /// 2xx response body is not valid JSON. See [`get`](Self::get).
     pub fn patch(&self, path: &str, data: &Value) -> Result<Value, SignalWireRestError> {
         let body = serde_json::to_string(data).unwrap_or_else(|_| "{}".to_string());
         self.request("PATCH", path, &HashMap::new(), Some(&body))
     }
 
+    /// Issue a `DELETE` request to `path`.
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (e.g. 404
+    /// when the addressed resource does not exist), or a 2xx response body is
+    /// present but not valid JSON. See [`get`](Self::get).
     pub fn delete(&self, path: &str) -> Result<Value, SignalWireRestError> {
         self.request("DELETE", path, &HashMap::new(), None)
     }
@@ -280,6 +325,13 @@ impl HttpClient {
     // -- Paginated list support --
 
     /// Return all pages of results, following `links.next`.
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if any page request fails: it cannot
+    /// reach the Space (transport failure), the API responds with a non-2xx
+    /// status, or a 2xx response body is not valid JSON. Pagination follows the
+    /// `links.next` cursor returned by each page; a malformed or unreachable
+    /// next-page URL surfaces as the underlying request error for that page.
     pub fn list_all(&self, path: &str, params: &HashMap<String, String>) -> Result<Vec<Value>, SignalWireRestError> {
         let mut all_pages = Vec::new();
         let mut current_path = path.to_string();

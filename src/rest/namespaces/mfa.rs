@@ -26,16 +26,32 @@ impl<'a> Mfa<'a> {
     }
 
     /// POST /api/relay/rest/mfa/sms — send a one-time code over SMS.
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (e.g. 422
+    /// when `params` fails validation), or the response body is not valid JSON.
     pub fn sms(&self, params: &Value) -> Result<Value, SignalWireRestError> {
         self.client.post(&format!("{}/sms", self.base_path), params)
     }
 
     /// POST /api/relay/rest/mfa/call — deliver a one-time code via voice.
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (e.g. 422
+    /// when `params` fails validation), or the response body is not valid JSON.
     pub fn call(&self, params: &Value) -> Result<Value, SignalWireRestError> {
         self.client.post(&format!("{}/call", self.base_path), params)
     }
 
     /// POST `/api/relay/rest/mfa/{request_id}/verify` — verify a code.
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (e.g. 404
+    /// for an unknown `request_id`, or a non-2xx status when the code is
+    /// rejected), or the response body is not valid JSON.
     pub fn verify(
         &self,
         request_id: &str,

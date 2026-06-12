@@ -26,11 +26,21 @@ impl<'a> SipProfile<'a> {
     }
 
     /// GET `/api/relay/rest/sip_profile` — fetch the current profile.
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status, or the
+    /// response body is not valid JSON.
     pub fn get(&self) -> Result<Value, SignalWireRestError> {
         self.client.get(&self.base_path, &std::collections::HashMap::new())
     }
 
     /// PUT `/api/relay/rest/sip_profile` — update the SIP profile.
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (e.g. 422
+    /// when `params` fails validation), or the response body is not valid JSON.
     pub fn update(&self, params: &Value) -> Result<Value, SignalWireRestError> {
         self.client.put(&self.base_path, params)
     }

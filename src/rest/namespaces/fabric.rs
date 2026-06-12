@@ -155,11 +155,19 @@ impl<'a> FabricAddresses<'a> {
         &self.base_path
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status, or the
+    /// response body is not valid JSON.
     pub fn list(&self, params: &Value) -> Result<Value, SignalWireRestError> {
         let qp = params_to_string_map(params);
         self.client.get(&self.base_path, &qp)
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (notably
+    /// 404 if `address_id` is unknown), or the response body is not valid JSON.
     pub fn get(&self, address_id: &str) -> Result<Value, SignalWireRestError> {
         let p = join(&[&self.base_path, address_id]);
         self.client.get(&p, &HashMap::new())
@@ -187,20 +195,39 @@ impl<'a> SubscribersResource<'a> {
         &self.base_path
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status, or the
+    /// response body is not valid JSON.
     pub fn list(&self, params: &Value) -> Result<Value, SignalWireRestError> {
         let qp = params_to_string_map(params);
         self.client.get(&self.base_path, &qp)
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (notably
+    /// 422 if the server rejects the supplied fields), or the response body is
+    /// not valid JSON.
     pub fn create(&self, params: &Value) -> Result<Value, SignalWireRestError> {
         self.client.post(&self.base_path, params)
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (notably
+    /// 404 if `subscriber_id` is unknown), or the response body is not valid
+    /// JSON.
     pub fn get(&self, subscriber_id: &str) -> Result<Value, SignalWireRestError> {
         let p = join(&[&self.base_path, subscriber_id]);
         self.client.get(&p, &HashMap::new())
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (notably
+    /// 404 if `subscriber_id` is unknown or 422 if the server rejects the
+    /// supplied fields), or the response body is not valid JSON.
     pub fn update(
         &self,
         subscriber_id: &str,
@@ -210,11 +237,21 @@ impl<'a> SubscribersResource<'a> {
         self.client.put(&p, params)
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (notably
+    /// 404 if `subscriber_id` is unknown), or the response body is not valid
+    /// JSON.
     pub fn delete(&self, subscriber_id: &str) -> Result<Value, SignalWireRestError> {
         let p = join(&[&self.base_path, subscriber_id]);
         self.client.delete(&p)
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (notably
+    /// 404 if `subscriber_id` is unknown), or the response body is not valid
+    /// JSON.
     pub fn list_addresses(
         &self,
         subscriber_id: &str,
@@ -225,6 +262,11 @@ impl<'a> SubscribersResource<'a> {
         self.client.get(&p, &qp)
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (notably
+    /// 404 if `subscriber_id` is unknown), or the response body is not valid
+    /// JSON.
     pub fn list_sip_endpoints(
         &self,
         subscriber_id: &str,
@@ -235,6 +277,11 @@ impl<'a> SubscribersResource<'a> {
         self.client.get(&p, &qp)
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (notably
+    /// 404 if `subscriber_id` is unknown or 422 if the server rejects the
+    /// supplied fields), or the response body is not valid JSON.
     pub fn create_sip_endpoint(
         &self,
         subscriber_id: &str,
@@ -244,6 +291,11 @@ impl<'a> SubscribersResource<'a> {
         self.client.post(&p, params)
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (notably
+    /// 404 if `subscriber_id` or `endpoint_id` is unknown), or the response
+    /// body is not valid JSON.
     pub fn get_sip_endpoint(
         &self,
         subscriber_id: &str,
@@ -253,6 +305,11 @@ impl<'a> SubscribersResource<'a> {
         self.client.get(&p, &HashMap::new())
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (notably
+    /// 404 if `subscriber_id` or `endpoint_id` is unknown or 422 if the server
+    /// rejects the supplied fields), or the response body is not valid JSON.
     pub fn update_sip_endpoint(
         &self,
         subscriber_id: &str,
@@ -263,6 +320,11 @@ impl<'a> SubscribersResource<'a> {
         self.client.patch(&p, params)
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (notably
+    /// 404 if `subscriber_id` or `endpoint_id` is unknown), or the response
+    /// body is not valid JSON.
     pub fn delete_sip_endpoint(
         &self,
         subscriber_id: &str,
@@ -298,20 +360,39 @@ impl<'a> CallFlowsResource<'a> {
         self.base_path.replace("/call_flows", "/call_flow")
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status, or the
+    /// response body is not valid JSON.
     pub fn list(&self, params: &Value) -> Result<Value, SignalWireRestError> {
         let qp = params_to_string_map(params);
         self.client.get(&self.base_path, &qp)
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (notably
+    /// 422 if the server rejects the supplied fields), or the response body is
+    /// not valid JSON.
     pub fn create(&self, params: &Value) -> Result<Value, SignalWireRestError> {
         self.client.post(&self.base_path, params)
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (notably
+    /// 404 if `resource_id` is unknown), or the response body is not valid
+    /// JSON.
     pub fn get(&self, resource_id: &str) -> Result<Value, SignalWireRestError> {
         let p = join(&[&self.base_path, resource_id]);
         self.client.get(&p, &HashMap::new())
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (notably
+    /// 404 if `resource_id` is unknown or 422 if the server rejects the
+    /// supplied fields), or the response body is not valid JSON.
     pub fn update(
         &self,
         resource_id: &str,
@@ -321,12 +402,23 @@ impl<'a> CallFlowsResource<'a> {
         self.client.put(&p, params)
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (notably
+    /// 404 if `resource_id` is unknown), or the response body is not valid
+    /// JSON.
     pub fn delete(&self, resource_id: &str) -> Result<Value, SignalWireRestError> {
         let p = join(&[&self.base_path, resource_id]);
         self.client.delete(&p)
     }
 
     /// Sub-resource list — uses singular `call_flow` per the API spec.
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (notably
+    /// 404 if `resource_id` is unknown), or the response body is not valid
+    /// JSON.
     pub fn list_addresses(
         &self,
         resource_id: &str,
@@ -338,6 +430,11 @@ impl<'a> CallFlowsResource<'a> {
         self.client.get(&p, &qp)
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (notably
+    /// 404 if `resource_id` is unknown), or the response body is not valid
+    /// JSON.
     pub fn list_versions(
         &self,
         resource_id: &str,
@@ -349,6 +446,11 @@ impl<'a> CallFlowsResource<'a> {
         self.client.get(&p, &qp)
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (notably
+    /// 404 if `resource_id` is unknown or 422 if the server rejects the
+    /// supplied fields), or the response body is not valid JSON.
     pub fn deploy_version(
         &self,
         resource_id: &str,
@@ -385,20 +487,39 @@ impl<'a> ConferenceRoomsResource<'a> {
         self.base_path.replace("/conference_rooms", "/conference_room")
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status, or the
+    /// response body is not valid JSON.
     pub fn list(&self, params: &Value) -> Result<Value, SignalWireRestError> {
         let qp = params_to_string_map(params);
         self.client.get(&self.base_path, &qp)
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (notably
+    /// 422 if the server rejects the supplied fields), or the response body is
+    /// not valid JSON.
     pub fn create(&self, params: &Value) -> Result<Value, SignalWireRestError> {
         self.client.post(&self.base_path, params)
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (notably
+    /// 404 if `resource_id` is unknown), or the response body is not valid
+    /// JSON.
     pub fn get(&self, resource_id: &str) -> Result<Value, SignalWireRestError> {
         let p = join(&[&self.base_path, resource_id]);
         self.client.get(&p, &HashMap::new())
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (notably
+    /// 404 if `resource_id` is unknown or 422 if the server rejects the
+    /// supplied fields), or the response body is not valid JSON.
     pub fn update(
         &self,
         resource_id: &str,
@@ -408,11 +529,21 @@ impl<'a> ConferenceRoomsResource<'a> {
         self.client.put(&p, params)
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (notably
+    /// 404 if `resource_id` is unknown), or the response body is not valid
+    /// JSON.
     pub fn delete(&self, resource_id: &str) -> Result<Value, SignalWireRestError> {
         let p = join(&[&self.base_path, resource_id]);
         self.client.delete(&p)
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (notably
+    /// 404 if `resource_id` is unknown), or the response body is not valid
+    /// JSON.
     pub fn list_addresses(
         &self,
         resource_id: &str,
@@ -446,16 +577,30 @@ impl<'a> CxmlApplicationsResource<'a> {
         &self.base_path
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status, or the
+    /// response body is not valid JSON.
     pub fn list(&self, params: &Value) -> Result<Value, SignalWireRestError> {
         let qp = params_to_string_map(params);
         self.client.get(&self.base_path, &qp)
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (notably
+    /// 404 if `resource_id` is unknown), or the response body is not valid
+    /// JSON.
     pub fn get(&self, resource_id: &str) -> Result<Value, SignalWireRestError> {
         let p = join(&[&self.base_path, resource_id]);
         self.client.get(&p, &HashMap::new())
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (notably
+    /// 404 if `resource_id` is unknown or 422 if the server rejects the
+    /// supplied fields), or the response body is not valid JSON.
     pub fn update(
         &self,
         resource_id: &str,
@@ -465,6 +610,11 @@ impl<'a> CxmlApplicationsResource<'a> {
         self.client.put(&p, params)
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (notably
+    /// 404 if `resource_id` is unknown), or the response body is not valid
+    /// JSON.
     pub fn delete(&self, resource_id: &str) -> Result<Value, SignalWireRestError> {
         let p = join(&[&self.base_path, resource_id]);
         self.client.delete(&p)
@@ -475,6 +625,11 @@ impl<'a> CxmlApplicationsResource<'a> {
     /// Returns an `Err` with a clear "not implemented" message that
     /// mirrors the Python SDK's `NotImplementedError`. No HTTP request
     /// is sent to the server.
+    ///
+    /// # Errors
+    /// Always returns [`SignalWireRestError`]: creation is unsupported, so this
+    /// method unconditionally yields a "not implemented" error without
+    /// contacting the Space.
     pub fn create(&self, _params: &Value) -> Result<Value, SignalWireRestError> {
         Err(SignalWireRestError::new(
             "cXML applications cannot be created via this API",
@@ -505,21 +660,40 @@ impl<'a> GenericResources<'a> {
         &self.base_path
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status, or the
+    /// response body is not valid JSON.
     pub fn list(&self, params: &Value) -> Result<Value, SignalWireRestError> {
         let qp = params_to_string_map(params);
         self.client.get(&self.base_path, &qp)
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (notably
+    /// 404 if `resource_id` is unknown), or the response body is not valid
+    /// JSON.
     pub fn get(&self, resource_id: &str) -> Result<Value, SignalWireRestError> {
         let p = join(&[&self.base_path, resource_id]);
         self.client.get(&p, &HashMap::new())
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (notably
+    /// 404 if `resource_id` is unknown), or the response body is not valid
+    /// JSON.
     pub fn delete(&self, resource_id: &str) -> Result<Value, SignalWireRestError> {
         let p = join(&[&self.base_path, resource_id]);
         self.client.delete(&p)
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (notably
+    /// 404 if `resource_id` is unknown), or the response body is not valid
+    /// JSON.
     pub fn list_addresses(
         &self,
         resource_id: &str,
@@ -530,6 +704,11 @@ impl<'a> GenericResources<'a> {
         self.client.get(&p, &qp)
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (notably
+    /// 404 if `resource_id` is unknown or 422 if the server rejects the
+    /// supplied fields), or the response body is not valid JSON.
     pub fn assign_domain_application(
         &self,
         resource_id: &str,
@@ -553,6 +732,11 @@ impl<'a> FabricTokens<'a> {
         FabricTokens { client }
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (notably
+    /// 422 if the server rejects the supplied fields), or the response body is
+    /// not valid JSON.
     pub fn create_subscriber_token(
         &self,
         params: &Value,
@@ -561,6 +745,11 @@ impl<'a> FabricTokens<'a> {
             .post("/api/fabric/subscribers/tokens", params)
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (notably
+    /// 422 if the supplied token cannot be refreshed), or the response body is
+    /// not valid JSON.
     pub fn refresh_subscriber_token(
         &self,
         params: &Value,
@@ -570,6 +759,12 @@ impl<'a> FabricTokens<'a> {
     }
 
     /// Note the singular `subscriber` segment per the spec.
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (notably
+    /// 422 if the server rejects the supplied fields), or the response body is
+    /// not valid JSON.
     pub fn create_invite_token(
         &self,
         params: &Value,
@@ -577,6 +772,11 @@ impl<'a> FabricTokens<'a> {
         self.client.post("/api/fabric/subscriber/invites", params)
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (notably
+    /// 422 if the server rejects the supplied fields), or the response body is
+    /// not valid JSON.
     pub fn create_guest_token(
         &self,
         params: &Value,
@@ -584,6 +784,11 @@ impl<'a> FabricTokens<'a> {
         self.client.post("/api/fabric/guests/tokens", params)
     }
 
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (notably
+    /// 422 if the server rejects the supplied fields), or the response body is
+    /// not valid JSON.
     pub fn create_embed_token(
         &self,
         params: &Value,

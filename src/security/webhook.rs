@@ -320,6 +320,14 @@ fn check_body_sha256(url: &str, raw_body: &str) -> bool {
 /// * `Ok(false)` if it does not match.
 /// * `Err(WebhookError::MissingSigningKey)` only when the key is missing.
 ///
+/// # Errors
+///
+/// Returns `Err(WebhookError::MissingSigningKey)` when `signing_key` is
+/// empty — a caller/configuration error distinct from a signature
+/// mismatch. A wrong, malformed, or absent `signature` is *not* an
+/// error: it yields `Ok(false)`. This function only ever returns the
+/// one error variant.
+///
 /// All comparisons are constant-time via [`subtle::ConstantTimeEq`].
 pub fn validate_webhook_signature(
     signing_key: &str,
@@ -385,6 +393,13 @@ pub fn validate_webhook_signature(
 ///
 /// `bodySHA256` verification is skipped in the `Params` variant — there
 /// is no raw body to hash.
+///
+/// # Errors
+///
+/// Returns `Err(WebhookError::MissingSigningKey)` when `signing_key` is
+/// empty (in the `Body` variant this is surfaced by the delegated
+/// [`validate_webhook_signature`]). As above, an empty or non-matching
+/// `signature` is reported as `Ok(false)`, not an error.
 pub fn validate_request(
     signing_key: &str,
     signature: &str,

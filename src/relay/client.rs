@@ -262,6 +262,14 @@ impl Client {
     }
 
     /// Create from env vars `SIGNALWIRE_PROJECT_ID`, `SIGNALWIRE_API_TOKEN`, `SIGNALWIRE_SPACE`.
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err(RelayError::missing_env(...))` if any of the three
+    /// required environment variables — `SIGNALWIRE_PROJECT_ID`,
+    /// `SIGNALWIRE_API_TOKEN`, or `SIGNALWIRE_SPACE` — is unset (or not
+    /// valid UTF-8). No network I/O occurs here, so this is purely a
+    /// configuration-presence check.
     pub fn from_env() -> Result<Self, RelayError> {
         let project = std::env::var("SIGNALWIRE_PROJECT_ID")
             .map_err(|_| RelayError::missing_env("SIGNALWIRE_PROJECT_ID"))?;
@@ -291,6 +299,16 @@ impl Client {
     /// Returns `Err` if the TCP/WS upgrade fails, the server rejects the
     /// connect handshake, or the response doesn't arrive within
     /// `HANDSHAKE_TIMEOUT`.
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err(RelayError)` when the connection cannot be brought
+    /// up: `RelayError::Transport` if the TCP connect / WebSocket
+    /// upgrade fails or the reader thread cannot be spawned;
+    /// `RelayError::Auth` if the server rejects the `signalwire.connect`
+    /// handshake; or `RelayError::Timeout` if no handshake response
+    /// arrives within `HANDSHAKE_TIMEOUT` (the auth failure paths are
+    /// surfaced through the delegated [`authenticate_blocking`]).
     pub fn connect(self: &Arc<Self>) -> Result<(), RelayError> {
         self.logger.info(&format!("Connecting to {}", self.host));
 
@@ -354,6 +372,13 @@ impl Client {
     }
 
     /// Initial connect -- resets reconnect delay and connects.
+    ///
+    /// # Errors
+    ///
+    /// Propagates the error from [`connect`]: `RelayError::Transport`
+    /// (TCP/WS upgrade or thread spawn failure), `RelayError::Auth`
+    /// (handshake rejected), or `RelayError::Timeout` (no handshake
+    /// response within `HANDSHAKE_TIMEOUT`).
     pub fn connect_fresh(self: &Arc<Self>) -> Result<(), RelayError> {
         *self.reconnect_delay.lock().unwrap() = 1;
         self.connect()
@@ -362,6 +387,15 @@ impl Client {
     /// Send the `signalwire.connect` RPC and block until the response
     /// arrives or the handshake times out. The response carries the
     /// server-assigned protocol string and authorization state.
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err(RelayError::Auth { message })` if the server rejects
+    /// `signalwire.connect` (the message comes from the JSON-RPC error's
+    /// `message` field, defaulting to `"authentication failed"`), or
+    /// `Err(RelayError::Timeout)` if no response is received within
+    /// `HANDSHAKE_TIMEOUT` (in which case the pending request is cleaned
+    /// up so a late reply cannot fire a stale callback).
     pub fn authenticate_blocking(&self) -> Result<(), RelayError> {
         self.logger.info("Authenticating");
 
@@ -518,6 +552,14 @@ impl Client {
     /// the full connect handshake again. Authorization state survives
     /// across reconnects because [`authenticate_blocking`] re-sends the
     /// stored token on the new socket.
+    ///
+    /// # Errors
+    ///
+    /// After the back-off sleep, propagates the error from [`connect`]:
+    /// `RelayError::Transport` if the new socket cannot be established,
+    /// `RelayError::Auth` if the re-handshake is rejected, or
+    /// `RelayError::Timeout` if the handshake response does not arrive
+    /// within `HANDSHAKE_TIMEOUT`.
     pub fn reconnect(self: &Arc<Self>) -> Result<(), RelayError> {
         *self.connected.lock().unwrap() = false;
 
@@ -857,6 +899,15 @@ impl Client {
     ///
     /// Returns the response's `result` value on success, or an `Err`
     /// with the server's error message on failure or timeout.
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err(RelayError::Rpc { method, message })` when the
+    /// server replies with a JSON-RPC error for `method` (the `message`
+    /// comes from the error's `message` field, defaulting to
+    /// `"execute failed"`), or `Err(RelayError::Timeout)` if no response
+    /// for the request id arrives within `HANDSHAKE_TIMEOUT` (the
+    /// pending entry is removed on timeout).
     pub fn execute_blocking(
         &self,
         method: &str,
@@ -912,6 +963,15 @@ impl Client {
     /// `body` or `media` must be supplied. Returns a tracked `Message`
     /// whose state will progress as `messaging.state` events arrive
     /// from the server.
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err(RelayError::InvalidArgument { message: "At least one
+    /// of body or media is required" })` if both `body` and `media` are
+    /// empty/absent. Otherwise propagates the error from the underlying
+    /// `messaging.send` call via [`execute_blocking`]:
+    /// `RelayError::Rpc` if the server rejects the send, or
+    /// `RelayError::Timeout` if no response arrives in time.
     pub fn send_message_blocking(
         &self,
         to_number: &str,
@@ -996,6 +1056,16 @@ impl Client {
     /// `devices` is the standard serial/parallel device matrix
     /// (`[[device]]` for one parallel leg / serial = one inner list with
     /// multiple devices).
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err(RelayError::DialFailed { reason })` if no
+    /// `calling.call.dial` answer event for this `tag` arrives within
+    /// `dial_timeout` — `reason` is the failure message captured from a
+    /// `failed` dial event when one was seen, otherwise a synthesized
+    /// `"timed out waiting for answer (tag=...)"`. The fire-and-forget
+    /// `calling.dial` RPC's own result is intentionally not gated on, so
+    /// it does not surface as an error here.
     pub fn dial_blocking(
         self: &Arc<Self>,
         devices: Value,

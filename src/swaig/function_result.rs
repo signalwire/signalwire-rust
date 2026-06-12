@@ -474,6 +474,15 @@ impl FunctionResult {
     /// `end_silence_timeout`, `max_length`, and `status_url` are emitted only
     /// when supplied. There is no `initiator` field — the previous port invented
     /// it; it is removed.
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err(String)` with the reference's exact `ValueError`
+    /// text when a closed-set argument is out of range:
+    /// `"format must be 'wav', 'mp3', or 'mp4'"` if `format` resolves to
+    /// anything outside `{wav, mp3, mp4}`, or
+    /// `"direction must be 'speak', 'listen', or 'both'"` if `direction`
+    /// resolves outside `{speak, listen, both}`.
     #[allow(clippy::too_many_arguments)]
     pub fn record_call(
         &mut self,
@@ -693,6 +702,19 @@ impl FunctionResult {
     /// (`{"SWML": {version, sections: {main: [{join_conference: ...}]}}}`),
     /// matching the reference (which routes `join_conference` through
     /// `execute_swml`) — never a bare verb.
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err(String)` (the reference's exact `ValueError` text)
+    /// on any of the seven closed-set / range checks: `beep` outside
+    /// `{true, false, onEnter, onExit}` (`"beep must be one of ..."`),
+    /// `max_participants` not in `1..=250`
+    /// (`"max_participants must be a positive integer <= 250"`),
+    /// `record` outside `{do-not-record, record-from-start}`,
+    /// `trim` outside `{trim-silence, do-not-trim}`,
+    /// `status_callback_method` or `recording_status_callback_method`
+    /// outside `{GET, POST}`, or a `name` that is empty after trimming
+    /// (`"name cannot be empty"`).
     #[allow(clippy::too_many_arguments)]
     pub fn join_conference(
         &mut self,
@@ -877,6 +899,14 @@ impl FunctionResult {
     /// Only `uri` is always emitted; `control_id`, `direction`, `codec`,
     /// `rtp_ptime`, and `status_url` are emitted only when they differ from the
     /// reference defaults (`direction="both"`, `codec="PCMU"`, `rtp_ptime=20`).
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err(String)` (the reference's exact `ValueError` text)
+    /// when a closed-set / range argument is invalid: `direction`
+    /// outside `{speak, hear, both}` (`"direction must be one of ..."`),
+    /// `codec` outside `{PCMU, PCMA}` (`"codec must be one of ..."`), or
+    /// `rtp_ptime <= 0` (`"rtp_ptime must be a positive integer"`).
     pub fn tap(
         &mut self,
         uri: &str,
@@ -954,6 +984,13 @@ impl FunctionResult {
     /// `ValueError` text when neither `body` nor `media` is provided. `body` is
     /// emitted only when non-empty; `media`, `tags`, and `region` are emitted
     /// only when supplied.
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err("Either body or media must be provided")` (the
+    /// reference's exact `ValueError` text) when `body` is empty and
+    /// `media` is empty — an SMS must carry text or at least one media
+    /// URL.
     pub fn send_sms(
         &mut self,
         to: &str,
