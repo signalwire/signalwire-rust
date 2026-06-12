@@ -100,9 +100,10 @@ fn tls_sdk_server_serves_verified_https() {
                 break;
             }
             Err(e) => {
-                if Instant::now() > deadline {
-                    panic!("SDK https server /health never reachable: {e}");
-                }
+                assert!(
+                    Instant::now() <= deadline,
+                    "SDK https server /health never reachable: {e}"
+                );
                 std::thread::sleep(Duration::from_millis(100));
             }
         }

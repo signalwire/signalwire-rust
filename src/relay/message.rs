@@ -18,6 +18,8 @@ pub type MessageEventCallback = Arc<dyn Fn(&Message, &Event) + Send + Sync>;
 /// RELAY messaging namespace.  It accumulates state-change events and
 /// resolves once the message reaches a terminal state (delivered,
 /// undelivered, or failed).
+// Field names (message_id, …) mirror the RELAY wire / Python field names 1:1.
+#[allow(clippy::struct_field_names)]
 pub struct Message {
     message_id: Option<String>,
     context: Option<String>,

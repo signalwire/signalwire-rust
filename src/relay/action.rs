@@ -156,6 +156,9 @@ impl Action {
 
     /// Override point for subclasses that need to filter events.
     /// Default: accept all events.
+    // &self is the override-hook contract (mirrors Python's overridable method);
+    // the default impl ignores it but an override needs instance state.
+    #[allow(clippy::unused_self)]
     fn should_handle_event(&self, _event: &Event) -> bool {
         true
     }

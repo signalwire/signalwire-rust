@@ -683,6 +683,7 @@ mod tests {
                     // One read to consume the request line, then stall.
                     let _ = s.read(&mut buf);
                     // Hold the socket open well past any test deadline.
+                    #[allow(clippy::duration_suboptimal_units)] // 60s reads clearer than from_mins
                     thread::sleep(Duration::from_secs(60));
                 });
             }
@@ -700,6 +701,7 @@ mod tests {
         thread::spawn(move || {
             for mut s in listener.incoming().flatten() {
                 thread::spawn(move || {
+                    use std::io::Write as _;
                     let mut buf = [0u8; 2048];
                     let _ = s.read(&mut buf);
                     let resp = format!(
@@ -708,7 +710,6 @@ mod tests {
                         json_body.len(),
                         json_body
                     );
-                    use std::io::Write as _;
                     let _ = s.write_all(resp.as_bytes());
                     let _ = s.flush();
                 });

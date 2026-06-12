@@ -97,13 +97,12 @@ impl CrossBinaryLock {
         let fd = file.as_raw_fd();
         // SAFETY: fd is valid for the lifetime of `file`.
         let rc = unsafe { libc_flock(fd, LOCK_EX) };
-        if rc != 0 {
-            panic!(
-                "relay_mocktest: flock LOCK_EX on {}: errno={}",
-                CROSS_BINARY_LOCK_PATH,
-                std::io::Error::last_os_error()
-            );
-        }
+        assert!(
+            rc == 0,
+            "relay_mocktest: flock LOCK_EX on {}: errno={}",
+            CROSS_BINARY_LOCK_PATH,
+            std::io::Error::last_os_error()
+        );
         CrossBinaryLock { file }
     }
 }

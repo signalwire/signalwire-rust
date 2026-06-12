@@ -281,12 +281,11 @@ impl RelayTlsLock {
             .unwrap_or_else(|e| panic!("tls_support: open {RELAY_TLS_LOCK_PATH}: {e}"));
         let fd = file.as_raw_fd();
         let rc = unsafe { flock(fd, LOCK_EX) };
-        if rc != 0 {
-            panic!(
-                "tls_support: flock LOCK_EX on {RELAY_TLS_LOCK_PATH}: {}",
-                std::io::Error::last_os_error()
-            );
-        }
+        assert!(
+            rc == 0,
+            "tls_support: flock LOCK_EX on {RELAY_TLS_LOCK_PATH}: {}",
+            std::io::Error::last_os_error()
+        );
         RelayTlsLock { file }
     }
 }

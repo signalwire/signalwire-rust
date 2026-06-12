@@ -132,9 +132,10 @@ pub fn journal_all() -> Vec<JournalEntry> {
 /// — every test that reaches this point should have produced an entry.
 pub fn journal_last() -> JournalEntry {
     let entries = journal_all();
-    if entries.is_empty() {
-        panic!("mocktest: journal is empty - the SDK call did not reach the mock server");
-    }
+    assert!(
+        !entries.is_empty(),
+        "mocktest: journal is empty - the SDK call did not reach the mock server"
+    );
     entries.into_iter().last().unwrap()
 }
 

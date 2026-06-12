@@ -73,6 +73,7 @@ impl WebhookLayer {
     /// `base` is typically `scheme://host[:port]` with no trailing slash
     /// — e.g. `"https://example.ngrok.io"`. Any trailing `/` is
     /// stripped before concatenation.
+    #[must_use]
     pub fn with_url_base(mut self, base: impl Into<String>) -> Self {
         let base = base.into();
         let cfg = WebhookConfig {

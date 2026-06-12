@@ -554,6 +554,7 @@ impl AgentServer {
     }
 
     /// Normalize a route: ensure leading slash, strip trailing slashes (unless root).
+    #[allow(clippy::unused_self)] // private helper kept on the self-method family for consistency
     fn normalize_route(&self, route: &str) -> String {
         let mut r = route.to_string();
         if !r.starts_with('/') {
@@ -566,6 +567,7 @@ impl AgentServer {
     }
 
     /// Normalize a request path: strip trailing slashes (unless root).
+    #[allow(clippy::unused_self)] // private helper kept on the self-method family for consistency
     fn normalize_path(&self, path: &str) -> String {
         let p = if path != "/" {
             path.trim_end_matches('/').to_string()
@@ -580,6 +582,7 @@ impl AgentServer {
     }
 
     /// Build a 403 Forbidden response with security headers.
+    #[allow(clippy::unused_self)] // private helper kept on the self-method family for consistency
     fn forbidden_response(&self) -> (u16, HashMap<String, String>, String) {
         let mut headers = HashMap::new();
         headers.insert("Content-Type".to_string(), "text/plain".to_string());
@@ -590,6 +593,7 @@ impl AgentServer {
     }
 
     /// Build a JSON response tuple.
+    #[allow(clippy::unused_self)] // private helper kept on the self-method family for consistency
     fn json_response(
         &self,
         status: u16,

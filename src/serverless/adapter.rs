@@ -355,8 +355,8 @@ mod tests {
 
     #[test]
     fn test_handle_lambda_base64_body() {
-        let agent = EchoHandler;
         use base64::Engine;
+        let agent = EchoHandler;
         let encoded = base64::engine::general_purpose::STANDARD.encode("decoded body");
         let event = json!({
             "httpMethod": "POST",

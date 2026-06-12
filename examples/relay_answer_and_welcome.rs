@@ -40,6 +40,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Block forever (relay loop runs in a background thread).
     loop {
+        #[allow(clippy::duration_suboptimal_units)] // 60s reads clearer than from_mins
         std::thread::sleep(std::time::Duration::from_secs(60));
     }
 }

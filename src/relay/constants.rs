@@ -66,9 +66,9 @@ pub fn is_action_terminal(event_type: &str, state: &str) -> bool {
             matches!(state, "finished" | "error" | "no_input" | "no_match")
         }
         "calling.call.fax" => matches!(state, "finished" | "error"),
-        "calling.call.tap" => state == "finished",
-        "calling.call.stream" => state == "finished",
-        "calling.call.transcribe" => state == "finished",
+        "calling.call.tap" | "calling.call.stream" | "calling.call.transcribe" => {
+            state == "finished"
+        }
         "calling.call.pay" => matches!(state, "finished" | "error"),
         _ => false,
     }

@@ -40,7 +40,8 @@ type ResolverFn = Box<dyn Fn(&str) -> Option<Vec<IpAddr>> + Send + Sync>;
 
 static RESOLVER: Mutex<Option<ResolverFn>> = Mutex::new(None);
 
-/// Install a custom resolver (for tests). Pass `None` to clear.
+/// Install a custom resolver (for tests). Pass `None` to clear. `_`-prefixed
+/// deliberately — a test-only seam, not part of the public API surface.
 pub fn _set_resolver(resolver: Option<ResolverFn>) {
     *RESOLVER.lock().unwrap() = resolver;
 }
@@ -166,6 +167,8 @@ pub fn validate_url(url: &str, allow_private: bool) -> bool {
 
 #[cfg(test)]
 mod tests {
+    // The tests deliberately call the `_`-prefixed test-only seam `_set_resolver`.
+    #![allow(clippy::used_underscore_items)]
     use super::*;
     use std::sync::Mutex;
 

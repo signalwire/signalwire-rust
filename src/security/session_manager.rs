@@ -132,6 +132,7 @@ impl SessionManager {
         hex_encode(&result)
     }
 
+    #[allow(clippy::unused_self)] // private helper kept on the self-method family for consistency
     fn generate_uuid(&self) -> String {
         let mut bytes = random_bytes(16);
 

@@ -499,9 +499,7 @@ impl Service {
     ///
     /// Panics if the verb name is not in the schema.
     pub fn add_verb(&mut self, verb: &str, section: &str, config: Value) {
-        if !schema::is_valid_verb(verb) {
-            panic!("Unknown SWML verb: {}", verb);
-        }
+        assert!(schema::is_valid_verb(verb), "Unknown SWML verb: {verb}");
         self.document.add_verb_to_section(section, verb, config);
     }
 
@@ -875,6 +873,7 @@ impl Service {
         }
     }
 
+    #[allow(clippy::unused_self)] // private helper kept on the self-method family for consistency
     fn json_response(
         &self,
         status: u16,

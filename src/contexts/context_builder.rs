@@ -154,6 +154,10 @@ impl GatherInfo {
 // ── Step ────────────────────────────────────────────────────────────────────
 
 /// A single step within a context.
+// Field names (step_criteria, valid_steps, …) mirror Python's Step field names
+// 1:1 and serialize to those JSON keys; struct_field_names would strip the
+// `step_` prefix and diverge from the wire shape.
+#[allow(clippy::struct_field_names)]
 #[derive(Debug, Clone)]
 pub struct Step {
     name: String,
@@ -354,9 +358,11 @@ impl Step {
             return t.clone();
         }
 
-        if self.sections.is_empty() {
-            panic!("Step '{}' has no text or POM sections defined", self.name);
-        }
+        assert!(
+            !self.sections.is_empty(),
+            "Step '{}' has no text or POM sections defined",
+            self.name
+        );
 
         let mut parts = Vec::new();
         for section in &self.sections {

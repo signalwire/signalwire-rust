@@ -4,6 +4,10 @@ use std::collections::HashMap;
 ///
 /// Events carry an `event_type` (e.g. `"calling.call.state"`), a
 /// timestamp, and a bag of string-keyed parameters.
+// Field names (event_type, …) mirror the RELAY wire / Python field names 1:1;
+// `event_type` is also a JSON key. struct_field_names would have us drop the
+// `event_` prefix, which would diverge from the wire shape.
+#[allow(clippy::struct_field_names)]
 #[derive(Debug, Clone)]
 pub struct Event {
     event_type: String,

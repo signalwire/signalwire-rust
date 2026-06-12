@@ -1224,17 +1224,13 @@ impl Client {
                     // half-open detector doesn't fire.
                     let _ = socket.send(WsMessage::Pong(p));
                 }
-                Ok(WsMessage::Pong(_)) => {
-                    // No-op; we don't track our own pings here.
-                }
+                // Pong: we don't track our own pings here. Frame: a raw frame
+                // shouldn't occur with the protocol module's `read()` API. Both no-op.
+                Ok(WsMessage::Pong(_) | WsMessage::Frame(_)) => {}
                 Ok(WsMessage::Close(_)) => {
                     client.logger.info("server closed WS");
                     *client.connected.lock().unwrap() = false;
                     break;
-                }
-                Ok(WsMessage::Frame(_)) => {
-                    // Raw frame — should not happen with the protocol
-                    // module's `read()` API. Ignore.
                 }
                 Err(tungstenite::Error::Io(e))
                     if e.kind() == std::io::ErrorKind::WouldBlock

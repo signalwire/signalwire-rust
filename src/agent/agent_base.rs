@@ -1492,6 +1492,7 @@ impl AgentBase {
     }
 
     /// Create a deep copy of this agent for per-request customisation.
+    #[must_use]
     pub fn clone_for_request(&self) -> Self {
         self.clone()
     }
@@ -1501,6 +1502,9 @@ impl AgentBase {
     // ══════════════════════════════════════════════════════════════════════
 
     fn check_auth(&self, headers: &HashMap<String, String>) -> bool {
+        use base64::Engine;
+        use base64::engine::general_purpose::STANDARD as BASE64;
+
         // Delegate to service's handle_request for auth check by
         // using the service's basic_auth_credentials to validate
         let auth_header = headers
@@ -1515,9 +1519,6 @@ impl AgentBase {
         if !auth_header.starts_with("Basic ") {
             return false;
         }
-
-        use base64::Engine;
-        use base64::engine::general_purpose::STANDARD as BASE64;
 
         let decoded = match BASE64.decode(&auth_header[6..]) {
             Ok(d) => d,
