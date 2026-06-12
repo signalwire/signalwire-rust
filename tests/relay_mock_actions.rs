@@ -5,6 +5,10 @@
 // Call::play() which only records to memory), then assert on the
 // journaled `calling.<verb>` and follow-up sub-command frames.
 
+// Test helpers take `Value` by value to match the mock-test helper style
+// (payloads flow in by value, as in the Python sibling tests).
+#![allow(clippy::needless_pass_by_value)]
+
 #[path = "common/mod.rs"]
 mod common;
 

@@ -26,6 +26,11 @@
 //! journal is shared global state.
 
 #![allow(dead_code)]
+// Helper signatures take `Value` / owned args by value to mirror the
+// cross-port mock-test helper contract (the Python `mock_relay` /
+// `mock_signalwire` helpers and the Go pilot pass payloads by value). Keeping
+// the by-value shape keeps these helpers 1:1 with their sibling ports.
+#![allow(clippy::needless_pass_by_value)]
 
 use std::collections::HashMap;
 use std::path::PathBuf;

@@ -3,6 +3,11 @@
 //
 //! Datasphere Multi-Instance — multiple Datasphere document collections.
 
+// The example's `run_server(server: AgentServer)` helper takes the server by
+// value to demonstrate handing it to its run loop (the server's lifetime ends
+// with the loop) — an ownership story `&AgentServer` would obscure.
+#![allow(clippy::needless_pass_by_value)]
+
 use signalwire::agent::{AgentBase, AgentOptions};
 use signalwire::server::AgentServer;
 use signalwire::swaig::FunctionResult;

@@ -6,6 +6,10 @@
 // unknown event types, bad call IDs, multi-action concurrency, event
 // ACK round-trips, ping handling, and authorization-state events.
 
+// Test helpers take `Value` by value to match the mock-test helper style
+// (payloads flow in by value, as in the Python sibling tests).
+#![allow(clippy::needless_pass_by_value)]
+
 #[path = "common/mod.rs"]
 mod common;
 

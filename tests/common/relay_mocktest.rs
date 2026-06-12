@@ -22,6 +22,10 @@
 //! and scenario queues are shared global state on the mock server.
 
 #![allow(dead_code)]
+// Helper signatures take `Value` by value to mirror the cross-port mock-test
+// helper contract (the Python `mock_relay` helpers pass frames/payloads by
+// value). Keeping the by-value shape keeps these helpers 1:1 with siblings.
+#![allow(clippy::needless_pass_by_value)]
 
 use std::collections::HashMap;
 use std::fs::OpenOptions;

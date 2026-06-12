@@ -1,3 +1,15 @@
+// `needless_pass_by_value` is allowed crate-wide as a deliberate parity choice.
+// This port's public constructors and builders take owned `Value`, `Vec<_>`,
+// `HashMap<_>`, and `String` params because they mirror Python's by-value
+// `**kwargs` / positional-list / keyword arguments — the shape the
+// cross-language signature audit maps (var_keyword / positional). Converting
+// these to `&T` to satisfy the lint would distort the parity surface the audit
+// checks, so we keep the owned signatures (the parity meta-rule: a pedantic
+// lint that fights parity is allowed, not obeyed). The few internal/test sites
+// the lint also flags (e.g. functions that genuinely consume the value) are
+// consuming-by-design, so a blanket allow loses nothing real.
+#![allow(clippy::needless_pass_by_value)]
+
 pub mod core;
 pub mod logging;
 pub mod pom;
