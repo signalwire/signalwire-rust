@@ -39,12 +39,15 @@ insert: stdlib HashMap::insert / Vec::insert / BTreeMap::insert
 into: stdlib Into::into
 is_empty: stdlib str::is_empty / Vec::is_empty / HashMap::is_empty
 is_err: stdlib Result::is_err
+is_none_or: stdlib Option::is_none_or combinator
+is_some_and: stdlib Option::is_some_and combinator
 iter: stdlib slice::iter / Vec::iter / HashMap::iter
 len: stdlib slice::len / Vec::len / HashMap::len
 load: stdlib AtomicXxx::load
 local: stdlib chrono Local::now / chrono::Local
 lock: stdlib Mutex::lock
 map_err: stdlib Result::map_err
+map_or_else: stdlib Option::map_or_else / Result::map_or_else combinator
 method: tiny_http::Request::method / http method accessor
 next: stdlib Iterator::next
 nth: stdlib Iterator::nth
