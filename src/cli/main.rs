@@ -134,11 +134,11 @@ fn main() {
 
     // Route to the appropriate action
     if dump_swml {
-        do_dump_swml(&base_url, &auth_header, raw, verbose);
+        do_dump_swml(&base_url, auth_header.as_deref(), raw, verbose);
     } else if list_tools {
-        do_list_tools(&base_url, &auth_header, raw, verbose);
+        do_list_tools(&base_url, auth_header.as_deref(), raw, verbose);
     } else if let Some(tool) = exec_tool {
-        do_exec_tool(&base_url, &auth_header, &tool, &params, raw, verbose);
+        do_exec_tool(&base_url, auth_header.as_deref(), &tool, &params, raw, verbose);
     } else {
         eprintln!("Error: specify --dump-swml, --list-tools, or --exec <tool>");
         process::exit(1);
@@ -295,12 +295,12 @@ fn extract_url_auth(url: &str) -> (String, Option<String>) {
 }
 
 /// Build request headers with optional auth.
-fn build_headers(auth: &Option<String>) -> HashMap<String, String> {
+fn build_headers(auth: Option<&str>) -> HashMap<String, String> {
     let mut headers = HashMap::new();
     headers.insert("Content-Type".to_string(), "application/json".to_string());
     headers.insert("Accept".to_string(), "application/json".to_string());
     if let Some(a) = auth {
-        headers.insert("Authorization".to_string(), a.clone());
+        headers.insert("Authorization".to_string(), a.to_string());
     }
     headers
 }
@@ -379,7 +379,7 @@ fn http_request(
     Ok((status, body_str))
 }
 
-fn do_dump_swml(base_url: &str, auth: &Option<String>, raw: bool, verbose: bool) {
+fn do_dump_swml(base_url: &str, auth: Option<&str>, raw: bool, verbose: bool) {
     let headers = build_headers(auth);
     match http_request("GET", base_url, &headers, None, verbose) {
         Ok((_status, body)) => {
@@ -399,7 +399,7 @@ fn do_dump_swml(base_url: &str, auth: &Option<String>, raw: bool, verbose: bool)
     }
 }
 
-fn do_list_tools(base_url: &str, auth: &Option<String>, raw: bool, verbose: bool) {
+fn do_list_tools(base_url: &str, auth: Option<&str>, raw: bool, verbose: bool) {
     let swaig_url = format!("{}/swaig", base_url.trim_end_matches('/'));
     let headers = build_headers(auth);
     match http_request("GET", &swaig_url, &headers, None, verbose) {
@@ -450,7 +450,7 @@ fn do_list_tools(base_url: &str, auth: &Option<String>, raw: bool, verbose: bool
 
 fn do_exec_tool(
     base_url: &str,
-    auth: &Option<String>,
+    auth: Option<&str>,
     tool: &str,
     params: &[(String, String)],
     raw: bool,
@@ -559,7 +559,7 @@ mod tests {
     #[test]
     fn test_build_headers_with_auth() {
         let auth = Some("Basic dGVzdDp0ZXN0".to_string());
-        let headers = build_headers(&auth);
+        let headers = build_headers(auth.as_deref());
         assert_eq!(headers["Authorization"], "Basic dGVzdDp0ZXN0");
         assert_eq!(headers["Content-Type"], "application/json");
         assert_eq!(headers["Accept"], "application/json");
@@ -567,7 +567,7 @@ mod tests {
 
     #[test]
     fn test_build_headers_without_auth() {
-        let headers = build_headers(&None);
+        let headers = build_headers(None);
         assert!(!headers.contains_key("Authorization"));
         assert_eq!(headers["Content-Type"], "application/json");
     }
@@ -614,7 +614,7 @@ mod tests {
         // that test ratified the stub. Now the function does real I/O.
         let (base, captured, _h) = spawn_test_server(200, r#"{"ok":true,"verb":"GET"}"#);
         let url = format!("{base}/swml");
-        let headers = build_headers(&None);
+        let headers = build_headers(None);
         let (status, body) = http_request("GET", &url, &headers, None, false)
             .expect("real GET should succeed against the test server");
         assert_eq!(status, 200);
@@ -632,7 +632,7 @@ mod tests {
             r#"{"function":"lookup","response":"ACME"}"#,
         );
         let url = format!("{base}/swaig");
-        let mut headers = build_headers(&Some("Basic dGVzdDp0ZXN0".to_string()));
+        let mut headers = build_headers(Some("Basic dGVzdDp0ZXN0"));
         headers.insert("Content-Type".to_string(), "application/json".to_string());
         let body = r#"{"function":"lookup","argument":{"parsed":[{"competitor":"ACME"}]}}"#;
         let (status, resp) = http_request("POST", &url, &headers, Some(body), false)
@@ -704,7 +704,7 @@ mod tests {
         // Verbose mode logs to stderr but does not change the result. Real
         // round-trip succeeds the same way it does in non-verbose mode.
         let (base, _captured, _h) = spawn_test_server(200, r#"{"ok":true}"#);
-        let mut headers = build_headers(&None);
+        let mut headers = build_headers(None);
         headers.insert("Authorization".to_string(), "Basic dGVzdDp0ZXN0".to_string());
         let (status, body) = http_request(
             "POST",

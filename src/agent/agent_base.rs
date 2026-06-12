@@ -1539,6 +1539,14 @@ impl AgentBase {
         input_user == expected_user && input_pass == expected_pass
     }
 
+    // `request_data: &Option<Value>` (rather than the lint's preferred
+    // `Option<&Value>`) is kept across this private handler trio because
+    // `handle_swml_request` threads it straight into `DynamicConfigCallback`,
+    // whose public signature takes `&Option<Value>` to mirror Python's
+    // dynamic-config callback (which receives the possibly-absent request
+    // body). Keeping the three dispatched-from-one-match handlers uniform —
+    // and matching the parity callback shape — is worth the lint allow.
+    #[allow(clippy::ref_option)]
     fn handle_swml_request(
         &self,
         _method: &str,
@@ -1566,6 +1574,7 @@ impl AgentBase {
         json_response(200, &swml)
     }
 
+    #[allow(clippy::ref_option)] // uniform with the handler trio; see handle_swml_request
     fn handle_swaig_request(
         &self,
         request_data: &Option<Value>,
@@ -1598,6 +1607,7 @@ impl AgentBase {
         }
     }
 
+    #[allow(clippy::ref_option)] // uniform with the handler trio; see handle_swml_request
     fn handle_post_prompt(
         &self,
         request_data: &Option<Value>,

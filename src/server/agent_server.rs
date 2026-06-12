@@ -378,6 +378,11 @@ impl AgentServer {
 
     /// Walk the registered global routing callbacks (longest-prefix
     /// first) and return the first non-`None` redirect.
+    // `body: &Option<Value>` matches the public `GlobalRoutingCallback` type
+    // (which mirrors Python's routing callback receiving the possibly-absent
+    // request body); this private dispatcher threads it straight into the
+    // callback, so it keeps the same shape rather than the lint's `Option<&T>`.
+    #[allow(clippy::ref_option)]
     fn dispatch_global_routing_callbacks(
         &self,
         path: &str,

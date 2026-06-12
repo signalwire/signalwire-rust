@@ -721,6 +721,10 @@ impl Service {
         user_ok && pass_ok
     }
 
+    // Uniform `&Option<Value>` request-body shape across the Service handler
+    // pair — mirrors the AgentBase dispatch trio (see its handle_swml_request)
+    // so the two services' endpoint handlers read identically.
+    #[allow(clippy::ref_option)]
     fn handle_swml_request(
         &self,
         _method: &str,
@@ -760,6 +764,7 @@ impl Service {
     ///
     /// Auth and body-size checks already ran in `handle_request` before
     /// this method is invoked.
+    #[allow(clippy::ref_option)] // uniform with the Service handler pair; see handle_swml_request
     fn handle_swaig_request(
         &self,
         method: &str,
