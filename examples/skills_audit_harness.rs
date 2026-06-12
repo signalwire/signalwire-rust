@@ -28,6 +28,7 @@ use serde_json::{json, Map, Value};
 use signalwire::agent::{AgentBase, AgentOptions};
 use signalwire::skills::skill_registry::SkillRegistry;
 use std::collections::HashMap;
+use std::fmt::Write as _;
 use std::env;
 use std::process;
 use std::time::Duration;
@@ -257,7 +258,7 @@ fn expand_template(template: &str, args: &Value) -> String {
                     out.push_str(&val.to_string());
                 }
             } else {
-                out.push_str(&format!("%{{{key}}}"));
+                let _ = write!(out, "%{{{key}}}");
             }
         } else {
             out.push(c);

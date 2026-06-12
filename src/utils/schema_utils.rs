@@ -15,6 +15,7 @@
 //     disables validation regardless of the constructor argument.
 
 use std::collections::BTreeMap;
+use std::fmt::Write as _;
 use std::env;
 use std::fs;
 use std::path::Path;
@@ -224,7 +225,7 @@ impl SchemaUtils {
                 .and_then(|d| d.as_str())
                 .map(|s| s.replace('\n', " ").trim().to_string())
                 .unwrap_or_default();
-            doc.push_str(&format!("        Args:\n            {name}: {desc}\n"));
+            let _ = write!(doc, "        Args:\n            {name}: {desc}\n");
         }
         doc.push_str(
             "        \n        Returns:\n            True if the verb was added successfully, False otherwise\n        \"\"\"\n",

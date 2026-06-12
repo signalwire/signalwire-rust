@@ -28,6 +28,8 @@
 //!
 //! Copyright (c) 2025 SignalWire. Licensed under the MIT License.
 
+use std::fmt::Write as _;
+
 use base64::Engine as _;
 use base64::engine::general_purpose::STANDARD as BASE64_STANDARD;
 use hmac::{Hmac, KeyInit, Mac};
@@ -94,7 +96,7 @@ fn hex_hmac_sha1(key: &str, message: &str) -> String {
     let digest = mac.finalize().into_bytes();
     let mut out = String::with_capacity(digest.len() * 2);
     for b in &digest {
-        out.push_str(&format!("{b:02x}"));
+        let _ = write!(out, "{b:02x}");
     }
     out
 }
@@ -292,7 +294,7 @@ fn check_body_sha256(url: &str, raw_body: &str) -> bool {
     let digest = hasher.finalize();
     let mut hex = String::with_capacity(digest.len() * 2);
     for b in &digest {
-        hex.push_str(&format!("{b:02x}"));
+        let _ = write!(hex, "{b:02x}");
     }
     safe_eq(&hex, &expected)
 }

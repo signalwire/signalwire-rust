@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::fmt::Write as _;
 
 use serde_json::{json, Map, Value};
 
@@ -123,10 +124,10 @@ impl ConciergeAgent {
             for (amenity_name, info) in &amenities {
                 let mut desc = amenity_name.clone();
                 if let Some(hours) = info.get("hours").and_then(|v| v.as_str()) {
-                    desc.push_str(&format!(" - Hours: {hours}"));
+                    let _ = write!(desc, " - Hours: {hours}");
                 }
                 if let Some(location) = info.get("location").and_then(|v| v.as_str()) {
-                    desc.push_str(&format!(" - Location: {location}"));
+                    let _ = write!(desc, " - Location: {location}");
                 }
                 amenity_bullets.push(desc);
             }
@@ -171,7 +172,7 @@ impl ConciergeAgent {
                     .unwrap_or("");
                 let mut response = format!("Checking availability for {service} at {vn}");
                 if !date.is_empty() {
-                    response.push_str(&format!(" on {date}"));
+                    let _ = write!(response, " on {date}");
                 }
                 FunctionResult::with_response(&response)
             }),

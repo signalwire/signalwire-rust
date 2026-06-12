@@ -1,3 +1,5 @@
+use std::fmt::Write as _;
+
 use serde_json::{json, Map, Value};
 
 use crate::agent::AgentBase;
@@ -77,16 +79,15 @@ impl SkillBase for ClaudeSkills {
                     response.push(' ');
                 }
 
-                response.push_str(&format!(
-                    "Claude skill execution from \"{skills_path}\""
-                ));
+                let _ = write!(response, "Claude skill execution from \"{skills_path}\"");
                 if !section.is_empty() {
-                    response.push_str(&format!(" (section: {section})"));
+                    let _ = write!(response, " (section: {section})");
                 }
-                response.push_str(&format!(
+                let _ = write!(
+                    response,
                     " with arguments: {arguments}. \
                      In production, this would parse SKILL.md files with YAML frontmatter and execute them."
-                ));
+                );
 
                 if !response_postfix.is_empty() {
                     response.push(' ');
