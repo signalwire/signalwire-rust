@@ -2,6 +2,10 @@
 name = "signalwire-sdk"
 version = "1.1.2"
 edition = "2024"
+# let-chains (`if cond && let Some(x) = ...`) are used throughout the crate and
+# only stabilized in Rust 1.88. Edition 2024 alone implies just 1.85, so declare
+# the real floor here — Cargo enforces it at build time on older toolchains.
+rust-version = "1.88"
 description = "SignalWire AI Agents SDK for Rust — build AI voice agents, control live calls over WebSocket, and manage resources over REST."
 license = "MIT"
 repository = "https://github.com/signalwire/signalwire-rust"
