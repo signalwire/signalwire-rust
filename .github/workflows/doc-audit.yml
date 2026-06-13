@@ -35,12 +35,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout signalwire-rust
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           path: signalwire-rust
 
       - name: Checkout porting-sdk (contains audit_docs.py)
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           repository: signalwire/porting-sdk
           path: porting-sdk
