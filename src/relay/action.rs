@@ -80,22 +80,37 @@ impl Action {
         &self.node_id
     }
 
+    /// # Panics
+    /// Panics if an internal mutex is poisoned (i.e. another thread panicked
+    /// while holding the lock). This does not occur under normal operation.
     pub fn is_done(&self) -> bool {
         *self.completed.lock().unwrap()
     }
 
+    /// # Panics
+    /// Panics if an internal mutex is poisoned (i.e. another thread panicked
+    /// while holding the lock). This does not occur under normal operation.
     pub fn state(&self) -> Option<String> {
         self.state.lock().unwrap().clone()
     }
 
+    /// # Panics
+    /// Panics if an internal mutex is poisoned (i.e. another thread panicked
+    /// while holding the lock). This does not occur under normal operation.
     pub fn result(&self) -> Option<Value> {
         self.result.lock().unwrap().clone()
     }
 
+    /// # Panics
+    /// Panics if an internal mutex is poisoned (i.e. another thread panicked
+    /// while holding the lock). This does not occur under normal operation.
     pub fn payload(&self) -> HashMap<String, Value> {
         self.payload.lock().unwrap().clone()
     }
 
+    /// # Panics
+    /// Panics if an internal mutex is poisoned (i.e. another thread panicked
+    /// while holding the lock). This does not occur under normal operation.
     pub fn events(&self) -> Vec<Event> {
         self.events.lock().unwrap().clone()
     }
@@ -110,6 +125,10 @@ impl Action {
 
     /// Install a channel sender so that `wait_sync()` can block until
     /// the action resolves.
+    ///
+    /// # Panics
+    /// Panics if an internal mutex is poisoned (i.e. another thread panicked
+    /// while holding the lock). This does not occur under normal operation.
     pub fn set_notify_sender(&self, tx: OneshotSender) {
         *self.notify_tx.lock().unwrap() = Some(tx);
     }
@@ -120,6 +139,10 @@ impl Action {
 
     /// Register a callback to fire when the action completes.
     /// If the action is already done, the callback fires immediately.
+    ///
+    /// # Panics
+    /// Panics if an internal mutex is poisoned (i.e. another thread panicked
+    /// while holding the lock). This does not occur under normal operation.
     pub fn on_completed<F: FnOnce(&Action) + Send + 'static>(&self, cb: F) {
         let mut guard = self.on_completed.lock().unwrap();
         *guard = Some(Box::new(cb));
@@ -136,6 +159,10 @@ impl Action {
 
     /// Append an incoming event and update local state / payload.
     /// Subclasses override `should_handle_event` to filter.
+    ///
+    /// # Panics
+    /// Panics if an internal mutex is poisoned (i.e. another thread panicked
+    /// while holding the lock). This does not occur under normal operation.
     pub fn handle_event(&self, event: &Event) {
         if !self.should_handle_event(event) {
             return;
@@ -156,6 +183,9 @@ impl Action {
 
     /// Override point for subclasses that need to filter events.
     /// Default: accept all events.
+    // &self is the override-hook contract (mirrors Python's overridable method);
+    // the default impl ignores it but an override needs instance state.
+    #[allow(clippy::unused_self)]
     fn should_handle_event(&self, _event: &Event) -> bool {
         true
     }
@@ -165,6 +195,10 @@ impl Action {
     // ------------------------------------------------------------------
 
     /// Mark this action as completed.
+    ///
+    /// # Panics
+    /// Panics if an internal mutex is poisoned (i.e. another thread panicked
+    /// while holding the lock). This does not occur under normal operation.
     pub fn resolve(&self, result: Option<Value>) {
         {
             let mut completed = self.completed.lock().unwrap();
@@ -196,20 +230,18 @@ impl Action {
     }
 
     /// Send a sub-command RPC through the client.
+    ///
+    /// # Panics
+    /// Panics if an internal mutex is poisoned (i.e. another thread panicked
+    /// while holding the lock). This does not occur under normal operation.
     pub fn execute_subcommand(&self, method: &str, extra: HashMap<String, Value>) {
         let mut params = HashMap::new();
         params.insert(
             "control_id".to_string(),
             Value::String(self.control_id.clone()),
         );
-        params.insert(
-            "call_id".to_string(),
-            Value::String(self.call_id.clone()),
-        );
-        params.insert(
-            "node_id".to_string(),
-            Value::String(self.node_id.clone()),
-        );
+        params.insert("call_id".to_string(), Value::String(self.call_id.clone()));
+        params.insert("node_id".to_string(), Value::String(self.node_id.clone()));
         for (k, v) in extra {
             params.insert(k, v);
         }
@@ -311,15 +343,19 @@ impl RecordAction {
         self.payload()
             .get("url")
             .and_then(|v| v.as_str())
-            .map(|s| s.to_string())
+            .map(std::string::ToString::to_string)
     }
 
     pub fn duration(&self) -> Option<f64> {
-        self.payload().get("duration").and_then(|v| v.as_f64())
+        self.payload()
+            .get("duration")
+            .and_then(serde_json::Value::as_f64)
     }
 
     pub fn size(&self) -> Option<u64> {
-        self.payload().get("size").and_then(|v| v.as_u64())
+        self.payload()
+            .get("size")
+            .and_then(serde_json::Value::as_u64)
     }
 }
 

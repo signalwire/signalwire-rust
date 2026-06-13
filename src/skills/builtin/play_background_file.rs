@@ -1,4 +1,4 @@
-use serde_json::{json, Map, Value};
+use serde_json::{Map, Value, json};
 
 use crate::agent::AgentBase;
 use crate::skills::skill_base::{SkillBase, SkillParams};
@@ -17,11 +17,11 @@ impl PlayBackgroundFile {
 }
 
 impl SkillBase for PlayBackgroundFile {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "play_background_file"
     }
 
-    fn description(&self) -> &str {
+    fn description(&self) -> &'static str {
         "Control background file playback"
     }
 
@@ -54,7 +54,7 @@ impl SkillBase for PlayBackgroundFile {
                 .unwrap_or(key);
             let wait = file
                 .get("wait")
-                .and_then(|v| v.as_bool())
+                .and_then(serde_json::Value::as_bool)
                 .unwrap_or(false);
 
             if key.is_empty() || url.is_empty() {
@@ -67,7 +67,7 @@ impl SkillBase for PlayBackgroundFile {
                 "play_background_file"
             };
 
-            action_enum.push(format!("start_{}", key));
+            action_enum.push(format!("start_{key}"));
 
             expressions.push(json!({
                 "string": "${args.action}",

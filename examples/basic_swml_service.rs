@@ -3,8 +3,8 @@
 //
 //! Basic SWML Service — non-AI SWML flows (voicemail, IVR, call transfer).
 
-use signalwire::swml::service::{Service, ServiceOptions};
 use serde_json::json;
+use signalwire::swml::service::{Service, ServiceOptions};
 
 fn voicemail_document() -> serde_json::Value {
     json!({
@@ -67,13 +67,19 @@ fn transfer_document() -> serde_json::Value {
 
 fn main() {
     println!("=== Voicemail SWML ===");
-    println!("{}", serde_json::to_string_pretty(&voicemail_document()).unwrap());
+    println!(
+        "{}",
+        serde_json::to_string_pretty(&voicemail_document()).unwrap()
+    );
 
     println!("\n=== IVR SWML ===");
     println!("{}", serde_json::to_string_pretty(&ivr_document()).unwrap());
 
     println!("\n=== Transfer SWML ===");
-    println!("{}", serde_json::to_string_pretty(&transfer_document()).unwrap());
+    println!(
+        "{}",
+        serde_json::to_string_pretty(&transfer_document()).unwrap()
+    );
 
     // Serve the voicemail document
     let service = Service::new(ServiceOptions {

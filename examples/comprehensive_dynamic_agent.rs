@@ -4,12 +4,11 @@
 //! Comprehensive Dynamic Agent — multi-tenant routing, A/B testing, industry-specific config.
 //!
 //! Try:
-//!   curl "http://localhost:3000/dynamic?tier=premium&industry=healthcare&voice=inworld.Sarah"
-//!   curl "http://localhost:3000/dynamic?tier=enterprise&industry=finance&test_group=B"
+//!   curl "<http://localhost:3000/dynamic?tier=premium&industry=healthcare&voice=inworld.Sarah>"
+//!   curl "<http://localhost:3000/dynamic?tier=enterprise&industry=finance&test_group=B>"
 
-use signalwire::agent::{AgentBase, AgentOptions};
 use serde_json::json;
-use std::sync::Arc;
+use signalwire::agent::{AgentBase, AgentOptions};
 
 fn main() {
     let mut opts = AgentOptions::new("Comprehensive Dynamic Agent");

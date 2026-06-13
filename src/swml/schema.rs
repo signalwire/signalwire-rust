@@ -17,33 +17,28 @@ static SCHEMA: LazyLock<SchemaData> = LazyLock::new(|| {
     let raw = include_str!("schema.json");
     let data: Value = serde_json::from_str(raw).expect("schema.json must be valid JSON");
 
-    let defs = match data.get("$defs") {
-        Some(d) => d,
-        None => return SchemaData { verbs: Vec::new() },
+    let Some(defs) = data.get("$defs") else {
+        return SchemaData { verbs: Vec::new() };
     };
 
-    let any_of = match defs.get("SWMLMethod").and_then(|m| m.get("anyOf")) {
-        Some(Value::Array(arr)) => arr,
-        _ => return SchemaData { verbs: Vec::new() },
+    let Some(Value::Array(any_of)) = defs.get("SWMLMethod").and_then(|m| m.get("anyOf")) else {
+        return SchemaData { verbs: Vec::new() };
     };
 
     let mut verbs = Vec::new();
 
     for entry in any_of {
-        let ref_str = match entry.get("$ref").and_then(|r| r.as_str()) {
-            Some(s) => s,
-            None => continue,
+        let Some(ref_str) = entry.get("$ref").and_then(|r| r.as_str()) else {
+            continue;
         };
 
         // e.g. "#/$defs/Answer" -> "Answer"
-        let def_name = match ref_str.rsplit('/').next() {
-            Some(n) => n,
-            None => continue,
+        let Some(def_name) = ref_str.rsplit('/').next() else {
+            continue;
         };
 
-        let defn = match defs.get(def_name) {
-            Some(d) => d,
-            None => continue,
+        let Some(defn) = defs.get(def_name) else {
+            continue;
         };
 
         let props = match defn.get("properties").and_then(|p| p.as_object()) {
@@ -183,11 +178,7 @@ mod tests {
             "user_event",
         ];
         for verb in &expected {
-            assert!(
-                is_valid_verb(verb),
-                "Expected verb '{}' to be valid",
-                verb
-            );
+            assert!(is_valid_verb(verb), "Expected verb '{verb}' to be valid");
         }
     }
 

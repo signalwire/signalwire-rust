@@ -36,7 +36,7 @@ use std::time::{Duration, Instant};
 use serde_json::Value;
 
 /// Dedicated TLS-mode ports, disjoint from the plain-mock default slots
-/// (mock_signalwire 8771; mock_relay WS 8781 / HTTP 9781).
+/// (`mock_signalwire` 8771; `mock_relay` WS 8781 / HTTP 9781).
 pub const TLS_RELAY_WS_PORT: u16 = 18781;
 pub const TLS_RELAY_HTTP_PORT: u16 = 19781;
 pub const TLS_SIGNALWIRE_PORT: u16 = 18771;
@@ -231,14 +231,12 @@ fn wait_health_plain(http_url: &str, expect_key: &str) -> bool {
         .into();
     let deadline = Instant::now() + STARTUP_TIMEOUT;
     while Instant::now() < deadline {
-        if let Ok(mut resp) = agent.get(&url).call() {
-            if resp.status().as_u16() == 200 {
-                if let Ok(v) = resp.body_mut().read_json::<Value>() {
-                    if v.get(expect_key).is_some() {
-                        return true;
-                    }
-                }
-            }
+        if let Ok(mut resp) = agent.get(&url).call()
+            && resp.status().as_u16() == 200
+            && let Ok(v) = resp.body_mut().read_json::<Value>()
+            && v.get(expect_key).is_some()
+        {
+            return true;
         }
         std::thread::sleep(Duration::from_millis(150));
     }
@@ -249,14 +247,12 @@ fn wait_health_https(agent: &ureq::Agent, base_url: &str, expect_key: &str) -> b
     let url = format!("{base_url}/__mock__/health");
     let deadline = Instant::now() + STARTUP_TIMEOUT;
     while Instant::now() < deadline {
-        if let Ok(mut resp) = agent.get(&url).call() {
-            if resp.status().as_u16() == 200 {
-                if let Ok(v) = resp.body_mut().read_json::<Value>() {
-                    if v.get(expect_key).is_some() {
-                        return true;
-                    }
-                }
-            }
+        if let Ok(mut resp) = agent.get(&url).call()
+            && resp.status().as_u16() == 200
+            && let Ok(v) = resp.body_mut().read_json::<Value>()
+            && v.get(expect_key).is_some()
+        {
+            return true;
         }
         std::thread::sleep(Duration::from_millis(150));
     }
@@ -287,12 +283,11 @@ impl RelayTlsLock {
             .unwrap_or_else(|e| panic!("tls_support: open {RELAY_TLS_LOCK_PATH}: {e}"));
         let fd = file.as_raw_fd();
         let rc = unsafe { flock(fd, LOCK_EX) };
-        if rc != 0 {
-            panic!(
-                "tls_support: flock LOCK_EX on {RELAY_TLS_LOCK_PATH}: {}",
-                std::io::Error::last_os_error()
-            );
-        }
+        assert!(
+            rc == 0,
+            "tls_support: flock LOCK_EX on {RELAY_TLS_LOCK_PATH}: {}",
+            std::io::Error::last_os_error()
+        );
         RelayTlsLock { file }
     }
 }

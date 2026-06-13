@@ -1,3 +1,44 @@
+// `needless_pass_by_value` is allowed crate-wide as a deliberate parity choice.
+// This port's public constructors and builders take owned `Value`, `Vec<_>`,
+// `HashMap<_>`, and `String` params because they mirror Python's by-value
+// `**kwargs` / positional-list / keyword arguments — the shape the
+// cross-language signature audit maps (var_keyword / positional). Converting
+// these to `&T` to satisfy the lint would distort the parity surface the audit
+// checks, so we keep the owned signatures (the parity meta-rule: a pedantic
+// lint that fights parity is allowed, not obeyed). The few internal/test sites
+// the lint also flags (e.g. functions that genuinely consume the value) are
+// consuming-by-design, so a blanket allow loses nothing real.
+#![allow(clippy::needless_pass_by_value)]
+// `too_many_lines` is allowed crate-wide. The functions it flags are all
+// configuration/registration builders whose length is inherent: prefab
+// constructors (ConciergeAgent::new etc.) and skill `register_tools` mirror
+// their Python `__init__` / `register_tools` counterparts, which parse a
+// config map and register many tools inline in one place; the compat verb
+// builders (e.g. join_conference) carry the full cXML attribute set plus a
+// validation block that must emit the reference's exact ValueError messages
+// verbatim. Splitting these to satisfy a 100-line heuristic would fragment a
+// parity-locked 1:1 mapping for no functional gain (the lint is
+// surface-invisible — it changes no signature or emission). The line count is
+// a readability proxy that doesn't fit builder/registration code; keeping the
+// reference's shape wins (the parity meta-rule).
+#![allow(clippy::too_many_lines)]
+// `must_use_candidate` is allowed crate-wide; `#[must_use]` is added by hand
+// instead. The lint's own docs say "Not bad at all, this lint just shows
+// places where you could add the attribute" and "Expect many false positives"
+// — it's allow-by-default in `pedantic` for exactly that reason, because it
+// can't tell a function called for its return value from one called for a side
+// effect. We follow the std-dev-guide test ("add #[must_use] when failing to
+// consider the output is almost certainly a bug") and the practice of every
+// comparable public SDK (reqwest / octocrab / aws-sdk / clap / uuid / chrono
+// all decline this lint): `#[must_use]` lives on the value producers where
+// dropping the result is meaningless — `render*` / `to_value` / `to_json` /
+// `render_swml` / `build_ai_verb` / `to_swaig_function` / the enum `as_str`
+// conversions / the schema code-gen — not on field getters or sub-namespace
+// accessors, where discarding the result can be legitimate (the noise std and
+// aws-sdk deliberately avoid). Per RULES.md this is a parity-neutral idiom
+// choice governed by PORT_PHILOSOPHY_RUST.md.
+#![allow(clippy::must_use_candidate)]
+
 pub mod core;
 pub mod logging;
 pub mod pom;
@@ -10,9 +51,9 @@ pub mod datamap;
 pub mod security;
 pub mod swaig;
 
-pub mod skills;
 pub mod prefabs;
 pub mod server;
+pub mod skills;
 
 pub mod relay;
 pub mod rest;
@@ -88,7 +129,7 @@ pub fn list_skills_with_params() -> std::collections::HashMap<String, serde_json
 /// To preserve the older two-argument call style, [`SkillRegistry::register_skill`]
 /// remains available as `signalwire::skills::SkillRegistry::register_skill(name, factory)`.
 pub fn register_skill(skill_class: SkillSpec) {
-    skills::SkillRegistry::register_skill(&skill_class.name, skill_class.factory)
+    skills::SkillRegistry::register_skill(&skill_class.name, skill_class.factory);
 }
 
 /// Skill registration descriptor — Rust's analogue of a Python skill
@@ -107,7 +148,10 @@ pub struct SkillSpec {
 impl SkillSpec {
     /// Convenience constructor.
     pub fn new(name: impl Into<String>, factory: skills::skill_registry::SkillFactory) -> Self {
-        SkillSpec { name: name.into(), factory }
+        SkillSpec {
+            name: name.into(),
+            factory,
+        }
     }
 }
 
@@ -137,6 +181,11 @@ impl SkillSpec {
 /// variables `SIGNALWIRE_PROJECT_ID` / `SIGNALWIRE_API_TOKEN` /
 /// `SIGNALWIRE_SPACE`).
 #[allow(non_snake_case)]
+// kwargs mirrors Python's **kwargs (the audit maps this to var_keyword); a
+// concrete HashMap<String, String> keeps that surface 1:1. clippy::implicit_hasher
+// would push a `S: BuildHasher` generic onto this public factory, uglifying the
+// Python-parity signature for a caller-hasher flexibility no consumer needs.
+#[allow(clippy::implicit_hasher)]
 pub fn RestClient(
     args: Vec<String>,
     kwargs: std::collections::HashMap<String, String>,
@@ -145,16 +194,22 @@ pub fn RestClient(
     //   1. positional args[0..3] = (project, token, space)
     //   2. kwargs["project"|"project_id"], kwargs["token"], kwargs["space"|"host"]
     //   3. environment variables (via from_env)
-    let project = args.first().cloned()
+    let project = args
+        .first()
+        .cloned()
         .or_else(|| kwargs.get("project").cloned())
         .or_else(|| kwargs.get("project_id").cloned())
         .or_else(|| std::env::var("SIGNALWIRE_PROJECT_ID").ok())
         .unwrap_or_default();
-    let token = args.get(1).cloned()
+    let token = args
+        .get(1)
+        .cloned()
         .or_else(|| kwargs.get("token").cloned())
         .or_else(|| std::env::var("SIGNALWIRE_API_TOKEN").ok())
         .unwrap_or_default();
-    let space = args.get(2).cloned()
+    let space = args
+        .get(2)
+        .cloned()
         .or_else(|| kwargs.get("space").cloned())
         .or_else(|| kwargs.get("host").cloned())
         .or_else(|| std::env::var("SIGNALWIRE_SPACE").ok())
@@ -171,7 +226,10 @@ mod top_level_tests {
         // Smoke test: the top-level helper forwards to SkillRegistry.
         let dir = std::env::current_dir().unwrap().join("src");
         let result = add_skill_directory(dir.to_str().unwrap());
-        assert!(result.is_ok(), "top-level add_skill_directory failed: {:?}", result);
+        assert!(
+            result.is_ok(),
+            "top-level add_skill_directory failed: {result:?}"
+        );
     }
 
     #[test]
@@ -192,9 +250,14 @@ mod top_level_tests {
     fn test_top_level_rest_client_factory_positional() {
         // Positional form: args=[project, token, space].
         let client = RestClient(
-            vec!["proj".to_string(), "tok".to_string(), "test.signalwire.com".to_string()],
+            vec![
+                "proj".to_string(),
+                "tok".to_string(),
+                "test.signalwire.com".to_string(),
+            ],
             std::collections::HashMap::new(),
-        ).expect("factory should succeed with positional args");
+        )
+        .expect("factory should succeed with positional args");
         assert_eq!(client.project_id(), "proj");
         assert_eq!(client.token(), "tok");
         assert_eq!(client.space(), "test.signalwire.com");
@@ -207,8 +270,7 @@ mod top_level_tests {
         kw.insert("project".to_string(), "kproj".to_string());
         kw.insert("token".to_string(), "ktok".to_string());
         kw.insert("host".to_string(), "kw.signalwire.com".to_string());
-        let client = RestClient(vec![], kw)
-            .expect("factory should succeed with kwargs");
+        let client = RestClient(vec![], kw).expect("factory should succeed with kwargs");
         assert_eq!(client.project_id(), "kproj");
         assert_eq!(client.token(), "ktok");
         assert_eq!(client.space(), "kw.signalwire.com");
@@ -218,8 +280,10 @@ mod top_level_tests {
     fn test_top_level_rest_client_factory_rejects_empty() {
         // Validation matches RestClient::new — empty credentials are
         // rejected with a descriptive error.
-        let r = RestClient(vec!["".to_string(), "tok".to_string(), "space".to_string()],
-                           std::collections::HashMap::new());
+        let r = RestClient(
+            vec![String::new(), "tok".to_string(), "space".to_string()],
+            std::collections::HashMap::new(),
+        );
         assert!(r.is_err());
     }
 

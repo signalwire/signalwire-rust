@@ -1,12 +1,16 @@
 // Copyright (c) 2025 SignalWire
 // SPDX-License-Identifier: MIT
 //
-//! Call Flow and Actions Demo — call-flow verbs, debug events, FunctionResult actions.
+//! Call Flow and Actions Demo — call-flow verbs, debug events, `FunctionResult` actions.
 
+// A linear demo `main` that walks through many verbs in sequence — its length
+// is the point (it shows the full flow top-to-bottom); splitting it would hurt
+// the example's readability, not help it.
+#![allow(clippy::too_many_lines)]
+
+use serde_json::json;
 use signalwire::agent::{AgentBase, AgentOptions};
 use signalwire::swaig::FunctionResult;
-use serde_json::json;
-use std::sync::Arc;
 
 fn main() {
     let mut agent = AgentBase::new(AgentOptions {
@@ -22,23 +26,30 @@ fn main() {
         "You are a call center demo agent that showcases call-flow features.",
         vec![],
     );
-    agent.prompt_add_section("Instructions", "", vec![
-        "Use transfer_to_support when the caller asks to speak to a person",
-        "Use send_confirmation to send the caller an SMS",
-        "Use start_recording when the caller agrees to be recorded",
-        "Use play_hold_music to play background music",
-        "Use adjust_speech when the caller mentions unusual names or terms",
-    ]);
+    agent.prompt_add_section(
+        "Instructions",
+        "",
+        vec![
+            "Use transfer_to_support when the caller asks to speak to a person",
+            "Use send_confirmation to send the caller an SMS",
+            "Use start_recording when the caller agrees to be recorded",
+            "Use play_hold_music to play background music",
+            "Use adjust_speech when the caller mentions unusual names or terms",
+        ],
+    );
 
     // -- Call flow verbs --
-    agent.add_pre_answer_verb("play", json!({"url": "say:Please hold while we connect you."}));
+    agent.add_pre_answer_verb(
+        "play",
+        json!({"url": "say:Please hold while we connect you."}),
+    );
     agent.add_post_answer_verb("record", json!({"stereo": true}));
     agent.add_post_ai_verb("hangup", json!({}));
 
     // -- Debug events --
     agent.enable_debug_events("all");
     agent.on_debug_event(Box::new(|event, _headers| {
-        println!("Debug event: {}", event);
+        println!("Debug event: {event}");
     }));
 
     // -- Tools demonstrating FunctionResult actions --
@@ -47,9 +58,8 @@ fn main() {
         "Transfer the call to a support agent",
         json!({}),
         Box::new(|_args, _raw| {
-            let mut result = FunctionResult::with_response(
-                "I'll transfer you to our support team now."
-            );
+            let mut result =
+                FunctionResult::with_response("I'll transfer you to our support team now.");
             result.set_post_process(true);
             result.add_action(json!({
                 "SWML": {
@@ -119,7 +129,7 @@ fn main() {
         }),
         Box::new(|args, _raw| {
             let terms = args.get("terms").and_then(|v| v.as_str()).unwrap_or("");
-            let hints: Vec<&str> = terms.split(',').map(|s| s.trim()).collect();
+            let hints: Vec<&str> = terms.split(',').map(str::trim).collect();
             let mut result = FunctionResult::with_response("Speech hints updated.");
             result.add_action(json!({"add_dynamic_hints": hints}));
             result

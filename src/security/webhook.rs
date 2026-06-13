@@ -28,6 +28,8 @@
 //!
 //! Copyright (c) 2025 SignalWire. Licensed under the MIT License.
 
+use std::fmt::Write as _;
+
 use base64::Engine as _;
 use base64::engine::general_purpose::STANDARD as BASE64_STANDARD;
 use hmac::{Hmac, KeyInit, Mac};
@@ -88,21 +90,21 @@ pub enum ParamsOrBody {
 
 /// Scheme-A digest: lowercase hex of HMAC-SHA1.
 fn hex_hmac_sha1(key: &str, message: &str) -> String {
-    let mut mac = HmacSha1::new_from_slice(key.as_bytes())
-        .expect("HMAC-SHA1 accepts any key length");
+    let mut mac =
+        HmacSha1::new_from_slice(key.as_bytes()).expect("HMAC-SHA1 accepts any key length");
     mac.update(message.as_bytes());
     let digest = mac.finalize().into_bytes();
     let mut out = String::with_capacity(digest.len() * 2);
-    for b in digest.iter() {
-        out.push_str(&format!("{:02x}", b));
+    for b in &digest {
+        let _ = write!(out, "{b:02x}");
     }
     out
 }
 
 /// Scheme-B digest: standard base64 of HMAC-SHA1.
 fn b64_hmac_sha1(key: &str, message: &str) -> String {
-    let mut mac = HmacSha1::new_from_slice(key.as_bytes())
-        .expect("HMAC-SHA1 accepts any key length");
+    let mut mac =
+        HmacSha1::new_from_slice(key.as_bytes()).expect("HMAC-SHA1 accepts any key length");
     mac.update(message.as_bytes());
     let digest = mac.finalize().into_bytes();
     BASE64_STANDARD.encode(digest)
@@ -194,9 +196,8 @@ fn candidate_urls(url: &str) -> Vec<String> {
     // Find scheme and the host portion in the raw string. We need the
     // start index of the host (after `scheme://`) so we can splice
     // `:<port>` in/out without disturbing the rest of the URL.
-    let scheme_sep = match url.find("://") {
-        Some(i) => i,
-        None => return vec![url.to_string()],
+    let Some(scheme_sep) = url.find("://") else {
+        return vec![url.to_string()];
     };
     let scheme = &url[..scheme_sep];
     let standard_port = match scheme {
@@ -231,8 +232,7 @@ fn candidate_urls(url: &str) -> Vec<String> {
     let port_colon = if authority.starts_with('[') {
         match authority.find(']') {
             Some(close) => {
-                if close + 1 < authority.len()
-                    && authority.as_bytes().get(close + 1) == Some(&b':')
+                if close + 1 < authority.len() && authority.as_bytes().get(close + 1) == Some(&b':')
                 {
                     Some(close + 1)
                 } else {
@@ -255,14 +255,14 @@ fn candidate_urls(url: &str) -> Vec<String> {
     match current_port {
         None => {
             // No port → also try with the standard port.
-            let with_port = format!("{}://{}:{}{}", scheme, host_part, standard_port, tail);
+            let with_port = format!("{scheme}://{host_part}:{standard_port}{tail}");
             if with_port != url {
                 candidates.push(with_port);
             }
         }
         Some(p) if p == standard_port => {
             // Standard port present → also try without it.
-            let without_port = format!("{}://{}{}", scheme, host_part, tail);
+            let without_port = format!("{scheme}://{host_part}{tail}");
             if without_port != url {
                 candidates.push(without_port);
             }
@@ -275,24 +275,22 @@ fn candidate_urls(url: &str) -> Vec<String> {
 /// If the URL has `?bodySHA256=<hex>`, verify `sha256_hex(raw_body) == bodySHA256`.
 /// Returns `true` when the param is absent (no constraint) or matches.
 fn check_body_sha256(url: &str, raw_body: &str) -> bool {
-    let parsed = match Url::parse(url) {
-        Ok(u) => u,
-        Err(_) => return true, // unparseable URL — let Scheme B fail naturally elsewhere
+    let Ok(parsed) = Url::parse(url) else {
+        return true; // unparseable URL — let Scheme B fail naturally elsewhere
     };
     let expected = parsed
         .query_pairs()
         .find(|(k, _)| k == "bodySHA256")
         .map(|(_, v)| v.into_owned());
-    let expected = match expected {
-        Some(e) => e,
-        None => return true,
+    let Some(expected) = expected else {
+        return true;
     };
     let mut hasher = Sha256::new();
     hasher.update(raw_body.as_bytes());
     let digest = hasher.finalize();
     let mut hex = String::with_capacity(digest.len() * 2);
-    for b in digest.iter() {
-        hex.push_str(&format!("{:02x}", b));
+    for b in &digest {
+        let _ = write!(hex, "{b:02x}");
     }
     safe_eq(&hex, &expected)
 }
@@ -320,6 +318,14 @@ fn check_body_sha256(url: &str, raw_body: &str) -> bool {
 ///   optional `bodySHA256` fallback).
 /// * `Ok(false)` if it does not match.
 /// * `Err(WebhookError::MissingSigningKey)` only when the key is missing.
+///
+/// # Errors
+///
+/// Returns `Err(WebhookError::MissingSigningKey)` when `signing_key` is
+/// empty — a caller/configuration error distinct from a signature
+/// mismatch. A wrong, malformed, or absent `signature` is *not* an
+/// error: it yields `Ok(false)`. This function only ever returns the
+/// one error variant.
 ///
 /// All comparisons are constant-time via [`subtle::ConstantTimeEq`].
 pub fn validate_webhook_signature(
@@ -356,7 +362,7 @@ pub fn validate_webhook_signature(
     let param_shapes: [&[(String, Vec<String>)]; 2] = [&parsed_params, &empty_params];
 
     for candidate_url in candidate_urls(url) {
-        for shape in param_shapes.iter() {
+        for shape in &param_shapes {
             let concat = sorted_concat_params(shape);
             let mut b_input = String::with_capacity(candidate_url.len() + concat.len());
             b_input.push_str(&candidate_url);
@@ -386,6 +392,13 @@ pub fn validate_webhook_signature(
 ///
 /// `bodySHA256` verification is skipped in the `Params` variant — there
 /// is no raw body to hash.
+///
+/// # Errors
+///
+/// Returns `Err(WebhookError::MissingSigningKey)` when `signing_key` is
+/// empty (in the `Body` variant this is surfaced by the delegated
+/// [`validate_webhook_signature`]). As above, an empty or non-matching
+/// `signature` is reported as `Ok(false)`, not an error.
 pub fn validate_request(
     signing_key: &str,
     signature: &str,
@@ -598,7 +611,7 @@ mod tests {
         let key = "test-key";
         let url = "https://example.com/hook";
         let body = "To=a&To=b";
-        let expected_data = format!("{}ToaTob", url);
+        let expected_data = format!("{url}ToaTob");
         let sig = b64_hmac_sha1(key, &expected_data);
         let r = validate_webhook_signature(key, &sig, url, body);
         assert_eq!(r, Ok(true));
@@ -609,7 +622,7 @@ mod tests {
         // To=b&To=a is a different submission and yields a different digest.
         let key = "test-key";
         let url = "https://example.com/hook";
-        let data_ab = format!("{}ToaTob", url);
+        let data_ab = format!("{url}ToaTob");
         let sig_for_ab = b64_hmac_sha1(key, &data_ab);
         let r_match = validate_webhook_signature(key, &sig_for_ab, url, "To=a&To=b");
         let r_mismatch = validate_webhook_signature(key, &sig_for_ab, url, "To=b&To=a");
@@ -636,7 +649,11 @@ mod tests {
         // Wrong length, weird chars, base64 noise — none should panic.
         for garbage in ["xyz", "!!!!", &"a".repeat(100), "%%notbase64%%"] {
             let r = validate_webhook_signature(VECTOR_A_KEY, garbage, VECTOR_A_URL, VECTOR_A_BODY);
-            assert_eq!(r, Ok(false), "garbage {garbage:?} should not panic and should not validate");
+            assert_eq!(
+                r,
+                Ok(false),
+                "garbage {garbage:?} should not panic and should not validate"
+            );
         }
     }
 
@@ -662,7 +679,7 @@ mod tests {
 
     #[test]
     fn validate_request_missing_signing_key_returns_error() {
-        let r = validate_request("", "sig", VECTOR_A_URL, &ParamsOrBody::Body("".into()));
+        let r = validate_request("", "sig", VECTOR_A_URL, &ParamsOrBody::Body(String::new()));
         assert_eq!(r, Err(WebhookError::MissingSigningKey));
     }
 

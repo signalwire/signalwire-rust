@@ -5,9 +5,7 @@ pub mod webhook;
 pub mod webhook_layer;
 
 pub use session_manager::SessionManager;
-pub use webhook::{
-    validate_request, validate_webhook_signature, ParamsOrBody, WebhookError,
-};
+pub use webhook::{ParamsOrBody, WebhookError, validate_request, validate_webhook_signature};
 
 #[cfg(feature = "tower-middleware")]
 pub use webhook_layer::{WebhookLayer, WebhookValidate};

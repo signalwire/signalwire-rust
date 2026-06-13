@@ -1,7 +1,7 @@
 // Copyright (c) 2025 SignalWire
 // SPDX-License-Identifier: MIT
 //
-//! InfoGatherer Example — collect answers to a set of questions using the prefab.
+//! `InfoGatherer` Example — collect answers to a set of questions using the prefab.
 
 use signalwire::prefabs::InfoGathererAgent;
 
@@ -17,7 +17,9 @@ fn main() {
         Some("/contact"),
     );
 
-    agent.agent_mut().add_language("English", "en-US", "inworld.Mark");
+    agent
+        .agent_mut()
+        .add_language("English", "en-US", "inworld.Mark");
 
     agent.agent_mut().prompt_add_section(
         "Introduction",
@@ -26,7 +28,9 @@ fn main() {
         vec![],
     );
 
-    agent.agent_mut().set_post_prompt("Summarize the questions and answers in a concise manner.");
+    agent
+        .agent_mut()
+        .set_post_prompt("Summarize the questions and answers in a concise manner.");
 
     let (user, pass) = agent.agent().get_basic_auth_credentials();
     println!("InfoGatherer agent");

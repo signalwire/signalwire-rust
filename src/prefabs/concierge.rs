@@ -1,6 +1,7 @@
 use std::collections::HashMap;
+use std::fmt::Write as _;
 
-use serde_json::{json, Map, Value};
+use serde_json::{Map, Value, json};
 
 use crate::agent::{AgentBase, AgentOptions};
 use crate::swaig::FunctionResult;
@@ -15,7 +16,7 @@ pub struct ConciergeAgent {
 }
 
 impl ConciergeAgent {
-    /// Create a new ConciergeAgent.
+    /// Create a new `ConciergeAgent`.
     ///
     /// # Arguments
     /// - `name` — agent name (defaults to `"concierge"` if empty).
@@ -34,7 +35,7 @@ impl ConciergeAgent {
             .and_then(|v| v.as_array())
             .map(|arr| {
                 arr.iter()
-                    .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                    .filter_map(|v| v.as_str().map(std::string::ToString::to_string))
                     .collect()
             })
             .unwrap_or_default();
@@ -42,11 +43,7 @@ impl ConciergeAgent {
         let amenities: HashMap<String, Value> = venue_info
             .get("amenities")
             .and_then(|v| v.as_object())
-            .map(|obj| {
-                obj.iter()
-                    .map(|(k, v)| (k.clone(), v.clone()))
-                    .collect()
-            })
+            .map(|obj| obj.iter().map(|(k, v)| (k.clone(), v.clone())).collect())
             .unwrap_or_default();
 
         let hours_of_operation: HashMap<String, String> = venue_info
@@ -64,7 +61,7 @@ impl ConciergeAgent {
             .and_then(|v| v.as_array())
             .map(|arr| {
                 arr.iter()
-                    .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                    .filter_map(|v| v.as_str().map(std::string::ToString::to_string))
                     .collect()
             })
             .unwrap_or_default();
@@ -72,13 +69,9 @@ impl ConciergeAgent {
         let welcome_message = venue_info
             .get("welcome_message")
             .and_then(|v| v.as_str())
-            .map(|s| s.to_string());
+            .map(std::string::ToString::to_string);
 
-        let agent_name = if name.is_empty() {
-            "concierge"
-        } else {
-            name
-        };
+        let agent_name = if name.is_empty() { "concierge" } else { name };
 
         let mut opts = AgentOptions::new(agent_name);
         opts.route = Some(route.unwrap_or("/concierge").to_string());
@@ -88,7 +81,7 @@ impl ConciergeAgent {
 
         let welcome = welcome_message
             .clone()
-            .unwrap_or_else(|| format!("Welcome to {}. How can I assist you today?", venue_name));
+            .unwrap_or_else(|| format!("Welcome to {venue_name}. How can I assist you today?"));
 
         // Global data
         agent.set_global_data(json!({
@@ -100,10 +93,7 @@ impl ConciergeAgent {
         // Role section
         agent.prompt_add_section(
             "Concierge Role",
-            &format!(
-                "You are the virtual concierge for {}. {}",
-                venue_name, welcome
-            ),
+            &format!("You are the virtual concierge for {venue_name}. {welcome}"),
             vec![
                 "Welcome users and explain available services",
                 "Answer questions about amenities, hours, and directions",
@@ -114,7 +104,7 @@ impl ConciergeAgent {
 
         // Services section
         if !services.is_empty() {
-            let svc_refs: Vec<&str> = services.iter().map(|s| s.as_str()).collect();
+            let svc_refs: Vec<&str> = services.iter().map(std::string::String::as_str).collect();
             agent.prompt_add_section("Available Services", "", svc_refs);
         }
 
@@ -124,14 +114,17 @@ impl ConciergeAgent {
             for (amenity_name, info) in &amenities {
                 let mut desc = amenity_name.clone();
                 if let Some(hours) = info.get("hours").and_then(|v| v.as_str()) {
-                    desc.push_str(&format!(" - Hours: {}", hours));
+                    let _ = write!(desc, " - Hours: {hours}");
                 }
                 if let Some(location) = info.get("location").and_then(|v| v.as_str()) {
-                    desc.push_str(&format!(" - Location: {}", location));
+                    let _ = write!(desc, " - Location: {location}");
                 }
                 amenity_bullets.push(desc);
             }
-            let bullet_refs: Vec<&str> = amenity_bullets.iter().map(|s| s.as_str()).collect();
+            let bullet_refs: Vec<&str> = amenity_bullets
+                .iter()
+                .map(std::string::String::as_str)
+                .collect();
             agent.prompt_add_section("Amenities", "", bullet_refs);
         }
 
@@ -139,16 +132,21 @@ impl ConciergeAgent {
         if !hours_of_operation.is_empty() {
             let mut hour_bullets: Vec<String> = Vec::new();
             for (day, hours) in &hours_of_operation {
-                hour_bullets.push(format!("{}: {}", day, hours));
+                hour_bullets.push(format!("{day}: {hours}"));
             }
-            let bullet_refs: Vec<&str> = hour_bullets.iter().map(|s| s.as_str()).collect();
+            let bullet_refs: Vec<&str> = hour_bullets
+                .iter()
+                .map(std::string::String::as_str)
+                .collect();
             agent.prompt_add_section("Hours of Operation", "", bullet_refs);
         }
 
         // Special instructions section
         if !special_instructions.is_empty() {
-            let bullet_refs: Vec<&str> =
-                special_instructions.iter().map(|s| s.as_str()).collect();
+            let bullet_refs: Vec<&str> = special_instructions
+                .iter()
+                .map(std::string::String::as_str)
+                .collect();
             agent.prompt_add_section("Special Instructions", "", bullet_refs);
         }
 
@@ -162,17 +160,11 @@ impl ConciergeAgent {
                 "date": {"type": "string", "description": "Date to check (optional)"},
             }),
             Box::new(move |args, _raw| {
-                let service = args
-                    .get("service")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("");
-                let date = args
-                    .get("date")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("");
-                let mut response = format!("Checking availability for {} at {}", service, vn);
+                let service = args.get("service").and_then(|v| v.as_str()).unwrap_or("");
+                let date = args.get("date").and_then(|v| v.as_str()).unwrap_or("");
+                let mut response = format!("Checking availability for {service} at {vn}");
                 if !date.is_empty() {
-                    response.push_str(&format!(" on {}", date));
+                    let _ = write!(response, " on {date}");
                 }
                 FunctionResult::with_response(&response)
             }),
@@ -202,15 +194,13 @@ impl ConciergeAgent {
                             .and_then(|v| v.as_str())
                             .unwrap_or("location not specified");
                         return FunctionResult::with_response(&format!(
-                            "The {} at {} is located at: {}",
-                            amenity_name, vn2, location
+                            "The {amenity_name} at {vn2} is located at: {location}"
                         ));
                     }
                 }
 
                 FunctionResult::with_response(&format!(
-                    "Directions to {} at {}: please ask the front desk for assistance.",
-                    destination, vn2
+                    "Directions to {destination} at {vn2}: please ask the front desk for assistance."
                 ))
             }),
             false,
@@ -252,7 +242,10 @@ mod tests {
     fn sample_venue_info() -> Map<String, Value> {
         let mut info = Map::new();
         info.insert("venue_name".to_string(), json!("Grand Hotel"));
-        info.insert("services".to_string(), json!(["Room Service", "Spa", "Valet"]));
+        info.insert(
+            "services".to_string(),
+            json!(["Room Service", "Spa", "Valet"]),
+        );
         info.insert(
             "amenities".to_string(),
             json!({

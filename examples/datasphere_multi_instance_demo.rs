@@ -3,10 +3,15 @@
 //
 //! Datasphere Multi-Instance — multiple Datasphere document collections.
 
+// The example's `run_server(server: AgentServer)` helper takes the server by
+// value to demonstrate handing it to its run loop (the server's lifetime ends
+// with the loop) — an ownership story `&AgentServer` would obscure.
+#![allow(clippy::needless_pass_by_value)]
+
+use serde_json::json;
 use signalwire::agent::{AgentBase, AgentOptions};
 use signalwire::server::AgentServer;
 use signalwire::swaig::FunctionResult;
-use serde_json::json;
 
 fn product_kb_agent() -> AgentBase {
     let mut agent = AgentBase::new(AgentOptions {
@@ -81,11 +86,10 @@ fn main() {
 
 fn run_server(server: AgentServer) {
     use std::collections::HashMap;
-    use std::io::Read as _;
 
     let addr = format!("{}:{}", server.host(), server.port());
-    let http = tiny_http::Server::http(&addr)
-        .unwrap_or_else(|e| panic!("Failed to bind {}: {}", addr, e));
+    let http =
+        tiny_http::Server::http(&addr).unwrap_or_else(|e| panic!("Failed to bind {addr}: {e}"));
 
     for mut request in http.incoming_requests() {
         let method = request.method().as_str().to_string();
@@ -105,8 +109,7 @@ fn run_server(server: AgentServer) {
         let (status, resp_headers, resp_body) =
             server.handle_request(&method, &path, &req_headers, &body_buf);
 
-        let mut response =
-            tiny_http::Response::from_string(&resp_body).with_status_code(status);
+        let mut response = tiny_http::Response::from_string(&resp_body).with_status_code(status);
         for (k, v) in &resp_headers {
             if let Ok(header) = tiny_http::Header::from_bytes(k.as_bytes(), v.as_bytes()) {
                 response = response.with_header(header);

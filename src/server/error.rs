@@ -77,7 +77,9 @@ mod tests {
 
     #[test]
     fn test_route_conflict_display_and_match() {
-        let e = ServerError::RouteAlreadyRegistered { route: "/bot".into() };
+        let e = ServerError::RouteAlreadyRegistered {
+            route: "/bot".into(),
+        };
         assert!(e.to_string().contains("/bot"));
         assert!(e.to_string().contains("already registered"));
         match e {

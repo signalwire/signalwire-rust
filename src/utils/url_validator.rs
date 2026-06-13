@@ -40,7 +40,13 @@ type ResolverFn = Box<dyn Fn(&str) -> Option<Vec<IpAddr>> + Send + Sync>;
 
 static RESOLVER: Mutex<Option<ResolverFn>> = Mutex::new(None);
 
-/// Install a custom resolver (for tests). Pass `None` to clear.
+/// Install a custom resolver (for tests). Pass `None` to clear. `_`-prefixed
+/// deliberately — a test-only seam, not part of the public API surface.
+///
+/// # Panics
+///
+/// Panics if the internal `RESOLVER` lock is poisoned (another thread
+/// panicked while holding it). This does not occur under normal operation.
 pub fn _set_resolver(resolver: Option<ResolverFn>) {
     *RESOLVER.lock().unwrap() = resolver;
 }
@@ -53,7 +59,7 @@ fn resolve(hostname: &str) -> Option<Vec<IpAddr>> {
     if let Ok(ip) = hostname.parse::<IpAddr>() {
         return Some(vec![ip]);
     }
-    let with_port = format!("{}:0", hostname);
+    let with_port = format!("{hostname}:0");
     match with_port.to_socket_addrs() {
         Ok(addrs) => {
             let v: Vec<IpAddr> = addrs.map(|sa| sa.ip()).collect();
@@ -74,9 +80,8 @@ fn env_allows_private() -> bool {
 }
 
 fn cidr_contains(cidr: &str, ip: &IpAddr) -> bool {
-    let (net_str, prefix_str) = match cidr.split_once('/') {
-        Some(p) => p,
-        None => return false,
+    let Some((net_str, prefix_str)) = cidr.split_once('/') else {
+        return false;
     };
     let prefix: u32 = match prefix_str.parse() {
         Ok(p) => p,
@@ -91,7 +96,11 @@ fn cidr_contains(cidr: &str, ip: &IpAddr) -> bool {
             if prefix > 32 {
                 return false;
             }
-            let mask: u32 = if prefix == 0 { 0 } else { !0u32 << (32 - prefix) };
+            let mask: u32 = if prefix == 0 {
+                0
+            } else {
+                !0u32 << (32 - prefix)
+            };
             (u32::from(*ip4) & mask) == (u32::from(net4) & mask)
         }
         IpAddr::V6(ip6) => {
@@ -104,7 +113,11 @@ fn cidr_contains(cidr: &str, ip: &IpAddr) -> bool {
             }
             let ip_bits = u128::from(*ip6);
             let net_bits = u128::from(net6);
-            let mask: u128 = if prefix == 0 { 0 } else { !0u128 << (128 - prefix) };
+            let mask: u128 = if prefix == 0 {
+                0
+            } else {
+                !0u128 << (128 - prefix)
+            };
             (ip_bits & mask) == (net_bits & mask)
         }
     }
@@ -119,7 +132,7 @@ pub fn validate_url(url: &str, allow_private: bool) -> bool {
     let parsed = match Url::parse(url) {
         Ok(u) => u,
         Err(e) => {
-            log.warn(&format!("URL validation error: {}", e));
+            log.warn(&format!("URL validation error: {e}"));
             return false;
         }
     };
@@ -145,17 +158,18 @@ pub fn validate_url(url: &str, allow_private: bool) -> bool {
     let ips = match resolve(&hostname) {
         Some(v) if !v.is_empty() => v,
         _ => {
-            log.warn(&format!("URL rejected: could not resolve hostname {}", hostname));
+            log.warn(&format!(
+                "URL rejected: could not resolve hostname {hostname}"
+            ));
             return false;
         }
     };
 
     for ip in &ips {
-        for cidr in BLOCKED_NETWORKS.iter() {
+        for cidr in BLOCKED_NETWORKS {
             if cidr_contains(cidr, ip) {
                 log.warn(&format!(
-                    "URL rejected: {} resolves to blocked IP {} (in {})",
-                    hostname, ip, cidr
+                    "URL rejected: {hostname} resolves to blocked IP {ip} (in {cidr})"
                 ));
                 return false;
             }
@@ -166,6 +180,8 @@ pub fn validate_url(url: &str, allow_private: bool) -> bool {
 
 #[cfg(test)]
 mod tests {
+    // The tests deliberately call the `_`-prefixed test-only seam `_set_resolver`.
+    #![allow(clippy::used_underscore_items)]
     use super::*;
     use std::sync::Mutex;
 

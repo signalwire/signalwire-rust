@@ -1,4 +1,4 @@
-use serde_json::{json, Map, Value};
+use serde_json::{Map, Value, json};
 
 use crate::agent::AgentBase;
 use crate::skills::skill_base::{SkillBase, SkillParams};
@@ -17,11 +17,11 @@ impl SwmlTransfer {
 }
 
 impl SkillBase for SwmlTransfer {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "swml_transfer"
     }
 
-    fn description(&self) -> &str {
+    fn description(&self) -> &'static str {
         "Transfer calls between agents based on pattern matching"
     }
 
@@ -38,19 +38,22 @@ impl SkillBase for SwmlTransfer {
             .params
             .get("transfers")
             .and_then(|v| v.as_object())
-            .map(|o| !o.is_empty())
-            .unwrap_or(false)
+            .is_some_and(|o| !o.is_empty())
     }
 
     fn register_tools(&self, agent: &mut AgentBase) {
         let tool_name = self.get_tool_name("transfer_call");
         let transfers = self.sp.get_object("transfers");
-        let description = self.sp.get_str_or("description", "Transfer call based on pattern matching");
+        let description = self
+            .sp
+            .get_str_or("description", "Transfer call based on pattern matching");
         let param_name = self.sp.get_str_or("parameter_name", "transfer_type");
-        let param_description =
-            self.sp.get_str_or("parameter_description", "The type of transfer to perform");
-        let default_message =
-            self.sp.get_str_or("default_message", "Transferring your call, please hold.");
+        let param_description = self
+            .sp
+            .get_str_or("parameter_description", "The type of transfer to perform");
+        let default_message = self
+            .sp
+            .get_str_or("default_message", "Transferring your call, please hold.");
 
         let transfer_keys: Vec<Value> = transfers.keys().map(|k| json!(k)).collect();
 
@@ -93,9 +96,8 @@ impl SkillBase for SwmlTransfer {
         // Build DataMap expressions
         let mut expressions = Vec::new();
         for (pattern, config) in &transfers {
-            let config_obj = match config.as_object() {
-                Some(o) => o,
-                None => continue,
+            let Some(config_obj) = config.as_object() else {
+                continue;
             };
             let url = config_obj
                 .get("url")
@@ -108,7 +110,7 @@ impl SkillBase for SwmlTransfer {
                 .unwrap_or(&default_message);
             let post_process = config_obj
                 .get("post_process")
-                .and_then(|v| v.as_bool())
+                .and_then(serde_json::Value::as_bool)
                 .unwrap_or(false);
 
             let mut actions = Vec::new();
@@ -196,14 +198,11 @@ impl SkillBase for SwmlTransfer {
         let mut destinations = Vec::new();
 
         for (pattern, config) in &transfers {
-            let message = config
-                .get("message")
-                .and_then(|v| v.as_str())
-                .unwrap_or("");
-            let entry = if !message.is_empty() {
-                format!("{} - {}", pattern, message)
-            } else {
+            let message = config.get("message").and_then(|v| v.as_str()).unwrap_or("");
+            let entry = if message.is_empty() {
                 pattern.clone()
+            } else {
+                format!("{pattern} - {message}")
             };
             destinations.push(entry);
         }

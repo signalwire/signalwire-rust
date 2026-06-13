@@ -34,8 +34,7 @@ fn test_connect_returns_protocol_string() {
         .expect("protocol should be set after connect");
     assert!(
         proto.starts_with("signalwire_"),
-        "unexpected protocol shape: {:?}",
-        proto
+        "unexpected protocol shape: {proto:?}"
     );
     assert!(client.is_connected());
     client.disconnect();
@@ -101,14 +100,12 @@ fn test_connect_journal_carries_agent_and_version() {
     let agent = p.get("agent").and_then(Value::as_str).unwrap_or("");
     assert!(
         agent.contains("signalwire-agents-rust"),
-        "unexpected agent: {:?}",
-        agent
+        "unexpected agent: {agent:?}"
     );
     let version = &p["version"];
     assert!(
         version.is_object(),
-        "version should be an object, got {:?}",
-        version
+        "version should be an object, got {version:?}"
     );
     assert_eq!(version.get("major").and_then(Value::as_u64), Some(2));
     assert_eq!(version.get("minor").and_then(Value::as_u64), Some(0));
@@ -129,8 +126,7 @@ fn test_connect_journal_event_acks_true() {
     assert_eq!(
         event_acks,
         Some(true),
-        "event_acks should be true, got {:?}",
-        event_acks
+        "event_acks should be true, got {event_acks:?}"
     );
     client.disconnect();
 }
@@ -186,10 +182,7 @@ fn test_reconnect_with_protocol_string_includes_protocol_in_frame() {
     // matches the issued value (we'll add support in the SDK below).
     let connects = relay_mocktest::journal_recv(Some("signalwire.connect"));
     let has_resume = connects.iter().any(|e| {
-        e.frame["params"]
-            .get("protocol")
-            .and_then(Value::as_str)
-            == Some(issued.as_str())
+        e.frame["params"].get("protocol").and_then(Value::as_str) == Some(issued.as_str())
     });
     assert!(
         has_resume,
@@ -274,7 +267,7 @@ fn test_unauthenticated_raw_connect_rejected_by_mock() {
     let resp = sock.read().expect("read reply");
     let txt = match resp {
         tungstenite::Message::Text(t) => t,
-        other => panic!("expected text reply, got {:?}", other),
+        other => panic!("expected text reply, got {other:?}"),
     };
     let parsed: Value = serde_json::from_str(&txt).expect("parse reply");
     let err = parsed
@@ -316,15 +309,14 @@ fn test_jwt_only_connect_accepted_by_mock() {
     let resp = sock.read().expect("read reply");
     let txt = match resp {
         tungstenite::Message::Text(t) => t,
-        other => panic!("expected text reply, got {:?}", other),
+        other => panic!("expected text reply, got {other:?}"),
     };
     let parsed: Value = serde_json::from_str(&txt).expect("parse reply");
     assert!(parsed.get("result").is_some());
     assert!(
         parsed["result"]["protocol"]
             .as_str()
-            .map(|s| s.starts_with("signalwire_"))
-            .unwrap_or(false)
+            .is_some_and(|s| s.starts_with("signalwire_"))
     );
     let _ = sock.close(None);
 }

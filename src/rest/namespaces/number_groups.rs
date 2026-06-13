@@ -43,79 +43,114 @@ impl<'a> NumberGroups<'a> {
         out
     }
 
+    /// GET `/api/relay/rest/number_groups` — list number groups.
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status, or the
+    /// response body is not valid JSON.
     pub fn list(&self, params: &Value) -> Result<Value, SignalWireRestError> {
         self.client
             .get(&self.base_path, &Self::params_to_string_map(params))
     }
 
+    /// POST `/api/relay/rest/number_groups` — create a number group.
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (e.g. 422
+    /// when `params` fails validation), or the response body is not valid JSON.
     pub fn create(&self, params: &Value) -> Result<Value, SignalWireRestError> {
         self.client.post(&self.base_path, params)
     }
 
+    /// GET `/api/relay/rest/number_groups/{group_id}` — fetch one number group.
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (e.g. 404
+    /// for an unknown `group_id`), or the response body is not valid JSON.
     pub fn get(&self, group_id: &str) -> Result<Value, SignalWireRestError> {
         self.client
             .get(&format!("{}/{}", self.base_path, group_id), &HashMap::new())
     }
 
-    pub fn update(
-        &self,
-        group_id: &str,
-        params: &Value,
-    ) -> Result<Value, SignalWireRestError> {
+    /// PUT `/api/relay/rest/number_groups/{group_id}` — update a number group.
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (e.g. 404
+    /// for an unknown `group_id` or 422 when `params` fails validation), or the
+    /// response body is not valid JSON.
+    pub fn update(&self, group_id: &str, params: &Value) -> Result<Value, SignalWireRestError> {
         self.client
             .put(&format!("{}/{}", self.base_path, group_id), params)
     }
 
+    /// DELETE `/api/relay/rest/number_groups/{group_id}` — delete a number group.
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (e.g. 404
+    /// for an unknown `group_id`), or the response body is not valid JSON.
     pub fn delete(&self, group_id: &str) -> Result<Value, SignalWireRestError> {
         self.client
             .delete(&format!("{}/{}", self.base_path, group_id))
     }
 
-    /// GET /api/relay/rest/number_groups/{id}/number_group_memberships
+    /// GET `/api/relay/rest/number_groups/{id}/number_group_memberships`
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (e.g. 404
+    /// for an unknown `group_id`), or the response body is not valid JSON.
     pub fn list_memberships(
         &self,
         group_id: &str,
         params: &Value,
     ) -> Result<Value, SignalWireRestError> {
-        let path = format!(
-            "{}/{}/number_group_memberships",
-            self.base_path, group_id
-        );
-        self.client
-            .get(&path, &Self::params_to_string_map(params))
+        let path = format!("{}/{}/number_group_memberships", self.base_path, group_id);
+        self.client.get(&path, &Self::params_to_string_map(params))
     }
 
+    /// POST `/api/relay/rest/number_groups/{id}/number_group_memberships` — add
+    /// a number to the group.
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (e.g. 404
+    /// for an unknown `group_id` or 422 when `params` fails validation), or the
+    /// response body is not valid JSON.
     pub fn add_membership(
         &self,
         group_id: &str,
         params: &Value,
     ) -> Result<Value, SignalWireRestError> {
-        let path = format!(
-            "{}/{}/number_group_memberships",
-            self.base_path, group_id
-        );
+        let path = format!("{}/{}/number_group_memberships", self.base_path, group_id);
         self.client.post(&path, params)
     }
 
-    pub fn get_membership(
-        &self,
-        membership_id: &str,
-    ) -> Result<Value, SignalWireRestError> {
-        let path = format!(
-            "/api/relay/rest/number_group_memberships/{}",
-            membership_id
-        );
+    /// GET `/api/relay/rest/number_group_memberships/{membership_id}` — fetch
+    /// one membership.
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (e.g. 404
+    /// for an unknown `membership_id`), or the response body is not valid JSON.
+    pub fn get_membership(&self, membership_id: &str) -> Result<Value, SignalWireRestError> {
+        let path = format!("/api/relay/rest/number_group_memberships/{membership_id}");
         self.client.get(&path, &HashMap::new())
     }
 
-    pub fn delete_membership(
-        &self,
-        membership_id: &str,
-    ) -> Result<Value, SignalWireRestError> {
-        let path = format!(
-            "/api/relay/rest/number_group_memberships/{}",
-            membership_id
-        );
+    /// DELETE `/api/relay/rest/number_group_memberships/{membership_id}` —
+    /// remove a number from a group.
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (e.g. 404
+    /// for an unknown `membership_id`), or the response body is not valid JSON.
+    pub fn delete_membership(&self, membership_id: &str) -> Result<Value, SignalWireRestError> {
+        let path = format!("/api/relay/rest/number_group_memberships/{membership_id}");
         self.client.delete(&path)
     }
 }

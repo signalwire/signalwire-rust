@@ -1,7 +1,7 @@
-/// RELAY protocol constants.
-///
-/// Mirrors the PHP `Constants` class: protocol version, call/dial/message
-/// states, terminal-state maps, and per-event-type action terminal states.
+//! RELAY protocol constants.
+//!
+//! Mirrors the PHP `Constants` class: protocol version, call/dial/message
+//! states, terminal-state maps, and per-event-type action terminal states.
 
 /// Protocol version exchanged during `signalwire.connect`.
 pub const PROTOCOL_VERSION_MAJOR: u32 = 2;
@@ -66,9 +66,9 @@ pub fn is_action_terminal(event_type: &str, state: &str) -> bool {
             matches!(state, "finished" | "error" | "no_input" | "no_match")
         }
         "calling.call.fax" => matches!(state, "finished" | "error"),
-        "calling.call.tap" => state == "finished",
-        "calling.call.stream" => state == "finished",
-        "calling.call.transcribe" => state == "finished",
+        "calling.call.tap" | "calling.call.stream" | "calling.call.transcribe" => {
+            state == "finished"
+        }
         "calling.call.pay" => matches!(state, "finished" | "error"),
         _ => false,
     }
@@ -161,7 +161,10 @@ mod tests {
     #[test]
     fn test_action_terminal_transcribe() {
         assert!(is_action_terminal("calling.call.transcribe", "finished"));
-        assert!(!is_action_terminal("calling.call.transcribe", "transcribing"));
+        assert!(!is_action_terminal(
+            "calling.call.transcribe",
+            "transcribing"
+        ));
     }
 
     #[test]

@@ -9,21 +9,21 @@
 //! - Raw body forwarded — handler can re-read the body bytes.
 //! - URL reconstruction honors `X-Forwarded-Proto` / `X-Forwarded-Host`.
 //!
-//! These exercise the real tower::Service glue; nothing is mocked.
+//! These exercise the real `tower::Service` glue; nothing is mocked.
 //!
 //! Gated on the `tower-middleware` feature (default-enabled).
 
 #![cfg(feature = "tower-middleware")]
 
-use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
+use axum::Router;
 use axum::body::Body;
 use axum::extract::State;
 use axum::http::{HeaderValue, Request, StatusCode};
 use axum::response::IntoResponse;
 use axum::routing::post;
-use axum::Router;
 use http_body_util::BodyExt;
 use tower::ServiceExt;
 
@@ -53,7 +53,10 @@ impl HitCounter {
     }
 }
 
-async fn echo_handler(State(hits): State<HitCounter>, body: axum::body::Bytes) -> impl IntoResponse {
+async fn echo_handler(
+    State(hits): State<HitCounter>,
+    body: axum::body::Bytes,
+) -> impl IntoResponse {
     hits.0.fetch_add(1, Ordering::SeqCst);
     // Return the body verbatim so the test can confirm the bytes survived.
     (StatusCode::OK, body)
@@ -67,7 +70,12 @@ fn build_router(layer: WebhookLayer, hits: HitCounter) -> Router {
 }
 
 async fn read_body(resp: axum::response::Response) -> Vec<u8> {
-    resp.into_body().collect().await.unwrap().to_bytes().to_vec()
+    resp.into_body()
+        .collect()
+        .await
+        .unwrap()
+        .to_bytes()
+        .to_vec()
 }
 
 // ---------------------------------------------------------------------------
@@ -106,7 +114,10 @@ async fn invalid_signature_returns_403_and_does_not_invoke_handler() {
     let req = Request::builder()
         .method("POST")
         .uri("/webhook")
-        .header("x-signalwire-signature", "deadbeef0000000000000000000000000000000")
+        .header(
+            "x-signalwire-signature",
+            "deadbeef0000000000000000000000000000000",
+        )
         .body(Body::from(BODY.as_bytes().to_vec()))
         .unwrap();
 
@@ -184,13 +195,16 @@ async fn url_reconstructed_from_x_forwarded_headers_when_no_override() {
     let url = "https://tunnel.example.com/webhook";
     let body = r#"{"hello":"world"}"#;
     let mut mac = HmacSha1::new_from_slice(key.as_bytes()).unwrap();
-    mac.update(format!("{}{}", url, body).as_bytes());
+    mac.update(format!("{url}{body}").as_bytes());
     let sig: String = mac
         .finalize()
         .into_bytes()
         .iter()
-        .map(|b| format!("{:02x}", b))
-        .collect();
+        .fold(String::new(), |mut s, b| {
+            use std::fmt::Write as _;
+            let _ = write!(s, "{b:02x}");
+            s
+        });
 
     let hits = HitCounter::default();
     let layer = WebhookLayer::new(key);
@@ -201,7 +215,10 @@ async fn url_reconstructed_from_x_forwarded_headers_when_no_override() {
         .uri("/webhook")
         .header("x-forwarded-proto", "https")
         .header("x-forwarded-host", "tunnel.example.com")
-        .header("x-signalwire-signature", HeaderValue::from_str(&sig).unwrap())
+        .header(
+            "x-signalwire-signature",
+            HeaderValue::from_str(&sig).unwrap(),
+        )
         .body(Body::from(body.as_bytes().to_vec()))
         .unwrap();
 

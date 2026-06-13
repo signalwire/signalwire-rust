@@ -1,4 +1,4 @@
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 use crate::agent::{AgentBase, AgentOptions};
 use crate::swaig::FunctionResult;
@@ -11,7 +11,7 @@ pub struct FAQBotAgent {
 }
 
 impl FAQBotAgent {
-    /// Create a new FAQBotAgent.
+    /// Create a new `FAQBotAgent`.
     ///
     /// # Arguments
     /// - `name` — agent name (defaults to `"faq_bot"` if empty).
@@ -49,17 +49,14 @@ impl FAQBotAgent {
         // Build FAQ knowledge section
         let mut faq_bullets: Vec<String> = Vec::new();
         for faq in &faqs {
-            let q = faq
-                .get("question")
-                .and_then(|v| v.as_str())
-                .unwrap_or("?");
-            let a = faq
-                .get("answer")
-                .and_then(|v| v.as_str())
-                .unwrap_or("?");
-            faq_bullets.push(format!("Q: {} A: {}", q, a));
+            let q = faq.get("question").and_then(|v| v.as_str()).unwrap_or("?");
+            let a = faq.get("answer").and_then(|v| v.as_str()).unwrap_or("?");
+            faq_bullets.push(format!("Q: {q} A: {a}"));
         }
-        let bullet_refs: Vec<&str> = faq_bullets.iter().map(|s| s.as_str()).collect();
+        let bullet_refs: Vec<&str> = faq_bullets
+            .iter()
+            .map(std::string::String::as_str)
+            .collect();
         agent.prompt_add_section(
             "FAQ Knowledge Base",
             "You have knowledge of the following frequently asked questions.",
@@ -127,14 +124,12 @@ impl FAQBotAgent {
                 if scored.is_empty() {
                     return FunctionResult::with_response(&format!(
                         "No FAQ found matching: {}",
-                        args.get("query")
-                            .and_then(|v| v.as_str())
-                            .unwrap_or("")
+                        args.get("query").and_then(|v| v.as_str()).unwrap_or("")
                     ));
                 }
 
                 // Sort by score descending
-                scored.sort_by(|a, b| b.1.cmp(&a.1));
+                scored.sort_by_key(|b| std::cmp::Reverse(b.1));
 
                 let best = scored[0].2;
                 let mut response = best
@@ -147,9 +142,7 @@ impl FAQBotAgent {
                 if suggest_related && scored.len() > 1 {
                     let related: Vec<&str> = scored[1..scored.len().min(4)]
                         .iter()
-                        .filter_map(|(_, _, faq)| {
-                            faq.get("question").and_then(|v| v.as_str())
-                        })
+                        .filter_map(|(_, _, faq)| faq.get("question").and_then(|v| v.as_str()))
                         .collect();
                     if !related.is_empty() {
                         response.push_str("\n\nRelated questions: ");

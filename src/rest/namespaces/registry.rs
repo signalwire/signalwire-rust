@@ -92,20 +92,44 @@ impl<'a> RegistryBrands<'a> {
         &self.base_path
     }
 
+    /// GET `…/brands` — list 10DLC brands.
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status, or the
+    /// response body is not valid JSON.
     pub fn list(&self, params: &Value) -> Result<Value, SignalWireRestError> {
         let qp = params_to_string_map(params);
         self.client.get(&self.base_path, &qp)
     }
 
+    /// POST `…/brands` — register a 10DLC brand.
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (e.g. 422
+    /// when `params` fails validation), or the response body is not valid JSON.
     pub fn create(&self, params: &Value) -> Result<Value, SignalWireRestError> {
         self.client.post(&self.base_path, params)
     }
 
+    /// GET `…/brands/{brand_id}` — fetch one brand.
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (e.g. 404
+    /// for an unknown `brand_id`), or the response body is not valid JSON.
     pub fn get(&self, brand_id: &str) -> Result<Value, SignalWireRestError> {
         let p = join(&[&self.base_path, brand_id]);
         self.client.get(&p, &HashMap::new())
     }
 
+    /// GET `…/brands/{brand_id}/campaigns` — list campaigns for a brand.
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (e.g. 404
+    /// for an unknown `brand_id`), or the response body is not valid JSON.
     pub fn list_campaigns(
         &self,
         brand_id: &str,
@@ -116,6 +140,13 @@ impl<'a> RegistryBrands<'a> {
         self.client.get(&p, &qp)
     }
 
+    /// POST `…/brands/{brand_id}/campaigns` — create a campaign under a brand.
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (e.g. 404
+    /// for an unknown `brand_id` or 422 when `params` fails validation), or the
+    /// response body is not valid JSON.
     pub fn create_campaign(
         &self,
         brand_id: &str,
@@ -147,20 +178,35 @@ impl<'a> RegistryCampaigns<'a> {
         &self.base_path
     }
 
+    /// GET `…/campaigns/{campaign_id}` — fetch one campaign.
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (e.g. 404
+    /// for an unknown `campaign_id`), or the response body is not valid JSON.
     pub fn get(&self, campaign_id: &str) -> Result<Value, SignalWireRestError> {
         let p = join(&[&self.base_path, campaign_id]);
         self.client.get(&p, &HashMap::new())
     }
 
-    pub fn update(
-        &self,
-        campaign_id: &str,
-        params: &Value,
-    ) -> Result<Value, SignalWireRestError> {
+    /// PUT `…/campaigns/{campaign_id}` — update a campaign.
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (e.g. 404
+    /// for an unknown `campaign_id` or 422 when `params` fails validation), or
+    /// the response body is not valid JSON.
+    pub fn update(&self, campaign_id: &str, params: &Value) -> Result<Value, SignalWireRestError> {
         let p = join(&[&self.base_path, campaign_id]);
         self.client.put(&p, params)
     }
 
+    /// GET `…/campaigns/{campaign_id}/numbers` — list numbers on a campaign.
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (e.g. 404
+    /// for an unknown `campaign_id`), or the response body is not valid JSON.
     pub fn list_numbers(
         &self,
         campaign_id: &str,
@@ -171,6 +217,12 @@ impl<'a> RegistryCampaigns<'a> {
         self.client.get(&p, &qp)
     }
 
+    /// GET `…/campaigns/{campaign_id}/orders` — list orders on a campaign.
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (e.g. 404
+    /// for an unknown `campaign_id`), or the response body is not valid JSON.
     pub fn list_orders(
         &self,
         campaign_id: &str,
@@ -181,6 +233,14 @@ impl<'a> RegistryCampaigns<'a> {
         self.client.get(&p, &qp)
     }
 
+    /// POST `…/campaigns/{campaign_id}/orders` — place a number order on a
+    /// campaign.
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (e.g. 404
+    /// for an unknown `campaign_id` or 422 when `params` fails validation), or
+    /// the response body is not valid JSON.
     pub fn create_order(
         &self,
         campaign_id: &str,
@@ -212,6 +272,12 @@ impl<'a> RegistryOrders<'a> {
         &self.base_path
     }
 
+    /// GET `…/orders/{order_id}` — fetch one order.
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (e.g. 404
+    /// for an unknown `order_id`), or the response body is not valid JSON.
     pub fn get(&self, order_id: &str) -> Result<Value, SignalWireRestError> {
         let p = join(&[&self.base_path, order_id]);
         self.client.get(&p, &HashMap::new())
@@ -239,6 +305,12 @@ impl<'a> RegistryNumbers<'a> {
         &self.base_path
     }
 
+    /// DELETE `…/numbers/{number_id}` — release a number from the registry.
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (e.g. 404
+    /// for an unknown `number_id`), or the response body is not valid JSON.
     pub fn delete(&self, number_id: &str) -> Result<Value, SignalWireRestError> {
         let p = join(&[&self.base_path, number_id]);
         self.client.delete(&p)

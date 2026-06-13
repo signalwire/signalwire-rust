@@ -6,7 +6,7 @@
 #[path = "common/mod.rs"]
 mod common;
 
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 const BASE: &str = "/api/laml/2010-04-01/Accounts/test_proj/tokens";
 
@@ -46,10 +46,7 @@ fn test_compat_tokens_create_journal_records_post() {
     assert_eq!(entry.path, BASE);
     let body = entry.body_object().expect("body");
     assert_eq!(body.get("Ttl").and_then(Value::as_i64), Some(3600));
-    assert_eq!(
-        body.get("Name").and_then(Value::as_str),
-        Some("api-key")
-    );
+    assert_eq!(body.get("Name").and_then(Value::as_str), Some("api-key"));
 }
 
 // ---------------------------------------------------------------------------

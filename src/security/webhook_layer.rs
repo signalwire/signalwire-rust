@@ -73,6 +73,7 @@ impl WebhookLayer {
     /// `base` is typically `scheme://host[:port]` with no trailing slash
     /// — e.g. `"https://example.ngrok.io"`. Any trailing `/` is
     /// stripped before concatenation.
+    #[must_use]
     pub fn with_url_base(mut self, base: impl Into<String>) -> Self {
         let base = base.into();
         let cfg = WebhookConfig {
@@ -136,7 +137,7 @@ where
                 .iter()
                 .find_map(|name| req.headers().get(*name))
                 .and_then(|v| v.to_str().ok())
-                .map(|s| s.to_string());
+                .map(std::string::ToString::to_string);
 
             // Reconstruct the URL the platform signed.
             let url = match cfg.url_override.as_ref() {
@@ -145,8 +146,7 @@ where
                     u.trim_end_matches('/'),
                     req.uri()
                         .path_and_query()
-                        .map(|pq| pq.as_str())
-                        .unwrap_or("/")
+                        .map_or("/", http::uri::PathAndQuery::as_str)
                 ),
                 None => reconstruct_url_from_request(req.headers(), req.uri()),
             };
@@ -212,12 +212,16 @@ fn reconstruct_url_from_request(headers: &HeaderMap, uri: &axum::http::Uri) -> S
     let host = header_str(headers, "x-forwarded-host")
         .or_else(|| header_str(headers, "host"))
         .unwrap_or("unknown");
-    let path_and_query = uri.path_and_query().map(|pq| pq.as_str()).unwrap_or("/");
-    format!("{}://{}{}", proto, host, path_and_query)
+    let path_and_query = uri
+        .path_and_query()
+        .map_or("/", http::uri::PathAndQuery::as_str);
+    format!("{proto}://{host}{path_and_query}")
 }
 
 fn header_str<'a>(headers: &'a HeaderMap, name: &str) -> Option<&'a str> {
-    headers.get(name).and_then(|v: &HeaderValue| v.to_str().ok())
+    headers
+        .get(name)
+        .and_then(|v: &HeaderValue| v.to_str().ok())
 }
 
 #[cfg(test)]

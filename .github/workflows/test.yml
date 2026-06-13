@@ -46,9 +46,14 @@ jobs:
           ref: main
 
       - name: Set up Rust (stable + nightly for rustdoc-json)
-        # Stable for `cargo test`; nightly for the rustdoc-json output
-        # consumed by scripts/enumerate_signatures.py (Gate 2).
+        # Stable for `cargo test` + the FMT/LINT gates (run-ci.sh pins those to
+        # `cargo +stable`); nightly for the rustdoc-json output consumed by
+        # scripts/enumerate_signatures.py (Gate 2). clippy + rustfmt components
+        # are explicit so `cargo +stable fmt`/`clippy` resolve even though the
+        # nightly step below makes nightly the default toolchain.
         uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
 
       - name: Install Rust nightly (rustdoc-json for SIGNATURES gate)
         uses: dtolnay/rust-toolchain@nightly

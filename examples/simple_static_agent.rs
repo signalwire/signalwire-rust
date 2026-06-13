@@ -3,8 +3,8 @@
 //
 //! Simple Static Agent — all configuration at startup, same for every request.
 
-use signalwire::agent::{AgentBase, AgentOptions};
 use serde_json::json;
+use signalwire::agent::{AgentBase, AgentOptions};
 
 fn main() {
     let mut opts = AgentOptions::new("Simple Customer Service Agent");
@@ -40,11 +40,15 @@ fn main() {
         "You are a friendly and professional customer service representative for SignalWire.",
         vec![],
     );
-    agent.prompt_add_section("Instructions", "", vec![
-        "Greet the customer warmly",
-        "Be helpful and concise",
-        "If you cannot help, offer to connect with a human",
-    ]);
+    agent.prompt_add_section(
+        "Instructions",
+        "",
+        vec![
+            "Greet the customer warmly",
+            "Be helpful and concise",
+            "If you cannot help, offer to connect with a human",
+        ],
+    );
 
     let (user, pass) = agent.get_basic_auth_credentials();
     println!("Static agent at http://{user}:{pass}@localhost:3000/");

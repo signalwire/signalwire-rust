@@ -1,4 +1,4 @@
-use serde_json::{json, Map, Value};
+use serde_json::{Map, Value, json};
 
 use crate::agent::AgentBase;
 use crate::skills::skill_base::{SkillBase, SkillParams};
@@ -18,11 +18,11 @@ impl NativeVectorSearch {
 }
 
 impl SkillBase for NativeVectorSearch {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "native_vector_search"
     }
 
-    fn description(&self) -> &str {
+    fn description(&self) -> &'static str {
         "Search document indexes using vector similarity and keyword search (local or remote)"
     }
 
@@ -40,8 +40,10 @@ impl SkillBase for NativeVectorSearch {
 
     fn register_tools(&self, agent: &mut AgentBase) {
         let tool_name = self.get_tool_name("search_knowledge");
-        let tool_description =
-            self.sp.get_str_or("description", "Search the local knowledge base for information");
+        let tool_description = self.sp.get_str_or(
+            "description",
+            "Search the local knowledge base for information",
+        );
         let default_count = self.sp.get_i64("count", 5).max(1);
         let remote_url = self.sp.get_str_or("remote_url", "");
         let index_name = self.sp.get_str_or("index_name", "");
@@ -66,7 +68,7 @@ impl SkillBase for NativeVectorSearch {
                 let query = args.get("query").and_then(|v| v.as_str()).unwrap_or("");
                 let count = args
                     .get("count")
-                    .and_then(|v| v.as_i64())
+                    .and_then(serde_json::Value::as_i64)
                     .unwrap_or(default_count);
 
                 if query.is_empty() {
@@ -74,19 +76,17 @@ impl SkillBase for NativeVectorSearch {
                     return result;
                 }
 
-                if !remote_url.is_empty() {
+                if remote_url.is_empty() {
                     result.set_response(&format!(
-                        "Vector search results for \"{}\": \
-                         Searched remote endpoint \"{}\" with count={}. \
-                         In production, this would return vector similarity search results.",
-                        query, remote_url, count
+                        "Vector search results for \"{query}\": \
+                         Searched index \"{index_name}\" with count={count}. \
+                         In production, this would return vector similarity search results."
                     ));
                 } else {
                     result.set_response(&format!(
-                        "Vector search results for \"{}\": \
-                         Searched index \"{}\" with count={}. \
-                         In production, this would return vector similarity search results.",
-                        query, index_name, count
+                        "Vector search results for \"{query}\": \
+                         Searched remote endpoint \"{remote_url}\" with count={count}. \
+                         In production, this would return vector similarity search results."
                     ));
                 }
                 result

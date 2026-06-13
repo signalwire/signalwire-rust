@@ -4,6 +4,10 @@ use std::collections::HashMap;
 ///
 /// Events carry an `event_type` (e.g. `"calling.call.state"`), a
 /// timestamp, and a bag of string-keyed parameters.
+// Field names (event_type, …) mirror the RELAY wire / Python field names 1:1;
+// `event_type` is also a JSON key. struct_field_names would have us drop the
+// `event_` prefix, which would diverge from the wire shape.
+#[allow(clippy::struct_field_names)]
 #[derive(Debug, Clone)]
 pub struct Event {
     event_type: String,
@@ -19,7 +23,12 @@ impl Event {
         timestamp: f64,
     ) -> Self {
         let ts = if timestamp == 0.0 {
-            chrono::Utc::now().timestamp_millis() as f64 / 1000.0
+            // Python parity: event timestamps are float seconds. The i64
+            // millisecond count only loses precision past 2^52 ms (year ~144000),
+            // so the f64 cast is exact for any real timestamp.
+            #[allow(clippy::cast_precision_loss)]
+            let now = chrono::Utc::now().timestamp_millis() as f64 / 1000.0;
+            now
         } else {
             timestamp
         };
@@ -33,10 +42,7 @@ impl Event {
     /// Convenience constructor from a `serde_json::Value` params object.
     pub fn parse(event_type: &str, params_value: &serde_json::Value) -> Self {
         let params = match params_value.as_object() {
-            Some(map) => map
-                .iter()
-                .map(|(k, v)| (k.clone(), v.clone()))
-                .collect(),
+            Some(map) => map.iter().map(|(k, v)| (k.clone(), v.clone())).collect(),
             None => HashMap::new(),
         };
         Self::new(event_type, params, 0.0)
@@ -59,21 +65,15 @@ impl Event {
     }
 
     pub fn call_id(&self) -> Option<&str> {
-        self.params
-            .get("call_id")
-            .and_then(|v| v.as_str())
+        self.params.get("call_id").and_then(|v| v.as_str())
     }
 
     pub fn node_id(&self) -> Option<&str> {
-        self.params
-            .get("node_id")
-            .and_then(|v| v.as_str())
+        self.params.get("node_id").and_then(|v| v.as_str())
     }
 
     pub fn control_id(&self) -> Option<&str> {
-        self.params
-            .get("control_id")
-            .and_then(|v| v.as_str())
+        self.params.get("control_id").and_then(|v| v.as_str())
     }
 
     pub fn tag(&self) -> Option<&str> {
@@ -85,6 +85,7 @@ impl Event {
     }
 
     /// Serialize back to a JSON-compatible map.
+    #[must_use]
     pub fn to_value(&self) -> serde_json::Value {
         serde_json::json!({
             "event_type": self.event_type,
@@ -182,7 +183,7 @@ mod tests {
     #[test]
     fn test_debug_format() {
         let ev = Event::new("test.event", HashMap::new(), 1.0);
-        let dbg = format!("{:?}", ev);
+        let dbg = format!("{ev:?}");
         assert!(dbg.contains("test.event"));
     }
 }

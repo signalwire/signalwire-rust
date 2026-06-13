@@ -1,6 +1,6 @@
-use base64::engine::general_purpose::STANDARD as BASE64;
 use base64::Engine;
-use serde_json::{json, Map, Value};
+use base64::engine::general_purpose::STANDARD as BASE64;
+use serde_json::{Map, Value, json};
 
 use crate::agent::AgentBase;
 use crate::skills::skill_base::{SkillBase, SkillParams};
@@ -29,11 +29,11 @@ impl Datasphere {
 }
 
 impl SkillBase for Datasphere {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "datasphere"
     }
 
-    fn description(&self) -> &str {
+    fn description(&self) -> &'static str {
         "Search knowledge using SignalWire DataSphere RAG stack"
     }
 
@@ -52,9 +52,7 @@ impl SkillBase for Datasphere {
             }
         }
         // Token can come from params OR DATASPHERE_TOKEN env var.
-        if self.sp.get_str("token").is_none()
-            && std::env::var("DATASPHERE_TOKEN").is_err()
-        {
+        if self.sp.get_str("token").is_none() && std::env::var("DATASPHERE_TOKEN").is_err() {
             return false;
         }
         true
@@ -64,7 +62,10 @@ impl SkillBase for Datasphere {
         let tool_name = self.get_tool_name("search_knowledge");
         let space_name = self.sp.get_str_or("space_name", "");
         let project_id = self.sp.get_str_or("project_id", "");
-        let token_param = self.sp.get_str("token").map(|s| s.to_string());
+        let token_param = self
+            .sp
+            .get_str("token")
+            .map(std::string::ToString::to_string);
         let document_id = self.sp.get_str_or("document_id", "");
         let count = self.sp.get_i64("count", 1).clamp(1, 10);
         let distance = self.sp.get_f64("distance", 3.0);
@@ -92,9 +93,8 @@ impl SkillBase for Datasphere {
                     .or_else(|| std::env::var("DATASPHERE_TOKEN").ok())
                     .unwrap_or_default();
 
-                let base = std::env::var("DATASPHERE_BASE_URL").unwrap_or_else(|_| {
-                    format!("https://{}.signalwire.com", space_name)
-                });
+                let base = std::env::var("DATASPHERE_BASE_URL")
+                    .unwrap_or_else(|_| format!("https://{space_name}.signalwire.com"));
                 let url = format!(
                     "{}/api/datasphere/documents/search",
                     base.trim_end_matches('/')
@@ -111,7 +111,7 @@ impl SkillBase for Datasphere {
                     Ok(v) => v,
                     Err(e) => {
                         let mut r = FunctionResult::new();
-                        r.set_response(&format!("DataSphere error: {}", e));
+                        r.set_response(&format!("DataSphere error: {e}"));
                         return r;
                     }
                 };
@@ -126,14 +126,11 @@ impl SkillBase for Datasphere {
                     .unwrap_or_default();
 
                 let formatted = if entries.is_empty() {
-                    format!(
-                        "No DataSphere knowledge results for \"{}\".",
-                        query
-                    )
+                    format!("No DataSphere knowledge results for \"{query}\".")
                 } else {
                     let lines: Vec<String> = entries
                         .iter()
-                        .take(count as usize)
+                        .take(usize::try_from(count).unwrap_or(0))
                         .enumerate()
                         .map(|(i, e)| {
                             let text = e
@@ -193,19 +190,14 @@ impl SkillBase for Datasphere {
 }
 
 /// Issue an HTTP POST with Basic auth and a JSON body, parse JSON response.
-fn http_post_json(
-    url: &str,
-    project: &str,
-    token: &str,
-    payload: &Value,
-) -> Result<Value, String> {
+fn http_post_json(url: &str, project: &str, token: &str, payload: &Value) -> Result<Value, String> {
     let agent: ureq::Agent = ureq::Agent::config_builder()
         .timeout_global(Some(std::time::Duration::from_secs(30)))
         .http_status_as_error(false)
         .build()
         .into();
 
-    let auth = format!("Basic {}", BASE64.encode(format!("{}:{}", project, token)));
+    let auth = format!("Basic {}", BASE64.encode(format!("{project}:{token}")));
     let body = serde_json::to_string(payload).unwrap_or_else(|_| "{}".to_string());
 
     let mut resp = agent
@@ -215,20 +207,19 @@ fn http_post_json(
         .header("Authorization", &auth)
         .header("User-Agent", "signalwire-agents-rust-skills/1.0")
         .send(&body)
-        .map_err(|e| format!("POST {} failed: {}", url, e))?;
+        .map_err(|e| format!("POST {url} failed: {e}"))?;
 
     let status = resp.status().as_u16();
     let body_str = resp
         .body_mut()
         .read_to_string()
-        .map_err(|e| format!("POST {} body read failed: {}", url, e))?;
+        .map_err(|e| format!("POST {url} body read failed: {e}"))?;
 
-    if status < 200 || status >= 300 {
-        return Err(format!("POST {} returned {}: {}", url, status, body_str));
+    if !(200..300).contains(&status) {
+        return Err(format!("POST {url} returned {status}: {body_str}"));
     }
 
-    serde_json::from_str(&body_str)
-        .map_err(|e| format!("POST {} returned non-JSON: {}", url, e))
+    serde_json::from_str(&body_str).map_err(|e| format!("POST {url} returned non-JSON: {e}"))
 }
 
 #[cfg(test)]

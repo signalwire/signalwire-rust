@@ -1,4 +1,4 @@
-use serde_json::{json, Map, Value};
+use serde_json::{Map, Value, json};
 
 use crate::agent::AgentBase;
 use crate::skills::skill_base::{SkillBase, SkillParams};
@@ -18,11 +18,11 @@ impl InfoGatherer {
 }
 
 impl SkillBase for InfoGatherer {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "info_gatherer"
     }
 
-    fn description(&self) -> &str {
+    fn description(&self) -> &'static str {
         "Gather answers to a configurable list of questions"
     }
 
@@ -42,20 +42,21 @@ impl SkillBase for InfoGatherer {
     fn register_tools(&self, agent: &mut AgentBase) {
         let prefix = self.sp.get_str_or("prefix", "");
         let questions = self.sp.get_array("questions");
-        let completion_message = self
-            .sp
-            .get_str_or("completion_message", "All questions have been answered. Thank you!");
+        let completion_message = self.sp.get_str_or(
+            "completion_message",
+            "All questions have been answered. Thank you!",
+        );
         let namespace = self.get_instance_key();
 
-        let start_tool = if !prefix.is_empty() {
-            format!("{}_start_questions", prefix)
-        } else {
+        let start_tool = if prefix.is_empty() {
             "start_questions".to_string()
-        };
-        let submit_tool = if !prefix.is_empty() {
-            format!("{}_submit_answer", prefix)
         } else {
+            format!("{prefix}_start_questions")
+        };
+        let submit_tool = if prefix.is_empty() {
             "submit_answer".to_string()
+        } else {
+            format!("{prefix}_submit_answer")
         };
 
         // start_questions tool
@@ -78,7 +79,7 @@ impl SkillBase for InfoGatherer {
                     .and_then(|v| v.as_str())
                     .unwrap_or("No question text.");
 
-                result.set_response(&format!("Starting questions. First question: {}", first));
+                result.set_response(&format!("Starting questions. First question: {first}"));
                 result.add_action(json!({
                     "set_global_data": {
                         namespace_clone.clone(): {
@@ -119,7 +120,7 @@ impl SkillBase for InfoGatherer {
                     .unwrap_or("");
                 let confirmed = args
                     .get("confirmed_by_user")
-                    .and_then(|v| v.as_bool())
+                    .and_then(serde_json::Value::as_bool)
                     .unwrap_or(false);
 
                 if answer.is_empty() {
@@ -133,7 +134,7 @@ impl SkillBase for InfoGatherer {
                 let current_question = questions_clone2.get(current_index);
                 let needs_confirm = current_question
                     .and_then(|q| q.get("confirm"))
-                    .and_then(|v| v.as_bool())
+                    .and_then(serde_json::Value::as_bool)
                     .unwrap_or(false);
 
                 if needs_confirm && !confirmed {
@@ -142,8 +143,7 @@ impl SkillBase for InfoGatherer {
                         .and_then(|v| v.as_str())
                         .unwrap_or("");
                     result.set_response(&format!(
-                        "You answered \"{}\" for: {}. Can you confirm this is correct?",
-                        answer, question_text
+                        "You answered \"{answer}\" for: {question_text}. Can you confirm this is correct?"
                     ));
                     return result;
                 }
@@ -157,8 +157,7 @@ impl SkillBase for InfoGatherer {
                         .and_then(|v| v.as_str())
                         .unwrap_or("No question text.");
                     result.set_response(&format!(
-                        "Answer recorded. Next question: {}",
-                        next_question
+                        "Answer recorded. Next question: {next_question}"
                     ));
                 }
 
@@ -200,10 +199,10 @@ impl SkillBase for InfoGatherer {
         ];
 
         for q in &questions {
-            if let Some(prompt_add) = q.get("prompt_add").and_then(|v| v.as_str()) {
-                if !prompt_add.is_empty() {
-                    bullets.push(prompt_add.to_string());
-                }
+            if let Some(prompt_add) = q.get("prompt_add").and_then(|v| v.as_str())
+                && !prompt_add.is_empty()
+            {
+                bullets.push(prompt_add.to_string());
             }
         }
 

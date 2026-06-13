@@ -1,4 +1,4 @@
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 use crate::agent::{AgentBase, AgentOptions};
 use crate::swaig::FunctionResult;
@@ -11,7 +11,7 @@ pub struct ReceptionistAgent {
 }
 
 impl ReceptionistAgent {
-    /// Create a new ReceptionistAgent.
+    /// Create a new `ReceptionistAgent`.
     ///
     /// # Arguments
     /// - `name` — agent name (defaults to `"receptionist"` if empty).
@@ -60,10 +60,13 @@ impl ReceptionistAgent {
                 .get("description")
                 .and_then(|v| v.as_str())
                 .unwrap_or("");
-            dept_bullets.push(format!("{}: {}", dept_name, dept_desc));
+            dept_bullets.push(format!("{dept_name}: {dept_desc}"));
         }
 
-        let bullet_refs: Vec<&str> = dept_bullets.iter().map(|s| s.as_str()).collect();
+        let bullet_refs: Vec<&str> = dept_bullets
+            .iter()
+            .map(std::string::String::as_str)
+            .collect();
         agent.prompt_add_section("Receptionist Role", &greeting_text, bullet_refs);
 
         // Tool: collect_caller_info
@@ -85,8 +88,7 @@ impl ReceptionistAgent {
                     .and_then(|v| v.as_str())
                     .unwrap_or("Not specified");
                 FunctionResult::with_response(&format!(
-                    "Caller info recorded: {}, reason: {}",
-                    caller_name, reason
+                    "Caller info recorded: {caller_name}, reason: {reason}"
                 ))
             }),
             false,
@@ -107,10 +109,7 @@ impl ReceptionistAgent {
                     .unwrap_or("");
 
                 for dept in &depts_clone {
-                    let name = dept
-                        .get("name")
-                        .and_then(|v| v.as_str())
-                        .unwrap_or("");
+                    let name = dept.get("name").and_then(|v| v.as_str()).unwrap_or("");
                     if name.to_lowercase() == dept_name.to_lowercase() {
                         let transfer_type = dept
                             .get("transfer_type")
@@ -118,13 +117,13 @@ impl ReceptionistAgent {
                             .unwrap_or("phone");
 
                         let mut result =
-                            FunctionResult::with_response(&format!("Transferring to {}", name));
+                            FunctionResult::with_response(&format!("Transferring to {name}"));
 
                         if transfer_type == "swml" {
                             if let Some(swml_url) = dept.get("swml_url").and_then(|v| v.as_str()) {
                                 result.swml_transfer(
                                     swml_url,
-                                    &format!("Transferring you to {} now.", name),
+                                    &format!("Transferring you to {name} now."),
                                     // final=true: permanent transfer (Python's
                                     // swml_transfer default) — the receptionist
                                     // hands the call off entirely.
@@ -139,7 +138,7 @@ impl ReceptionistAgent {
                     }
                 }
 
-                FunctionResult::with_response(&format!("Department '{}' not found", dept_name))
+                FunctionResult::with_response(&format!("Department '{dept_name}' not found"))
             }),
             false,
         );
@@ -195,12 +194,16 @@ mod tests {
         let mut args = serde_json::Map::new();
         args.insert("caller_name".to_string(), json!("Alice"));
         args.insert("reason".to_string(), json!("Billing inquiry"));
-        let result = agent.agent().on_function_call("collect_caller_info", &args, &raw);
+        let result = agent
+            .agent()
+            .on_function_call("collect_caller_info", &args, &raw);
         assert!(result.is_some());
 
         let mut args2 = serde_json::Map::new();
         args2.insert("department".to_string(), json!("Sales"));
-        let result2 = agent.agent().on_function_call("transfer_call", &args2, &raw);
+        let result2 = agent
+            .agent()
+            .on_function_call("transfer_call", &args2, &raw);
         assert!(result2.is_some());
     }
 

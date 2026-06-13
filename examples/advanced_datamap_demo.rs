@@ -1,11 +1,11 @@
 // Copyright (c) 2025 SignalWire
 // SPDX-License-Identifier: MIT
 //
-//! Advanced DataMap — expressions, webhooks, auth headers, fallback chains.
+//! Advanced `DataMap` — expressions, webhooks, auth headers, fallback chains.
 
+use serde_json::json;
 use signalwire::datamap::DataMap;
 use signalwire::swaig::FunctionResult;
-use serde_json::json;
 
 fn main() {
     // Expression demo with test values and patterns
@@ -30,11 +30,19 @@ fn main() {
             "${args.command}",
             r"^status",
             FunctionResult::with_response("Checking status of: ${args.target}").to_value(),
-            Some(FunctionResult::with_response("Unknown command: ${args.command}. Try start, stop, or status.").to_value()),
+            Some(
+                FunctionResult::with_response(
+                    "Unknown command: ${args.command}. Try start, stop, or status.",
+                )
+                .to_value(),
+            ),
         );
 
     println!("Command processor DataMap:");
-    println!("{}", serde_json::to_string_pretty(&command_processor.to_swaig_function()).unwrap());
+    println!(
+        "{}",
+        serde_json::to_string_pretty(&command_processor.to_swaig_function()).unwrap()
+    );
 
     // Advanced webhook with auth headers
     let mut api_tool = DataMap::new("advanced_api_tool");
@@ -68,7 +76,10 @@ fn main() {
         ]);
 
     println!("\nAdvanced API tool DataMap:");
-    println!("{}", serde_json::to_string_pretty(&api_tool.to_swaig_function()).unwrap());
+    println!(
+        "{}",
+        serde_json::to_string_pretty(&api_tool.to_swaig_function()).unwrap()
+    );
 
     // Knowledge search with auth headers and foreach
     let mut search_tool = DataMap::new("knowledge_search");
@@ -94,5 +105,8 @@ fn main() {
         .output(FunctionResult::with_response("Found: ${item.title} — ${item.snippet}").to_value());
 
     println!("\nKnowledge search DataMap:");
-    println!("{}", serde_json::to_string_pretty(&search_tool.to_swaig_function()).unwrap());
+    println!(
+        "{}",
+        serde_json::to_string_pretty(&search_tool.to_swaig_function()).unwrap()
+    );
 }

@@ -3,9 +3,9 @@
 //
 //! FAQ Bot Agent — answer FAQs from a knowledge base.
 
+use serde_json::json;
 use signalwire::agent::{AgentBase, AgentOptions};
 use signalwire::swaig::FunctionResult;
-use serde_json::json;
 use std::collections::HashMap;
 
 fn build_faq_knowledge_base() -> HashMap<&'static str, &'static str> {
@@ -52,11 +52,15 @@ fn main() {
         "Answer customer questions using only the provided FAQ knowledge base.",
         vec![],
     );
-    agent.prompt_add_section("Instructions", "", vec![
-        "Only answer questions if the information is in the FAQ knowledge base.",
-        "If you don't know the answer, politely say so and offer to help with something else.",
-        "Be concise and direct in your responses.",
-    ]);
+    agent.prompt_add_section(
+        "Instructions",
+        "",
+        vec![
+            "Only answer questions if the information is in the FAQ knowledge base.",
+            "If you don't know the answer, politely say so and offer to help with something else.",
+            "Be concise and direct in your responses.",
+        ],
+    );
 
     // Build knowledge base as a prompt section
     let faqs = build_faq_knowledge_base();

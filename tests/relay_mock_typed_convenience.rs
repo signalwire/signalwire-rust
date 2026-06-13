@@ -18,7 +18,7 @@
 #[path = "common/mod.rs"]
 mod common;
 
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::sync::{Arc, Mutex};
 
 use common::relay_mocktest;
@@ -39,8 +39,7 @@ fn answered_inbound_call(
     client: &Arc<signalwire::relay::Client>,
     call_id: &str,
 ) -> Arc<signalwire::relay::Call> {
-    let captured: Arc<Mutex<Option<Arc<signalwire::relay::Call>>>> =
-        Arc::new(Mutex::new(None));
+    let captured: Arc<Mutex<Option<Arc<signalwire::relay::Call>>>> = Arc::new(Mutex::new(None));
     let cap2 = captured.clone();
     let client2 = client.clone();
     client.on_call(move |call, _ev| {
@@ -60,8 +59,7 @@ fn answered_inbound_call(
     }));
     assert!(
         wait_until(3000, || captured.lock().unwrap().is_some()),
-        "on_call did not fire for {}",
-        call_id
+        "on_call did not fire for {call_id}"
     );
     let call = captured.lock().unwrap().clone().unwrap();
     *call.state.lock().unwrap() = "answered".to_string();
@@ -79,12 +77,8 @@ fn built_params(call: &Arc<signalwire::relay::Call>, expect_method: &str) -> Val
 
 /// Send the wrapper's built params over the wire (so the shared mock
 /// journals them), preserving the exact media shape the wrapper assembled.
-fn send_built(
-    client: &Arc<signalwire::relay::Client>,
-    method: &str,
-    params: &Value,
-) -> String {
-    let id = format!("rpc-{}", method);
+fn send_built(client: &Arc<signalwire::relay::Client>, method: &str, params: &Value) -> String {
+    let id = format!("rpc-{method}");
     let frame = json!({
         "jsonrpc": "2.0",
         "id": id.clone(),
@@ -108,7 +102,7 @@ fn journal_built(
     let entry = relay_mocktest::journal_recv(Some(method))
         .into_iter()
         .next()
-        .unwrap_or_else(|| panic!("expected one {} frame in mock journal", method));
+        .unwrap_or_else(|| panic!("expected one {method} frame in mock journal"));
     entry.inner_params().clone()
 }
 
@@ -204,7 +198,10 @@ fn test_play_silence_builds_and_journals_silence_media() {
 
     let p = journal_built(&client, &call, "calling.play");
     let media = p.get("play").and_then(Value::as_array).unwrap();
-    assert_eq!(media[0].get("type").and_then(Value::as_str), Some("silence"));
+    assert_eq!(
+        media[0].get("type").and_then(Value::as_str),
+        Some("silence")
+    );
     assert_eq!(
         media[0]
             .get("params")
@@ -229,7 +226,10 @@ fn test_play_ringtone_builds_and_journals_ringtone_media() {
 
     let p = journal_built(&client, &call, "calling.play");
     let media = p.get("play").and_then(Value::as_array).unwrap();
-    assert_eq!(media[0].get("type").and_then(Value::as_str), Some("ringtone"));
+    assert_eq!(
+        media[0].get("type").and_then(Value::as_str),
+        Some("ringtone")
+    );
     let mp = media[0].get("params").unwrap();
     assert_eq!(mp.get("name").and_then(Value::as_str), Some("us"));
     assert_eq!(mp.get("duration").and_then(Value::as_f64), Some(8.0));
@@ -275,11 +275,13 @@ fn test_detect_digit_empty_params_when_unset() {
     let p = journal_built(&client, &call, "calling.detect");
     let detect = p.get("detect").unwrap();
     assert_eq!(detect.get("type").and_then(Value::as_str), Some("digit"));
-    assert!(detect
-        .get("params")
-        .and_then(Value::as_object)
-        .unwrap()
-        .is_empty());
+    assert!(
+        detect
+            .get("params")
+            .and_then(Value::as_object)
+            .unwrap()
+            .is_empty()
+    );
     assert!(p.get("timeout").is_none());
     client.disconnect();
 }
@@ -370,7 +372,10 @@ fn test_prompt_tts_builds_tts_media_plus_collect() {
     let media = p.get("play").and_then(Value::as_array).unwrap();
     assert_eq!(media[0].get("type").and_then(Value::as_str), Some("tts"));
     let mp = media[0].get("params").unwrap();
-    assert_eq!(mp.get("text").and_then(Value::as_str), Some("Press a digit"));
+    assert_eq!(
+        mp.get("text").and_then(Value::as_str),
+        Some("Press a digit")
+    );
     assert_eq!(mp.get("voice").and_then(Value::as_str), Some("spore"));
     // collect object passes through verbatim.
     assert_eq!(

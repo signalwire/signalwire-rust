@@ -8,7 +8,7 @@
 #[path = "common/mod.rs"]
 mod common;
 
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 const APP_BASE: &str = "/api/laml/2010-04-01/Accounts/test_proj/Applications";
 const BIN_BASE: &str = "/api/laml/2010-04-01/Accounts/test_proj/LamlBins";

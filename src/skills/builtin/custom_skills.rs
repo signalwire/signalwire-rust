@@ -1,4 +1,4 @@
-use serde_json::{json, Map, Value};
+use serde_json::{Map, Value, json};
 
 use crate::agent::AgentBase;
 use crate::skills::skill_base::{SkillBase, SkillParams};
@@ -17,11 +17,11 @@ impl CustomSkills {
 }
 
 impl SkillBase for CustomSkills {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "custom_skills"
     }
 
-    fn description(&self) -> &str {
+    fn description(&self) -> &'static str {
         "Register user-defined custom tools"
     }
 
@@ -42,9 +42,8 @@ impl SkillBase for CustomSkills {
         let swaig_fields = self.get_swaig_fields();
 
         for tool_def in &tools {
-            let tool_obj = match tool_def.as_object() {
-                Some(o) => o,
-                None => continue,
+            let Some(tool_obj) = tool_def.as_object() else {
+                continue;
             };
 
             if tool_obj.contains_key("function") {

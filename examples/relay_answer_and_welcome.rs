@@ -4,7 +4,7 @@
 //! RELAY: Answer an inbound call and say "Welcome to SignalWire!"
 //!
 //! Environment:
-//!   SIGNALWIRE_PROJECT_ID, SIGNALWIRE_API_TOKEN, SIGNALWIRE_SPACE
+//!   `SIGNALWIRE_PROJECT_ID`, `SIGNALWIRE_API_TOKEN`, `SIGNALWIRE_SPACE`
 
 use signalwire::relay::Client;
 use std::env;
@@ -13,14 +13,16 @@ use std::sync::Arc;
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     if env::var("SIGNALWIRE_LOG_LEVEL").is_err() {
         // SAFETY: Single-threaded init; no other threads are spawned yet.
-        unsafe { env::set_var("SIGNALWIRE_LOG_LEVEL", "debug"); }
+        unsafe {
+            env::set_var("SIGNALWIRE_LOG_LEVEL", "debug");
+        }
     }
 
     let client = Arc::new(Client::from_env()?);
 
     client.on_call(|call, _event| {
         let id = call.call_id.clone().unwrap_or_default();
-        println!("Incoming call: {}", id);
+        println!("Incoming call: {id}");
         let _ = call.answer();
 
         let _ = call.play(serde_json::json!({
@@ -31,7 +33,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }));
 
         let _ = call.hangup();
-        println!("Call ended: {}", id);
+        println!("Call ended: {id}");
     });
 
     println!("Waiting for inbound calls on context 'default' ...");
@@ -40,6 +42,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Block forever (relay loop runs in a background thread).
     loop {
+        #[allow(clippy::duration_suboptimal_units)] // 60s reads clearer than from_mins
         std::thread::sleep(std::time::Duration::from_secs(60));
     }
 }

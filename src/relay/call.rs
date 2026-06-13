@@ -3,7 +3,7 @@ use std::sync::{Arc, Mutex};
 
 use serde_json::Value;
 
-use super::action::*;
+use super::action::Action;
 use super::constants;
 use super::event::Event;
 use crate::logging::Logger;
@@ -49,15 +49,15 @@ impl Call {
             call_id: params
                 .get("call_id")
                 .and_then(|v| v.as_str())
-                .map(|s| s.to_string()),
+                .map(std::string::ToString::to_string),
             node_id: params
                 .get("node_id")
                 .and_then(|v| v.as_str())
-                .map(|s| s.to_string()),
+                .map(std::string::ToString::to_string),
             tag: params
                 .get("tag")
                 .and_then(|v| v.as_str())
-                .map(|s| s.to_string()),
+                .map(std::string::ToString::to_string),
             state: Mutex::new(
                 params
                     .get("state")
@@ -66,16 +66,22 @@ impl Call {
                     .to_string(),
             ),
             device: Mutex::new(
-                params.get("device").cloned().unwrap_or(Value::Object(Default::default())),
+                params
+                    .get("device")
+                    .cloned()
+                    .unwrap_or(Value::Object(serde_json::Map::new())),
             ),
             peer: Mutex::new(
-                params.get("peer").cloned().unwrap_or(Value::Object(Default::default())),
+                params
+                    .get("peer")
+                    .cloned()
+                    .unwrap_or(Value::Object(serde_json::Map::new())),
             ),
             end_reason: Mutex::new(None),
             context: params
                 .get("context")
                 .and_then(|v| v.as_str())
-                .map(|s| s.to_string()),
+                .map(std::string::ToString::to_string),
             dial_winner: Mutex::new(false),
             actions: Mutex::new(HashMap::new()),
             on_event_callbacks: Mutex::new(Vec::new()),
@@ -85,6 +91,10 @@ impl Call {
     }
 
     /// Current call state.
+    ///
+    /// # Panics
+    /// Panics if an internal mutex is poisoned (i.e. another thread panicked
+    /// while holding the lock). This does not occur under normal operation.
     pub fn current_state(&self) -> String {
         self.state.lock().unwrap().clone()
     }
@@ -97,7 +107,10 @@ impl Call {
     /// unrecognised server value parses to [`CallState::Other`] rather than
     /// panicking. Enables `match call.call_state() { CallState::Ended => …, … }`
     /// and `call.call_state().is_terminal()` instead of stringly comparisons.
-    #[must_use]
+    ///
+    /// # Panics
+    /// Panics if an internal mutex is poisoned (i.e. another thread panicked
+    /// while holding the lock). This does not occur under normal operation.
     pub fn call_state(&self) -> super::state_enums::CallState {
         super::state_enums::CallState::from_str(&self.state.lock().unwrap())
     }
@@ -108,7 +121,8 @@ impl Call {
     pub fn repr(&self) -> String {
         format!(
             "Call(call_id={:?}, state={:?})",
-            self.call_id, self.current_state()
+            self.call_id,
+            self.current_state()
         )
     }
 
@@ -118,11 +132,15 @@ impl Call {
 
     /// Central event router invoked by the Client whenever a server event
     /// targets this call.
+    ///
+    /// # Panics
+    /// Panics if an internal mutex is poisoned (i.e. another thread panicked
+    /// while holding the lock). This does not occur under normal operation.
     pub fn dispatch_event(&self, event: &Event) {
         let event_type = event.event_type();
         let params = event.params();
 
-        self.logger.debug(&format!("dispatchEvent: {}", event_type));
+        self.logger.debug(&format!("dispatchEvent: {event_type}"));
 
         // ── call-level state events ──────────────────────────────────
         if event_type == "calling.call.state" {
@@ -143,10 +161,10 @@ impl Call {
         }
 
         // ── connect events carry peer info ───────────────────────────
-        if event_type == "calling.call.connect" {
-            if let Some(p) = params.get("peer") {
-                *self.peer.lock().unwrap() = p.clone();
-            }
+        if event_type == "calling.call.connect"
+            && let Some(p) = params.get("peer")
+        {
+            *self.peer.lock().unwrap() = p.clone();
         }
 
         // ── route by control_id to the owning Action ─────────────────
@@ -159,14 +177,11 @@ impl Call {
                 action.handle_event(event);
 
                 // Check whether the action has reached a terminal state
-                if let Some(action_state) = params.get("state").and_then(|v| v.as_str()) {
-                    if constants::is_action_terminal(event_type, action_state) {
-                        action.resolve(None);
-                        self.actions
-                            .lock()
-                            .unwrap()
-                            .remove(control_id);
-                    }
+                if let Some(action_state) = params.get("state").and_then(|v| v.as_str())
+                    && constants::is_action_terminal(event_type, action_state)
+                {
+                    action.resolve(None);
+                    self.actions.lock().unwrap().remove(control_id);
                 }
             }
         }
@@ -179,14 +194,19 @@ impl Call {
     }
 
     /// Register a generic event listener on this call.
+    ///
+    /// # Panics
+    /// Panics if an internal mutex is poisoned (i.e. another thread panicked
+    /// while holding the lock). This does not occur under normal operation.
     pub fn on<F: Fn(&Event, &Call) + Send + Sync + 'static>(&self, cb: F) {
-        self.on_event_callbacks
-            .lock()
-            .unwrap()
-            .push(Arc::new(cb));
+        self.on_event_callbacks.lock().unwrap().push(Arc::new(cb));
     }
 
     /// Mark every outstanding action as completed.
+    ///
+    /// # Panics
+    /// Panics if an internal mutex is poisoned (i.e. another thread panicked
+    /// while holding the lock). This does not occur under normal operation.
     pub fn resolve_all_actions(&self) {
         let mut actions = self.actions.lock().unwrap();
         for (_id, action) in actions.drain() {
@@ -199,15 +219,15 @@ impl Call {
     // ------------------------------------------------------------------
 
     pub fn answer(&self) -> Value {
-        self.execute("calling.answer", Value::Object(Default::default()))
+        self.execute("calling.answer", Value::Object(serde_json::Map::new()))
     }
 
     pub fn hangup(&self) -> Value {
-        self.execute("calling.hangup", Value::Object(Default::default()))
+        self.execute("calling.hangup", Value::Object(serde_json::Map::new()))
     }
 
     pub fn pass(&self) -> Value {
-        self.execute("calling.pass", Value::Object(Default::default()))
+        self.execute("calling.pass", Value::Object(serde_json::Map::new()))
     }
 
     pub fn connect(&self, params: Value) -> Value {
@@ -215,23 +235,26 @@ impl Call {
     }
 
     pub fn disconnect(&self) -> Value {
-        self.execute("calling.disconnect", Value::Object(Default::default()))
+        self.execute("calling.disconnect", Value::Object(serde_json::Map::new()))
     }
 
     pub fn hold(&self) -> Value {
-        self.execute("calling.hold", Value::Object(Default::default()))
+        self.execute("calling.hold", Value::Object(serde_json::Map::new()))
     }
 
     pub fn unhold(&self) -> Value {
-        self.execute("calling.unhold", Value::Object(Default::default()))
+        self.execute("calling.unhold", Value::Object(serde_json::Map::new()))
     }
 
     pub fn denoise(&self) -> Value {
-        self.execute("calling.denoise", Value::Object(Default::default()))
+        self.execute("calling.denoise", Value::Object(serde_json::Map::new()))
     }
 
     pub fn denoise_stop(&self) -> Value {
-        self.execute("calling.denoise.stop", Value::Object(Default::default()))
+        self.execute(
+            "calling.denoise.stop",
+            Value::Object(serde_json::Map::new()),
+        )
     }
 
     pub fn transfer(&self, params: Value) -> Value {
@@ -243,11 +266,14 @@ impl Call {
     }
 
     pub fn leave_conference(&self) -> Value {
-        self.execute("calling.conference.leave", Value::Object(Default::default()))
+        self.execute(
+            "calling.conference.leave",
+            Value::Object(serde_json::Map::new()),
+        )
     }
 
     pub fn echo_call(&self) -> Value {
-        self.execute("calling.echo", Value::Object(Default::default()))
+        self.execute("calling.echo", Value::Object(serde_json::Map::new()))
     }
 
     pub fn bind_digit(&self, params: Value) -> Value {
@@ -255,7 +281,10 @@ impl Call {
     }
 
     pub fn clear_digit_bindings(&self) -> Value {
-        self.execute("calling.clear_digit_bindings", Value::Object(Default::default()))
+        self.execute(
+            "calling.clear_digit_bindings",
+            Value::Object(serde_json::Map::new()),
+        )
     }
 
     pub fn live_transcribe(&self, params: Value) -> Value {
@@ -271,7 +300,7 @@ impl Call {
     }
 
     pub fn leave_room(&self) -> Value {
-        self.execute("calling.room.leave", Value::Object(Default::default()))
+        self.execute("calling.room.leave", Value::Object(serde_json::Map::new()))
     }
 
     pub fn amazon_bedrock(&self, params: Value) -> Value {
@@ -283,11 +312,11 @@ impl Call {
     }
 
     pub fn ai_hold(&self) -> Value {
-        self.execute("calling.ai.hold", Value::Object(Default::default()))
+        self.execute("calling.ai.hold", Value::Object(serde_json::Map::new()))
     }
 
     pub fn ai_unhold(&self) -> Value {
-        self.execute("calling.ai.unhold", Value::Object(Default::default()))
+        self.execute("calling.ai.unhold", Value::Object(serde_json::Map::new()))
     }
 
     pub fn user_event(&self, params: Value) -> Value {
@@ -299,7 +328,7 @@ impl Call {
     }
 
     pub fn queue_leave(&self) -> Value {
-        self.execute("calling.queue.leave", Value::Object(Default::default()))
+        self.execute("calling.queue.leave", Value::Object(serde_json::Map::new()))
     }
 
     pub fn refer_call(&self, params: Value) -> Value {
@@ -606,9 +635,7 @@ impl Call {
     /// Send a simple (non-action) RPC call.
     fn execute(&self, method: &str, extra: Value) -> Value {
         let mut base = self.base_params();
-        if let (Some(base_map), Some(extra_map)) =
-            (base.as_object_mut(), extra.as_object())
-        {
+        if let (Some(base_map), Some(extra_map)) = (base.as_object_mut(), extra.as_object()) {
             for (k, v) in extra_map {
                 base_map.insert(k.clone(), v.clone());
             }
@@ -620,19 +647,17 @@ impl Call {
         base
     }
 
-    /// Spin up a long-running action tracked by a unique control_id.
-    fn start_action(
-        &self,
-        method: &str,
-        stop_method: &str,
-        extra: Value,
-    ) -> Arc<Action> {
+    /// Spin up a long-running action tracked by a unique `control_id`.
+    fn start_action(&self, method: &str, stop_method: &str, extra: Value) -> Arc<Action> {
         let control_id = generate_uuid();
         let call_id = self.call_id.as_deref().unwrap_or("");
         let node_id = self.node_id.as_deref().unwrap_or("");
 
         let action = Arc::new(Action::with_stop_method(
-            &control_id, call_id, node_id, stop_method,
+            &control_id,
+            call_id,
+            node_id,
+            stop_method,
         ));
 
         self.actions
@@ -673,12 +698,12 @@ fn generate_uuid() -> String {
         u16::from_be_bytes([data[6], data[7]]),
         u16::from_be_bytes([data[8], data[9]]),
         // 6 bytes -> 48-bit integer
-        ((data[10] as u64) << 40)
-            | ((data[11] as u64) << 32)
-            | ((data[12] as u64) << 24)
-            | ((data[13] as u64) << 16)
-            | ((data[14] as u64) << 8)
-            | (data[15] as u64),
+        (u64::from(data[10]) << 40)
+            | (u64::from(data[11]) << 32)
+            | (u64::from(data[12]) << 24)
+            | (u64::from(data[13]) << 16)
+            | (u64::from(data[14]) << 8)
+            | u64::from(data[15]),
     )
 }
 
@@ -750,10 +775,7 @@ mod tests {
             json!({"state": "ended", "end_reason": "hangup"}),
         );
         call.dispatch_event(&ev);
-        assert_eq!(
-            *call.end_reason.lock().unwrap(),
-            Some("hangup".to_string())
-        );
+        assert_eq!(*call.end_reason.lock().unwrap(), Some("hangup".to_string()));
     }
 
     #[test]

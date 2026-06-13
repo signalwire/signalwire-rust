@@ -3,9 +3,9 @@
 //
 //! SWAIG Features Agent — showcases advanced SWAIG tool patterns.
 
+use serde_json::json;
 use signalwire::agent::{AgentBase, AgentOptions};
 use signalwire::swaig::FunctionResult;
-use serde_json::json;
 
 fn main() {
     let mut agent = AgentBase::new(AgentOptions {
@@ -16,11 +16,19 @@ fn main() {
 
     agent.add_language("English", "en-US", "inworld.Mark");
 
-    agent.prompt_add_section("Role", "You are a demo agent showcasing SWAIG features.", vec![]);
-    agent.prompt_add_section("Instructions", "", vec![
-        "Use the available tools to demonstrate SWAIG capabilities",
-        "Explain what each tool does before using it",
-    ]);
+    agent.prompt_add_section(
+        "Role",
+        "You are a demo agent showcasing SWAIG features.",
+        vec![],
+    );
+    agent.prompt_add_section(
+        "Instructions",
+        "",
+        vec![
+            "Use the available tools to demonstrate SWAIG capabilities",
+            "Explain what each tool does before using it",
+        ],
+    );
 
     // Tool with actions
     agent.define_tool(
@@ -33,9 +41,8 @@ fn main() {
         Box::new(|args, _raw| {
             let phone = args.get("phone").and_then(|v| v.as_str()).unwrap_or("");
             let message = args.get("message").and_then(|v| v.as_str()).unwrap_or("");
-            let mut result = FunctionResult::with_response(
-                &format!("Notification sent to {phone}.")
-            );
+            let mut result =
+                FunctionResult::with_response(&format!("Notification sent to {phone}."));
             result.add_action(json!({
                 "send_sms": {
                     "to": phone,
@@ -57,9 +64,9 @@ fn main() {
         }),
         Box::new(|args, _raw| {
             let time = args.get("time").and_then(|v| v.as_str()).unwrap_or("later");
-            let mut result = FunctionResult::with_response(
-                &format!("Your callback has been scheduled for {time}. Is there anything else?")
-            );
+            let mut result = FunctionResult::with_response(&format!(
+                "Your callback has been scheduled for {time}. Is there anything else?"
+            ));
             result.set_post_process(true);
             result
         }),
@@ -74,7 +81,10 @@ fn main() {
             "account_number": {"type": "string", "description": "Account number"}
         }),
         Box::new(|args, _raw| {
-            let acct = args.get("account_number").and_then(|v| v.as_str()).unwrap_or("");
+            let acct = args
+                .get("account_number")
+                .and_then(|v| v.as_str())
+                .unwrap_or("");
             if acct.len() >= 6 {
                 FunctionResult::with_response("Identity verified successfully.")
             } else {
@@ -95,9 +105,8 @@ fn main() {
         Box::new(|args, _raw| {
             let key = args.get("key").and_then(|v| v.as_str()).unwrap_or("pref");
             let value = args.get("value").and_then(|v| v.as_str()).unwrap_or("");
-            let mut result = FunctionResult::with_response(
-                &format!("Preference '{key}' saved as '{value}'.")
-            );
+            let mut result =
+                FunctionResult::with_response(&format!("Preference '{key}' saved as '{value}'."));
             result.add_action(json!({
                 "update_global_data": {key: value}
             }));

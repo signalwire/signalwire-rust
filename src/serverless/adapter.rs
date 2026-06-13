@@ -19,6 +19,7 @@ pub enum RuntimeEnvironment {
 }
 
 impl RuntimeEnvironment {
+    #[must_use]
     pub fn as_str(&self) -> &'static str {
         match self {
             RuntimeEnvironment::Lambda => "lambda",
@@ -33,7 +34,7 @@ impl RuntimeEnvironment {
 /// Trait that the agent/service must implement so the adapter can
 /// forward requests to it.
 pub trait RequestHandler {
-    /// Handle an HTTP request, returning (status_code, headers, body).
+    /// Handle an HTTP request, returning (`status_code`, headers, body).
     fn handle_request(
         &self,
         method: &str,
@@ -69,7 +70,7 @@ impl Adapter {
     /// Handle an AWS Lambda (API Gateway) invocation.
     ///
     /// Extracts method, path, headers, and body from the API Gateway event
-    /// format, calls agent.handle_request(), and returns an API Gateway
+    /// format, calls `agent.handle_request()`, and returns an API Gateway
     /// compatible response.
     pub fn handle_lambda(
         agent: &dyn RequestHandler,
@@ -99,7 +100,7 @@ impl Adapter {
         // Decode base64-encoded bodies
         let decoded_body = if event
             .get("isBase64Encoded")
-            .and_then(|v| v.as_bool())
+            .and_then(serde_json::Value::as_bool)
             .unwrap_or(false)
         {
             use base64::Engine;
@@ -187,8 +188,7 @@ impl Adapter {
             })
             .unwrap_or_default();
 
-        let (status, resp_headers, resp_body) =
-            agent.handle_request(&method, path, &headers, body);
+        let (status, resp_headers, resp_body) = agent.handle_request(&method, path, &headers, body);
 
         serde_json::json!({
             "status": status,
@@ -282,27 +282,37 @@ mod tests {
 
         // -- lambda --
         clear_detect_env();
-        unsafe { env::set_var("AWS_LAMBDA_FUNCTION_NAME", "my-func"); }
+        unsafe {
+            env::set_var("AWS_LAMBDA_FUNCTION_NAME", "my-func");
+        }
         assert_eq!(Adapter::detect(), RuntimeEnvironment::Lambda);
 
         // -- gcf (FUNCTION_TARGET) --
         clear_detect_env();
-        unsafe { env::set_var("FUNCTION_TARGET", "myHandler"); }
+        unsafe {
+            env::set_var("FUNCTION_TARGET", "myHandler");
+        }
         assert_eq!(Adapter::detect(), RuntimeEnvironment::Gcf);
 
         // -- gcf (K_SERVICE) --
         clear_detect_env();
-        unsafe { env::set_var("K_SERVICE", "my-service"); }
+        unsafe {
+            env::set_var("K_SERVICE", "my-service");
+        }
         assert_eq!(Adapter::detect(), RuntimeEnvironment::Gcf);
 
         // -- azure --
         clear_detect_env();
-        unsafe { env::set_var("AZURE_FUNCTIONS_ENVIRONMENT", "Production"); }
+        unsafe {
+            env::set_var("AZURE_FUNCTIONS_ENVIRONMENT", "Production");
+        }
         assert_eq!(Adapter::detect(), RuntimeEnvironment::Azure);
 
         // -- cgi --
         clear_detect_env();
-        unsafe { env::set_var("GATEWAY_INTERFACE", "CGI/1.1"); }
+        unsafe {
+            env::set_var("GATEWAY_INTERFACE", "CGI/1.1");
+        }
         assert_eq!(Adapter::detect(), RuntimeEnvironment::Cgi);
 
         // cleanup
@@ -355,8 +365,8 @@ mod tests {
 
     #[test]
     fn test_handle_lambda_base64_body() {
-        let agent = EchoHandler;
         use base64::Engine;
+        let agent = EchoHandler;
         let encoded = base64::engine::general_purpose::STANDARD.encode("decoded body");
         let event = json!({
             "httpMethod": "POST",

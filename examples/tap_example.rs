@@ -3,8 +3,8 @@
 //
 //! Tap Example — media tapping and streaming actions.
 
-use signalwire::swaig::FunctionResult;
 use serde_json::json;
+use signalwire::swaig::FunctionResult;
 
 fn main() {
     // Basic RTP tap

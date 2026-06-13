@@ -21,6 +21,9 @@ pub enum Level {
 }
 
 impl Level {
+    // `FromStr` is implemented below; this inherent `from_str` is the deliberate
+    // companion that returns `Option` (a non-member is `None`, not an error).
+    #[allow(clippy::should_implement_trait)]
     pub fn from_str(s: &str) -> Option<Level> {
         match s.to_lowercase().as_str() {
             "debug" => Some(Level::Debug),
@@ -31,6 +34,7 @@ impl Level {
         }
     }
 
+    #[must_use]
     pub fn as_str(&self) -> &'static str {
         match self {
             Level::Debug => "DEBUG",
@@ -122,8 +126,7 @@ impl Logger {
 
         let suppressed = env::var("SIGNALWIRE_LOG_MODE")
             .ok()
-            .map(|s| s.eq_ignore_ascii_case("off"))
-            .unwrap_or(false);
+            .is_some_and(|s| s.eq_ignore_ascii_case("off"));
 
         Logger {
             name: name.to_string(),
@@ -206,26 +209,38 @@ mod tests {
 
     #[test]
     fn test_env_level_debug() {
-        unsafe { env::set_var("SIGNALWIRE_LOG_LEVEL", "debug"); }
+        unsafe {
+            env::set_var("SIGNALWIRE_LOG_LEVEL", "debug");
+        }
         let logger = Logger::new("test");
         assert_eq!(logger.level, Level::Debug);
-        unsafe { env::remove_var("SIGNALWIRE_LOG_LEVEL"); }
+        unsafe {
+            env::remove_var("SIGNALWIRE_LOG_LEVEL");
+        }
     }
 
     #[test]
     fn test_env_level_case_insensitive() {
-        unsafe { env::set_var("SIGNALWIRE_LOG_LEVEL", "WARN"); }
+        unsafe {
+            env::set_var("SIGNALWIRE_LOG_LEVEL", "WARN");
+        }
         let logger = Logger::new("test");
         assert_eq!(logger.level, Level::Warn);
-        unsafe { env::remove_var("SIGNALWIRE_LOG_LEVEL"); }
+        unsafe {
+            env::remove_var("SIGNALWIRE_LOG_LEVEL");
+        }
     }
 
     #[test]
     fn test_env_level_invalid_falls_back() {
-        unsafe { env::set_var("SIGNALWIRE_LOG_LEVEL", "bogus"); }
+        unsafe {
+            env::set_var("SIGNALWIRE_LOG_LEVEL", "bogus");
+        }
         let logger = Logger::new("test");
         assert_eq!(logger.level, Level::Info);
-        unsafe { env::remove_var("SIGNALWIRE_LOG_LEVEL"); }
+        unsafe {
+            env::remove_var("SIGNALWIRE_LOG_LEVEL");
+        }
     }
 
     #[test]
@@ -238,18 +253,26 @@ mod tests {
 
     #[test]
     fn test_env_suppression() {
-        unsafe { env::set_var("SIGNALWIRE_LOG_MODE", "off"); }
+        unsafe {
+            env::set_var("SIGNALWIRE_LOG_MODE", "off");
+        }
         let logger = Logger::new("test");
         assert!(logger.suppressed);
-        unsafe { env::remove_var("SIGNALWIRE_LOG_MODE"); }
+        unsafe {
+            env::remove_var("SIGNALWIRE_LOG_MODE");
+        }
     }
 
     #[test]
     fn test_env_suppression_case_insensitive() {
-        unsafe { env::set_var("SIGNALWIRE_LOG_MODE", "OFF"); }
+        unsafe {
+            env::set_var("SIGNALWIRE_LOG_MODE", "OFF");
+        }
         let logger = Logger::new("test");
         assert!(logger.suppressed);
-        unsafe { env::remove_var("SIGNALWIRE_LOG_MODE"); }
+        unsafe {
+            env::remove_var("SIGNALWIRE_LOG_MODE");
+        }
     }
 
     #[test]

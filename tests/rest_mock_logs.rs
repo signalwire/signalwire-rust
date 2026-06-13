@@ -16,11 +16,7 @@ use serde_json::json;
 fn test_logs_messages_list_returns_dict() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let body = c
-        .logs()
-        .messages()
-        .list(&json!({}))
-        .expect("messages.list");
+    let body = c.logs().messages().list(&json!({})).expect("messages.list");
     assert!(body.is_object());
 
     let entry = common::mocktest::journal_last();

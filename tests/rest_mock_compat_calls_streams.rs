@@ -62,7 +62,10 @@ fn test_compat_calls_start_stream_journal_records_post() {
         "/api/laml/2010-04-01/Accounts/test_proj/Calls/CA_JX1/Streams"
     );
     let body = entry.body_object().expect("body should be object");
-    assert_eq!(body.get("Url").and_then(|v| v.as_str()), Some("wss://a.b/s"));
+    assert_eq!(
+        body.get("Url").and_then(|v| v.as_str()),
+        Some("wss://a.b/s")
+    );
     assert_eq!(body.get("Name").and_then(|v| v.as_str()), Some("strm-x"));
 }
 

@@ -29,41 +29,36 @@ impl SkillManager {
         params: Map<String, Value>,
         agent: &mut AgentBase,
     ) -> (bool, String) {
-        let factory = match SkillRegistry::get_factory(skill_name) {
-            Some(f) => f,
-            None => {
-                return (
-                    false,
-                    format!("Skill '{}' not found in registry", skill_name),
-                );
-            }
+        let Some(factory) = SkillRegistry::get_factory(skill_name) else {
+            return (false, format!("Skill '{skill_name}' not found in registry"));
         };
 
         let mut instance = factory(params);
         let instance_key = instance.get_instance_key();
 
-        if self.loaded_skills.contains_key(&instance_key) {
-            if !instance.supports_multiple_instances() {
-                return (
-                    false,
-                    format!(
-                        "Skill '{}' is already loaded and does not support multiple instances",
-                        instance_key
-                    ),
-                );
-            }
+        if self.loaded_skills.contains_key(&instance_key) && !instance.supports_multiple_instances()
+        {
+            return (
+                false,
+                format!(
+                    "Skill '{instance_key}' is already loaded and does not support multiple instances"
+                ),
+            );
         }
 
         let missing = instance.validate_env_vars();
         if !missing.is_empty() {
             return (
                 false,
-                format!("Missing required environment variables: {}", missing.join(", ")),
+                format!(
+                    "Missing required environment variables: {}",
+                    missing.join(", ")
+                ),
             );
         }
 
         if !instance.setup() {
-            return (false, format!("Skill '{}' setup failed", skill_name));
+            return (false, format!("Skill '{skill_name}' setup failed"));
         }
 
         instance.register_tools(agent);
@@ -91,10 +86,7 @@ impl SkillManager {
                         .get("title")
                         .and_then(|t| t.as_str())
                         .unwrap_or("Untitled");
-                    let body = obj
-                        .get("body")
-                        .and_then(|b| b.as_str())
-                        .unwrap_or("");
+                    let body = obj.get("body").and_then(|b| b.as_str()).unwrap_or("");
                     let bullets: Vec<&str> = obj
                         .get("bullets")
                         .and_then(|b| b.as_array())
@@ -117,31 +109,29 @@ impl SkillManager {
     ) -> (bool, String) {
         let instance_key = instance.get_instance_key();
 
-        if self.loaded_skills.contains_key(&instance_key) {
-            if !instance.supports_multiple_instances() {
-                return (
-                    false,
-                    format!(
-                        "Skill '{}' is already loaded and does not support multiple instances",
-                        instance_key
-                    ),
-                );
-            }
+        if self.loaded_skills.contains_key(&instance_key) && !instance.supports_multiple_instances()
+        {
+            return (
+                false,
+                format!(
+                    "Skill '{instance_key}' is already loaded and does not support multiple instances"
+                ),
+            );
         }
 
         let missing = instance.validate_env_vars();
         if !missing.is_empty() {
             return (
                 false,
-                format!("Missing required environment variables: {}", missing.join(", ")),
+                format!(
+                    "Missing required environment variables: {}",
+                    missing.join(", ")
+                ),
             );
         }
 
         if !instance.setup() {
-            return (
-                false,
-                format!("Skill '{}' setup failed", instance.name()),
-            );
+            return (false, format!("Skill '{}' setup failed", instance.name()));
         }
 
         instance.register_tools(agent);
@@ -163,10 +153,7 @@ impl SkillManager {
                     .get("title")
                     .and_then(|t| t.as_str())
                     .unwrap_or("Untitled");
-                let body = obj
-                    .get("body")
-                    .and_then(|b| b.as_str())
-                    .unwrap_or("");
+                let body = obj.get("body").and_then(|b| b.as_str()).unwrap_or("");
                 let bullets: Vec<&str> = obj
                     .get("bullets")
                     .and_then(|b| b.as_array())
@@ -226,7 +213,7 @@ mod tests {
         let mut mgr = SkillManager::new();
         let mut agent = AgentBase::new(AgentOptions::new("test"));
         let (ok, msg) = mgr.load_skill("datetime", Map::new(), &mut agent);
-        assert!(ok, "load_skill failed: {}", msg);
+        assert!(ok, "load_skill failed: {msg}");
         assert!(mgr.has_skill("datetime"));
         assert_eq!(mgr.list_skills(), vec!["datetime"]);
     }
@@ -267,7 +254,7 @@ mod tests {
         let mut mgr = SkillManager::new();
         let mut agent = AgentBase::new(AgentOptions::new("test"));
         let (ok, msg) = mgr.load_skill("math", Map::new(), &mut agent);
-        assert!(ok, "load_skill failed: {}", msg);
+        assert!(ok, "load_skill failed: {msg}");
         assert!(mgr.has_skill("math"));
     }
 

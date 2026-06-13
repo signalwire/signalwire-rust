@@ -12,7 +12,7 @@
 //! `ssl_certfile` / `ssl_keyfile` to uvicorn so the server speaks real HTTPS.
 //! The Rust port serves with `tiny_http`; this helper mirrors the *same env
 //! contract* and binds either a plain (`Server::http`) or a TLS
-//! (`Server::https`, via tiny_http's `ssl-rustls` feature) listener.
+//! (`Server::https`, via `tiny_http`'s `ssl-rustls` feature) listener.
 //!
 //! Kept as a `pub(crate)` helper so the three server entry points
 //! (`AgentServer::run`, `Service::run`, `AgentBase::run`) share one code path
@@ -41,23 +41,19 @@ struct TlsMaterial {
 /// misconfigured deployment fails loudly instead of silently serving HTTP.
 fn resolve_tls_material() -> Result<Option<TlsMaterial>, ServerError> {
     let enabled = env::var(SSL_ENABLED_ENV)
-        .map(|v| matches!(v.to_ascii_lowercase().as_str(), "true" | "1" | "yes"))
-        .unwrap_or(false);
+        .is_ok_and(|v| matches!(v.to_ascii_lowercase().as_str(), "true" | "1" | "yes"));
     if !enabled {
         return Ok(None);
     }
 
     let cert_path = env::var(SSL_CERT_PATH_ENV).ok().filter(|s| !s.is_empty());
     let key_path = env::var(SSL_KEY_PATH_ENV).ok().filter(|s| !s.is_empty());
-    let (cert_path, key_path) = match (cert_path, key_path) {
-        (Some(c), Some(k)) => (c, k),
-        _ => {
-            return Err(ServerError::TlsConfig {
-                message: format!(
-                    "{SSL_ENABLED_ENV} is set but {SSL_CERT_PATH_ENV} / {SSL_KEY_PATH_ENV} are not both provided"
-                ),
-            });
-        }
+    let (Some(cert_path), Some(key_path)) = (cert_path, key_path) else {
+        return Err(ServerError::TlsConfig {
+            message: format!(
+                "{SSL_ENABLED_ENV} is set but {SSL_CERT_PATH_ENV} / {SSL_KEY_PATH_ENV} are not both provided"
+            ),
+        });
     };
 
     let certificate = std::fs::read(&cert_path).map_err(|e| ServerError::TlsConfig {
@@ -80,25 +76,21 @@ fn resolve_tls_material() -> Result<Option<TlsMaterial>, ServerError> {
 /// genuine bind error; SSL-misconfiguration is reported through the returned
 /// `Result` so callers can choose how to fail.
 pub(crate) fn bind_server(addr: &str) -> Result<(tiny_http::Server, bool), ServerError> {
-    match resolve_tls_material()? {
-        Some(material) => {
-            let config = tiny_http::SslConfig {
-                certificate: material.certificate,
-                private_key: material.private_key,
-            };
-            let server =
-                tiny_http::Server::https(addr, config).map_err(|e| ServerError::Bind {
-                    addr: addr.to_string(),
-                    source: e.to_string(),
-                })?;
-            Ok((server, true))
-        }
-        None => {
-            let server = tiny_http::Server::http(addr).map_err(|e| ServerError::Bind {
-                addr: addr.to_string(),
-                source: e.to_string(),
-            })?;
-            Ok((server, false))
-        }
+    if let Some(material) = resolve_tls_material()? {
+        let config = tiny_http::SslConfig {
+            certificate: material.certificate,
+            private_key: material.private_key,
+        };
+        let server = tiny_http::Server::https(addr, config).map_err(|e| ServerError::Bind {
+            addr: addr.to_string(),
+            source: e.to_string(),
+        })?;
+        Ok((server, true))
+    } else {
+        let server = tiny_http::Server::http(addr).map_err(|e| ServerError::Bind {
+            addr: addr.to_string(),
+            source: e.to_string(),
+        })?;
+        Ok((server, false))
     }
 }

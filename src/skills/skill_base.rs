@@ -7,14 +7,14 @@ use crate::agent::AgentBase;
 /// A skill encapsulates tools, hints, global data, and prompt sections that can
 /// be loaded into an `AgentBase` via the `SkillManager`.
 pub trait SkillBase: Send + Sync {
-    /// Unique snake_case name of this skill (e.g. `"datetime"`).
+    /// Unique `snake_case` name of this skill (e.g. `"datetime"`).
     fn name(&self) -> &str;
 
     /// Human-readable description.
     fn description(&self) -> &str;
 
     /// Semantic version string.
-    fn version(&self) -> &str {
+    fn version(&self) -> &'static str {
         "1.0.0"
     }
 
@@ -28,7 +28,7 @@ pub trait SkillBase: Send + Sync {
         false
     }
 
-    /// Instance key used to track loaded skills (allows tool_name overrides).
+    /// Instance key used to track loaded skills (allows `tool_name` overrides).
     fn get_instance_key(&self) -> String {
         let mut key = self.name().to_string();
         if let Some(tn) = self.params().get("tool_name").and_then(|v| v.as_str()) {
@@ -56,7 +56,12 @@ pub trait SkillBase: Send + Sync {
 
     /// POM sections merged into the agent's prompt.
     fn get_prompt_sections(&self) -> Vec<Value> {
-        if self.params().get("skip_prompt").and_then(|v| v.as_bool()).unwrap_or(false) {
+        if self
+            .params()
+            .get("skip_prompt")
+            .and_then(serde_json::Value::as_bool)
+            .unwrap_or(false)
+        {
             return Vec::new();
         }
         Vec::new()
@@ -145,22 +150,34 @@ impl SkillParams {
     }
 
     pub fn get_bool(&self, key: &str) -> bool {
-        self.params.get(key).and_then(|v| v.as_bool()).unwrap_or(false)
+        self.params
+            .get(key)
+            .and_then(serde_json::Value::as_bool)
+            .unwrap_or(false)
     }
 
     /// Like [`get_bool`](Self::get_bool) but returns `default` when the key is
     /// absent (or not a boolean). Needed for params whose documented default
     /// is `true` — `get_bool` always falls back to `false`.
     pub fn get_bool_or(&self, key: &str, default: bool) -> bool {
-        self.params.get(key).and_then(|v| v.as_bool()).unwrap_or(default)
+        self.params
+            .get(key)
+            .and_then(serde_json::Value::as_bool)
+            .unwrap_or(default)
     }
 
     pub fn get_i64(&self, key: &str, default: i64) -> i64 {
-        self.params.get(key).and_then(|v| v.as_i64()).unwrap_or(default)
+        self.params
+            .get(key)
+            .and_then(serde_json::Value::as_i64)
+            .unwrap_or(default)
     }
 
     pub fn get_f64(&self, key: &str, default: f64) -> f64 {
-        self.params.get(key).and_then(|v| v.as_f64()).unwrap_or(default)
+        self.params
+            .get(key)
+            .and_then(serde_json::Value::as_f64)
+            .unwrap_or(default)
     }
 
     pub fn get_array(&self, key: &str) -> Vec<Value> {

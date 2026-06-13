@@ -7,10 +7,15 @@
 //! - /precise — low temperature, consistent, technical
 //! - /creative — high temperature, varied, imaginative
 
+// The example's `run_server(server: AgentServer)` helper takes the server by
+// value to demonstrate handing it to its run loop (the server's lifetime ends
+// with the loop) — an ownership story `&AgentServer` would obscure.
+#![allow(clippy::needless_pass_by_value)]
+
+use serde_json::json;
 use signalwire::agent::{AgentBase, AgentOptions};
 use signalwire::server::AgentServer;
 use signalwire::swaig::FunctionResult;
-use serde_json::json;
 
 fn precise_agent() -> AgentBase {
     let mut agent = AgentBase::new(AgentOptions {
@@ -22,11 +27,15 @@ fn precise_agent() -> AgentBase {
     agent.add_language("English", "en-US", "inworld.Mark");
 
     agent.prompt_add_section("Role", "You are a precise technical assistant.", vec![]);
-    agent.prompt_add_section("Instructions", "", vec![
-        "Provide accurate, factual information",
-        "Be concise and direct",
-        "Avoid speculation or guessing",
-    ]);
+    agent.prompt_add_section(
+        "Instructions",
+        "",
+        vec![
+            "Provide accurate, factual information",
+            "Be concise and direct",
+            "Avoid speculation or guessing",
+        ],
+    );
 
     agent.set_prompt_llm_params(json!({
         "temperature": 0.2,
@@ -45,7 +54,7 @@ fn precise_agent() -> AgentBase {
         json!({}),
         Box::new(|_args, _raw| {
             FunctionResult::with_response(
-                "System Status: CPU 45%, Memory 8GB free, Disk 250GB free, Uptime 14 days."
+                "System Status: CPU 45%, Memory 8GB free, Disk 250GB free, Uptime 14 days.",
             )
         }),
         false,
@@ -64,11 +73,15 @@ fn creative_agent() -> AgentBase {
     agent.add_language("English", "en-US", "inworld.Sarah");
 
     agent.prompt_add_section("Role", "You are a creative writing assistant.", vec![]);
-    agent.prompt_add_section("Instructions", "", vec![
-        "Be imaginative and creative",
-        "Use varied vocabulary and expressions",
-        "Encourage creative thinking",
-    ]);
+    agent.prompt_add_section(
+        "Instructions",
+        "",
+        vec![
+            "Be imaginative and creative",
+            "Use varied vocabulary and expressions",
+            "Encourage creative thinking",
+        ],
+    );
 
     agent.set_prompt_llm_params(json!({
         "temperature": 0.8,
@@ -83,7 +96,10 @@ fn creative_agent() -> AgentBase {
         "Generate a creative story premise",
         json!({"genre": {"type": "string", "description": "Story genre"}}),
         Box::new(|args, _raw| {
-            let genre = args.get("genre").and_then(|v| v.as_str()).unwrap_or("fantasy");
+            let genre = args
+                .get("genre")
+                .and_then(|v| v.as_str())
+                .unwrap_or("fantasy");
             FunctionResult::with_response(&format!(
                 "Here's a {genre} premise: A lighthouse keeper discovers their light \
                  doesn't guide ships — it guides something else entirely."
@@ -108,11 +124,10 @@ fn main() {
 
 fn run_server(server: AgentServer) {
     use std::collections::HashMap;
-    use std::io::Read as _;
 
     let addr = format!("{}:{}", server.host(), server.port());
-    let http = tiny_http::Server::http(&addr)
-        .unwrap_or_else(|e| panic!("Failed to bind {}: {}", addr, e));
+    let http =
+        tiny_http::Server::http(&addr).unwrap_or_else(|e| panic!("Failed to bind {addr}: {e}"));
 
     for mut request in http.incoming_requests() {
         let method = request.method().as_str().to_string();
@@ -132,8 +147,7 @@ fn run_server(server: AgentServer) {
         let (status, resp_headers, resp_body) =
             server.handle_request(&method, &path, &req_headers, &body_buf);
 
-        let mut response =
-            tiny_http::Response::from_string(&resp_body).with_status_code(status);
+        let mut response = tiny_http::Response::from_string(&resp_body).with_status_code(status);
         for (k, v) in &resp_headers {
             if let Ok(header) = tiny_http::Header::from_bytes(k.as_bytes(), v.as_bytes()) {
                 response = response.with_header(header);

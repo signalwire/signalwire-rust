@@ -12,11 +12,11 @@
 //! JSON-RPC actually serialized, real bytes on the wire.
 //!
 //! Environment variables (set by the audit fixture):
-//!   - SIGNALWIRE_RELAY_HOST     `127.0.0.1:NNNN` (the fixture's bind port)
-//!   - SIGNALWIRE_RELAY_SCHEME   `ws` (audit) or `wss` (production)
-//!   - SIGNALWIRE_PROJECT_ID     `audit`
-//!   - SIGNALWIRE_API_TOKEN      `audit`
-//!   - SIGNALWIRE_CONTEXTS       `audit_ctx` (comma-separated)
+//!   - `SIGNALWIRE_RELAY_HOST`     `127.0.0.1:NNNN` (the fixture's bind port)
+//!   - `SIGNALWIRE_RELAY_SCHEME`   `ws` (audit) or `wss` (production)
+//!   - `SIGNALWIRE_PROJECT_ID`     `audit`
+//!   - `SIGNALWIRE_API_TOKEN`      `audit`
+//!   - `SIGNALWIRE_CONTEXTS`       `audit_ctx` (comma-separated)
 //!
 //! Exit codes:
 //!   - 0  on a clean handshake + subscribe + event dispatch
@@ -24,8 +24,8 @@
 
 use signalwire::relay::Client;
 use std::env;
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant};
 
 fn main() {
@@ -90,7 +90,7 @@ fn main() {
     }
 
     if let Err(e) = client.connect() {
-        eprintln!("relay_audit_harness: connect failed: {}", e);
+        eprintln!("relay_audit_harness: connect failed: {e}");
         std::process::exit(1);
     }
 

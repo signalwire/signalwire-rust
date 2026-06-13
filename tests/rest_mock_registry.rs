@@ -6,7 +6,7 @@
 #[path = "common/mod.rs"]
 mod common;
 
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 const REG_BASE: &str = "/api/relay/rest/registry/beta";
 
@@ -18,11 +18,7 @@ const REG_BASE: &str = "/api/relay/rest/registry/beta";
 fn test_registry_brands_list_returns_dict() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let body = c
-        .registry()
-        .brands()
-        .list(&json!({}))
-        .expect("brands.list");
+    let body = c.registry().brands().list(&json!({})).expect("brands.list");
     assert!(body.is_object());
 
     let entry = common::mocktest::journal_last();
@@ -35,11 +31,7 @@ fn test_registry_brands_list_returns_dict() {
 fn test_registry_brands_get_uses_id_in_path() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let body = c
-        .registry()
-        .brands()
-        .get("brand-77")
-        .expect("brands.get");
+    let body = c.registry().brands().get("brand-77").expect("brands.get");
     assert!(body.is_object());
 
     let entry = common::mocktest::journal_last();
@@ -60,10 +52,7 @@ fn test_registry_brands_list_campaigns_uses_brand_subpath() {
 
     let entry = common::mocktest::journal_last();
     assert_eq!(entry.method, "GET");
-    assert_eq!(
-        entry.path,
-        format!("{REG_BASE}/brands/brand-1/campaigns")
-    );
+    assert_eq!(entry.path, format!("{REG_BASE}/brands/brand-1/campaigns"));
     assert!(entry.matched_route.is_some());
 }
 
@@ -83,19 +72,13 @@ fn test_registry_brands_create_campaign_posts_to_subpath() {
 
     let entry = common::mocktest::journal_last();
     assert_eq!(entry.method, "POST");
-    assert_eq!(
-        entry.path,
-        format!("{REG_BASE}/brands/brand-2/campaigns")
-    );
+    assert_eq!(entry.path, format!("{REG_BASE}/brands/brand-2/campaigns"));
     let sent = entry.body_object().expect("body");
     assert_eq!(
         sent.get("usecase").and_then(Value::as_str),
         Some("LOW_VOLUME")
     );
-    assert_eq!(
-        sent.get("description").and_then(Value::as_str),
-        Some("MFA")
-    );
+    assert_eq!(sent.get("description").and_then(Value::as_str), Some("MFA"));
 }
 
 // ---------------------------------------------------------------------------
@@ -152,10 +135,7 @@ fn test_registry_campaigns_list_numbers_uses_subpath() {
 
     let entry = common::mocktest::journal_last();
     assert_eq!(entry.method, "GET");
-    assert_eq!(
-        entry.path,
-        format!("{REG_BASE}/campaigns/camp-3/numbers")
-    );
+    assert_eq!(entry.path, format!("{REG_BASE}/campaigns/camp-3/numbers"));
     assert!(entry.matched_route.is_some());
 }
 
@@ -172,10 +152,7 @@ fn test_registry_campaigns_create_order_posts_to_subpath() {
 
     let entry = common::mocktest::journal_last();
     assert_eq!(entry.method, "POST");
-    assert_eq!(
-        entry.path,
-        format!("{REG_BASE}/campaigns/camp-4/orders")
-    );
+    assert_eq!(entry.path, format!("{REG_BASE}/campaigns/camp-4/orders"));
     let sent = entry.body_object().expect("body");
     let arr = sent
         .get("numbers")
@@ -193,11 +170,7 @@ fn test_registry_campaigns_create_order_posts_to_subpath() {
 fn test_registry_orders_get_uses_id_in_path() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let body = c
-        .registry()
-        .orders()
-        .get("order-1")
-        .expect("orders.get");
+    let body = c.registry().orders().get("order-1").expect("orders.get");
     assert!(body.is_object());
 
     let entry = common::mocktest::journal_last();

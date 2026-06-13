@@ -8,12 +8,18 @@ use super::event::Event;
 /// Callback type for completion notifications.
 pub type MessageCompletedCallback = Box<dyn FnOnce(&Message) + Send>;
 
+/// Callback type for per-event message observers (`on_event`). Shared (`Arc`)
+/// because the same observer is dispatched on every inbound RELAY event.
+pub type MessageEventCallback = Arc<dyn Fn(&Message, &Event) + Send + Sync>;
+
 /// Represents a RELAY messaging message (SMS / MMS).
 ///
 /// A Message is created when you send or receive a message through the
 /// RELAY messaging namespace.  It accumulates state-change events and
 /// resolves once the message reaches a terminal state (delivered,
 /// undelivered, or failed).
+// Field names (message_id, …) mirror the RELAY wire / Python field names 1:1.
+#[allow(clippy::struct_field_names)]
 pub struct Message {
     message_id: Option<String>,
     context: Option<String>,
@@ -29,7 +35,7 @@ pub struct Message {
     result: Mutex<Option<Value>>,
     on_completed: Mutex<Option<MessageCompletedCallback>>,
     callback_fired: Mutex<bool>,
-    on_event_callbacks: Mutex<Vec<Arc<dyn Fn(&Message, &Event) + Send + Sync>>>,
+    on_event_callbacks: Mutex<Vec<MessageEventCallback>>,
 }
 
 impl Message {
@@ -40,30 +46,30 @@ impl Message {
                 .get("message_id")
                 .or_else(|| params.get("id"))
                 .and_then(|v| v.as_str())
-                .map(|s| s.to_string()),
+                .map(std::string::ToString::to_string),
             context: params
                 .get("context")
                 .and_then(|v| v.as_str())
-                .map(|s| s.to_string()),
+                .map(std::string::ToString::to_string),
             direction: params
                 .get("direction")
                 .and_then(|v| v.as_str())
-                .map(|s| s.to_string()),
+                .map(std::string::ToString::to_string),
             from_number: params
                 .get("from_number")
                 .or_else(|| params.get("from"))
                 .and_then(|v| v.as_str())
-                .map(|s| s.to_string()),
+                .map(std::string::ToString::to_string),
             to_number: params
                 .get("to_number")
                 .or_else(|| params.get("to"))
                 .and_then(|v| v.as_str())
-                .map(|s| s.to_string()),
+                .map(std::string::ToString::to_string),
             body: Mutex::new(
                 params
                     .get("body")
                     .and_then(|v| v.as_str())
-                    .map(|s| s.to_string()),
+                    .map(std::string::ToString::to_string),
             ),
             media: Mutex::new(
                 params
@@ -71,7 +77,7 @@ impl Message {
                     .and_then(|v| v.as_array())
                     .map(|a| {
                         a.iter()
-                            .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                            .filter_map(|v| v.as_str().map(std::string::ToString::to_string))
                             .collect()
                     })
                     .unwrap_or_default(),
@@ -82,7 +88,7 @@ impl Message {
                     .and_then(|v| v.as_array())
                     .map(|a| {
                         a.iter()
-                            .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                            .filter_map(|v| v.as_str().map(std::string::ToString::to_string))
                             .collect()
                     })
                     .unwrap_or_default(),
@@ -91,13 +97,13 @@ impl Message {
                 params
                     .get("state")
                     .and_then(|v| v.as_str())
-                    .map(|s| s.to_string()),
+                    .map(std::string::ToString::to_string),
             ),
             reason: Mutex::new(
                 params
                     .get("reason")
                     .and_then(|v| v.as_str())
-                    .map(|s| s.to_string()),
+                    .map(std::string::ToString::to_string),
             ),
             completed: Mutex::new(false),
             result: Mutex::new(None),
@@ -121,7 +127,10 @@ impl Message {
     pub fn repr(&self) -> String {
         format!(
             "Message(message_id={:?}, from={:?}, to={:?}, state={:?})",
-            self.message_id, self.from_number, self.to_number, self.state()
+            self.message_id,
+            self.from_number,
+            self.to_number,
+            self.state()
         )
     }
 
@@ -141,18 +150,30 @@ impl Message {
         self.to_number.as_deref()
     }
 
+    /// # Panics
+    /// Panics if an internal mutex is poisoned (i.e. another thread panicked
+    /// while holding the lock). This does not occur under normal operation.
     pub fn body(&self) -> Option<String> {
         self.body.lock().unwrap().clone()
     }
 
+    /// # Panics
+    /// Panics if an internal mutex is poisoned (i.e. another thread panicked
+    /// while holding the lock). This does not occur under normal operation.
     pub fn media(&self) -> Vec<String> {
         self.media.lock().unwrap().clone()
     }
 
+    /// # Panics
+    /// Panics if an internal mutex is poisoned (i.e. another thread panicked
+    /// while holding the lock). This does not occur under normal operation.
     pub fn tags(&self) -> Vec<String> {
         self.tags.lock().unwrap().clone()
     }
 
+    /// # Panics
+    /// Panics if an internal mutex is poisoned (i.e. another thread panicked
+    /// while holding the lock). This does not occur under normal operation.
     pub fn state(&self) -> Option<String> {
         self.state.lock().unwrap().clone()
     }
@@ -166,6 +187,10 @@ impl Message {
     /// value parses to [`MessageState::Other`] rather than panicking. Enables
     /// `msg.message_state().map(|s| s.is_terminal())` and `match` instead of
     /// stringly comparisons.
+    ///
+    /// # Panics
+    /// Panics if an internal mutex is poisoned (i.e. another thread panicked
+    /// while holding the lock). This does not occur under normal operation.
     #[must_use]
     pub fn message_state(&self) -> Option<super::state_enums::MessageState> {
         self.state
@@ -175,14 +200,23 @@ impl Message {
             .map(super::state_enums::MessageState::from_str)
     }
 
+    /// # Panics
+    /// Panics if an internal mutex is poisoned (i.e. another thread panicked
+    /// while holding the lock). This does not occur under normal operation.
     pub fn reason(&self) -> Option<String> {
         self.reason.lock().unwrap().clone()
     }
 
+    /// # Panics
+    /// Panics if an internal mutex is poisoned (i.e. another thread panicked
+    /// while holding the lock). This does not occur under normal operation.
     pub fn is_done(&self) -> bool {
         *self.completed.lock().unwrap()
     }
 
+    /// # Panics
+    /// Panics if an internal mutex is poisoned (i.e. another thread panicked
+    /// while holding the lock). This does not occur under normal operation.
     pub fn result(&self) -> Option<Value> {
         self.result.lock().unwrap().clone()
     }
@@ -192,6 +226,10 @@ impl Message {
     // ------------------------------------------------------------------
 
     /// Process an inbound event for this message.
+    ///
+    /// # Panics
+    /// Panics if an internal mutex is poisoned (i.e. another thread panicked
+    /// while holding the lock). This does not occur under normal operation.
     pub fn dispatch_event(&self, event: &Event) {
         let params = event.params();
 
@@ -207,13 +245,13 @@ impl Message {
         if let Some(m) = params.get("media").and_then(|v| v.as_array()) {
             *self.media.lock().unwrap() = m
                 .iter()
-                .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                .filter_map(|v| v.as_str().map(std::string::ToString::to_string))
                 .collect();
         }
         if let Some(t) = params.get("tags").and_then(|v| v.as_array()) {
             *self.tags.lock().unwrap() = t
                 .iter()
-                .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                .filter_map(|v| v.as_str().map(std::string::ToString::to_string))
                 .collect();
         }
 
@@ -225,10 +263,10 @@ impl Message {
 
         // Auto-resolve on terminal state
         let current_state = self.state.lock().unwrap().clone();
-        if let Some(ref s) = current_state {
-            if constants::is_message_terminal(s) {
-                self.resolve(Some(serde_json::json!(s)));
-            }
+        if let Some(ref s) = current_state
+            && constants::is_message_terminal(s)
+        {
+            self.resolve(Some(serde_json::json!(s)));
         }
     }
 
@@ -237,14 +275,19 @@ impl Message {
     // ------------------------------------------------------------------
 
     /// Register a listener that fires on every state-change event.
+    ///
+    /// # Panics
+    /// Panics if an internal mutex is poisoned (i.e. another thread panicked
+    /// while holding the lock). This does not occur under normal operation.
     pub fn on<F: Fn(&Message, &Event) + Send + Sync + 'static>(&self, cb: F) {
-        self.on_event_callbacks
-            .lock()
-            .unwrap()
-            .push(Arc::new(cb));
+        self.on_event_callbacks.lock().unwrap().push(Arc::new(cb));
     }
 
     /// Register a callback to fire when the message reaches a terminal state.
+    ///
+    /// # Panics
+    /// Panics if an internal mutex is poisoned (i.e. another thread panicked
+    /// while holding the lock). This does not occur under normal operation.
     pub fn on_completed<F: FnOnce(&Message) + Send + 'static>(&self, cb: F) {
         *self.on_completed.lock().unwrap() = Some(Box::new(cb));
 
@@ -258,6 +301,10 @@ impl Message {
     // ------------------------------------------------------------------
 
     /// Mark this message as completed.
+    ///
+    /// # Panics
+    /// Panics if an internal mutex is poisoned (i.e. another thread panicked
+    /// while holding the lock). This does not occur under normal operation.
     pub fn resolve(&self, result: Option<Value>) {
         {
             let mut completed = self.completed.lock().unwrap();

@@ -26,6 +26,11 @@
 //! journal is shared global state.
 
 #![allow(dead_code)]
+// Helper signatures take `Value` / owned args by value to mirror the
+// cross-port mock-test helper contract (the Python `mock_relay` /
+// `mock_signalwire` helpers and the Go pilot pass payloads by value). Keeping
+// the by-value shape keeps these helpers 1:1 with their sibling ports.
+#![allow(clippy::needless_pass_by_value)]
 
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -47,7 +52,7 @@ fn lock_journal() -> MutexGuard<'static, ()> {
     SERIALIZE
         .get_or_init(|| Mutex::new(()))
         .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
 }
 
 /// Default port for the Rust slot in the parallel parallel-port lineup.
@@ -98,8 +103,7 @@ pub fn client() -> RestClient {
     let h = harness();
     // Use with_base_url so the http:// prefix and explicit host:port survive
     // the constructor's https:// resolution.
-    RestClient::with_base_url("test_proj", "test_tok", &h.url)
-        .expect("RestClient::with_base_url")
+    RestClient::with_base_url("test_proj", "test_tok", &h.url).expect("RestClient::with_base_url")
 }
 
 /// Return the singleton harness, spawning the mock server if necessary.
@@ -132,9 +136,10 @@ pub fn journal_all() -> Vec<JournalEntry> {
 /// — every test that reaches this point should have produced an entry.
 pub fn journal_last() -> JournalEntry {
     let entries = journal_all();
-    if entries.is_empty() {
-        panic!("mocktest: journal is empty - the SDK call did not reach the mock server");
-    }
+    assert!(
+        !entries.is_empty(),
+        "mocktest: journal is empty - the SDK call did not reach the mock server"
+    );
     entries.into_iter().last().unwrap()
 }
 
@@ -181,7 +186,7 @@ pub fn begin() -> TestGuard {
 }
 
 /// Stage a one-shot response override for the route identified by
-/// `endpoint_id` (Spectral OperationId from the OpenAPI spec).
+/// `endpoint_id` (Spectral `OperationId` from the `OpenAPI` spec).
 pub fn scenario_set(endpoint_id: &str, status: u16, body: Value) {
     let h = harness();
     let url = format!("{}/__mock__/scenarios/{endpoint_id}", h.url);
@@ -196,12 +201,11 @@ pub fn scenario_set(endpoint_id: &str, status: u16, body: Value) {
 // ---------------------------------------------------------------------------
 
 fn resolve_port() -> u16 {
-    if let Ok(raw) = std::env::var("MOCK_SIGNALWIRE_PORT") {
-        if let Ok(p) = raw.parse::<u16>() {
-            if p != 0 {
-                return p;
-            }
-        }
+    if let Ok(raw) = std::env::var("MOCK_SIGNALWIRE_PORT")
+        && let Ok(p) = raw.parse::<u16>()
+        && p != 0
+    {
+        return p;
     }
     DEFAULT_PORT
 }
@@ -238,16 +242,14 @@ fn probe_health(base_url: &str) -> bool {
         .timeout_global(Some(Duration::from_secs(2)))
         .build()
         .into();
-    let mut resp = match agent.get(&url).call() {
-        Ok(r) => r,
-        Err(_) => return false,
+    let Ok(mut resp) = agent.get(&url).call() else {
+        return false;
     };
     if resp.status().as_u16() != 200 {
         return false;
     }
-    let body = match resp.body_mut().read_to_string() {
-        Ok(b) => b,
-        Err(_) => return false,
+    let Ok(body) = resp.body_mut().read_to_string() else {
+        return false;
     };
     let parsed: serde_json::Result<Value> = serde_json::from_str(&body);
     match parsed {
@@ -333,10 +335,7 @@ fn discover_porting_sdk_package(name: &str) -> Option<String> {
             Some(p) => p.to_path_buf(),
             None => return None,
         };
-        let candidate = parent
-            .join("porting-sdk")
-            .join("test_harness")
-            .join(name);
+        let candidate = parent.join("porting-sdk").join("test_harness").join(name);
         let init = candidate.join(name).join("__init__.py");
         if init.is_file() {
             return Some(candidate.to_string_lossy().into_owned());
@@ -373,9 +372,8 @@ fn libc_setsid() -> i32 {
 // ---------------------------------------------------------------------------
 
 fn decode_journal(value: &Value) -> Vec<JournalEntry> {
-    let arr = match value.as_array() {
-        Some(a) => a,
-        None => return Vec::new(),
+    let Some(arr) = value.as_array() else {
+        return Vec::new();
     };
     arr.iter().map(decode_entry).collect()
 }

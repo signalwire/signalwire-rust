@@ -10,7 +10,7 @@
 #[path = "common/mod.rs"]
 mod common;
 
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 use common::relay_mocktest;
 
@@ -58,7 +58,10 @@ fn test_send_message_journals_messaging_send() {
         .next()
         .expect("expected one messaging.send frame");
     let p = entry.inner_params();
-    assert_eq!(p.get("to_number").and_then(Value::as_str), Some("+15551112222"));
+    assert_eq!(
+        p.get("to_number").and_then(Value::as_str),
+        Some("+15551112222")
+    );
     assert_eq!(
         p.get("from_number").and_then(Value::as_str),
         Some("+15553334444")
@@ -147,14 +150,7 @@ fn test_send_message_returns_initial_state_queued() {
     let _g = relay_mocktest::begin();
     let client = relay_mocktest::connected_client(&["default"]);
     let msg = client
-        .send_message_blocking(
-            "+15551112222",
-            "+15553334444",
-            Some("hi"),
-            None,
-            None,
-            None,
-        )
+        .send_message_blocking("+15551112222", "+15553334444", Some("hi"), None, None, None)
         .expect("send_message_blocking");
     assert_eq!(msg.state(), Some("queued".to_string()));
     assert!(!msg.is_done());
@@ -166,14 +162,7 @@ fn test_send_message_resolves_on_delivered() {
     let _g = relay_mocktest::begin();
     let client = relay_mocktest::connected_client(&["default"]);
     let msg = client
-        .send_message_blocking(
-            "+15551112222",
-            "+15553334444",
-            Some("hi"),
-            None,
-            None,
-            None,
-        )
+        .send_message_blocking("+15551112222", "+15553334444", Some("hi"), None, None, None)
         .expect("send_message_blocking");
     let mid = msg
         .message_id()
@@ -208,14 +197,7 @@ fn test_send_message_resolves_on_undelivered() {
     let _g = relay_mocktest::begin();
     let client = relay_mocktest::connected_client(&["default"]);
     let msg = client
-        .send_message_blocking(
-            "+15551112222",
-            "+15553334444",
-            Some("hi"),
-            None,
-            None,
-            None,
-        )
+        .send_message_blocking("+15551112222", "+15553334444", Some("hi"), None, None, None)
         .expect("send_message_blocking");
     let mid = msg.message_id().unwrap().to_string();
     relay_mocktest::push(json!({
@@ -242,14 +224,7 @@ fn test_send_message_resolves_on_failed() {
     let _g = relay_mocktest::begin();
     let client = relay_mocktest::connected_client(&["default"]);
     let msg = client
-        .send_message_blocking(
-            "+15551112222",
-            "+15553334444",
-            Some("hi"),
-            None,
-            None,
-            None,
-        )
+        .send_message_blocking("+15551112222", "+15553334444", Some("hi"), None, None, None)
         .expect("send_message_blocking");
     let mid = msg.message_id().unwrap().to_string();
     relay_mocktest::push(json!({
@@ -275,14 +250,7 @@ fn test_send_message_intermediate_state_does_not_resolve() {
     let _g = relay_mocktest::begin();
     let client = relay_mocktest::connected_client(&["default"]);
     let msg = client
-        .send_message_blocking(
-            "+15551112222",
-            "+15553334444",
-            Some("hi"),
-            None,
-            None,
-            None,
-        )
+        .send_message_blocking("+15551112222", "+15553334444", Some("hi"), None, None, None)
         .expect("send_message_blocking");
     let mid = msg.message_id().unwrap().to_string();
     relay_mocktest::push(json!({
@@ -338,8 +306,14 @@ fn test_inbound_message_fires_on_message_handler() {
     }));
     assert!(wait_until(2000, || received.lock().unwrap().is_some()));
     let p = received.lock().unwrap().clone().unwrap();
-    assert_eq!(p.get("message_id").and_then(Value::as_str), Some("in-msg-1"));
-    assert_eq!(p.get("from_number").and_then(Value::as_str), Some("+15551110000"));
+    assert_eq!(
+        p.get("message_id").and_then(Value::as_str),
+        Some("in-msg-1")
+    );
+    assert_eq!(
+        p.get("from_number").and_then(Value::as_str),
+        Some("+15551110000")
+    );
     assert_eq!(p.get("body").and_then(Value::as_str), Some("hello back"));
     client.disconnect();
 }
@@ -418,9 +392,7 @@ fn test_journal_last_records_messaging_send_method() {
     let last = entries.last().unwrap();
     assert_eq!(last.method, "messaging.send");
     assert_eq!(
-        last.inner_params()
-            .get("body")
-            .and_then(Value::as_str),
+        last.inner_params().get("body").and_then(Value::as_str),
         Some("anti-cheat")
     );
     client.disconnect();

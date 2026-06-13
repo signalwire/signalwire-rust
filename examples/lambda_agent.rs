@@ -4,11 +4,11 @@
 //! AWS Lambda Agent — serverless deployment example.
 //!
 //! Deploy to Lambda with API Gateway. Set environment variables:
-//!   SWML_BASIC_AUTH_USER, SWML_BASIC_AUTH_PASSWORD
+//!   `SWML_BASIC_AUTH_USER`, `SWML_BASIC_AUTH_PASSWORD`
 
+use serde_json::json;
 use signalwire::agent::{AgentBase, AgentOptions};
 use signalwire::swaig::FunctionResult;
-use serde_json::json;
 
 fn create_agent() -> AgentBase {
     let mut agent = AgentBase::new(AgentOptions {
@@ -24,11 +24,15 @@ fn create_agent() -> AgentBase {
         "You are a helpful AI assistant running in AWS Lambda.",
         vec![],
     );
-    agent.prompt_add_section("Instructions", "", vec![
-        "Greet users warmly and offer help",
-        "Use the greet_user function when asked to greet someone",
-        "Be concise — you're running serverless!",
-    ]);
+    agent.prompt_add_section(
+        "Instructions",
+        "",
+        vec![
+            "Greet users warmly and offer help",
+            "Use the greet_user function when asked to greet someone",
+            "Be concise — you're running serverless!",
+        ],
+    );
 
     agent.define_tool(
         "greet_user",
@@ -49,9 +53,7 @@ fn create_agent() -> AgentBase {
         "Get the system status",
         json!({}),
         Box::new(|_args, _raw| {
-            FunctionResult::with_response(
-                "All systems operational. Running in AWS Lambda."
-            )
+            FunctionResult::with_response("All systems operational. Running in AWS Lambda.")
         }),
         false,
     );

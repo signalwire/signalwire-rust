@@ -1,4 +1,4 @@
-use serde_json::{json, Map, Value};
+use serde_json::{Map, Value, json};
 
 use crate::agent::AgentBase;
 use crate::skills::skill_base::{SkillBase, SkillParams};
@@ -18,11 +18,11 @@ impl Math {
 }
 
 impl SkillBase for Math {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "math"
     }
 
-    fn description(&self) -> &str {
+    fn description(&self) -> &'static str {
         "Perform basic mathematical calculations"
     }
 
@@ -80,12 +80,11 @@ impl SkillBase for Math {
                         result.set_response("Error: Result is not a number.");
                     }
                     Some(val) => {
-                        result.set_response(&format!("The result of {} is {}", expression, val));
+                        result.set_response(&format!("The result of {expression} is {val}"));
                     }
                     None => {
                         result.set_response(&format!(
-                            "Error: Could not evaluate expression \"{}\".",
-                            expression
+                            "Error: Could not evaluate expression \"{expression}\"."
                         ));
                     }
                 }
@@ -209,12 +208,12 @@ fn parse_mul_div(tokens: &[Token], pos: &mut usize) -> Option<f64> {
 
 fn parse_power(tokens: &[Token], pos: &mut usize) -> Option<f64> {
     let base = parse_unary(tokens, pos)?;
-    if *pos < tokens.len() {
-        if let Token::Op('^') = &tokens[*pos] {
-            *pos += 1;
-            let exp = parse_power(tokens, pos)?;
-            return Some(base.powf(exp));
-        }
+    if *pos < tokens.len()
+        && let Token::Op('^') = &tokens[*pos]
+    {
+        *pos += 1;
+        let exp = parse_power(tokens, pos)?;
+        return Some(base.powf(exp));
     }
     Some(base)
 }
@@ -247,11 +246,11 @@ fn parse_atom(tokens: &[Token], pos: &mut usize) -> Option<f64> {
         Token::LParen => {
             *pos += 1;
             let val = parse_add_sub(tokens, pos)?;
-            if *pos < tokens.len() {
-                if let Token::RParen = &tokens[*pos] {
-                    *pos += 1;
-                    return Some(val);
-                }
+            if *pos < tokens.len()
+                && let Token::RParen = &tokens[*pos]
+            {
+                *pos += 1;
+                return Some(val);
             }
             None
         }
@@ -318,6 +317,6 @@ mod tests {
         let result = agent.on_function_call("calculate", &args, &Map::new());
         assert!(result.is_some());
         let json_str = result.unwrap().to_json();
-        assert!(json_str.contains("5"));
+        assert!(json_str.contains('5'));
     }
 }

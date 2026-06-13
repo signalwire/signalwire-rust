@@ -1,7 +1,7 @@
 // Copyright (c) 2025 SignalWire
 // SPDX-License-Identifier: MIT
 //
-//! swmlservice_ai_sidecar — proves that `signalwire::swml::Service` can
+//! `swmlservice_ai_sidecar` — proves that `signalwire::swml::Service` can
 //! emit the `ai_sidecar` verb, register SWAIG tools the sidecar's LLM
 //! can call, and dispatch them end-to-end — without any
 //! `signalwire::agent::AgentBase` code path.
@@ -20,20 +20,20 @@
 //! `src/swml/service.rs`.
 //!
 //! What this serves:
-//!     GET  /sales-sidecar          → SWML doc containing the ai_sidecar verb
+//!     GET  /sales-sidecar          → SWML doc containing the `ai_sidecar` verb
 //!     POST /sales-sidecar/swaig    → SWAIG tool dispatch (used by the sidecar's LLM)
 //!
 //! Run:
-//!     cargo run --example swmlservice_ai_sidecar
+//!     cargo run --example `swmlservice_ai_sidecar`
 //!
 //! Drive the SWAIG path through the SDK CLI:
-//!     swaig-test --url http://user:pass@localhost:3000/sales-sidecar --list-tools
-//!     swaig-test --url http://user:pass@localhost:3000/sales-sidecar \
-//!         --exec lookup_competitor --param competitor=ACME
+//!     swaig-test --url <http://user:pass@localhost:3000/sales-sidecar> --list-tools
+//!     swaig-test --url <http://user:pass@localhost:3000/sales-sidecar> \
+//!         --exec `lookup_competitor` --param competitor=ACME
 
+use serde_json::json;
 use signalwire::swaig::FunctionResult;
 use signalwire::swml::service::{Service, ServiceOptions};
-use serde_json::json;
 
 fn main() {
     // In production, set this to your externally reachable URL so the
@@ -103,9 +103,8 @@ fn main() {
                 .and_then(|v| v.as_str())
                 .unwrap_or("<unknown>");
             FunctionResult::with_response(&format!(
-                "Pricing for {}: $99/seat. Our equivalent plan is $79/seat \
-                 with the same SLA.",
-                competitor
+                "Pricing for {competitor}: $99/seat. Our equivalent plan is $79/seat \
+                 with the same SLA."
             ))
         }),
         false,
@@ -128,7 +127,7 @@ fn main() {
     println!();
     println!("=== Registered SWAIG tools ===");
     for name in service.list_tool_names() {
-        println!("  - {}", name);
+        println!("  - {name}");
     }
     println!();
     let (user, pass) = service.basic_auth_credentials();

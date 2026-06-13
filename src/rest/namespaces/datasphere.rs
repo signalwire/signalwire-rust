@@ -58,48 +58,98 @@ impl<'a> DatasphereDocuments<'a> {
         out
     }
 
+    /// GET `/api/datasphere/documents` — list documents.
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status, or the
+    /// response body is not valid JSON.
     pub fn list(&self, params: &Value) -> Result<Value, SignalWireRestError> {
         self.client
             .get(&self.base_path, &Self::params_to_string_map(params))
     }
 
+    /// POST `/api/datasphere/documents` — create a document.
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (e.g. 422
+    /// when `params` fails validation), or the response body is not valid JSON.
     pub fn create(&self, params: &Value) -> Result<Value, SignalWireRestError> {
         self.client.post(&self.base_path, params)
     }
 
+    /// GET `/api/datasphere/documents/{document_id}` — fetch one document.
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (e.g. 404
+    /// for an unknown `document_id`), or the response body is not valid JSON.
     pub fn get(&self, document_id: &str) -> Result<Value, SignalWireRestError> {
-        self.client
-            .get(&format!("{}/{}", self.base_path, document_id), &HashMap::new())
+        self.client.get(
+            &format!("{}/{}", self.base_path, document_id),
+            &HashMap::new(),
+        )
     }
 
-    pub fn update(
-        &self,
-        document_id: &str,
-        params: &Value,
-    ) -> Result<Value, SignalWireRestError> {
+    /// PUT `/api/datasphere/documents/{document_id}` — update a document.
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (e.g. 404
+    /// for an unknown `document_id` or 422 when `params` fails validation), or
+    /// the response body is not valid JSON.
+    pub fn update(&self, document_id: &str, params: &Value) -> Result<Value, SignalWireRestError> {
         self.client
             .put(&format!("{}/{}", self.base_path, document_id), params)
     }
 
+    /// DELETE `/api/datasphere/documents/{document_id}` — delete a document.
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (e.g. 404
+    /// for an unknown `document_id`), or the response body is not valid JSON.
     pub fn delete(&self, document_id: &str) -> Result<Value, SignalWireRestError> {
         self.client
             .delete(&format!("{}/{}", self.base_path, document_id))
     }
 
+    /// POST `/api/datasphere/documents/search` — semantic search over documents.
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (e.g. 422
+    /// when `params` fails validation), or the response body is not valid JSON.
     pub fn search(&self, params: &Value) -> Result<Value, SignalWireRestError> {
-        self.client.post(&format!("{}/search", self.base_path), params)
+        self.client
+            .post(&format!("{}/search", self.base_path), params)
     }
 
+    /// GET `/api/datasphere/documents/{document_id}/chunks` — list chunks of a
+    /// document.
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (e.g. 404
+    /// for an unknown `document_id`), or the response body is not valid JSON.
     pub fn list_chunks(
         &self,
         document_id: &str,
         params: &Value,
     ) -> Result<Value, SignalWireRestError> {
         let path = format!("{}/{}/chunks", self.base_path, document_id);
-        self.client
-            .get(&path, &Self::params_to_string_map(params))
+        self.client.get(&path, &Self::params_to_string_map(params))
     }
 
+    /// GET `/api/datasphere/documents/{document_id}/chunks/{chunk_id}` — fetch
+    /// one chunk.
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (e.g. 404
+    /// for an unknown `document_id` or `chunk_id`), or the response body is not
+    /// valid JSON.
     pub fn get_chunk(
         &self,
         document_id: &str,
@@ -109,6 +159,14 @@ impl<'a> DatasphereDocuments<'a> {
         self.client.get(&path, &HashMap::new())
     }
 
+    /// DELETE `/api/datasphere/documents/{document_id}/chunks/{chunk_id}` —
+    /// delete one chunk.
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (e.g. 404
+    /// for an unknown `document_id` or `chunk_id`), or the response body is not
+    /// valid JSON.
     pub fn delete_chunk(
         &self,
         document_id: &str,

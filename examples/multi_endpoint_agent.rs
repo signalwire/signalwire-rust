@@ -8,9 +8,9 @@
 //!   /       — Web UI (hello world)
 //!   /api    — JSON API
 
+use serde_json::json;
 use signalwire::agent::{AgentBase, AgentOptions};
 use signalwire::swaig::FunctionResult;
-use serde_json::json;
 
 fn main() {
     let mut agent = AgentBase::new(AgentOptions {
@@ -24,11 +24,15 @@ fn main() {
     // Voice AI configuration
     agent.add_language("English", "en-US", "inworld.Mark");
     agent.prompt_add_section("Role", "You are a helpful voice assistant.", vec![]);
-    agent.prompt_add_section("Instructions", "", vec![
-        "Greet callers warmly",
-        "Be concise in your responses",
-        "Use the available functions when appropriate",
-    ]);
+    agent.prompt_add_section(
+        "Instructions",
+        "",
+        vec![
+            "Greet callers warmly",
+            "Be concise in your responses",
+            "Use the available functions when appropriate",
+        ],
+    );
 
     agent.define_tool(
         "get_time",

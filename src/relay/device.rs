@@ -190,7 +190,7 @@ mod tests {
     #[test]
     fn matrix_single_parallel_leg() {
         let a = Device::phone("+1", "+2");
-        let m = Device::matrix(&[&[a.clone()]]);
+        let m = Device::matrix(&[std::slice::from_ref(&a)]);
         let hand = json!([[{"type": "phone", "params": {"to_number": "+1", "from_number": "+2"}}]]);
         assert_eq!(m, hand);
         assert_eq!(

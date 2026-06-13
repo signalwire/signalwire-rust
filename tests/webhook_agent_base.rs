@@ -1,4 +1,4 @@
-//! Integration tests: AgentBase auto-mounts webhook signature
+//! Integration tests: `AgentBase` auto-mounts webhook signature
 //! validation when a Signing Key is configured.
 //!
 //! Drives the agent's `handle_request` directly with crafted POSTs
@@ -8,13 +8,13 @@
 //! - signed-but-tampered POSTs return 403 with no handler side-effect
 //! - missing header on POST returns 403
 //! - GETs are not signature-checked (would break `/health`, `/ready`)
-//! - signing_key resolves from explicit option THEN env var
+//! - `signing_key` resolves from explicit option THEN env var
 //! - `signing_key=None` bypasses validation entirely
 
 use std::collections::HashMap;
 
-use signalwire::agent::AgentBase;
 use signalwire::AgentOptions;
+use signalwire::agent::AgentBase;
 
 use base64::Engine as _;
 use hmac::{Hmac, KeyInit, Mac};
@@ -35,25 +35,28 @@ fn make_agent(signing_key: Option<&str>) -> AgentBase {
     if signing_key.is_some() {
         // Set per-test below so we can sweep.
     }
-    opts.signing_key = signing_key.map(|s| s.to_string());
+    opts.signing_key = signing_key.map(std::string::ToString::to_string);
     AgentBase::new(opts)
 }
 
 fn auth_headers() -> HashMap<String, String> {
     let mut h = HashMap::new();
     let token = base64::engine::general_purpose::STANDARD.encode("user:pass");
-    h.insert("Authorization".into(), format!("Basic {}", token));
+    h.insert("Authorization".into(), format!("Basic {token}"));
     h
 }
 
 fn hex_sig(key: &str, url: &str, body: &str) -> String {
     let mut mac = HmacSha1::new_from_slice(key.as_bytes()).unwrap();
-    mac.update(format!("{}{}", url, body).as_bytes());
+    mac.update(format!("{url}{body}").as_bytes());
     mac.finalize()
         .into_bytes()
         .iter()
-        .map(|b| format!("{:02x}", b))
-        .collect()
+        .fold(String::new(), |mut s, b| {
+            use std::fmt::Write as _;
+            let _ = write!(s, "{b:02x}");
+            s
+        })
 }
 
 // Pin the proxy base used by Service::get_proxy_url_base via env.
@@ -279,7 +282,7 @@ fn empty_signing_key_is_ignored() {
 
     let result = std::panic::catch_unwind(|| {
         let mut opts = AgentOptions::new("empty-key-test");
-        opts.signing_key = Some("".into());
+        opts.signing_key = Some(String::new());
         let agent = AgentBase::new(opts);
         assert_eq!(agent.signing_key(), None);
     });

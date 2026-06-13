@@ -6,7 +6,7 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
 
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use tungstenite::stream::MaybeTlsStream;
 use tungstenite::{Message as WsMessage, WebSocket};
 
@@ -47,7 +47,7 @@ mod tls {
 
     use tungstenite::client::uri_mode;
     use tungstenite::stream::{MaybeTlsStream, Mode};
-    use tungstenite::{client_tls_with_config, Connector};
+    use tungstenite::{Connector, client_tls_with_config};
 
     use super::RelayError;
     use super::WsStream;
@@ -261,7 +261,15 @@ impl Client {
         }
     }
 
-    /// Create from env vars SIGNALWIRE_PROJECT_ID, SIGNALWIRE_API_TOKEN, SIGNALWIRE_SPACE.
+    /// Create from env vars `SIGNALWIRE_PROJECT_ID`, `SIGNALWIRE_API_TOKEN`, `SIGNALWIRE_SPACE`.
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err(RelayError::missing_env(...))` if any of the three
+    /// required environment variables — `SIGNALWIRE_PROJECT_ID`,
+    /// `SIGNALWIRE_API_TOKEN`, or `SIGNALWIRE_SPACE` — is unset (or not
+    /// valid UTF-8). No network I/O occurs here, so this is purely a
+    /// configuration-presence check.
     pub fn from_env() -> Result<Self, RelayError> {
         let project = std::env::var("SIGNALWIRE_PROJECT_ID")
             .map_err(|_| RelayError::missing_env("SIGNALWIRE_PROJECT_ID"))?;
@@ -291,14 +299,29 @@ impl Client {
     /// Returns `Err` if the TCP/WS upgrade fails, the server rejects the
     /// connect handshake, or the response doesn't arrive within
     /// `HANDSHAKE_TIMEOUT`.
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err(RelayError)` when the connection cannot be brought
+    /// up: `RelayError::Transport` if the TCP connect / WebSocket
+    /// upgrade fails or the reader thread cannot be spawned;
+    /// `RelayError::Auth` if the server rejects the `signalwire.connect`
+    /// handshake; or `RelayError::Timeout` if no handshake response
+    /// arrives within `HANDSHAKE_TIMEOUT` (the auth failure paths are
+    /// surfaced through the delegated [`authenticate_blocking`]).
+    ///
+    /// # Panics
+    ///
+    /// Panics if an internal mutex is poisoned (i.e. another thread
+    /// panicked while holding the lock). This does not occur under
+    /// normal operation.
     pub fn connect(self: &Arc<Self>) -> Result<(), RelayError> {
         self.logger.info(&format!("Connecting to {}", self.host));
 
-        let scheme = std::env::var("SIGNALWIRE_RELAY_SCHEME")
-            .unwrap_or_else(|_| "wss".to_string());
+        let scheme = std::env::var("SIGNALWIRE_RELAY_SCHEME").unwrap_or_else(|_| "wss".to_string());
         let host_override = std::env::var("SIGNALWIRE_RELAY_HOST").ok();
         let endpoint_host = host_override.as_deref().unwrap_or(self.host.as_str());
-        let url = format!("{}://{}{}", scheme, endpoint_host, RELAY_PATH);
+        let url = format!("{scheme}://{endpoint_host}{RELAY_PATH}");
 
         // ws_connect already returns a `RelayError::Transport`; keep its
         // (richer) context rather than re-wrapping it.
@@ -354,6 +377,19 @@ impl Client {
     }
 
     /// Initial connect -- resets reconnect delay and connects.
+    ///
+    /// # Errors
+    ///
+    /// Propagates the error from [`connect`]: `RelayError::Transport`
+    /// (TCP/WS upgrade or thread spawn failure), `RelayError::Auth`
+    /// (handshake rejected), or `RelayError::Timeout` (no handshake
+    /// response within `HANDSHAKE_TIMEOUT`).
+    ///
+    /// # Panics
+    ///
+    /// Panics if an internal mutex is poisoned (i.e. another thread
+    /// panicked while holding the lock). This does not occur under
+    /// normal operation.
     pub fn connect_fresh(self: &Arc<Self>) -> Result<(), RelayError> {
         *self.reconnect_delay.lock().unwrap() = 1;
         self.connect()
@@ -362,6 +398,21 @@ impl Client {
     /// Send the `signalwire.connect` RPC and block until the response
     /// arrives or the handshake times out. The response carries the
     /// server-assigned protocol string and authorization state.
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err(RelayError::Auth { message })` if the server rejects
+    /// `signalwire.connect` (the message comes from the JSON-RPC error's
+    /// `message` field, defaulting to `"authentication failed"`), or
+    /// `Err(RelayError::Timeout)` if no response is received within
+    /// `HANDSHAKE_TIMEOUT` (in which case the pending request is cleaned
+    /// up so a late reply cannot fire a stale callback).
+    ///
+    /// # Panics
+    ///
+    /// Panics if an internal mutex is poisoned (i.e. another thread
+    /// panicked while holding the lock). This does not occur under
+    /// normal operation.
     pub fn authenticate_blocking(&self) -> Result<(), RelayError> {
         self.logger.info("Authenticating");
 
@@ -391,24 +442,24 @@ impl Client {
         // initial handshake. Subsequent `signalwire.receive` calls
         // dynamically add more.
         let ctxs: Vec<String> = self.contexts.lock().unwrap().clone();
-        if !ctxs.is_empty() {
-            if let Value::Object(ref mut obj) = params {
-                obj.insert("contexts".to_string(), json!(ctxs));
-            }
+        if !ctxs.is_empty()
+            && let Value::Object(ref mut obj) = params
+        {
+            obj.insert("contexts".to_string(), json!(ctxs));
         }
         // Re-send authorization state on reconnect for fast resume.
-        if let Some(state) = self.authorization_state.lock().unwrap().clone() {
-            if let Value::Object(ref mut obj) = params {
-                obj.insert("authorization_state".to_string(), json!(state));
-            }
+        if let Some(state) = self.authorization_state.lock().unwrap().clone()
+            && let Value::Object(ref mut obj) = params
+        {
+            obj.insert("authorization_state".to_string(), json!(state));
         }
         // Re-send the previously-issued protocol string on reconnect so
         // the server can restore the session. Mirrors Python's
         // `RelayClient.connect` behaviour when `_relay_protocol` is set.
-        if let Some(p) = self.protocol.lock().unwrap().clone() {
-            if let Value::Object(ref mut obj) = params {
-                obj.insert("protocol".to_string(), json!(p));
-            }
+        if let Some(p) = self.protocol.lock().unwrap().clone()
+            && let Value::Object(ref mut obj) = params
+        {
+            obj.insert("protocol".to_string(), json!(p));
         }
 
         let msg = json!({
@@ -464,10 +515,7 @@ impl Client {
                 // late response doesn't trip into a stale callback.
                 self.pending.lock().unwrap().remove(&id);
                 Err(RelayError::Timeout {
-                    what: format!(
-                        "signalwire.connect response (after {:?})",
-                        HANDSHAKE_TIMEOUT
-                    ),
+                    what: format!("signalwire.connect response (after {HANDSHAKE_TIMEOUT:?})"),
                 })
             }
         }
@@ -501,6 +549,12 @@ impl Client {
 
     /// Gracefully close the connection. Signals the reader thread to
     /// exit, sends a WS close frame, and joins the thread.
+    ///
+    /// # Panics
+    ///
+    /// Panics if an internal mutex is poisoned (i.e. another thread
+    /// panicked while holding the lock). This does not occur under
+    /// normal operation.
     pub fn disconnect(&self) {
         self.logger.info("Disconnecting");
         self.closing.store(true, Ordering::SeqCst);
@@ -522,12 +576,25 @@ impl Client {
     /// the full connect handshake again. Authorization state survives
     /// across reconnects because [`authenticate_blocking`] re-sends the
     /// stored token on the new socket.
+    ///
+    /// # Errors
+    ///
+    /// After the back-off sleep, propagates the error from [`connect`]:
+    /// `RelayError::Transport` if the new socket cannot be established,
+    /// `RelayError::Auth` if the re-handshake is rejected, or
+    /// `RelayError::Timeout` if the handshake response does not arrive
+    /// within `HANDSHAKE_TIMEOUT`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if an internal mutex is poisoned (i.e. another thread
+    /// panicked while holding the lock). This does not occur under
+    /// normal operation.
     pub fn reconnect(self: &Arc<Self>) -> Result<(), RelayError> {
         *self.connected.lock().unwrap() = false;
 
         let delay = self.bump_reconnect_delay();
-        self.logger
-            .warn(&format!("Reconnecting in {}s", delay));
+        self.logger.warn(&format!("Reconnecting in {delay}s"));
         thread::sleep(Duration::from_secs(delay));
 
         self.connect()
@@ -538,6 +605,12 @@ impl Client {
     /// `RECONNECT_MIN_DELAY` / `RECONNECT_MAX_DELAY` / backoff factor.
     /// Exposed (and tested) separately from [`reconnect`] so the math
     /// is verifiable without opening a real socket.
+    ///
+    /// # Panics
+    ///
+    /// Panics if an internal mutex is poisoned (i.e. another thread
+    /// panicked while holding the lock). This does not occur under
+    /// normal operation.
     pub fn bump_reconnect_delay(&self) -> u64 {
         let mut rd = self.reconnect_delay.lock().unwrap();
         let cur = *rd;
@@ -545,10 +618,24 @@ impl Client {
         cur
     }
 
+    /// Returns whether the client currently considers itself connected.
+    ///
+    /// # Panics
+    ///
+    /// Panics if an internal mutex is poisoned (i.e. another thread
+    /// panicked while holding the lock). This does not occur under
+    /// normal operation.
     pub fn is_connected(&self) -> bool {
         *self.connected.lock().unwrap()
     }
 
+    /// Returns whether the client's reader loop is still running.
+    ///
+    /// # Panics
+    ///
+    /// Panics if an internal mutex is poisoned (i.e. another thread
+    /// panicked while holding the lock). This does not occur under
+    /// normal operation.
     pub fn is_running(&self) -> bool {
         *self.running.lock().unwrap()
     }
@@ -571,6 +658,12 @@ impl Client {
     }
 
     /// Register a pending-response slot for a request ID.
+    ///
+    /// # Panics
+    ///
+    /// Panics if an internal mutex is poisoned (i.e. another thread
+    /// panicked while holding the lock). This does not occur under
+    /// normal operation.
     pub fn register_pending<R, E>(&self, id: &str, resolve: R, reject: E)
     where
         R: FnOnce(Value) + Send + 'static,
@@ -592,14 +685,19 @@ impl Client {
     /// frame on the writer channel so the reader thread flushes it to
     /// the WebSocket. With no live socket attached the call is purely
     /// in-memory — that's the path the dispatch unit tests below take.
+    ///
+    /// # Panics
+    ///
+    /// Panics if an internal mutex is poisoned (i.e. another thread
+    /// panicked while holding the lock). This does not occur under
+    /// normal operation.
     pub fn send(&self, msg: &Value) {
-        self.logger.debug(&format!(">> {}", msg));
+        self.logger.debug(&format!(">> {msg}"));
         self.sent_messages.lock().unwrap().push(msg.clone());
         if let Some(tx) = self.write_tx.lock().unwrap().as_ref() {
             let raw = msg.to_string();
             if let Err(e) = tx.send(WsMessage::Text(raw.into())) {
-                self.logger
-                    .warn(&format!("write channel closed: {}", e));
+                self.logger.warn(&format!("write channel closed: {e}"));
             }
         }
     }
@@ -618,15 +716,20 @@ impl Client {
     // ══════════════════════════════════════════════════════════════════
 
     /// Parse a raw JSON string from the server and route it.
+    ///
+    /// # Panics
+    ///
+    /// Panics if an internal mutex is poisoned (i.e. another thread
+    /// panicked while holding the lock). This does not occur under
+    /// normal operation.
     pub fn handle_message(&self, raw: &str) {
-        self.logger.debug(&format!("<< {}", raw));
+        self.logger.debug(&format!("<< {raw}"));
 
-        let data: Value = match serde_json::from_str(raw) {
-            Ok(d) => d,
-            Err(_) => {
-                self.logger.warn("Received unparseable message");
-                return;
-            }
+        let data: Value = if let Ok(d) = serde_json::from_str(raw) {
+            d
+        } else {
+            self.logger.warn("Received unparseable message");
+            return;
         };
 
         // ── response to a pending request ────────────────────────────
@@ -637,10 +740,8 @@ impl Client {
                     if let Some(reject) = slot.reject.take() {
                         reject(data["error"].clone());
                     }
-                } else {
-                    if let Some(resolve) = slot.resolve.take() {
-                        resolve(data.get("result").cloned().unwrap_or(json!({})));
-                    }
+                } else if let Some(resolve) = slot.resolve.take() {
+                    resolve(data.get("result").cloned().unwrap_or(json!({})));
                 }
                 return;
             }
@@ -648,10 +749,7 @@ impl Client {
 
         // ── server-initiated request ─────────────────────────────────
         let method = data.get("method").and_then(|v| v.as_str()).unwrap_or("");
-        let id = data
-            .get("id")
-            .and_then(|v| v.as_str())
-            .unwrap_or("");
+        let id = data.get("id").and_then(|v| v.as_str()).unwrap_or("");
 
         match method {
             "signalwire.ping" => {
@@ -666,13 +764,18 @@ impl Client {
                 self.handle_event(&outer_params);
             }
             _ => {
-                self.logger
-                    .debug(&format!("Unhandled method: {}", method));
+                self.logger.debug(&format!("Unhandled method: {method}"));
             }
         }
     }
 
     /// Route a signalwire.event payload to the appropriate handler.
+    ///
+    /// # Panics
+    ///
+    /// Panics if an internal mutex is poisoned (i.e. another thread
+    /// panicked while holding the lock). This does not occur under
+    /// normal operation.
     pub fn handle_event(&self, outer_params: &Value) {
         let event_type = outer_params
             .get("event_type")
@@ -687,10 +790,13 @@ impl Client {
             let auth_state = params
                 .get("authorization_state")
                 .and_then(|v| v.as_str())
-                .map(|s| s.to_string());
-            *self.authorization_state.lock().unwrap() = auth_state.clone();
+                .map(std::string::ToString::to_string);
+            self.authorization_state
+                .lock()
+                .unwrap()
+                .clone_from(&auth_state);
             self.logger
-                .info(&format!("Authorization state: {:?}", auth_state));
+                .info(&format!("Authorization state: {auth_state:?}"));
             return;
         }
 
@@ -711,18 +817,13 @@ impl Client {
         // ── message state updates ────────────────────────────────────
         if event_type == "messaging.state" {
             if let Some(msg_id) = params.get("message_id").and_then(|v| v.as_str()) {
-                let msg = self
-                    .messages
-                    .lock()
-                    .unwrap()
-                    .get(msg_id)
-                    .cloned();
+                let msg = self.messages.lock().unwrap().get(msg_id).cloned();
                 if let Some(msg) = msg {
                     msg.dispatch_event(&event);
-                    if let Some(s) = params.get("state").and_then(|v| v.as_str()) {
-                        if constants::is_message_terminal(s) {
-                            self.messages.lock().unwrap().remove(msg_id);
-                        }
+                    if let Some(s) = params.get("state").and_then(|v| v.as_str())
+                        && constants::is_message_terminal(s)
+                    {
+                        self.messages.lock().unwrap().remove(msg_id);
                     }
                 }
             }
@@ -730,17 +831,15 @@ impl Client {
         }
 
         // ── call state with a pending dial tag ───────────────────────
-        if event_type == "calling.call.state" {
-            if let Some(tag) = params.get("tag").and_then(|v| v.as_str()) {
-                let has_dial = self.pending_dials.lock().unwrap().contains_key(tag);
-                if has_dial {
-                    if let Some(call_id) = params.get("call_id").and_then(|v| v.as_str()) {
-                        let mut calls = self.calls.lock().unwrap();
-                        if !calls.contains_key(call_id) {
-                            let call = Arc::new(Call::new(&params));
-                            calls.insert(call_id.to_string(), call);
-                        }
-                    }
+        if event_type == "calling.call.state"
+            && let Some(tag) = params.get("tag").and_then(|v| v.as_str())
+        {
+            let has_dial = self.pending_dials.lock().unwrap().contains_key(tag);
+            if has_dial && let Some(call_id) = params.get("call_id").and_then(|v| v.as_str()) {
+                let mut calls = self.calls.lock().unwrap();
+                if !calls.contains_key(call_id) {
+                    let call = Arc::new(Call::new(&params));
+                    calls.insert(call_id.to_string(), call);
                 }
             }
         }
@@ -752,10 +851,7 @@ impl Client {
         }
 
         // ── default: route to the Call by call_id ────────────────────
-        if let Some(call_id) = params
-            .get("call_id")
-            .and_then(|v| v.as_str())
-        {
+        if let Some(call_id) = params.get("call_id").and_then(|v| v.as_str()) {
             let call = self.calls.lock().unwrap().get(call_id).cloned();
             if let Some(call) = call {
                 call.dispatch_event(&event);
@@ -778,6 +874,12 @@ impl Client {
     // ══════════════════════════════════════════════════════════════════
 
     /// Subscribe to one or more inbound contexts.
+    ///
+    /// # Panics
+    ///
+    /// Panics if an internal mutex is poisoned (i.e. another thread
+    /// panicked while holding the lock). This does not occur under
+    /// normal operation.
     pub fn receive(&self, contexts: &[String]) {
         {
             let mut ctx = self.contexts.lock().unwrap();
@@ -792,6 +894,12 @@ impl Client {
     }
 
     /// Unsubscribe from one or more contexts.
+    ///
+    /// # Panics
+    ///
+    /// Panics if an internal mutex is poisoned (i.e. another thread
+    /// panicked while holding the lock). This does not occur under
+    /// normal operation.
     pub fn unreceive(&self, contexts: &[String]) {
         {
             let mut ctx = self.contexts.lock().unwrap();
@@ -802,31 +910,67 @@ impl Client {
     }
 
     /// Register a handler for inbound calls.
+    ///
+    /// # Panics
+    ///
+    /// Panics if an internal mutex is poisoned (i.e. another thread
+    /// panicked while holding the lock). This does not occur under
+    /// normal operation.
     pub fn on_call<F: Fn(Arc<Call>, &Event) + Send + Sync + 'static>(&self, cb: F) {
         *self.on_call_handler.lock().unwrap() = Some(Box::new(cb));
     }
 
     /// Register a handler for inbound messages.
+    ///
+    /// # Panics
+    ///
+    /// Panics if an internal mutex is poisoned (i.e. another thread
+    /// panicked while holding the lock). This does not occur under
+    /// normal operation.
     pub fn on_message<F: Fn(&Event, &Value) + Send + Sync + 'static>(&self, cb: F) {
         *self.on_message_handler.lock().unwrap() = Some(Box::new(cb));
     }
 
     /// Register a generic event handler.
+    ///
+    /// # Panics
+    ///
+    /// Panics if an internal mutex is poisoned (i.e. another thread
+    /// panicked while holding the lock). This does not occur under
+    /// normal operation.
     pub fn on_event<F: Fn(&Event, &Value) + Send + Sync + 'static>(&self, cb: F) {
         *self.on_event_handler.lock().unwrap() = Some(Box::new(cb));
     }
 
     /// Get a call by ID.
+    ///
+    /// # Panics
+    ///
+    /// Panics if an internal mutex is poisoned (i.e. another thread
+    /// panicked while holding the lock). This does not occur under
+    /// normal operation.
     pub fn get_call(&self, call_id: &str) -> Option<Arc<Call>> {
         self.calls.lock().unwrap().get(call_id).cloned()
     }
 
     /// Get a message by ID.
+    ///
+    /// # Panics
+    ///
+    /// Panics if an internal mutex is poisoned (i.e. another thread
+    /// panicked while holding the lock). This does not occur under
+    /// normal operation.
     pub fn get_message(&self, message_id: &str) -> Option<Arc<Message>> {
         self.messages.lock().unwrap().get(message_id).cloned()
     }
 
     /// Track a new message.
+    ///
+    /// # Panics
+    ///
+    /// Panics if an internal mutex is poisoned (i.e. another thread
+    /// panicked while holding the lock). This does not occur under
+    /// normal operation.
     pub fn track_message(&self, message_id: &str, msg: Arc<Message>) {
         self.messages
             .lock()
@@ -835,11 +979,13 @@ impl Client {
     }
 
     /// Register a pending dial.
-    pub fn register_dial<F: FnOnce(Arc<Call>) + Send + 'static>(
-        &self,
-        tag: &str,
-        resolve: F,
-    ) {
+    ///
+    /// # Panics
+    ///
+    /// Panics if an internal mutex is poisoned (i.e. another thread
+    /// panicked while holding the lock). This does not occur under
+    /// normal operation.
+    pub fn register_dial<F: FnOnce(Arc<Call>) + Send + 'static>(&self, tag: &str, resolve: F) {
         self.pending_dials.lock().unwrap().insert(
             tag.to_string(),
             PendingDial {
@@ -850,6 +996,12 @@ impl Client {
     }
 
     /// Remove a pending dial.
+    ///
+    /// # Panics
+    ///
+    /// Panics if an internal mutex is poisoned (i.e. another thread
+    /// panicked while holding the lock). This does not occur under
+    /// normal operation.
     pub fn remove_pending_dial(&self, tag: &str) {
         self.pending_dials.lock().unwrap().remove(tag);
     }
@@ -869,11 +1021,22 @@ impl Client {
     ///
     /// Returns the response's `result` value on success, or an `Err`
     /// with the server's error message on failure or timeout.
-    pub fn execute_blocking(
-        &self,
-        method: &str,
-        inner_params: Value,
-    ) -> Result<Value, RelayError> {
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err(RelayError::Rpc { method, message })` when the
+    /// server replies with a JSON-RPC error for `method` (the `message`
+    /// comes from the error's `message` field, defaulting to
+    /// `"execute failed"`), or `Err(RelayError::Timeout)` if no response
+    /// for the request id arrives within `HANDSHAKE_TIMEOUT` (the
+    /// pending entry is removed on timeout).
+    ///
+    /// # Panics
+    ///
+    /// Panics if an internal mutex is poisoned (i.e. another thread
+    /// panicked while holding the lock). This does not occur under
+    /// normal operation.
+    pub fn execute_blocking(&self, method: &str, inner_params: Value) -> Result<Value, RelayError> {
         let id = generate_uuid();
         let frame = json!({
             "jsonrpc": "2.0",
@@ -924,6 +1087,21 @@ impl Client {
     /// `body` or `media` must be supplied. Returns a tracked `Message`
     /// whose state will progress as `messaging.state` events arrive
     /// from the server.
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err(RelayError::InvalidArgument { message: "At least one
+    /// of body or media is required" })` if both `body` and `media` are
+    /// empty/absent. Otherwise propagates the error from the underlying
+    /// `messaging.send` call via [`execute_blocking`]:
+    /// `RelayError::Rpc` if the server rejects the send, or
+    /// `RelayError::Timeout` if no response arrives in time.
+    ///
+    /// # Panics
+    ///
+    /// Panics if an internal mutex is poisoned (i.e. another thread
+    /// panicked while holding the lock). This does not occur under
+    /// normal operation.
     pub fn send_message_blocking(
         &self,
         to_number: &str,
@@ -933,7 +1111,7 @@ impl Client {
         tags: Option<&[String]>,
         context: Option<&str>,
     ) -> Result<Arc<Message>, RelayError> {
-        if body.unwrap_or("").is_empty() && media.map(<[String]>::is_empty).unwrap_or(true) {
+        if body.unwrap_or("").is_empty() && media.is_none_or(<[String]>::is_empty) {
             return Err(RelayError::InvalidArgument {
                 message: "At least one of body or media is required".to_string(),
             });
@@ -949,20 +1127,20 @@ impl Client {
             "to_number": to_number,
             "from_number": from_number,
         });
-        if let Some(b) = body {
-            if !b.is_empty() {
-                params["body"] = json!(b);
-            }
+        if let Some(b) = body
+            && !b.is_empty()
+        {
+            params["body"] = json!(b);
         }
-        if let Some(m) = media {
-            if !m.is_empty() {
-                params["media"] = json!(m);
-            }
+        if let Some(m) = media
+            && !m.is_empty()
+        {
+            params["media"] = json!(m);
         }
-        if let Some(t) = tags {
-            if !t.is_empty() {
-                params["tags"] = json!(t);
-            }
+        if let Some(t) = tags
+            && !t.is_empty()
+        {
+            params["tags"] = json!(t);
         }
 
         let result = self.execute_blocking("messaging.send", params)?;
@@ -1011,6 +1189,22 @@ impl Client {
     /// `devices` is the standard serial/parallel device matrix
     /// (`[[device]]` for one parallel leg / serial = one inner list with
     /// multiple devices).
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err(RelayError::DialFailed { reason })` if no
+    /// `calling.call.dial` answer event for this `tag` arrives within
+    /// `dial_timeout` — `reason` is the failure message captured from a
+    /// `failed` dial event when one was seen, otherwise a synthesized
+    /// `"timed out waiting for answer (tag=...)"`. The fire-and-forget
+    /// `calling.dial` RPC's own result is intentionally not gated on, so
+    /// it does not surface as an error here.
+    ///
+    /// # Panics
+    ///
+    /// Panics if an internal mutex is poisoned (i.e. another thread
+    /// panicked while holding the lock). This does not occur under
+    /// normal operation.
     pub fn dial_blocking(
         self: &Arc<Self>,
         devices: Value,
@@ -1018,9 +1212,7 @@ impl Client {
         max_duration: Option<u32>,
         dial_timeout: Duration,
     ) -> Result<Arc<Call>, RelayError> {
-        let dial_tag = tag
-            .map(str::to_string)
-            .unwrap_or_else(generate_uuid);
+        let dial_tag = tag.map_or_else(generate_uuid, str::to_string);
 
         let (resolve_tx, resolve_rx) = mpsc::channel::<Arc<Call>>();
         // Fail channel — when the SDK observes a `failed` dial event for
@@ -1054,17 +1246,16 @@ impl Client {
         // Wait for either the resolved call or the timeout. The
         // existing `handle_dial_event` resolves only on the
         // `calling.call.dial` event with a `call.call_id` in `params.call`.
-        match resolve_rx.recv_timeout(dial_timeout) {
-            Ok(call) => Ok(call),
-            Err(_) => {
-                self.remove_pending_dial(&dial_tag);
-                if let Some(reason) = dial_failed.lock().unwrap().clone() {
-                    Err(RelayError::DialFailed { reason })
-                } else {
-                    Err(RelayError::DialFailed {
-                        reason: format!("timed out waiting for answer (tag={dial_tag})"),
-                    })
-                }
+        if let Ok(call) = resolve_rx.recv_timeout(dial_timeout) {
+            Ok(call)
+        } else {
+            self.remove_pending_dial(&dial_tag);
+            if let Some(reason) = dial_failed.lock().unwrap().clone() {
+                Err(RelayError::DialFailed { reason })
+            } else {
+                Err(RelayError::DialFailed {
+                    reason: format!("timed out waiting for answer (tag={dial_tag})"),
+                })
             }
         }
     }
@@ -1074,12 +1265,9 @@ impl Client {
     // ══════════════════════════════════════════════════════════════════
 
     fn handle_inbound_call(&self, event: &Event, params: &Value) {
-        let call_id = match params.get("call_id").and_then(|v| v.as_str()) {
-            Some(id) => id,
-            None => {
-                self.logger.warn("Inbound call event missing call_id");
-                return;
-            }
+        let Some(call_id) = params.get("call_id").and_then(|v| v.as_str()) else {
+            self.logger.warn("Inbound call event missing call_id");
+            return;
         };
 
         let call = Arc::new(Call::new(params));
@@ -1088,8 +1276,7 @@ impl Client {
             .unwrap()
             .insert(call_id.to_string(), call.clone());
 
-        self.logger
-            .info(&format!("Inbound call {}", call_id));
+        self.logger.info(&format!("Inbound call {call_id}"));
 
         if let Some(handler) = self.on_call_handler.lock().unwrap().as_ref() {
             handler(call, event);
@@ -1108,7 +1295,9 @@ impl Client {
         // nested `call` object as the construction params so the resulting
         // Call carries device/tag fields too.
         let call_obj = params.get("call");
-        let nested_call_id = call_obj.and_then(|c| c.get("call_id")).and_then(|v| v.as_str());
+        let nested_call_id = call_obj
+            .and_then(|c| c.get("call_id"))
+            .and_then(|v| v.as_str());
         let top_level_call_id = params.get("call_id").and_then(|v| v.as_str());
         let call_id = nested_call_id.or(top_level_call_id);
 
@@ -1127,7 +1316,7 @@ impl Client {
             .unwrap_or("");
 
         if dial_state == "failed" {
-            self.logger.warn(&format!("dial failed for tag={}", tag));
+            self.logger.warn(&format!("dial failed for tag={tag}"));
             self.pending_dials.lock().unwrap().remove(&tag);
             return;
         }
@@ -1168,11 +1357,7 @@ impl Client {
     /// dispatching every inbound text frame through `handle_message`.
     /// Exits when the closing flag is set, the write channel is
     /// dropped, or the socket reports a fatal error.
-    fn reader_loop(
-        client: Arc<Self>,
-        mut socket: WsStream,
-        write_rx: Receiver<WsMessage>,
-    ) {
+    fn reader_loop(client: Arc<Self>, mut socket: WsStream, write_rx: Receiver<WsMessage>) {
         // Track whether we observed a clean close so the disconnect
         // logic can decide whether to attempt a reconnect later.
         loop {
@@ -1191,9 +1376,7 @@ impl Client {
                 match write_rx.try_recv() {
                     Ok(frame) => {
                         if let Err(e) = socket.send(frame) {
-                            client
-                                .logger
-                                .warn(&format!("WS send error: {}", e));
+                            client.logger.warn(&format!("WS send error: {e}"));
                             break;
                         }
                         wrote_any = true;
@@ -1224,9 +1407,7 @@ impl Client {
                     // log and drop.
                     match std::str::from_utf8(&b) {
                         Ok(s) => client.handle_message(s),
-                        Err(_) => client
-                            .logger
-                            .debug("ignoring non-UTF8 binary WS frame"),
+                        Err(_) => client.logger.debug("ignoring non-UTF8 binary WS frame"),
                     }
                 }
                 Ok(WsMessage::Ping(p)) => {
@@ -1235,17 +1416,13 @@ impl Client {
                     // half-open detector doesn't fire.
                     let _ = socket.send(WsMessage::Pong(p));
                 }
-                Ok(WsMessage::Pong(_)) => {
-                    // No-op; we don't track our own pings here.
-                }
+                // Pong: we don't track our own pings here. Frame: a raw frame
+                // shouldn't occur with the protocol module's `read()` API. Both no-op.
+                Ok(WsMessage::Pong(_) | WsMessage::Frame(_)) => {}
                 Ok(WsMessage::Close(_)) => {
                     client.logger.info("server closed WS");
                     *client.connected.lock().unwrap() = false;
                     break;
-                }
-                Ok(WsMessage::Frame(_)) => {
-                    // Raw frame — should not happen with the protocol
-                    // module's `read()` API. Ignore.
                 }
                 Err(tungstenite::Error::Io(e))
                     if e.kind() == std::io::ErrorKind::WouldBlock
@@ -1264,7 +1441,7 @@ impl Client {
                     break;
                 }
                 Err(e) => {
-                    client.logger.warn(&format!("WS read error: {}", e));
+                    client.logger.warn(&format!("WS read error: {e}"));
                     *client.connected.lock().unwrap() = false;
                     break;
                 }
@@ -1292,12 +1469,12 @@ fn generate_uuid() -> String {
         u16::from_be_bytes([data[4], data[5]]),
         u16::from_be_bytes([data[6], data[7]]),
         u16::from_be_bytes([data[8], data[9]]),
-        ((data[10] as u64) << 40)
-            | ((data[11] as u64) << 32)
-            | ((data[12] as u64) << 24)
-            | ((data[13] as u64) << 16)
-            | ((data[14] as u64) << 8)
-            | (data[15] as u64),
+        (u64::from(data[10]) << 40)
+            | (u64::from(data[11]) << 32)
+            | (u64::from(data[12]) << 24)
+            | (u64::from(data[13]) << 16)
+            | (u64::from(data[14]) << 8)
+            | u64::from(data[15]),
     )
 }
 
@@ -1412,12 +1589,12 @@ mod tests {
         // vars. Other tests in this module don't touch them.
         unsafe {
             std::env::set_var("SIGNALWIRE_RELAY_SCHEME", "ws");
-            std::env::set_var("SIGNALWIRE_RELAY_HOST", format!("127.0.0.1:{}", port));
+            std::env::set_var("SIGNALWIRE_RELAY_HOST", format!("127.0.0.1:{port}"));
         }
 
         let client = Arc::new(Client::new("test-project", "test-token", "ignored"));
         let res = client.connect();
-        assert!(res.is_ok(), "connect failed: {:?}", res);
+        assert!(res.is_ok(), "connect failed: {res:?}");
         // Authorization state should have been captured from the
         // fixture's response — proves the client parsed
         // `result.authorization.authorization_state`.
@@ -1446,7 +1623,10 @@ mod tests {
         let msgs = c.sent_messages.lock().unwrap();
         assert_eq!(msgs.len(), 1);
         assert_eq!(msgs[0]["method"], "signalwire.connect");
-        assert_eq!(msgs[0]["params"]["authentication"]["project"], "test-project");
+        assert_eq!(
+            msgs[0]["params"]["authentication"]["project"],
+            "test-project"
+        );
     }
 
     #[test]

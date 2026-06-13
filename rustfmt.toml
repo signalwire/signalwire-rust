@@ -1,0 +1,14 @@
+# rustfmt configuration for signalwire-rust.
+#
+# Pins the formatting style so the FMT gate (`cargo fmt --all -- --check` in
+# scripts/run-ci.sh) is stable across rustfmt versions and contributors. This
+# is a Rust-internal source-consistency gate — it has NOTHING to do with
+# cross-port parity (RULES.md governs functionality/wire-shape; the drift /
+# surface / emission gates stay blind to source whitespace). Formatting idiom
+# is per-port and governed by PORT_PHILOSOPHY_RUST.md.
+#
+# We use stable rustfmt's defaults (100-col width, block indent, sorted
+# imports) — matching the wider Rust ecosystem and what the clippy LINT gate
+# already assumes. `style_edition` ties the default style to the 2024 edition
+# so a newer rustfmt won't silently re-flow the whole tree.
+style_edition = "2024"

@@ -1,7 +1,7 @@
 //! Amazon Bedrock voice-to-voice agent.
 //!
 //! `BedrockAgent` extends [`AgentBase`] (via composition + `Deref`) so it
-//! shares all of AgentBase's features (prompt building, skills, tools,
+//! shares all of `AgentBase`'s features (prompt building, skills, tools,
 //! post-prompt, dynamic configuration) but emits an `amazon_bedrock`
 //! verb in the rendered SWML document instead of the standard `ai`
 //! verb.
@@ -10,7 +10,7 @@
 
 use std::collections::HashMap;
 
-use serde_json::{json, Map, Value};
+use serde_json::{Map, Value, json};
 
 use crate::agent::{AgentBase, AgentOptions};
 use crate::logging::Logger;
@@ -91,7 +91,7 @@ impl BedrockOptions {
 }
 
 impl BedrockAgent {
-    /// Construct a new BedrockAgent.
+    /// Construct a new `BedrockAgent`.
     ///
     /// Mirrors Python's
     /// `BedrockAgent(name=..., route=..., system_prompt=..., voice_id=...,
@@ -132,7 +132,7 @@ impl BedrockAgent {
     /// Set the Bedrock voice id (e.g. `"matthew"`, `"joanna"`).
     pub fn set_voice(&mut self, voice_id: &str) -> &mut Self {
         self.voice_id = voice_id.to_string();
-        self.logger.debug(&format!("Voice set to: {}", voice_id));
+        self.logger.debug(&format!("Voice set to: {voice_id}"));
         self
     }
 
@@ -165,8 +165,7 @@ impl BedrockAgent {
     /// Python's documented behavior.
     pub fn set_llm_model(&mut self, model: &str) -> &mut Self {
         self.logger.warn(&format!(
-            "set_llm_model('{}') called but Bedrock uses a fixed voice-to-voice model",
-            model
+            "set_llm_model('{model}') called but Bedrock uses a fixed voice-to-voice model"
         ));
         self
     }
@@ -199,30 +198,31 @@ impl BedrockAgent {
     /// Render SWML, transforming the `ai` verb into an
     /// `amazon_bedrock` verb that carries the Bedrock voice and
     /// inference parameters. Mirrors Python's `_render_swml`.
+    #[must_use]
     pub fn render_swml(&self, headers: &HashMap<String, String>) -> Value {
         let mut swml = self.agent.render_swml(headers);
 
         // Locate the `main` section list and rewrite the first `ai`
         // verb in-place into an `amazon_bedrock` verb.
-        if let Some(sections) = swml.get_mut("sections").and_then(|v| v.as_object_mut()) {
-            if let Some(main) = sections.get_mut("main").and_then(|v| v.as_array_mut()) {
-                for item in main.iter_mut() {
-                    let Some(obj) = item.as_object_mut() else {
-                        continue;
-                    };
-                    if !obj.contains_key("ai") {
-                        continue;
-                    }
-                    let ai_value = obj.remove("ai").unwrap_or(Value::Null);
-                    let ai_obj = match ai_value {
-                        Value::Object(m) => m,
-                        _ => Map::new(),
-                    };
-
-                    let bedrock_obj = self.build_bedrock_block(ai_obj);
-                    obj.insert("amazon_bedrock".to_string(), Value::Object(bedrock_obj));
-                    break;
+        if let Some(sections) = swml.get_mut("sections").and_then(|v| v.as_object_mut())
+            && let Some(main) = sections.get_mut("main").and_then(|v| v.as_array_mut())
+        {
+            for item in main.iter_mut() {
+                let Some(obj) = item.as_object_mut() else {
+                    continue;
+                };
+                if !obj.contains_key("ai") {
+                    continue;
                 }
+                let ai_value = obj.remove("ai").unwrap_or(Value::Null);
+                let ai_obj = match ai_value {
+                    Value::Object(m) => m,
+                    _ => Map::new(),
+                };
+
+                let bedrock_obj = self.build_bedrock_block(ai_obj);
+                obj.insert("amazon_bedrock".to_string(), Value::Object(bedrock_obj));
+                break;
             }
         }
 
@@ -230,8 +230,8 @@ impl BedrockAgent {
     }
 
     /// Build the Bedrock verb body from the AI-verb body, copying the
-    /// fields that survive (prompt, SWAIG, params, global_data,
-    /// post_prompt, post_prompt_url) and rewriting `prompt` so the
+    /// fields that survive (prompt, SWAIG, params, `global_data`,
+    /// `post_prompt`, `post_prompt_url`) and rewriting `prompt` so the
     /// voice configuration and inference params live inside it.
     fn build_bedrock_block(&self, ai: Map<String, Value>) -> Map<String, Value> {
         let mut out: Map<String, Value> = Map::new();
@@ -263,15 +263,15 @@ impl BedrockAgent {
             out.insert("global_data".to_string(), json!({}));
         }
 
-        if let Some(pp) = ai.get("post_prompt") {
-            if !pp.is_null() {
-                out.insert("post_prompt".to_string(), pp.clone());
-            }
+        if let Some(pp) = ai.get("post_prompt")
+            && !pp.is_null()
+        {
+            out.insert("post_prompt".to_string(), pp.clone());
         }
-        if let Some(ppu) = ai.get("post_prompt_url") {
-            if !ppu.is_null() {
-                out.insert("post_prompt_url".to_string(), ppu.clone());
-            }
+        if let Some(ppu) = ai.get("post_prompt_url")
+            && !ppu.is_null()
+        {
+            out.insert("post_prompt_url".to_string(), ppu.clone());
         }
 
         // Drop None-valued entries (mirrors Python's filter).
@@ -465,7 +465,7 @@ mod tests {
         // Ensure no item still carries an `ai` verb.
         assert!(
             main.iter()
-                .all(|v| v.as_object().map(|o| !o.contains_key("ai")).unwrap_or(true)),
+                .all(|v| v.as_object().is_none_or(|o| !o.contains_key("ai"))),
             "ai verb should have been replaced"
         );
     }
@@ -510,7 +510,13 @@ mod tests {
         }));
 
         let swml = agent.render_swml(&HashMap::new());
-        let main = swml.get("sections").unwrap().get("main").unwrap().as_array().unwrap();
+        let main = swml
+            .get("sections")
+            .unwrap()
+            .get("main")
+            .unwrap()
+            .as_array()
+            .unwrap();
         let prompt = main
             .iter()
             .find_map(|i| i.as_object().and_then(|o| o.get("amazon_bedrock")))
@@ -542,15 +548,18 @@ mod tests {
         agent.prompt_add_section("intro", "say hi", vec![]);
         // Functional: render still emits amazon_bedrock verb.
         let swml = agent.render_swml(&HashMap::new());
-        assert!(swml
-            .get("sections")
-            .unwrap()
-            .get("main")
-            .unwrap()
-            .as_array()
-            .unwrap()
-            .iter()
-            .any(|i| i.as_object().map(|o| o.contains_key("amazon_bedrock")).unwrap_or(false)));
+        assert!(
+            swml.get("sections")
+                .unwrap()
+                .get("main")
+                .unwrap()
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|i| i
+                    .as_object()
+                    .is_some_and(|o| o.contains_key("amazon_bedrock")))
+        );
     }
 
     #[test]
@@ -565,14 +574,30 @@ mod tests {
             false,
         );
         let swml = agent.render_swml(&HashMap::new());
-        let main = swml.get("sections").unwrap().get("main").unwrap().as_array().unwrap();
+        let main = swml
+            .get("sections")
+            .unwrap()
+            .get("main")
+            .unwrap()
+            .as_array()
+            .unwrap();
         let bedrock = main
             .iter()
             .find_map(|i| i.as_object().and_then(|o| o.get("amazon_bedrock")))
             .expect("amazon_bedrock verb");
-        let swaig = bedrock.get("SWAIG").and_then(|v| v.as_object()).expect("SWAIG");
+        let swaig = bedrock
+            .get("SWAIG")
+            .and_then(|v| v.as_object())
+            .expect("SWAIG");
         // The AgentBase build_ai_verb populates SWAIG.functions for registered tools.
-        let funcs = swaig.get("functions").and_then(|v| v.as_array()).expect("functions");
-        assert!(funcs.iter().any(|f| f.get("function").and_then(|n| n.as_str()) == Some("lookup")));
+        let funcs = swaig
+            .get("functions")
+            .and_then(|v| v.as_array())
+            .expect("functions");
+        assert!(
+            funcs
+                .iter()
+                .any(|f| f.get("function").and_then(|n| n.as_str()) == Some("lookup"))
+        );
     }
 }

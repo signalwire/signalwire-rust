@@ -16,12 +16,13 @@
 
 use std::collections::BTreeMap;
 use std::env;
+use std::fmt::Write as _;
 use std::fs;
 use std::path::Path;
 
 use serde_json::{Map, Value};
 
-/// SchemaValidationError — Rust port of
+/// `SchemaValidationError` — Rust port of
 /// `signalwire.utils.schema_utils.SchemaValidationError`.
 #[derive(Debug, Clone)]
 pub struct SchemaValidationError {
@@ -30,7 +31,7 @@ pub struct SchemaValidationError {
 }
 
 impl SchemaValidationError {
-    /// Construct a SchemaValidationError. Mirrors Python's
+    /// Construct a `SchemaValidationError`. Mirrors Python's
     /// `SchemaValidationError(verb_name, errors)`.
     pub fn new(verb_name: String, errors: Vec<String>) -> Self {
         Self { verb_name, errors }
@@ -58,7 +59,7 @@ pub struct VerbDefinition {
     pub definition: Value,
 }
 
-/// SchemaUtils — Rust port of
+/// `SchemaUtils` — Rust port of
 /// `signalwire.utils.schema_utils.SchemaUtils`.
 pub struct SchemaUtils {
     schema: Value,
@@ -69,7 +70,7 @@ pub struct SchemaUtils {
 }
 
 impl SchemaUtils {
-    /// Construct a SchemaUtils.  Mirrors Python's
+    /// Construct a `SchemaUtils`.  Mirrors Python's
     /// `SchemaUtils(schema_path=None, schema_validation=True)`.
     pub fn new(schema_path: Option<String>, schema_validation: bool) -> Self {
         let env_skip = env_boolish(&env::var("SWML_SKIP_SCHEMA_VALIDATION").unwrap_or_default());
@@ -114,9 +115,8 @@ impl SchemaUtils {
     /// The `properties[verb_name]` block for a verb, or empty when
     /// unknown.  Mirrors Python's `get_verb_properties(verb_name)`.
     pub fn get_verb_properties(&self, verb_name: &str) -> Map<String, Value> {
-        let v = match self.verbs.get(verb_name) {
-            Some(v) => v,
-            None => return Map::new(),
+        let Some(v) = self.verbs.get(verb_name) else {
+            return Map::new();
         };
         let outer_props = v.definition.get("properties").and_then(|p| p.as_object());
         let inner = outer_props.and_then(|p| p.get(verb_name));
@@ -134,7 +134,7 @@ impl SchemaUtils {
         match inner.get("required").and_then(|r| r.as_array()) {
             Some(arr) => arr
                 .iter()
-                .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                .filter_map(|v| v.as_str().map(std::string::ToString::to_string))
                 .collect(),
             None => Vec::new(),
         }
@@ -170,15 +170,18 @@ impl SchemaUtils {
         self.validate_verb_lightweight(verb_name, verb_config)
     }
 
-    fn validate_verb_lightweight(&self, verb_name: &str, verb_config: &Value) -> (bool, Vec<String>) {
+    fn validate_verb_lightweight(
+        &self,
+        verb_name: &str,
+        verb_config: &Value,
+    ) -> (bool, Vec<String>) {
         let mut errors = Vec::new();
         let cfg_obj = verb_config.as_object();
         for prop in self.get_verb_required_properties(verb_name) {
-            let present = cfg_obj.map(|o| o.contains_key(&prop)).unwrap_or(false);
+            let present = cfg_obj.is_some_and(|o| o.contains_key(&prop));
             if !present {
                 errors.push(format!(
-                    "Missing required property '{}' for verb '{}'",
-                    prop, verb_name
+                    "Missing required property '{prop}' for verb '{verb_name}'"
                 ));
             }
         }
@@ -199,26 +202,33 @@ impl SchemaUtils {
 
     /// Generate a Python-style method signature string for a verb.
     /// Mirrors Python's `generate_method_signature(verb_name)`.
+    ///
+    /// # Panics
+    ///
+    /// Does not panic in practice: the internal `params.get(name).unwrap()`
+    /// looks up keys taken directly from `params.keys()`, so every lookup is
+    /// guaranteed to be present.
+    #[must_use]
     pub fn generate_method_signature(&self, verb_name: &str) -> String {
         let params = self.get_verb_parameters(verb_name);
-        let required: std::collections::HashSet<String> =
-            self.get_verb_required_properties(verb_name).into_iter().collect();
+        let required: std::collections::HashSet<String> = self
+            .get_verb_required_properties(verb_name)
+            .into_iter()
+            .collect();
         let mut parts: Vec<String> = vec!["self".to_string()];
         let mut keys: Vec<&String> = params.keys().collect();
         keys.sort();
         for name in &keys {
             let t = python_type_annotation(params.get(*name).unwrap());
             if required.contains(*name) {
-                parts.push(format!("{}: {}", name, t));
+                parts.push(format!("{name}: {t}"));
             } else {
-                parts.push(format!("{}: Optional[{}] = None", name, t));
+                parts.push(format!("{name}: Optional[{t}] = None"));
             }
         }
         parts.push("**kwargs".to_string());
-        let mut doc = format!(
-            "\"\"\"\n        Add the {} verb to the current document\n        \n",
-            verb_name
-        );
+        let mut doc =
+            format!("\"\"\"\n        Add the {verb_name} verb to the current document\n        \n");
         for name in &keys {
             let desc = params
                 .get(*name)
@@ -226,7 +236,7 @@ impl SchemaUtils {
                 .and_then(|d| d.as_str())
                 .map(|s| s.replace('\n', " ").trim().to_string())
                 .unwrap_or_default();
-            doc.push_str(&format!("        Args:\n            {}: {}\n", name, desc));
+            let _ = write!(doc, "        Args:\n            {name}: {desc}\n");
         }
         doc.push_str(
             "        \n        Returns:\n            True if the verb was added successfully, False otherwise\n        \"\"\"\n",
@@ -236,6 +246,7 @@ impl SchemaUtils {
 
     /// Generate a Python-style method body string for a verb.  Mirrors
     /// Python's `generate_method_body(verb_name)`.
+    #[must_use]
     pub fn generate_method_body(&self, verb_name: &str) -> String {
         let params = self.get_verb_parameters(verb_name);
         let mut keys: Vec<&String> = params.keys().collect();
@@ -245,43 +256,45 @@ impl SchemaUtils {
             "        config = {}".to_string(),
         ];
         for name in &keys {
-            lines.push(format!("        if {} is not None:", name));
-            lines.push(format!("            config['{}'] = {}", name, name));
+            lines.push(format!("        if {name} is not None:"));
+            lines.push(format!("            config['{name}'] = {name}"));
         }
         lines.push("        # Add any additional parameters from kwargs".to_string());
         lines.push("        for key, value in kwargs.items():".to_string());
         lines.push("            if value is not None:".to_string());
         lines.push("                config[key] = value".to_string());
         lines.push(String::new());
-        lines.push(format!("        # Add the {} verb", verb_name));
-        lines.push(format!("        return self.add_verb('{}', config)", verb_name));
+        lines.push(format!("        # Add the {verb_name} verb"));
+        lines.push(format!(
+            "        return self.add_verb('{verb_name}', config)"
+        ));
         lines.join("\n")
     }
 
     fn extract_verbs(&mut self) {
-        let defs = match self.schema.get("$defs").and_then(|d| d.as_object()) {
-            Some(d) => d,
-            None => return,
+        let Some(defs) = self.schema.get("$defs").and_then(|d| d.as_object()) else {
+            return;
         };
-        let any_of = match defs.get("SWMLMethod").and_then(|m| m.get("anyOf")).and_then(|a| a.as_array()) {
-            Some(a) => a,
-            None => return,
+        let Some(any_of) = defs
+            .get("SWMLMethod")
+            .and_then(|m| m.get("anyOf"))
+            .and_then(|a| a.as_array())
+        else {
+            return;
         };
         for entry in any_of {
-            let ref_str = match entry.get("$ref").and_then(|r| r.as_str()) {
-                Some(s) => s,
-                None => continue,
+            let Some(ref_str) = entry.get("$ref").and_then(|r| r.as_str()) else {
+                continue;
             };
             let prefix = "#/$defs/";
             if !ref_str.starts_with(prefix) {
                 continue;
             }
             let schema_name = &ref_str[prefix.len()..];
-            let defn = match defs.get(schema_name) {
-                Some(d) => d,
-                None => continue,
+            let Some(def_schema) = defs.get(schema_name) else {
+                continue;
             };
-            let props = match defn.get("properties").and_then(|p| p.as_object()) {
+            let props = match def_schema.get("properties").and_then(|p| p.as_object()) {
                 Some(p) if !p.is_empty() => p,
                 _ => continue,
             };
@@ -294,7 +307,7 @@ impl SchemaUtils {
                 VerbDefinition {
                     name: actual_verb,
                     schema_name: schema_name.to_string(),
-                    definition: defn.clone(),
+                    definition: def_schema.clone(),
                 },
             );
         }
@@ -314,16 +327,12 @@ fn load_from_path(path: &str) -> Value {
 }
 
 fn env_boolish(value: &str) -> bool {
-    matches!(
-        value.trim().to_lowercase().as_str(),
-        "1" | "true" | "yes"
-    )
+    matches!(value.trim().to_lowercase().as_str(), "1" | "true" | "yes")
 }
 
 fn python_type_annotation(def: &Value) -> String {
-    let obj = match def.as_object() {
-        Some(o) => o,
-        None => return "Any".to_string(),
+    let Some(obj) = def.as_object() else {
+        return "Any".to_string();
     };
     match obj.get("type").and_then(|t| t.as_str()) {
         Some("string") => "str".to_string(),
@@ -333,9 +342,8 @@ fn python_type_annotation(def: &Value) -> String {
         Some("array") => {
             let item = obj
                 .get("items")
-                .map(python_type_annotation)
-                .unwrap_or_else(|| "Any".to_string());
-            format!("List[{}]", item)
+                .map_or_else(|| "Any".to_string(), python_type_annotation);
+            format!("List[{item}]")
         }
         Some("object") => "Dict[str, Any]".to_string(),
         _ => "Any".to_string(),
@@ -347,8 +355,8 @@ mod tests {
     use super::*;
     use serde_json::json;
 
-    /// Build a SchemaUtils after locking the env-mutex and removing
-    /// SWML_SKIP_SCHEMA_VALIDATION, so this test sees a clean env even
+    /// Build a `SchemaUtils` after locking the env-mutex and removing
+    /// `SWML_SKIP_SCHEMA_VALIDATION`, so this test sees a clean env even
     /// when running in parallel with `env_skip_disables_validation`.
     fn fresh() -> (std::sync::MutexGuard<'static, ()>, SchemaUtils) {
         let g = ENV_MTX.lock().unwrap();
@@ -406,7 +414,10 @@ mod tests {
     fn get_verb_properties_known() {
         let (_g, su) = fresh();
         let props = su.get_verb_properties("answer");
-        assert!(!props.is_empty(), "expected non-empty properties for 'answer'");
+        assert!(
+            !props.is_empty(),
+            "expected non-empty properties for 'answer'"
+        );
         assert_eq!(props.get("type").and_then(|v| v.as_str()), Some("object"));
     }
 
@@ -438,7 +449,7 @@ mod tests {
     fn generate_method_signature_shape() {
         let (_g, su) = fresh();
         let sig = su.generate_method_signature("answer");
-        assert!(sig.starts_with("def answer("), "got: {}", sig);
+        assert!(sig.starts_with("def answer("), "got: {sig}");
         assert!(sig.contains("**kwargs"));
     }
 
@@ -456,7 +467,7 @@ mod tests {
             "ai".to_string(),
             vec!["missing prompt".to_string(), "bad type".to_string()],
         );
-        let msg = format!("{}", err);
+        let msg = format!("{err}");
         assert!(msg.contains("ai"));
         assert!(msg.contains("missing prompt"));
         assert_eq!(err.verb_name, "ai");

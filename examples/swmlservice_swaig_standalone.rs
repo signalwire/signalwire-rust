@@ -1,7 +1,7 @@
 // Copyright (c) 2025 SignalWire
 // SPDX-License-Identifier: MIT
 //
-//! swmlservice_swaig_standalone — proves that `signalwire::swml::Service`
+//! `swmlservice_swaig_standalone` — proves that `signalwire::swml::Service`
 //! can host SWAIG functions on its own `/swaig` endpoint with NO
 //! `signalwire::agent::AgentBase` involved.
 //!
@@ -12,24 +12,24 @@
 //! prompts, AI config, dynamic config, and token validation.
 //!
 //! Run:
-//!     cargo run --example swmlservice_swaig_standalone
+//!     cargo run --example `swmlservice_swaig_standalone`
 //!
 //! Then exercise the endpoints (Basic auth user/pass come from
 //! `SWML_BASIC_AUTH_USER` / `SWML_BASIC_AUTH_PASSWORD` env vars or the
 //! auto-generated values logged at startup):
-//!     curl -u user:pass http://localhost:3000/standalone
-//!     curl -u user:pass http://localhost:3000/standalone/swaig \
+//!     curl -u user:pass <http://localhost:3000/standalone>
+//!     curl -u user:pass <http://localhost:3000/standalone/swaig> \
 //!         -H 'Content-Type: application/json' \
-//!         -d '{"function":"lookup_competitor","argument":{"parsed":[{"competitor":"ACME"}]}}'
+//!         -d `'{"function":"lookup_competitor","argument":{"parsed":[{"competitor":"ACME"}]}}'`
 //!
 //! Or drive it through the SDK CLI without standing up the server:
-//!     swaig-test --url http://user:pass@localhost:3000/standalone --list-tools
-//!     swaig-test --url http://user:pass@localhost:3000/standalone \
-//!         --exec lookup_competitor --param competitor=ACME
+//!     swaig-test --url <http://user:pass@localhost:3000/standalone> --list-tools
+//!     swaig-test --url <http://user:pass@localhost:3000/standalone> \
+//!         --exec `lookup_competitor` --param competitor=ACME
 
+use serde_json::json;
 use signalwire::swaig::FunctionResult;
 use signalwire::swml::service::{Service, ServiceOptions};
-use serde_json::json;
 
 fn main() {
     // Port from PORT env var (set by the audit harness or by `cargo run`
@@ -78,8 +78,7 @@ fn main() {
                 .and_then(|v| v.as_str())
                 .unwrap_or("<unknown>");
             FunctionResult::with_response(&format!(
-                "{} pricing is $99/seat; we're $79/seat.",
-                competitor
+                "{competitor} pricing is $99/seat; we're $79/seat."
             ))
         }),
         false, // standalone services don't validate session tokens by default
@@ -90,7 +89,7 @@ fn main() {
     println!();
     println!("=== Registered SWAIG tools ===");
     for name in service.list_tool_names() {
-        println!("  - {}", name);
+        println!("  - {name}");
     }
     println!();
     let (user, pass) = service.basic_auth_credentials();

@@ -1,10 +1,10 @@
 // Copyright (c) 2025 SignalWire
 // SPDX-License-Identifier: MIT
 //
-//! Per-Question Function Whitelist Demo (gather_info)
+//! Per-Question Function Whitelist Demo (`gather_info`)
 //!
 //! This example exists to teach one specific gotcha: while a step's
-//! gather_info is asking questions, ALL of the step's other functions
+//! `gather_info` is asking questions, ALL of the step's other functions
 //! are forcibly deactivated. The only callable tools during a gather
 //! question are:
 //!
@@ -24,11 +24,15 @@
 //!
 //! Below: a customer-onboarding gather flow where each question
 //! unlocks a different validation tool, and where the step's own
-//! non-gather tools (escalate_to_human, lookup_existing_account) are
+//! non-gather tools (`escalate_to_human`, `lookup_existing_account`) are
 //! LOCKED OUT during gather because they aren't whitelisted on any
 //! question.
 //!
 //! Run this file to see the resulting SWML.
+
+// A linear demo `main` that builds a multi-question gather flow in sequence —
+// its length is inherent to showing the whole flow; splitting hurts the example.
+#![allow(clippy::too_many_lines)]
 
 use std::collections::HashMap;
 
@@ -102,10 +106,7 @@ fn main() {
     // Outside of the gather (which is the entire step here), these
     // would be available. During the gather they are forcibly hidden in
     // favor of the per-question whitelists.
-    onboard.set_functions(json!([
-        "escalate_to_human",
-        "lookup_existing_account",
-    ]));
+    onboard.set_functions(json!(["escalate_to_human", "lookup_existing_account",]));
     onboard.set_gather_info(
         Some("customer"),
         Some("next_step"),

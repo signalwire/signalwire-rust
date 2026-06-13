@@ -8,11 +8,15 @@
 //!   /finance    — regulatory-compliant finance agent
 //!   /retail     — customer service retail agent
 
+// The example's `run_server(server: AgentServer)` helper takes the server by
+// value to demonstrate handing it to its run loop (the server's lifetime ends
+// with the loop) — an ownership story `&AgentServer` would obscure.
+#![allow(clippy::needless_pass_by_value)]
+
+use serde_json::json;
 use signalwire::agent::{AgentBase, AgentOptions};
 use signalwire::server::AgentServer;
 use signalwire::swaig::FunctionResult;
-use serde_json::json;
-use std::sync::Arc;
 
 fn healthcare_agent() -> AgentBase {
     let mut agent = AgentBase::new(AgentOptions {
@@ -27,11 +31,15 @@ fn healthcare_agent() -> AgentBase {
          Handle all patient information with strict confidentiality.",
         vec![],
     );
-    agent.prompt_add_section("Instructions", "", vec![
-        "Never share patient information without verification",
-        "Always confirm identity before discussing records",
-        "Remind callers about privacy protections",
-    ]);
+    agent.prompt_add_section(
+        "Instructions",
+        "",
+        vec![
+            "Never share patient information without verification",
+            "Always confirm identity before discussing records",
+            "Remind callers about privacy protections",
+        ],
+    );
     agent.set_params(json!({"end_of_speech_timeout": 400}));
     agent
 }
@@ -49,17 +57,24 @@ fn finance_agent() -> AgentBase {
          Follow all regulatory compliance guidelines.",
         vec![],
     );
-    agent.prompt_add_section("Instructions", "", vec![
-        "Never give specific investment advice",
-        "Always include appropriate disclaimers",
-        "Verify account ownership before sharing details",
-    ]);
+    agent.prompt_add_section(
+        "Instructions",
+        "",
+        vec![
+            "Never give specific investment advice",
+            "Always include appropriate disclaimers",
+            "Verify account ownership before sharing details",
+        ],
+    );
     agent.define_tool(
         "check_balance",
         "Check an account balance (simulated)",
         json!({"account_id": {"type": "string"}}),
         Box::new(|args, _raw| {
-            let id = args.get("account_id").and_then(|v| v.as_str()).unwrap_or("?");
+            let id = args
+                .get("account_id")
+                .and_then(|v| v.as_str())
+                .unwrap_or("?");
             FunctionResult::with_response(&format!("Account {id}: balance $12,345.67."))
         }),
         true, // secure
@@ -79,24 +94,26 @@ fn retail_agent() -> AgentBase {
         "You are an enthusiastic retail customer service specialist.",
         vec![],
     );
-    agent.prompt_add_section("Instructions", "", vec![
-        "Focus on customer satisfaction",
-        "Proactively offer related products",
-        "Handle returns and exchanges gracefully",
-    ]);
-    agent.set_dynamic_config_callback(Box::new(
-        |query_params, _body, _headers, agent| {
-            let department = query_params
-                .get("department")
-                .and_then(|v| v.as_str())
-                .unwrap_or("general");
-            agent.prompt_add_section(
-                "Department",
-                &format!("You are in the {department} department."),
-                vec![],
-            );
-        },
-    ));
+    agent.prompt_add_section(
+        "Instructions",
+        "",
+        vec![
+            "Focus on customer satisfaction",
+            "Proactively offer related products",
+            "Handle returns and exchanges gracefully",
+        ],
+    );
+    agent.set_dynamic_config_callback(Box::new(|query_params, _body, _headers, agent| {
+        let department = query_params
+            .get("department")
+            .and_then(|v| v.as_str())
+            .unwrap_or("general");
+        agent.prompt_add_section(
+            "Department",
+            &format!("You are in the {department} department."),
+            vec![],
+        );
+    }));
     agent
 }
 
@@ -115,11 +132,10 @@ fn main() {
 
 fn run_server(server: AgentServer) {
     use std::collections::HashMap;
-    use std::io::Read as _;
 
     let addr = format!("{}:{}", server.host(), server.port());
-    let http = tiny_http::Server::http(&addr)
-        .unwrap_or_else(|e| panic!("Failed to bind {}: {}", addr, e));
+    let http =
+        tiny_http::Server::http(&addr).unwrap_or_else(|e| panic!("Failed to bind {addr}: {e}"));
 
     for mut request in http.incoming_requests() {
         let method = request.method().as_str().to_string();
@@ -139,8 +155,7 @@ fn run_server(server: AgentServer) {
         let (status, resp_headers, resp_body) =
             server.handle_request(&method, &path, &req_headers, &body_buf);
 
-        let mut response =
-            tiny_http::Response::from_string(&resp_body).with_status_code(status);
+        let mut response = tiny_http::Response::from_string(&resp_body).with_status_code(status);
         for (k, v) in &resp_headers {
             if let Ok(header) = tiny_http::Header::from_bytes(k.as_bytes(), v.as_bytes()) {
                 response = response.with_header(header);

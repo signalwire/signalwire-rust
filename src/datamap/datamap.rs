@@ -1,9 +1,8 @@
-use serde_json::{json, Map, Value};
-
+use serde_json::{Map, Value, json};
 
 /// Fluent builder for DataMap-based SWAIG function definitions.
 ///
-/// A DataMap tool defines its behaviour declaratively (expressions, webhooks)
+/// A `DataMap` tool defines its behaviour declaratively (expressions, webhooks)
 /// instead of with a code handler.
 #[derive(Debug, Clone)]
 #[must_use]
@@ -143,10 +142,10 @@ impl DataMap {
         wh.insert("method".to_string(), json!(method));
         wh.insert("url".to_string(), json!(url));
 
-        if let Value::Object(ref h) = headers {
-            if !h.is_empty() {
-                wh.insert("headers".to_string(), headers.clone());
-            }
+        if let Value::Object(ref h) = headers
+            && !h.is_empty()
+        {
+            wh.insert("headers".to_string(), headers.clone());
         }
         if !form_param.is_empty() {
             wh.insert("form_param".to_string(), json!(form_param));
@@ -208,7 +207,7 @@ impl DataMap {
         self
     }
 
-    /// Set error_keys on the last webhook.
+    /// Set `error_keys` on the last webhook.
     pub fn error_keys(&mut self, keys: Vec<&str>) -> &mut Self {
         if let Some(Value::Object(map)) = self.webhooks.last_mut() {
             map.insert("error_keys".to_string(), json!(keys));
@@ -216,15 +215,20 @@ impl DataMap {
         self
     }
 
-    /// Set global error_keys.
+    /// Set global `error_keys`.
     pub fn global_error_keys(&mut self, keys: Vec<&str>) -> &mut Self {
-        self.global_error_keys = Some(keys.into_iter().map(|s| s.to_string()).collect());
+        self.global_error_keys = Some(
+            keys.into_iter()
+                .map(std::string::ToString::to_string)
+                .collect(),
+        );
         self
     }
 
     // ── Serialisation ────────────────────────────────────────────────────
 
     /// Serialise to a SWAIG function definition.
+    #[must_use]
     pub fn to_swaig_function(&self) -> Value {
         let mut func = Map::new();
         func.insert("function".to_string(), json!(self.function_name));
@@ -249,7 +253,10 @@ impl DataMap {
         let mut data_map = Map::new();
 
         if !self.expressions.is_empty() {
-            data_map.insert("expressions".to_string(), Value::Array(self.expressions.clone()));
+            data_map.insert(
+                "expressions".to_string(),
+                Value::Array(self.expressions.clone()),
+            );
         }
 
         if !self.webhooks.is_empty() {
@@ -385,9 +392,17 @@ mod tests {
     #[test]
     fn test_parameter_with_enum() {
         let mut dm = DataMap::new("func");
-        dm.parameter("unit", "string", "Temperature unit", false, vec!["celsius", "fahrenheit"]);
+        dm.parameter(
+            "unit",
+            "string",
+            "Temperature unit",
+            false,
+            vec!["celsius", "fahrenheit"],
+        );
         let val = dm.to_swaig_function();
-        let enums = val["argument"]["properties"]["unit"]["enum"].as_array().unwrap();
+        let enums = val["argument"]["properties"]["unit"]["enum"]
+            .as_array()
+            .unwrap();
         assert_eq!(enums.len(), 2);
     }
 
@@ -403,7 +418,12 @@ mod tests {
     #[test]
     fn test_expression() {
         let mut dm = DataMap::new("func");
-        dm.expression("${args.color}", "red|blue", json!({"response": "matched"}), None);
+        dm.expression(
+            "${args.color}",
+            "red|blue",
+            json!({"response": "matched"}),
+            None,
+        );
         let val = dm.to_swaig_function();
         let exprs = val["data_map"]["expressions"].as_array().unwrap();
         assert_eq!(exprs.len(), 1);
@@ -422,7 +442,14 @@ mod tests {
     #[test]
     fn test_webhook() {
         let mut dm = DataMap::new("func");
-        dm.webhook("GET", "https://api.example.com/data", json!({}), "", false, vec![]);
+        dm.webhook(
+            "GET",
+            "https://api.example.com/data",
+            json!({}),
+            "",
+            false,
+            vec![],
+        );
         let val = dm.to_swaig_function();
         let wh = &val["data_map"]["webhooks"][0];
         assert_eq!(wh["method"], "GET");
@@ -451,17 +478,35 @@ mod tests {
     #[test]
     fn test_webhook_expressions() {
         let mut dm = DataMap::new("func");
-        dm.webhook("GET", "https://api.example.com", json!({}), "", false, vec![]);
-        dm.webhook_expressions(vec![json!({"pattern": "ok", "output": {"response": "good"}})]);
+        dm.webhook(
+            "GET",
+            "https://api.example.com",
+            json!({}),
+            "",
+            false,
+            vec![],
+        );
+        dm.webhook_expressions(vec![
+            json!({"pattern": "ok", "output": {"response": "good"}}),
+        ]);
         let val = dm.to_swaig_function();
-        let wh_exprs = val["data_map"]["webhooks"][0]["expressions"].as_array().unwrap();
+        let wh_exprs = val["data_map"]["webhooks"][0]["expressions"]
+            .as_array()
+            .unwrap();
         assert_eq!(wh_exprs.len(), 1);
     }
 
     #[test]
     fn test_body() {
         let mut dm = DataMap::new("func");
-        dm.webhook("POST", "https://api.example.com", json!({}), "", false, vec![]);
+        dm.webhook(
+            "POST",
+            "https://api.example.com",
+            json!({}),
+            "",
+            false,
+            vec![],
+        );
         dm.body(json!({"key": "value"}));
         let val = dm.to_swaig_function();
         assert_eq!(val["data_map"]["webhooks"][0]["body"]["key"], "value");
@@ -470,25 +515,52 @@ mod tests {
     #[test]
     fn test_params() {
         let mut dm = DataMap::new("func");
-        dm.webhook("POST", "https://api.example.com", json!({}), "", false, vec![]);
+        dm.webhook(
+            "POST",
+            "https://api.example.com",
+            json!({}),
+            "",
+            false,
+            vec![],
+        );
         dm.params(json!({"q": "${args.query}"}));
         let val = dm.to_swaig_function();
-        assert_eq!(val["data_map"]["webhooks"][0]["params"]["q"], "${args.query}");
+        assert_eq!(
+            val["data_map"]["webhooks"][0]["params"]["q"],
+            "${args.query}"
+        );
     }
 
     #[test]
     fn test_for_each() {
         let mut dm = DataMap::new("func");
-        dm.webhook("GET", "https://api.example.com", json!({}), "", false, vec![]);
+        dm.webhook(
+            "GET",
+            "https://api.example.com",
+            json!({}),
+            "",
+            false,
+            vec![],
+        );
         dm.for_each(json!({"input_key": "items", "output_key": "result"}));
         let val = dm.to_swaig_function();
-        assert_eq!(val["data_map"]["webhooks"][0]["foreach"]["input_key"], "items");
+        assert_eq!(
+            val["data_map"]["webhooks"][0]["foreach"]["input_key"],
+            "items"
+        );
     }
 
     #[test]
     fn test_output() {
         let mut dm = DataMap::new("func");
-        dm.webhook("GET", "https://api.example.com", json!({}), "", false, vec![]);
+        dm.webhook(
+            "GET",
+            "https://api.example.com",
+            json!({}),
+            "",
+            false,
+            vec![],
+        );
         dm.output(json!({"response": "Weather is ${temp}"}));
         let val = dm.to_swaig_function();
         assert_eq!(
@@ -508,10 +580,19 @@ mod tests {
     #[test]
     fn test_error_keys() {
         let mut dm = DataMap::new("func");
-        dm.webhook("GET", "https://api.example.com", json!({}), "", false, vec![]);
+        dm.webhook(
+            "GET",
+            "https://api.example.com",
+            json!({}),
+            "",
+            false,
+            vec![],
+        );
         dm.error_keys(vec!["error", "message"]);
         let val = dm.to_swaig_function();
-        let ek = val["data_map"]["webhooks"][0]["error_keys"].as_array().unwrap();
+        let ek = val["data_map"]["webhooks"][0]["error_keys"]
+            .as_array()
+            .unwrap();
         assert_eq!(ek.len(), 2);
     }
 
@@ -537,7 +618,14 @@ mod tests {
         let mut dm = DataMap::new("weather");
         dm.purpose("Get weather")
             .parameter("city", "string", "City name", true, vec![])
-            .webhook("GET", "https://api.weather.com", json!({}), "", false, vec![])
+            .webhook(
+                "GET",
+                "https://api.weather.com",
+                json!({}),
+                "",
+                false,
+                vec![],
+            )
             .output(json!({"response": "Weather: ${temp}"}));
 
         let val = dm.to_swaig_function();
@@ -554,7 +642,9 @@ mod tests {
         let tool = DataMap::create_simple_api_tool(
             "weather",
             "Get weather",
-            vec![json!({"name": "city", "type": "string", "description": "City name", "required": true})],
+            vec![
+                json!({"name": "city", "type": "string", "description": "City name", "required": true}),
+            ],
             "GET",
             "https://api.weather.com",
             json!({"response": "Temperature: ${temp}"}),
@@ -571,7 +661,9 @@ mod tests {
         let tool = DataMap::create_expression_tool(
             "classify",
             "Classify input",
-            vec![json!({"name": "input", "type": "string", "description": "User input", "required": true})],
+            vec![
+                json!({"name": "input", "type": "string", "description": "User input", "required": true}),
+            ],
             vec![json!({
                 "string": "${args.input}",
                 "pattern": "yes|ok",

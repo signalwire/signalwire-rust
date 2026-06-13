@@ -41,19 +41,34 @@ impl<'a> ProjectTokens<'a> {
         &self.base_path
     }
 
+    /// POST `/api/project/tokens` — create a new project API token.
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (e.g. 422
+    /// when `params` fails validation), or the response body is not valid JSON.
     pub fn create(&self, params: &Value) -> Result<Value, SignalWireRestError> {
         self.client.post(&self.base_path, params)
     }
 
-    pub fn update(
-        &self,
-        token_id: &str,
-        params: &Value,
-    ) -> Result<Value, SignalWireRestError> {
+    /// PATCH `/api/project/tokens/{token_id}` — update a project API token.
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (e.g. 404
+    /// for an unknown `token_id` or 422 when `params` fails validation), or the
+    /// response body is not valid JSON.
+    pub fn update(&self, token_id: &str, params: &Value) -> Result<Value, SignalWireRestError> {
         self.client
             .patch(&format!("{}/{}", self.base_path, token_id), params)
     }
 
+    /// DELETE `/api/project/tokens/{token_id}` — delete a project API token.
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (e.g. 404
+    /// for an unknown `token_id`), or the response body is not valid JSON.
     pub fn delete(&self, token_id: &str) -> Result<Value, SignalWireRestError> {
         self.client
             .delete(&format!("{}/{}", self.base_path, token_id))

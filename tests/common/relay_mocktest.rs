@@ -22,6 +22,10 @@
 //! and scenario queues are shared global state on the mock server.
 
 #![allow(dead_code)]
+// Helper signatures take `Value` by value to mirror the cross-port mock-test
+// helper contract (the Python `mock_relay` helpers pass frames/payloads by
+// value). Keeping the by-value shape keeps these helpers 1:1 with siblings.
+#![allow(clippy::needless_pass_by_value)]
 
 use std::collections::HashMap;
 use std::fs::OpenOptions;
@@ -31,7 +35,7 @@ use std::process::{Command, Stdio};
 use std::sync::{Arc, Mutex, MutexGuard, OnceLock};
 use std::time::{Duration, Instant};
 
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use signalwire::relay::Client as RelayClient;
 
 /// Default WebSocket port for the Rust slot in the parallel rollout.
@@ -59,7 +63,7 @@ fn lock_journal() -> MutexGuard<'static, ()> {
     SERIALIZE
         .get_or_init(|| Mutex::new(()))
         .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
 }
 
 /// Path of the cross-binary advisory file lock. Located in `/tmp` so each
@@ -86,24 +90,18 @@ impl CrossBinaryLock {
             .write(true)
             .truncate(false)
             .open(CROSS_BINARY_LOCK_PATH)
-            .unwrap_or_else(|e| {
-                panic!(
-                    "relay_mocktest: open {}: {}",
-                    CROSS_BINARY_LOCK_PATH, e
-                )
-            });
+            .unwrap_or_else(|e| panic!("relay_mocktest: open {CROSS_BINARY_LOCK_PATH}: {e}"));
         // LOCK_EX: exclusive lock. Blocks until acquired. Released on
         // close (i.e. when the File drops at the end of the test).
         let fd = file.as_raw_fd();
         // SAFETY: fd is valid for the lifetime of `file`.
         let rc = unsafe { libc_flock(fd, LOCK_EX) };
-        if rc != 0 {
-            panic!(
-                "relay_mocktest: flock LOCK_EX on {}: errno={}",
-                CROSS_BINARY_LOCK_PATH,
-                std::io::Error::last_os_error()
-            );
-        }
+        assert!(
+            rc == 0,
+            "relay_mocktest: flock LOCK_EX on {}: errno={}",
+            CROSS_BINARY_LOCK_PATH,
+            std::io::Error::last_os_error()
+        );
         CrossBinaryLock { file }
     }
 }
@@ -139,10 +137,9 @@ fn wait_for_no_sessions(budget: Duration) {
     let url = format!("{}/__mock__/sessions", h.http_url);
     let deadline = Instant::now() + budget;
     while Instant::now() < deadline {
-        let mut resp = match ureq::get(&url).call() {
-            Ok(r) => r,
-            Err(_) => return, // server unreachable — let later code panic with detail
-        };
+        let Ok(mut resp) = ureq::get(&url).call() else {
+            return;
+        }; // server unreachable — let later code panic with detail
         let body: Value = match resp.body_mut().read_json::<Value>() {
             Ok(v) => v,
             Err(_) => return,
@@ -150,8 +147,7 @@ fn wait_for_no_sessions(budget: Duration) {
         let sessions = body
             .get("sessions")
             .and_then(Value::as_array)
-            .map(|a| a.len())
-            .unwrap_or(0);
+            .map_or(0, std::vec::Vec::len);
         if sessions == 0 {
             return;
         }
@@ -256,7 +252,7 @@ pub fn harness() -> HarnessHandle {
 ///
 /// Each test should call [`begin`] first to acquire the global mutex and
 /// reset journal/scenarios. The returned client should be `disconnect()`ed
-/// (typically through a `let client = ...; defer-style block) before the
+/// (typically through a `let client = ...;` defer-style block) before the
 /// `TestGuard` drops — see the integration tests for the canonical pattern.
 pub fn connected_client(contexts: &[&str]) -> Arc<RelayClient> {
     let h = harness();
@@ -312,10 +308,7 @@ pub fn journal_send(event_type: Option<&str>) -> Vec<JournalEntry> {
         .into_iter()
         .filter(|e| e.direction == "send")
         .filter(|e| {
-            let want = match event_type {
-                Some(t) => t,
-                None => return true,
-            };
+            let Some(want) = event_type else { return true };
             // Only signalwire.event carries an event_type.
             if e.frame.get("method").and_then(Value::as_str) != Some("signalwire.event") {
                 return false;
@@ -463,23 +456,21 @@ pub fn begin() -> TestGuard {
 // ---------------------------------------------------------------------------
 
 fn resolve_ws_port() -> u16 {
-    if let Ok(raw) = std::env::var("MOCK_RELAY_PORT") {
-        if let Ok(p) = raw.parse::<u16>() {
-            if p != 0 {
-                return p;
-            }
-        }
+    if let Ok(raw) = std::env::var("MOCK_RELAY_PORT")
+        && let Ok(p) = raw.parse::<u16>()
+        && p != 0
+    {
+        return p;
     }
     DEFAULT_WS_PORT
 }
 
 fn resolve_http_port(ws_port: u16) -> u16 {
-    if let Ok(raw) = std::env::var("MOCK_RELAY_HTTP_PORT") {
-        if let Ok(p) = raw.parse::<u16>() {
-            if p != 0 {
-                return p;
-            }
-        }
+    if let Ok(raw) = std::env::var("MOCK_RELAY_HTTP_PORT")
+        && let Ok(p) = raw.parse::<u16>()
+        && p != 0
+    {
+        return p;
     }
     // Default convention: WS_PORT + 1000.
     ws_port.saturating_add(1000)
@@ -532,16 +523,14 @@ fn probe_health(http_url: &str) -> bool {
         .timeout_global(Some(Duration::from_secs(2)))
         .build()
         .into();
-    let mut resp = match agent.get(&url).call() {
-        Ok(r) => r,
-        Err(_) => return false,
+    let Ok(mut resp) = agent.get(&url).call() else {
+        return false;
     };
     if resp.status().as_u16() != 200 {
         return false;
     }
-    let body = match resp.body_mut().read_to_string() {
-        Ok(b) => b,
-        Err(_) => return false,
+    let Ok(body) = resp.body_mut().read_to_string() else {
+        return false;
     };
     let parsed: serde_json::Result<Value> = serde_json::from_str(&body);
     match parsed {
@@ -641,18 +630,14 @@ fn libc_setsid() -> i32 {
 // ---------------------------------------------------------------------------
 
 fn decode_journal(value: &Value) -> Vec<JournalEntry> {
-    let arr = match value.as_array() {
-        Some(a) => a,
-        None => return Vec::new(),
+    let Some(arr) = value.as_array() else {
+        return Vec::new();
     };
     arr.iter().map(decode_entry).collect()
 }
 
 fn decode_entry(v: &Value) -> JournalEntry {
-    let timestamp = v
-        .get("timestamp")
-        .and_then(Value::as_f64)
-        .unwrap_or(0.0);
+    let timestamp = v.get("timestamp").and_then(Value::as_f64).unwrap_or(0.0);
     let direction = v
         .get("direction")
         .and_then(Value::as_str)

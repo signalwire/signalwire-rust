@@ -5,7 +5,7 @@ use serde_json::Value;
 use super::error::SignalWireRestError;
 use super::http_client::HttpClient;
 
-/// Generic CRUD wrapper around an HttpClient and a base API path.
+/// Generic CRUD wrapper around an `HttpClient` and a base API path.
 ///
 /// Provides list / create / get / update / delete for any REST resource
 /// that follows the standard SignalWire collection+item URL pattern.
@@ -39,26 +39,55 @@ impl<'a> CrudResource<'a> {
     }
 
     /// List resources (GET basePath).
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the underlying GET request cannot
+    /// reach the Space (transport failure), the API responds with a non-2xx
+    /// status, or the response body is not valid JSON.
     pub fn list(&self, params: &HashMap<String, String>) -> Result<Value, SignalWireRestError> {
         self.client.get(&self.base_path, params)
     }
 
     /// Create a new resource (POST basePath).
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the underlying POST request cannot
+    /// reach the Space (transport failure), the API responds with a non-2xx
+    /// status (e.g. 422 when `data` fails server-side validation), or the
+    /// response body is not valid JSON.
     pub fn create(&self, data: &Value) -> Result<Value, SignalWireRestError> {
         self.client.post(&self.base_path, data)
     }
 
     /// Retrieve a single resource by ID (GET basePath/{id}).
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the underlying GET request cannot
+    /// reach the Space (transport failure), the API responds with a non-2xx
+    /// status (e.g. 404 when no resource has the given `id`), or the response
+    /// body is not valid JSON.
     pub fn get(&self, id: &str) -> Result<Value, SignalWireRestError> {
         self.client.get(&self.path(&[id]), &HashMap::new())
     }
 
     /// Update a resource by ID (PUT basePath/{id}).
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the underlying PUT request cannot
+    /// reach the Space (transport failure), the API responds with a non-2xx
+    /// status (e.g. 404 for a missing `id` or 422 when `data` fails
+    /// validation), or the response body is not valid JSON.
     pub fn update(&self, id: &str, data: &Value) -> Result<Value, SignalWireRestError> {
         self.client.put(&self.path(&[id]), data)
     }
 
     /// Delete a resource by ID (DELETE basePath/{id}).
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the underlying DELETE request cannot
+    /// reach the Space (transport failure), the API responds with a non-2xx
+    /// status (e.g. 404 when no resource has the given `id`), or the response
+    /// body is not valid JSON.
     pub fn delete(&self, id: &str) -> Result<Value, SignalWireRestError> {
         self.client.delete(&self.path(&[id]))
     }
@@ -74,7 +103,10 @@ mod tests {
     use crate::rest::http_client::StubTransport;
     use serde_json::json;
 
-    fn make_resource() -> (crate::rest::http_client::HttpClient, std::sync::Arc<StubTransport>) {
+    fn make_resource() -> (
+        crate::rest::http_client::HttpClient,
+        std::sync::Arc<StubTransport>,
+    ) {
         crate::rest::http_client::HttpClient::with_stub(
             "proj",
             "tok",

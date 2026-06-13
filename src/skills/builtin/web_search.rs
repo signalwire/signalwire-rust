@@ -1,8 +1,9 @@
+use std::fmt::Write as _;
 use std::sync::mpsc;
 use std::thread;
 use std::time::{Duration, Instant};
 
-use serde_json::{json, Map, Value};
+use serde_json::{Map, Value, json};
 
 use crate::agent::AgentBase;
 use crate::skills::skill_base::{SkillBase, SkillParams};
@@ -10,9 +11,8 @@ use crate::swaig::FunctionResult;
 
 /// Default `no_results_message` (mirrors Python's `WebSearchSkill` default).
 /// Returned by the snippet fallback when CSE yields nothing at all or the
-/// overall_deadline fires before any item arrives.
-const DEFAULT_NO_RESULTS_MESSAGE: &str =
-    "I couldn't find quality results for '{query}'. The search returned only \
+/// `overall_deadline` fires before any item arrives.
+const DEFAULT_NO_RESULTS_MESSAGE: &str = "I couldn't find quality results for '{query}'. The search returned only \
 low-quality or inaccessible pages. Try rephrasing your search or asking about \
 a different topic.";
 
@@ -37,15 +37,15 @@ impl WebSearch {
 }
 
 impl SkillBase for WebSearch {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "web_search"
     }
 
-    fn description(&self) -> &str {
+    fn description(&self) -> &'static str {
         "Search the web for information using Google Custom Search API"
     }
 
-    fn version(&self) -> &str {
+    fn version(&self) -> &'static str {
         "2.0.0"
     }
 
@@ -73,19 +73,21 @@ impl SkillBase for WebSearch {
     fn register_tools(&self, agent: &mut AgentBase) {
         let tool_name = self.get_tool_name("web_search");
         let num_results = self.sp.get_i64("num_results", 3).clamp(1, 10);
-        let api_key = self.sp.get_str("api_key").map(|s| s.to_string());
-        let cse_id = self.sp.get_str("search_engine_id").map(|s| s.to_string());
+        let api_key = self
+            .sp
+            .get_str("api_key")
+            .map(std::string::ToString::to_string);
+        let cse_id = self
+            .sp
+            .get_str("search_engine_id")
+            .map(std::string::ToString::to_string);
 
         // Optional prefix/postfix wrapped around every non-empty search
         // result. Use these to give the calling agent a mechanical cue
         // (e.g. "tell the user this came from a public web search") without
         // needing prompt-side rules. Mirrors Python's `response_prefix` /
         // `response_postfix` on `WebSearchSkill`.
-        let response_prefix = self
-            .sp
-            .get_str("response_prefix")
-            .unwrap_or("")
-            .to_string();
+        let response_prefix = self.sp.get_str("response_prefix").unwrap_or("").to_string();
         let response_postfix = self
             .sp
             .get_str("response_postfix")
@@ -151,7 +153,11 @@ impl SkillBase for WebSearch {
                 // handler must return by `deadline_at` even if the CSE fetch
                 // stalls, so a slow upstream can't blow past the kernel webhook
                 // timeout (~55s). Clamp to >= 1.0s to match the schema `min`.
-                let overall = if overall_deadline >= 1.0 { overall_deadline } else { 1.0 };
+                let overall = if overall_deadline >= 1.0 {
+                    overall_deadline
+                } else {
+                    1.0
+                };
                 let deadline_at = Instant::now() + Duration::from_secs_f64(overall);
 
                 // Resolve credentials at call time so env-var overrides
@@ -358,24 +364,28 @@ fn format_web_search_response(
     response_postfix: &str,
 ) -> String {
     if items.is_empty() {
-        return format!("No web results for \"{}\".", query);
+        return format!("No web results for \"{query}\".");
     }
     let lines: Vec<String> = items
         .iter()
-        .take(num_results as usize)
+        .take(usize::try_from(num_results).unwrap_or(0))
         .map(|it| {
             let title = it.get("title").and_then(|v| v.as_str()).unwrap_or("");
             let link = it.get("link").and_then(|v| v.as_str()).unwrap_or("");
             let snippet = it.get("snippet").and_then(|v| v.as_str()).unwrap_or("");
-            format!("- {} ({})\n  {}", title, link, snippet)
+            format!("- {title} ({link})\n  {snippet}")
         })
         .collect();
-    let mut response = format!("Web search results for \"{}\":\n{}", query, lines.join("\n"));
+    let mut response = format!(
+        "Web search results for \"{}\":\n{}",
+        query,
+        lines.join("\n")
+    );
     if !response_prefix.is_empty() {
-        response = format!("{}\n\n{}", response_prefix, response);
+        response = format!("{response_prefix}\n\n{response}");
     }
     if !response_postfix.is_empty() {
-        response = format!("{}\n\n{}", response, response_postfix);
+        response = format!("{response}\n\n{response_postfix}");
     }
     response
 }
@@ -406,7 +416,7 @@ fn format_snippet_results(
     if items.is_empty() {
         return no_results_message.replace("{query}", query);
     }
-    let top = num_results.max(1) as usize;
+    let top = usize::try_from(num_results.max(1)).unwrap_or(1);
     let mut lines: Vec<String> = vec![format!(
         "Snippet-only results for '{}' (page content not scraped):\n",
         query
@@ -426,17 +436,17 @@ fn format_snippet_results(
             .unwrap_or("")
             .trim();
         lines.push(format!("=== RESULT {} ===", i + 1));
-        lines.push(format!("Title: {}", title));
-        lines.push(format!("URL: {}", link));
-        lines.push(format!("Snippet: {}", snippet));
+        lines.push(format!("Title: {title}"));
+        lines.push(format!("URL: {link}"));
+        lines.push(format!("Snippet: {snippet}"));
         lines.push(String::new());
     }
     let mut response = lines.join("\n");
     if !response_prefix.is_empty() {
-        response = format!("{}\n\n{}", response_prefix, response);
+        response = format!("{response_prefix}\n\n{response}");
     }
     if !response_postfix.is_empty() {
-        response = format!("{}\n\n{}", response, response_postfix);
+        response = format!("{response}\n\n{response_postfix}");
     }
     response
 }
@@ -462,17 +472,16 @@ fn http_get_json(url: &str, per_page_timeout: f64) -> Result<Value, String> {
         .get(url)
         .header("User-Agent", "signalwire-agents-rust-skills/1.0")
         .call()
-        .map_err(|e| format!("HTTP GET {} failed: {}", url, e))?;
+        .map_err(|e| format!("HTTP GET {url} failed: {e}"))?;
     let status = resp.status().as_u16();
     let body = resp
         .body_mut()
         .read_to_string()
-        .map_err(|e| format!("HTTP GET {} body read failed: {}", url, e))?;
-    if status < 200 || status >= 300 {
-        return Err(format!("HTTP GET {} returned {}: {}", url, status, body));
+        .map_err(|e| format!("HTTP GET {url} body read failed: {e}"))?;
+    if !(200..300).contains(&status) {
+        return Err(format!("HTTP GET {url} returned {status}: {body}"));
     }
-    serde_json::from_str(&body)
-        .map_err(|e| format!("HTTP GET {} returned non-JSON: {}", url, e))
+    serde_json::from_str(&body).map_err(|e| format!("HTTP GET {url} returned non-JSON: {e}"))
 }
 
 /// Minimal URL-encode for query-string values. Encodes the small set
@@ -485,7 +494,9 @@ fn url_encode(s: &str) -> String {
             b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
                 out.push(b as char);
             }
-            _ => out.push_str(&format!("%{:02X}", b)),
+            _ => {
+                let _ = write!(out, "%{b:02X}");
+            }
         }
     }
     out
@@ -589,8 +600,7 @@ mod tests {
     #[test]
     fn test_format_both_prefix_and_postfix_wrap() {
         let items = sample_items();
-        let out =
-            format_web_search_response("rust", &items, 3, "PREFIX_LINE", "POSTFIX_LINE");
+        let out = format_web_search_response("rust", &items, 3, "PREFIX_LINE", "POSTFIX_LINE");
         assert!(out.starts_with("PREFIX_LINE\n\nWeb search results for"));
         assert!(out.ends_with("\n\nPOSTFIX_LINE"));
         // Both wrappers must appear exactly once.
@@ -645,7 +655,9 @@ mod tests {
 
     impl BaseUrlGuard {
         fn set(url: &str) -> Self {
-            let lock = env_lock().lock().unwrap_or_else(|p| p.into_inner());
+            let lock = env_lock()
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
             let prev = std::env::var("WEB_SEARCH_BASE_URL").ok();
             unsafe {
                 std::env::set_var("WEB_SEARCH_BASE_URL", url);
@@ -667,8 +679,8 @@ mod tests {
 
     /// A local TCP server that accepts every connection and NEVER sends a
     /// response (it reads the request bytes, then holds the socket open).
-    /// ureq's per-request `timeout_global` (per_page_timeout) and the
-    /// handler's `recv_timeout` (overall_deadline) are the only things that
+    /// ureq's per-request `timeout_global` (`per_page_timeout`) and the
+    /// handler's `recv_timeout` (`overall_deadline`) are the only things that
     /// can end a fetch against it — exactly what the deadline tests need.
     /// Returns the bound `http://127.0.0.1:<port>` base URL.
     fn spawn_blackhole_server() -> String {
@@ -677,51 +689,48 @@ mod tests {
         thread::spawn(move || {
             // Accept connections forever; never write a byte back. Sockets are
             // dropped only when this thread (and the whole test process) ends.
-            for stream in listener.incoming() {
-                if let Ok(mut s) = stream {
-                    thread::spawn(move || {
-                        let mut buf = [0u8; 1024];
-                        // One read to consume the request line, then stall.
-                        let _ = s.read(&mut buf);
-                        // Hold the socket open well past any test deadline.
-                        thread::sleep(Duration::from_secs(60));
-                    });
-                }
+            for mut s in listener.incoming().flatten() {
+                thread::spawn(move || {
+                    let mut buf = [0u8; 1024];
+                    // One read to consume the request line, then stall.
+                    let _ = s.read(&mut buf);
+                    // Hold the socket open well past any test deadline.
+                    #[allow(clippy::duration_suboptimal_units)] // 60s reads clearer than from_mins
+                    thread::sleep(Duration::from_secs(60));
+                });
             }
         });
-        format!("http://127.0.0.1:{}", port)
+        format!("http://127.0.0.1:{port}")
     }
 
     /// A local TCP server that answers EVERY request with a fixed HTTP/1.1
     /// 200 carrying `json_body`. Stands in for Google CSE so the happy-path
-    /// and snippets_only tests get real `items` back without hitting the
+    /// and `snippets_only` tests get real `items` back without hitting the
     /// network. Returns the bound base URL.
     fn spawn_cse_server(json_body: &'static str) -> String {
         let listener = TcpListener::bind("127.0.0.1:0").expect("bind cse");
         let port = listener.local_addr().unwrap().port();
         thread::spawn(move || {
-            for stream in listener.incoming() {
-                if let Ok(mut s) = stream {
-                    thread::spawn(move || {
-                        let mut buf = [0u8; 2048];
-                        let _ = s.read(&mut buf);
-                        let resp = format!(
-                            "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\
-                             Content-Length: {}\r\nConnection: close\r\n\r\n{}",
-                            json_body.len(),
-                            json_body
-                        );
-                        use std::io::Write as _;
-                        let _ = s.write_all(resp.as_bytes());
-                        let _ = s.flush();
-                    });
-                }
+            for mut s in listener.incoming().flatten() {
+                thread::spawn(move || {
+                    use std::io::Write as _;
+                    let mut buf = [0u8; 2048];
+                    let _ = s.read(&mut buf);
+                    let resp = format!(
+                        "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\
+                         Content-Length: {}\r\nConnection: close\r\n\r\n{}",
+                        json_body.len(),
+                        json_body
+                    );
+                    let _ = s.write_all(resp.as_bytes());
+                    let _ = s.flush();
+                });
             }
         });
-        format!("http://127.0.0.1:{}", port)
+        format!("http://127.0.0.1:{port}")
     }
 
-    /// Build + register the web_search skill on a throwaway agent and invoke
+    /// Build + register the `web_search` skill on a throwaway agent and invoke
     /// its tool, returning the response string the model would see.
     fn run_web_search(params: Map<String, Value>, query: &str) -> String {
         let skill = WebSearch::new(params);
@@ -812,8 +821,14 @@ mod tests {
     fn test_format_snippet_results_empty_returns_no_results_message_unwrapped() {
         // No items -> the configured no-results message with {query} filled,
         // and NOT wrapped by prefix/postfix (matches the scraped empty path).
-        let out =
-            format_snippet_results("rust", &[], 3, DEFAULT_NO_RESULTS_MESSAGE, "PREFIX", "POSTFIX");
+        let out = format_snippet_results(
+            "rust",
+            &[],
+            3,
+            DEFAULT_NO_RESULTS_MESSAGE,
+            "PREFIX",
+            "POSTFIX",
+        );
         assert!(out.contains("I couldn't find quality results for 'rust'"));
         assert!(!out.contains("PREFIX"));
         assert!(!out.contains("POSTFIX"));
@@ -823,8 +838,7 @@ mod tests {
     #[test]
     fn test_format_snippet_results_wraps_nonempty_body() {
         let items = vec![json!({"title":"T","link":"https://x.com","snippet":"s"})];
-        let out =
-            format_snippet_results("q", &items, 3, DEFAULT_NO_RESULTS_MESSAGE, "PRE", "POST");
+        let out = format_snippet_results("q", &items, 3, DEFAULT_NO_RESULTS_MESSAGE, "PRE", "POST");
         assert!(out.starts_with("PRE\n\n"));
         assert!(out.ends_with("\n\nPOST"));
     }

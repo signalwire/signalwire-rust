@@ -1,4 +1,6 @@
-use serde_json::{json, Map, Value};
+use std::fmt::Write as _;
+
+use serde_json::{Map, Value, json};
 
 use crate::agent::AgentBase;
 use crate::skills::skill_base::{SkillBase, SkillParams};
@@ -18,11 +20,11 @@ impl ClaudeSkills {
 }
 
 impl SkillBase for ClaudeSkills {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "claude_skills"
     }
 
-    fn description(&self) -> &str {
+    fn description(&self) -> &'static str {
         "Load Claude SKILL.md files as agent tools"
     }
 
@@ -44,11 +46,11 @@ impl SkillBase for ClaudeSkills {
         let response_prefix = self.sp.get_str_or("response_prefix", "");
         let response_postfix = self.sp.get_str_or("response_postfix", "");
 
-        let tool_name = format!("{}skill", tool_prefix);
+        let tool_name = format!("{tool_prefix}skill");
 
         agent.define_tool(
             &tool_name,
-            &format!("Execute a Claude skill from {}", skills_path),
+            &format!("Execute a Claude skill from {skills_path}"),
             json!({
                 "arguments": {
                     "type": "string",
@@ -77,18 +79,15 @@ impl SkillBase for ClaudeSkills {
                     response.push(' ');
                 }
 
-                response.push_str(&format!(
-                    "Claude skill execution from \"{}\"",
-                    skills_path
-                ));
+                let _ = write!(response, "Claude skill execution from \"{skills_path}\"");
                 if !section.is_empty() {
-                    response.push_str(&format!(" (section: {})", section));
+                    let _ = write!(response, " (section: {section})");
                 }
-                response.push_str(&format!(
-                    " with arguments: {}. \
-                     In production, this would parse SKILL.md files with YAML frontmatter and execute them.",
-                    arguments
-                ));
+                let _ = write!(
+                    response,
+                    " with arguments: {arguments}. \
+                     In production, this would parse SKILL.md files with YAML frontmatter and execute them."
+                );
 
                 if !response_postfix.is_empty() {
                     response.push(' ');

@@ -1,10 +1,15 @@
+// The `swaig-test` `main()` is a linear CLI arg parser + dispatcher; its length
+// is inherent to the flag set it handles, and splitting it would scatter the
+// argument-handling without aiding clarity.
+#![allow(clippy::too_many_lines)]
+
 use std::collections::HashMap;
 use std::env;
 use std::process;
 
 use base64::Engine;
 use base64::engine::general_purpose::STANDARD as BASE64;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 /// CLI entry point for the `swaig-test` tool.
 ///
@@ -13,10 +18,10 @@ use serde_json::{json, Value};
 ///   swaig-test --url <URL> [options]
 ///
 /// Options:
-///   --example <NAME>     SWMLService example to introspect by name (e.g.
+///   --example <NAME>     `SWMLService` example to introspect by name (e.g.
 ///                        `swmlservice_swaig_standalone`). Runs the example
 ///                        in-process via `cargo run --example` with the
-///                        `SWAIG_LIST_TOOLS=1` env var; the SDK's serve()
+///                        `SWAIG_LIST_TOOLS=1` env var; the SDK's `serve()`
 ///                        dumps the runtime registry instead of binding a
 ///                        port.
 ///   --url <URL>          SWAIG endpoint URL. Basic auth can be embedded as
@@ -100,7 +105,7 @@ fn main() {
                 process::exit(0);
             }
             other => {
-                eprintln!("Error: unknown option: {}", other);
+                eprintln!("Error: unknown option: {other}");
                 process::exit(1);
             }
         }
@@ -117,19 +122,16 @@ fn main() {
         return;
     }
 
-    let url = match url {
-        Some(u) => u,
-        None => {
-            eprintln!("Error: --url or --example is required");
-            process::exit(1);
-        }
+    let Some(url) = url else {
+        eprintln!("Error: --url or --example is required");
+        process::exit(1);
     };
 
     // Extract auth from URL if embedded
     let (base_url, auth_header) = extract_url_auth(&url);
 
     if verbose {
-        eprintln!("[verbose] URL: {}", base_url);
+        eprintln!("[verbose] URL: {base_url}");
         if auth_header.is_some() {
             eprintln!("[verbose] Auth: (embedded credentials)");
         }
@@ -137,11 +139,18 @@ fn main() {
 
     // Route to the appropriate action
     if dump_swml {
-        do_dump_swml(&base_url, &auth_header, raw, verbose);
+        do_dump_swml(&base_url, auth_header.as_deref(), raw, verbose);
     } else if list_tools {
-        do_list_tools(&base_url, &auth_header, raw, verbose);
+        do_list_tools(&base_url, auth_header.as_deref(), raw, verbose);
     } else if let Some(tool) = exec_tool {
-        do_exec_tool(&base_url, &auth_header, &tool, &params, raw, verbose);
+        do_exec_tool(
+            &base_url,
+            auth_header.as_deref(),
+            &tool,
+            &params,
+            raw,
+            verbose,
+        );
     } else {
         eprintln!("Error: specify --dump-swml, --list-tools, or --exec <tool>");
         process::exit(1);
@@ -174,14 +183,14 @@ fn print_help() {
     println!("  Embed credentials in the URL: http://user:pass@host:port/path");
 }
 
-/// Introspect a SWMLService example by spawning `cargo run --example NAME`
+/// Introspect a `SWMLService` example by spawning `cargo run --example NAME`
 /// with `SWAIG_LIST_TOOLS=1`. The SDK's `Service::run()` honors that env var
 /// by printing the registry to stdout between sentinels and exiting before
 /// it would have bound any port. We capture stdout, slice out the JSON, and
 /// pretty-print or emit raw.
 fn do_list_tools_via_introspect(example_name: &str, raw: bool, verbose: bool) {
     if verbose {
-        eprintln!("[verbose] running `cargo run --example {}` with SWAIG_LIST_TOOLS=1", example_name);
+        eprintln!("[verbose] running `cargo run --example {example_name}` with SWAIG_LIST_TOOLS=1");
     }
     let mut cmd = std::process::Command::new("cargo");
     cmd.args(["run", "--quiet", "--example", example_name])
@@ -189,51 +198,47 @@ fn do_list_tools_via_introspect(example_name: &str, raw: bool, verbose: bool) {
     let output = match cmd.output() {
         Ok(o) => o,
         Err(e) => {
-            eprintln!("Error: failed to spawn cargo: {}", e);
+            eprintln!("Error: failed to spawn cargo: {e}");
             process::exit(1);
         }
     };
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
-        eprintln!("Error: example `{}` exited non-zero", example_name);
+        eprintln!("Error: example `{example_name}` exited non-zero");
         if !stderr.is_empty() {
             eprintln!("--- cargo stderr ---\n{}", stderr.trim_end());
         }
         process::exit(1);
     }
     let stdout = String::from_utf8_lossy(&output.stdout);
-    let body = match extract_introspect_payload(&stdout) {
-        Some(s) => s,
-        None => {
-            eprintln!(
-                "Error: example `{}` did not emit __SWAIG_TOOLS_BEGIN__/__SWAIG_TOOLS_END__ markers. Make sure it calls service.run().",
-                example_name
-            );
-            if verbose {
-                eprintln!("--- raw stdout ---\n{}", stdout);
-            }
-            process::exit(1);
+    let Some(body) = extract_introspect_payload(&stdout) else {
+        eprintln!(
+            "Error: example `{example_name}` did not emit __SWAIG_TOOLS_BEGIN__/__SWAIG_TOOLS_END__ markers. Make sure it calls service.run()."
+        );
+        if verbose {
+            eprintln!("--- raw stdout ---\n{stdout}");
         }
+        process::exit(1);
     };
     let parsed: Value = match serde_json::from_str(body) {
         Ok(v) => v,
         Err(e) => {
-            eprintln!("Error: malformed introspect payload: {}", e);
-            eprintln!("--- payload ---\n{}", body);
+            eprintln!("Error: malformed introspect payload: {e}");
+            eprintln!("--- payload ---\n{body}");
             process::exit(1);
         }
     };
     if raw {
-        println!("{}", body);
+        println!("{body}");
         return;
     }
     let tools = parsed.get("tools").and_then(|v| v.as_array());
-    let tools = match tools {
-        Some(a) => a,
-        None => {
-            println!("{}", serde_json::to_string_pretty(&parsed).unwrap_or_default());
-            return;
-        }
+    let Some(tools) = tools else {
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&parsed).unwrap_or_default()
+        );
+        return;
     };
     if tools.is_empty() {
         println!("No tools registered.");
@@ -253,20 +258,23 @@ fn do_list_tools_via_introspect(example_name: &str, raw: bool, verbose: bool) {
             .unwrap_or("");
         println!("  {}. {} — {}", i + 1, name, desc);
         let argument = tool.get("argument").or_else(|| tool.get("parameters"));
-        if let Some(arg) = argument {
-            if let Some(props) = arg.get("properties").and_then(|v| v.as_object()) {
-                for (pname, pdef) in props {
-                    let ptype = pdef.get("type").and_then(|v| v.as_str()).unwrap_or("");
-                    let pdesc = pdef.get("description").and_then(|v| v.as_str()).unwrap_or("");
-                    println!("       - {} ({}): {}", pname, ptype, pdesc);
-                }
+        if let Some(arg) = argument
+            && let Some(props) = arg.get("properties").and_then(|v| v.as_object())
+        {
+            for (pname, pdef) in props {
+                let ptype = pdef.get("type").and_then(|v| v.as_str()).unwrap_or("");
+                let pdesc = pdef
+                    .get("description")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("");
+                println!("       - {pname} ({ptype}): {pdesc}");
             }
         }
     }
 }
 
-/// Extract the JSON payload between __SWAIG_TOOLS_BEGIN__ and
-/// __SWAIG_TOOLS_END__ markers in the example's stdout. Returns None if
+/// Extract the JSON payload between `__SWAIG_TOOLS_BEGIN__` and
+/// `__SWAIG_TOOLS_END__` markers in the example's stdout. Returns None if
 /// either marker is missing.
 fn extract_introspect_payload(stdout: &str) -> Option<&str> {
     let begin = stdout.find("__SWAIG_TOOLS_BEGIN__")?;
@@ -297,7 +305,7 @@ fn extract_url_auth(url: &str) -> (String, Option<String>) {
         let host = &authority[at_pos + 1..];
 
         let auth = format!("Basic {}", BASE64.encode(user_pass));
-        let clean_url = format!("{}{}{}", scheme, host, path_and_rest);
+        let clean_url = format!("{scheme}{host}{path_and_rest}");
 
         (clean_url, Some(auth))
     } else {
@@ -306,12 +314,12 @@ fn extract_url_auth(url: &str) -> (String, Option<String>) {
 }
 
 /// Build request headers with optional auth.
-fn build_headers(auth: &Option<String>) -> HashMap<String, String> {
+fn build_headers(auth: Option<&str>) -> HashMap<String, String> {
     let mut headers = HashMap::new();
     headers.insert("Content-Type".to_string(), "application/json".to_string());
     headers.insert("Accept".to_string(), "application/json".to_string());
     if let Some(a) = auth {
-        headers.insert("Authorization".to_string(), a.clone());
+        headers.insert("Authorization".to_string(), a.to_string());
     }
     headers
 }
@@ -333,12 +341,12 @@ fn http_request(
     verbose: bool,
 ) -> Result<(u16, String), String> {
     if verbose {
-        eprintln!("[verbose] {} {}", method, url);
+        eprintln!("[verbose] {method} {url}");
         for (k, v) in headers {
-            eprintln!("[verbose]   {}: {}", k, v);
+            eprintln!("[verbose]   {k}: {v}");
         }
         if let Some(b) = body {
-            eprintln!("[verbose]   body: {}", b);
+            eprintln!("[verbose]   body: {b}");
         }
     }
 
@@ -377,46 +385,46 @@ fn http_request(
             }
         }
         other => {
-            return Err(format!("Unsupported HTTP method: {}", other));
+            return Err(format!("Unsupported HTTP method: {other}"));
         }
     };
 
-    let mut response = response_result.map_err(|e| format!("HTTP {} {} failed: {}", method, url, e))?;
+    let mut response = response_result.map_err(|e| format!("HTTP {method} {url} failed: {e}"))?;
     let status = response.status().as_u16();
     let body_str = response
         .body_mut()
         .read_to_string()
-        .map_err(|e| format!("HTTP {} {} body read failed: {}", method, url, e))?;
+        .map_err(|e| format!("HTTP {method} {url} body read failed: {e}"))?;
     Ok((status, body_str))
 }
 
-fn do_dump_swml(base_url: &str, auth: &Option<String>, raw: bool, verbose: bool) {
+fn do_dump_swml(base_url: &str, auth: Option<&str>, raw: bool, verbose: bool) {
     let headers = build_headers(auth);
     match http_request("GET", base_url, &headers, None, verbose) {
         Ok((_status, body)) => {
             if raw {
-                println!("{}", body);
+                println!("{body}");
             } else {
                 match serde_json::from_str::<Value>(&body) {
                     Ok(v) => println!("{}", serde_json::to_string_pretty(&v).unwrap()),
-                    Err(_) => println!("{}", body),
+                    Err(_) => println!("{body}"),
                 }
             }
         }
         Err(e) => {
-            eprintln!("Error: {}", e);
+            eprintln!("Error: {e}");
             process::exit(1);
         }
     }
 }
 
-fn do_list_tools(base_url: &str, auth: &Option<String>, raw: bool, verbose: bool) {
+fn do_list_tools(base_url: &str, auth: Option<&str>, raw: bool, verbose: bool) {
     let swaig_url = format!("{}/swaig", base_url.trim_end_matches('/'));
     let headers = build_headers(auth);
     match http_request("GET", &swaig_url, &headers, None, verbose) {
         Ok((_status, body)) => {
             if raw {
-                println!("{}", body);
+                println!("{body}");
             } else {
                 match serde_json::from_str::<Value>(&body) {
                     Ok(v) => {
@@ -429,9 +437,7 @@ fn do_list_tools(base_url: &str, auth: &Option<String>, raw: bool, verbose: bool
                                         .get("function")
                                         .and_then(|f| f.get("name"))
                                         .and_then(|n| n.as_str())
-                                        .or_else(|| {
-                                            tool.get("name").and_then(|n| n.as_str())
-                                        })
+                                        .or_else(|| tool.get("name").and_then(|n| n.as_str()))
                                         .unwrap_or("<unnamed>");
                                     let desc = tool
                                         .get("function")
@@ -448,12 +454,12 @@ fn do_list_tools(base_url: &str, auth: &Option<String>, raw: bool, verbose: bool
                             println!("{}", serde_json::to_string_pretty(&v).unwrap());
                         }
                     }
-                    Err(_) => println!("{}", body),
+                    Err(_) => println!("{body}"),
                 }
             }
         }
         Err(e) => {
-            eprintln!("Error: {}", e);
+            eprintln!("Error: {e}");
             process::exit(1);
         }
     }
@@ -461,7 +467,7 @@ fn do_list_tools(base_url: &str, auth: &Option<String>, raw: bool, verbose: bool
 
 fn do_exec_tool(
     base_url: &str,
-    auth: &Option<String>,
+    auth: Option<&str>,
     tool: &str,
     params: &[(String, String)],
     raw: bool,
@@ -491,16 +497,16 @@ fn do_exec_tool(
     match http_request("POST", &swaig_url, &headers, Some(&body_str), verbose) {
         Ok((_status, resp_body)) => {
             if raw {
-                println!("{}", resp_body);
+                println!("{resp_body}");
             } else {
                 match serde_json::from_str::<Value>(&resp_body) {
                     Ok(v) => println!("{}", serde_json::to_string_pretty(&v).unwrap()),
-                    Err(_) => println!("{}", resp_body),
+                    Err(_) => println!("{resp_body}"),
                 }
             }
         }
         Err(e) => {
-            eprintln!("Error: {}", e);
+            eprintln!("Error: {e}");
             process::exit(1);
         }
     }
@@ -513,6 +519,11 @@ fn do_exec_tool(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Captured inbound requests recorded by `spawn_test_server`: a shared
+    /// `(method, path, headers, body)` log the test thread appends to.
+    type CapturedRequests =
+        std::sync::Arc<std::sync::Mutex<Vec<(String, String, HashMap<String, String>, String)>>>;
 
     #[test]
     fn test_extract_url_auth_with_creds() {
@@ -565,7 +576,7 @@ mod tests {
     #[test]
     fn test_build_headers_with_auth() {
         let auth = Some("Basic dGVzdDp0ZXN0".to_string());
-        let headers = build_headers(&auth);
+        let headers = build_headers(auth.as_deref());
         assert_eq!(headers["Authorization"], "Basic dGVzdDp0ZXN0");
         assert_eq!(headers["Content-Type"], "application/json");
         assert_eq!(headers["Accept"], "application/json");
@@ -573,22 +584,22 @@ mod tests {
 
     #[test]
     fn test_build_headers_without_auth() {
-        let headers = build_headers(&None);
+        let headers = build_headers(None);
         assert!(!headers.contains_key("Authorization"));
         assert_eq!(headers["Content-Type"], "application/json");
     }
 
-    /// Spawn a tiny_http server on an ephemeral port that responds with the
+    /// Spawn a `tiny_http` server on an ephemeral port that responds with the
     /// given fixed status + body, capturing whatever the request was. Returns
-    /// (base_url, request_capture). Used by the http_request behavior tests
+    /// (`base_url`, `request_capture`). Used by the `http_request` behavior tests
     /// below. Killed when the returned guard drops.
     fn spawn_test_server(
         status: u16,
         response_body: &'static str,
-    ) -> (String, std::sync::Arc<std::sync::Mutex<Vec<(String, String, HashMap<String, String>, String)>>>, std::thread::JoinHandle<()>) {
+    ) -> (String, CapturedRequests, std::thread::JoinHandle<()>) {
         let server = tiny_http::Server::http("127.0.0.1:0").expect("bind 127.0.0.1:0");
         let port = server.server_addr().to_ip().unwrap().port();
-        let base = format!("http://127.0.0.1:{}", port);
+        let base = format!("http://127.0.0.1:{port}");
         let captured = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
         let cap_clone = std::sync::Arc::clone(&captured);
         let handle = std::thread::spawn(move || {
@@ -605,8 +616,7 @@ mod tests {
                 let mut body = String::new();
                 let _ = req.as_reader().read_to_string(&mut body);
                 cap_clone.lock().unwrap().push((method, path, hmap, body));
-                let resp = tiny_http::Response::from_string(response_body)
-                    .with_status_code(status);
+                let resp = tiny_http::Response::from_string(response_body).with_status_code(status);
                 let _ = req.respond(resp);
             }
         });
@@ -619,8 +629,8 @@ mod tests {
         // test asserting `err.contains("HTTP transport not available")` —
         // that test ratified the stub. Now the function does real I/O.
         let (base, captured, _h) = spawn_test_server(200, r#"{"ok":true,"verb":"GET"}"#);
-        let url = format!("{}/swml", base);
-        let headers = build_headers(&None);
+        let url = format!("{base}/swml");
+        let headers = build_headers(None);
         let (status, body) = http_request("GET", &url, &headers, None, false)
             .expect("real GET should succeed against the test server");
         assert_eq!(status, 200);
@@ -633,12 +643,10 @@ mod tests {
 
     #[test]
     fn test_http_request_post_forwards_body_and_basic_auth() {
-        let (base, captured, _h) = spawn_test_server(
-            200,
-            r#"{"function":"lookup","response":"ACME"}"#,
-        );
-        let url = format!("{}/swaig", base);
-        let mut headers = build_headers(&Some("Basic dGVzdDp0ZXN0".to_string()));
+        let (base, captured, _h) =
+            spawn_test_server(200, r#"{"function":"lookup","response":"ACME"}"#);
+        let url = format!("{base}/swaig");
+        let mut headers = build_headers(Some("Basic dGVzdDp0ZXN0"));
         headers.insert("Content-Type".to_string(), "application/json".to_string());
         let body = r#"{"function":"lookup","argument":{"parsed":[{"competitor":"ACME"}]}}"#;
         let (status, resp) = http_request("POST", &url, &headers, Some(body), false)
@@ -666,8 +674,14 @@ mod tests {
         // 4xx is NOT a transport failure — http_request returns (status, body)
         // and lets the caller decide how to react. Asserts that contract.
         let (base, _captured, _h) = spawn_test_server(404, r#"{"error":"not found"}"#);
-        let (status, body) = http_request("GET", &format!("{}/missing", base), &HashMap::new(), None, false)
-            .expect("4xx is not an Err — it's a status the caller will handle");
+        let (status, body) = http_request(
+            "GET",
+            &format!("{base}/missing"),
+            &HashMap::new(),
+            None,
+            false,
+        )
+        .expect("4xx is not an Err — it's a status the caller will handle");
         assert_eq!(status, 404);
         assert!(body.contains("not found"));
     }
@@ -687,7 +701,8 @@ mod tests {
 
     #[test]
     fn test_extract_introspect_payload_happy_path() {
-        let stdout = "noise line\n__SWAIG_TOOLS_BEGIN__\n{\"tools\":[]}\n__SWAIG_TOOLS_END__\nmore noise\n";
+        let stdout =
+            "noise line\n__SWAIG_TOOLS_BEGIN__\n{\"tools\":[]}\n__SWAIG_TOOLS_END__\nmore noise\n";
         let payload = extract_introspect_payload(stdout).unwrap();
         assert_eq!(payload, "{\"tools\":[]}");
     }
@@ -710,11 +725,14 @@ mod tests {
         // Verbose mode logs to stderr but does not change the result. Real
         // round-trip succeeds the same way it does in non-verbose mode.
         let (base, _captured, _h) = spawn_test_server(200, r#"{"ok":true}"#);
-        let mut headers = build_headers(&None);
-        headers.insert("Authorization".to_string(), "Basic dGVzdDp0ZXN0".to_string());
+        let mut headers = build_headers(None);
+        headers.insert(
+            "Authorization".to_string(),
+            "Basic dGVzdDp0ZXN0".to_string(),
+        );
         let (status, body) = http_request(
             "POST",
-            &format!("{}/swaig", base),
+            &format!("{base}/swaig"),
             &headers,
             Some("{\"key\":\"val\"}"),
             true, // verbose

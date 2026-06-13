@@ -4,12 +4,12 @@
 //! `rest_audit_harness` — runtime probe for the REST transport.
 //!
 //! Driven by porting-sdk's `audit_rest_transport.py`. Reads:
-//!   - REST_OPERATION       dotted name (e.g. `calling.list_calls`)
-//!   - REST_FIXTURE_URL     `http://127.0.0.1:NNNN`
-//!   - REST_OPERATION_ARGS  JSON dict of args for the operation
-//!   - SIGNALWIRE_PROJECT_ID, SIGNALWIRE_API_TOKEN
+//!   - `REST_OPERATION`       dotted name (e.g. `calling.list_calls`)
+//!   - `REST_FIXTURE_URL`     `http://127.0.0.1:NNNN`
+//!   - `REST_OPERATION_ARGS`  JSON dict of args for the operation
+//!   - `SIGNALWIRE_PROJECT_ID`, `SIGNALWIRE_API_TOKEN`
 //!
-//! Constructs a `RestClient` pointed at REST_FIXTURE_URL (NOT through
+//! Constructs a `RestClient` pointed at `REST_FIXTURE_URL` (NOT through
 //! the usual `https://{space}` resolution — the audit needs to inject
 //! its loopback fixture URL), invokes the named operation, and prints
 //! the parsed return value as JSON to stdout. Exits non-zero on any
@@ -18,7 +18,7 @@
 //! Operations supported by this harness:
 //!   - `calling.list_calls`           GET  /api/laml/2010-04-01/Accounts/{proj}/Calls.json
 //!   - `messaging.send`               POST /api/laml/2010-04-01/Accounts/{proj}/Messages.json
-//!   - `phone_numbers.list`           GET  /api/relay/rest/phone_numbers
+//!   - `phone_numbers.list`           GET  `/api/relay/rest/phone_numbers`
 //!   - `fabric.subscribers.list`      GET  /api/fabric/resources/subscribers
 //!   - `compatibility.calls.list`     GET  /api/laml/2010-04-01/Accounts/{proj}/Calls.json
 
@@ -35,20 +35,20 @@ fn main() {
         }
     }
 
-    let operation = env::var("REST_OPERATION")
-        .unwrap_or_else(|_| die("REST_OPERATION env var required"));
-    let fixture_url = env::var("REST_FIXTURE_URL")
-        .unwrap_or_else(|_| die("REST_FIXTURE_URL env var required"));
+    let operation =
+        env::var("REST_OPERATION").unwrap_or_else(|_| die("REST_OPERATION env var required"));
+    let fixture_url =
+        env::var("REST_FIXTURE_URL").unwrap_or_else(|_| die("REST_FIXTURE_URL env var required"));
     let args_raw = env::var("REST_OPERATION_ARGS").unwrap_or_else(|_| "{}".to_string());
     let args: Value = serde_json::from_str(&args_raw)
-        .unwrap_or_else(|e| die(&format!("REST_OPERATION_ARGS not JSON: {}", e)));
+        .unwrap_or_else(|e| die(&format!("REST_OPERATION_ARGS not JSON: {e}")));
     let project = env::var("SIGNALWIRE_PROJECT_ID")
         .unwrap_or_else(|_| die("SIGNALWIRE_PROJECT_ID env var required"));
     let token = env::var("SIGNALWIRE_API_TOKEN")
         .unwrap_or_else(|_| die("SIGNALWIRE_API_TOKEN env var required"));
 
     let client = RestClient::with_base_url(&project, &token, &fixture_url)
-        .unwrap_or_else(|e| die(&format!("RestClient init: {}", e)));
+        .unwrap_or_else(|e| die(&format!("RestClient init: {e}")));
 
     let result = dispatch(&client, &operation, &args).unwrap_or_else(|e| die(&e));
 
@@ -111,7 +111,9 @@ fn dispatch(client: &RestClient, op: &str, args: &Value) -> Result<Value, String
                 .list(args)
                 .map_err(|e| format!("{}: {}", op, e.message()))
         }
-        other => Err(format!("rest_audit_harness: unsupported operation '{}'", other)),
+        other => Err(format!(
+            "rest_audit_harness: unsupported operation '{other}'"
+        )),
     }
 }
 
@@ -133,6 +135,6 @@ fn args_to_string_map(args: &Value) -> HashMap<String, String> {
 }
 
 fn die(msg: &str) -> ! {
-    eprintln!("rest_audit_harness: {}", msg);
+    eprintln!("rest_audit_harness: {msg}");
     process::exit(1);
 }

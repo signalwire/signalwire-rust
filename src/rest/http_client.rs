@@ -11,6 +11,14 @@ use super::error::SignalWireRestError;
 /// Production code uses a real implementation (e.g. ureq), while
 /// tests inject a mock.
 pub trait HttpTransport: Send + Sync {
+    /// Execute a single HTTP request and return `(status_code, body)`.
+    ///
+    /// # Errors
+    /// Returns `Err(String)` describing the failure when the request cannot
+    /// be performed — the method is unsupported, the connection to the Space
+    /// cannot be established (transport/network failure), or the response body
+    /// cannot be read. A non-2xx HTTP status is *not* an error here; it is
+    /// returned as the status code for the caller to interpret.
     fn execute(
         &self,
         method: &str,
@@ -133,17 +141,17 @@ impl HttpTransport for UreqTransport {
                 req.call()
             }
             other => {
-                return Err(format!("Unsupported HTTP method: {}", other));
+                return Err(format!("Unsupported HTTP method: {other}"));
             }
         };
 
-        let mut response = response_result
-            .map_err(|e| format!("HTTP {} {} failed: {}", method, url, e))?;
+        let mut response =
+            response_result.map_err(|e| format!("HTTP {method} {url} failed: {e}"))?;
         let status = response.status().as_u16();
         let body_str = response
             .body_mut()
             .read_to_string()
-            .map_err(|e| format!("HTTP {} {} body read failed: {}", method, url, e))?;
+            .map_err(|e| format!("HTTP {method} {url} body read failed: {e}"))?;
         Ok((status, body_str))
     }
 }
@@ -151,7 +159,7 @@ impl HttpTransport for UreqTransport {
 /// A stub transport that records requests and returns canned responses.
 /// Useful for unit testing without network access.
 pub struct StubTransport {
-    /// Canned response: (status_code, body).
+    /// Canned response: (`status_code`, body).
     pub response: std::sync::Mutex<(u16, String)>,
     /// Recorded requests: (method, url, body).
     pub requests: std::sync::Mutex<Vec<(String, String, Option<String>)>>,
@@ -165,6 +173,10 @@ impl StubTransport {
         }
     }
 
+    /// # Panics
+    ///
+    /// Panics if the internal response lock is poisoned (another thread
+    /// panicked while holding it). This does not occur under normal operation.
     pub fn set_response(&self, status: u16, body: &str) {
         *self.response.lock().unwrap() = (status, body.to_string());
     }
@@ -181,7 +193,7 @@ impl HttpTransport for StubTransport {
         self.requests.lock().unwrap().push((
             method.to_string(),
             url.to_string(),
-            body.map(|s| s.to_string()),
+            body.map(std::string::ToString::to_string),
         ));
         let resp = self.response.lock().unwrap().clone();
         Ok(resp)
@@ -190,7 +202,7 @@ impl HttpTransport for StubTransport {
 
 /// Low-level HTTP client for SignalWire REST APIs.
 ///
-/// Uses Basic Auth with project_id:token and returns parsed JSON
+/// Uses Basic Auth with `project_id:token` and returns parsed JSON
 /// responses as `serde_json::Value`.
 pub struct HttpClient {
     project_id: String,
@@ -208,10 +220,7 @@ impl HttpClient {
         base_url: &str,
         transport: Box<dyn HttpTransport>,
     ) -> Self {
-        let auth_header = format!(
-            "Basic {}",
-            BASE64.encode(format!("{}:{}", project_id, token))
-        );
+        let auth_header = format!("Basic {}", BASE64.encode(format!("{project_id}:{token}")));
         HttpClient {
             project_id: project_id.to_string(),
             token: token.to_string(),
@@ -223,7 +232,11 @@ impl HttpClient {
     }
 
     /// Create with a stub transport for testing.
-    pub fn with_stub(project_id: &str, token: &str, base_url: &str) -> (Self, std::sync::Arc<StubTransport>) {
+    pub fn with_stub(
+        project_id: &str,
+        token: &str,
+        base_url: &str,
+    ) -> (Self, std::sync::Arc<StubTransport>) {
         let stub = std::sync::Arc::new(StubTransport::new(200, "{}"));
         let client = HttpClient::new(
             project_id,
@@ -254,25 +267,66 @@ impl HttpClient {
 
     // -- HTTP methods --
 
-    pub fn get(&self, path: &str, params: &HashMap<String, String>) -> Result<Value, SignalWireRestError> {
+    /// Issue a `GET` request to `path` with the given query `params`.
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure, reported with status code 0), the API responds with
+    /// a non-2xx status (the error carries the status and response body — e.g.
+    /// 404 when the addressed resource does not exist), or a 2xx response body
+    /// is present but not valid JSON. This is the authoritative description of
+    /// the three failure modes shared by every HTTP method on this client.
+    pub fn get(
+        &self,
+        path: &str,
+        params: &HashMap<String, String>,
+    ) -> Result<Value, SignalWireRestError> {
         self.request("GET", path, params, None)
     }
 
+    /// Issue a `POST` request to `path` with `data` serialized as the JSON body.
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (e.g. 422
+    /// when the payload fails server-side validation), or a 2xx response body
+    /// is not valid JSON. See [`get`](Self::get) for the canonical description.
     pub fn post(&self, path: &str, data: &Value) -> Result<Value, SignalWireRestError> {
         let body = serde_json::to_string(data).unwrap_or_else(|_| "{}".to_string());
         self.request("POST", path, &HashMap::new(), Some(&body))
     }
 
+    /// Issue a `PUT` request to `path` with `data` serialized as the JSON body.
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (e.g. 404
+    /// for a missing resource or 422 when the payload fails validation), or a
+    /// 2xx response body is not valid JSON. See [`get`](Self::get).
     pub fn put(&self, path: &str, data: &Value) -> Result<Value, SignalWireRestError> {
         let body = serde_json::to_string(data).unwrap_or_else(|_| "{}".to_string());
         self.request("PUT", path, &HashMap::new(), Some(&body))
     }
 
+    /// Issue a `PATCH` request to `path` with `data` serialized as the JSON body.
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (e.g. 404
+    /// for a missing resource or 422 when the payload fails validation), or a
+    /// 2xx response body is not valid JSON. See [`get`](Self::get).
     pub fn patch(&self, path: &str, data: &Value) -> Result<Value, SignalWireRestError> {
         let body = serde_json::to_string(data).unwrap_or_else(|_| "{}".to_string());
         self.request("PATCH", path, &HashMap::new(), Some(&body))
     }
 
+    /// Issue a `DELETE` request to `path`.
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (e.g. 404
+    /// when the addressed resource does not exist), or a 2xx response body is
+    /// present but not valid JSON. See [`get`](Self::get).
     pub fn delete(&self, path: &str) -> Result<Value, SignalWireRestError> {
         self.request("DELETE", path, &HashMap::new(), None)
     }
@@ -280,7 +334,18 @@ impl HttpClient {
     // -- Paginated list support --
 
     /// Return all pages of results, following `links.next`.
-    pub fn list_all(&self, path: &str, params: &HashMap<String, String>) -> Result<Vec<Value>, SignalWireRestError> {
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if any page request fails: it cannot
+    /// reach the Space (transport failure), the API responds with a non-2xx
+    /// status, or a 2xx response body is not valid JSON. Pagination follows the
+    /// `links.next` cursor returned by each page; a malformed or unreachable
+    /// next-page URL surfaces as the underlying request error for that page.
+    pub fn list_all(
+        &self,
+        path: &str,
+        params: &HashMap<String, String>,
+    ) -> Result<Vec<Value>, SignalWireRestError> {
         let mut all_pages = Vec::new();
         let mut current_path = path.to_string();
         let mut current_params = params.clone();
@@ -353,10 +418,10 @@ impl HttpClient {
         if !params.is_empty() {
             let qs: String = params
                 .iter()
-                .map(|(k, v)| format!("{}={}", k, v))
+                .map(|(k, v)| format!("{k}={v}"))
                 .collect::<Vec<_>>()
                 .join("&");
-            url = format!("{}?{}", url, qs);
+            url = format!("{url}?{qs}");
         }
 
         let mut headers = HashMap::new();
@@ -369,17 +434,13 @@ impl HttpClient {
             .transport
             .execute(method, &url, &headers, body)
             .map_err(|e| {
-                SignalWireRestError::new(
-                    &format!("{} {} failed: {}", method, path, e),
-                    0,
-                    "",
-                )
+                SignalWireRestError::new(&format!("{method} {path} failed: {e}"), 0, "")
             })?;
 
         // Non-2xx
-        if status < 200 || status >= 300 {
+        if !(200..300).contains(&status) {
             return Err(SignalWireRestError::new(
-                &format!("{} {} returned {}", method, path, status),
+                &format!("{method} {path} returned {status}"),
                 status,
                 &response_body,
             ));
@@ -392,7 +453,7 @@ impl HttpClient {
 
         serde_json::from_str(&response_body).map_err(|_| {
             SignalWireRestError::new(
-                &format!("{} {} returned non-JSON", method, path),
+                &format!("{method} {path} returned non-JSON"),
                 status,
                 &response_body,
             )
@@ -400,7 +461,7 @@ impl HttpClient {
     }
 }
 
-/// Wrapper so Arc<StubTransport> implements HttpTransport.
+/// Wrapper so `Arc<StubTransport>` implements `HttpTransport`.
 struct StubTransportWrapper(std::sync::Arc<StubTransport>);
 
 impl HttpTransport for StubTransportWrapper {
@@ -415,7 +476,7 @@ impl HttpTransport for StubTransportWrapper {
     }
 }
 
-/// Parse a query string into a HashMap.
+/// Parse a query string into a `HashMap`.
 fn parse_query_string(qs: &str) -> HashMap<String, String> {
     let mut map = HashMap::new();
     for pair in qs.split('&') {
@@ -501,7 +562,9 @@ mod tests {
         let (client, stub) = make_client();
         stub.set_response(200, r#"{"updated":true}"#);
 
-        let result = client.put("/api/test/1", &json!({"name": "updated"})).unwrap();
+        let result = client
+            .put("/api/test/1", &json!({"name": "updated"}))
+            .unwrap();
         assert_eq!(result["updated"], true);
 
         let reqs = stub.requests.lock().unwrap();
@@ -513,7 +576,9 @@ mod tests {
         let (client, stub) = make_client();
         stub.set_response(200, r#"{"patched":true}"#);
 
-        let result = client.patch("/api/test/1", &json!({"field": "val"})).unwrap();
+        let result = client
+            .patch("/api/test/1", &json!({"field": "val"}))
+            .unwrap();
         assert_eq!(result["patched"], true);
 
         let reqs = stub.requests.lock().unwrap();

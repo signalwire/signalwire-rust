@@ -1,11 +1,11 @@
 use base64::Engine;
 use base64::engine::general_purpose::STANDARD as BASE64;
-use serde_json::{json, Map, Value};
+use serde_json::{Map, Value, json};
 
 use crate::agent::AgentBase;
 use crate::skills::skill_base::{SkillBase, SkillParams};
 
-/// Search knowledge using SignalWire DataSphere with serverless DataMap execution.
+/// Search knowledge using SignalWire DataSphere with serverless `DataMap` execution.
 pub struct DatasphereServerless {
     sp: SkillParams,
 }
@@ -19,11 +19,11 @@ impl DatasphereServerless {
 }
 
 impl SkillBase for DatasphereServerless {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "datasphere_serverless"
     }
 
-    fn description(&self) -> &str {
+    fn description(&self) -> &'static str {
         "Search knowledge using SignalWire DataSphere with serverless DataMap execution"
     }
 
@@ -50,14 +50,14 @@ impl SkillBase for DatasphereServerless {
         let project_id = self.sp.get_str_or("project_id", "");
         let token = self.sp.get_str_or("token", "");
         let document_id = self.sp.get_str_or("document_id", "");
-        let count = self.sp.get_i64("count", 1).max(1).min(10);
+        let count = self.sp.get_i64("count", 1).clamp(1, 10);
         let distance = self.sp.get_f64("distance", 3.0);
         let no_results_msg = self.sp.get_str_or(
             "no_results_message",
             "No results found in the knowledge base for the given query.",
         );
 
-        let auth_string = BASE64.encode(format!("{}:{}", project_id, token));
+        let auth_string = BASE64.encode(format!("{project_id}:{token}"));
 
         let mut body_payload = json!({
             "document_id": document_id,

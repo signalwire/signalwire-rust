@@ -91,11 +91,23 @@ impl<'a> MessageLogs<'a> {
         &self.base_path
     }
 
+    /// GET `/api/messaging/logs` — list message logs.
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status, or the
+    /// response body is not valid JSON.
     pub fn list(&self, params: &Value) -> Result<Value, SignalWireRestError> {
         let qp = params_to_string_map(params);
         self.client.get(&self.base_path, &qp)
     }
 
+    /// GET `/api/messaging/logs/{log_id}` — fetch one message log.
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (e.g. 404
+    /// for an unknown `log_id`), or the response body is not valid JSON.
     pub fn get(&self, log_id: &str) -> Result<Value, SignalWireRestError> {
         let p = join(&[&self.base_path, log_id]);
         self.client.get(&p, &HashMap::new())
@@ -123,21 +135,35 @@ impl<'a> VoiceLogs<'a> {
         &self.base_path
     }
 
+    /// GET `/api/voice/logs` — list voice logs.
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status, or the
+    /// response body is not valid JSON.
     pub fn list(&self, params: &Value) -> Result<Value, SignalWireRestError> {
         let qp = params_to_string_map(params);
         self.client.get(&self.base_path, &qp)
     }
 
+    /// GET `/api/voice/logs/{log_id}` — fetch one voice log.
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (e.g. 404
+    /// for an unknown `log_id`), or the response body is not valid JSON.
     pub fn get(&self, log_id: &str) -> Result<Value, SignalWireRestError> {
         let p = join(&[&self.base_path, log_id]);
         self.client.get(&p, &HashMap::new())
     }
 
-    pub fn list_events(
-        &self,
-        log_id: &str,
-        params: &Value,
-    ) -> Result<Value, SignalWireRestError> {
+    /// GET `/api/voice/logs/{log_id}/events` — list events for one voice log.
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (e.g. 404
+    /// for an unknown `log_id`), or the response body is not valid JSON.
+    pub fn list_events(&self, log_id: &str, params: &Value) -> Result<Value, SignalWireRestError> {
         let qp = params_to_string_map(params);
         let p = join(&[&self.base_path, log_id, "events"]);
         self.client.get(&p, &qp)
@@ -165,11 +191,23 @@ impl<'a> FaxLogs<'a> {
         &self.base_path
     }
 
+    /// GET `/api/fax/logs` — list fax logs.
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status, or the
+    /// response body is not valid JSON.
     pub fn list(&self, params: &Value) -> Result<Value, SignalWireRestError> {
         let qp = params_to_string_map(params);
         self.client.get(&self.base_path, &qp)
     }
 
+    /// GET `/api/fax/logs/{log_id}` — fetch one fax log.
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (e.g. 404
+    /// for an unknown `log_id`), or the response body is not valid JSON.
     pub fn get(&self, log_id: &str) -> Result<Value, SignalWireRestError> {
         let p = join(&[&self.base_path, log_id]);
         self.client.get(&p, &HashMap::new())
@@ -197,6 +235,12 @@ impl<'a> ConferenceLogs<'a> {
         &self.base_path
     }
 
+    /// GET `/api/logs/conferences` — list conference logs.
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status, or the
+    /// response body is not valid JSON.
     pub fn list(&self, params: &Value) -> Result<Value, SignalWireRestError> {
         let qp = params_to_string_map(params);
         self.client.get(&self.base_path, &qp)

@@ -6,9 +6,9 @@
 //! - MCP Server: exposes tools at /agent/mcp for external clients
 //! - MCP Client: connects to external MCP servers for additional tools/resources
 
+use serde_json::json;
 use signalwire::agent::{AgentBase, AgentOptions};
 use signalwire::swaig::FunctionResult;
-use serde_json::json;
 
 fn main() {
     let mut agent = AgentBase::new(AgentOptions {
@@ -19,11 +19,14 @@ fn main() {
 
     // -- MCP Gateway skill --
     // Add the mcp_gateway skill to expose external MCP servers as SWAIG tools.
-    agent.add_skill("mcp_gateway", json!({
-        "gateway_url": "https://mcp.example.com/tools",
-        "headers": {"Authorization": "Bearer sk-your-mcp-api-key"},
-        "tool_prefix": "mcp_",
-    }));
+    agent.add_skill(
+        "mcp_gateway",
+        json!({
+            "gateway_url": "https://mcp.example.com/tools",
+            "headers": {"Authorization": "Bearer sk-your-mcp-api-key"},
+            "tool_prefix": "mcp_",
+        }),
+    );
 
     // -- Agent configuration --
     agent.prompt_add_section("Role", "", vec![]);

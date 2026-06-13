@@ -1,10 +1,10 @@
 // Copyright (c) 2025 SignalWire
 // SPDX-License-Identifier: MIT
 //
-//! Survey Agent — conduct a survey using the SurveyAgent prefab.
+//! Survey Agent — conduct a survey using the `SurveyAgent` prefab.
 
+use serde_json::{Map, Value, json};
 use signalwire::prefabs::SurveyAgent;
-use serde_json::{json, Map, Value};
 
 fn main() {
     let mut options: Map<String, Value> = Map::new();
@@ -36,7 +36,9 @@ fn main() {
         Some(&options),
     );
 
-    agent.agent_mut().add_language("English", "en-US", "inworld.Mark");
+    agent
+        .agent_mut()
+        .add_language("English", "en-US", "inworld.Mark");
 
     agent.agent_mut().prompt_add_section(
         "Introduction",

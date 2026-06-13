@@ -45,7 +45,7 @@
 //! - [`build_schema`](ParamsBuilder::build_schema) returns the **full** JSON
 //!   schema `{"type":"object","properties":{…},"required":[…]}` — exactly the
 //!   shape the Python reference's `_ensure_parameter_structure` emits and the
-//!   shape hand-written for `register_swaig_function` / DataMap full
+//!   shape hand-written for `register_swaig_function` / `DataMap` full
 //!   definitions. This is the form that carries a top-level
 //!   [`required`](ParamsBuilder::required) list.
 //!
@@ -98,6 +98,7 @@ pub enum ParamKind {
 
 impl ParamKind {
     /// The canonical JSON-Schema `"type"` string for this kind.
+    #[must_use]
     pub fn as_str(&self) -> &'static str {
         match self {
             ParamKind::String => "string",
@@ -151,7 +152,8 @@ impl PropertyBuilder {
     /// (e.g. the `datasphere` skill). For the JSON-Schema top-level
     /// `"required": ["a","b"]` array, use [`ParamsBuilder::required`] instead.
     pub fn required(mut self, required: bool) -> Self {
-        self.schema.insert("required".to_string(), Value::Bool(required));
+        self.schema
+            .insert("required".to_string(), Value::Bool(required));
         self
     }
 
@@ -165,7 +167,8 @@ impl PropertyBuilder {
     /// `"uri"`). Free-form: the format vocabulary is open, so this stays a
     /// `&str`.
     pub fn format(mut self, format: &str) -> Self {
-        self.schema.insert("format".to_string(), Value::from(format));
+        self.schema
+            .insert("format".to_string(), Value::from(format));
         self
     }
 
@@ -184,7 +187,8 @@ impl PropertyBuilder {
             .into_iter()
             .map(|v| Value::from(v.as_ref()))
             .collect();
-        self.schema.insert("enum".to_string(), Value::Array(variants));
+        self.schema
+            .insert("enum".to_string(), Value::Array(variants));
         self
     }
 
@@ -193,7 +197,8 @@ impl PropertyBuilder {
     pub fn items(mut self, kind: ParamKind) -> Self {
         let mut items = Map::new();
         items.insert("type".to_string(), Value::from(kind.as_str()));
-        self.schema.insert("items".to_string(), Value::Object(items));
+        self.schema
+            .insert("items".to_string(), Value::Object(items));
         self
     }
 
@@ -201,8 +206,10 @@ impl PropertyBuilder {
     /// [`ParamsBuilder`], emitting `"properties": {…}` (and a nested
     /// `"required": [...]` if the inner builder declared one).
     pub fn properties(mut self, inner: ParamsBuilder) -> Self {
-        self.schema
-            .insert("properties".to_string(), Value::Object(inner.properties_map()));
+        self.schema.insert(
+            "properties".to_string(),
+            Value::Object(inner.properties_map()),
+        );
         if !inner.required.is_empty() {
             self.schema.insert(
                 "required".to_string(),
@@ -382,7 +389,7 @@ impl ParamsBuilder {
     ///
     /// Byte-identical to the Python reference's `_ensure_parameter_structure`
     /// output and to the hand-written full-schema forms used with
-    /// `register_swaig_function` / DataMap definitions.
+    /// `register_swaig_function` / `DataMap` definitions.
     #[must_use]
     pub fn build_schema(self) -> Value {
         let mut schema = Map::new();
@@ -617,14 +624,16 @@ mod tests {
             built.clone(),
             Box::new(|args, _raw| {
                 let q = args.get("query").and_then(|v| v.as_str()).unwrap_or("");
-                FunctionResult::with_response(&format!("searched: {}", q))
+                FunctionResult::with_response(&format!("searched: {q}"))
             }),
             false,
         );
 
         // Render the AI verb and locate our function's argument schema.
         let ai = agent.build_ai_verb(&HashMap::new());
-        let funcs = ai["SWAIG"]["functions"].as_array().expect("functions array");
+        let funcs = ai["SWAIG"]["functions"]
+            .as_array()
+            .expect("functions array");
         let func = funcs
             .iter()
             .find(|f| f["function"] == "search_faqs")
@@ -667,9 +676,7 @@ mod tests {
     fn test_define_tool_with_builder_params_is_invocable() {
         // The registered tool actually dispatches — builder params don't
         // disturb handler wiring.
-        let built = ParamsBuilder::new()
-            .string("query", "search text")
-            .build();
+        let built = ParamsBuilder::new().string("query", "search text").build();
 
         let mut agent = default_agent();
         agent.define_tool(
@@ -678,7 +685,7 @@ mod tests {
             built,
             Box::new(|args, _raw| {
                 let q = args.get("query").and_then(|v| v.as_str()).unwrap_or("");
-                FunctionResult::with_response(&format!("hit: {}", q))
+                FunctionResult::with_response(&format!("hit: {q}"))
             }),
             false,
         );

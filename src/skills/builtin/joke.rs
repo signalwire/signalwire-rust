@@ -1,4 +1,4 @@
-use serde_json::{json, Map, Value};
+use serde_json::{Map, Value, json};
 
 use crate::agent::AgentBase;
 use crate::skills::skill_base::{SkillBase, SkillParams};
@@ -17,11 +17,11 @@ impl Joke {
 }
 
 impl SkillBase for Joke {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "joke"
     }
 
-    fn description(&self) -> &str {
+    fn description(&self) -> &'static str {
         "Tell jokes using the API Ninjas joke API"
     }
 

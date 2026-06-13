@@ -1,17 +1,17 @@
 // Copyright (c) 2025 SignalWire
 // SPDX-License-Identifier: MIT
 //
-//! DataMap Demo — server-side API tools without webhooks.
+//! `DataMap` Demo — server-side API tools without webhooks.
 //!
 //! Shows:
 //! 1. Simple API call (weather)
 //! 2. Expression-based pattern matching
 //! 3. Regular SWAIG tool for comparison
 
+use serde_json::json;
 use signalwire::agent::{AgentBase, AgentOptions};
 use signalwire::datamap::DataMap;
 use signalwire::swaig::FunctionResult;
-use serde_json::json;
 
 fn main() {
     let mut agent = AgentBase::new(AgentOptions {
@@ -38,7 +38,10 @@ fn main() {
         }),
         Box::new(|args, _raw| {
             let msg = args.get("message").and_then(|v| v.as_str()).unwrap_or("");
-            let repeat = args.get("repeat").and_then(|v| v.as_u64()).unwrap_or(1);
+            let repeat = args
+                .get("repeat")
+                .and_then(serde_json::Value::as_u64)
+                .unwrap_or(1);
             let output = (0..repeat).map(|_| msg).collect::<Vec<_>>().join(" ");
             FunctionResult::with_response(&output)
         }),
@@ -59,10 +62,13 @@ fn main() {
             vec![],
         )
         .params(json!({"key": "demo", "q": "${args.city}"}))
-        .output(FunctionResult::with_response(
-            "The weather in ${args.city} is ${response.current.condition.text}, \
+        .output(
+            FunctionResult::with_response(
+                "The weather in ${args.city} is ${response.current.condition.text}, \
              temperature ${response.current.temp_f}F.",
-        ).to_value());
+            )
+            .to_value(),
+        );
     agent.register_swaig_function(weather.to_swaig_function());
 
     // DataMap tool: expression-based command processor
@@ -86,7 +92,10 @@ fn main() {
             "${args.command}",
             r"^status",
             FunctionResult::with_response("Current status: running.").to_value(),
-            Some(FunctionResult::with_response("Unknown command. Try start, stop, or status.").to_value()),
+            Some(
+                FunctionResult::with_response("Unknown command. Try start, stop, or status.")
+                    .to_value(),
+            ),
         );
     agent.register_swaig_function(commands.to_swaig_function());
 

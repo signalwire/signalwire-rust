@@ -59,7 +59,7 @@ impl std::error::Error for ParseSkillNameError {}
 
 /// The closed set of skill names that ship built in with this SDK.
 ///
-/// Each variant maps to the canonical snake_case wire name returned by
+/// Each variant maps to the canonical `snake_case` wire name returned by
 /// [`SkillName::as_str`] — the same string the [`SkillRegistry`] is keyed by
 /// and that a skill reports from `SkillBase::name`.
 ///
@@ -106,11 +106,12 @@ pub enum SkillName {
 }
 
 impl SkillName {
-    /// The canonical snake_case wire name for this skill (e.g. `"datetime"`).
+    /// The canonical `snake_case` wire name for this skill (e.g. `"datetime"`).
     ///
     /// This is exactly the string the bare-`str` API expects, so
     /// `agent.add_skill(SkillName::Datetime.as_str(), params)` loads the same
     /// skill as `agent.add_skill("datetime", params)`.
+    #[must_use]
     pub fn as_str(&self) -> &'static str {
         match self {
             SkillName::ApiNinjasTrivia => "api_ninjas_trivia",
@@ -161,8 +162,14 @@ impl SkillName {
 
     /// Parse a wire name back into a [`SkillName`], or `None` if the string is
     /// not a built-in (i.e. a custom / third-party skill name).
+    // `FromStr` is implemented below; this inherent `from_str` is the deliberate
+    // companion that returns `Option` (a non-member is `None`, not an error).
+    #[allow(clippy::should_implement_trait)]
     pub fn from_str(name: &str) -> Option<SkillName> {
-        SkillName::all().iter().copied().find(|s| s.as_str() == name)
+        SkillName::all()
+            .iter()
+            .copied()
+            .find(|s| s.as_str() == name)
     }
 }
 

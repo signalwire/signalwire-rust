@@ -4,13 +4,13 @@ use std::sync::{LazyLock, Mutex};
 
 use serde_json::{Map, Value};
 
-use crate::skills::skill_base::SkillBase;
 use crate::skills::builtin;
+use crate::skills::skill_base::SkillBase;
 
 /// Factory function that creates a new skill instance given parameters.
 pub type SkillFactory = Box<dyn Fn(Map<String, Value>) -> Box<dyn SkillBase> + Send + Sync>;
 
-/// Thread-safe global registry mapping snake_case skill names to factory functions.
+/// Thread-safe global registry mapping `snake_case` skill names to factory functions.
 ///
 /// All 18 builtin skills are auto-registered on first access.
 static REGISTRY: LazyLock<Mutex<SkillRegistryInner>> = LazyLock::new(|| {
@@ -121,12 +121,22 @@ pub struct SkillRegistry;
 
 impl SkillRegistry {
     /// Register a custom skill factory.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the global registry lock is poisoned (another thread
+    /// panicked while holding it). This does not occur under normal operation.
     pub fn register_skill(name: &str, factory: SkillFactory) {
         let mut inner = REGISTRY.lock().expect("skill registry poisoned");
         inner.skills.insert(name.to_string(), factory);
     }
 
     /// Get the factory for a skill by name.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the global registry lock is poisoned (another thread
+    /// panicked while holding it). This does not occur under normal operation.
     pub fn get_factory(name: &str) -> Option<SkillFactory> {
         // We can't return a reference to the factory because it's behind
         // a Mutex, so we check if it exists and then call it through a
@@ -136,17 +146,27 @@ impl SkillRegistry {
         if inner.skills.contains_key(name) {
             // Clone the name for the closure.
             let skill_name = name.to_string();
-            Some(Box::new(move |params: Map<String, Value>| -> Box<dyn SkillBase> {
-                let inner = REGISTRY.lock().expect("skill registry poisoned");
-                let factory = inner.skills.get(&skill_name).expect("skill removed during call");
-                factory(params)
-            }))
+            Some(Box::new(
+                move |params: Map<String, Value>| -> Box<dyn SkillBase> {
+                    let inner = REGISTRY.lock().expect("skill registry poisoned");
+                    let factory = inner
+                        .skills
+                        .get(&skill_name)
+                        .expect("skill removed during call");
+                    factory(params)
+                },
+            ))
         } else {
             None
         }
     }
 
     /// List all registered skill names (sorted).
+    ///
+    /// # Panics
+    ///
+    /// Panics if the global registry lock is poisoned (another thread
+    /// panicked while holding it). This does not occur under normal operation.
     pub fn list_skills() -> Vec<String> {
         let inner = REGISTRY.lock().expect("skill registry poisoned");
         let mut names: Vec<String> = inner.skills.keys().cloned().collect();
@@ -169,17 +189,26 @@ impl SkillRegistry {
     /// # Errors
     /// Returns an error string if the directory does not exist or is
     /// not a directory.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the global registry lock is poisoned (another thread
+    /// panicked while holding it). This does not occur under normal operation.
     pub fn add_skill_directory(path: &str) -> Result<(), String> {
         let p = PathBuf::from(path);
         if !p.exists() {
-            return Err(format!("Skill directory does not exist: {}", path));
+            return Err(format!("Skill directory does not exist: {path}"));
         }
         if !p.is_dir() {
-            return Err(format!("Path is not a directory: {}", path));
+            return Err(format!("Path is not a directory: {path}"));
         }
         let mut inner = REGISTRY.lock().expect("skill registry poisoned");
         let canonical = std::fs::canonicalize(&p).unwrap_or_else(|_| p.clone());
-        if !inner.external_paths.iter().any(|existing| existing == &canonical) {
+        if !inner
+            .external_paths
+            .iter()
+            .any(|existing| existing == &canonical)
+        {
             inner.external_paths.push(canonical);
         }
         Ok(())
@@ -187,6 +216,11 @@ impl SkillRegistry {
 
     /// Read the list of external skill directories registered via
     /// [`SkillRegistry::add_skill_directory`].
+    ///
+    /// # Panics
+    ///
+    /// Panics if the global registry lock is poisoned (another thread
+    /// panicked while holding it). This does not occur under normal operation.
     pub fn external_paths() -> Vec<PathBuf> {
         let inner = REGISTRY.lock().expect("skill registry poisoned");
         inner.external_paths.clone()
@@ -271,7 +305,7 @@ mod tests {
         ];
         for name in builtins {
             let factory = SkillRegistry::get_factory(name);
-            assert!(factory.is_some(), "Factory missing for builtin: {}", name);
+            assert!(factory.is_some(), "Factory missing for builtin: {name}");
             let instance = factory.unwrap()(Map::new());
             assert_eq!(instance.name(), name);
         }
@@ -293,10 +327,12 @@ mod tests {
         // Use the project's `src/skills` directory — known to exist.
         let dir = std::env::current_dir().unwrap().join("src").join("skills");
         let r = SkillRegistry::add_skill_directory(dir.to_str().unwrap());
-        assert!(r.is_ok(), "add_skill_directory failed: {:?}", r);
+        assert!(r.is_ok(), "add_skill_directory failed: {r:?}");
         let canonical = std::fs::canonicalize(&dir).unwrap();
         assert!(
-            SkillRegistry::external_paths().iter().any(|p| p == &canonical),
+            SkillRegistry::external_paths()
+                .iter()
+                .any(|p| p == &canonical),
             "external_paths should contain registered directory"
         );
     }

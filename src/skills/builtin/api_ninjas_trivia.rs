@@ -1,4 +1,4 @@
-use serde_json::{json, Map, Value};
+use serde_json::{Map, Value, json};
 
 use crate::agent::AgentBase;
 use crate::skills::skill_base::{SkillBase, SkillParams};
@@ -34,11 +34,11 @@ impl ApiNinjasTrivia {
 }
 
 impl SkillBase for ApiNinjasTrivia {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "api_ninjas_trivia"
     }
 
-    fn description(&self) -> &str {
+    fn description(&self) -> &'static str {
         "Get trivia questions from API Ninjas"
     }
 
@@ -60,7 +60,7 @@ impl SkillBase for ApiNinjasTrivia {
         let api_key = self
             .sp
             .get_str("api_key")
-            .map(|s| s.to_string())
+            .map(std::string::ToString::to_string)
             .or_else(|| std::env::var("API_NINJAS_KEY").ok())
             .unwrap_or_default();
 

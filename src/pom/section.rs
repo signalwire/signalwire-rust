@@ -9,13 +9,13 @@
 //! `to_value`) walk the tree and emit byte-for-byte the same output
 //! as Python's reference implementation.
 
-use serde_json::{json, Map, Value};
+use serde_json::{Map, Value, json};
 
 /// One node in a Prompt Object Model tree.
 ///
 /// Mirrors Python's `signalwire.pom.pom.Section`. Fields are owned
 /// strings/vecs (Rust idiom — the model is a value-type document).
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Section {
     /// The section title. `None` is valid only for the *first*
     /// top-level section in a [`crate::pom::PromptObjectModel`];
@@ -38,19 +38,6 @@ pub struct Section {
     /// Whether bullets in *this* section render as `1. x` (true) or
     /// `- x` (false). Default `false` matches Python.
     pub numbered_bullets: bool,
-}
-
-impl Default for Section {
-    fn default() -> Self {
-        Section {
-            title: None,
-            body: String::new(),
-            bullets: Vec::new(),
-            subsections: Vec::new(),
-            numbered: None,
-            numbered_bullets: false,
-        }
-    }
 }
 
 impl Section {
@@ -95,6 +82,12 @@ impl Section {
     /// subsection so the caller can keep configuring it. (Python
     /// returns the `Section` object directly; Rust's borrow checker
     /// makes a `&mut` reference the equivalent shape.)
+    ///
+    /// # Panics
+    ///
+    /// Does not panic in practice: the internal `.expect("just pushed")`
+    /// reads back the subsection pushed on the line above, so `last_mut()`
+    /// is always `Some`.
     pub fn add_subsection(&mut self, title: impl Into<String>) -> &mut Section {
         self.subsections.push(Section::new(Some(title.into())));
         self.subsections.last_mut().expect("just pushed")
@@ -103,6 +96,12 @@ impl Section {
     /// Add a fully-specified subsection. Convenience that mirrors
     /// Python's keyword-argument form
     /// `add_subsection(title=..., body=..., bullets=..., numbered=..., numberedBullets=...)`.
+    ///
+    /// # Panics
+    ///
+    /// Does not panic in practice: the internal `.expect("just pushed")`
+    /// reads back the subsection pushed on the line above, so `last_mut()`
+    /// is always `Some`.
     pub fn add_subsection_full(
         &mut self,
         title: impl Into<String>,
@@ -132,7 +131,7 @@ impl Section {
     /// The Python name is `to_dict`; in Rust the natural name for
     /// a `serde_json::Value` is `to_value`. The cross-port surface
     /// audit treats the two as equivalent (see
-    /// `enumerate_surface.py` METHOD_RENAMES).
+    /// `enumerate_surface.py` `METHOD_RENAMES`).
     pub fn to_value(&self) -> Value {
         let mut data = Map::new();
 
@@ -154,7 +153,7 @@ impl Section {
         if !self.subsections.is_empty() {
             data.insert(
                 "subsections".to_string(),
-                Value::Array(self.subsections.iter().map(|s| s.to_value()).collect()),
+                Value::Array(self.subsections.iter().map(Section::to_value).collect()),
             );
         }
 
@@ -174,6 +173,7 @@ impl Section {
     /// `Section.render_markdown` byte-for-byte — see
     /// `signalwire-python/tests/unit/pom/test_pom_render_parity.py`
     /// for the cross-port contract.
+    #[must_use]
     pub fn render_markdown(&self) -> String {
         self.render_markdown_at(2, &[])
     }
@@ -182,12 +182,14 @@ impl Section {
         let mut md: Vec<String> = Vec::new();
 
         if let Some(title) = &self.title {
-            let prefix = if !section_number.is_empty() {
-                let nums: Vec<String> =
-                    section_number.iter().map(|n| n.to_string()).collect();
-                format!("{}. ", nums.join("."))
-            } else {
+            let prefix = if section_number.is_empty() {
                 String::new()
+            } else {
+                let nums: Vec<String> = section_number
+                    .iter()
+                    .map(std::string::ToString::to_string)
+                    .collect();
+                format!("{}. ", nums.join("."))
             };
             md.push(format!("{} {}{}\n", "#".repeat(level), prefix, title));
         }
@@ -200,7 +202,7 @@ impl Section {
             if self.numbered_bullets {
                 md.push(format!("{}. {}", i + 1, bullet));
             } else {
-                md.push(format!("- {}", bullet));
+                md.push(format!("- {bullet}"));
             }
         }
 
@@ -236,6 +238,7 @@ impl Section {
 
     /// Render this section as XML. Matches Python's
     /// `Section.render_xml` byte-for-byte.
+    #[must_use]
     pub fn render_xml(&self) -> String {
         self.render_xml_at(0, &[])
     }
@@ -244,17 +247,19 @@ impl Section {
         let indent_str = "  ".repeat(indent);
         let mut xml: Vec<String> = Vec::new();
 
-        xml.push(format!("{}<section>", indent_str));
+        xml.push(format!("{indent_str}<section>"));
 
         if let Some(title) = &self.title {
-            let prefix = if !section_number.is_empty() {
-                let nums: Vec<String> =
-                    section_number.iter().map(|n| n.to_string()).collect();
-                format!("{}. ", nums.join("."))
-            } else {
+            let prefix = if section_number.is_empty() {
                 String::new()
+            } else {
+                let nums: Vec<String> = section_number
+                    .iter()
+                    .map(std::string::ToString::to_string)
+                    .collect();
+                format!("{}. ", nums.join("."))
             };
-            xml.push(format!("{}  <title>{}{}</title>", indent_str, prefix, title));
+            xml.push(format!("{indent_str}  <title>{prefix}{title}</title>"));
         }
 
         if !self.body.is_empty() {
@@ -262,7 +267,7 @@ impl Section {
         }
 
         if !self.bullets.is_empty() {
-            xml.push(format!("{}  <bullets>", indent_str));
+            xml.push(format!("{indent_str}  <bullets>"));
             for (i, bullet) in self.bullets.iter().enumerate() {
                 if self.numbered_bullets {
                     xml.push(format!(
@@ -272,16 +277,15 @@ impl Section {
                         bullet
                     ));
                 } else {
-                    xml.push(format!("{}    <bullet>{}</bullet>", indent_str, bullet));
+                    xml.push(format!("{indent_str}    <bullet>{bullet}</bullet>"));
                 }
             }
-            xml.push(format!("{}  </bullets>", indent_str));
+            xml.push(format!("{indent_str}  </bullets>"));
         }
 
         if !self.subsections.is_empty() {
-            xml.push(format!("{}  <subsections>", indent_str));
-            let any_subsection_numbered =
-                self.subsections.iter().any(|s| s.numbered == Some(true));
+            xml.push(format!("{indent_str}  <subsections>"));
+            let any_subsection_numbered = self.subsections.iter().any(|s| s.numbered == Some(true));
 
             for (i, subsection) in self.subsections.iter().enumerate() {
                 let new_section_number: Vec<usize> =
@@ -299,10 +303,10 @@ impl Section {
 
                 xml.push(subsection.render_xml_at(indent + 2, &new_section_number));
             }
-            xml.push(format!("{}  </subsections>", indent_str));
+            xml.push(format!("{indent_str}  </subsections>"));
         }
 
-        xml.push(format!("{}</section>", indent_str));
+        xml.push(format!("{indent_str}</section>"));
 
         xml.join("\n")
     }

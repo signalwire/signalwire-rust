@@ -7,7 +7,7 @@
 #[path = "common/mod.rs"]
 mod common;
 
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 // ---------------------------------------------------------------------------
 // CompatAccounts::create — POST /api/laml/2010-04-01/Accounts
@@ -51,10 +51,7 @@ fn test_compat_accounts_create_journal_records_post() {
         Some("Sub-B")
     );
     let status = entry.response_status.expect("response_status");
-    assert!(
-        (200..400).contains(&status),
-        "response_status = {status}"
-    );
+    assert!((200..400).contains(&status), "response_status = {status}");
 }
 
 // ---------------------------------------------------------------------------
@@ -84,10 +81,7 @@ fn test_compat_accounts_get_journal_records_get_with_sid() {
 
     let entry = common::mocktest::journal_last();
     assert_eq!(entry.method, "GET");
-    assert_eq!(
-        entry.path,
-        "/api/laml/2010-04-01/Accounts/AC_SAMPLE_SID"
-    );
+    assert_eq!(entry.path, "/api/laml/2010-04-01/Accounts/AC_SAMPLE_SID");
     // GET should not carry a body.
     assert!(
         entry.body.is_null() || matches!(&entry.body, Value::Object(o) if o.is_empty()),

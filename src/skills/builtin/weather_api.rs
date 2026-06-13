@@ -1,4 +1,4 @@
-use serde_json::{json, Map, Value};
+use serde_json::{Map, Value, json};
 
 use crate::agent::AgentBase;
 use crate::skills::skill_base::{SkillBase, SkillParams};
@@ -17,11 +17,11 @@ impl WeatherApi {
 }
 
 impl SkillBase for WeatherApi {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "weather_api"
     }
 
-    fn description(&self) -> &str {
+    fn description(&self) -> &'static str {
         "Get current weather information from WeatherAPI.com"
     }
 
@@ -39,7 +39,7 @@ impl SkillBase for WeatherApi {
         let api_key = self
             .sp
             .get_str("api_key")
-            .map(|s| s.to_string())
+            .map(std::string::ToString::to_string)
             .or_else(|| std::env::var("WEATHER_API_KEY").ok())
             .unwrap_or_default();
         let unit = self.sp.get_str_or("temperature_unit", "fahrenheit");

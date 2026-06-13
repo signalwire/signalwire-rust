@@ -52,17 +52,37 @@ impl PromptObjectModel {
     ///
     /// Returns `Err(String)` with a descriptive message on parse
     /// errors, matching Python's `ValueError`.
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err(String)` if `json_str` is not well-formed JSON
+    /// (the message is `"invalid JSON: <serde error>"`), or if the
+    /// parsed document fails POM structural validation — see
+    /// [`from_value`], which this delegates to (e.g. the top level is
+    /// not an array, a section is not an object, or a section has no
+    /// body/bullets/subsections).
+    ///
+    /// [`from_value`]: PromptObjectModel::from_value
     pub fn from_json(json_str: &str) -> Result<Self, String> {
-        let value: Value = serde_json::from_str(json_str)
-            .map_err(|e| format!("invalid JSON: {}", e))?;
+        let value: Value =
+            serde_json::from_str(json_str).map_err(|e| format!("invalid JSON: {e}"))?;
         Self::from_value(&value)
     }
 
     /// Parse a YAML string into a [`PromptObjectModel`]. Mirrors
     /// Python's `PromptObjectModel.from_yaml(yaml_data)`.
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err(String)` if `yaml_str` is not well-formed YAML
+    /// (the message is `"invalid YAML: <serde error>"`), or if the
+    /// parsed document fails POM structural validation — see
+    /// [`from_value`], which this delegates to.
+    ///
+    /// [`from_value`]: PromptObjectModel::from_value
     pub fn from_yaml(yaml_str: &str) -> Result<Self, String> {
-        let value: Value = serde_norway::from_str(yaml_str)
-            .map_err(|e| format!("invalid YAML: {}", e))?;
+        let value: Value =
+            serde_norway::from_str(yaml_str).map_err(|e| format!("invalid YAML: {e}"))?;
         Self::from_value(&value)
     }
 
@@ -71,6 +91,18 @@ impl PromptObjectModel {
     ///
     /// [`from_json`]: PromptObjectModel::from_json
     /// [`from_yaml`]: PromptObjectModel::from_yaml
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err(String)` when the value violates the POM document
+    /// shape. The top level must be an array (else `"POM document must
+    /// be an array of sections"`); each element is validated by
+    /// `build_section`, which rejects non-object sections (`"Each
+    /// section must be an object/dict."`), wrong-typed fields (e.g.
+    /// `"'title' must be a string if present."`, `"'subsections' must
+    /// be a list if provided."`), a section lacking any of a non-empty
+    /// body, non-empty bullets, or subsections, and a subsection
+    /// missing its required `title`.
     pub fn from_value(value: &Value) -> Result<Self, String> {
         let arr = value
             .as_array()
@@ -94,6 +126,18 @@ impl PromptObjectModel {
     /// can keep configuring it (Python returns the `Section` object
     /// — Rust's borrow checker makes a `&mut` reference the
     /// equivalent shape).
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err("Only the first section can have no title")` when
+    /// `title` is `None` but the model already contains at least one
+    /// section — only the very first section may be untitled.
+    ///
+    /// # Panics
+    ///
+    /// Does not panic in practice: the internal `.expect("just pushed")`
+    /// reads back the section pushed on the line above, so the `last_mut()`
+    /// is always `Some`.
     pub fn add_section(&mut self, title: Option<String>) -> Result<&mut Section, String> {
         if title.is_none() && !self.sections.is_empty() {
             return Err("Only the first section can have no title".to_string());
@@ -105,6 +149,14 @@ impl PromptObjectModel {
     /// Append a top-level section with title + body in one call.
     /// Convenience wrapper that mirrors Python's keyword-style
     /// `add_section(title=..., body=...)`.
+    ///
+    /// # Errors
+    ///
+    /// Propagates the error from [`add_section`]: returns
+    /// `Err("Only the first section can have no title")` when `title`
+    /// is `None` and the model already has a section.
+    ///
+    /// [`add_section`]: PromptObjectModel::add_section
     pub fn add_section_with(
         &mut self,
         title: Option<String>,
@@ -156,16 +208,29 @@ impl PromptObjectModel {
     /// follows serde idiom (`to_value`) but the cross-port surface
     /// audit treats `to_value` ≡ `to_dict`.
     pub fn to_value(&self) -> Value {
-        Value::Array(self.sections.iter().map(|s| s.to_value()).collect())
+        Value::Array(
+            self.sections
+                .iter()
+                .map(super::section::Section::to_value)
+                .collect(),
+        )
     }
 
     /// Render the model as a JSON string (indent=2). Matches
     /// Python's `to_json` byte-for-byte: `json.dumps([...], indent=2)`.
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err("failed to serialize JSON: <serde error>")` if
+    /// `serde_json` fails to serialize the section tree. In practice
+    /// the POM value is always serializable, so this is effectively
+    /// infallible, but the fallible signature is preserved to mirror
+    /// Python's `to_json`.
     pub fn to_json(&self) -> Result<String, String> {
         // serde_json::to_string_pretty uses indent=2 by default,
         // matching Python's json.dumps(..., indent=2).
         serde_json::to_string_pretty(&self.to_value())
-            .map_err(|e| format!("failed to serialize JSON: {}", e))
+            .map_err(|e| format!("failed to serialize JSON: {e}"))
     }
 
     /// Render the model as a YAML string. Matches PyYAML's output
@@ -173,11 +238,19 @@ impl PromptObjectModel {
     ///
     /// We hand-emit YAML rather than rely on `serde_norway::to_string`
     /// because the latter (a) sorts keys alphabetically when fed a
-    /// `serde_json::Value` (which uses BTreeMap internally) and
+    /// `serde_json::Value` (which uses `BTreeMap` internally) and
     /// (b) doesn't expose a switch to disable that. The POM
     /// document shape is fully constrained — list of dicts with
     /// known string/list-of-string/list-of-dict values — so a
     /// targeted emitter is straightforward and guarantees parity.
+    ///
+    /// # Errors
+    ///
+    /// The fallible `Result` signature mirrors Python's `to_yaml`. The
+    /// hand-rolled emitter walks a fully-constrained document shape and
+    /// always succeeds, so no `Err` is currently produced; the
+    /// signature is retained for cross-port surface parity and to allow
+    /// future emit failures to surface without an API break.
     pub fn to_yaml(&self) -> Result<String, String> {
         if self.sections.is_empty() {
             // PyYAML emits `[]\n` for an empty list.
@@ -192,6 +265,7 @@ impl PromptObjectModel {
 
     /// Render the entire model as markdown. Matches Python's
     /// `render_markdown` byte-for-byte.
+    #[must_use]
     pub fn render_markdown(&self) -> String {
         let any_section_numbered = self.sections.iter().any(|s| s.numbered == Some(true));
 
@@ -216,6 +290,7 @@ impl PromptObjectModel {
 
     /// Render the entire model as XML. Matches Python's
     /// `render_xml` byte-for-byte.
+    #[must_use]
     pub fn render_xml(&self) -> String {
         let mut xml: Vec<String> = vec![
             r#"<?xml version="1.0" encoding="UTF-8"?>"#.to_string(),
@@ -249,6 +324,12 @@ impl PromptObjectModel {
     /// Mirrors Python's `add_pom_as_subsection(target, pom_to_add)`
     /// where `target` is a section title. Returns `Err` when no
     /// section with the given title exists.
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err("No section with title '<target_title>' found.")`
+    /// when no section (at any depth) matches `target_title`, so there
+    /// is nowhere to attach the incoming sections.
     pub fn add_pom_as_subsection(
         &mut self,
         target_title: &str,
@@ -256,7 +337,7 @@ impl PromptObjectModel {
     ) -> Result<(), String> {
         let target = self
             .find_section_mut(target_title)
-            .ok_or_else(|| format!("No section with title '{}' found.", target_title))?;
+            .ok_or_else(|| format!("No section with title '{target_title}' found."))?;
         for section in &pom_to_add.sections {
             target.subsections.push(section.clone());
         }
@@ -274,30 +355,30 @@ fn build_section(value: &Value, is_subsection: bool, top_index: usize) -> Result
         .as_object()
         .ok_or_else(|| "Each section must be an object/dict.".to_string())?;
 
-    if let Some(t) = map.get("title") {
-        if !t.is_string() {
-            return Err("'title' must be a string if present.".to_string());
-        }
+    if let Some(t) = map.get("title")
+        && !t.is_string()
+    {
+        return Err("'title' must be a string if present.".to_string());
     }
-    if let Some(s) = map.get("subsections") {
-        if !s.is_array() {
-            return Err("'subsections' must be a list if provided.".to_string());
-        }
+    if let Some(s) = map.get("subsections")
+        && !s.is_array()
+    {
+        return Err("'subsections' must be a list if provided.".to_string());
     }
-    if let Some(b) = map.get("bullets") {
-        if !b.is_array() {
-            return Err("'bullets' must be a list if provided.".to_string());
-        }
+    if let Some(b) = map.get("bullets")
+        && !b.is_array()
+    {
+        return Err("'bullets' must be a list if provided.".to_string());
     }
-    if let Some(n) = map.get("numbered") {
-        if !n.is_boolean() {
-            return Err("'numbered' must be a boolean if provided.".to_string());
-        }
+    if let Some(n) = map.get("numbered")
+        && !n.is_boolean()
+    {
+        return Err("'numbered' must be a boolean if provided.".to_string());
     }
-    if let Some(nb) = map.get("numberedBullets") {
-        if !nb.is_boolean() {
-            return Err("'numberedBullets' must be a boolean if provided.".to_string());
-        }
+    if let Some(nb) = map.get("numberedBullets")
+        && !nb.is_boolean()
+    {
+        return Err("'numberedBullets' must be a boolean if provided.".to_string());
     }
 
     // Validate body / bullets / subsections present (Python rule)
@@ -348,14 +429,14 @@ fn build_section(value: &Value, is_subsection: bool, top_index: usize) -> Result
         .and_then(|b| b.as_array())
         .map(|arr| {
             arr.iter()
-                .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                .filter_map(|v| v.as_str().map(std::string::ToString::to_string))
                 .collect()
         })
         .unwrap_or_default();
-    let numbered = map.get("numbered").and_then(|v| v.as_bool());
+    let numbered = map.get("numbered").and_then(serde_json::Value::as_bool);
     let numbered_bullets = map
         .get("numberedBullets")
-        .and_then(|v| v.as_bool())
+        .and_then(serde_json::Value::as_bool)
         .unwrap_or(false);
 
     let mut section = Section {
@@ -409,7 +490,7 @@ fn emit_section_yaml(section: &Section, out: &mut String, key_indent: usize) {
             }
             out.push_str($key);
             out.push_str(": ");
-            out.push_str(&$value);
+            out.push_str($value);
             out.push('\n');
         };
     }
@@ -430,11 +511,11 @@ fn emit_section_yaml(section: &Section, out: &mut String, key_indent: usize) {
     }
 
     if let Some(title) = &section.title {
-        push_kv!("title", yaml_scalar(title));
+        push_kv!("title", &yaml_scalar(title));
     }
 
     if !section.body.is_empty() {
-        push_kv!("body", yaml_scalar(&section.body));
+        push_kv!("body", &yaml_scalar(&section.body));
     }
 
     if !section.bullets.is_empty() {
@@ -460,11 +541,11 @@ fn emit_section_yaml(section: &Section, out: &mut String, key_indent: usize) {
     }
 
     if section.numbered == Some(true) {
-        push_kv!("numbered", "true".to_string());
+        push_kv!("numbered", "true");
     }
 
     if section.numbered_bullets {
-        push_kv!("numberedBullets", "true".to_string());
+        push_kv!("numberedBullets", "true");
     }
 
     // Theoretically invalid (validator forbids it), but if it
@@ -492,7 +573,7 @@ fn yaml_scalar(s: &str) -> String {
         // double-quoted form because POM round-trips don't carry
         // through the *style*, only the *value* (which `from_yaml`
         // reads back identically).
-        serde_json::to_string(s).unwrap_or_else(|_| format!("\"{}\"", s))
+        serde_json::to_string(s).unwrap_or_else(|_| format!("\"{s}\""))
     } else {
         s.to_string()
     }
@@ -508,8 +589,26 @@ fn needs_yaml_quoting(s: &str) -> bool {
     let first = s.chars().next().unwrap();
     if matches!(
         first,
-        '!' | '&' | '*' | '?' | '|' | '-' | '<' | '>' | '=' | '%' | '@' | '`' | '"' | '\'' | '['
-            | ']' | '{' | '}' | '#' | ',' | ' '
+        '!' | '&'
+            | '*'
+            | '?'
+            | '|'
+            | '-'
+            | '<'
+            | '>'
+            | '='
+            | '%'
+            | '@'
+            | '`'
+            | '"'
+            | '\''
+            | '['
+            | ']'
+            | '{'
+            | '}'
+            | '#'
+            | ','
+            | ' '
     ) {
         return true;
     }

@@ -3,8 +3,8 @@
 //
 //! Dynamic SWML Service — generates different SWML based on POST data.
 
-use signalwire::swml::service::{Service, ServiceOptions};
 use serde_json::json;
+use signalwire::swml::service::{Service, ServiceOptions};
 
 fn main() {
     let service = Service::new(ServiceOptions {

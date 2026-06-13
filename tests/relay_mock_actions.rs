@@ -5,10 +5,14 @@
 // Call::play() which only records to memory), then assert on the
 // journaled `calling.<verb>` and follow-up sub-command frames.
 
+// Test helpers take `Value` by value to match the mock-test helper style
+// (payloads flow in by value, as in the Python sibling tests).
+#![allow(clippy::needless_pass_by_value)]
+
 #[path = "common/mod.rs"]
 mod common;
 
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::sync::{Arc, Mutex};
 
 use common::relay_mocktest;
@@ -29,8 +33,7 @@ fn answered_inbound_call(
     client: &Arc<signalwire::relay::Client>,
     call_id: &str,
 ) -> Arc<signalwire::relay::Call> {
-    let captured: Arc<Mutex<Option<Arc<signalwire::relay::Call>>>> =
-        Arc::new(Mutex::new(None));
+    let captured: Arc<Mutex<Option<Arc<signalwire::relay::Call>>>> = Arc::new(Mutex::new(None));
     let cap2 = captured.clone();
     let client2 = client.clone();
     client.on_call(move |call, _ev| {
@@ -51,8 +54,7 @@ fn answered_inbound_call(
     let cid = call_id.to_string();
     assert!(
         wait_until(3000, || captured.lock().unwrap().is_some()),
-        "on_call did not fire for {}",
-        cid
+        "on_call did not fire for {cid}"
     );
     let call = captured.lock().unwrap().clone().unwrap();
     *call.state.lock().unwrap() = "answered".to_string();
@@ -76,7 +78,7 @@ fn send_action_frame(
             obj.insert(k.clone(), v.clone());
         }
     }
-    let id = format!("rpc-{}-{}", method, control_id);
+    let id = format!("rpc-{method}-{control_id}");
     let frame = json!({
         "jsonrpc": "2.0",
         "id": id.clone(),
@@ -120,7 +122,10 @@ fn test_play_journals_calling_play() {
         .expect("expected one calling.play frame");
     let p = entry.inner_params();
     assert_eq!(p.get("call_id").and_then(Value::as_str), Some("call-play"));
-    assert_eq!(p.get("control_id").and_then(Value::as_str), Some("play-ctl-1"));
+    assert_eq!(
+        p.get("control_id").and_then(Value::as_str),
+        Some("play-ctl-1")
+    );
     let play = p.get("play").and_then(Value::as_array).unwrap();
     assert_eq!(play[0].get("type").and_then(Value::as_str), Some("tts"));
     client.disconnect();
@@ -138,12 +143,23 @@ fn test_play_stop_journals_play_stop() {
         "play-ctl-stop",
         json!({"play": [{"type": "silence", "params": {"duration": 60}}]}),
     );
-    send_subcommand(&client, &call, "calling.play.stop", "play-ctl-stop", json!({}));
+    send_subcommand(
+        &client,
+        &call,
+        "calling.play.stop",
+        "play-ctl-stop",
+        json!({}),
+    );
     std::thread::sleep(std::time::Duration::from_millis(150));
     let stops = relay_mocktest::journal_recv(Some("calling.play.stop"));
     assert!(!stops.is_empty(), "no calling.play.stop frame");
     assert_eq!(
-        stops.last().unwrap().inner_params().get("control_id").and_then(Value::as_str),
+        stops
+            .last()
+            .unwrap()
+            .inner_params()
+            .get("control_id")
+            .and_then(Value::as_str),
         Some("play-ctl-stop")
     );
     client.disconnect();
@@ -161,8 +177,20 @@ fn test_play_pause_resume_volume_journal() {
         "play-ctl-prv",
         json!({"play": [{"type": "silence", "params": {"duration": 60}}]}),
     );
-    send_subcommand(&client, &call, "calling.play.pause", "play-ctl-prv", json!({}));
-    send_subcommand(&client, &call, "calling.play.resume", "play-ctl-prv", json!({}));
+    send_subcommand(
+        &client,
+        &call,
+        "calling.play.pause",
+        "play-ctl-prv",
+        json!({}),
+    );
+    send_subcommand(
+        &client,
+        &call,
+        "calling.play.resume",
+        "play-ctl-prv",
+        json!({}),
+    );
     send_subcommand(
         &client,
         &call,
@@ -175,7 +203,12 @@ fn test_play_pause_resume_volume_journal() {
     assert!(!relay_mocktest::journal_recv(Some("calling.play.resume")).is_empty());
     let vol = relay_mocktest::journal_recv(Some("calling.play.volume"));
     assert!(!vol.is_empty());
-    let v = vol.last().unwrap().inner_params().get("volume").and_then(Value::as_f64);
+    let v = vol
+        .last()
+        .unwrap()
+        .inner_params()
+        .get("volume")
+        .and_then(Value::as_f64);
     assert_eq!(v, Some(-3.0));
     client.disconnect();
 }
@@ -203,7 +236,10 @@ fn test_record_journals_calling_record() {
         .expect("expected calling.record frame");
     let p = entry.inner_params();
     assert_eq!(p.get("call_id").and_then(Value::as_str), Some("call-rec"));
-    assert_eq!(p.get("control_id").and_then(Value::as_str), Some("rec-ctl-1"));
+    assert_eq!(
+        p.get("control_id").and_then(Value::as_str),
+        Some("rec-ctl-1")
+    );
     assert_eq!(
         p.get("record")
             .and_then(|r| r.get("audio"))
@@ -226,12 +262,23 @@ fn test_record_stop_journals_record_stop() {
         "rec-ctl-stop",
         json!({"record": {"audio": {"format": "wav"}}}),
     );
-    send_subcommand(&client, &call, "calling.record.stop", "rec-ctl-stop", json!({}));
+    send_subcommand(
+        &client,
+        &call,
+        "calling.record.stop",
+        "rec-ctl-stop",
+        json!({}),
+    );
     std::thread::sleep(std::time::Duration::from_millis(150));
     let stops = relay_mocktest::journal_recv(Some("calling.record.stop"));
     assert!(!stops.is_empty());
     assert_eq!(
-        stops.last().unwrap().inner_params().get("control_id").and_then(Value::as_str),
+        stops
+            .last()
+            .unwrap()
+            .inner_params()
+            .get("control_id")
+            .and_then(Value::as_str),
         Some("rec-ctl-stop")
     );
     client.disconnect();
@@ -258,7 +305,12 @@ fn test_detect_stop_journals_detect_stop() {
     let stops = relay_mocktest::journal_recv(Some("calling.detect.stop"));
     assert!(!stops.is_empty());
     assert_eq!(
-        stops.last().unwrap().inner_params().get("control_id").and_then(Value::as_str),
+        stops
+            .last()
+            .unwrap()
+            .inner_params()
+            .get("control_id")
+            .and_then(Value::as_str),
         Some("det-stop")
     );
     client.disconnect();
@@ -328,7 +380,12 @@ fn test_play_and_collect_stop_journals_pac_stop() {
     let stops = relay_mocktest::journal_recv(Some("calling.play_and_collect.stop"));
     assert!(!stops.is_empty());
     assert_eq!(
-        stops.last().unwrap().inner_params().get("control_id").and_then(Value::as_str),
+        stops
+            .last()
+            .unwrap()
+            .inner_params()
+            .get("control_id")
+            .and_then(Value::as_str),
         Some("pac-stop")
     );
     client.disconnect();
@@ -357,7 +414,9 @@ fn test_collect_journals_calling_collect() {
         .expect("calling.collect frame");
     let p = entry.inner_params();
     assert_eq!(
-        p.get("digits").and_then(|d| d.get("max")).and_then(Value::as_u64),
+        p.get("digits")
+            .and_then(|d| d.get("max"))
+            .and_then(Value::as_u64),
         Some(4)
     );
     assert_eq!(p.get("control_id").and_then(Value::as_str), Some("col-ctl"));
@@ -376,12 +435,23 @@ fn test_collect_stop_journals_collect_stop() {
         "col-stop",
         json!({"digits": {"max": 4}}),
     );
-    send_subcommand(&client, &call, "calling.collect.stop", "col-stop", json!({}));
+    send_subcommand(
+        &client,
+        &call,
+        "calling.collect.stop",
+        "col-stop",
+        json!({}),
+    );
     std::thread::sleep(std::time::Duration::from_millis(150));
     let stops = relay_mocktest::journal_recv(Some("calling.collect.stop"));
     assert!(!stops.is_empty());
     assert_eq!(
-        stops.last().unwrap().inner_params().get("control_id").and_then(Value::as_str),
+        stops
+            .last()
+            .unwrap()
+            .inner_params()
+            .get("control_id")
+            .and_then(Value::as_str),
         Some("col-stop")
     );
     client.disconnect();
@@ -438,7 +508,12 @@ fn test_pay_stop_journals_pay_stop() {
     let stops = relay_mocktest::journal_recv(Some("calling.pay.stop"));
     assert!(!stops.is_empty());
     assert_eq!(
-        stops.last().unwrap().inner_params().get("control_id").and_then(Value::as_str),
+        stops
+            .last()
+            .unwrap()
+            .inner_params()
+            .get("control_id")
+            .and_then(Value::as_str),
         Some("pay-stop")
     );
     client.disconnect();
@@ -477,7 +552,10 @@ fn test_send_fax_journals_calling_send_fax() {
         p.get("identity").and_then(Value::as_str),
         Some("+15551112222")
     );
-    assert_eq!(p.get("control_id").and_then(Value::as_str), Some("sfax-ctl"));
+    assert_eq!(
+        p.get("control_id").and_then(Value::as_str),
+        Some("sfax-ctl")
+    );
     client.disconnect();
 }
 
@@ -507,11 +585,16 @@ fn test_tap_journals_calling_tap() {
         .expect("calling.tap frame");
     let p = entry.inner_params();
     assert_eq!(
-        p.get("tap").and_then(|t| t.get("type")).and_then(Value::as_str),
+        p.get("tap")
+            .and_then(|t| t.get("type"))
+            .and_then(Value::as_str),
         Some("audio")
     );
     assert_eq!(
-        p.get("device").and_then(|d| d.get("params")).and_then(|p| p.get("port")).and_then(Value::as_u64),
+        p.get("device")
+            .and_then(|d| d.get("params"))
+            .and_then(|p| p.get("port"))
+            .and_then(Value::as_u64),
         Some(4000)
     );
     assert_eq!(p.get("control_id").and_then(Value::as_str), Some("tap-ctl"));
@@ -538,7 +621,12 @@ fn test_tap_stop_journals_tap_stop() {
     let stops = relay_mocktest::journal_recv(Some("calling.tap.stop"));
     assert!(!stops.is_empty());
     assert_eq!(
-        stops.last().unwrap().inner_params().get("control_id").and_then(Value::as_str),
+        stops
+            .last()
+            .unwrap()
+            .inner_params()
+            .get("control_id")
+            .and_then(Value::as_str),
         Some("tap-stop")
     );
     client.disconnect();
@@ -573,10 +661,7 @@ fn test_stream_journals_calling_stream() {
         p.get("url").and_then(Value::as_str),
         Some("wss://stream.example/audio")
     );
-    assert_eq!(
-        p.get("codec").and_then(Value::as_str),
-        Some("OPUS@48000h")
-    );
+    assert_eq!(p.get("codec").and_then(Value::as_str), Some("OPUS@48000h"));
     assert_eq!(
         p.get("control_id").and_then(Value::as_str),
         Some("strm-ctl")
@@ -596,12 +681,23 @@ fn test_stream_stop_journals_stream_stop() {
         "strm-stop",
         json!({"url": "wss://stream.example/audio"}),
     );
-    send_subcommand(&client, &call, "calling.stream.stop", "strm-stop", json!({}));
+    send_subcommand(
+        &client,
+        &call,
+        "calling.stream.stop",
+        "strm-stop",
+        json!({}),
+    );
     std::thread::sleep(std::time::Duration::from_millis(150));
     let stops = relay_mocktest::journal_recv(Some("calling.stream.stop"));
     assert!(!stops.is_empty());
     assert_eq!(
-        stops.last().unwrap().inner_params().get("control_id").and_then(Value::as_str),
+        stops
+            .last()
+            .unwrap()
+            .inner_params()
+            .get("control_id")
+            .and_then(Value::as_str),
         Some("strm-stop")
     );
     client.disconnect();
@@ -623,7 +719,10 @@ fn test_transcribe_journals_calling_transcribe() {
         .next()
         .expect("calling.transcribe frame");
     assert_eq!(
-        entry.inner_params().get("control_id").and_then(Value::as_str),
+        entry
+            .inner_params()
+            .get("control_id")
+            .and_then(Value::as_str),
         Some("tr-ctl")
     );
     client.disconnect();
@@ -646,7 +745,12 @@ fn test_transcribe_stop_journals_transcribe_stop() {
     let stops = relay_mocktest::journal_recv(Some("calling.transcribe.stop"));
     assert!(!stops.is_empty());
     assert_eq!(
-        stops.last().unwrap().inner_params().get("control_id").and_then(Value::as_str),
+        stops
+            .last()
+            .unwrap()
+            .inner_params()
+            .get("control_id")
+            .and_then(Value::as_str),
         Some("tr-stop")
     );
     client.disconnect();
@@ -701,7 +805,12 @@ fn test_ai_stop_journals_ai_stop() {
     let stops = relay_mocktest::journal_recv(Some("calling.ai.stop"));
     assert!(!stops.is_empty());
     assert_eq!(
-        stops.last().unwrap().inner_params().get("control_id").and_then(Value::as_str),
+        stops
+            .last()
+            .unwrap()
+            .inner_params()
+            .get("control_id")
+            .and_then(Value::as_str),
         Some("ai-stop")
     );
     client.disconnect();
@@ -736,11 +845,20 @@ fn test_concurrent_play_and_record_route_independently() {
     assert!(!plays.is_empty());
     assert!(!recs.is_empty());
     assert_eq!(
-        plays.last().unwrap().inner_params().get("control_id").and_then(Value::as_str),
+        plays
+            .last()
+            .unwrap()
+            .inner_params()
+            .get("control_id")
+            .and_then(Value::as_str),
         Some("ctl-play-x")
     );
     assert_eq!(
-        recs.last().unwrap().inner_params().get("control_id").and_then(Value::as_str),
+        recs.last()
+            .unwrap()
+            .inner_params()
+            .get("control_id")
+            .and_then(Value::as_str),
         Some("ctl-rec-y")
     );
     client.disconnect();

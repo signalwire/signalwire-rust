@@ -15,6 +15,26 @@ categories = ["api-bindings", "web-programming"]
 name = "signalwire"
 path = "src/lib.rs"
 
+# Lint gate. `clippy::all` and the whole `pedantic` group are denied — the crate
+# is at zero pedantic warnings and this keeps it there (a new pedantic finding
+# fails the build everywhere, local and CI). `priority = -1` lowers the group so
+# the per-lint `allow`s below win despite Cargo applying [lints.clippy] keys
+# alphabetically (see rust-clippy#11237). The three allowed pedantic lints are
+# deliberate, parity-/idiom-grounded choices; the full rationale lives at the
+# matching `#![allow(...)]` in src/lib.rs and in PORT_PHILOSOPHY_RUST.md.
+[lints.clippy]
+all = { level = "deny", priority = -1 }
+pedantic = { level = "deny", priority = -1 }
+# Public params take owned Value/Vec/HashMap/String to mirror Python's
+# **kwargs / positional-list args (the parity surface the audit maps).
+needless_pass_by_value = "allow"
+# Prefab constructors / skill register_tools / compat verb builders are long
+# because they mirror their Python counterparts 1:1; surface-invisible lint.
+too_many_lines = "allow"
+# #[must_use] is added by hand on value producers (std-dev-guide test); the
+# candidate lint is allow-by-default and "expects many false positives".
+must_use_candidate = "allow"
+
 [dependencies]
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["preserve_order"] }

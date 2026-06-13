@@ -1,12 +1,11 @@
 // Copyright (c) 2025 SignalWire
 // SPDX-License-Identifier: MIT
 //
-//! Session and State Demo — on_summary, global data, post-prompt features.
+//! Session and State Demo — `on_summary`, global data, post-prompt features.
 
+use serde_json::json;
 use signalwire::agent::{AgentBase, AgentOptions};
 use signalwire::swaig::FunctionResult;
-use serde_json::json;
-use std::sync::Arc;
 
 fn main() {
     let mut agent = AgentBase::new(AgentOptions {
@@ -22,12 +21,16 @@ fn main() {
         "You are a customer service agent that tracks session state.",
         vec![],
     );
-    agent.prompt_add_section("Instructions", "", vec![
-        "Greet the caller and ask how you can help",
-        "Use update_customer_info to record information the caller provides",
-        "Use get_session_info to check what information has been collected",
-        "Use end_session when the caller is done",
-    ]);
+    agent.prompt_add_section(
+        "Instructions",
+        "",
+        vec![
+            "Greet the caller and ask how you can help",
+            "Use update_customer_info to record information the caller provides",
+            "Use get_session_info to check what information has been collected",
+            "Use end_session when the caller is done",
+        ],
+    );
 
     // Seed session with default global data
     agent.set_global_data(json!({
@@ -75,9 +78,10 @@ fn main() {
         "Get all information collected in this session",
         json!({}),
         Box::new(|_args, raw_data| {
-            let global_data = raw_data.get("global_data")
-                .map(|v| serde_json::to_string_pretty(v).unwrap_or_default())
-                .unwrap_or_else(|| "{}".to_string());
+            let global_data = raw_data.get("global_data").map_or_else(
+                || "{}".to_string(),
+                |v| serde_json::to_string_pretty(v).unwrap_or_default(),
+            );
             FunctionResult::with_response(&format!("Session data: {global_data}"))
         }),
         false,
@@ -89,9 +93,7 @@ fn main() {
         "End the current session and say goodbye",
         json!({}),
         Box::new(|_args, _raw| {
-            let mut result = FunctionResult::with_response(
-                "Thank you for calling. Goodbye!"
-            );
+            let mut result = FunctionResult::with_response("Thank you for calling. Goodbye!");
             result.set_post_process(true);
             result.add_action(json!({"update_global_data": {"status": "closed"}}));
             result.add_action(json!({"hangup": {}}));

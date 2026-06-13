@@ -6,7 +6,7 @@ use super::http_client::{HttpClient, UreqTransport};
 /// Top-level SignalWire REST client.
 ///
 /// Provides lazy access to every API namespace (fabric, calling,
-/// phone_numbers, datasphere, video, compat, etc.). Credentials can
+/// `phone_numbers`, datasphere, video, compat, etc.). Credentials can
 /// be supplied explicitly or pulled from environment variables.
 ///
 /// Production HTTP transport is `ureq` (sync, blocking, real network
@@ -23,6 +23,10 @@ impl RestClient {
     /// Create a new REST client with explicit credentials. The base URL
     /// resolves to `https://{space}`. Use [`with_base_url`] to override
     /// (e.g. for fixture-driven tests pointed at `http://127.0.0.1:N`).
+    ///
+    /// # Errors
+    /// Returns `Err(String)` if any required credential is empty: `project_id`,
+    /// `token`, or `space`. No network request is made here.
     pub fn new(project_id: &str, token: &str, space: &str) -> Result<Self, String> {
         if project_id.is_empty() {
             return Err(
@@ -35,18 +39,11 @@ impl RestClient {
             );
         }
         if space.is_empty() {
-            return Err(
-                "space is required (pass explicitly or set SIGNALWIRE_SPACE)".to_string(),
-            );
+            return Err("space is required (pass explicitly or set SIGNALWIRE_SPACE)".to_string());
         }
 
-        let base_url = format!("https://{}", space);
-        let http = HttpClient::new(
-            project_id,
-            token,
-            &base_url,
-            Box::new(UreqTransport::new()),
-        );
+        let base_url = format!("https://{space}");
+        let http = HttpClient::new(project_id, token, &base_url, Box::new(UreqTransport::new()));
 
         Ok(RestClient {
             project_id: project_id.to_string(),
@@ -61,6 +58,10 @@ impl RestClient {
     /// harnesses and integration tests to point at a local fixture
     /// without going through the `https://{space}` resolution. Production
     /// callers should use [`new`] instead.
+    ///
+    /// # Errors
+    /// Returns `Err(String)` if any required argument is empty: `project_id`,
+    /// `token`, or `base_url`. No network request is made here.
     pub fn with_base_url(project_id: &str, token: &str, base_url: &str) -> Result<Self, String> {
         if project_id.is_empty() {
             return Err("projectId is required".to_string());
@@ -71,12 +72,7 @@ impl RestClient {
         if base_url.is_empty() {
             return Err("base_url is required".to_string());
         }
-        let http = HttpClient::new(
-            project_id,
-            token,
-            base_url,
-            Box::new(UreqTransport::new()),
-        );
+        let http = HttpClient::new(project_id, token, base_url, Box::new(UreqTransport::new()));
         Ok(RestClient {
             project_id: project_id.to_string(),
             token: token.to_string(),
@@ -87,6 +83,10 @@ impl RestClient {
     }
 
     /// Create a REST client with a specific HTTP client (for testing).
+    ///
+    /// # Errors
+    /// Returns `Err(String)` if any of `project_id`, `token`, or `space` is
+    /// empty. No network request is made here.
     pub fn with_http(
         project_id: &str,
         token: &str,
@@ -100,15 +100,20 @@ impl RestClient {
             project_id: project_id.to_string(),
             token: token.to_string(),
             space: space.to_string(),
-            base_url: format!("https://{}", space),
+            base_url: format!("https://{space}"),
             http,
         })
     }
 
     /// Create from environment variables.
+    ///
+    /// # Errors
+    /// Returns `Err(String)` if any of `SIGNALWIRE_PROJECT_ID`,
+    /// `SIGNALWIRE_API_TOKEN`, or `SIGNALWIRE_SPACE` is unset or empty (they
+    /// default to the empty string, which fails the same validation as
+    /// [`new`](Self::new)). No network request is made here.
     pub fn from_env() -> Result<Self, String> {
-        let project_id =
-            env::var("SIGNALWIRE_PROJECT_ID").unwrap_or_default();
+        let project_id = env::var("SIGNALWIRE_PROJECT_ID").unwrap_or_default();
         let token = env::var("SIGNALWIRE_API_TOKEN").unwrap_or_default();
         let space = env::var("SIGNALWIRE_SPACE").unwrap_or_default();
         Self::new(&project_id, &token, &space)
@@ -144,7 +149,7 @@ impl RestClient {
     // returned resources live as long as `&self`.
     // -----------------------------------------------------------------
 
-    /// Fabric API (sub-resources: subscribers, sip_endpoints, call_flows, ...).
+    /// Fabric API (sub-resources: subscribers, `sip_endpoints`, `call_flows`, ...).
     pub fn fabric(&self) -> super::namespaces::fabric::Fabric<'_> {
         super::namespaces::fabric::Fabric::new(&self.http)
     }
@@ -160,9 +165,7 @@ impl RestClient {
     }
 
     /// Datasphere namespace (documents + chunks + search).
-    pub fn datasphere(
-        &self,
-    ) -> super::namespaces::datasphere::DatasphereNamespace<'_> {
+    pub fn datasphere(&self) -> super::namespaces::datasphere::DatasphereNamespace<'_> {
         super::namespaces::datasphere::DatasphereNamespace::new(&self.http)
     }
 
@@ -339,10 +342,7 @@ mod tests {
     #[test]
     fn test_addresses_path() {
         let client = RestClient::new("proj", "tok", "test.sw.com").unwrap();
-        assert_eq!(
-            client.addresses().base_path(),
-            "/api/relay/rest/addresses"
-        );
+        assert_eq!(client.addresses().base_path(), "/api/relay/rest/addresses");
     }
 
     #[test]
@@ -350,10 +350,7 @@ mod tests {
         // Python ships queues at `/api/relay/rest/queues`. Rust now matches
         // that path through the dedicated Queues namespace.
         let client = RestClient::new("proj", "tok", "test.sw.com").unwrap();
-        assert_eq!(
-            client.queues().base_path(),
-            "/api/relay/rest/queues"
-        );
+        assert_eq!(client.queues().base_path(), "/api/relay/rest/queues");
     }
 
     #[test]
@@ -438,10 +435,7 @@ mod tests {
     #[test]
     fn test_logs_path() {
         let client = RestClient::new("proj", "tok", "test.sw.com").unwrap();
-        assert_eq!(
-            client.logs().messages().base_path(),
-            "/api/messaging/logs"
-        );
+        assert_eq!(client.logs().messages().base_path(), "/api/messaging/logs");
         assert_eq!(client.logs().voice().base_path(), "/api/voice/logs");
     }
 
@@ -450,10 +444,7 @@ mod tests {
         // Project namespace exposes a `tokens` sub-resource at
         // `/api/project/tokens`.
         let client = RestClient::new("proj", "tok", "test.sw.com").unwrap();
-        assert_eq!(
-            client.project().tokens().base_path(),
-            "/api/project/tokens"
-        );
+        assert_eq!(client.project().tokens().base_path(), "/api/project/tokens");
     }
 
     #[test]

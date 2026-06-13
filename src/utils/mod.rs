@@ -49,17 +49,23 @@ mod tests {
 
         // lambda -> true
         clear_env();
-        unsafe { env::set_var("AWS_LAMBDA_FUNCTION_NAME", "my-fn"); }
+        unsafe {
+            env::set_var("AWS_LAMBDA_FUNCTION_NAME", "my-fn");
+        }
         assert!(is_serverless_mode());
 
         // CGI -> true (CGI is short-lived, counts as serverless).
         clear_env();
-        unsafe { env::set_var("GATEWAY_INTERFACE", "CGI/1.1"); }
+        unsafe {
+            env::set_var("GATEWAY_INTERFACE", "CGI/1.1");
+        }
         assert!(is_serverless_mode());
 
         // azure -> true
         clear_env();
-        unsafe { env::set_var("AZURE_FUNCTIONS_ENVIRONMENT", "Production"); }
+        unsafe {
+            env::set_var("AZURE_FUNCTIONS_ENVIRONMENT", "Production");
+        }
         assert!(is_serverless_mode());
 
         clear_env();

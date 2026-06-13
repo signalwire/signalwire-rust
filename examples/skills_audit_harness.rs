@@ -4,31 +4,32 @@
 //! `skills_audit_harness` — runtime probe for the skills system.
 //!
 //! Driven by porting-sdk's `audit_skills_dispatch.py`. Reads:
-//!   - SKILL_NAME            e.g. `web_search`, `datasphere`
-//!   - SKILL_FIXTURE_URL     `http://127.0.0.1:NNNN`
-//!   - SKILL_HANDLER_ARGS    JSON dict of args for the skill handler
-//!   - per-skill upstream env (e.g. WEB_SEARCH_BASE_URL); the audit
+//!   - `SKILL_NAME`            e.g. `web_search`, `datasphere`
+//!   - `SKILL_FIXTURE_URL`     `http://127.0.0.1:NNNN`
+//!   - `SKILL_HANDLER_ARGS`    JSON dict of args for the skill handler
+//!   - per-skill upstream env (e.g. `WEB_SEARCH_BASE_URL`); the audit
 //!     sets these to point the skill at its loopback fixture
-//!   - per-skill credential env vars (e.g. GOOGLE_API_KEY)
+//!   - per-skill credential env vars (e.g. `GOOGLE_API_KEY`)
 //!
 //! For handler-based skills (`web_search`, `wikipedia_search`,
 //! `datasphere`, `spider`) the harness instantiates the skill, registers
-//! its tools on a temporary AgentBase, and dispatches the documented
+//! its tools on a temporary `AgentBase`, and dispatches the documented
 //! tool name with the parsed args. The skill's handler issues real
 //! HTTP through ureq (proven by the audit's fixture seeing the request).
 //!
 //! For DataMap-based skills (`api_ninjas_trivia`, `weather_api`) the
 //! SignalWire platform — not the SDK — would normally fetch the
 //! configured webhook URL. The harness simulates that platform behavior
-//! by extracting the webhook URL from the registered DataMap and
+//! by extracting the webhook URL from the registered `DataMap` and
 //! issuing the HTTP call itself, satisfying the audit's contract that
 //! "the SDK contacted the upstream" via real bytes on the wire.
 
-use serde_json::{json, Map, Value};
+use serde_json::{Map, Value, json};
 use signalwire::agent::{AgentBase, AgentOptions};
 use signalwire::skills::skill_registry::SkillRegistry;
 use std::collections::HashMap;
 use std::env;
+use std::fmt::Write as _;
 use std::process;
 use std::time::Duration;
 
@@ -42,7 +43,7 @@ fn main() {
     let skill_name = env::var("SKILL_NAME").unwrap_or_else(|_| die("SKILL_NAME required"));
     let args_raw = env::var("SKILL_HANDLER_ARGS").unwrap_or_else(|_| "{}".to_string());
     let args: Value = serde_json::from_str(&args_raw)
-        .unwrap_or_else(|e| die(&format!("SKILL_HANDLER_ARGS not JSON: {}", e)));
+        .unwrap_or_else(|e| die(&format!("SKILL_HANDLER_ARGS not JSON: {e}")));
 
     // Wire skill-specific construction params from the audit-mandated
     // env vars (mirrors what a deployed agent would read).
@@ -88,11 +89,11 @@ fn main() {
     // straight, register its tools on a temporary AgentBase, then drive
     // the tool name we know each skill exposes.
     let factory = SkillRegistry::get_factory(&skill_name)
-        .unwrap_or_else(|| die(&format!("skill '{}' not registered", skill_name)));
+        .unwrap_or_else(|| die(&format!("skill '{skill_name}' not registered")));
     let mut skill = factory(skill_params);
 
     if !skill.setup() {
-        die(&format!("skill '{}' setup() returned false", skill_name));
+        die(&format!("skill '{skill_name}' setup() returned false"));
     }
 
     let mut agent_opts = AgentOptions::new("skills-audit");
@@ -115,16 +116,14 @@ fn main() {
             let mut effective = args.clone();
             if effective
                 .as_object()
-                .map(|o| !o.contains_key("category"))
-                .unwrap_or(true)
+                .is_none_or(|o| !o.contains_key("category"))
+                && let Some(o) = effective.as_object_mut()
             {
-                if let Some(o) = effective.as_object_mut() {
-                    o.insert("category".to_string(), json!("general"));
-                }
+                o.insert("category".to_string(), json!("general"));
             }
             execute_datamap(&agent, "get_trivia", &effective)
         }
-        other => Err(format!("unsupported skill '{}'", other)),
+        other => Err(format!("unsupported skill '{other}'")),
     };
 
     match result {
@@ -140,38 +139,35 @@ fn main() {
 /// The SWAIG dispatcher invokes the handler, which issues a real HTTP
 /// request to the configured upstream (the audit fixture).
 fn dispatch_handler(agent: &AgentBase, tool_name: &str, args: &Value) -> Result<Value, String> {
-    let args_map: Map<String, Value> = args
-        .as_object()
-        .cloned()
-        .unwrap_or_default();
+    let args_map: Map<String, Value> = args.as_object().cloned().unwrap_or_default();
     let raw_data: Map<String, Value> = Map::new();
 
     let r = agent
         .on_function_call(tool_name, &args_map, &raw_data)
-        .ok_or_else(|| format!("handler '{}' not registered or returned None", tool_name))?;
+        .ok_or_else(|| format!("handler '{tool_name}' not registered or returned None"))?;
     Ok(r.to_value())
 }
 
 /// For DataMap-based tools, extract the webhook URL from the registered
-/// DataMap config and execute the GET ourselves. This is what the
+/// `DataMap` config and execute the GET ourselves. This is what the
 /// SignalWire platform does in production; the audit verifies the URL
 /// shape and the SDK's parsing.
 fn execute_datamap(agent: &AgentBase, tool_name: &str, args: &Value) -> Result<Value, String> {
     let definition = agent
         .tool_definition(tool_name)
-        .ok_or_else(|| format!("tool '{}' not registered", tool_name))?;
+        .ok_or_else(|| format!("tool '{tool_name}' not registered"))?;
 
     let webhook = definition
         .get("data_map")
         .and_then(|d| d.get("webhooks"))
         .and_then(|w| w.as_array())
         .and_then(|arr| arr.first())
-        .ok_or_else(|| format!("tool '{}' has no DataMap webhook", tool_name))?;
+        .ok_or_else(|| format!("tool '{tool_name}' has no DataMap webhook"))?;
 
     let url_template = webhook
         .get("url")
         .and_then(|v| v.as_str())
-        .ok_or_else(|| format!("tool '{}' webhook has no url", tool_name))?;
+        .ok_or_else(|| format!("tool '{tool_name}' webhook has no url"))?;
     let method = webhook
         .get("method")
         .and_then(|v| v.as_str())
@@ -214,15 +210,15 @@ fn execute_datamap(agent: &AgentBase, tool_name: &str, args: &Value) -> Result<V
             }
             req.send(body)
         }
-        m => return Err(format!("unsupported method '{}' in webhook", m)),
+        m => return Err(format!("unsupported method '{m}' in webhook")),
     }
-    .map_err(|e| format!("HTTP {} {} failed: {}", method, url, e))?;
+    .map_err(|e| format!("HTTP {method} {url} failed: {e}"))?;
 
     let status = response.status().as_u16();
     let body = response
         .body_mut()
         .read_to_string()
-        .map_err(|e| format!("body read failed: {}", e))?;
+        .map_err(|e| format!("body read failed: {e}"))?;
 
     let parsed: Value = serde_json::from_str(&body).unwrap_or(Value::String(body.clone()));
     Ok(json!({
@@ -232,8 +228,8 @@ fn execute_datamap(agent: &AgentBase, tool_name: &str, args: &Value) -> Result<V
     }))
 }
 
-/// Naive template expansion for DataMap webhook URLs:
-///   `%{args.foo}`  → string from args["foo"]
+/// Naive template expansion for `DataMap` webhook URLs:
+///   `%{args.foo}`  → string from `args["foo"]`
 ///   `${...}`       → left as-is (it's an SWML reference resolved at
 ///                    runtime by the platform; the audit fixture
 ///                    accepts whatever path comes through, so we don't
@@ -260,7 +256,7 @@ fn expand_template(template: &str, args: &Value) -> String {
                     out.push_str(&val.to_string());
                 }
             } else {
-                out.push_str(&format!("%{{{}}}", key));
+                let _ = write!(out, "%{{{key}}}");
             }
         } else {
             out.push(c);
@@ -270,6 +266,6 @@ fn expand_template(template: &str, args: &Value) -> String {
 }
 
 fn die(msg: &str) -> ! {
-    eprintln!("skills_audit_harness: {}", msg);
+    eprintln!("skills_audit_harness: {msg}");
     process::exit(1);
 }

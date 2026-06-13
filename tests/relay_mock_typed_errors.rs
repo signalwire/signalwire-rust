@@ -113,7 +113,10 @@ fn test_send_message_without_body_or_media_yields_invalid_argument() {
     // Cross-check: this validation never reached the server (no messaging.send
     // frame was journaled), proving it's a real client-side guard.
     let sent = relay_mocktest::journal_recv(Some("messaging.send"));
-    assert!(sent.is_empty(), "invalid-arg path must not emit a wire frame");
+    assert!(
+        sent.is_empty(),
+        "invalid-arg path must not emit a wire frame"
+    );
     client.disconnect();
 }
 
@@ -131,8 +134,12 @@ fn test_dial_without_answer_yields_dial_failed_variant() {
     // so the SDK's short dial deadline elapses → RelayError::DialFailed.
     let devices = json!([[{"type": "phone", "params": {"to_number": "+15550000000"}}]]);
     // `Arc<Call>` is not Debug, so match instead of `expect_err`.
-    let result =
-        client.dial_blocking(devices, Some("tag-noanswer"), None, Duration::from_millis(300));
+    let result = client.dial_blocking(
+        devices,
+        Some("tag-noanswer"),
+        None,
+        Duration::from_millis(300),
+    );
     match result {
         Ok(_) => panic!("dial with no answer must fail"),
         Err(RelayError::DialFailed { reason }) => {

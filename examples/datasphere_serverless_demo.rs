@@ -1,12 +1,12 @@
 // Copyright (c) 2025 SignalWire
 // SPDX-License-Identifier: MIT
 //
-//! Datasphere Serverless Demo — Datasphere search via DataMap (no webhook needed).
+//! Datasphere Serverless Demo — Datasphere search via `DataMap` (no webhook needed).
 
+use serde_json::json;
 use signalwire::agent::{AgentBase, AgentOptions};
 use signalwire::datamap::DataMap;
 use signalwire::swaig::FunctionResult;
-use serde_json::json;
 
 fn main() {
     let mut agent = AgentBase::new(AgentOptions {
@@ -22,11 +22,15 @@ fn main() {
         "You are a knowledge assistant backed by SignalWire Datasphere.",
         vec![],
     );
-    agent.prompt_add_section("Instructions", "", vec![
-        "Use the search_knowledge function to find relevant documents",
-        "Summarize results clearly for the caller",
-        "Cite the document source when available",
-    ]);
+    agent.prompt_add_section(
+        "Instructions",
+        "",
+        vec![
+            "Use the search_knowledge function to find relevant documents",
+            "Summarize results clearly for the caller",
+            "Cite the document source when available",
+        ],
+    );
 
     // Datasphere search via DataMap
     let mut search_tool = DataMap::new("search_knowledge");
@@ -49,9 +53,12 @@ fn main() {
             "query": "${args.query}",
             "limit": "${args.max_results}"
         }))
-        .output(FunctionResult::with_response(
-            "Found ${response.total} results. Top result: ${response.results[0].text}",
-        ).to_value());
+        .output(
+            FunctionResult::with_response(
+                "Found ${response.total} results. Top result: ${response.results[0].text}",
+            )
+            .to_value(),
+        );
 
     agent.register_swaig_function(search_tool.to_swaig_function());
 

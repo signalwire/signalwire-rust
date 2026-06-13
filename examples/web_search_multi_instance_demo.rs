@@ -3,10 +3,15 @@
 //
 //! Web Search Multi-Instance — multiple search agents with different configurations.
 
+// The example's `run_server(server: AgentServer)` helper takes the server by
+// value to demonstrate handing it to its run loop (the server's lifetime ends
+// with the loop) — an ownership story `&AgentServer` would obscure.
+#![allow(clippy::needless_pass_by_value)]
+
+use serde_json::json;
 use signalwire::agent::{AgentBase, AgentOptions};
 use signalwire::server::AgentServer;
 use signalwire::swaig::FunctionResult;
-use serde_json::json;
 
 fn news_search_agent() -> AgentBase {
     let mut agent = AgentBase::new(AgentOptions {
@@ -25,7 +30,10 @@ fn news_search_agent() -> AgentBase {
         "Search for current news articles",
         json!({"topic": {"type": "string", "description": "News topic"}}),
         Box::new(|args, _raw| {
-            let topic = args.get("topic").and_then(|v| v.as_str()).unwrap_or("general");
+            let topic = args
+                .get("topic")
+                .and_then(|v| v.as_str())
+                .unwrap_or("general");
             FunctionResult::with_response(&format!("Latest news on {topic}: [simulated results]"))
         }),
         false,
@@ -51,7 +59,9 @@ fn tech_search_agent() -> AgentBase {
         json!({"query": {"type": "string", "description": "Technical query"}}),
         Box::new(|args, _raw| {
             let query = args.get("query").and_then(|v| v.as_str()).unwrap_or("");
-            FunctionResult::with_response(&format!("Documentation results for '{query}': [simulated]"))
+            FunctionResult::with_response(&format!(
+                "Documentation results for '{query}': [simulated]"
+            ))
         }),
         false,
     );
@@ -71,11 +81,10 @@ fn main() {
 
 fn run_server(server: AgentServer) {
     use std::collections::HashMap;
-    use std::io::Read as _;
 
     let addr = format!("{}:{}", server.host(), server.port());
-    let http = tiny_http::Server::http(&addr)
-        .unwrap_or_else(|e| panic!("Failed to bind {}: {}", addr, e));
+    let http =
+        tiny_http::Server::http(&addr).unwrap_or_else(|e| panic!("Failed to bind {addr}: {e}"));
 
     for mut request in http.incoming_requests() {
         let method = request.method().as_str().to_string();
@@ -95,8 +104,7 @@ fn run_server(server: AgentServer) {
         let (status, resp_headers, resp_body) =
             server.handle_request(&method, &path, &req_headers, &body_buf);
 
-        let mut response =
-            tiny_http::Response::from_string(&resp_body).with_status_code(status);
+        let mut response = tiny_http::Response::from_string(&resp_body).with_status_code(status);
         for (k, v) in &resp_headers {
             if let Ok(header) = tiny_http::Header::from_bytes(k.as_bytes(), v.as_bytes()) {
                 response = response.with_header(header);

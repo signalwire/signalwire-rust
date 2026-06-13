@@ -1,13 +1,13 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use serde_json::{json, Map, Value};
+use serde_json::{Map, Value, json};
 
 use crate::contexts::ContextBuilder;
 use crate::security::SessionManager;
-use crate::swml::service::{Service, ServiceOptions};
 #[cfg(test)]
 use crate::swaig::FunctionResult;
+use crate::swml::service::{Service, ServiceOptions};
 
 // FunctionHandler and ToolDef are now declared on swml::Service so that
 // tools registered on Service-the-sidecar and AgentBase share storage.
@@ -151,23 +151,25 @@ type DynamicConfigCallback = Box<
         + Sync,
 >;
 
-type SummaryCallback = Box<
-    dyn Fn(&str, &Value, &HashMap<String, String>) + Send + Sync,
->;
+type SummaryCallback = Box<dyn Fn(&str, &Value, &HashMap<String, String>) + Send + Sync>;
 
-type DebugEventCallback = Box<
-    dyn Fn(&Value, &HashMap<String, String>) + Send + Sync,
->;
+type DebugEventCallback = Box<dyn Fn(&Value, &HashMap<String, String>) + Send + Sync>;
 
 /// Core agent that extends `Service` with AI-specific capabilities.
 ///
 /// Manages prompt configuration, tool registration, SWML rendering,
 /// and HTTP request handling for AI agent endpoints.
 ///
-/// AgentBase implements `Deref<Target = Service>` (Rust's idiomatic
+/// `AgentBase` implements `Deref<Target = Service>` (Rust's idiomatic
 /// equivalent of inheritance) so `Service` methods like `set_route`,
 /// `define_tool`, `on_function_call`, etc. are usable on `AgentBase`
 /// instances directly without needing forwarding wrappers.
+// The several `bool` fields (auto_answer, record_call, record_stereo, use_pom,
+// …) are independent feature flags mirroring Python AgentBase's boolean
+// __init__ kwargs 1:1. clippy::struct_excessive_bools suggests a state struct,
+// but that would diverge from the reference's flat flag surface for no
+// behavioral gain — they're orthogonal toggles, not a state machine.
+#[allow(clippy::struct_excessive_bools)]
 pub struct AgentBase {
     // ── Service (composition + Deref<Service> for inheritance shape) ────
     service: Service,
@@ -204,7 +206,7 @@ pub struct AgentBase {
     // ── Native functions / fillers / debug ───────────────────────────────
     native_functions: Vec<String>,
     internal_fillers: Vec<String>,
-    /// Structured internal fillers keyed by function_name → language_code
+    /// Structured internal fillers keyed by `function_name` → `language_code`
     /// → phrases. Populated by `set_internal_fillers_map` and
     /// `add_internal_filler_for`. Separate from the legacy
     /// `internal_fillers: Vec<String>` above to preserve backward
@@ -263,8 +265,8 @@ impl Clone for AgentBase {
             basic_auth_user: Some(self.service.basic_auth_credentials().0.to_string()),
             basic_auth_password: Some(self.service.basic_auth_credentials().1.to_string()),
         });
-        service.tools = self.service.tools.clone();
-        service.tool_order = self.service.tool_order.clone();
+        service.tools.clone_from(&self.service.tools);
+        service.tool_order.clone_from(&self.service.tool_order);
         AgentBase {
             service,
             auto_answer: self.auto_answer,
@@ -414,11 +416,13 @@ impl AgentBase {
     /// tests and dynamic-config flows. Pass an empty string or
     /// `None`-equivalent to disable.
     pub fn set_signing_key(&mut self, key: Option<&str>) -> &mut Self {
-        self.signing_key = key.map(|s| s.to_string()).filter(|s| !s.is_empty());
+        self.signing_key = key
+            .map(std::string::ToString::to_string)
+            .filter(|s| !s.is_empty());
         self
     }
 
-    /// Mint a per-call SWAIG-function token via the agent's SessionManager.
+    /// Mint a per-call SWAIG-function token via the agent's `SessionManager`.
     ///
     /// Python parity: `state_mixin.StateMixin._create_tool_token` —
     /// delegates to `SessionManager::create_token` and returns `String::new()`
@@ -428,13 +432,13 @@ impl AgentBase {
     }
 
     /// Validate a per-call SWAIG-function token. Returns `false` when the
-    /// function is not registered or when the SessionManager rejects the
+    /// function is not registered or when the `SessionManager` rejects the
     /// token.
     ///
     /// Python parity: `state_mixin.StateMixin.validate_tool_token` —
     /// rejects unknown function names up-front. Rust's
     /// `SessionManager::validate_token` returns `bool` (no panics on bad
-    /// input — see security/session_manager.rs), so no try/catch is
+    /// input — see `security/session_manager.rs`), so no try/catch is
     /// required for parity.
     pub fn validate_tool_token(&self, function_name: &str, token: &str, call_id: &str) -> bool {
         if !self.service.has_function(function_name) {
@@ -459,12 +463,7 @@ impl AgentBase {
     }
 
     /// Add a top-level POM section with an optional body and bullets.
-    pub fn prompt_add_section(
-        &mut self,
-        title: &str,
-        body: &str,
-        bullets: Vec<&str>,
-    ) -> &mut Self {
+    pub fn prompt_add_section(&mut self, title: &str, body: &str, bullets: Vec<&str>) -> &mut Self {
         self.use_pom = true;
         let mut section = Map::new();
         section.insert("title".to_string(), json!(title));
@@ -484,16 +483,16 @@ impl AgentBase {
         body: &str,
     ) -> &mut Self {
         for section in &mut self.pom_sections {
-            if let Value::Object(map) = section {
-                if map.get("title").and_then(|t| t.as_str()) == Some(parent_title) {
-                    let subsections = map
-                        .entry("subsections".to_string())
-                        .or_insert_with(|| Value::Array(Vec::new()));
-                    if let Value::Array(arr) = subsections {
-                        arr.push(json!({"title": title, "body": body}));
-                    }
-                    break;
+            if let Value::Object(map) = section
+                && map.get("title").and_then(|t| t.as_str()) == Some(parent_title)
+            {
+                let subsections = map
+                    .entry("subsections".to_string())
+                    .or_insert_with(|| Value::Array(Vec::new()));
+                if let Value::Array(arr) = subsections {
+                    arr.push(json!({"title": title, "body": body}));
                 }
+                break;
             }
         }
         self
@@ -507,28 +506,28 @@ impl AgentBase {
         bullets: Vec<&str>,
     ) -> &mut Self {
         for section in &mut self.pom_sections {
-            if let Value::Object(map) = section {
-                if map.get("title").and_then(|t| t.as_str()) == Some(title) {
-                    if let Some(b) = body {
-                        let existing = map
-                            .get("body")
-                            .and_then(|v| v.as_str())
-                            .unwrap_or("")
-                            .to_string();
-                        map.insert("body".to_string(), json!(format!("{}{}", existing, b)));
-                    }
-                    if !bullets.is_empty() {
-                        let existing_bullets = map
-                            .entry("bullets".to_string())
-                            .or_insert_with(|| Value::Array(Vec::new()));
-                        if let Value::Array(arr) = existing_bullets {
-                            for bullet in bullets {
-                                arr.push(json!(bullet));
-                            }
+            if let Value::Object(map) = section
+                && map.get("title").and_then(|t| t.as_str()) == Some(title)
+            {
+                if let Some(b) = body {
+                    let existing = map
+                        .get("body")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("")
+                        .to_string();
+                    map.insert("body".to_string(), json!(format!("{}{}", existing, b)));
+                }
+                if !bullets.is_empty() {
+                    let existing_bullets = map
+                        .entry("bullets".to_string())
+                        .or_insert_with(|| Value::Array(Vec::new()));
+                    if let Value::Array(arr) = existing_bullets {
+                        for bullet in bullets {
+                            arr.push(json!(bullet));
                         }
                     }
-                    break;
                 }
+                break;
             }
         }
         self
@@ -556,7 +555,7 @@ impl AgentBase {
     /// Read-only snapshot of the agent's POM as a typed
     /// [`PromptObjectModel`].
     ///
-    /// Python parity: `agent.pom` instance attribute (agent_base.py
+    /// Python parity: `agent.pom` instance attribute (`agent_base.py`
     /// line 209). Returns `None` when `use_pom` is `false` (mirroring
     /// Python's `self.pom = None`); otherwise returns a freshly built
     /// [`PromptObjectModel`] populated from the agent's stored
@@ -610,7 +609,7 @@ impl AgentBase {
 
     /// Sets the prompt as a list of POM section objects. Each section
     /// supports keys "title", "body", "bullets", "numbered",
-    /// "numbered_bullets", and "subsections". Switches the agent to POM
+    /// `"numbered_bullets"`, and "subsections". Switches the agent to POM
     /// mode.
     ///
     /// Mirrors Python's `PromptManager.set_prompt_pom` — accepts a list
@@ -627,67 +626,69 @@ impl AgentBase {
     /// Mirrors Python's `PromptManager.get_contexts` which returns the
     /// contexts dict or `None`.
     pub fn get_contexts(&self) -> Option<Value> {
-        self.context_builder.as_ref().map(|cb| cb.to_value())
+        self.context_builder
+            .as_ref()
+            .map(super::super::contexts::context_builder::ContextBuilder::to_value)
     }
 
     // ══════════════════════════════════════════════════════════════════════
     //  Tool Methods
     // ══════════════════════════════════════════════════════════════════════
 
-    /// Register a SWAIG tool (function) that the AI can invoke during a
-    /// call.
-    ///
-    /// # How this becomes a tool the model sees
-    ///
-    /// A SWAIG function is **exactly the same concept** as a "tool" in
-    /// native OpenAI / Anthropic tool calling. On every LLM turn, the
-    /// SDK renders each registered SWAIG function into the OpenAI tool
-    /// schema:
-    ///
-    /// ```text
-    /// {
-    ///   "type": "function",
-    ///   "function": {
-    ///     "name":        "your_name_here",
-    ///     "description": "your description text",
-    ///     "parameters":  { ... your JSON schema ... }
-    ///   }
-    /// }
-    /// ```
-    ///
-    /// That schema is sent to the model as part of the same API call
-    /// that produces the next assistant message. The model reads:
-    ///
-    ///   - the function `description` to decide WHEN to call this tool
-    ///   - each parameter `description` (inside `parameters`) to decide
-    ///     HOW to fill in that argument from the user's utterance
-    ///
-    /// This means **descriptions are prompt engineering**, not developer
-    /// comments. A vague description is the #1 cause of "the model has
-    /// the right tool but doesn't call it" failures.
-    ///
-    /// # Bad vs good descriptions
-    ///
-    /// ```text
-    /// BAD : description: "Lookup function"
-    /// GOOD: description: "Look up a customer's account details by "
-    ///                  + "account number. Use this BEFORE quoting any "
-    ///                  + "account-specific info (balance, plan, status). "
-    ///                  + "Do not use for general product questions."
-    ///
-    /// BAD : parameters: json!({"id": {"type": "string", "description": "the id"}})
-    /// GOOD: parameters: json!({"account_number": {"type": "string",
-    ///         "description": "The customer's 8-digit account number, "
-    ///                       "no dashes or spaces. Ask the user if they "
-    ///                       "don't provide it."}})
-    /// ```
-    ///
-    /// # Tool count matters
-    ///
-    /// LLM tool selection accuracy degrades past ~7-8
-    /// simultaneously-active tools per call. Use
-    /// [`crate::contexts::Step::set_functions`] to partition tools
-    /// across steps so only the relevant subset is active at any moment.
+    // Register a SWAIG tool (function) that the AI can invoke during a
+    // call.
+    //
+    // # How this becomes a tool the model sees
+    //
+    // A SWAIG function is **exactly the same concept** as a "tool" in
+    // native OpenAI / Anthropic tool calling. On every LLM turn, the
+    // SDK renders each registered SWAIG function into the OpenAI tool
+    // schema:
+    //
+    // ```text
+    // {
+    //   "type": "function",
+    //   "function": {
+    //     "name":        "your_name_here",
+    //     "description": "your description text",
+    //     "parameters":  { ... your JSON schema ... }
+    //   }
+    // }
+    // ```
+    //
+    // That schema is sent to the model as part of the same API call
+    // that produces the next assistant message. The model reads:
+    //
+    //   - the function `description` to decide WHEN to call this tool
+    //   - each parameter `description` (inside `parameters`) to decide
+    //     HOW to fill in that argument from the user's utterance
+    //
+    // This means **descriptions are prompt engineering**, not developer
+    // comments. A vague description is the #1 cause of "the model has
+    // the right tool but doesn't call it" failures.
+    //
+    // # Bad vs good descriptions
+    //
+    // ```text
+    // BAD : description: "Lookup function"
+    // GOOD: description: "Look up a customer's account details by "
+    //                  + "account number. Use this BEFORE quoting any "
+    //                  + "account-specific info (balance, plan, status). "
+    //                  + "Do not use for general product questions."
+    //
+    // BAD : parameters: json!({"id": {"type": "string", "description": "the id"}})
+    // GOOD: parameters: json!({"account_number": {"type": "string",
+    //         "description": "The customer's 8-digit account number, "
+    //                       "no dashes or spaces. Ask the user if they "
+    //                       "don't provide it."}})
+    // ```
+    //
+    // # Tool count matters
+    //
+    // LLM tool selection accuracy degrades past ~7-8
+    // simultaneously-active tools per call. Use
+    // [`crate::contexts::Step::set_functions`] to partition tools
+    // across steps so only the relevant subset is active at any moment.
     // define_tool, register_swaig_function, define_tools, on_function_call
     // are provided by swml::Service and accessible on AgentBase via the
     // `Deref<Target=Service>` impl. No agent-level wrapping is needed:
@@ -745,22 +746,22 @@ impl AgentBase {
     ///   - Returns `&mut Self` for chaining.
     ///
     /// Python parity: the per-language params are emitted as the language
-    /// object's `params` key in SWML and use snake_case wire shape.
+    /// object's `params` key in SWML and use `snake_case` wire shape.
     pub fn set_language_params(&mut self, code: &str, params: Value) -> &mut Self {
         for language in &mut self.languages {
-            if let Some(obj) = language.as_object_mut() {
-                if obj.get("code").and_then(|v| v.as_str()) == Some(code) {
-                    let non_empty = match &params {
-                        Value::Object(m) => !m.is_empty(),
-                        _ => false,
-                    };
-                    if non_empty {
-                        obj.insert("params".to_string(), params);
-                    } else {
-                        obj.remove("params");
-                    }
-                    break;
+            if let Some(obj) = language.as_object_mut()
+                && obj.get("code").and_then(|v| v.as_str()) == Some(code)
+            {
+                let non_empty = match &params {
+                    Value::Object(m) => !m.is_empty(),
+                    _ => false,
+                };
+                if non_empty {
+                    obj.insert("params".to_string(), params);
+                } else {
+                    obj.remove("params");
                 }
+                break;
             }
         }
         self
@@ -786,12 +787,7 @@ impl AgentBase {
         self
     }
 
-    pub fn add_pronunciation(
-        &mut self,
-        replace: &str,
-        with: &str,
-        ignore: &str,
-    ) -> &mut Self {
+    pub fn add_pronunciation(&mut self, replace: &str, with: &str, ignore: &str) -> &mut Self {
         let mut entry = Map::new();
         entry.insert("replace".to_string(), json!(replace));
         entry.insert("with".to_string(), json!(with));
@@ -836,12 +832,15 @@ impl AgentBase {
     }
 
     pub fn set_native_functions(&mut self, functions: Vec<&str>) -> &mut Self {
-        self.native_functions = functions.into_iter().map(|s| s.to_string()).collect();
+        self.native_functions = functions
+            .into_iter()
+            .map(std::string::ToString::to_string)
+            .collect();
         self
     }
 
     /// The complete set of internal SWAIG function names that accept
-    /// fillers, matching the SWAIGInternalFiller schema definition.
+    /// fillers, matching the `SWAIGInternalFiller` schema definition.
     ///
     /// Any name outside this set is silently ignored by the runtime —
     /// [`Self::set_internal_fillers_map`] and
@@ -851,19 +850,22 @@ impl AgentBase {
     /// Notable absences: `change_step`, `gather_submit`, and arbitrary
     /// user-defined SWAIG function names are NOT supported.
     pub const SUPPORTED_INTERNAL_FILLER_NAMES: &'static [&'static str] = &[
-        "hangup",                   // AI is hanging up the call
-        "check_time",               // AI is checking the time
-        "wait_for_user",            // AI is waiting for user input
-        "wait_seconds",             // deliberate pause / wait period
-        "adjust_response_latency",  // AI is adjusting response timing
-        "next_step",                // transitioning between steps in prompt.contexts
-        "change_context",           // switching between contexts in prompt.contexts
-        "get_visual_input",         // processing visual input (enable_vision)
-        "get_ideal_strategy",       // thinking (enable_thinking)
+        "hangup",                  // AI is hanging up the call
+        "check_time",              // AI is checking the time
+        "wait_for_user",           // AI is waiting for user input
+        "wait_seconds",            // deliberate pause / wait period
+        "adjust_response_latency", // AI is adjusting response timing
+        "next_step",               // transitioning between steps in prompt.contexts
+        "change_context",          // switching between contexts in prompt.contexts
+        "get_visual_input",        // processing visual input (enable_vision)
+        "get_ideal_strategy",      // thinking (enable_thinking)
     ];
 
     pub fn set_internal_fillers(&mut self, fillers: Vec<&str>) -> &mut Self {
-        self.internal_fillers = fillers.into_iter().map(|s| s.to_string()).collect();
+        self.internal_fillers = fillers
+            .into_iter()
+            .map(std::string::ToString::to_string)
+            .collect();
         self
     }
 
@@ -873,7 +875,7 @@ impl AgentBase {
     /// while an internal/native function is running, so the caller
     /// doesn't hear dead air during transitions or background work.
     ///
-    /// Supported function names (match the SWAIGInternalFiller schema):
+    /// Supported function names (match the `SWAIGInternalFiller` schema):
     /// `hangup`, `check_time`, `wait_for_user`, `wait_seconds`,
     /// `adjust_response_latency`, `next_step`, `change_context`,
     /// `get_visual_input`, `get_ideal_strategy`. See
@@ -1008,7 +1010,7 @@ impl AgentBase {
     //  Context Methods
     // ══════════════════════════════════════════════════════════════════════
 
-    /// Return the ContextBuilder, creating it lazily on first access.
+    /// Return the `ContextBuilder`, creating it lazily on first access.
     ///
     /// The builder's tool-name supplier is set to a snapshot of the
     /// currently registered tool names so [`ContextBuilder::validate`]
@@ -1018,6 +1020,12 @@ impl AgentBase {
     /// included in that snapshot — call [`AgentBase::refresh_context_tools`]
     /// to update it, or call `define_contexts` only after defining all
     /// tools.
+    ///
+    /// # Panics
+    ///
+    /// Does not panic in practice: the internal `.unwrap()` reads back the
+    /// `context_builder` that is initialised to `Some` immediately above when
+    /// it was `None`, so it is always `Some` by that point.
     pub fn define_contexts(&mut self) -> &mut ContextBuilder {
         let tool_names: Vec<String> = self.tool_order.clone();
         if self.context_builder.is_none() {
@@ -1028,7 +1036,7 @@ impl AgentBase {
         self.context_builder.as_mut().unwrap()
     }
 
-    /// Refresh the ContextBuilder's tool-name supplier with the current
+    /// Refresh the `ContextBuilder`'s tool-name supplier with the current
     /// list of registered SWAIG tools. Call this if you define new tools
     /// after the first `define_contexts()` call and want the next
     /// `validate()` to see them.
@@ -1067,7 +1075,8 @@ impl AgentBase {
         // Register built-in skill functions so they appear in rendered SWML.
         match name {
             "datetime" => {
-                let tz = params.get("default_timezone")
+                let tz = params
+                    .get("default_timezone")
                     .or_else(|| params.get("timezone"))
                     .and_then(|v| v.as_str())
                     .unwrap_or("UTC")
@@ -1140,14 +1149,7 @@ impl AgentBase {
     //  Web / Callback Methods
     // ══════════════════════════════════════════════════════════════════════
 
-    pub fn set_dynamic_config_callback(
-        &mut self,
-        callback: Box<
-            dyn Fn(&Map<String, Value>, &Option<Value>, &HashMap<String, String>, &mut AgentBase)
-                + Send
-                + Sync,
-        >,
-    ) -> &mut Self {
+    pub fn set_dynamic_config_callback(&mut self, callback: DynamicConfigCallback) -> &mut Self {
         self.dynamic_config_callback = Some(Arc::new(callback));
         self
     }
@@ -1179,22 +1181,12 @@ impl AgentBase {
         self
     }
 
-    pub fn on_summary(
-        &mut self,
-        callback: Box<
-            dyn Fn(&str, &Value, &HashMap<String, String>) + Send + Sync,
-        >,
-    ) -> &mut Self {
+    pub fn on_summary(&mut self, callback: SummaryCallback) -> &mut Self {
         self.summary_callback = Some(Arc::new(callback));
         self
     }
 
-    pub fn on_debug_event(
-        &mut self,
-        callback: Box<
-            dyn Fn(&Value, &HashMap<String, String>) + Send + Sync,
-        >,
-    ) -> &mut Self {
+    pub fn on_debug_event(&mut self, callback: DebugEventCallback) -> &mut Self {
         self.debug_event_handler = Some(Arc::new(callback));
         self
     }
@@ -1224,11 +1216,12 @@ impl AgentBase {
     ///
     /// Phases:
     ///   1. Pre-answer verbs
-    ///   2. Answer verb (if auto_answer)
-    ///   3. Record call verb (if record_call)
+    ///   2. Answer verb (if `auto_answer`)
+    ///   3. Record call verb (if `record_call`)
     ///   4. Post-answer verbs
-    ///   5. AI verb (via build_ai_verb)
+    ///   5. AI verb (via `build_ai_verb`)
     ///   6. Post-AI verbs
+    #[must_use]
     pub fn render_swml(&self, headers: &HashMap<String, String>) -> Value {
         let mut main = Vec::new();
 
@@ -1279,6 +1272,7 @@ impl AgentBase {
     }
 
     /// Build the AI verb configuration block.
+    #[must_use]
     pub fn build_ai_verb(&self, headers: &HashMap<String, String>) -> Value {
         let mut ai = Map::new();
 
@@ -1310,7 +1304,7 @@ impl AgentBase {
         } else {
             let proxy_base = self.resolve_proxy_base(headers);
             let route_segment = if self.service.route() == "/" {
-                "".to_string()
+                String::new()
             } else {
                 self.service.route().to_string()
             };
@@ -1323,10 +1317,7 @@ impl AgentBase {
         // ── Params ──────────────────────────────────────────────────────
         let mut merged_params = self.params.clone();
         if !self.internal_fillers.is_empty() {
-            merged_params.insert(
-                "internal_fillers".to_string(),
-                json!(self.internal_fillers),
-            );
+            merged_params.insert("internal_fillers".to_string(), json!(self.internal_fillers));
         }
         if let Some(ref level) = self.debug_events_level {
             merged_params.insert("debug_events".to_string(), json!(level));
@@ -1346,7 +1337,10 @@ impl AgentBase {
 
         // ── Languages ───────────────────────────────────────────────────
         if !self.languages.is_empty() {
-            ai.insert("languages".to_string(), Value::Array(self.languages.clone()));
+            ai.insert(
+                "languages".to_string(),
+                Value::Array(self.languages.clone()),
+            );
         }
 
         // ── Pronunciations ──────────────────────────────────────────────
@@ -1372,11 +1366,11 @@ impl AgentBase {
         }
 
         // ── Context switch ──────────────────────────────────────────────
-        if let Some(ref cb) = self.context_builder {
-            if cb.has_contexts() {
-                let ctx_val = cb.to_value();
-                ai.insert("context_switch".to_string(), ctx_val);
-            }
+        if let Some(ref cb) = self.context_builder
+            && cb.has_contexts()
+        {
+            let ctx_val = cb.to_value();
+            ai.insert("context_switch".to_string(), ctx_val);
         }
 
         Value::Object(ai)
@@ -1404,7 +1398,7 @@ impl AgentBase {
         let route = self.service.route();
         let sub_path = if route == "/" {
             Some(path.to_string())
-        } else if path == route || path.starts_with(&format!("{}/", route)) {
+        } else if path == route || path.starts_with(&format!("{route}/")) {
             let rest = &path[route.len()..];
             if rest.is_empty() {
                 Some("/".to_string())
@@ -1415,9 +1409,8 @@ impl AgentBase {
             None
         };
 
-        let sub_path = match sub_path {
-            Some(p) => p,
-            None => return json_response(404, &json!({"error": "Not found"})),
+        let Some(sub_path) = sub_path else {
+            return json_response(404, &json!({"error": "Not found"}));
         };
 
         // Auth
@@ -1438,19 +1431,17 @@ impl AgentBase {
         // normal dispatch.
         if method.eq_ignore_ascii_case("POST")
             && matches!(sub_path.as_str(), "/" | "" | "/swaig" | "/post_prompt")
+            && let Some(ref key) = self.signing_key
+            && !self.verify_request_signature(key, headers, path, body)
         {
-            if let Some(ref key) = self.signing_key {
-                if !self.verify_request_signature(key, headers, path, body) {
-                    return json_response(403, &json!({"error": "Invalid signature"}));
-                }
-            }
+            return json_response(403, &json!({"error": "Invalid signature"}));
         }
 
         // Parse body
-        let request_data: Option<Value> = if !body.is_empty() {
-            serde_json::from_str(body).ok()
-        } else {
+        let request_data: Option<Value> = if body.is_empty() {
             None
+        } else {
+            serde_json::from_str(body).ok()
         };
 
         match sub_path.as_str() {
@@ -1489,7 +1480,7 @@ impl AgentBase {
         let url_base = self.resolve_proxy_base(headers);
         // Strip a trailing slash on the base so we don't double-up.
         let base = url_base.trim_end_matches('/');
-        let full_url = format!("{}{}", base, path);
+        let full_url = format!("{base}{path}");
 
         crate::security::webhook::validate_webhook_signature(
             signing_key,
@@ -1501,6 +1492,7 @@ impl AgentBase {
     }
 
     /// Create a deep copy of this agent for per-request customisation.
+    #[must_use]
     pub fn clone_for_request(&self) -> Self {
         self.clone()
     }
@@ -1510,35 +1502,31 @@ impl AgentBase {
     // ══════════════════════════════════════════════════════════════════════
 
     fn check_auth(&self, headers: &HashMap<String, String>) -> bool {
+        use base64::Engine;
+        use base64::engine::general_purpose::STANDARD as BASE64;
+
         // Delegate to service's handle_request for auth check by
         // using the service's basic_auth_credentials to validate
         let auth_header = headers
             .get("Authorization")
             .or_else(|| headers.get("authorization"));
 
-        let auth_header = match auth_header {
-            Some(h) => h,
-            None => return false,
+        let Some(auth_header) = auth_header else {
+            return false;
         };
 
         if !auth_header.starts_with("Basic ") {
             return false;
         }
 
-        use base64::Engine;
-        use base64::engine::general_purpose::STANDARD as BASE64;
-
-        let decoded = match BASE64.decode(&auth_header[6..]) {
-            Ok(d) => d,
-            Err(_) => return false,
+        let Ok(decoded) = BASE64.decode(&auth_header[6..]) else {
+            return false;
         };
-        let decoded_str = match String::from_utf8(decoded) {
-            Ok(s) => s,
-            Err(_) => return false,
+        let Ok(decoded_str) = String::from_utf8(decoded) else {
+            return false;
         };
-        let colon_pos = match decoded_str.find(':') {
-            Some(p) => p,
-            None => return false,
+        let Some(colon_pos) = decoded_str.find(':') else {
+            return false;
         };
         let input_user = &decoded_str[..colon_pos];
         let input_pass = &decoded_str[colon_pos + 1..];
@@ -1547,6 +1535,14 @@ impl AgentBase {
         input_user == expected_user && input_pass == expected_pass
     }
 
+    // `request_data: &Option<Value>` (rather than the lint's preferred
+    // `Option<&Value>`) is kept across this private handler trio because
+    // `handle_swml_request` threads it straight into `DynamicConfigCallback`,
+    // whose public signature takes `&Option<Value>` to mirror Python's
+    // dynamic-config callback (which receives the possibly-absent request
+    // body). Keeping the three dispatched-from-one-match handlers uniform —
+    // and matching the parity callback shape — is worth the lint allow.
+    #[allow(clippy::ref_option)]
     fn handle_swml_request(
         &self,
         _method: &str,
@@ -1574,14 +1570,14 @@ impl AgentBase {
         json_response(200, &swml)
     }
 
+    #[allow(clippy::ref_option)] // uniform with the handler trio; see handle_swml_request
     fn handle_swaig_request(
         &self,
         request_data: &Option<Value>,
         _headers: &HashMap<String, String>,
     ) -> (u16, HashMap<String, String>, String) {
-        let data = match request_data {
-            Some(d) => d,
-            None => return json_response(400, &json!({"error": "Missing request body"})),
+        let Some(data) = request_data else {
+            return json_response(400, &json!({"error": "Missing request body"}));
         };
 
         let function_name = data["function"].as_str().unwrap_or("");
@@ -1600,12 +1596,14 @@ impl AgentBase {
 
         match self.on_function_call(function_name, &args, &raw_data) {
             Some(result) => json_response(200, &result.to_value()),
-            None => {
-                json_response(404, &json!({"error": format!("Unknown function: {}", function_name)}))
-            }
+            None => json_response(
+                404,
+                &json!({"error": format!("Unknown function: {}", function_name)}),
+            ),
         }
     }
 
+    #[allow(clippy::ref_option)] // uniform with the handler trio; see handle_swml_request
     fn handle_post_prompt(
         &self,
         request_data: &Option<Value>,
@@ -1668,7 +1666,7 @@ impl AgentBase {
     fn build_swaig_webhook_url(&self, headers: &HashMap<String, String>) -> String {
         let proxy_base = self.resolve_proxy_base(headers);
         let route_segment = if self.service.route() == "/" {
-            "".to_string()
+            String::new()
         } else {
             self.service.route().to_string()
         };
@@ -1676,20 +1674,21 @@ impl AgentBase {
         let (user, pass) = self.service.basic_auth_credentials();
 
         // Parse proxy_base to extract host/port
-        let mut auth_url = if proxy_base.starts_with("http://") || proxy_base.starts_with("https://") {
-            let proto_end = proxy_base.find("://").unwrap() + 3;
-            let proto = &proxy_base[..proto_end];
-            let rest = &proxy_base[proto_end..];
-            format!("{}{}:{}@{}{}/swaig", proto, user, pass, rest, route_segment)
-        } else {
-            format!("http://{}:{}@{}{}/swaig", user, pass, proxy_base, route_segment)
-        };
+        let mut auth_url =
+            if proxy_base.starts_with("http://") || proxy_base.starts_with("https://") {
+                let proto_end = proxy_base.find("://").unwrap() + 3;
+                let proto = &proxy_base[..proto_end];
+                let rest = &proxy_base[proto_end..];
+                format!("{proto}{user}:{pass}@{rest}{route_segment}/swaig")
+            } else {
+                format!("http://{user}:{pass}@{proxy_base}{route_segment}/swaig")
+            };
 
         if !self.swaig_query_params.is_empty() {
             let params: Vec<String> = self
                 .swaig_query_params
                 .iter()
-                .map(|(k, v)| format!("{}={}", k, v))
+                .map(|(k, v)| format!("{k}={v}"))
                 .collect();
             auth_url = format!("{}?{}", auth_url, params.join("&"));
         }
@@ -1719,10 +1718,15 @@ impl AgentBase {
     /// Serves HTTPS instead when `SWML_SSL_ENABLED` is set together with
     /// `SWML_SSL_CERT_PATH` / `SWML_SSL_KEY_PATH` (mirrors Python's
     /// `SecurityConfig` / uvicorn `ssl_*` contract).
+    ///
+    /// # Panics
+    ///
+    /// Panics if the configured `host:port` cannot be bound (e.g. the port
+    /// is already in use or permission is denied).
     pub fn run(&self) {
         let addr = format!("{}:{}", self.service.host(), self.service.port());
         let (server, _is_https) = crate::server::tls::bind_server(&addr)
-            .unwrap_or_else(|e| panic!("Failed to bind {}: {}", addr, e));
+            .unwrap_or_else(|e| panic!("Failed to bind {addr}: {e}"));
 
         for mut request in server.incoming_requests() {
             let method = request.method().as_str().to_string();
@@ -1742,8 +1746,8 @@ impl AgentBase {
             let (status, resp_headers, resp_body) =
                 self.handle_request(&method, &path, &req_headers, &body_buf);
 
-            let mut response = tiny_http::Response::from_string(&resp_body)
-                .with_status_code(status);
+            let mut response =
+                tiny_http::Response::from_string(&resp_body).with_status_code(status);
             for (k, v) in &resp_headers {
                 if let Ok(header) = tiny_http::Header::from_bytes(k.as_bytes(), v.as_bytes()) {
                     response = response.with_header(header);
@@ -1759,10 +1763,7 @@ fn json_response(status: u16, data: &Value) -> (u16, HashMap<String, String>, St
     let body = serde_json::to_string(data).unwrap_or_else(|_| "{}".to_string());
     let mut headers = HashMap::new();
     headers.insert("Content-Type".to_string(), "application/json".to_string());
-    headers.insert(
-        "X-Content-Type-Options".to_string(),
-        "nosniff".to_string(),
-    );
+    headers.insert("X-Content-Type-Options".to_string(), "nosniff".to_string());
     headers.insert("X-Frame-Options".to_string(), "DENY".to_string());
     headers.insert("Cache-Control".to_string(), "no-store".to_string());
     (status, headers, body)
@@ -1852,7 +1853,10 @@ mod tests {
         let mut opts = default_options();
         opts.use_pom = false;
         let agent = AgentBase::new(opts);
-        assert!(agent.pom().is_none(), "pom() must return None when use_pom is false");
+        assert!(
+            agent.pom().is_none(),
+            "pom() must return None when use_pom is false"
+        );
     }
 
     #[test]
@@ -1862,7 +1866,8 @@ mod tests {
 
         let mut pom = agent.pom().unwrap();
         // Mutate the returned PromptObjectModel; agent state must be unaffected.
-        pom.add_section_with(Some("Injected".to_string()), "ib").unwrap();
+        pom.add_section_with(Some("Injected".to_string()), "ib")
+            .unwrap();
         pom.sections[0].title = Some("Hijacked".to_string());
 
         let fresh = agent.pom().unwrap();
@@ -1881,7 +1886,11 @@ mod tests {
     #[test]
     fn test_pom_with_bullets() {
         let mut agent = AgentBase::new(default_options());
-        agent.prompt_add_section("Rules", "Follow these rules:", vec!["Be polite", "Be helpful"]);
+        agent.prompt_add_section(
+            "Rules",
+            "Follow these rules:",
+            vec!["Be polite", "Be helpful"],
+        );
         let prompt = agent.get_prompt();
         let bullets = prompt[0]["bullets"].as_array().unwrap();
         assert_eq!(bullets.len(), 2);
@@ -1956,7 +1965,7 @@ mod tests {
             json!({}),
             Box::new(|args, _raw| {
                 let name = args.get("name").and_then(|v| v.as_str()).unwrap_or("world");
-                FunctionResult::with_response(&format!("Hello, {}!", name))
+                FunctionResult::with_response(&format!("Hello, {name}!"))
             }),
             false,
         );
@@ -2054,10 +2063,7 @@ mod tests {
         let mut agent = AgentBase::new(default_options());
         agent
             .add_language("English", "en-US", "josh")
-            .set_language_params(
-                "en-US",
-                json!({"stability": 0.5, "similarity_boost": 0.75}),
-            );
+            .set_language_params("en-US", json!({"stability": 0.5, "similarity_boost": 0.75}));
         assert_eq!(
             agent.languages[0]["params"],
             json!({"stability": 0.5, "similarity_boost": 0.75})
@@ -2393,21 +2399,30 @@ mod tests {
     fn test_set_webhook_url() {
         let mut agent = AgentBase::new(default_options());
         agent.set_webhook_url("https://webhook.example.com/swaig");
-        assert_eq!(agent.webhook_url, Some("https://webhook.example.com/swaig".to_string()));
+        assert_eq!(
+            agent.webhook_url,
+            Some("https://webhook.example.com/swaig".to_string())
+        );
     }
 
     #[test]
     fn test_set_post_prompt_url() {
         let mut agent = AgentBase::new(default_options());
         agent.set_post_prompt_url("https://example.com/post_prompt");
-        assert_eq!(agent.post_prompt_url, Some("https://example.com/post_prompt".to_string()));
+        assert_eq!(
+            agent.post_prompt_url,
+            Some("https://example.com/post_prompt".to_string())
+        );
     }
 
     #[test]
     fn test_manual_proxy_url() {
         let mut agent = AgentBase::new(default_options());
         agent.manual_set_proxy_url("https://proxy.example.com/");
-        assert_eq!(agent.manual_proxy_url, Some("https://proxy.example.com".to_string()));
+        assert_eq!(
+            agent.manual_proxy_url,
+            Some("https://proxy.example.com".to_string())
+        );
     }
 
     #[test]
@@ -2587,7 +2602,12 @@ mod tests {
         let funcs = ai["SWAIG"]["functions"].as_array().unwrap();
         assert_eq!(funcs.len(), 1);
         assert_eq!(funcs[0]["function"], "lookup");
-        assert!(funcs[0]["web_hook_url"].as_str().unwrap().contains("/swaig"));
+        assert!(
+            funcs[0]["web_hook_url"]
+                .as_str()
+                .unwrap()
+                .contains("/swaig")
+        );
     }
 
     #[test]
@@ -2631,7 +2651,10 @@ mod tests {
         let mut agent = AgentBase::new(default_options());
         agent.manual_set_proxy_url("https://proxy.example.com");
         let ai = agent.build_ai_verb(&HashMap::new());
-        assert_eq!(ai["post_prompt_url"], "https://proxy.example.com/post_prompt");
+        assert_eq!(
+            ai["post_prompt_url"],
+            "https://proxy.example.com/post_prompt"
+        );
     }
 
     #[test]
@@ -2734,12 +2757,8 @@ mod tests {
             "function": "greet",
             "argument": {"parsed": [{}]}
         });
-        let (status, _, resp_body) = agent.handle_request(
-            "POST",
-            "/swaig",
-            &authed_headers(),
-            &body.to_string(),
-        );
+        let (status, _, resp_body) =
+            agent.handle_request("POST", "/swaig", &authed_headers(), &body.to_string());
         assert_eq!(status, 200);
         let parsed: Value = serde_json::from_str(&resp_body).unwrap();
         assert_eq!(parsed["response"], "Hello!");
@@ -2749,12 +2768,8 @@ mod tests {
     fn test_handle_request_swaig_unknown_function() {
         let agent = AgentBase::new(default_options());
         let body = json!({"function": "nonexistent", "argument": {"parsed": [{}]}});
-        let (status, _, _) = agent.handle_request(
-            "POST",
-            "/swaig",
-            &authed_headers(),
-            &body.to_string(),
-        );
+        let (status, _, _) =
+            agent.handle_request("POST", "/swaig", &authed_headers(), &body.to_string());
         assert_eq!(status, 404);
     }
 
@@ -2769,12 +2784,8 @@ mod tests {
     fn test_handle_request_swaig_no_function_name() {
         let agent = AgentBase::new(default_options());
         let body = json!({"argument": {}});
-        let (status, _, _) = agent.handle_request(
-            "POST",
-            "/swaig",
-            &authed_headers(),
-            &body.to_string(),
-        );
+        let (status, _, _) =
+            agent.handle_request("POST", "/swaig", &authed_headers(), &body.to_string());
         assert_eq!(status, 400);
     }
 
@@ -2782,12 +2793,8 @@ mod tests {
     fn test_handle_request_post_prompt() {
         let agent = AgentBase::new(default_options());
         let body = json!({"summary": "Call went well"});
-        let (status, _, resp_body) = agent.handle_request(
-            "POST",
-            "/post_prompt",
-            &authed_headers(),
-            &body.to_string(),
-        );
+        let (status, _, resp_body) =
+            agent.handle_request("POST", "/post_prompt", &authed_headers(), &body.to_string());
         assert_eq!(status, 200);
         let parsed: Value = serde_json::from_str(&resp_body).unwrap();
         assert_eq!(parsed["status"], "ok");
@@ -2905,12 +2912,8 @@ mod tests {
         }));
 
         let body = json!({"summary": "Great call"});
-        let (status, _, _) = agent.handle_request(
-            "POST",
-            "/post_prompt",
-            &authed_headers(),
-            &body.to_string(),
-        );
+        let (status, _, _) =
+            agent.handle_request("POST", "/post_prompt", &authed_headers(), &body.to_string());
         assert_eq!(status, 200);
 
         let guard = captured.lock().unwrap();
@@ -2939,7 +2942,10 @@ mod tests {
     fn test_create_tool_token_round_trip() {
         let a = agent_with_tool();
         let token = a.create_tool_token("test_tool", "call_123");
-        assert!(!token.is_empty(), "expected non-empty SessionManager-issued token");
+        assert!(
+            !token.is_empty(),
+            "expected non-empty SessionManager-issued token"
+        );
         assert!(
             a.validate_tool_token("test_tool", &token, "call_123"),
             "validate_tool_token rejected the token we just created"

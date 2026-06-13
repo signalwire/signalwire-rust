@@ -55,7 +55,7 @@ impl Document {
         let verbs = self
             .sections
             .get_mut(section)
-            .unwrap_or_else(|| panic!("Section '{}' does not exist", section));
+            .unwrap_or_else(|| panic!("Section '{section}' does not exist"));
         let mut map = serde_json::Map::new();
         map.insert(verb_name.to_string(), config);
         verbs.push(Value::Object(map));
@@ -70,7 +70,7 @@ impl Document {
         let verbs = self
             .sections
             .get_mut(section)
-            .unwrap_or_else(|| panic!("Section '{}' does not exist", section));
+            .unwrap_or_else(|| panic!("Section '{section}' does not exist"));
         verbs.push(verb_hash);
     }
 
@@ -88,6 +88,7 @@ impl Document {
     }
 
     /// Build the document as a `serde_json::Value`.
+    #[must_use]
     pub fn to_value(&self) -> Value {
         let mut sections_map = serde_json::Map::new();
         // Sort keys for deterministic output
@@ -104,11 +105,25 @@ impl Document {
     }
 
     /// Compact JSON string.
+    ///
+    /// # Panics
+    ///
+    /// Does not panic in practice: the underlying `serde_json::to_string`
+    /// only fails on serialisation errors (e.g. non-string map keys), which
+    /// cannot arise from the well-formed `Value` produced by `to_value`.
+    #[must_use]
     pub fn render(&self) -> String {
         serde_json::to_string(&self.to_value()).expect("Document serialisation should not fail")
     }
 
     /// Pretty-printed JSON string.
+    ///
+    /// # Panics
+    ///
+    /// Does not panic in practice: the underlying `serde_json::to_string_pretty`
+    /// only fails on serialisation errors (e.g. non-string map keys), which
+    /// cannot arise from the well-formed `Value` produced by `to_value`.
+    #[must_use]
     pub fn render_pretty(&self) -> String {
         serde_json::to_string_pretty(&self.to_value())
             .expect("Document serialisation should not fail")
