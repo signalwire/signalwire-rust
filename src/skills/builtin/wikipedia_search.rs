@@ -51,7 +51,7 @@ impl SkillBase for WikipediaSearch {
                 "query": {
                     "type": "string",
                     "description": "The topic to search for on Wikipedia",
-                    "required": true,
+                    // Not required — Python passes none (wikipedia_search/skill.py:87).
                 }
             }),
             Box::new(move |args, _raw| {

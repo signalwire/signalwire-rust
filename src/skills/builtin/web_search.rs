@@ -136,7 +136,7 @@ impl SkillBase for WebSearch {
                 "query": {
                     "type": "string",
                     "description": "The search query",
-                    "required": true,
+                    // Not required — Python passes none (web_search/skill.py:707).
                 }
             }),
             Box::new(move |args, _raw| {

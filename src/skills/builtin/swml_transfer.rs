@@ -55,16 +55,16 @@ impl SkillBase for SwmlTransfer {
             .sp
             .get_str_or("default_message", "Transferring your call, please hold.");
 
-        let transfer_keys: Vec<Value> = transfers.keys().map(|k| json!(k)).collect();
-
-        // Build properties
+        // Build properties. The transfer key is a plain required string with NO
+        // enum — Python's swml_transfer does not put the transfer keys in the
+        // param schema (swml_transfer/skill.py:186); the keys drive DataMap
+        // pattern-matching expressions, not the param's enum.
         let mut properties = Map::new();
         properties.insert(
             param_name.clone(),
             json!({
                 "type": "string",
                 "description": param_description,
-                "enum": transfer_keys,
             }),
         );
 

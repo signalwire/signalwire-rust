@@ -230,6 +230,41 @@ impl Service {
     // SWAIG tool registry (lifted from AgentBase)
     // ------------------------------------------------------------------
 
+    /// Normalize a tool's flat property map into `(properties, required)`.
+    ///
+    /// Skills mark a parameter required by setting `"required": true` *inside*
+    /// the property object (the ergonomic per-property idiom). JSON Schema —
+    /// and the Python reference — express requiredness as a top-level
+    /// `required: [...]` array on the parameters object, not a per-property
+    /// flag. This lifts each property's `"required": true` into that array (in
+    /// the property's declared order) and strips the flag from the property, so
+    /// the emitted `argument` is standard JSON Schema and byte-matches the
+    /// reference. A property without the flag (or `"required": false`) is
+    /// optional and left untouched.
+    fn normalize_parameters(parameters: Value) -> (serde_json::Map<String, Value>, Vec<String>) {
+        let mut required: Vec<String> = Vec::new();
+        let Value::Object(props) = parameters else {
+            // Non-object params (shouldn't happen) pass through as empty.
+            return (serde_json::Map::new(), required);
+        };
+        let mut out = serde_json::Map::with_capacity(props.len());
+        for (key, value) in props {
+            if let Value::Object(mut prop) = value {
+                if prop
+                    .remove("required")
+                    .and_then(|v| v.as_bool())
+                    .unwrap_or(false)
+                {
+                    required.push(key.clone());
+                }
+                out.insert(key, Value::Object(prop));
+            } else {
+                out.insert(key, value);
+            }
+        }
+        (out, required)
+    }
+
     /// Define a SWAIG function the AI can call. Tool descriptions and
     /// parameter descriptions are LLM-facing prompt engineering — see
     /// `PORTING_GUIDE` for guidance.
@@ -244,13 +279,24 @@ impl Service {
         handler: FunctionHandler,
         secure: bool,
     ) -> &mut Self {
+        let (properties, required) = Self::normalize_parameters(parameters);
+        let mut argument = serde_json::Map::new();
+        argument.insert("type".to_string(), serde_json::json!("object"));
+        argument.insert("properties".to_string(), Value::Object(properties));
+        // Emit the top-level JSON-Schema `required` array (the form the model +
+        // validator expect) ONLY when non-empty — matching the Python reference,
+        // which omits the key for an empty required list (swaig_function.py:128).
+        if !required.is_empty() {
+            argument.insert(
+                "required".to_string(),
+                Value::Array(required.into_iter().map(Value::String).collect()),
+            );
+        }
+
         let mut definition = serde_json::Map::new();
         definition.insert("function".to_string(), serde_json::json!(name));
         definition.insert("purpose".to_string(), serde_json::json!(description));
-        definition.insert(
-            "argument".to_string(),
-            serde_json::json!({"type": "object", "properties": parameters}),
-        );
+        definition.insert("argument".to_string(), Value::Object(argument));
 
         self.tools.insert(
             name.to_string(),

@@ -13,6 +13,7 @@ These are stdlib method names that appear in code blocks throughout
 docs/ and examples/.
 
 and_then: stdlib Option::and_then / Result::and_then combinator
+arg: stdlib std::process::Command::arg
 as_array: serde_json::Value::as_array
 as_bytes: stdlib str::as_bytes / String::as_bytes
 as_object: serde_json::Value::as_object
@@ -28,6 +29,7 @@ clone: stdlib Clone::clone
 cloned: stdlib Iterator::cloned
 contains: stdlib str::contains / Vec::contains / HashMap::contains
 contains_key: stdlib HashMap::contains_key
+display: stdlib std::path::Path::display
 first: stdlib slice::first
 foreach: serde_json or DataMap chained-method (covered as DataMap::for_each in the Rust API; the doc spelling matches Python's foreach)
 from: stdlib From::from
@@ -71,6 +73,7 @@ to_uppercase: stdlib str::to_uppercase / String::to_uppercase
 trim: stdlib str::trim
 unwrap: stdlib Option::unwrap / Result::unwrap
 unwrap_or: stdlib Option::unwrap_or / Result::unwrap_or
+success: stdlib std::process::ExitStatus::success
 unwrap_or_default: stdlib Option::unwrap_or_default / Result::unwrap_or_default
 unwrap_or_else: stdlib Option::unwrap_or_else / Result::unwrap_or_else
 with_header: tiny_http::Response::with_header
