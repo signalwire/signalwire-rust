@@ -58,7 +58,7 @@ impl SkillBase for GoogleMaps {
                         "description": "Longitude to bias results toward (optional)",
                     },
                 },
-                "required": ["address"],
+                // No `required` — Python passes none (google_maps/skill.py:433).
             },
             "data_map": {
                 "webhooks": [{
@@ -93,7 +93,7 @@ impl SkillBase for GoogleMaps {
                     "dest_lat": { "type": "number", "description": "Latitude of the destination" },
                     "dest_lng": { "type": "number", "description": "Longitude of the destination" },
                 },
-                "required": ["origin_lat", "origin_lng", "dest_lat", "dest_lng"],
+                // No `required` — Python passes none (google_maps/skill.py:457).
             },
             "data_map": {
                 "webhooks": [{

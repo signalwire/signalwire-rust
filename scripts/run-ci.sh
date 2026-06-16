@@ -128,6 +128,18 @@ run_gate "EMISSION" "diff_port_emission vs python to_dict() oracle" \
         --dump-cmd 'cargo run --quiet --example emit_corpus' \
         --port-repo "$PORT_ROOT"
 
+# Gate 6b: skill-contract — the sibling of EMISSION for built-in SKILLS. EMISSION
+# byte-compares FunctionResult serialisation; this compares each skill's SWAIG
+# tool contract (name/parameters/required/enum from register_tools()) against
+# the Python reference. Catches a class drift/surface/emission can't see: a wrong
+# `required`, a renamed/retyped param, an extra/missing tool. The dump program is
+# examples/emit_skills.rs (cargo run --example emit_skills); dynamic skills are
+# excluded + logged by the shared corpus. Same prereqs as EMISSION.
+run_gate "SKILL-CONTRACT" "diff_skill_contracts vs python reference" \
+    python3 "$PORTING_SDK_DIR/scripts/diff_skill_contracts.py" \
+        --dump-cmd 'cargo run --quiet --example emit_skills' \
+        --port-repo "$PORT_ROOT"
+
 # Gate 7: FMT — the language format gate (rust: rustfmt). Canonical gate name is
 # language-neutral (FMT); each port runs its own formatter under it. Governed by
 # rustfmt.toml (style_edition 2024). Source-style only — proven surface/emission-

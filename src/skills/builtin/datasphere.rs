@@ -77,7 +77,7 @@ impl SkillBase for Datasphere {
                 "query": {
                     "type": "string",
                     "description": "The search query to find relevant knowledge",
-                    "required": true,
+                    // Not required — Python passes none (datasphere/skill.py:171).
                 }
             }),
             Box::new(move |args, _raw| {

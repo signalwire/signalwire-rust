@@ -42,7 +42,7 @@ impl SkillBase for Math {
                 "expression": {
                     "type": "string",
                     "description": "The mathematical expression to evaluate (e.g., \"2 + 3 * 4\")",
-                    "required": true,
+                    // Not required — Python's math skill passes none (math/skill.py:33).
                 }
             }),
             Box::new(|args, _raw| {
