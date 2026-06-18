@@ -8,7 +8,9 @@ mod common;
 
 use serde_json::{Value, json};
 
-const BASE: &str = "/api/laml/2010-04-01/Accounts/test_proj/tokens";
+fn base() -> String {
+    common::mocktest::account_path("tokens")
+}
 
 // ---------------------------------------------------------------------------
 // create
@@ -43,7 +45,7 @@ fn test_compat_tokens_create_journal_records_post() {
 
     let entry = common::mocktest::journal_last();
     assert_eq!(entry.method, "POST");
-    assert_eq!(entry.path, BASE);
+    assert_eq!(entry.path, base());
     let body = entry.body_object().expect("body");
     assert_eq!(body.get("Ttl").and_then(Value::as_i64), Some(3600));
     assert_eq!(body.get("Name").and_then(Value::as_str), Some("api-key"));
@@ -83,7 +85,7 @@ fn test_compat_tokens_update_journal_records_patch() {
     let entry = common::mocktest::journal_last();
     // CompatTokens.update uses PATCH (BaseResource semantics).
     assert_eq!(entry.method, "PATCH");
-    assert_eq!(entry.path, format!("{BASE}/TK_UU"));
+    assert_eq!(entry.path, format!("{}/TK_UU", base()));
     let body = entry.body_object().expect("body");
     assert_eq!(body.get("Ttl").and_then(Value::as_i64), Some(7200));
 }
@@ -108,5 +110,5 @@ fn test_compat_tokens_delete_journal_records_delete() {
 
     let entry = common::mocktest::journal_last();
     assert_eq!(entry.method, "DELETE");
-    assert_eq!(entry.path, format!("{BASE}/TK_DEL"));
+    assert_eq!(entry.path, format!("{}/TK_DEL", base()));
 }

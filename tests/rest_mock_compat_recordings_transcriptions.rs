@@ -8,8 +8,13 @@ mod common;
 
 use serde_json::json;
 
-const REC_BASE: &str = "/api/laml/2010-04-01/Accounts/test_proj/Recordings";
-const TR_BASE: &str = "/api/laml/2010-04-01/Accounts/test_proj/Transcriptions";
+fn rec_base() -> String {
+    common::mocktest::account_path("Recordings")
+}
+
+fn tr_base() -> String {
+    common::mocktest::account_path("Transcriptions")
+}
 
 // ---------------------------------------------------------------------------
 // CompatRecordings::list
@@ -45,7 +50,7 @@ fn test_compat_recordings_list_journal_records_get() {
 
     let entry = common::mocktest::journal_last();
     assert_eq!(entry.method, "GET");
-    assert_eq!(entry.path, REC_BASE);
+    assert_eq!(entry.path, rec_base());
 }
 
 // ---------------------------------------------------------------------------
@@ -81,7 +86,7 @@ fn test_compat_recordings_get_journal_records_get_with_sid() {
 
     let entry = common::mocktest::journal_last();
     assert_eq!(entry.method, "GET");
-    assert_eq!(entry.path, format!("{REC_BASE}/RE_GET"));
+    assert_eq!(entry.path, format!("{}/RE_GET", rec_base()));
 }
 
 // ---------------------------------------------------------------------------
@@ -111,7 +116,7 @@ fn test_compat_recordings_delete_journal_records_delete() {
 
     let entry = common::mocktest::journal_last();
     assert_eq!(entry.method, "DELETE");
-    assert_eq!(entry.path, format!("{REC_BASE}/RE_DEL"));
+    assert_eq!(entry.path, format!("{}/RE_DEL", rec_base()));
 }
 
 // ---------------------------------------------------------------------------
@@ -148,7 +153,7 @@ fn test_compat_transcriptions_list_journal_records_get() {
 
     let entry = common::mocktest::journal_last();
     assert_eq!(entry.method, "GET");
-    assert_eq!(entry.path, TR_BASE);
+    assert_eq!(entry.path, tr_base());
 }
 
 // ---------------------------------------------------------------------------
@@ -184,7 +189,7 @@ fn test_compat_transcriptions_get_journal_records_get_with_sid() {
 
     let entry = common::mocktest::journal_last();
     assert_eq!(entry.method, "GET");
-    assert_eq!(entry.path, format!("{TR_BASE}/TR_GET"));
+    assert_eq!(entry.path, format!("{}/TR_GET", tr_base()));
 }
 
 // ---------------------------------------------------------------------------
@@ -214,5 +219,5 @@ fn test_compat_transcriptions_delete_journal_records_delete() {
 
     let entry = common::mocktest::journal_last();
     assert_eq!(entry.method, "DELETE");
-    assert_eq!(entry.path, format!("{TR_BASE}/TR_DEL"));
+    assert_eq!(entry.path, format!("{}/TR_DEL", tr_base()));
 }

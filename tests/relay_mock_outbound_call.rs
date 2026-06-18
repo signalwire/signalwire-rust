@@ -136,7 +136,10 @@ fn test_dial_failed_raises_relay_error() {
     // (which only emits success). Push the failed event from a thread
     // after a small delay.
     let h = relay_mocktest::harness();
-    let pusher_url = format!("{}/__mock__/push", h.http_url);
+    // Target the push at THIS client's session (the worker thread doesn't
+    // inherit the thread-local scope), so a parallel test never receives it.
+    let session_id = relay_mocktest::scope().expect("connected client must have a session scope");
+    let pusher_url = format!("{}/__mock__/push?session_id={}", h.http_url, session_id);
     let join = std::thread::spawn(move || {
         // Wait briefly so the SDK's pending dial future is registered.
         std::thread::sleep(Duration::from_millis(150));
@@ -583,9 +586,18 @@ fn test_dial_auto_generates_uuid_tag_when_omitted() {
     // We need to learn the auto-generated tag, then push the answered
     // event for it manually.
     let h = relay_mocktest::harness();
-    let push_url = format!("{}/__mock__/push", h.http_url);
+    // Capture this client's session id on the main thread: the worker thread
+    // below won't inherit the thread-local session scope, so we thread the id
+    // explicitly — scope its journal reads to this session and target the push
+    // at this session — keeping the test parallel-safe.
+    let session_id = relay_mocktest::scope().expect("connected client must have a session scope");
+    let push_session = session_id.clone();
+    let push_url = format!("{}/__mock__/push?session_id={}", h.http_url, push_session);
 
     let join = std::thread::spawn(move || {
+        // Bind the worker thread to this client's session scope so its journal
+        // reads see only this test's frames.
+        relay_mocktest::set_scope(Some(session_id));
         // Poll the journal until calling.dial appears, then read its tag.
         let deadline = std::time::Instant::now() + Duration::from_secs(3);
         let mut tag = None;

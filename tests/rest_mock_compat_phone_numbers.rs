@@ -35,7 +35,7 @@ fn test_compat_phone_numbers_list_returns_paginated_list() {
     assert_eq!(entry.method, "GET");
     assert_eq!(
         entry.path,
-        "/api/laml/2010-04-01/Accounts/test_proj/IncomingPhoneNumbers"
+        common::mocktest::account_path("IncomingPhoneNumbers")
     );
 }
 
@@ -52,7 +52,7 @@ fn test_compat_phone_numbers_list_journal_records_get() {
     assert_eq!(entry.method, "GET");
     assert_eq!(
         entry.path,
-        "/api/laml/2010-04-01/Accounts/test_proj/IncomingPhoneNumbers"
+        common::mocktest::account_path("IncomingPhoneNumbers")
     );
 }
 
@@ -81,7 +81,7 @@ fn test_compat_phone_numbers_get_returns_phone_number_resource() {
     assert_eq!(entry.method, "GET");
     assert_eq!(
         entry.path,
-        "/api/laml/2010-04-01/Accounts/test_proj/IncomingPhoneNumbers/PN_TEST"
+        common::mocktest::account_path("IncomingPhoneNumbers/PN_TEST")
     );
 }
 
@@ -98,7 +98,7 @@ fn test_compat_phone_numbers_get_journal_records_get_with_sid() {
     assert_eq!(entry.method, "GET");
     assert_eq!(
         entry.path,
-        "/api/laml/2010-04-01/Accounts/test_proj/IncomingPhoneNumbers/PN_GET"
+        common::mocktest::account_path("IncomingPhoneNumbers/PN_GET")
     );
 }
 
@@ -127,7 +127,7 @@ fn test_compat_phone_numbers_update_returns_phone_number_resource() {
     assert_eq!(entry.method, "POST");
     assert_eq!(
         entry.path,
-        "/api/laml/2010-04-01/Accounts/test_proj/IncomingPhoneNumbers/PN_U"
+        common::mocktest::account_path("IncomingPhoneNumbers/PN_U")
     );
 }
 
@@ -147,7 +147,7 @@ fn test_compat_phone_numbers_update_journal_records_post() {
     assert_eq!(entry.method, "POST");
     assert_eq!(
         entry.path,
-        "/api/laml/2010-04-01/Accounts/test_proj/IncomingPhoneNumbers/PN_UU"
+        common::mocktest::account_path("IncomingPhoneNumbers/PN_UU")
     );
     let body = entry.body_object().expect("body object");
     assert_eq!(
@@ -179,7 +179,7 @@ fn test_compat_phone_numbers_delete_no_exception() {
     assert_eq!(entry.method, "DELETE");
     assert_eq!(
         entry.path,
-        "/api/laml/2010-04-01/Accounts/test_proj/IncomingPhoneNumbers/PN_D"
+        common::mocktest::account_path("IncomingPhoneNumbers/PN_D")
     );
 }
 
@@ -196,7 +196,7 @@ fn test_compat_phone_numbers_delete_journal_records_delete() {
     assert_eq!(entry.method, "DELETE");
     assert_eq!(
         entry.path,
-        "/api/laml/2010-04-01/Accounts/test_proj/IncomingPhoneNumbers/PN_DEL"
+        common::mocktest::account_path("IncomingPhoneNumbers/PN_DEL")
     );
 }
 
@@ -225,7 +225,7 @@ fn test_compat_phone_numbers_purchase_returns_purchased_number() {
     assert_eq!(entry.method, "POST");
     assert_eq!(
         entry.path,
-        "/api/laml/2010-04-01/Accounts/test_proj/IncomingPhoneNumbers"
+        common::mocktest::account_path("IncomingPhoneNumbers")
     );
 }
 
@@ -245,7 +245,7 @@ fn test_compat_phone_numbers_purchase_journal_records_post() {
     assert_eq!(entry.method, "POST");
     assert_eq!(
         entry.path,
-        "/api/laml/2010-04-01/Accounts/test_proj/IncomingPhoneNumbers"
+        common::mocktest::account_path("IncomingPhoneNumbers")
     );
     let body = entry.body_object().expect("body object");
     assert_eq!(
@@ -284,7 +284,7 @@ fn test_compat_phone_numbers_import_number_returns_imported() {
     // Note: ImportedPhoneNumbers (not Incoming).
     assert_eq!(
         entry.path,
-        "/api/laml/2010-04-01/Accounts/test_proj/ImportedPhoneNumbers"
+        common::mocktest::account_path("ImportedPhoneNumbers")
     );
 }
 
@@ -304,7 +304,7 @@ fn test_compat_phone_numbers_import_number_journal_records_post() {
     assert_eq!(entry.method, "POST");
     assert_eq!(
         entry.path,
-        "/api/laml/2010-04-01/Accounts/test_proj/ImportedPhoneNumbers"
+        common::mocktest::account_path("ImportedPhoneNumbers")
     );
     let body = entry.body_object().expect("body object");
     assert_eq!(
@@ -342,7 +342,7 @@ fn test_compat_phone_numbers_list_available_countries_returns_collection() {
     assert_eq!(entry.method, "GET");
     assert_eq!(
         entry.path,
-        "/api/laml/2010-04-01/Accounts/test_proj/AvailablePhoneNumbers"
+        common::mocktest::account_path("AvailablePhoneNumbers")
     );
 }
 
@@ -359,7 +359,7 @@ fn test_compat_phone_numbers_list_available_countries_journal_records_get() {
     assert_eq!(entry.method, "GET");
     assert_eq!(
         entry.path,
-        "/api/laml/2010-04-01/Accounts/test_proj/AvailablePhoneNumbers"
+        common::mocktest::account_path("AvailablePhoneNumbers")
     );
 }
 
@@ -392,7 +392,7 @@ fn test_compat_phone_numbers_search_toll_free_returns_available_numbers() {
     assert_eq!(entry.method, "GET");
     assert_eq!(
         entry.path,
-        "/api/laml/2010-04-01/Accounts/test_proj/AvailablePhoneNumbers/US/TollFree"
+        common::mocktest::account_path("AvailablePhoneNumbers/US/TollFree")
     );
 }
 
@@ -409,7 +409,7 @@ fn test_compat_phone_numbers_search_toll_free_journal_records_get_with_query() {
     assert_eq!(entry.method, "GET");
     assert_eq!(
         entry.path,
-        "/api/laml/2010-04-01/Accounts/test_proj/AvailablePhoneNumbers/US/TollFree"
+        common::mocktest::account_path("AvailablePhoneNumbers/US/TollFree")
     );
     // AreaCode goes on the query string.
     let area_code = entry

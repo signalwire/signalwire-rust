@@ -10,8 +10,13 @@ mod common;
 
 use serde_json::{Value, json};
 
-const APP_BASE: &str = "/api/laml/2010-04-01/Accounts/test_proj/Applications";
-const BIN_BASE: &str = "/api/laml/2010-04-01/Accounts/test_proj/LamlBins";
+fn app_base() -> String {
+    common::mocktest::account_path("Applications")
+}
+
+fn bin_base() -> String {
+    common::mocktest::account_path("LamlBins")
+}
 
 // ---------------------------------------------------------------------------
 // CompatApplications::update
@@ -49,7 +54,7 @@ fn test_compat_applications_update_journal_records_post() {
 
     let entry = common::mocktest::journal_last();
     assert_eq!(entry.method, "POST");
-    assert_eq!(entry.path, format!("{APP_BASE}/AP_UU"));
+    assert_eq!(entry.path, format!("{}/AP_UU", app_base()));
     let body = entry.body_object().expect("body");
     assert_eq!(
         body.get("FriendlyName").and_then(Value::as_str),
@@ -99,7 +104,7 @@ fn test_compat_laml_bins_update_journal_records_post() {
 
     let entry = common::mocktest::journal_last();
     assert_eq!(entry.method, "POST");
-    assert_eq!(entry.path, format!("{BIN_BASE}/LB_UU"));
+    assert_eq!(entry.path, format!("{}/LB_UU", bin_base()));
     let body = entry.body_object().expect("body");
     assert_eq!(
         body.get("FriendlyName").and_then(Value::as_str),

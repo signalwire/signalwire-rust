@@ -139,10 +139,7 @@ fn test_connect_journal_event_acks_true() {
 fn test_reconnect_with_protocol_string_includes_protocol_in_frame() {
     let _g = relay_mocktest::begin();
     let h = relay_mocktest::harness();
-    unsafe {
-        std::env::set_var("SIGNALWIRE_RELAY_SCHEME", "ws");
-        std::env::set_var("SIGNALWIRE_RELAY_HOST", &h.relay_host);
-    }
+    relay_mocktest::ensure_redirect();
 
     // First connect — capture the issued protocol.
     let c1 = Arc::new(RelayClient::new("p", "t", &h.relay_host));
@@ -176,6 +173,10 @@ fn test_reconnect_with_protocol_string_includes_protocol_in_frame() {
     // sends its own; the mock should still see it — we need to
     // augment connect to include `protocol` if pre-set.
     c2.connect().expect("second connect");
+    // Scope this test's journal reads to c2's session (c1 and c2 each get
+    // their own handshake `sessionid`), so the resume connect frame we assert
+    // on below is read from c2's session only — parallel-safe.
+    relay_mocktest::scope_to_client(&c2);
     c2.disconnect();
 
     // The journal should now have a connect frame whose params.protocol
@@ -193,21 +194,13 @@ fn test_reconnect_with_protocol_string_includes_protocol_in_frame() {
             .map(|e| e.frame["params"].get("protocol").and_then(Value::as_str))
             .collect::<Vec<_>>()
     );
-
-    unsafe {
-        std::env::remove_var("SIGNALWIRE_RELAY_SCHEME");
-        std::env::remove_var("SIGNALWIRE_RELAY_HOST");
-    }
 }
 
 #[test]
 fn test_reconnect_with_protocol_preserves_protocol_value() {
     let _g = relay_mocktest::begin();
     let h = relay_mocktest::harness();
-    unsafe {
-        std::env::set_var("SIGNALWIRE_RELAY_SCHEME", "ws");
-        std::env::set_var("SIGNALWIRE_RELAY_HOST", &h.relay_host);
-    }
+    relay_mocktest::ensure_redirect();
     let c1 = Arc::new(RelayClient::new("p", "t", &h.relay_host));
     c1.connect().expect("first connect");
     let issued = c1
@@ -230,11 +223,6 @@ fn test_reconnect_with_protocol_preserves_protocol_value() {
         .expect("protocol after resume");
     assert_eq!(after, issued);
     c2.disconnect();
-
-    unsafe {
-        std::env::remove_var("SIGNALWIRE_RELAY_SCHEME");
-        std::env::remove_var("SIGNALWIRE_RELAY_HOST");
-    }
 }
 
 // ---------------------------------------------------------------------------

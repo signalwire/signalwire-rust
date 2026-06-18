@@ -5,7 +5,7 @@
 # GitHub Actions workflow. No drift between local and CI behavior.
 #
 # Gates (in order, fail-fast):
-#   1. cargo test --tests -- --test-threads=1   — language test runner
+#   1. cargo test --tests                        — language test runner (parallel)
 #   2. signature regen (rustdoc + adapter)      — python adapter
 #   3. drift gate                               — porting-sdk diff_port_signatures.py
 #   4. surface-fresh gate                       — porting-sdk check_surface_freshness.py
@@ -72,9 +72,14 @@ cd "$PORT_ROOT"
 
 echo "==> running CI gates for $PORT_NAME (porting-sdk at $PORTING_SDK_DIR)"
 
-# Gate 1: cargo test (single-threaded for deterministic mock fixtures)
-run_gate "TEST" "cargo test --tests -- --test-threads=1" \
-    cargo test --tests -- --test-threads=1
+# Gate 1: cargo test (PARALLEL — cargo's default). The mock-backed suites are
+# session-isolated (relay: per-connection handshake `sessionid`; rest: per-test
+# random project => unique Authorization header), so the shared mock servers are
+# safe under concurrency without `--test-threads=1`. The few env-coupled unit
+# tests serialize among themselves with a file-local lock. No cross-test serial
+# crutch, no cross-binary flock.
+run_gate "TEST" "cargo test --tests (parallel)" \
+    cargo test --tests
 
 # Gate 2: signature regen — adapter shells out to rustdoc nightly internally.
 run_gate "SIGNATURES" "regenerate port_signatures.json (rustdoc + adapter)" \

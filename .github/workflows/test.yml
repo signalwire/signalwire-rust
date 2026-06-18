@@ -4,11 +4,14 @@ name: Test
 # against the Python reference, and the no-cheat-tests audit. Mirrors
 # `bash scripts/run-ci.sh` so there's no drift between local and CI.
 #
-# Test runner uses --test-threads=1: the shared mock_signalwire /
-# mock_relay servers are single-tenant, and parallel cargo test binaries
-# would race each other through the shared journal. The flock at
-# /tmp/signalwire-rust-mock-relay.lock backstops process-level
-# serialization but the in-runner threads also have to be serial.
+# Test runner is PARALLEL (cargo's default — no --test-threads=1, no
+# cross-binary flock, no global mutex). The shared mock_signalwire /
+# mock_relay servers are made concurrency-safe by per-session isolation:
+# RELAY scopes by the server-assigned handshake `sessionid`; REST scopes by
+# each test's unique random project => unique Authorization header. The only
+# remaining serialization is a narrow file-local lock for the dedicated TLS
+# mock-relay instance (tests/common/tls_support.rs), which runs on its own
+# fixed port and is not part of the session-isolated suite.
 
 env:
   # Opt into Node.js 24 ahead of GitHub's 2026-06-02 default switch.

@@ -31,7 +31,7 @@ fn test_compat_messages_update_returns_message_resource() {
     assert_eq!(entry.method, "POST");
     assert_eq!(
         entry.path,
-        "/api/laml/2010-04-01/Accounts/test_proj/Messages/MM_TEST"
+        common::mocktest::account_path("Messages/MM_TEST")
     );
 }
 
@@ -46,10 +46,7 @@ fn test_compat_messages_update_journal_records_post_to_message() {
 
     let entry = common::mocktest::journal_last();
     assert_eq!(entry.method, "POST");
-    assert_eq!(
-        entry.path,
-        "/api/laml/2010-04-01/Accounts/test_proj/Messages/MM_U1"
-    );
+    assert_eq!(entry.path, common::mocktest::account_path("Messages/MM_U1"));
     let body = entry.body_object().expect("body object");
     assert_eq!(body.get("Body").and_then(|v| v.as_str()), Some("x"));
     assert_eq!(
@@ -83,7 +80,7 @@ fn test_compat_messages_get_media_returns_media_resource() {
     assert_eq!(entry.method, "GET");
     assert_eq!(
         entry.path,
-        "/api/laml/2010-04-01/Accounts/test_proj/Messages/MM_GM/Media/ME_GM"
+        common::mocktest::account_path("Messages/MM_GM/Media/ME_GM")
     );
 }
 
@@ -100,7 +97,7 @@ fn test_compat_messages_get_media_journal_records_get_to_media_path() {
     assert_eq!(entry.method, "GET");
     assert_eq!(
         entry.path,
-        "/api/laml/2010-04-01/Accounts/test_proj/Messages/MM_X/Media/ME_X"
+        common::mocktest::account_path("Messages/MM_X/Media/ME_X")
     );
 }
 
@@ -123,7 +120,7 @@ fn test_compat_messages_delete_media_no_exception_on_delete() {
     assert_eq!(entry.method, "DELETE");
     assert_eq!(
         entry.path,
-        "/api/laml/2010-04-01/Accounts/test_proj/Messages/MM_DM/Media/ME_DM"
+        common::mocktest::account_path("Messages/MM_DM/Media/ME_DM")
     );
 }
 
@@ -140,7 +137,7 @@ fn test_compat_messages_delete_media_journal_records_delete() {
     assert_eq!(entry.method, "DELETE");
     assert_eq!(
         entry.path,
-        "/api/laml/2010-04-01/Accounts/test_proj/Messages/MM_D/Media/ME_D"
+        common::mocktest::account_path("Messages/MM_D/Media/ME_D")
     );
 }
 
@@ -167,10 +164,7 @@ fn test_compat_faxes_update_returns_fax_resource() {
 
     let entry = common::mocktest::journal_last();
     assert_eq!(entry.method, "POST");
-    assert_eq!(
-        entry.path,
-        "/api/laml/2010-04-01/Accounts/test_proj/Faxes/FX_U"
-    );
+    assert_eq!(entry.path, common::mocktest::account_path("Faxes/FX_U"));
 }
 
 #[test]
@@ -184,10 +178,7 @@ fn test_compat_faxes_update_journal_records_post_with_status() {
 
     let entry = common::mocktest::journal_last();
     assert_eq!(entry.method, "POST");
-    assert_eq!(
-        entry.path,
-        "/api/laml/2010-04-01/Accounts/test_proj/Faxes/FX_U2"
-    );
+    assert_eq!(entry.path, common::mocktest::account_path("Faxes/FX_U2"));
     let body = entry.body_object().expect("body object");
     assert_eq!(
         body.get("Status").and_then(|v| v.as_str()),
@@ -220,7 +211,7 @@ fn test_compat_faxes_list_media_returns_paginated_list() {
     assert_eq!(entry.method, "GET");
     assert_eq!(
         entry.path,
-        "/api/laml/2010-04-01/Accounts/test_proj/Faxes/FX_LM/Media"
+        common::mocktest::account_path("Faxes/FX_LM/Media")
     );
 }
 
@@ -237,7 +228,7 @@ fn test_compat_faxes_list_media_journal_records_get_to_fax_media() {
     assert_eq!(entry.method, "GET");
     assert_eq!(
         entry.path,
-        "/api/laml/2010-04-01/Accounts/test_proj/Faxes/FX_LM_X/Media"
+        common::mocktest::account_path("Faxes/FX_LM_X/Media")
     );
 }
 
@@ -266,7 +257,7 @@ fn test_compat_faxes_get_media_returns_fax_media_resource() {
     assert_eq!(entry.method, "GET");
     assert_eq!(
         entry.path,
-        "/api/laml/2010-04-01/Accounts/test_proj/Faxes/FX_GM/Media/ME_GM"
+        common::mocktest::account_path("Faxes/FX_GM/Media/ME_GM")
     );
 }
 
@@ -283,7 +274,7 @@ fn test_compat_faxes_get_media_journal_records_get_to_specific_media() {
     assert_eq!(entry.method, "GET");
     assert_eq!(
         entry.path,
-        "/api/laml/2010-04-01/Accounts/test_proj/Faxes/FX_G/Media/ME_G"
+        common::mocktest::account_path("Faxes/FX_G/Media/ME_G")
     );
 }
 
@@ -306,7 +297,7 @@ fn test_compat_faxes_delete_media_no_exception_on_delete() {
     assert_eq!(entry.method, "DELETE");
     assert_eq!(
         entry.path,
-        "/api/laml/2010-04-01/Accounts/test_proj/Faxes/FX_DM/Media/ME_DM"
+        common::mocktest::account_path("Faxes/FX_DM/Media/ME_DM")
     );
 }
 
@@ -323,6 +314,6 @@ fn test_compat_faxes_delete_media_journal_records_delete() {
     assert_eq!(entry.method, "DELETE");
     assert_eq!(
         entry.path,
-        "/api/laml/2010-04-01/Accounts/test_proj/Faxes/FX_D/Media/ME_D"
+        common::mocktest::account_path("Faxes/FX_D/Media/ME_D")
     );
 }

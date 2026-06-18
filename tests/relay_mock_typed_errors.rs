@@ -22,14 +22,11 @@ use signalwire::relay::{Client as RelayClient, RelayError};
 
 /// Build a client pointed at the mock but with caller-chosen credentials, so a
 /// test can drive the auth-rejection path. Mirrors `connected_client` minus the
-/// "connect must succeed" assertion. The env vars are safe to set because the
-/// active `TestGuard` holds the serialising mutex.
+/// "connect must succeed" assertion. The mock-redirect env vars are set once
+/// per process (same values for every test), so this is parallel-safe.
 fn client_with_creds(project: &str, token: &str) -> Arc<RelayClient> {
     let h = relay_mocktest::harness();
-    unsafe {
-        std::env::set_var("SIGNALWIRE_RELAY_SCHEME", "ws");
-        std::env::set_var("SIGNALWIRE_RELAY_HOST", &h.relay_host);
-    }
+    relay_mocktest::ensure_redirect();
     Arc::new(RelayClient::new(project, token, &h.relay_host))
 }
 
