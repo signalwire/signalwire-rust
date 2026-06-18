@@ -175,11 +175,41 @@ pub fn init() {
 mod tests {
     use super::*;
     use std::env;
+    use std::sync::Mutex;
 
-    // Helper to run tests with clean env
-    // SAFETY: Tests run sequentially (cargo test -- --test-threads=1) so env var
-    // mutation is safe. These are test-only helpers.
+    // Process environment is global, so the env-coupled tests below must not run
+    // concurrently with one another: one test's `set_var`/`remove_var` would race
+    // another's read (e.g. clearing SIGNALWIRE_LOG_LEVEL between a sibling's set
+    // and its assert). The suite runs in parallel (`cargo test`, no
+    // `--test-threads=1`), so every test that touches these vars serializes on
+    // this lock for its whole body. A poisoned lock (a panicking test) must not
+    // cascade into spurious failures elsewhere, so recover the guard.
+    static ENV_LOCK: Mutex<()> = Mutex::new(());
+
+    // Helper to run a test body with a clean env, holding ENV_LOCK so concurrent
+    // env-coupled tests can't observe each other's mutations.
     fn with_clean_env<F: FnOnce()>(f: F) {
+        let _guard = ENV_LOCK
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        unsafe {
+            env::remove_var("SIGNALWIRE_LOG_LEVEL");
+            env::remove_var("SIGNALWIRE_LOG_MODE");
+        }
+        f();
+        unsafe {
+            env::remove_var("SIGNALWIRE_LOG_LEVEL");
+            env::remove_var("SIGNALWIRE_LOG_MODE");
+        }
+    }
+
+    // Run a test body that sets specific env vars, holding ENV_LOCK for the whole
+    // body and clearing the vars before AND after so neither a prior test's
+    // leftovers nor this test's leak into a concurrent sibling.
+    fn with_env_lock<F: FnOnce()>(f: F) {
+        let _guard = ENV_LOCK
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         unsafe {
             env::remove_var("SIGNALWIRE_LOG_LEVEL");
             env::remove_var("SIGNALWIRE_LOG_MODE");
@@ -209,38 +239,35 @@ mod tests {
 
     #[test]
     fn test_env_level_debug() {
-        unsafe {
-            env::set_var("SIGNALWIRE_LOG_LEVEL", "debug");
-        }
-        let logger = Logger::new("test");
-        assert_eq!(logger.level, Level::Debug);
-        unsafe {
-            env::remove_var("SIGNALWIRE_LOG_LEVEL");
-        }
+        with_env_lock(|| {
+            unsafe {
+                env::set_var("SIGNALWIRE_LOG_LEVEL", "debug");
+            }
+            let logger = Logger::new("test");
+            assert_eq!(logger.level, Level::Debug);
+        });
     }
 
     #[test]
     fn test_env_level_case_insensitive() {
-        unsafe {
-            env::set_var("SIGNALWIRE_LOG_LEVEL", "WARN");
-        }
-        let logger = Logger::new("test");
-        assert_eq!(logger.level, Level::Warn);
-        unsafe {
-            env::remove_var("SIGNALWIRE_LOG_LEVEL");
-        }
+        with_env_lock(|| {
+            unsafe {
+                env::set_var("SIGNALWIRE_LOG_LEVEL", "WARN");
+            }
+            let logger = Logger::new("test");
+            assert_eq!(logger.level, Level::Warn);
+        });
     }
 
     #[test]
     fn test_env_level_invalid_falls_back() {
-        unsafe {
-            env::set_var("SIGNALWIRE_LOG_LEVEL", "bogus");
-        }
-        let logger = Logger::new("test");
-        assert_eq!(logger.level, Level::Info);
-        unsafe {
-            env::remove_var("SIGNALWIRE_LOG_LEVEL");
-        }
+        with_env_lock(|| {
+            unsafe {
+                env::set_var("SIGNALWIRE_LOG_LEVEL", "bogus");
+            }
+            let logger = Logger::new("test");
+            assert_eq!(logger.level, Level::Info);
+        });
     }
 
     #[test]
@@ -253,26 +280,24 @@ mod tests {
 
     #[test]
     fn test_env_suppression() {
-        unsafe {
-            env::set_var("SIGNALWIRE_LOG_MODE", "off");
-        }
-        let logger = Logger::new("test");
-        assert!(logger.suppressed);
-        unsafe {
-            env::remove_var("SIGNALWIRE_LOG_MODE");
-        }
+        with_env_lock(|| {
+            unsafe {
+                env::set_var("SIGNALWIRE_LOG_MODE", "off");
+            }
+            let logger = Logger::new("test");
+            assert!(logger.suppressed);
+        });
     }
 
     #[test]
     fn test_env_suppression_case_insensitive() {
-        unsafe {
-            env::set_var("SIGNALWIRE_LOG_MODE", "OFF");
-        }
-        let logger = Logger::new("test");
-        assert!(logger.suppressed);
-        unsafe {
-            env::remove_var("SIGNALWIRE_LOG_MODE");
-        }
+        with_env_lock(|| {
+            unsafe {
+                env::set_var("SIGNALWIRE_LOG_MODE", "OFF");
+            }
+            let logger = Logger::new("test");
+            assert!(logger.suppressed);
+        });
     }
 
     #[test]
