@@ -9,7 +9,9 @@ mod common;
 
 use serde_json::{Value, json};
 
-const BASE: &str = "/api/laml/2010-04-01/Accounts/test_proj/Conferences";
+fn base() -> String {
+    common::mocktest::account_path("Conferences")
+}
 
 // ---- Conference itself ---------------------------------------------------
 
@@ -50,7 +52,7 @@ fn test_compat_conferences_list_journal_records_get() {
 
     let entry = common::mocktest::journal_last();
     assert_eq!(entry.method, "GET");
-    assert_eq!(entry.path, BASE);
+    assert_eq!(entry.path, base());
     assert!(entry.matched_route.is_some(), "spec gap: conferences.list");
 }
 
@@ -83,7 +85,7 @@ fn test_compat_conferences_get_journal_records_get_with_sid() {
 
     let entry = common::mocktest::journal_last();
     assert_eq!(entry.method, "GET");
-    assert_eq!(entry.path, format!("{BASE}/CF_GETSID"));
+    assert_eq!(entry.path, format!("{}/CF_GETSID", base()));
 }
 
 #[test]
@@ -117,7 +119,7 @@ fn test_compat_conferences_update_journal_records_post_with_status() {
 
     let entry = common::mocktest::journal_last();
     assert_eq!(entry.method, "POST");
-    assert_eq!(entry.path, format!("{BASE}/CF_UPD"));
+    assert_eq!(entry.path, format!("{}/CF_UPD", base()));
     let body = entry.body_object().expect("body object");
     assert_eq!(
         body.get("Status").and_then(Value::as_str),
@@ -160,7 +162,7 @@ fn test_compat_conferences_get_participant_journal_records_get() {
 
     let entry = common::mocktest::journal_last();
     assert_eq!(entry.method, "GET");
-    assert_eq!(entry.path, format!("{BASE}/CF_GP/Participants/CA_GP"));
+    assert_eq!(entry.path, format!("{}/CF_GP/Participants/CA_GP", base()));
 }
 
 #[test]
@@ -191,7 +193,7 @@ fn test_compat_conferences_update_participant_journal_records_post() {
 
     let entry = common::mocktest::journal_last();
     assert_eq!(entry.method, "POST");
-    assert_eq!(entry.path, format!("{BASE}/CF_M/Participants/CA_M"));
+    assert_eq!(entry.path, format!("{}/CF_M/Participants/CA_M", base()));
     let body = entry.body_object().expect("body");
     assert_eq!(body.get("Muted").and_then(Value::as_bool), Some(true));
     assert_eq!(body.get("Hold").and_then(Value::as_bool), Some(false));
@@ -220,7 +222,7 @@ fn test_compat_conferences_remove_participant_journal_records_delete() {
 
     let entry = common::mocktest::journal_last();
     assert_eq!(entry.method, "DELETE");
-    assert_eq!(entry.path, format!("{BASE}/CF_RM/Participants/CA_RM"));
+    assert_eq!(entry.path, format!("{}/CF_RM/Participants/CA_RM", base()));
 }
 
 // ---- Recordings ----------------------------------------------------------
@@ -255,7 +257,7 @@ fn test_compat_conferences_list_recordings_journal_records_get() {
 
     let entry = common::mocktest::journal_last();
     assert_eq!(entry.method, "GET");
-    assert_eq!(entry.path, format!("{BASE}/CF_LRX/Recordings"));
+    assert_eq!(entry.path, format!("{}/CF_LRX/Recordings", base()));
 }
 
 #[test]
@@ -287,7 +289,7 @@ fn test_compat_conferences_get_recording_journal_records_get() {
 
     let entry = common::mocktest::journal_last();
     assert_eq!(entry.method, "GET");
-    assert_eq!(entry.path, format!("{BASE}/CF_GRX/Recordings/RE_GRX"));
+    assert_eq!(entry.path, format!("{}/CF_GRX/Recordings/RE_GRX", base()));
 }
 
 #[test]
@@ -319,7 +321,7 @@ fn test_compat_conferences_update_recording_journal_records_post() {
 
     let entry = common::mocktest::journal_last();
     assert_eq!(entry.method, "POST");
-    assert_eq!(entry.path, format!("{BASE}/CF_UR/Recordings/RE_UR"));
+    assert_eq!(entry.path, format!("{}/CF_UR/Recordings/RE_UR", base()));
     let body = entry.body_object().expect("body");
     assert_eq!(body.get("Status").and_then(Value::as_str), Some("paused"));
 }
@@ -347,7 +349,7 @@ fn test_compat_conferences_delete_recording_journal_records_delete() {
 
     let entry = common::mocktest::journal_last();
     assert_eq!(entry.method, "DELETE");
-    assert_eq!(entry.path, format!("{BASE}/CF_DRX/Recordings/RE_DRX"));
+    assert_eq!(entry.path, format!("{}/CF_DRX/Recordings/RE_DRX", base()));
 }
 
 // ---- Streams -------------------------------------------------------------
@@ -381,7 +383,7 @@ fn test_compat_conferences_start_stream_journal_records_post() {
 
     let entry = common::mocktest::journal_last();
     assert_eq!(entry.method, "POST");
-    assert_eq!(entry.path, format!("{BASE}/CF_SSX/Streams"));
+    assert_eq!(entry.path, format!("{}/CF_SSX/Streams", base()));
     let body = entry.body_object().expect("body");
     assert_eq!(body.get("Url").and_then(Value::as_str), Some("wss://a.b/s"));
 }
@@ -415,7 +417,7 @@ fn test_compat_conferences_stop_stream_journal_records_post() {
 
     let entry = common::mocktest::journal_last();
     assert_eq!(entry.method, "POST");
-    assert_eq!(entry.path, format!("{BASE}/CF_TSX/Streams/ST_TSX"));
+    assert_eq!(entry.path, format!("{}/CF_TSX/Streams/ST_TSX", base()));
     let body = entry.body_object().expect("body");
     assert_eq!(body.get("Status").and_then(Value::as_str), Some("stopped"));
 }

@@ -12,6 +12,7 @@
 //! - `signing_key=None` bypasses validation entirely
 
 use std::collections::HashMap;
+use std::sync::{Mutex, MutexGuard, OnceLock};
 
 use signalwire::AgentOptions;
 use signalwire::agent::AgentBase;
@@ -59,13 +60,30 @@ fn hex_sig(key: &str, url: &str, body: &str) -> String {
         })
 }
 
-// Pin the proxy base used by Service::get_proxy_url_base via env.
-// Tests that share this fixture must run serially because they
-// mutate process-global state (which run-ci.sh does via
-// `--test-threads=1`).
+/// Serializes the env-var-mutating tests in THIS file among themselves.
+/// Environment variables are process-global, so these few unit tests (which
+/// set `SWML_PROXY_URL_BASE` / `SIGNALWIRE_SIGNING_KEY` to *different* values)
+/// can't run concurrently with each other. This is a targeted, file-local
+/// lock for exactly the env-coupled tests — NOT a global cross-test serial
+/// crutch — so the rest of the suite (and the mock-backed suites, which are
+/// session-isolated) still run fully in parallel. Every env-mutating test
+/// acquires this for the whole window it touches the env.
+static ENV_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+
+fn env_guard() -> MutexGuard<'static, ()> {
+    ENV_LOCK
+        .get_or_init(|| Mutex::new(()))
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+}
+
+// Pin the proxy base used by Service::get_proxy_url_base via env. Holds
+// [`env_guard`] for the whole window the env var is set, so concurrent
+// env-mutating tests in this file can't observe each other's value.
 fn with_proxy_base<F: FnOnce()>(base: &str, f: F) {
-    // SAFETY: tests are single-threaded under run-ci.sh; we just set
-    // the env var, run the test, and restore.
+    let _env = env_guard();
+    // SAFETY: env mutation is serialized by ENV_LOCK; we set the env var,
+    // run the test, and restore.
     let prev = std::env::var("SWML_PROXY_URL_BASE").ok();
     unsafe {
         std::env::set_var("SWML_PROXY_URL_BASE", base);
@@ -204,7 +222,8 @@ fn no_signing_key_means_no_validation() {
 
 #[test]
 fn signing_key_falls_back_to_env_var() {
-    // Leak isolation: this test runs serially via --test-threads=1.
+    // Serialize env mutation against the other env-coupled tests in this file.
+    let _env = env_guard();
     let prev_key = std::env::var("SIGNALWIRE_SIGNING_KEY").ok();
     let prev_base = std::env::var("SWML_PROXY_URL_BASE").ok();
     unsafe {
@@ -249,6 +268,7 @@ fn signing_key_falls_back_to_env_var() {
 
 #[test]
 fn explicit_option_overrides_env_var() {
+    let _env = env_guard();
     let prev = std::env::var("SIGNALWIRE_SIGNING_KEY").ok();
     unsafe {
         std::env::set_var("SIGNALWIRE_SIGNING_KEY", "from-env");
@@ -275,6 +295,7 @@ fn explicit_option_overrides_env_var() {
 #[test]
 fn empty_signing_key_is_ignored() {
     // Empty string in either source must be treated as "no key".
+    let _env = env_guard();
     let prev = std::env::var("SIGNALWIRE_SIGNING_KEY").ok();
     unsafe {
         std::env::remove_var("SIGNALWIRE_SIGNING_KEY");

@@ -8,18 +8,39 @@
 //! Rust test helper for the porting-sdk `mock_relay` WebSocket server.
 //!
 //! Mirrors the Python conftest fixture (`signalwire_relay_client` /
-//! `mock_relay`) and the REST mocktest pattern at `tests/common/mocktest.rs`.
-//! The mock server is probed/spawned on first call. The probe-or-spawn
-//! lifecycle matches the REST mock harness exactly, but talks to a
-//! WebSocket plane on `ws://127.0.0.1:<ws_port>` (default 8781) and an
-//! HTTP control plane on port `ws_port + 1000` (default 9781).
+//! `mock_relay`), the TypeScript port's `tests/relay/mocktest.ts`, and the
+//! REST mocktest pattern at `tests/common/mocktest.rs`. The mock server is
+//! probed/spawned on first call. It talks to a WebSocket plane on
+//! `ws://127.0.0.1:<ws_port>` (default 8781) and an HTTP control plane on
+//! port `ws_port + 1000` (default 9781).
 //!
 //! The Rust slot in the parallel rollout is `WS=8781 / HTTP=9781`. Override
 //! either with `MOCK_RELAY_PORT` (WS) or `MOCK_RELAY_HTTP_PORT` (HTTP).
 //!
-//! All functions panic on error. Tests using these helpers should run
-//! single-threaded (`cargo test -- --test-threads=1`) because the journal
-//! and scenario queues are shared global state on the mock server.
+//! ## Session isolation (parallel-safe)
+//!
+//! Tests run in parallel (cargo's default — one thread per test, and each
+//! integration-test binary is its own process). They all share the one
+//! `mock_relay` server, so global journal/scenario reads would race. We
+//! isolate exactly as the frozen TypeScript design does: the key is the
+//! server-assigned handshake `sessionid`.
+//!
+//! [`connected_client`] captures the connected client's `session_id` (the
+//! `sessionid` the mock returned on the `signalwire.connect` handshake) and
+//! stashes it in a **thread-local** scope. Because cargo runs each test on
+//! its own thread, the thread-local IS the per-test session scope — the Rust
+//! analogue of the TS port's per-call scoped `MockRelayHarness`. Every
+//! control-plane helper then threads `?session_id=<id>` onto its request
+//! (journal read/reset, scenario reset/arm/dial, push, `inbound_call`, and
+//! per-op stamping for `scenario_play`), so a test only ever sees / disturbs
+//! its own session's frames. A brand-new session starts with an empty
+//! (scoped) journal, so no global reset is needed.
+//!
+//! Tests that build a `RelayClient` by hand call [`scope_to_client`] after
+//! `connect()` to bind the thread-local scope to that client's session
+//! (mirrors TS `sessionIdOf` + `mock.sessionId = ...`).
+//!
+//! All functions panic on error.
 
 #![allow(dead_code)]
 // Helper signatures take `Value` by value to mirror the cross-port mock-test
@@ -27,12 +48,11 @@
 // value). Keeping the by-value shape keeps these helpers 1:1 with siblings.
 #![allow(clippy::needless_pass_by_value)]
 
+use std::cell::RefCell;
 use std::collections::HashMap;
-use std::fs::OpenOptions;
-use std::os::unix::io::AsRawFd;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
-use std::sync::{Arc, Mutex, MutexGuard, OnceLock};
+use std::sync::{Arc, Once, OnceLock};
 use std::time::{Duration, Instant};
 
 use serde_json::{Value, json};
@@ -47,116 +67,77 @@ pub const DEFAULT_HTTP_PORT: u16 = 9781;
 /// Maximum wait for the spawned mock server to answer `/__mock__/health`.
 const STARTUP_TIMEOUT: Duration = Duration::from_secs(30);
 
-/// Global mutex serializing every mocktest-driven test. The mock journal,
-/// scenario queues, and the env-var redirect for `relay::Client` are
-/// process-global state, so two parallel tests would otherwise see each
-/// other's recorded entries.
-///
-/// Note: this mutex is only effective WITHIN a single test binary. Cargo
-/// runs each integration-test binary as its own process, and runs them
-/// concurrently. The shared `mock_relay` server is the same instance for
-/// all binaries, so we additionally hold a Unix file lock (see
-/// [`acquire_cross_binary_lock`]) to serialize across binaries.
-static SERIALIZE: OnceLock<Mutex<()>> = OnceLock::new();
-
-fn lock_journal() -> MutexGuard<'static, ()> {
-    SERIALIZE
-        .get_or_init(|| Mutex::new(()))
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner)
+thread_local! {
+    /// The current test's session scope — the handshake `sessionid` of the
+    /// client this test connected. Set by [`connected_client`] /
+    /// [`scope_to_client`]; read by every control-plane helper to thread
+    /// `?session_id=<id>` onto its request. `None` => unscoped (legacy global
+    /// view; only correct under serial execution). Thread-local because cargo
+    /// runs each test on its own thread, so this is exactly the per-test scope.
+    static SESSION_SCOPE: RefCell<Option<String>> = const { RefCell::new(None) };
 }
 
-/// Path of the cross-binary advisory file lock. Located in `/tmp` so each
-/// test binary process (with its own copy of this module) refers to the
-/// same inode and `flock` can serialize them.
-const CROSS_BINARY_LOCK_PATH: &str = "/tmp/signalwire-rust-mock-relay.lock";
-
-/// Cross-process advisory `flock` guard. Ensures only one test (across all
-/// integration-test binaries) is touching the mock-relay server at a time
-/// — the WebSocket session registry, journal, and broadcast plane are
-/// shared state that two concurrent binaries would otherwise pollute.
-///
-/// Held for the entire test (acquired in [`begin`], released when the
-/// returned [`TestGuard`] drops).
-struct CrossBinaryLock {
-    file: std::fs::File,
+/// Current thread-local session scope, if any.
+fn current_scope() -> Option<String> {
+    SESSION_SCOPE.with(|s| s.borrow().clone())
 }
 
-impl CrossBinaryLock {
-    fn acquire() -> Self {
-        let file = OpenOptions::new()
-            .create(true)
-            .read(true)
-            .write(true)
-            .truncate(false)
-            .open(CROSS_BINARY_LOCK_PATH)
-            .unwrap_or_else(|e| panic!("relay_mocktest: open {CROSS_BINARY_LOCK_PATH}: {e}"));
-        // LOCK_EX: exclusive lock. Blocks until acquired. Released on
-        // close (i.e. when the File drops at the end of the test).
-        let fd = file.as_raw_fd();
-        // SAFETY: fd is valid for the lifetime of `file`.
-        let rc = unsafe { libc_flock(fd, LOCK_EX) };
-        assert!(
-            rc == 0,
-            "relay_mocktest: flock LOCK_EX on {}: errno={}",
-            CROSS_BINARY_LOCK_PATH,
-            std::io::Error::last_os_error()
-        );
-        CrossBinaryLock { file }
+/// `?session_id=<id>` suffix for control-plane calls when scoped, else "".
+fn session_query() -> String {
+    match current_scope() {
+        Some(sid) if !sid.is_empty() => format!("?session_id={}", urlencode(&sid)),
+        _ => String::new(),
     }
 }
 
-impl Drop for CrossBinaryLock {
-    fn drop(&mut self) {
-        // LOCK_UN: explicit unlock. Closing the file would also release
-        // the lock, but explicit is safer in case the kernel reuses the
-        // descriptor.
-        let fd = self.file.as_raw_fd();
-        // SAFETY: fd is valid until the File drops.
-        let _ = unsafe { libc_flock(fd, LOCK_UN) };
-    }
-}
-
-const LOCK_EX: i32 = 2;
-const LOCK_UN: i32 = 8;
-
-unsafe extern "C" {
-    fn flock(fd: i32, operation: i32) -> i32;
-}
-
-unsafe fn libc_flock(fd: i32, op: i32) -> i32 {
-    unsafe { flock(fd, op) }
-}
-
-/// Block until the mock-relay session registry is empty, or `budget`
-/// elapses. Used at the start of each test to ensure no stale session
-/// from a previous binary's torn-down client is still registered (which
-/// would receive broadcasts intended for *this* test's client).
-fn wait_for_no_sessions(budget: Duration) {
-    let h = harness();
-    let url = format!("{}/__mock__/sessions", h.http_url);
-    let deadline = Instant::now() + budget;
-    while Instant::now() < deadline {
-        let Ok(mut resp) = ureq::get(&url).call() else {
-            return;
-        }; // server unreachable — let later code panic with detail
-        let body: Value = match resp.body_mut().read_json::<Value>() {
-            Ok(v) => v,
-            Err(_) => return,
-        };
-        let sessions = body
-            .get("sessions")
-            .and_then(Value::as_array)
-            .map_or(0, std::vec::Vec::len);
-        if sessions == 0 {
-            return;
+/// Minimal percent-encoding for a session id used as a query value. Session
+/// ids are UUID hex (`[0-9a-f]`), so in practice no byte needs escaping; we
+/// still encode defensively to stay correct if the mock ever changes the
+/// id shape.
+fn urlencode(s: &str) -> String {
+    use std::fmt::Write as _;
+    let mut out = String::with_capacity(s.len());
+    for b in s.bytes() {
+        if b.is_ascii_alphanumeric() || matches!(b, b'-' | b'_' | b'.' | b'~') {
+            out.push(b as char);
+        } else {
+            let _ = write!(out, "%{b:02X}");
         }
-        std::thread::sleep(Duration::from_millis(20));
     }
+    out
 }
 
 /// One-shot health probe / spawn lock.
 static SERVER: OnceLock<HarnessHandle> = OnceLock::new();
+
+/// Set the test-redirect env vars (`SIGNALWIRE_RELAY_SCHEME=ws` +
+/// `SIGNALWIRE_RELAY_HOST=<host:port>`) exactly once per process. These are
+/// the public test hook `relay::Client::connect()` reads to dial the mock
+/// instead of the real WSS endpoint (mirrors Python's audit fixture). Every
+/// test sets them to the SAME values, so a one-time idempotent set is
+/// parallel-safe — no per-test serialization required.
+static REDIRECT_ENV: Once = Once::new();
+
+fn ensure_redirect_env(relay_host: &str) {
+    REDIRECT_ENV.call_once(|| {
+        // SAFETY: run exactly once, before any test thread connects; the
+        // value is a process-wide constant for the test run.
+        unsafe {
+            std::env::set_var("SIGNALWIRE_RELAY_SCHEME", "ws");
+            std::env::set_var("SIGNALWIRE_RELAY_HOST", relay_host);
+        }
+    });
+}
+
+/// Set the `SIGNALWIRE_RELAY_SCHEME=ws` + `SIGNALWIRE_RELAY_HOST=<mock>`
+/// redirect env vars (idempotent, once per process). Tests that build a
+/// `RelayClient` by hand (rather than via [`connected_client`]) call this so
+/// their `connect()` dials the mock. Every test uses the same values, so this
+/// is parallel-safe and the vars must NEVER be removed mid-run.
+pub fn ensure_redirect() {
+    let h = harness();
+    ensure_redirect_env(&h.relay_host);
+}
 
 /// The current mock-relay harness — its WebSocket URL, HTTP control-plane
 /// URL, and the host:port (sans scheme) tests pass to `RelayClient::new`.
@@ -243,25 +224,48 @@ pub fn harness() -> HarnessHandle {
         .clone()
 }
 
-/// Convenience: build a connected `relay::Client` pointed at the mock.
+/// Bind the current thread's session scope to a connected client's session.
+///
+/// Reads the `sessionid` the client captured from its `signalwire.connect`
+/// handshake (`client.session_id`) and stashes it in the thread-local scope
+/// so subsequent journal reads/resets and scenario/push helpers target only
+/// this client's session. Mirrors the TS port's `sessionIdOf(client)` +
+/// `mock.sessionId = ...`. Panics if the client has no session id (i.e. it
+/// was never connected, or the mock didn't return a `sessionid`).
+pub fn scope_to_client(client: &Arc<RelayClient>) {
+    let sid = client
+        .session_id
+        .lock()
+        .unwrap()
+        .clone()
+        .expect("relay_mocktest: client has no session_id - was it connected?");
+    set_scope(Some(sid));
+}
+
+/// Set (or clear) the current thread's session scope directly.
+pub fn set_scope(sid: Option<String>) {
+    SESSION_SCOPE.with(|s| *s.borrow_mut() = sid);
+}
+
+/// The current thread's session scope, if any (the active client's `sessionid`).
+pub fn scope() -> Option<String> {
+    current_scope()
+}
+
+/// Convenience: build a connected `relay::Client` pointed at the mock and
+/// scope this test's thread to its session.
 ///
 /// Sets `SIGNALWIRE_RELAY_SCHEME=ws` and `SIGNALWIRE_RELAY_HOST=<host:port>`
-/// so the Client's `connect()` method dials the mock instead of the real
-/// WSS endpoint, and runs the connect handshake. Returns the connected
-/// `Arc<Client>` ready for `.send_message(...)`, `.dial(...)`, etc. callers.
+/// (once per process; every test uses the same values) so the Client's
+/// `connect()` dials the mock instead of the real WSS endpoint, runs the
+/// connect handshake, then binds the thread-local session scope to the new
+/// connection. Returns the connected `Arc<Client>` ready for
+/// `.send_message(...)`, `.dial(...)`, etc.
 ///
-/// Each test should call [`begin`] first to acquire the global mutex and
-/// reset journal/scenarios. The returned client should be `disconnect()`ed
-/// (typically through a `let client = ...;` defer-style block) before the
-/// `TestGuard` drops — see the integration tests for the canonical pattern.
+/// The returned client should be `disconnect()`ed before the test ends.
 pub fn connected_client(contexts: &[&str]) -> Arc<RelayClient> {
     let h = harness();
-    // Direct env-var manipulation — protected by the SERIALIZE mutex held
-    // by the active `TestGuard`.
-    unsafe {
-        std::env::set_var("SIGNALWIRE_RELAY_SCHEME", "ws");
-        std::env::set_var("SIGNALWIRE_RELAY_HOST", &h.relay_host);
-    }
+    ensure_redirect_env(&h.relay_host);
     let client = Arc::new(RelayClient::new("test_proj", "test_tok", &h.relay_host));
     // Pre-populate contexts before connect so they go out on the connect frame.
     {
@@ -271,13 +275,16 @@ pub fn connected_client(contexts: &[&str]) -> Arc<RelayClient> {
         }
     }
     client.connect().expect("relay_mocktest: connect");
+    scope_to_client(&client);
     client
 }
 
-/// Return every journal entry recorded since the last reset, in arrival order.
+/// Return every journal entry recorded for this test's session since connect,
+/// in arrival order (scoped to the thread-local session when set; global
+/// otherwise).
 pub fn journal_all() -> Vec<JournalEntry> {
     let h = harness();
-    let url = format!("{}/__mock__/journal", h.http_url);
+    let url = format!("{}/__mock__/journal{}", h.http_url, session_query());
     let mut resp = ureq::get(&url)
         .call()
         .unwrap_or_else(|e| panic!("relay_mocktest: GET /__mock__/journal: {e}"));
@@ -331,56 +338,66 @@ pub fn journal_last() -> JournalEntry {
         .expect("relay_mocktest: journal is empty - the SDK call did not reach the mock server")
 }
 
-/// Clear the mock journal so the next assertion starts from a clean slate.
+/// Clear this session's journal entries (scoped when the thread-local session
+/// is set; global otherwise).
 pub fn journal_reset() {
     let h = harness();
-    let url = format!("{}/__mock__/journal/reset", h.http_url);
+    let url = format!("{}/__mock__/journal/reset{}", h.http_url, session_query());
     let _ = ureq::post(&url)
         .send_empty()
         .unwrap_or_else(|e| panic!("relay_mocktest: POST journal/reset: {e}"));
 }
 
-/// Drain all queued scenarios.
+/// Drain this session's queued scenarios (scoped when set; global otherwise).
 pub fn scenario_reset() {
     let h = harness();
-    let url = format!("{}/__mock__/scenarios/reset", h.http_url);
+    let url = format!("{}/__mock__/scenarios/reset{}", h.http_url, session_query());
     let _ = ureq::post(&url)
         .send_empty()
         .unwrap_or_else(|e| panic!("relay_mocktest: POST scenarios/reset: {e}"));
 }
 
-/// Reset both journal and scenarios — typical fixture entry point.
+/// Reset both journal and scenarios for this session — typical fixture entry
+/// point. When scoped, this clears only this session's state; a brand-new
+/// session already starts empty, so calling it is harmless either way.
 pub fn reset_all() {
     journal_reset();
     scenario_reset();
 }
 
-/// Queue scripted post-RPC events for a method (FIFO consume-once).
+/// Queue scripted post-RPC events for a method (FIFO consume-once), scoped to
+/// this session.
 ///
 /// `events` is a list of `{"emit": {...}, "delay_ms": N, "event_type": "..."}`
 /// entries; `event_type` defaults to a derivation from `method`
 /// (`calling.play` → `calling.call.play`).
 pub fn arm_method(method: &str, events: Value) {
     let h = harness();
-    let url = format!("{}/__mock__/scenarios/{}", h.http_url, method);
+    let url = format!(
+        "{}/__mock__/scenarios/{}{}",
+        h.http_url,
+        method,
+        session_query()
+    );
     let _ = ureq::post(&url)
         .send_json(&events)
         .unwrap_or_else(|e| panic!("relay_mocktest: arm_method: {e}"));
 }
 
-/// Queue a dial-dance scenario.
+/// Queue a dial-dance scenario, scoped to this session.
 pub fn arm_dial(payload: Value) {
     let h = harness();
-    let url = format!("{}/__mock__/scenarios/dial", h.http_url);
+    let url = format!("{}/__mock__/scenarios/dial{}", h.http_url, session_query());
     let _ = ureq::post(&url)
         .send_json(&payload)
         .unwrap_or_else(|e| panic!("relay_mocktest: arm_dial: {e}"));
 }
 
-/// Push a single frame to the connected SDK session(s).
+/// Push a single frame to this test's session (so a parallel test's client
+/// never receives it). An unscoped harness broadcasts (legacy behavior).
 pub fn push(frame: Value) {
     let h = harness();
-    let url = format!("{}/__mock__/push", h.http_url);
+    let url = format!("{}/__mock__/push{}", h.http_url, session_query());
     let body = json!({"frame": frame});
     let _ = ureq::post(&url)
         .send_json(&body)
@@ -388,67 +405,94 @@ pub fn push(frame: Value) {
 }
 
 /// Convenience wrapper around `/__mock__/inbound_call`. Spec is the same
-/// as the Python `mock_relay.inbound_call(...)` helper.
+/// as the Python `mock_relay.inbound_call(...)` helper. Targets this test's
+/// session by default (stamps `session_id` into the body unless the caller
+/// already supplied one), so the inbound-call sequence is delivered only to
+/// this test's client.
 pub fn inbound_call(payload: Value) {
     let h = harness();
+    let mut body = payload;
+    if let (Some(sid), Some(obj)) = (current_scope(), body.as_object_mut())
+        && !sid.is_empty()
+        && !obj.contains_key("session_id")
+    {
+        obj.insert("session_id".to_string(), Value::String(sid));
+    }
     let url = format!("{}/__mock__/inbound_call", h.http_url);
     let _ = ureq::post(&url)
-        .send_json(&payload)
+        .send_json(&body)
         .unwrap_or_else(|e| panic!("relay_mocktest: inbound_call: {e}"));
 }
 
-/// Run a scripted timeline (`scenario_play`).
+/// Run a scripted timeline (`scenario_play`). When this test is session-scoped,
+/// every `push` / `expect_recv` op is stamped with this session id (unless it
+/// already carries one), so the timeline targets only this test's client and
+/// `expect_recv` matches only this session's frames — making it parallel-safe.
 pub fn scenario_play(ops: Value) -> Value {
     let h = harness();
+    let scoped = match current_scope() {
+        Some(sid) if !sid.is_empty() => scope_ops(ops, &sid),
+        _ => ops,
+    };
     let url = format!("{}/__mock__/scenario_play", h.http_url);
     let mut resp = ureq::post(&url)
-        .send_json(&ops)
+        .send_json(&scoped)
         .unwrap_or_else(|e| panic!("relay_mocktest: scenario_play: {e}"));
     resp.body_mut()
         .read_json::<Value>()
         .unwrap_or_else(|e| panic!("relay_mocktest: decode scenario_play: {e}"))
 }
 
-/// RAII guard that holds the global serialization mutex for the duration
-/// of a single test. Tests should bind the return value to `let _g`.
-///
-/// Field order matters: `_cross_binary` must be listed AFTER `_inner` so
-/// that on drop the cross-binary file lock is released BEFORE the
-/// in-process mutex (Rust drops fields in declaration order, so the
-/// in-process mutex drops first — no, actually fields drop in REVERSE
-/// declaration order; the last-declared drops first). We want the
-/// in-process mutex to release LAST so a same-binary follow-up test
-/// doesn't re-enter `begin` and race with the about-to-release file lock.
-pub struct TestGuard {
-    _cross_binary: CrossBinaryLock,
-    _inner: MutexGuard<'static, ()>,
+/// Stamp `session_id` into each timeline op's `push` / `expect_recv` spec when
+/// the op doesn't already specify one. Leaves `sleep` ops untouched. Mirrors
+/// the TS port's `scopeOp`.
+fn scope_ops(ops: Value, sid: &str) -> Value {
+    let Some(arr) = ops.as_array() else {
+        return ops;
+    };
+    let stamped: Vec<Value> = arr
+        .iter()
+        .map(|op| {
+            let mut op = op.clone();
+            if let Some(obj) = op.as_object_mut() {
+                for key in ["push", "expect_recv"] {
+                    if let Some(spec) = obj.get_mut(key)
+                        && let Some(spec_obj) = spec.as_object_mut()
+                        && !spec_obj.contains_key("session_id")
+                    {
+                        spec_obj.insert("session_id".to_string(), Value::String(sid.to_string()));
+                    }
+                }
+            }
+            op
+        })
+        .collect();
+    Value::Array(stamped)
 }
 
-/// Acquire the global serialization mutex (in-process) and the cross-binary
-/// file lock, ensure the mock-relay session registry has drained, and reset
-/// journal+scenarios. The returned [`TestGuard`] must outlive the test
-/// body — bind it to `let _g = relay_mocktest::begin();` at the top.
-pub fn begin() -> TestGuard {
-    // Acquire the in-process mutex first; it's cheap and guards same-binary
-    // concurrency. Then acquire the cross-binary file lock to serialize
-    // against tests in other binaries running concurrently against the
-    // same shared mock_relay server.
-    let inner = lock_journal();
-    let cross = CrossBinaryLock::acquire();
+/// RAII guard returned by [`begin`]. Clears this thread's session scope on
+/// drop so a same-thread follow-up test (rare) starts unscoped until it calls
+/// [`connected_client`] / [`scope_to_client`] again.
+pub struct TestGuard {
+    _private: (),
+}
 
-    // Wait for any leftover sessions from a previous binary's tests to
-    // drain — once the file lock is held, we know no other test is in
-    // begin/disconnect, but the SDK in the previous binary might not have
-    // closed its WebSocket cleanly yet. The mock server unregisters
-    // sessions only when the WS read loop sees ConnectionClosed.
-    wait_for_no_sessions(Duration::from_secs(2));
-
-    journal_reset();
-    scenario_reset();
-    TestGuard {
-        _cross_binary: cross,
-        _inner: inner,
+impl Drop for TestGuard {
+    fn drop(&mut self) {
+        set_scope(None);
     }
+}
+
+/// Per-test entry point. Resets this thread's session scope so a test starts
+/// clean, then ensures the mock server is up. No global lock and no global
+/// journal/scenario reset: session isolation (set by [`connected_client`])
+/// makes the shared mock safe under parallel tests, and a brand-new session
+/// starts with an empty scoped journal. Bind the result to
+/// `let _g = relay_mocktest::begin();` at the top of the test.
+pub fn begin() -> TestGuard {
+    set_scope(None);
+    let _ = harness();
+    TestGuard { _private: () }
 }
 
 // ---------------------------------------------------------------------------

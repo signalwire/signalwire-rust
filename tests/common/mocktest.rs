@@ -8,22 +8,47 @@
 //! Rust test helper for the porting-sdk `mock_signalwire` HTTP server.
 //!
 //! Mirrors the Go pilot at
-//! `signalwire-go/pkg/rest/internal/mocktest/mocktest.go` and the Python
-//! conftest fixtures (`signalwire_client` + `mock`).
+//! `signalwire-go/pkg/rest/internal/mocktest/mocktest.go`, the TypeScript
+//! port's `tests/rest/mocktest.ts`, and the Python conftest fixtures
+//! (`signalwire_client` + `mock`).
 //!
 //! The server's lifetime is per-process: the first [`client`] / [`harness`]
 //! call probes `http://127.0.0.1:<port>/__mock__/health` and either confirms
-//! a running server or starts one as a detached subprocess. Each test must
-//! call [`journal_reset`] (or [`scenario_reset`]) before relying on
-//! [`journal_last`].
+//! a running server or starts one as a detached subprocess.
 //!
 //! The default port is 8771 (the Rust slot in the parallel rollout —
 //! TS=8766, Java=8767, PHP=8768, Ruby=8769, Perl=8770, Rust=8771,
 //! C++=8772). Override with `MOCK_SIGNALWIRE_PORT`.
 //!
-//! All functions panic on error. Tests using these helpers should run
-//! single-threaded (`cargo test -- --test-threads=1`) because the mock
-//! journal is shared global state.
+//! ## Session isolation (parallel-safe)
+//!
+//! Tests run in parallel (cargo's default — one thread per test; each
+//! integration-test binary is its own process). They share the one
+//! `mock_signalwire` server, so global journal reads would race. REST is pure
+//! request/response with no session handshake, so — exactly as the frozen
+//! TypeScript design — the isolation **key is the `Authorization` header**:
+//!
+//! * [`client`] mints a **unique random project** (`test_proj_<12 hex>`) per
+//!   test, so its `Authorization: Basic base64(project:token)` header is
+//!   unique. The random suffix (not a counter) keeps it collision-free across
+//!   threads AND separate processes hitting one shared mock. Project +
+//!   auth-header are stashed in a thread-local (the per-test scope — cargo
+//!   runs each test on its own thread).
+//! * [`journal_all`] / [`journal_last`] filter the shared global journal
+//!   **client-side** by that auth header, so a test only ever sees its own
+//!   requests. No SDK change and no mock-server change.
+//! * [`scenario_set`] scopes overrides **server-side** via
+//!   `?session_id=<urlencoded auth header>` (the mock keys REST scenarios on
+//!   the auth header), so a concurrent test can't consume another's override.
+//! * [`reset_all`] / [`journal_reset`] are **no-ops when scoped**: a scoped
+//!   test starts with zero entries in its auth-filtered view, and a global
+//!   wipe would race a concurrent test.
+//!
+//! Tests that assert on the `AccountSid` embedded in a LAML path must read it
+//! from [`project`] (or build it via [`account_path`]) rather than hard-coding
+//! `test_proj`.
+//!
+//! All functions panic on error.
 
 #![allow(dead_code)]
 // Helper signatures take `Value` / owned args by value to mirror the
@@ -32,30 +57,66 @@
 // the by-value shape keeps these helpers 1:1 with their sibling ports.
 #![allow(clippy::needless_pass_by_value)]
 
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
-use std::sync::{Mutex, MutexGuard, OnceLock};
+use std::sync::OnceLock;
 use std::time::{Duration, Instant};
 
+use base64::Engine;
+use base64::engine::general_purpose::STANDARD as BASE64;
 use serde_json::Value;
 use signalwire::rest::RestClient;
 
-/// Global mutex serializing every mocktest-driven test. The mock journal
-/// is process-global state, so two parallel tests would otherwise see
-/// each other's recorded entries. Tests that derive from this helper
-/// implicitly hold the mutex via `reset_all` (or `journal_reset`) for
-/// the full duration of their assertions.
-static SERIALIZE: OnceLock<Mutex<()>> = OnceLock::new();
+/// Throwaway token shared by every test client; only the project varies (so
+/// only the project — and thus the Basic-auth header — is per-test unique).
+const REST_TOKEN: &str = "test_tok";
 
-fn lock_journal() -> MutexGuard<'static, ()> {
-    SERIALIZE
-        .get_or_init(|| Mutex::new(()))
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner)
+thread_local! {
+    /// The current test's isolation scope: (project, auth_header). Set by
+    /// [`client`]; read by the journal filter, the scenario scoper, and the
+    /// scoped-reset no-op. `None` => unscoped (legacy global view; only
+    /// correct under serial execution). Thread-local because cargo runs each
+    /// test on its own thread, so this is exactly the per-test scope.
+    static SCOPE: RefCell<Option<Scope>> = const { RefCell::new(None) };
 }
 
-/// Default port for the Rust slot in the parallel parallel-port lineup.
+#[derive(Clone)]
+struct Scope {
+    project: String,
+    auth_header: String,
+}
+
+fn current_scope() -> Option<Scope> {
+    SCOPE.with(|s| s.borrow().clone())
+}
+
+fn set_scope(scope: Option<Scope>) {
+    SCOPE.with(|s| *s.borrow_mut() = scope);
+}
+
+/// The current test's unique random project (`test_proj_<hex>`). Tests that
+/// assert on the `AccountSid` in a LAML path read it from here instead of
+/// hard-coding `test_proj`. Falls back to `"test_proj"` when unscoped.
+pub fn project() -> String {
+    current_scope().map_or_else(|| "test_proj".to_string(), |s| s.project)
+}
+
+/// Build a LAML account path for the current test's project:
+/// `/api/laml/2010-04-01/Accounts/<project>/<suffix>`. `suffix` is appended
+/// verbatim (no leading slash needed). Mirrors the TS port's
+/// `mock.project`-based path assertions.
+pub fn account_path(suffix: &str) -> String {
+    let base = format!("/api/laml/2010-04-01/Accounts/{}", project());
+    if suffix.is_empty() {
+        base
+    } else {
+        format!("{base}/{suffix}")
+    }
+}
+
+/// Default port for the Rust slot in the parallel-port lineup.
 pub const DEFAULT_PORT: u16 = 8771;
 
 /// Maximum wait for the spawned mock server to answer `/__mock__/health`.
@@ -94,32 +155,55 @@ impl JournalEntry {
 // Public API
 // ---------------------------------------------------------------------------
 
-/// Return a [`RestClient`] configured to hit the local mock server, with
-/// throwaway credentials matching the Python `signalwire_client` fixture.
+/// Return a [`RestClient`] configured to hit the local mock server, and scope
+/// this test's thread to the client's unique random project / auth header.
 ///
-/// The mock server is probed/spawned on first call and reused thereafter.
-/// Call [`journal_reset`] before each test to clear shared journal state.
+/// Each call mints a fresh `test_proj_<12 hex>` project, so the client's
+/// `Authorization` header is unique and the journal is filterable per client.
+/// The random suffix keeps it collision-free across threads/processes hitting
+/// the one shared mock. The mock server is probed/spawned on first call and
+/// reused thereafter.
+///
+/// Tests asserting on a LAML `AccountSid` path must use [`project`] /
+/// [`account_path`] rather than hard-coding `test_proj`.
 pub fn client() -> RestClient {
     let h = harness();
+    let project = format!("test_proj_{}", random_hex12());
+    let auth_header = format!("Basic {}", BASE64.encode(format!("{project}:{REST_TOKEN}")));
+    set_scope(Some(Scope {
+        project: project.clone(),
+        auth_header,
+    }));
     // Use with_base_url so the http:// prefix and explicit host:port survive
     // the constructor's https:// resolution.
-    RestClient::with_base_url("test_proj", "test_tok", &h.url).expect("RestClient::with_base_url")
+    RestClient::with_base_url(&project, REST_TOKEN, &h.url).expect("RestClient::with_base_url")
+}
+
+/// 12 hex chars of process-and-thread-unique randomness for the per-test
+/// project suffix. Uses `rand` (already a workspace dependency) seeded from
+/// the OS entropy source, so two concurrent workers/processes can't collide.
+fn random_hex12() -> String {
+    use rand::RngExt;
+    use std::fmt::Write as _;
+    let mut rng = rand::rng();
+    (0..6).fold(String::with_capacity(12), |mut acc, _| {
+        let _ = write!(acc, "{:02x}", rng.random::<u8>());
+        acc
+    })
 }
 
 /// Return the singleton harness, spawning the mock server if necessary.
 ///
 /// Panics with a descriptive message if the server can't be reached or
-/// started — tests that need an early skip should check
-/// `SERVER.get().is_some()` first, but in practice the audit pipeline
-/// guarantees the mock is always available.
+/// started.
 pub fn harness() -> HarnessHandle {
     SERVER
         .get_or_init(|| ensure_server().expect("mocktest: failed to ensure mock server"))
         .clone()
 }
 
-/// Return every journal entry recorded since the last reset, in arrival order.
-pub fn journal_all() -> Vec<JournalEntry> {
+/// Fetch the raw global journal (every client's requests, arrival order).
+fn raw_journal() -> Vec<JournalEntry> {
     let h = harness();
     let url = format!("{}/__mock__/journal", h.url);
     let mut resp = ureq::get(&url)
@@ -132,8 +216,25 @@ pub fn journal_all() -> Vec<JournalEntry> {
     decode_journal(&body)
 }
 
-/// Return the most-recent journal entry. Panics if the journal is empty
-/// — every test that reaches this point should have produced an entry.
+/// Return this test's recorded requests in arrival order. Scoped to the
+/// thread-local `auth_header` when set (so a parallel test never sees another
+/// test's requests); unscoped views see the whole journal.
+pub fn journal_all() -> Vec<JournalEntry> {
+    let entries = raw_journal();
+    match current_scope() {
+        Some(scope) => entries
+            .into_iter()
+            .filter(|e| {
+                e.headers.get("authorization").map(String::as_str) == Some(&scope.auth_header)
+            })
+            .collect(),
+        None => entries,
+    }
+}
+
+/// Return the most-recent journal entry for THIS test's client. Panics if the
+/// journal is empty — every test that reaches this point should have produced
+/// an entry.
 pub fn journal_last() -> JournalEntry {
     let entries = journal_all();
     assert!(
@@ -143,8 +244,14 @@ pub fn journal_last() -> JournalEntry {
     entries.into_iter().last().unwrap()
 }
 
-/// Clear the mock journal so the next assertion starts from a clean slate.
+/// Clear the mock journal. A **scoped** test leaves the shared journal alone
+/// (it only ever reads its own entries, identified by auth header, so there
+/// is nothing to clear and a global wipe would race a concurrent test). An
+/// unscoped caller does the legacy global reset.
 pub fn journal_reset() {
+    if current_scope().is_some() {
+        return;
+    }
     let h = harness();
     let url = format!("{}/__mock__/journal/reset", h.url);
     let _ = ureq::post(&url)
@@ -152,8 +259,13 @@ pub fn journal_reset() {
         .unwrap_or_else(|e| panic!("mocktest: POST /__mock__/journal/reset: {e}"));
 }
 
-/// Clear staged scenarios.
+/// Clear staged scenarios. Scoped tests leave the shared scenario store alone
+/// (their scenarios are keyed by their unique auth header and a scoped test
+/// starts with none); unscoped callers do the legacy global reset.
 pub fn scenario_reset() {
+    if current_scope().is_some() {
+        return;
+    }
     let h = harness();
     let url = format!("{}/__mock__/scenarios/reset", h.url);
     let _ = ureq::post(&url)
@@ -161,39 +273,66 @@ pub fn scenario_reset() {
         .unwrap_or_else(|e| panic!("mocktest: POST /__mock__/scenarios/reset: {e}"));
 }
 
-/// Reset both journal and scenarios — typical fixture entry point.
+/// Reset both journal and scenarios — typical fixture entry point. A no-op
+/// when scoped (see [`journal_reset`] / [`scenario_reset`]).
 pub fn reset_all() {
     journal_reset();
     scenario_reset();
 }
 
-/// RAII guard that holds the global serialization mutex for the duration
-/// of a single test. Tests should bind the return value to a `let _g`
-/// at the top of the function so that no two tests in the same binary
-/// race on the shared journal.
+/// RAII guard returned by [`begin`]. Clears this thread's scope on drop so a
+/// same-thread follow-up test starts unscoped until it calls [`client`] again.
 pub struct TestGuard {
-    _inner: MutexGuard<'static, ()>,
+    _private: (),
 }
 
-/// Acquire the global serialization mutex and reset journal+scenarios.
-/// Drop the returned guard at the end of the test (typically via the
-/// implicit drop at the end of the function scope) to release it.
+impl Drop for TestGuard {
+    fn drop(&mut self) {
+        set_scope(None);
+    }
+}
+
+/// Per-test entry point. Resets this thread's scope so a test starts clean,
+/// then ensures the mock server is up. No global lock and no global
+/// journal/scenario reset: the auth-header scope (set by [`client`]) makes the
+/// shared mock safe under parallel tests, and a scoped test starts with an
+/// empty (auth-filtered) view. Bind the result to
+/// `let _g = mocktest::begin();` at the top of the test.
 pub fn begin() -> TestGuard {
-    let guard = lock_journal();
-    journal_reset();
-    scenario_reset();
-    TestGuard { _inner: guard }
+    set_scope(None);
+    let _ = harness();
+    TestGuard { _private: () }
 }
 
 /// Stage a one-shot response override for the route identified by
-/// `endpoint_id` (Spectral `OperationId` from the `OpenAPI` spec).
+/// `endpoint_id` (Spectral `OperationId` from the `OpenAPI` spec). Scoped to
+/// THIS test's auth header (REST's session key) so a concurrent test can't
+/// consume it; unscoped callers stage a shared override.
 pub fn scenario_set(endpoint_id: &str, status: u16, body: Value) {
     let h = harness();
-    let url = format!("{}/__mock__/scenarios/{endpoint_id}", h.url);
+    let q = current_scope().map_or_else(String::new, |s| {
+        format!("?session_id={}", urlencode(&s.auth_header))
+    });
+    let url = format!("{}/__mock__/scenarios/{endpoint_id}{q}", h.url);
     let payload = serde_json::json!({"status": status, "response": body});
     let _ = ureq::post(&url)
         .send_json(&payload)
         .unwrap_or_else(|e| panic!("mocktest: POST scenario: {e}"));
+}
+
+/// Percent-encode a query value (the auth header carries `+` / `/` / `=` from
+/// base64, which must be escaped in a query string).
+fn urlencode(s: &str) -> String {
+    use std::fmt::Write as _;
+    let mut out = String::with_capacity(s.len());
+    for b in s.bytes() {
+        if b.is_ascii_alphanumeric() || matches!(b, b'-' | b'_' | b'.' | b'~') {
+            out.push(b as char);
+        } else {
+            let _ = write!(out, "%{b:02X}");
+        }
+    }
+    out
 }
 
 // ---------------------------------------------------------------------------
@@ -324,9 +463,7 @@ fn spawn_server(port: u16) -> Result<(), String> {
 /// when no adjacent porting-sdk is reachable.
 ///
 /// The walk anchors at `CARGO_MANIFEST_DIR` (the crate root, injected by
-/// Cargo at compile time). Tests run with that as their working directory
-/// by default, so this is the canonical source-of-truth for "where this
-/// repo lives on disk."
+/// Cargo at compile time).
 fn discover_porting_sdk_package(name: &str) -> Option<String> {
     let crate_root = env!("CARGO_MANIFEST_DIR");
     let mut dir: PathBuf = PathBuf::from(crate_root);

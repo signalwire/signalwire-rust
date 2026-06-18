@@ -499,6 +499,15 @@ impl Client {
                 {
                     *self.authorization_state.lock().unwrap() = Some(state.to_string());
                 }
+                // Capture the server-assigned session id from the connect
+                // handshake result (`result.sessionid`). Mirrors Python's
+                // `RelayClient` and the TS port: the SDK keeps this for its
+                // own bookkeeping, and mock-backed tests read it to scope
+                // their journal reads/resets to this connection's session so
+                // the shared mock_relay server is safe under parallel tests.
+                if let Some(sid) = result.get("sessionid").and_then(|v| v.as_str()) {
+                    *self.session_id.lock().unwrap() = Some(sid.to_string());
+                }
                 self.logger.info("Authenticated");
                 Ok(())
             }

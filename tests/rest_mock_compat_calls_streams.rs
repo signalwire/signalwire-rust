@@ -42,7 +42,7 @@ fn test_compat_calls_start_stream_returns_stream_resource() {
     assert_eq!(entry.method, "POST");
     assert_eq!(
         entry.path,
-        "/api/laml/2010-04-01/Accounts/test_proj/Calls/CA_TEST/Streams"
+        common::mocktest::account_path("Calls/CA_TEST/Streams")
     );
 }
 
@@ -59,7 +59,7 @@ fn test_compat_calls_start_stream_journal_records_post() {
     assert_eq!(entry.method, "POST");
     assert_eq!(
         entry.path,
-        "/api/laml/2010-04-01/Accounts/test_proj/Calls/CA_JX1/Streams"
+        common::mocktest::account_path("Calls/CA_JX1/Streams")
     );
     let body = entry.body_object().expect("body should be object");
     assert_eq!(
@@ -94,7 +94,7 @@ fn test_compat_calls_stop_stream_returns_stream_resource_with_status() {
     assert_eq!(entry.method, "POST");
     assert_eq!(
         entry.path,
-        "/api/laml/2010-04-01/Accounts/test_proj/Calls/CA_T1/Streams/ST_T1"
+        common::mocktest::account_path("Calls/CA_T1/Streams/ST_T1")
     );
 }
 
@@ -111,7 +111,7 @@ fn test_compat_calls_stop_stream_journal_records_post_to_specific_stream() {
     assert_eq!(entry.method, "POST");
     assert_eq!(
         entry.path,
-        "/api/laml/2010-04-01/Accounts/test_proj/Calls/CA_S1/Streams/ST_S1"
+        common::mocktest::account_path("Calls/CA_S1/Streams/ST_S1")
     );
     let body = entry.body_object().expect("body should be object");
     assert_eq!(body.get("Status").and_then(|v| v.as_str()), Some("stopped"));
@@ -142,7 +142,7 @@ fn test_compat_calls_update_recording_returns_recording_resource() {
     assert_eq!(entry.method, "POST");
     assert_eq!(
         entry.path,
-        "/api/laml/2010-04-01/Accounts/test_proj/Calls/CA_T2/Recordings/RE_T2"
+        common::mocktest::account_path("Calls/CA_T2/Recordings/RE_T2")
     );
 }
 
@@ -159,7 +159,7 @@ fn test_compat_calls_update_recording_journal_records_post() {
     assert_eq!(entry.method, "POST");
     assert_eq!(
         entry.path,
-        "/api/laml/2010-04-01/Accounts/test_proj/Calls/CA_R1/Recordings/RE_R1"
+        common::mocktest::account_path("Calls/CA_R1/Recordings/RE_R1")
     );
     let body = entry.body_object().expect("body should be object");
     assert_eq!(body.get("Status").and_then(|v| v.as_str()), Some("paused"));
