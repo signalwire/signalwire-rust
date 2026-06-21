@@ -14,11 +14,11 @@
 //     the doubled-path route stays uncovered.
 //   * fabric.assign_resource_sip_endpoint (1): doubled canonical path
 //     `/sip_endpoints/resources/{id}/sip_endpoints` — no accessor.
-//   * fabric.assign_resource_phone_route (1): GenericResources exposes only
-//     assign_domain_application; no assign_phone_route accessor in the Rust
-//     source, so this route cannot be covered TESTS-ONLY.
-//   * fabric.list_cxml_application_addresses (1): CxmlApplicationsResource
-//     exposes no `list_addresses` accessor, so this route is unreachable.
+//
+// fabric.assign_resource_phone_route and fabric.list_cxml_application_addresses
+// are now COVERED: GenericResources.assign_phone_route and
+// CxmlApplicationsResource.list_addresses were added in the fabric parity pass,
+// and the tests at the end of this file exercise both (success + error).
 
 #[path = "common/mod.rs"]
 mod common;
@@ -1542,8 +1542,8 @@ fn test_fabric_subscribers_delete_sip_endpoint_error() {
 // error tests with real in-body assertions.
 // ===========================================================================
 
-/// Emit success+error tests for a PATCH-update FabricResource with full
-/// list/create/get/update/delete + list_addresses canonical routes.
+/// Emit success+error tests for a PATCH-update `FabricResource` with full
+/// `list`/`create`/`get`/`update`/`delete` + `list_addresses` canonical routes.
 macro_rules! fabric_patch_resource_full {
     (
         $mod:ident, $accessor:ident, $seg:literal,
@@ -2183,3 +2183,94 @@ fabric_put_resource_full!(
     "fabric.delete_sip_endpoint",
     "fabric.list_sip_endpoint_addresses"
 );
+
+// ---------------------------------------------------------------------------
+// Parity micro-routes added in the fabric parity pass — exercised here so the
+// REST-COVERAGE checker sees them hit (success + error).
+//   * fabric.list_cxml_application_addresses → GET {BASE}/cxml_applications/{id}/addresses
+//   * fabric.assign_resource_phone_route     → POST {BASE}/{id}/phone_routes
+// ---------------------------------------------------------------------------
+
+#[test]
+fn test_fabric_cxml_application_addresses_list_success() {
+    let _g = common::mocktest::begin();
+    let c = common::mocktest::client();
+    let body = c
+        .fabric()
+        .cxml_applications()
+        .list_addresses("ca-1", &json!({}))
+        .expect("list_addresses");
+    assert!(body.is_object());
+    let e = common::mocktest::journal_last();
+    assert_eq!(e.method, "GET");
+    assert_eq!(e.path, format!("{BASE}/cxml_applications/ca-1/addresses"));
+    assert_eq!(
+        e.matched_route.as_deref(),
+        Some("fabric.list_cxml_application_addresses")
+    );
+}
+
+#[test]
+fn test_fabric_cxml_application_addresses_list_error() {
+    let _g = common::mocktest::begin();
+    let c = common::mocktest::client();
+    common::mocktest::scenario_set(
+        "fabric.list_cxml_application_addresses",
+        404,
+        json!({"error":"not found"}),
+    );
+    let err = c
+        .fabric()
+        .cxml_applications()
+        .list_addresses("ca-1", &json!({}))
+        .expect_err("err");
+    assert_eq!(err.status_code(), 404);
+    let e = common::mocktest::journal_last();
+    assert_eq!(e.response_status, Some(404));
+    assert_eq!(
+        e.matched_route.as_deref(),
+        Some("fabric.list_cxml_application_addresses")
+    );
+}
+
+#[test]
+fn test_fabric_assign_resource_phone_route_success() {
+    let _g = common::mocktest::begin();
+    let c = common::mocktest::client();
+    let body = c
+        .fabric()
+        .resources()
+        .assign_phone_route("res-1", &json!({"phone_route_id": "pr-1"}))
+        .expect("assign_phone_route");
+    assert!(body.is_object());
+    let e = common::mocktest::journal_last();
+    assert_eq!(e.method, "POST");
+    assert_eq!(e.path, format!("{BASE}/res-1/phone_routes"));
+    assert_eq!(
+        e.matched_route.as_deref(),
+        Some("fabric.assign_resource_phone_route")
+    );
+}
+
+#[test]
+fn test_fabric_assign_resource_phone_route_error() {
+    let _g = common::mocktest::begin();
+    let c = common::mocktest::client();
+    common::mocktest::scenario_set(
+        "fabric.assign_resource_phone_route",
+        422,
+        json!({"error":"invalid"}),
+    );
+    let err = c
+        .fabric()
+        .resources()
+        .assign_phone_route("res-1", &json!({"phone_route_id": "pr-1"}))
+        .expect_err("err");
+    assert_eq!(err.status_code(), 422);
+    let e = common::mocktest::journal_last();
+    assert_eq!(e.response_status, Some(422));
+    assert_eq!(
+        e.matched_route.as_deref(),
+        Some("fabric.assign_resource_phone_route")
+    );
+}

@@ -121,6 +121,49 @@ run_gate "SURFACE-FRESH" "check_surface_freshness vs committed port_surface.json
 run_gate "NO-CHEAT" "audit_no_cheat_tests" \
     python3 "$PORTING_SDK_DIR/scripts/audit_no_cheat_tests.py" --root "$PORT_ROOT"
 
+# Gate 5b: REST-COVERAGE — every canonical REST route the SDK implements must be
+# exercised with BOTH a success (2xx) AND an error (4xx/5xx) response on the
+# correct on-the-wire path (parity). Measured by replaying the mock journal of the
+# REST coverage suites through porting-sdk's rest_coverage checker. Accepted gaps —
+# routes with no SDK method, malformed canonical routes, mock-router collisions —
+# are allowlisted: the shared baseline (porting-sdk/REST_COVERAGE_BASELINE.md) +
+# this port's REST_COVERAGE_GAPS.md. A stale entry (route now covered) fails the
+# gate. Self-contained: spins its own mock, runs the coverage suites serially
+# (--test-threads=1) so all traffic lands in one journal, then checks it. Same
+# shape as python's/java's/typescript's/go's gate.
+rest_coverage_gate() {
+    local port=8782
+    local mock_pkg_parent="$PORTING_SDK_DIR/test_harness/mock_signalwire"
+    export PYTHONPATH="$mock_pkg_parent${PYTHONPATH:+:$PYTHONPATH}"
+    python3 -m mock_signalwire --host 127.0.0.1 --port "$port" --log-level error \
+        >/tmp/rest_cov_mock_rust.$$.log 2>&1 &
+    local mock_pid=$!
+    # shellcheck disable=SC2064
+    trap "kill $mock_pid 2>/dev/null" RETURN
+    local i
+    for i in $(seq 1 60); do
+        if python3 -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:$port/__mock__/health',timeout=1)" 2>/dev/null; then
+            break
+        fi
+        sleep 0.5
+    done
+    python3 -c "import urllib.request; urllib.request.urlopen(urllib.request.Request('http://127.0.0.1:$port/__mock__/journal/reset',method='POST'),timeout=5).read()"
+    MOCK_SIGNALWIRE_PORT="$port" cargo test \
+        --test rest_compat_coverage \
+        --test rest_fabric_coverage \
+        --test rest_misc_coverage \
+        --test rest_relay_coverage \
+        --test rest_video_coverage \
+        -- --test-threads=1 || return 1
+    python3 -m mock_signalwire.rest_coverage \
+        --mock-url "http://127.0.0.1:$port" \
+        --spec-root "$PORTING_SDK_DIR/rest-apis" \
+        --allowlist "$PORTING_SDK_DIR/REST_COVERAGE_BASELINE.md" \
+        --allowlist "$PORT_ROOT/REST_COVERAGE_GAPS.md"
+}
+run_gate "REST-COVERAGE" "every implemented REST route covered success+error (parity + allowlist)" \
+    rest_coverage_gate
+
 # Gate 6: emission — byte-compare the SWAIG FunctionResult serialisation against
 # Python's to_dict() over the shared 81-entry corpus. The drift gate (Gate 3)
 # polices the SURFACE; this one polices the EMISSION (action shape/keys/values +
