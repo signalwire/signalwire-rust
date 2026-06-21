@@ -211,6 +211,19 @@ CLASS_MODULE_MAP: dict[str, str] = {
     "WikipediaSearch": "signalwire.skills.wikipedia_search.skill",
 }
 
+# Per-module rename for FREE-FUNCTION module paths (the surface analogue of
+# enumerate_signatures.py's FREE_FN_MODULE_RENAMES). Free functions are bucketed
+# by their physical Rust file path (src/security/security_utils.rs ->
+# signalwire.security.security_utils); when the Python reference lives at a
+# different canonical path, this map projects the Rust path onto it so the
+# surface diff lines up directly (no PORT_ADDITIONS/PORT_OMISSIONS paperwork).
+FREE_FN_MODULE_RENAMES: dict[str, str] = {
+    # Security hygiene free functions: Rust groups them under
+    # signalwire::security::security_utils; Python's canonical module is
+    # signalwire.core.security.security_utils. The function names match 1:1.
+    "signalwire.security.security_utils": "signalwire.core.security.security_utils",
+}
+
 # Per-class method renames: {class_name: {rust_method: python_method}}.
 # Used when a Rust method follows Rust idiom (e.g. `to_value`) but
 # the Python reference uses a different name (`to_dict`). Without
@@ -492,6 +505,7 @@ def build_surface() -> dict:
         # Collect free functions per module
         if free_fns:
             mod = _module_path_for_class("__module__", rel)  # fallback path-derived
+            mod = FREE_FN_MODULE_RENAMES.get(mod, mod)
             modules[mod]["functions"].extend(sorted(free_fns))
 
     # Inject lib.rs `pub use` re-exports into the top-level module
