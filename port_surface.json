@@ -1,6 +1,6 @@
 {
   "version": "1",
-  "generated_from": "signalwire-rust @ 08b1ea2de962d11585cc36b01a401728783fc583",
+  "generated_from": "signalwire-rust @ 5250fb6cf8aac2a54cfd5d5eaa59c576d5a86d07",
   "modules": {
     "signalwire": {
       "classes": {
@@ -930,6 +930,16 @@
       },
       "functions": []
     },
+    "signalwire.rest.namespaces.chat": {
+      "classes": {
+        "ChatResource": [
+          "__init__",
+          "base_path",
+          "create_token"
+        ]
+      },
+      "functions": []
+    },
     "signalwire.rest.namespaces.compat": {
       "classes": {
         "CompatAccounts": [
@@ -952,6 +962,10 @@
         "CompatCalls": [
           "__init__",
           "base_path",
+          "create",
+          "delete",
+          "get",
+          "list",
           "start_recording",
           "start_stream",
           "stop_stream",
@@ -1128,6 +1142,7 @@
           "delete",
           "get",
           "list",
+          "list_addresses",
           "update"
         ],
         "FabricAddresses": [
@@ -1146,15 +1161,41 @@
           "conference_rooms",
           "conversations",
           "cxml_applications",
+          "cxml_scripts",
+          "cxml_webhooks",
           "dial_plans",
           "freeclimb_apps",
+          "freeswitch_connectors",
           "phone_numbers",
+          "relay_applications",
           "resources",
           "sip_endpoints",
+          "sip_gateways",
           "sip_profiles",
           "subscribers",
           "swml_scripts",
+          "swml_webhooks",
           "tokens"
+        ],
+        "FabricResource": [
+          "__init__",
+          "base_path",
+          "create",
+          "delete",
+          "get",
+          "list",
+          "list_addresses",
+          "update"
+        ],
+        "FabricResourcePUT": [
+          "__init__",
+          "base_path",
+          "create",
+          "delete",
+          "get",
+          "list",
+          "list_addresses",
+          "update"
         ],
         "FabricTokens": [
           "__init__",
@@ -1167,6 +1208,7 @@
         "GenericResources": [
           "__init__",
           "assign_domain_application",
+          "assign_phone_route",
           "base_path",
           "delete",
           "get",
@@ -1258,6 +1300,22 @@
       },
       "functions": []
     },
+    "signalwire.rest.namespaces.phone_numbers": {
+      "classes": {
+        "PhoneNumbersResource": [
+          "__init__",
+          "base_path",
+          "client",
+          "create",
+          "delete",
+          "get",
+          "list",
+          "search",
+          "update"
+        ]
+      },
+      "functions": []
+    },
     "signalwire.rest.namespaces.project": {
       "classes": {
         "ProjectNamespace": [
@@ -1270,6 +1328,16 @@
           "create",
           "delete",
           "update"
+        ]
+      },
+      "functions": []
+    },
+    "signalwire.rest.namespaces.pubsub": {
+      "classes": {
+        "PubSubResource": [
+          "__init__",
+          "base_path",
+          "create_token"
         ]
       },
       "functions": []
@@ -1338,6 +1406,23 @@
           "__init__",
           "base_path",
           "get",
+          "update"
+        ]
+      },
+      "functions": []
+    },
+    "signalwire.rest.namespaces.verified_callers": {
+      "classes": {
+        "VerifiedCallersResource": [
+          "__init__",
+          "base_path",
+          "client",
+          "create",
+          "delete",
+          "get",
+          "list",
+          "redial_verification",
+          "submit_verification",
           "update"
         ]
       },

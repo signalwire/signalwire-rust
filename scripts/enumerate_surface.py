@@ -133,6 +133,8 @@ CLASS_MODULE_MAP: dict[str, str] = {
     "ProjectTokens": "signalwire.rest.namespaces.project",
     "DatasphereNamespace": "signalwire.rest.namespaces.datasphere",
     "DatasphereDocuments": "signalwire.rest.namespaces.datasphere",
+    "ChatResource": "signalwire.rest.namespaces.chat",
+    "PubSubResource": "signalwire.rest.namespaces.pubsub",
     # Video namespace + sub-resources
     "VideoNamespace": "signalwire.rest.namespaces.video",
     "VideoRooms": "signalwire.rest.namespaces.video",
@@ -162,6 +164,11 @@ CLASS_MODULE_MAP: dict[str, str] = {
     "CallFlowsResource": "signalwire.rest.namespaces.fabric",
     "ConferenceRoomsResource": "signalwire.rest.namespaces.fabric",
     "CxmlApplicationsResource": "signalwire.rest.namespaces.fabric",
+    "FabricResource": "signalwire.rest.namespaces.fabric",
+    "FabricResourcePUT": "signalwire.rest.namespaces.fabric",
+    # Standalone Relay namespaces newly modeled as proper structs.
+    "PhoneNumbersResource": "signalwire.rest.namespaces.phone_numbers",
+    "VerifiedCallersResource": "signalwire.rest.namespaces.verified_callers",
     "PaginatedIterator": "signalwire.rest._pagination",
 
     # relay

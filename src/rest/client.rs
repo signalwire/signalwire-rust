@@ -159,9 +159,9 @@ impl RestClient {
         super::namespaces::calling::Calling::new(&self.http, &self.project_id)
     }
 
-    /// Phone numbers.
-    pub fn phone_numbers(&self) -> CrudResource<'_> {
-        CrudResource::new(&self.http, "/api/relay/rest/phone_numbers")
+    /// Phone numbers (CRUD + available-number `search`).
+    pub fn phone_numbers(&self) -> super::namespaces::phone_numbers::PhoneNumbersResource<'_> {
+        super::namespaces::phone_numbers::PhoneNumbersResource::new(&self.http)
     }
 
     /// Datasphere namespace (documents + chunks + search).
@@ -206,9 +206,11 @@ impl RestClient {
         super::namespaces::number_groups::NumberGroups::new(&self.http)
     }
 
-    /// Verified callers.
-    pub fn verified_callers(&self) -> CrudResource<'_> {
-        CrudResource::new(&self.http, "/api/relay/rest/verified_callers")
+    /// Verified caller IDs (CRUD + verification flow).
+    pub fn verified_callers(
+        &self,
+    ) -> super::namespaces::verified_callers::VerifiedCallersResource<'_> {
+        super::namespaces::verified_callers::VerifiedCallersResource::new(&self.http)
     }
 
     /// Project SIP profile (singular: singleton resource at
@@ -252,14 +254,14 @@ impl RestClient {
         super::namespaces::project::Project::new(&self.http)
     }
 
-    /// PubSub tokens.
-    pub fn pubsub(&self) -> CrudResource<'_> {
-        CrudResource::new(&self.http, "/api/relay/rest/pubsub")
+    /// `PubSub` tokens (`create_token` → POST `/api/pubsub/tokens`).
+    pub fn pubsub(&self) -> super::namespaces::pubsub::PubSubResource<'_> {
+        super::namespaces::pubsub::PubSubResource::new(&self.http)
     }
 
-    /// Chat tokens.
-    pub fn chat(&self) -> CrudResource<'_> {
-        CrudResource::new(&self.http, "/api/relay/rest/chat")
+    /// Chat tokens (`create_token` → POST `/api/chat/tokens`).
+    pub fn chat(&self) -> super::namespaces::chat::ChatResource<'_> {
+        super::namespaces::chat::ChatResource::new(&self.http)
     }
 }
 
@@ -374,9 +376,11 @@ mod tests {
     #[test]
     fn test_verified_callers_path() {
         let client = RestClient::new("proj", "tok", "test.sw.com").unwrap();
+        // Python canonical path is `verified_caller_ids` (not the old
+        // `verified_callers`); the dedicated resource corrects it.
         assert_eq!(
             client.verified_callers().base_path(),
-            "/api/relay/rest/verified_callers"
+            "/api/relay/rest/verified_caller_ids"
         );
     }
 
@@ -449,13 +453,15 @@ mod tests {
 
     #[test]
     fn test_pubsub_path() {
+        // Python's PubSubResource.create_token → POST /api/pubsub/tokens.
         let client = RestClient::new("proj", "tok", "test.sw.com").unwrap();
-        assert_eq!(client.pubsub().base_path(), "/api/relay/rest/pubsub");
+        assert_eq!(client.pubsub().base_path(), "/api/pubsub/tokens");
     }
 
     #[test]
     fn test_chat_path() {
+        // Python's ChatResource.create_token → POST /api/chat/tokens.
         let client = RestClient::new("proj", "tok", "test.sw.com").unwrap();
-        assert_eq!(client.chat().base_path(), "/api/relay/rest/chat");
+        assert_eq!(client.chat().base_path(), "/api/chat/tokens");
     }
 }
