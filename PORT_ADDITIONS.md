@@ -837,6 +837,7 @@ namespace_field_accessor: Rust REST namespaces are structs whose fields are expo
 signalwire.rest.namespaces.calling.CallingNamespace.base_path: namespace_field_accessor: Rust accessor for the namespace's base path; Python uses a private class attribute.
 signalwire.rest.namespaces.calling.CallingNamespace.client: namespace_field_accessor: Rust accessor for the parent client reference; Python uses a private attribute.
 signalwire.rest.namespaces.calling.CallingNamespace.project_id: namespace_field_accessor: Rust accessor for the project_id field; Python uses an instance attribute.
+signalwire.rest.namespaces.chat.ChatResource.base_path: namespace_field_accessor: Rust accessor for the resource's base path; Python uses a class-level attribute.
 signalwire.rest.namespaces.compat.CompatAccounts.base_path: namespace_field_accessor: Rust accessor for the resource's base path; Python uses a class-level attribute.
 signalwire.rest.namespaces.compat.CompatApplications.base_path: namespace_field_accessor: Rust accessor for the resource's base path; Python uses a class-level attribute.
 signalwire.rest.namespaces.compat.CompatCalls.base_path: namespace_field_accessor: Rust accessor for the resource's base path; Python uses a class-level attribute.
@@ -892,6 +893,7 @@ signalwire.rest.namespaces.mfa.MfaResource.base_path: namespace_field_accessor: 
 signalwire.rest.namespaces.number_groups.NumberGroupsResource.base_path: namespace_field_accessor: Rust accessor for the resource's base path; Python uses a class-level attribute.
 signalwire.rest.namespaces.project.ProjectNamespace.tokens: namespace_field_accessor: Rust sub-resource getter for the namespace; Python uses attribute access on the namespace instance.
 signalwire.rest.namespaces.project.ProjectTokens.base_path: namespace_field_accessor: Rust accessor for the resource's base path; Python uses a class-level attribute.
+signalwire.rest.namespaces.pubsub.PubSubResource.base_path: namespace_field_accessor: Rust accessor for the resource's base path; Python uses a class-level attribute.
 signalwire.rest.namespaces.queues.QueuesResource.base_path: namespace_field_accessor: Rust accessor for the resource's base path; Python uses a class-level attribute.
 signalwire.rest.namespaces.registry.RegistryNamespace.brands: namespace_field_accessor: Rust sub-resource getter for the namespace; Python uses attribute access on the namespace instance.
 signalwire.rest.namespaces.registry.RegistryNamespace.campaigns: namespace_field_accessor: Rust sub-resource getter for the namespace; Python uses attribute access on the namespace instance.

@@ -252,14 +252,14 @@ impl RestClient {
         super::namespaces::project::Project::new(&self.http)
     }
 
-    /// PubSub tokens.
-    pub fn pubsub(&self) -> CrudResource<'_> {
-        CrudResource::new(&self.http, "/api/relay/rest/pubsub")
+    /// `PubSub` tokens (`create_token` → POST `/api/pubsub/tokens`).
+    pub fn pubsub(&self) -> super::namespaces::pubsub::PubSubResource<'_> {
+        super::namespaces::pubsub::PubSubResource::new(&self.http)
     }
 
-    /// Chat tokens.
-    pub fn chat(&self) -> CrudResource<'_> {
-        CrudResource::new(&self.http, "/api/relay/rest/chat")
+    /// Chat tokens (`create_token` → POST `/api/chat/tokens`).
+    pub fn chat(&self) -> super::namespaces::chat::ChatResource<'_> {
+        super::namespaces::chat::ChatResource::new(&self.http)
     }
 }
 
@@ -449,13 +449,15 @@ mod tests {
 
     #[test]
     fn test_pubsub_path() {
+        // Python's PubSubResource.create_token → POST /api/pubsub/tokens.
         let client = RestClient::new("proj", "tok", "test.sw.com").unwrap();
-        assert_eq!(client.pubsub().base_path(), "/api/relay/rest/pubsub");
+        assert_eq!(client.pubsub().base_path(), "/api/pubsub/tokens");
     }
 
     #[test]
     fn test_chat_path() {
+        // Python's ChatResource.create_token → POST /api/chat/tokens.
         let client = RestClient::new("proj", "tok", "test.sw.com").unwrap();
-        assert_eq!(client.chat().base_path(), "/api/relay/rest/chat");
+        assert_eq!(client.chat().base_path(), "/api/chat/tokens");
     }
 }

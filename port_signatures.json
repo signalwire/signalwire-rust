@@ -7956,7 +7956,7 @@
                   "kind": "self"
                 }
               ],
-              "returns": "class:signalwire.rest._base.CrudResource"
+              "returns": "class:signalwire.rest.namespaces.chat.ChatResource"
             },
             "compat": {
               "params": [
@@ -8077,7 +8077,7 @@
                   "kind": "self"
                 }
               ],
-              "returns": "class:signalwire.rest._base.CrudResource"
+              "returns": "class:signalwire.rest.namespaces.pubsub.PubSubResource"
             },
             "queues": {
               "params": [
@@ -8979,6 +8979,52 @@
                   "name": "call_id",
                   "type": "string",
                   "required": true
+                },
+                {
+                  "name": "params",
+                  "type": "dict<string,any>",
+                  "required": false,
+                  "kind": "var_keyword"
+                }
+              ],
+              "returns": "class:signalwire.value.Value"
+            }
+          }
+        }
+      }
+    },
+    "signalwire.rest.namespaces.chat": {
+      "classes": {
+        "ChatResource": {
+          "methods": {
+            "__init__": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                },
+                {
+                  "name": "client",
+                  "type": "class:signalwire.httpclient.HttpClient",
+                  "required": true
+                }
+              ],
+              "returns": "void"
+            },
+            "base_path": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "string"
+            },
+            "create_token": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
                 },
                 {
                   "name": "params",
@@ -12761,6 +12807,52 @@
                   "name": "token_id",
                   "type": "string",
                   "required": true
+                },
+                {
+                  "name": "params",
+                  "type": "dict<string,any>",
+                  "required": false,
+                  "kind": "var_keyword"
+                }
+              ],
+              "returns": "class:signalwire.value.Value"
+            }
+          }
+        }
+      }
+    },
+    "signalwire.rest.namespaces.pubsub": {
+      "classes": {
+        "PubSubResource": {
+          "methods": {
+            "__init__": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                },
+                {
+                  "name": "client",
+                  "type": "class:signalwire.httpclient.HttpClient",
+                  "required": true
+                }
+              ],
+              "returns": "void"
+            },
+            "base_path": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "string"
+            },
+            "create_token": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
                 },
                 {
                   "name": "params",

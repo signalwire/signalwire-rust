@@ -92,7 +92,10 @@ impl<'a> DatasphereDocuments<'a> {
         )
     }
 
-    /// PUT `/api/datasphere/documents/{document_id}` — update a document.
+    /// PATCH `/api/datasphere/documents/{document_id}` — update a document.
+    ///
+    /// Mirrors Python's `CrudResource.update`, which defaults
+    /// `_update_method = "PATCH"` (datasphere does not override it).
     ///
     /// # Errors
     /// Returns [`SignalWireRestError`] if the request cannot reach the Space
@@ -101,7 +104,7 @@ impl<'a> DatasphereDocuments<'a> {
     /// the response body is not valid JSON.
     pub fn update(&self, document_id: &str, params: &Value) -> Result<Value, SignalWireRestError> {
         self.client
-            .put(&format!("{}/{}", self.base_path, document_id), params)
+            .patch(&format!("{}/{}", self.base_path, document_id), params)
     }
 
     /// DELETE `/api/datasphere/documents/{document_id}` — delete a document.

@@ -1,6 +1,6 @@
 {
   "version": "1",
-  "generated_from": "signalwire-rust @ 08b1ea2de962d11585cc36b01a401728783fc583",
+  "generated_from": "signalwire-rust @ b7d2aa2a4313c3e836258dc073ab73cfb91bbeb5",
   "modules": {
     "signalwire": {
       "classes": {
@@ -930,6 +930,16 @@
       },
       "functions": []
     },
+    "signalwire.rest.namespaces.chat": {
+      "classes": {
+        "ChatResource": [
+          "__init__",
+          "base_path",
+          "create_token"
+        ]
+      },
+      "functions": []
+    },
     "signalwire.rest.namespaces.compat": {
       "classes": {
         "CompatAccounts": [
@@ -1270,6 +1280,16 @@
           "create",
           "delete",
           "update"
+        ]
+      },
+      "functions": []
+    },
+    "signalwire.rest.namespaces.pubsub": {
+      "classes": {
+        "PubSubResource": [
+          "__init__",
+          "base_path",
+          "create_token"
         ]
       },
       "functions": []
