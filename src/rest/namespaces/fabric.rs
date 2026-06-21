@@ -833,6 +833,23 @@ impl<'a> CxmlApplicationsResource<'a> {
         self.client.delete(&p)
     }
 
+    /// GET `{base}/{id}/addresses` (Python `CrudWithAddresses.list_addresses`).
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (notably
+    /// 404 if `resource_id` is unknown), or the response body is not valid
+    /// JSON.
+    pub fn list_addresses(
+        &self,
+        resource_id: &str,
+        params: &Value,
+    ) -> Result<Value, SignalWireRestError> {
+        let qp = params_to_string_map(params);
+        let p = join(&[&self.base_path, resource_id, "addresses"]);
+        self.client.get(&p, &qp)
+    }
+
     /// cXML applications cannot be created via this API.
     ///
     /// Returns an `Err` with a clear "not implemented" message that
@@ -928,6 +945,24 @@ impl<'a> GenericResources<'a> {
         params: &Value,
     ) -> Result<Value, SignalWireRestError> {
         let p = join(&[&self.base_path, resource_id, "domain_applications"]);
+        self.client.post(&p, params)
+    }
+
+    /// POST `{base}/{id}/phone_routes` (Python `GenericResources.assign_phone_route`).
+    ///
+    /// Deprecated, mirroring the Python reference.
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (notably
+    /// 404 if `resource_id` is unknown or 422 if the server rejects the
+    /// supplied fields), or the response body is not valid JSON.
+    pub fn assign_phone_route(
+        &self,
+        resource_id: &str,
+        params: &Value,
+    ) -> Result<Value, SignalWireRestError> {
+        let p = join(&[&self.base_path, resource_id, "phone_routes"]);
         self.client.post(&p, params)
     }
 }

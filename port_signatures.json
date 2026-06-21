@@ -11506,6 +11506,25 @@
               ],
               "returns": "class:signalwire.value.Value"
             },
+            "list_addresses": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                },
+                {
+                  "name": "resource_id",
+                  "type": "string",
+                  "required": true
+                },
+                {
+                  "name": "params",
+                  "type": "class:signalwire.value.Value",
+                  "required": true
+                }
+              ],
+              "returns": "class:signalwire.value.Value"
+            },
             "update": {
               "params": [
                 {
@@ -12180,6 +12199,26 @@
               "returns": "void"
             },
             "assign_domain_application": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                },
+                {
+                  "name": "resource_id",
+                  "type": "string",
+                  "required": true
+                },
+                {
+                  "name": "params",
+                  "type": "dict<string,any>",
+                  "required": false,
+                  "kind": "var_keyword"
+                }
+              ],
+              "returns": "class:signalwire.value.Value"
+            },
+            "assign_phone_route": {
               "params": [
                 {
                   "name": "self",

@@ -1,6 +1,6 @@
 {
   "version": "1",
-  "generated_from": "signalwire-rust @ 8ee21daec4222b2d108b47cd370a9cce3d385e23",
+  "generated_from": "signalwire-rust @ 5250fb6cf8aac2a54cfd5d5eaa59c576d5a86d07",
   "modules": {
     "signalwire": {
       "classes": {
@@ -1142,6 +1142,7 @@
           "delete",
           "get",
           "list",
+          "list_addresses",
           "update"
         ],
         "FabricAddresses": [
@@ -1207,6 +1208,7 @@
         "GenericResources": [
           "__init__",
           "assign_domain_application",
+          "assign_phone_route",
           "base_path",
           "delete",
           "get",

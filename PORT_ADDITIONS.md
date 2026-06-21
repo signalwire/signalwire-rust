@@ -957,6 +957,7 @@ signalwire.rest.namespaces.fabric.CxmlApplicationsResource.base_path: namespace_
 signalwire.rest.namespaces.fabric.CxmlApplicationsResource.delete: Rust port emits explicit CRUD where Python inherits via CrudResource.
 signalwire.rest.namespaces.fabric.CxmlApplicationsResource.get: Rust port emits explicit CRUD where Python inherits via CrudResource.
 signalwire.rest.namespaces.fabric.CxmlApplicationsResource.list: Rust port emits explicit CRUD where Python inherits via CrudResource.
+signalwire.rest.namespaces.fabric.CxmlApplicationsResource.list_addresses: crud_with_addresses_lifted: Rust folds Python's CrudWithAddresses.list_addresses mixin onto the CxmlApplicationsResource directly so callers don't reach into a parent class; Python keeps it on the abstract CrudWithAddresses parent.
 signalwire.rest.namespaces.fabric.CxmlApplicationsResource.update: Rust port emits explicit CRUD where Python inherits via CrudResource.
 signalwire.rest.namespaces.fabric.FabricAddresses.__init__: Rust port emits an explicit constructor; Python's BaseResource.__init__ is inherited.
 signalwire.rest.namespaces.fabric.FabricResource.__init__: Rust port emits an explicit constructor; Python's BaseResource.__init__ is inherited.
