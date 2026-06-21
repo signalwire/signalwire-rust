@@ -1,6 +1,6 @@
 {
   "version": "1",
-  "generated_from": "signalwire-rust @ be474a9bd2ee9aebd3bcfa511f2b1d2785b784ac",
+  "generated_from": "signalwire-rust @ 08b1ea2de962d11585cc36b01a401728783fc583",
   "modules": {
     "signalwire": {
       "classes": {
@@ -321,6 +321,14 @@
       "classes": {},
       "functions": [
         "get_execution_mode"
+      ]
+    },
+    "signalwire.core.security.security_utils": {
+      "classes": {},
+      "functions": [
+        "filter_sensitive_headers",
+        "is_valid_hostname",
+        "redact_url"
       ]
     },
     "signalwire.core.security.session_manager": {

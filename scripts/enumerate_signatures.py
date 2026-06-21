@@ -282,6 +282,12 @@ FREE_FN_MODULE_RENAMES: dict[str, str] = {
     # canonical names so the cross-language audit lines up.
     "signalwire.security.webhook": "signalwire.core.security.webhook_validator",
     "signalwire.security.webhook_layer": "signalwire.core.security.webhook_middleware",
+    # security hygiene free functions — Rust groups them under
+    # ``signalwire::security::security_utils``; the Python reference lives at
+    # ``signalwire.core.security.security_utils``. The names match 1:1
+    # (filter_sensitive_headers / redact_url / is_valid_hostname), so the
+    # rename alone lines them up — no additions/omissions paperwork needed.
+    "signalwire.security.security_utils": "signalwire.core.security.security_utils",
 }
 
 
