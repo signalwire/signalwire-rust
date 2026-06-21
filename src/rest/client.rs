@@ -159,9 +159,9 @@ impl RestClient {
         super::namespaces::calling::Calling::new(&self.http, &self.project_id)
     }
 
-    /// Phone numbers.
-    pub fn phone_numbers(&self) -> CrudResource<'_> {
-        CrudResource::new(&self.http, "/api/relay/rest/phone_numbers")
+    /// Phone numbers (CRUD + available-number `search`).
+    pub fn phone_numbers(&self) -> super::namespaces::phone_numbers::PhoneNumbersResource<'_> {
+        super::namespaces::phone_numbers::PhoneNumbersResource::new(&self.http)
     }
 
     /// Datasphere namespace (documents + chunks + search).
@@ -206,9 +206,11 @@ impl RestClient {
         super::namespaces::number_groups::NumberGroups::new(&self.http)
     }
 
-    /// Verified callers.
-    pub fn verified_callers(&self) -> CrudResource<'_> {
-        CrudResource::new(&self.http, "/api/relay/rest/verified_callers")
+    /// Verified caller IDs (CRUD + verification flow).
+    pub fn verified_callers(
+        &self,
+    ) -> super::namespaces::verified_callers::VerifiedCallersResource<'_> {
+        super::namespaces::verified_callers::VerifiedCallersResource::new(&self.http)
     }
 
     /// Project SIP profile (singular: singleton resource at
@@ -374,9 +376,11 @@ mod tests {
     #[test]
     fn test_verified_callers_path() {
         let client = RestClient::new("proj", "tok", "test.sw.com").unwrap();
+        // Python canonical path is `verified_caller_ids` (not the old
+        // `verified_callers`); the dedicated resource corrects it.
         assert_eq!(
             client.verified_callers().base_path(),
-            "/api/relay/rest/verified_callers"
+            "/api/relay/rest/verified_caller_ids"
         );
     }
 

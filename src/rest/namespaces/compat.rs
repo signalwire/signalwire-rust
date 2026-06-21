@@ -198,6 +198,40 @@ impl<'a> CompatCalls<'a> {
         &self.base_path
     }
 
+    /// GET /Calls — list calls (Python `CrudResource.list`).
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status, or the
+    /// response body is not valid JSON.
+    pub fn list(&self, params: &Value) -> Result<Value, SignalWireRestError> {
+        let qp = params_to_string_map(params);
+        self.client.get(&self.base_path, &qp)
+    }
+
+    /// POST /Calls — create (originate) a new call (Python `CrudResource.create`).
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (notably
+    /// 422 if a parameter fails server-side validation), or the response body
+    /// is not valid JSON.
+    pub fn create(&self, params: &Value) -> Result<Value, SignalWireRestError> {
+        self.client.post(&self.base_path, params)
+    }
+
+    /// GET /Calls/{sid} — retrieve a single call (Python `CrudResource.get`).
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (notably
+    /// 404 if `sid` does not name an existing call), or the response body is
+    /// not valid JSON.
+    pub fn get(&self, sid: &str) -> Result<Value, SignalWireRestError> {
+        self.client
+            .get(&join_path(&self.base_path, &[sid]), &HashMap::new())
+    }
+
     /// # Errors
     /// Returns [`SignalWireRestError`] if the request cannot reach the Space
     /// (transport failure), the API responds with a non-2xx status (notably
@@ -206,6 +240,17 @@ impl<'a> CompatCalls<'a> {
     pub fn update(&self, sid: &str, params: &Value) -> Result<Value, SignalWireRestError> {
         self.client
             .post(&join_path(&self.base_path, &[sid]), params)
+    }
+
+    /// DELETE /Calls/{sid} — delete a call record (Python `CrudResource.delete`).
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
+    /// (transport failure), the API responds with a non-2xx status (notably
+    /// 404 if `sid` does not name an existing call), or the response body is
+    /// not valid JSON.
+    pub fn delete(&self, sid: &str) -> Result<Value, SignalWireRestError> {
+        self.client.delete(&join_path(&self.base_path, &[sid]))
     }
 
     /// POST /Calls/{sid}/Recordings — start a new recording on the call.
@@ -1282,6 +1327,26 @@ mod tests {
             pn.available_base(),
             "/api/laml/2010-04-01/Accounts/test_proj/AvailablePhoneNumbers"
         );
+    }
+
+    #[test]
+    fn test_calls_crud() {
+        let (c, stub) = make_compat();
+        stub.set_response(200, "{}");
+        let n = Compat::new(&c, "test_proj");
+        n.calls().list(&json!({})).unwrap();
+        n.calls().create(&json!({"To": "+15555550000"})).unwrap();
+        n.calls().get("CA_X").unwrap();
+        n.calls().delete("CA_X").unwrap();
+        let reqs = stub.requests.lock().unwrap();
+        assert_eq!(reqs[0].0, "GET");
+        assert!(reqs[0].1.contains("/test_proj/Calls"));
+        assert_eq!(reqs[1].0, "POST");
+        assert!(reqs[1].1.contains("/test_proj/Calls"));
+        assert_eq!(reqs[2].0, "GET");
+        assert!(reqs[2].1.contains("/test_proj/Calls/CA_X"));
+        assert_eq!(reqs[3].0, "DELETE");
+        assert!(reqs[3].1.contains("/test_proj/Calls/CA_X"));
     }
 
     #[test]

@@ -1,6 +1,6 @@
 {
   "version": "1",
-  "generated_from": "signalwire-rust @ b7d2aa2a4313c3e836258dc073ab73cfb91bbeb5",
+  "generated_from": "signalwire-rust @ 8ee21daec4222b2d108b47cd370a9cce3d385e23",
   "modules": {
     "signalwire": {
       "classes": {
@@ -962,6 +962,10 @@
         "CompatCalls": [
           "__init__",
           "base_path",
+          "create",
+          "delete",
+          "get",
+          "list",
           "start_recording",
           "start_stream",
           "stop_stream",
@@ -1156,15 +1160,41 @@
           "conference_rooms",
           "conversations",
           "cxml_applications",
+          "cxml_scripts",
+          "cxml_webhooks",
           "dial_plans",
           "freeclimb_apps",
+          "freeswitch_connectors",
           "phone_numbers",
+          "relay_applications",
           "resources",
           "sip_endpoints",
+          "sip_gateways",
           "sip_profiles",
           "subscribers",
           "swml_scripts",
+          "swml_webhooks",
           "tokens"
+        ],
+        "FabricResource": [
+          "__init__",
+          "base_path",
+          "create",
+          "delete",
+          "get",
+          "list",
+          "list_addresses",
+          "update"
+        ],
+        "FabricResourcePUT": [
+          "__init__",
+          "base_path",
+          "create",
+          "delete",
+          "get",
+          "list",
+          "list_addresses",
+          "update"
         ],
         "FabricTokens": [
           "__init__",
@@ -1268,6 +1298,22 @@
       },
       "functions": []
     },
+    "signalwire.rest.namespaces.phone_numbers": {
+      "classes": {
+        "PhoneNumbersResource": [
+          "__init__",
+          "base_path",
+          "client",
+          "create",
+          "delete",
+          "get",
+          "list",
+          "search",
+          "update"
+        ]
+      },
+      "functions": []
+    },
     "signalwire.rest.namespaces.project": {
       "classes": {
         "ProjectNamespace": [
@@ -1358,6 +1404,23 @@
           "__init__",
           "base_path",
           "get",
+          "update"
+        ]
+      },
+      "functions": []
+    },
+    "signalwire.rest.namespaces.verified_callers": {
+      "classes": {
+        "VerifiedCallersResource": [
+          "__init__",
+          "base_path",
+          "client",
+          "create",
+          "delete",
+          "get",
+          "list",
+          "redial_verification",
+          "submit_verification",
           "update"
         ]
       },

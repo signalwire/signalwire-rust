@@ -164,6 +164,11 @@ CLASS_MODULE_MAP: dict[str, str] = {
     "CallFlowsResource": "signalwire.rest.namespaces.fabric",
     "ConferenceRoomsResource": "signalwire.rest.namespaces.fabric",
     "CxmlApplicationsResource": "signalwire.rest.namespaces.fabric",
+    "FabricResource": "signalwire.rest.namespaces.fabric",
+    "FabricResourcePUT": "signalwire.rest.namespaces.fabric",
+    # Standalone Relay namespaces newly modeled as proper structs.
+    "PhoneNumbersResource": "signalwire.rest.namespaces.phone_numbers",
+    "VerifiedCallersResource": "signalwire.rest.namespaces.verified_callers",
     "PaginatedIterator": "signalwire.rest._pagination",
 
     # relay

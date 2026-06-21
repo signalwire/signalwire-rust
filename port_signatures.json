@@ -8050,7 +8050,7 @@
                   "kind": "self"
                 }
               ],
-              "returns": "class:signalwire.rest._base.CrudResource"
+              "returns": "class:signalwire.rest.namespaces.phone_numbers.PhoneNumbersResource"
             },
             "project": {
               "params": [
@@ -8149,7 +8149,7 @@
                   "kind": "self"
                 }
               ],
-              "returns": "class:signalwire.rest._base.CrudResource"
+              "returns": "class:signalwire.rest.namespaces.verified_callers.VerifiedCallersResource"
             },
             "video": {
               "params": [
@@ -9274,6 +9274,62 @@
                 }
               ],
               "returns": "string"
+            },
+            "create": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                },
+                {
+                  "name": "params",
+                  "type": "class:signalwire.value.Value",
+                  "required": true
+                }
+              ],
+              "returns": "class:signalwire.value.Value"
+            },
+            "delete": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                },
+                {
+                  "name": "sid",
+                  "type": "string",
+                  "required": true
+                }
+              ],
+              "returns": "class:signalwire.value.Value"
+            },
+            "get": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                },
+                {
+                  "name": "sid",
+                  "type": "string",
+                  "required": true
+                }
+              ],
+              "returns": "class:signalwire.value.Value"
+            },
+            "list": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                },
+                {
+                  "name": "params",
+                  "type": "class:signalwire.value.Value",
+                  "required": true
+                }
+              ],
+              "returns": "class:signalwire.value.Value"
             },
             "start_recording": {
               "params": [
@@ -11564,7 +11620,7 @@
                   "kind": "self"
                 }
               ],
-              "returns": "class:signalwire.rest._base.CrudResource"
+              "returns": "class:signalwire.rest.namespaces.fabric.FabricResource"
             },
             "call_flows": {
               "params": [
@@ -11620,6 +11676,24 @@
               ],
               "returns": "class:signalwire.rest.namespaces.fabric.CxmlApplicationsResource"
             },
+            "cxml_scripts": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "class:signalwire.rest.namespaces.fabric.FabricResourcePUT"
+            },
+            "cxml_webhooks": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "class:signalwire.rest.namespaces.fabric.FabricResource"
+            },
             "dial_plans": {
               "params": [
                 {
@@ -11638,6 +11712,15 @@
               ],
               "returns": "class:signalwire.rest._base.CrudResource"
             },
+            "freeswitch_connectors": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "class:signalwire.rest.namespaces.fabric.FabricResourcePUT"
+            },
             "phone_numbers": {
               "params": [
                 {
@@ -11646,6 +11729,15 @@
                 }
               ],
               "returns": "class:signalwire.rest._base.CrudResource"
+            },
+            "relay_applications": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "class:signalwire.rest.namespaces.fabric.FabricResourcePUT"
             },
             "resources": {
               "params": [
@@ -11663,7 +11755,16 @@
                   "kind": "self"
                 }
               ],
-              "returns": "class:signalwire.rest._base.CrudResource"
+              "returns": "class:signalwire.rest.namespaces.fabric.FabricResourcePUT"
+            },
+            "sip_gateways": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "class:signalwire.rest.namespaces.fabric.FabricResource"
             },
             "sip_profiles": {
               "params": [
@@ -11690,7 +11791,16 @@
                   "kind": "self"
                 }
               ],
-              "returns": "class:signalwire.rest._base.CrudResource"
+              "returns": "class:signalwire.rest.namespaces.fabric.FabricResourcePUT"
+            },
+            "swml_webhooks": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "class:signalwire.rest.namespaces.fabric.FabricResource"
             },
             "tokens": {
               "params": [
@@ -11700,6 +11810,258 @@
                 }
               ],
               "returns": "class:signalwire.rest.namespaces.fabric.FabricTokens"
+            }
+          }
+        },
+        "FabricResource": {
+          "methods": {
+            "__init__": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                },
+                {
+                  "name": "client",
+                  "type": "class:signalwire.httpclient.HttpClient",
+                  "required": true
+                },
+                {
+                  "name": "base_path",
+                  "type": "string",
+                  "required": true
+                }
+              ],
+              "returns": "void"
+            },
+            "base_path": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "string"
+            },
+            "create": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                },
+                {
+                  "name": "params",
+                  "type": "class:signalwire.value.Value",
+                  "required": true
+                }
+              ],
+              "returns": "class:signalwire.value.Value"
+            },
+            "delete": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                },
+                {
+                  "name": "resource_id",
+                  "type": "string",
+                  "required": true
+                }
+              ],
+              "returns": "class:signalwire.value.Value"
+            },
+            "get": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                },
+                {
+                  "name": "resource_id",
+                  "type": "string",
+                  "required": true
+                }
+              ],
+              "returns": "class:signalwire.value.Value"
+            },
+            "list": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                },
+                {
+                  "name": "params",
+                  "type": "class:signalwire.value.Value",
+                  "required": true
+                }
+              ],
+              "returns": "class:signalwire.value.Value"
+            },
+            "list_addresses": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                },
+                {
+                  "name": "resource_id",
+                  "type": "string",
+                  "required": true
+                },
+                {
+                  "name": "params",
+                  "type": "class:signalwire.value.Value",
+                  "required": true
+                }
+              ],
+              "returns": "class:signalwire.value.Value"
+            },
+            "update": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                },
+                {
+                  "name": "resource_id",
+                  "type": "string",
+                  "required": true
+                },
+                {
+                  "name": "params",
+                  "type": "class:signalwire.value.Value",
+                  "required": true
+                }
+              ],
+              "returns": "class:signalwire.value.Value"
+            }
+          }
+        },
+        "FabricResourcePUT": {
+          "methods": {
+            "__init__": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                },
+                {
+                  "name": "client",
+                  "type": "class:signalwire.httpclient.HttpClient",
+                  "required": true
+                },
+                {
+                  "name": "base_path",
+                  "type": "string",
+                  "required": true
+                }
+              ],
+              "returns": "void"
+            },
+            "base_path": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "string"
+            },
+            "create": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                },
+                {
+                  "name": "params",
+                  "type": "class:signalwire.value.Value",
+                  "required": true
+                }
+              ],
+              "returns": "class:signalwire.value.Value"
+            },
+            "delete": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                },
+                {
+                  "name": "resource_id",
+                  "type": "string",
+                  "required": true
+                }
+              ],
+              "returns": "class:signalwire.value.Value"
+            },
+            "get": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                },
+                {
+                  "name": "resource_id",
+                  "type": "string",
+                  "required": true
+                }
+              ],
+              "returns": "class:signalwire.value.Value"
+            },
+            "list": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                },
+                {
+                  "name": "params",
+                  "type": "class:signalwire.value.Value",
+                  "required": true
+                }
+              ],
+              "returns": "class:signalwire.value.Value"
+            },
+            "list_addresses": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                },
+                {
+                  "name": "resource_id",
+                  "type": "string",
+                  "required": true
+                },
+                {
+                  "name": "params",
+                  "type": "class:signalwire.value.Value",
+                  "required": true
+                }
+              ],
+              "returns": "class:signalwire.value.Value"
+            },
+            "update": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                },
+                {
+                  "name": "resource_id",
+                  "type": "string",
+                  "required": true
+                },
+                {
+                  "name": "params",
+                  "type": "class:signalwire.value.Value",
+                  "required": true
+                }
+              ],
+              "returns": "class:signalwire.value.Value"
             }
           }
         },
@@ -12714,6 +13076,136 @@
         }
       }
     },
+    "signalwire.rest.namespaces.phone_numbers": {
+      "classes": {
+        "PhoneNumbersResource": {
+          "methods": {
+            "__init__": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                },
+                {
+                  "name": "client",
+                  "type": "class:signalwire.httpclient.HttpClient",
+                  "required": true
+                }
+              ],
+              "returns": "void"
+            },
+            "base_path": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "string"
+            },
+            "client": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "class:signalwire.httpclient.HttpClient"
+            },
+            "create": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                },
+                {
+                  "name": "data",
+                  "type": "class:signalwire.value.Value",
+                  "required": true
+                }
+              ],
+              "returns": "class:signalwire.value.Value"
+            },
+            "delete": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                },
+                {
+                  "name": "id",
+                  "type": "string",
+                  "required": true
+                }
+              ],
+              "returns": "class:signalwire.value.Value"
+            },
+            "get": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                },
+                {
+                  "name": "id",
+                  "type": "string",
+                  "required": true
+                }
+              ],
+              "returns": "class:signalwire.value.Value"
+            },
+            "list": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                },
+                {
+                  "name": "params",
+                  "type": "dict<string,string>",
+                  "required": true
+                }
+              ],
+              "returns": "class:signalwire.value.Value"
+            },
+            "search": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                },
+                {
+                  "name": "params",
+                  "type": "dict<string,any>",
+                  "required": false,
+                  "kind": "var_keyword"
+                }
+              ],
+              "returns": "class:signalwire.value.Value"
+            },
+            "update": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                },
+                {
+                  "name": "id",
+                  "type": "string",
+                  "required": true
+                },
+                {
+                  "name": "data",
+                  "type": "class:signalwire.value.Value",
+                  "required": true
+                }
+              ],
+              "returns": "class:signalwire.value.Value"
+            }
+          }
+        }
+      }
+    },
     "signalwire.rest.namespaces.project": {
       "classes": {
         "ProjectNamespace": {
@@ -13474,6 +13966,155 @@
                   "type": "dict<string,any>",
                   "required": false,
                   "kind": "var_keyword"
+                }
+              ],
+              "returns": "class:signalwire.value.Value"
+            }
+          }
+        }
+      }
+    },
+    "signalwire.rest.namespaces.verified_callers": {
+      "classes": {
+        "VerifiedCallersResource": {
+          "methods": {
+            "__init__": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                },
+                {
+                  "name": "client",
+                  "type": "class:signalwire.httpclient.HttpClient",
+                  "required": true
+                }
+              ],
+              "returns": "void"
+            },
+            "base_path": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "string"
+            },
+            "client": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "class:signalwire.httpclient.HttpClient"
+            },
+            "create": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                },
+                {
+                  "name": "data",
+                  "type": "class:signalwire.value.Value",
+                  "required": true
+                }
+              ],
+              "returns": "class:signalwire.value.Value"
+            },
+            "delete": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                },
+                {
+                  "name": "id",
+                  "type": "string",
+                  "required": true
+                }
+              ],
+              "returns": "class:signalwire.value.Value"
+            },
+            "get": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                },
+                {
+                  "name": "id",
+                  "type": "string",
+                  "required": true
+                }
+              ],
+              "returns": "class:signalwire.value.Value"
+            },
+            "list": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                },
+                {
+                  "name": "params",
+                  "type": "dict<string,string>",
+                  "required": true
+                }
+              ],
+              "returns": "class:signalwire.value.Value"
+            },
+            "redial_verification": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                },
+                {
+                  "name": "caller_id",
+                  "type": "string",
+                  "required": true
+                }
+              ],
+              "returns": "class:signalwire.value.Value"
+            },
+            "submit_verification": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                },
+                {
+                  "name": "caller_id",
+                  "type": "string",
+                  "required": true
+                },
+                {
+                  "name": "params",
+                  "type": "dict<string,any>",
+                  "required": false,
+                  "kind": "var_keyword"
+                }
+              ],
+              "returns": "class:signalwire.value.Value"
+            },
+            "update": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                },
+                {
+                  "name": "id",
+                  "type": "string",
+                  "required": true
+                },
+                {
+                  "name": "data",
+                  "type": "class:signalwire.value.Value",
+                  "required": true
                 }
               ],
               "returns": "class:signalwire.value.Value"
