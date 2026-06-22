@@ -97,3 +97,8 @@ bytes = "1"
 [[bin]]
 name = "swaig-test"
 path = "src/cli/main.rs"
+
+# SPEC-PARITY route registry (Set B producer; see src/bin/route_registry.rs).
+[[bin]]
+name = "route-registry"
+path = "src/bin/route_registry.rs"
