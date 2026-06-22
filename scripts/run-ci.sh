@@ -131,8 +131,16 @@ run_gate "NO-CHEAT" "audit_no_cheat_tests" \
 # gate. Self-contained: spins its own mock, runs the coverage suites serially
 # (--test-threads=1) so all traffic lands in one journal, then checks it. Same
 # shape as python's/java's/typescript's/go's gate.
+# Pick a free TCP port on 127.0.0.1: ask the OS for an ephemeral port (bind :0),
+# read it back, release it. Never reuse a hardcoded port — concurrent runs (and
+# leftover mocks) otherwise collide on a fixed port and the gate hangs forever
+# waiting on a health check it can't satisfy.
+pick_free_port() {
+    python3 -c 'import socket; s=socket.socket(); s.bind(("127.0.0.1",0)); print(s.getsockname()[1]); s.close()'
+}
 rest_coverage_gate() {
-    local port=8782
+    local port
+    port="$(pick_free_port)" || { echo "could not allocate a free port" >&2; return 1; }
     local mock_pkg_parent="$PORTING_SDK_DIR/test_harness/mock_signalwire"
     export PYTHONPATH="$mock_pkg_parent${PYTHONPATH:+:$PYTHONPATH}"
     python3 -m mock_signalwire --host 127.0.0.1 --port "$port" --log-level error \
@@ -140,13 +148,25 @@ rest_coverage_gate() {
     local mock_pid=$!
     # shellcheck disable=SC2064
     trap "kill $mock_pid 2>/dev/null" RETURN
-    local i
+    # Wait for readiness; if the mock process dies (e.g. the OS-picked port was
+    # grabbed in the race window), fail LOUD with the cause — never hang.
+    local i ready=0
     for i in $(seq 1 60); do
+        if ! kill -0 "$mock_pid" 2>/dev/null; then
+            echo "mock_signalwire died on port $port — log:" >&2
+            cat "/tmp/rest_cov_mock_rust.$$.log" >&2
+            return 1
+        fi
         if python3 -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:$port/__mock__/health',timeout=1)" 2>/dev/null; then
+            ready=1
             break
         fi
         sleep 0.5
     done
+    if [ "$ready" -ne 1 ]; then
+        echo "mock_signalwire on port $port not healthy within 30s" >&2
+        return 1
+    fi
     python3 -c "import urllib.request; urllib.request.urlopen(urllib.request.Request('http://127.0.0.1:$port/__mock__/journal/reset',method='POST'),timeout=5).read()"
     MOCK_SIGNALWIRE_PORT="$port" cargo test \
         --test rest_compat_coverage \
