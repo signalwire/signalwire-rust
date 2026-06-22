@@ -4,6 +4,7 @@ use serde_json::Value;
 
 use crate::rest::error::SignalWireRestError;
 use crate::rest::http_client::HttpClient;
+use crate::rest::util::params_to_string_map;
 
 /// Number Groups namespace.
 ///
@@ -28,21 +29,6 @@ impl<'a> NumberGroups<'a> {
         &self.base_path
     }
 
-    fn params_to_string_map(params: &Value) -> HashMap<String, String> {
-        let mut out = HashMap::new();
-        if let Some(obj) = params.as_object() {
-            for (k, v) in obj {
-                let s = match v {
-                    Value::String(s) => s.clone(),
-                    Value::Null => continue,
-                    other => other.to_string(),
-                };
-                out.insert(k.clone(), s);
-            }
-        }
-        out
-    }
-
     /// GET `/api/relay/rest/number_groups` — list number groups.
     ///
     /// # Errors
@@ -51,7 +37,7 @@ impl<'a> NumberGroups<'a> {
     /// response body is not valid JSON.
     pub fn list(&self, params: &Value) -> Result<Value, SignalWireRestError> {
         self.client
-            .get(&self.base_path, &Self::params_to_string_map(params))
+            .get(&self.base_path, &params_to_string_map(params))
     }
 
     /// POST `/api/relay/rest/number_groups` — create a number group.
@@ -110,7 +96,7 @@ impl<'a> NumberGroups<'a> {
         params: &Value,
     ) -> Result<Value, SignalWireRestError> {
         let path = format!("{}/{}/number_group_memberships", self.base_path, group_id);
-        self.client.get(&path, &Self::params_to_string_map(params))
+        self.client.get(&path, &params_to_string_map(params))
     }
 
     /// POST `/api/relay/rest/number_groups/{id}/number_group_memberships` — add

@@ -6,6 +6,7 @@ use serde_json::json;
 
 use crate::rest::error::SignalWireRestError;
 use crate::rest::http_client::HttpClient;
+use crate::rest::util::params_to_string_map;
 
 /// Compat (Twilio-compatible LAML) API namespace.
 ///
@@ -101,21 +102,6 @@ fn join_path(base: &str, parts: &[&str]) -> String {
         return base.to_string();
     }
     format!("{}/{}", base, parts.join("/"))
-}
-
-fn params_to_string_map(params: &Value) -> HashMap<String, String> {
-    let mut out = HashMap::new();
-    if let Some(obj) = params.as_object() {
-        for (k, v) in obj {
-            let s = match v {
-                Value::String(s) => s.clone(),
-                Value::Null => continue,
-                other => other.to_string(),
-            };
-            out.insert(k.clone(), s);
-        }
-    }
-    out
 }
 
 // -----------------------------------------------------------------
