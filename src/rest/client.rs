@@ -1,6 +1,5 @@
 use std::env;
 
-use super::crud_resource::CrudResource;
 use super::http_client::{HttpClient, UreqTransport};
 
 /// Top-level SignalWire REST client.
@@ -186,9 +185,9 @@ impl RestClient {
         super::namespaces::compat::Compat::new(&self.http, &self.project_id)
     }
 
-    /// Addresses.
-    pub fn addresses(&self) -> CrudResource<'_> {
-        CrudResource::new(&self.http, "/api/relay/rest/addresses")
+    /// Addresses (list / create / get / delete).
+    pub fn addresses(&self) -> super::namespaces::simple_resources::AddressesResource<'_> {
+        super::namespaces::simple_resources::AddressesResource::new(&self.http)
     }
 
     /// Queues namespace (CRUD + member operations).
@@ -196,9 +195,9 @@ impl RestClient {
         super::namespaces::queues::Queues::new(&self.http)
     }
 
-    /// Recordings.
-    pub fn recordings(&self) -> CrudResource<'_> {
-        CrudResource::new(&self.http, "/api/relay/rest/recordings")
+    /// Recordings (list / get / delete).
+    pub fn recordings(&self) -> super::namespaces::simple_resources::RecordingsResource<'_> {
+        super::namespaces::simple_resources::RecordingsResource::new(&self.http)
     }
 
     /// Number groups (CRUD + membership operations).
@@ -224,14 +223,16 @@ impl RestClient {
         super::namespaces::lookup::LookupResource::new(&self.http)
     }
 
-    /// Short codes.
-    pub fn short_codes(&self) -> CrudResource<'_> {
-        CrudResource::new(&self.http, "/api/relay/rest/short_codes")
+    /// Short codes (list / get / update).
+    pub fn short_codes(&self) -> super::namespaces::simple_resources::ShortCodesResource<'_> {
+        super::namespaces::simple_resources::ShortCodesResource::new(&self.http)
     }
 
-    /// Imported phone numbers.
-    pub fn imported_numbers(&self) -> CrudResource<'_> {
-        CrudResource::new(&self.http, "/api/relay/rest/imported_phone_numbers")
+    /// Imported phone numbers (create only).
+    pub fn imported_numbers(
+        &self,
+    ) -> super::namespaces::simple_resources::ImportedNumbersResource<'_> {
+        super::namespaces::simple_resources::ImportedNumbersResource::new(&self.http)
     }
 
     /// Multi-factor authentication (sms/call/verify).

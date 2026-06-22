@@ -14,6 +14,7 @@ pub mod project;
 pub mod pubsub;
 pub mod queues;
 pub mod registry;
+pub mod simple_resources;
 pub mod sip_profile;
 pub mod verified_callers;
 pub mod video;
