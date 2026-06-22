@@ -482,6 +482,12 @@ impl AgentBase {
         title: &str,
         body: &str,
     ) -> &mut Self {
+        // #182: auto-create the parent section if it does not exist yet, matching
+        // the TS reference (`addSubsection` calls `addSection(parentTitle)` when
+        // missing) — previously this was a no-op for an unknown parent.
+        if !self.prompt_has_section(parent_title) {
+            self.prompt_add_section(parent_title, "", Vec::new());
+        }
         for section in &mut self.pom_sections {
             if let Value::Object(map) = section
                 && map.get("title").and_then(|t| t.as_str()) == Some(parent_title)
@@ -505,6 +511,12 @@ impl AgentBase {
         body: Option<&str>,
         bullets: Vec<&str>,
     ) -> &mut Self {
+        // #182: auto-create the section if it does not exist yet, matching the TS
+        // reference (`addToSection` calls `addSection(title)` when missing) —
+        // previously this was a no-op for an unknown section.
+        if !self.prompt_has_section(title) {
+            self.prompt_add_section(title, "", Vec::new());
+        }
         for section in &mut self.pom_sections {
             if let Value::Object(map) = section
                 && map.get("title").and_then(|t| t.as_str()) == Some(title)
@@ -816,8 +828,13 @@ impl AgentBase {
     }
 
     pub fn set_global_data(&mut self, data: Value) -> &mut Self {
+        // #190: merge incoming keys over existing global data (shallow), matching
+        // the TS reference (`setGlobalData` shallow-merges like `updateGlobalData`)
+        // rather than replacing the whole map.
         if let Value::Object(map) = data {
-            self.global_data = map;
+            for (k, v) in map {
+                self.global_data.insert(k, v);
+            }
         }
         self
     }
@@ -954,7 +971,27 @@ impl AgentBase {
     }
 
     pub fn set_function_includes(&mut self, includes: Vec<Value>) -> &mut Self {
-        self.function_includes = includes;
+        // #191: keep only well-formed entries — a non-empty string `url` AND an
+        // array `functions` — matching the TS reference's filter
+        // (`inc.url && Array.isArray(inc.functions)`). Each dropped entry is
+        // logged (log-only, wire-neutral) so a misconfigured include is not
+        // silently discarded.
+        let mut kept = Vec::with_capacity(includes.len());
+        for inc in includes {
+            let url_ok = inc
+                .get("url")
+                .and_then(Value::as_str)
+                .is_some_and(|s| !s.is_empty());
+            let functions_ok = inc.get("functions").is_some_and(Value::is_array);
+            if url_ok && functions_ok {
+                kept.push(inc);
+            } else {
+                log::warn!(
+                    "set_function_includes: dropping invalid include (needs a non-empty string `url` and an array `functions`): {inc}"
+                );
+            }
+        }
+        self.function_includes = kept;
         self
     }
 
@@ -1280,6 +1317,19 @@ impl AgentBase {
         let mut prompt = Map::new();
         if self.use_pom && !self.pom_sections.is_empty() {
             prompt.insert("pom".to_string(), Value::Array(self.pom_sections.clone()));
+        } else if self.context_builder.is_some() && self.prompt_text.is_empty() {
+            // #185: when contexts drive the conversation and no prompt text was
+            // set, emit a default fallback rather than an empty string — matching
+            // the TS reference (`text: prompt || "You are ${name}, a helpful AI
+            // assistant."`), which applies the fallback only in the contexts
+            // branch. Without contexts, an empty prompt is passed through as-is.
+            prompt.insert(
+                "text".to_string(),
+                json!(format!(
+                    "You are {}, a helpful AI assistant.",
+                    self.service.name()
+                )),
+            );
         } else {
             prompt.insert("text".to_string(), json!(self.prompt_text));
         }
@@ -2224,6 +2274,90 @@ mod tests {
         agent.set_global_data(json!({"a": 1}));
         agent.update_global_data(json!({"b": 2}));
         assert_eq!(agent.global_data.len(), 2);
+    }
+
+    // ── Behavior parity bundle (#190/#191/#185/#182) regression tests ──────
+
+    #[test]
+    fn test_set_global_data_merges_not_replaces() {
+        // #190: a second set_global_data must MERGE over the first, not replace.
+        let mut agent = AgentBase::new(default_options());
+        agent.set_global_data(json!({"a": 1}));
+        agent.set_global_data(json!({"b": 2}));
+        assert_eq!(
+            agent.global_data.len(),
+            2,
+            "second set must merge, not replace"
+        );
+        assert_eq!(agent.global_data["a"], 1);
+        assert_eq!(agent.global_data["b"], 2);
+    }
+
+    #[test]
+    fn test_set_function_includes_drops_invalid() {
+        // #191: keep only entries with a non-empty string `url` AND an array
+        // `functions`; drop the rest.
+        let mut agent = AgentBase::new(default_options());
+        agent.set_function_includes(vec![
+            json!({"url": "https://x/swaig", "functions": ["a", "b"]}), // valid
+            json!({"url": "https://y/swaig"}),                          // no functions
+            json!({"functions": ["c"]}),                                // no url
+            json!({"url": "", "functions": ["d"]}),                     // empty url
+            json!({"url": "https://z/swaig", "functions": "nope"}),     // functions not array
+        ]);
+        assert_eq!(
+            agent.function_includes.len(),
+            1,
+            "only the well-formed entry survives"
+        );
+        assert_eq!(agent.function_includes[0]["url"], "https://x/swaig");
+    }
+
+    #[test]
+    fn test_default_prompt_fallback_with_contexts() {
+        // #185: with contexts and no prompt text, render emits the fallback.
+        let mut agent = AgentBase::new(default_options());
+        agent
+            .define_contexts()
+            .add_context("default")
+            .add_step("intro")
+            .set_text("Hi");
+        let ai = agent.build_ai_verb(&HashMap::new());
+        assert_eq!(
+            ai["prompt"]["text"],
+            json!("You are test-agent, a helpful AI assistant.")
+        );
+    }
+
+    #[test]
+    fn test_no_default_prompt_fallback_without_contexts() {
+        // #185: WITHOUT contexts, an empty prompt is passed through (no fallback).
+        let agent = AgentBase::new(default_options());
+        let ai = agent.build_ai_verb(&HashMap::new());
+        assert_eq!(ai["prompt"]["text"], json!(""));
+    }
+
+    #[test]
+    fn test_prompt_add_to_section_autocreates() {
+        // #182: appending to a missing section auto-creates it.
+        let mut agent = AgentBase::new(default_options());
+        agent.prompt_add_to_section("Fresh", Some("body text"), vec!["b1"]);
+        assert!(agent.prompt_has_section("Fresh"));
+        let prompt = agent.get_prompt();
+        assert_eq!(prompt[0]["title"], "Fresh");
+        assert_eq!(prompt[0]["body"], "body text");
+        assert_eq!(prompt[0]["bullets"].as_array().unwrap().len(), 1);
+    }
+
+    #[test]
+    fn test_prompt_add_subsection_autocreates() {
+        // #182: adding a subsection under a missing parent auto-creates the parent.
+        let mut agent = AgentBase::new(default_options());
+        agent.prompt_add_subsection("Parent", "Child", "detail");
+        assert!(agent.prompt_has_section("Parent"));
+        let prompt = agent.get_prompt();
+        let subs = prompt[0]["subsections"].as_array().unwrap();
+        assert_eq!(subs[0]["title"], "Child");
     }
 
     #[test]
