@@ -1783,7 +1783,10 @@ fn test_sip_profile_update_error() {
 fn test_lookup_phone_number_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let body = c.lookup().get("+15551234567").expect("lookup.get");
+    let body = c
+        .lookup()
+        .phone_number("+15551234567")
+        .expect("lookup.phone_number");
     assert!(body.is_object());
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "GET");
@@ -1803,7 +1806,10 @@ fn test_lookup_phone_number_error() {
         404,
         json!({"error": "nf"}),
     );
-    let err = c.lookup().get("+10000000000").expect_err("should fail");
+    let err = c
+        .lookup()
+        .phone_number("+10000000000")
+        .expect_err("should fail");
     assert_eq!(err.status_code(), 404);
     let e = common::mocktest::journal_last();
     assert_eq!(e.response_status, Some(404));

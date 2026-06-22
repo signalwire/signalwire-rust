@@ -88,18 +88,6 @@ let endpoint = client.fabric().sip_endpoints().create(json!({
 })).await?;
 ```
 
-## Conversations
-
-```rust
-// List conversations
-let convos = client.fabric().conversations().list(&[]).await?;
-
-// Send a message in a conversation
-client.fabric().conversations().send_message("convo-id", json!({
-    "body": "Hello from the REST API!"
-})).await?;
-```
-
 ## Tokens
 
 Generate authentication tokens for client-side applications:
@@ -117,16 +105,19 @@ println!("Token: {}", token["token"]);
 
 | Resource | Methods |
 |----------|---------|
-| `ai_agents()` | create, list, get, update, delete |
-| `addresses()` | create, list, get, update, delete |
-| `subscribers()` | create, list, get, update, delete |
-| `sip_endpoints()` | create, list, get, update, delete |
-| `phone_numbers()` | list, assign, unassign |
-| `conversations()` | list, get, send_message |
-| `devices()` | list, get |
-| `tokens()` | create |
-| `policies()` | create, list, get, update, delete |
-| `calls()` | list, get |
-| `logs()` | list |
-| `features()` | list, get, update |
-| `webhooks()` | create, list, get, update, delete |
+| `ai_agents()` | list, create, get, update, delete, list_addresses |
+| `sip_gateways()` | list, create, get, update, delete, list_addresses |
+| `cxml_webhooks()` | list, create, get, update, delete, list_addresses |
+| `swml_webhooks()` | list, create, get, update, delete, list_addresses |
+| `sip_endpoints()` | list, create, get, update, delete, list_addresses |
+| `swml_scripts()` | list, create, get, update, delete, list_addresses |
+| `cxml_scripts()` | list, create, get, update, delete, list_addresses |
+| `relay_applications()` | list, create, get, update, delete, list_addresses |
+| `freeswitch_connectors()` | list, create, get, update, delete, list_addresses |
+| `conference_rooms()` | list, create, get, update, delete, list_addresses |
+| `cxml_applications()` | list, get, update, delete, list_addresses (create returns an error by design) |
+| `call_flows()` | list, create, get, update, delete, list_addresses, list_versions, deploy_version |
+| `subscribers()` | list, create, get, update, delete, list_addresses, list_sip_endpoints, create_sip_endpoint, get_sip_endpoint, update_sip_endpoint, delete_sip_endpoint |
+| `addresses()` | list, get (read-only top-level fabric addresses) |
+| `resources()` | list, get, delete, list_addresses, assign_domain_application, assign_phone_route |
+| `tokens()` | create_subscriber_token, refresh_subscriber_token, create_invite_token, create_guest_token, create_embed_token |

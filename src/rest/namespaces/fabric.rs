@@ -13,31 +13,12 @@ use std::collections::HashMap;
 
 use serde_json::Value;
 
-use crate::rest::crud_resource::CrudResource;
 use crate::rest::error::SignalWireRestError;
 use crate::rest::http_client::HttpClient;
+use crate::rest::util::{join, params_to_string_map};
 
 /// Base path for all Fabric resources.
 const BASE: &str = "/api/fabric/resources";
-
-fn join(parts: &[&str]) -> String {
-    parts.join("/")
-}
-
-fn params_to_string_map(params: &Value) -> HashMap<String, String> {
-    let mut out = HashMap::new();
-    if let Some(obj) = params.as_object() {
-        for (k, v) in obj {
-            let s = match v {
-                Value::String(s) => s.clone(),
-                Value::Null => continue,
-                other => other.to_string(),
-            };
-            out.insert(k.clone(), s);
-        }
-    }
-    out
-}
 
 // ---------------------------------------------------------------------------
 // Top-level namespace
@@ -65,8 +46,8 @@ impl<'a> Fabric<'a> {
 
     /// SIP endpoints — full CRUD + `list_addresses`, PUT update
     /// (Python `FabricResourcePUT`).
-    pub fn sip_endpoints(&self) -> FabricResourcePUT<'a> {
-        FabricResourcePUT::new(self.client, &format!("{BASE}/sip_endpoints"))
+    pub fn sip_endpoints(&self) -> FabricResource<'a> {
+        FabricResource::new_put(self.client, &format!("{BASE}/sip_endpoints"))
     }
 
     /// Read-only top-level fabric addresses (NOT under `/resources`).
@@ -82,47 +63,31 @@ impl<'a> Fabric<'a> {
 
     /// SWML scripts — full CRUD + `list_addresses`, PUT update
     /// (Python `FabricResourcePUT`).
-    pub fn swml_scripts(&self) -> FabricResourcePUT<'a> {
-        FabricResourcePUT::new(self.client, &format!("{BASE}/swml_scripts"))
+    pub fn swml_scripts(&self) -> FabricResource<'a> {
+        FabricResource::new_put(self.client, &format!("{BASE}/swml_scripts"))
     }
 
     /// cXML scripts — full CRUD + `list_addresses`, PUT update
     /// (Python `FabricResourcePUT`).
-    pub fn cxml_scripts(&self) -> FabricResourcePUT<'a> {
-        FabricResourcePUT::new(self.client, &format!("{BASE}/cxml_scripts"))
+    pub fn cxml_scripts(&self) -> FabricResource<'a> {
+        FabricResource::new_put(self.client, &format!("{BASE}/cxml_scripts"))
     }
 
     /// RELAY applications — full CRUD + `list_addresses`, PUT update
     /// (Python `FabricResourcePUT`).
-    pub fn relay_applications(&self) -> FabricResourcePUT<'a> {
-        FabricResourcePUT::new(self.client, &format!("{BASE}/relay_applications"))
+    pub fn relay_applications(&self) -> FabricResource<'a> {
+        FabricResource::new_put(self.client, &format!("{BASE}/relay_applications"))
     }
 
     /// `FreeSWITCH` connectors — full CRUD + `list_addresses`, PUT update
     /// (Python `FabricResourcePUT`).
-    pub fn freeswitch_connectors(&self) -> FabricResourcePUT<'a> {
-        FabricResourcePUT::new(self.client, &format!("{BASE}/freeswitch_connectors"))
-    }
-
-    pub fn conversations(&self) -> CrudResource<'a> {
-        CrudResource::new(self.client, &format!("{BASE}/conversations"))
+    pub fn freeswitch_connectors(&self) -> FabricResource<'a> {
+        FabricResource::new_put(self.client, &format!("{BASE}/freeswitch_connectors"))
     }
 
     /// Conference rooms — singular `conference_room` for sub-paths.
     pub fn conference_rooms(&self) -> ConferenceRoomsResource<'a> {
         ConferenceRoomsResource::new(self.client, &format!("{BASE}/conference_rooms"))
-    }
-
-    pub fn dial_plans(&self) -> CrudResource<'a> {
-        CrudResource::new(self.client, &format!("{BASE}/dial_plans"))
-    }
-
-    pub fn freeclimb_apps(&self) -> CrudResource<'a> {
-        CrudResource::new(self.client, &format!("{BASE}/freeclimb_apps"))
-    }
-
-    pub fn call_queues(&self) -> CrudResource<'a> {
-        CrudResource::new(self.client, &format!("{BASE}/call_queues"))
     }
 
     /// AI agents — full CRUD + `list_addresses`, PATCH update
@@ -149,14 +114,6 @@ impl<'a> Fabric<'a> {
     /// auto-materialized via `phone_numbers.set_swml_webhook`.
     pub fn swml_webhooks(&self) -> FabricResource<'a> {
         FabricResource::new(self.client, &format!("{BASE}/swml_webhooks"))
-    }
-
-    pub fn sip_profiles(&self) -> CrudResource<'a> {
-        CrudResource::new(self.client, &format!("{BASE}/sip_profiles"))
-    }
-
-    pub fn phone_numbers(&self) -> CrudResource<'a> {
-        CrudResource::new(self.client, &format!("{BASE}/phone_numbers"))
     }
 
     /// cXML applications — read/update/delete only (no create).
@@ -216,113 +173,44 @@ impl<'a> FabricAddresses<'a> {
 }
 
 // ---------------------------------------------------------------------------
-// FabricResource — standard fabric resource: CRUD (PATCH update) + addresses
+// FabricResource — standard fabric resource: CRUD + addresses
 // ---------------------------------------------------------------------------
 
-/// Standard fabric resource — full CRUD plus `list_addresses`, using
-/// `PATCH` for updates. Mirrors Python's `FabricResource`
-/// (`CrudWithAddresses` with the default `PATCH` update method).
+/// Update verb for a fabric resource. Python models this as two classes
+/// (`FabricResource` → `PATCH`, `FabricResourcePUT` → `PUT`); the only
+/// difference is the HTTP verb used by `update`, so we carry it as a field.
+#[derive(Clone, Copy)]
+enum UpdateVerb {
+    Patch,
+    Put,
+}
+
+/// Standard fabric resource — full CRUD plus `list_addresses`. Mirrors
+/// Python's `CrudWithAddresses`. The update verb is `PATCH` (Python
+/// `FabricResource`, via [`FabricResource::new`]) or `PUT` (Python
+/// `FabricResourcePUT`, via [`FabricResource::new_put`]).
 pub struct FabricResource<'a> {
     client: &'a HttpClient,
     base_path: String,
+    update_verb: UpdateVerb,
 }
 
 impl<'a> FabricResource<'a> {
+    /// Fabric resource that uses `PATCH` for updates (Python `FabricResource`).
     pub fn new(client: &'a HttpClient, base_path: &str) -> Self {
         FabricResource {
             client,
             base_path: base_path.to_string(),
+            update_verb: UpdateVerb::Patch,
         }
     }
 
-    pub fn base_path(&self) -> &str {
-        &self.base_path
-    }
-
-    /// # Errors
-    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
-    /// (transport failure), the API responds with a non-2xx status, or the
-    /// response body is not valid JSON.
-    pub fn list(&self, params: &Value) -> Result<Value, SignalWireRestError> {
-        let qp = params_to_string_map(params);
-        self.client.get(&self.base_path, &qp)
-    }
-
-    /// # Errors
-    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
-    /// (transport failure), the API responds with a non-2xx status (notably
-    /// 422 if the server rejects the supplied fields), or the response body is
-    /// not valid JSON.
-    pub fn create(&self, params: &Value) -> Result<Value, SignalWireRestError> {
-        self.client.post(&self.base_path, params)
-    }
-
-    /// # Errors
-    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
-    /// (transport failure), the API responds with a non-2xx status (notably
-    /// 404 if `resource_id` is unknown), or the response body is not valid
-    /// JSON.
-    pub fn get(&self, resource_id: &str) -> Result<Value, SignalWireRestError> {
-        let p = join(&[&self.base_path, resource_id]);
-        self.client.get(&p, &HashMap::new())
-    }
-
-    /// PATCH update (Python `FabricResource`).
-    ///
-    /// # Errors
-    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
-    /// (transport failure), the API responds with a non-2xx status (notably
-    /// 404 if `resource_id` is unknown or 422 if the server rejects the
-    /// supplied fields), or the response body is not valid JSON.
-    pub fn update(&self, resource_id: &str, params: &Value) -> Result<Value, SignalWireRestError> {
-        let p = join(&[&self.base_path, resource_id]);
-        self.client.patch(&p, params)
-    }
-
-    /// # Errors
-    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
-    /// (transport failure), the API responds with a non-2xx status (notably
-    /// 404 if `resource_id` is unknown), or the response body is not valid
-    /// JSON.
-    pub fn delete(&self, resource_id: &str) -> Result<Value, SignalWireRestError> {
-        let p = join(&[&self.base_path, resource_id]);
-        self.client.delete(&p)
-    }
-
-    /// GET `{base}/{id}/addresses` (Python `CrudWithAddresses.list_addresses`).
-    ///
-    /// # Errors
-    /// Returns [`SignalWireRestError`] if the request cannot reach the Space
-    /// (transport failure), the API responds with a non-2xx status (notably
-    /// 404 if `resource_id` is unknown), or the response body is not valid
-    /// JSON.
-    pub fn list_addresses(
-        &self,
-        resource_id: &str,
-        params: &Value,
-    ) -> Result<Value, SignalWireRestError> {
-        let qp = params_to_string_map(params);
-        let p = join(&[&self.base_path, resource_id, "addresses"]);
-        self.client.get(&p, &qp)
-    }
-}
-
-// ---------------------------------------------------------------------------
-// FabricResourcePUT — fabric resource that uses PUT for updates
-// ---------------------------------------------------------------------------
-
-/// Fabric resource that uses `PUT` for updates (Python `FabricResourcePUT`).
-/// Otherwise identical to [`FabricResource`]: full CRUD plus `list_addresses`.
-pub struct FabricResourcePUT<'a> {
-    client: &'a HttpClient,
-    base_path: String,
-}
-
-impl<'a> FabricResourcePUT<'a> {
-    pub fn new(client: &'a HttpClient, base_path: &str) -> Self {
-        FabricResourcePUT {
+    /// Fabric resource that uses `PUT` for updates (Python `FabricResourcePUT`).
+    pub fn new_put(client: &'a HttpClient, base_path: &str) -> Self {
+        FabricResource {
             client,
             base_path: base_path.to_string(),
+            update_verb: UpdateVerb::Put,
         }
     }
 
@@ -358,7 +246,8 @@ impl<'a> FabricResourcePUT<'a> {
         self.client.get(&p, &HashMap::new())
     }
 
-    /// PUT update (Python `FabricResourcePUT`).
+    /// Update — `PATCH` (Python `FabricResource`) or `PUT` (Python
+    /// `FabricResourcePUT`) depending on how this resource was constructed.
     ///
     /// # Errors
     /// Returns [`SignalWireRestError`] if the request cannot reach the Space
@@ -367,7 +256,10 @@ impl<'a> FabricResourcePUT<'a> {
     /// supplied fields), or the response body is not valid JSON.
     pub fn update(&self, resource_id: &str, params: &Value) -> Result<Value, SignalWireRestError> {
         let p = join(&[&self.base_path, resource_id]);
-        self.client.put(&p, params)
+        match self.update_verb {
+            UpdateVerb::Patch => self.client.patch(&p, params),
+            UpdateVerb::Put => self.client.put(&p, params),
+        }
     }
 
     /// # Errors

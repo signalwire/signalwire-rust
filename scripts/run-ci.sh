@@ -165,6 +165,31 @@ rest_coverage_gate() {
 run_gate "REST-COVERAGE" "every implemented REST route covered success+error (parity + allowlist)" \
     rest_coverage_gate
 
+# Gate 5c: SPEC-PARITY — the REST surface must match the canonical spec in BOTH
+# directions. REST-COVERAGE (5b) proves every route the SDK *implements* is
+# exercised; this proves the set the SDK implements EQUALS the canonical spec
+# (modulo checked-in gaps): no canonical route left unimplemented (A−B), no
+# implemented route that matches no canonical route (B−A, i.e. invented surface).
+# Set B is produced deterministically by the route-registry binary, which builds
+# a stub-backed RestClient, invokes every namespace method, and reads back the
+# routes the SDK actually dispatched (no hand-authored route list, no reflection
+# — Rust has none). diff_spec_implementation.py matches that against the spec.
+# Accepted not-implemented gaps live in the shared SPEC_IMPLEMENTATION_GAPS.md;
+# a stale gap (now implemented) or unsanctioned divergence fails the gate. Same
+# shape as go's/java's gate.
+spec_parity_gate() {
+    local reg
+    reg="$(mktemp -t rust_route_registry.XXXXXX.json)"
+    # shellcheck disable=SC2064
+    trap "rm -f '$reg'" RETURN
+    cargo run --quiet --bin route-registry >"$reg" || return 1
+    python3 "$PORTING_SDK_DIR/scripts/diff_spec_implementation.py" \
+        --registry-json "$reg" \
+        --gaps "$PORTING_SDK_DIR/SPEC_IMPLEMENTATION_GAPS.md"
+}
+run_gate "SPEC-PARITY" "implemented REST routes == canonical spec (modulo gaps); deterministic Set B" \
+    spec_parity_gate
+
 # Gate 6: emission — byte-compare the SWAIG FunctionResult serialisation against
 # Python's to_dict() over the shared 81-entry corpus. The drift gate (Gate 3)
 # polices the SURFACE; this one polices the EMISSION (action shape/keys/values +

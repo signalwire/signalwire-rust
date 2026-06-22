@@ -17,27 +17,9 @@ use serde_json::Value;
 
 use crate::rest::error::SignalWireRestError;
 use crate::rest::http_client::HttpClient;
+use crate::rest::util::{join, params_to_string_map};
 
 const BASE: &str = "/api/video";
-
-fn join(parts: &[&str]) -> String {
-    parts.join("/")
-}
-
-fn params_to_string_map(params: &Value) -> HashMap<String, String> {
-    let mut out = HashMap::new();
-    if let Some(obj) = params.as_object() {
-        for (k, v) in obj {
-            let s = match v {
-                Value::String(s) => s.clone(),
-                Value::Null => continue,
-                other => other.to_string(),
-            };
-            out.insert(k.clone(), s);
-        }
-    }
-    out
-}
 
 // ---------------------------------------------------------------------------
 // Top-level namespace

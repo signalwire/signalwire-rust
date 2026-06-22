@@ -1090,3 +1090,23 @@ These two Rust-only transport entry points predate this pass but were never docu
 
 signalwire.relay.client.ws_connect: rust-transport-helper — opens a verified WebSocket (plain `ws://` or rustls `wss://`, optionally trusting a private CA) for the relay client. Python's websocket connect is internal to `RelayClient`.
 signalwire.server.tls.bind_server: rust-transport-helper — `pub(crate)` HTTP/HTTPS listener bind shared by the server entry points (selects TLS via `SWML_SSL_*`). Python uses uvicorn's `ssl_*`.
+
+### Rust REST spec-parity helpers (narrow top-level resources + shared util)
+
+The narrow top-level resources (addresses/recordings/short_codes/imported_numbers,
+in `namespaces::simple_resources`) and the collapsed `FabricResource` each ship a
+Rust `base_path()` field accessor and, in `FabricResource`, a `new_put`
+constructor (the PUT-update variant of the PATCH-default `new`); Python keeps the
+base path as a class attribute and has no constructor-variant. `rest::util` holds
+the two `pub(crate)` path helpers shared across namespaces (factored out of nine
+copy-pasted definitions); Python's equivalents are module-private. None add a
+route or change the wire contract.
+
+signalwire.rest.namespaces.addresses.AddressesResource.base_path: namespace_field_accessor: Rust accessor for the resource's base path; Python uses a class-level attribute.
+signalwire.rest.namespaces.recordings.RecordingsResource.base_path: namespace_field_accessor: Rust accessor for the resource's base path; Python uses a class-level attribute.
+signalwire.rest.namespaces.short_codes.ShortCodesResource.base_path: namespace_field_accessor: Rust accessor for the resource's base path; Python uses a class-level attribute.
+signalwire.rest.namespaces.imported_numbers.ImportedNumbersResource.base_path: namespace_field_accessor: Rust accessor for the resource's base path; Python uses a class-level attribute.
+signalwire.rest.namespaces.lookup.LookupResource.base_path: namespace_field_accessor: Rust accessor for the resource's base path; Python uses a class-level attribute.
+signalwire.rest.namespaces.fabric.FabricResource.new_put: Rust constructor variant that builds the PUT-update fabric resource (Python FabricResourcePUT); Python expresses the PATCH/PUT split as two classes, Rust as one struct with two constructors.
+signalwire.rest.util.join: rust-helper — pub(crate) path-segment join shared across REST namespaces; Python uses module-private equivalents.
+signalwire.rest.util.params_to_string_map: rust-helper — pub(crate) JSON-object-to-query-map helper shared across REST namespaces; Python uses module-private equivalents.

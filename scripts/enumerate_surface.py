@@ -169,6 +169,15 @@ CLASS_MODULE_MAP: dict[str, str] = {
     # Standalone Relay namespaces newly modeled as proper structs.
     "PhoneNumbersResource": "signalwire.rest.namespaces.phone_numbers",
     "VerifiedCallersResource": "signalwire.rest.namespaces.verified_callers",
+    # Narrow top-level resources: Rust groups them in one module
+    # (namespaces::simple_resources) but Python ships one module per resource.
+    # Map each to Python's per-resource module so the surface identity lines up
+    # (class names already match; only the module path differs). The method
+    # sets are still compared — a verb that diverges from Python re-drifts.
+    "AddressesResource": "signalwire.rest.namespaces.addresses",
+    "RecordingsResource": "signalwire.rest.namespaces.recordings",
+    "ShortCodesResource": "signalwire.rest.namespaces.short_codes",
+    "ImportedNumbersResource": "signalwire.rest.namespaces.imported_numbers",
     "PaginatedIterator": "signalwire.rest._pagination",
 
     # relay

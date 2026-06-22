@@ -52,6 +52,34 @@ class TypeTranslationError(RuntimeError):
     pass
 
 
+# Per-method return-type remap (canonical method path -> canonical return class).
+#
+# Rust models some Python class *pairs* as ONE struct with a field, where the
+# only difference is invisible to the signature model (e.g. the HTTP verb used
+# by ``update``). Python's reference keeps them as distinct classes, so the
+# struct-collapse would read as a return-type drift. We remap the return type
+# back to the Python class the accessor is contractually returning — so the
+# signature lines up AND the FULL method set of the returned struct is still
+# compared (if a method is added/removed/retyped on the collapsed struct, or an
+# accessor stops returning it, the drift reappears). This is the tool handling
+# the idiom, NOT a blanket omission that would hide any future change.
+#
+# FabricResourcePUT: Python's PUT-update fabric resource. Rust folds it onto
+# FabricResource (constructed via ``new_put`` — PUT instead of PATCH on
+# ``update``); these five accessors contractually return the PUT variant.
+RETURN_TYPE_OVERRIDE: dict[str, str] = {
+    f"signalwire.rest.namespaces.fabric.FabricNamespace.{m}":
+        "class:signalwire.rest.namespaces.fabric.FabricResourcePUT"
+    for m in (
+        "sip_endpoints",
+        "swml_scripts",
+        "cxml_scripts",
+        "relay_applications",
+        "freeswitch_connectors",
+    )
+}
+
+
 def load_aliases() -> dict[str, str]:
     data = yaml.safe_load((PSDK / "type_aliases.yaml").read_text(encoding="utf-8"))
     return {str(k): str(v) for k, v in data.get("aliases", {}).get("rust", {}).items()}
@@ -671,6 +699,9 @@ def build_signature(fn: dict, paths: dict, aliases: dict, context: str) -> dict:
     # ::new() returns Self in Rust; translate as void per __init__ convention
     if context.endswith(".__init__") and return_canon != "void":
         return_canon = "void"
+    # Idiom remap: a collapsed struct returned under a Python class's contract.
+    if context in RETURN_TYPE_OVERRIDE:
+        return_canon = RETURN_TYPE_OVERRIDE[context]
     return {"params": params_out, "returns": return_canon}
 
 
