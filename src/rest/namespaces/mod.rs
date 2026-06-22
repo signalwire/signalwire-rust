@@ -6,6 +6,7 @@ pub mod compat;
 pub mod datasphere;
 pub mod fabric;
 pub mod logs;
+pub mod lookup;
 pub mod mfa;
 pub mod number_groups;
 pub mod phone_numbers;

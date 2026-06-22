@@ -13,7 +13,6 @@ use std::collections::HashMap;
 
 use serde_json::Value;
 
-use crate::rest::crud_resource::CrudResource;
 use crate::rest::error::SignalWireRestError;
 use crate::rest::http_client::HttpClient;
 
@@ -104,25 +103,9 @@ impl<'a> Fabric<'a> {
         FabricResourcePUT::new(self.client, &format!("{BASE}/freeswitch_connectors"))
     }
 
-    pub fn conversations(&self) -> CrudResource<'a> {
-        CrudResource::new(self.client, &format!("{BASE}/conversations"))
-    }
-
     /// Conference rooms — singular `conference_room` for sub-paths.
     pub fn conference_rooms(&self) -> ConferenceRoomsResource<'a> {
         ConferenceRoomsResource::new(self.client, &format!("{BASE}/conference_rooms"))
-    }
-
-    pub fn dial_plans(&self) -> CrudResource<'a> {
-        CrudResource::new(self.client, &format!("{BASE}/dial_plans"))
-    }
-
-    pub fn freeclimb_apps(&self) -> CrudResource<'a> {
-        CrudResource::new(self.client, &format!("{BASE}/freeclimb_apps"))
-    }
-
-    pub fn call_queues(&self) -> CrudResource<'a> {
-        CrudResource::new(self.client, &format!("{BASE}/call_queues"))
     }
 
     /// AI agents — full CRUD + `list_addresses`, PATCH update
@@ -149,14 +132,6 @@ impl<'a> Fabric<'a> {
     /// auto-materialized via `phone_numbers.set_swml_webhook`.
     pub fn swml_webhooks(&self) -> FabricResource<'a> {
         FabricResource::new(self.client, &format!("{BASE}/swml_webhooks"))
-    }
-
-    pub fn sip_profiles(&self) -> CrudResource<'a> {
-        CrudResource::new(self.client, &format!("{BASE}/sip_profiles"))
-    }
-
-    pub fn phone_numbers(&self) -> CrudResource<'a> {
-        CrudResource::new(self.client, &format!("{BASE}/phone_numbers"))
     }
 
     /// cXML applications — read/update/delete only (no create).

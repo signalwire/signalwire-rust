@@ -220,8 +220,8 @@ impl RestClient {
     }
 
     /// Phone number lookup.
-    pub fn lookup(&self) -> CrudResource<'_> {
-        CrudResource::new(&self.http, "/api/relay/rest/lookup/phone_number")
+    pub fn lookup(&self) -> super::namespaces::lookup::LookupResource<'_> {
+        super::namespaces::lookup::LookupResource::new(&self.http)
     }
 
     /// Short codes.
@@ -396,11 +396,11 @@ mod tests {
 
     #[test]
     fn test_lookup_path() {
+        // Lookup is a single GET operation, not a CRUD resource: the namespace
+        // base is `/api/relay/rest/lookup` and `phone_number(e164)` appends
+        // `/phone_number/{e164}` (covered end-to-end in rest_relay_coverage).
         let client = RestClient::new("proj", "tok", "test.sw.com").unwrap();
-        assert_eq!(
-            client.lookup().base_path(),
-            "/api/relay/rest/lookup/phone_number"
-        );
+        assert_eq!(client.lookup().base_path(), "/api/relay/rest/lookup");
     }
 
     #[test]
