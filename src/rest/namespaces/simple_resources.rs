@@ -61,8 +61,8 @@ impl<'a> AddressesResource<'a> {
     /// # Errors
     /// Returns [`SignalWireRestError`] on transport failure, a non-2xx status
     /// (e.g. 422), or an invalid JSON body.
-    pub fn create(&self, data: &Value) -> Result<Value, SignalWireRestError> {
-        self.client.post(&self.base_path, data)
+    pub fn create(&self, params: &Value) -> Result<Value, SignalWireRestError> {
+        self.client.post(&self.base_path, params)
     }
 
     /// GET `/api/relay/rest/addresses/{id}` — fetch one address.
@@ -176,8 +176,8 @@ impl<'a> ShortCodesResource<'a> {
     /// # Errors
     /// Returns [`SignalWireRestError`] on transport failure, a non-2xx status
     /// (e.g. 404 or 422), or an invalid JSON body.
-    pub fn update(&self, id: &str, data: &Value) -> Result<Value, SignalWireRestError> {
-        self.client.put(&join(&[&self.base_path, id]), data)
+    pub fn update(&self, id: &str, params: &Value) -> Result<Value, SignalWireRestError> {
+        self.client.put(&join(&[&self.base_path, id]), params)
     }
 }
 
@@ -205,7 +205,7 @@ impl<'a> ImportedNumbersResource<'a> {
     /// # Errors
     /// Returns [`SignalWireRestError`] on transport failure, a non-2xx status
     /// (e.g. 422), or an invalid JSON body.
-    pub fn create(&self, data: &Value) -> Result<Value, SignalWireRestError> {
-        self.client.post(&self.base_path, data)
+    pub fn create(&self, params: &Value) -> Result<Value, SignalWireRestError> {
+        self.client.post(&self.base_path, params)
     }
 }

@@ -1,6 +1,6 @@
 {
   "version": "1",
-  "generated_from": "signalwire-rust @ 5250fb6cf8aac2a54cfd5d5eaa59c576d5a86d07",
+  "generated_from": "signalwire-rust @ 16fcaf6c75e2afa092dd918c6226de8d9b487822",
   "modules": {
     "signalwire": {
       "classes": {
@@ -882,6 +882,19 @@
       },
       "functions": []
     },
+    "signalwire.rest.namespaces.addresses": {
+      "classes": {
+        "AddressesResource": [
+          "__init__",
+          "base_path",
+          "create",
+          "delete",
+          "get",
+          "list"
+        ]
+      },
+      "functions": []
+    },
     "signalwire.rest.namespaces.calling": {
       "classes": {
         "CallingNamespace": [
@@ -1156,22 +1169,16 @@
           "addresses",
           "ai_agents",
           "call_flows",
-          "call_queues",
           "client",
           "conference_rooms",
-          "conversations",
           "cxml_applications",
           "cxml_scripts",
           "cxml_webhooks",
-          "dial_plans",
-          "freeclimb_apps",
           "freeswitch_connectors",
-          "phone_numbers",
           "relay_applications",
           "resources",
           "sip_endpoints",
           "sip_gateways",
-          "sip_profiles",
           "subscribers",
           "swml_scripts",
           "swml_webhooks",
@@ -1185,16 +1192,7 @@
           "get",
           "list",
           "list_addresses",
-          "update"
-        ],
-        "FabricResourcePUT": [
-          "__init__",
-          "base_path",
-          "create",
-          "delete",
-          "get",
-          "list",
-          "list_addresses",
+          "new_put",
           "update"
         ],
         "FabricTokens": [
@@ -1233,6 +1231,16 @@
       },
       "functions": []
     },
+    "signalwire.rest.namespaces.imported_numbers": {
+      "classes": {
+        "ImportedNumbersResource": [
+          "__init__",
+          "base_path",
+          "create"
+        ]
+      },
+      "functions": []
+    },
     "signalwire.rest.namespaces.logs": {
       "classes": {
         "ConferenceLogs": [
@@ -1266,6 +1274,16 @@
           "get",
           "list",
           "list_events"
+        ]
+      },
+      "functions": []
+    },
+    "signalwire.rest.namespaces.lookup": {
+      "classes": {
+        "LookupResource": [
+          "__init__",
+          "base_path",
+          "phone_number"
         ]
       },
       "functions": []
@@ -1359,6 +1377,18 @@
       },
       "functions": []
     },
+    "signalwire.rest.namespaces.recordings": {
+      "classes": {
+        "RecordingsResource": [
+          "__init__",
+          "base_path",
+          "delete",
+          "get",
+          "list"
+        ]
+      },
+      "functions": []
+    },
     "signalwire.rest.namespaces.registry": {
       "classes": {
         "RegistryBrands": [
@@ -1396,6 +1426,18 @@
           "__init__",
           "base_path",
           "get"
+        ]
+      },
+      "functions": []
+    },
+    "signalwire.rest.namespaces.short_codes": {
+      "classes": {
+        "ShortCodesResource": [
+          "__init__",
+          "base_path",
+          "get",
+          "list",
+          "update"
         ]
       },
       "functions": []
@@ -1501,6 +1543,13 @@
         ]
       },
       "functions": []
+    },
+    "signalwire.rest.util": {
+      "classes": {},
+      "functions": [
+        "join",
+        "params_to_string_map"
+      ]
     },
     "signalwire.security.webhook": {
       "classes": {},

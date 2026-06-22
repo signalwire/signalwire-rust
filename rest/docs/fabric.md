@@ -88,18 +88,6 @@ let endpoint = client.fabric().sip_endpoints().create(json!({
 })).await?;
 ```
 
-## Conversations
-
-```rust
-// List conversations
-let convos = client.fabric().conversations().list(&[]).await?;
-
-// Send a message in a conversation
-client.fabric().conversations().send_message("convo-id", json!({
-    "body": "Hello from the REST API!"
-})).await?;
-```
-
 ## Tokens
 
 Generate authentication tokens for client-side applications:
@@ -122,7 +110,6 @@ println!("Token: {}", token["token"]);
 | `subscribers()` | create, list, get, update, delete |
 | `sip_endpoints()` | create, list, get, update, delete |
 | `phone_numbers()` | list, assign, unassign |
-| `conversations()` | list, get, send_message |
 | `devices()` | list, get |
 | `tokens()` | create |
 | `policies()` | create, list, get, update, delete |
