@@ -297,6 +297,21 @@ run_gate "SURFACE-DIFF" "diff_port_surface vs python_surface.json" \
         --omissions "$PORT_ROOT/PORT_OMISSIONS.md" \
         --additions "$PORT_ROOT/PORT_ADDITIONS.md"
 
+# SWAIG-CLI — lightweight shared swaig-test mini-contract (NOT python parity;
+# python's in-process simulator surface is reference-only). Black-box: invokes
+# `cargo run --bin swaig-test --help` + golden invocations and asserts the shared
+# verbs are documented and no-action errors (the cross-port majority default).
+# Rust has no --simulate-serverless, so the no-serverless clause asserts the flag
+# is rejected as an unknown option (no half-accept). --quiet keeps cargo's build
+# chatter out of the captured help text.
+run_gate "SWAIG-CLI" "swaig-test shared mini-contract (verbs/serverless-reject/default-action)" \
+    python3 "$PORTING_SDK_DIR/scripts/audit_swaig_cli_contract.py" \
+        --port rust \
+        --cmd "cargo run --quiet --bin swaig-test --" \
+        --require-url-model \
+        --default-action-argv='--url|http://user:pass@127.0.0.1:1/' \
+        --no-serverless-argv='--url|http://user:pass@127.0.0.1:1/|--simulate-serverless|lambda|--list-tools'
+
 if [ -z "$FAILED_GATES" ]; then
     echo "==> CI PASS"
     exit 0
