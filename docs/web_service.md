@@ -6,29 +6,30 @@ Every agent is an HTTP server. The SDK handles routing, authentication, and requ
 
 ## Default Endpoints
 
-When an agent is created with route `/agent`, these endpoints are available:
+Endpoints are served relative to the agent's route. With the default route `/`, these
+are available (an agent mounted at `/sales` would serve `/sales`, `/sales/swaig`, etc.):
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/agent` | POST | SWML document generation |
-| `/agent/swaig` | POST | SWAIG function dispatch |
-| `/agent/debug` | GET | Debug info (SWML dump, tool list) |
-| `/health` | GET | Health check (returns 200) |
-| `/ready` | GET | Readiness check (returns 200) |
+| Endpoint | Method | Auth | Description |
+|----------|--------|------|-------------|
+| `/` (the route) | POST | Basic | SWML document generation |
+| `/swaig` | POST | Basic | SWAIG function dispatch |
+| `/post_prompt` | POST | Basic | Post-prompt summary callback |
+| `/health` | GET | None | Health check (returns 200) |
+| `/ready` | GET | None | Readiness check (returns 200) |
 
 ## Request Flow
 
-### SWML Request (POST /agent)
+### SWML Request (POST to the route)
 
 1. Platform sends POST with call metadata (caller ID, call ID, etc.)
-2. SDK validates basic auth credentials
+2. SDK validates basic auth credentials (and the `X-SignalWire-Signature` header when a signing key is set)
 3. If `dynamic_config_callback` is set, it is called with query params, body, headers
 4. Agent renders SWML document and returns it as JSON
 
-### SWAIG Request (POST /agent/swaig)
+### SWAIG Request (POST /swaig)
 
 1. Platform sends POST with function name and arguments
-2. SDK validates basic auth (and HMAC token if function is secure)
+2. SDK validates basic auth (and HMAC token if the function is secure)
 3. SDK dispatches to the registered handler
 4. Handler returns `FunctionResult`
 5. SDK serialises and returns the response
@@ -46,38 +47,32 @@ opts.port = Some(8080);
 ### Starting the Server
 
 ```rust
-// Blocking run
+// Blocking run — serves on the host/port from AgentOptions
 agent.run();
-
-// Or get the app for custom hosting (e.g. behind actix-web or axum)
-let app = agent.get_app();
 ```
 
 ## Multi-Agent Server
 
-`AgentServer` mounts multiple agents on a single HTTP server:
+`AgentServer` mounts multiple agents on a single HTTP server. `new` takes optional
+host/port, and `register(agent, route)` returns a `Result`:
 
 ```rust
-use signalwire::server::AgentServer;
+use signalwire::AgentServer;
 
-let mut server = AgentServer::new("0.0.0.0", 3000);
-server.add_agent(sales_agent);    // /sales
-server.add_agent(support_agent);  // /support
-server.run();
+let mut server = AgentServer::new(Some("0.0.0.0"), Some(3000));
+server.register(sales_agent, Some("/sales")).unwrap();
+server.register(support_agent, Some("/support")).unwrap();
+server.run(None, None);
 ```
 
 Each agent keeps its own route prefix, authentication, and SWAIG endpoints.
 
-## Custom Endpoints
+## Static File Serving
 
-Add custom routes alongside the agent:
+`AgentServer` can serve static files alongside agents, with path-traversal protection:
 
 ```rust
-// Custom health endpoint with application-specific checks
-// Custom API endpoint for non-voice interactions
-// Custom static file serving
-
-// Override _register_routes to add custom endpoints alongside agent routes
+server.serve_static("./public", "/static").unwrap();
 ```
 
 ## Authentication
@@ -94,7 +89,7 @@ Authorization: Basic base64(username:password)
 
 ```rust
 let (user, pass) = agent.get_basic_auth_credentials();
-println!("Configure your phone number with: http://{user}:{pass}@host:port/agent");
+println!("Configure your phone number with: http://{user}:{pass}@host:port/");
 ```
 
 ## Proxy Support
@@ -105,7 +100,7 @@ When behind a reverse proxy, set the base URL so SWML webhook URLs are correct:
 export SWML_PROXY_URL_BASE=https://agents.example.com
 ```
 
-Without this, the SDK generates `http://localhost:3000/agent/swaig` as the webhook URL, which the platform cannot reach.
+Without this, the SDK generates `http://localhost:3000/swaig` as the webhook URL, which the platform cannot reach.
 
 ## CORS
 

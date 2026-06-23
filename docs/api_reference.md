@@ -40,8 +40,9 @@ AgentBase::new(options: AgentOptions) -> Self
 
 | Method | Signature |
 |--------|-----------|
-| `define_tool` | `(&mut self, name, description, parameters, handler, secure) -> &mut Self` |
-| `define_datamap_tool` | `(&mut self, tool: Value) -> &mut Self` |
+| `define_tool` | `(&mut self, name: &str, description: &str, parameters: Value, handler: FunctionHandler, secure: bool) -> &mut Self` |
+| `register_swaig_function` | `(&mut self, func_def: Value) -> &mut Self` (raw / DataMap functions) |
+| `define_tools` | `(&mut self, tool_defs: Vec<Value>) -> &mut Self` |
 | `add_function_include` | `(&mut self, include: Value) -> &mut Self` |
 
 ### Language and Voice
@@ -49,17 +50,18 @@ AgentBase::new(options: AgentOptions) -> Self
 | Method | Signature |
 |--------|-----------|
 | `add_language` | `(&mut self, name: &str, code: &str, voice: &str) -> &mut Self` |
-| `add_pronunciation` | `(&mut self, pronunciation: Value) -> &mut Self` |
+| `add_pronunciation` | `(&mut self, replace: &str, with: &str, ignore: &str) -> &mut Self` |
 | `add_hints` | `(&mut self, hints: Vec<&str>) -> &mut Self` |
+| `add_hint` | `(&mut self, hint: &str) -> &mut Self` |
 
 ### Parameters and Data
 
 | Method | Signature |
 |--------|-----------|
 | `set_params` | `(&mut self, params: Value) -> &mut Self` |
-| `set_params_value` | `(&mut self, key: &str, value: Value) -> &mut Self` |
+| `set_param` | `(&mut self, key: &str, value: Value) -> &mut Self` |
 | `set_global_data` | `(&mut self, data: Value) -> &mut Self` |
-| `set_global_data_value` | `(&mut self, key: &str, value: Value) -> &mut Self` |
+| `update_global_data` | `(&mut self, data: Value) -> &mut Self` (merge) |
 
 ### LLM Parameters
 
@@ -72,32 +74,33 @@ AgentBase::new(options: AgentOptions) -> Self
 
 | Method | Signature |
 |--------|-----------|
-| `add_pre_answer_verb` | `(&mut self, verb: &str, params: Value) -> &mut Self` |
-| `add_post_answer_verb` | `(&mut self, verb: &str, params: Value) -> &mut Self` |
-| `add_post_ai_verb` | `(&mut self, verb: &str, params: Value) -> &mut Self` |
-| `set_answer_config` | `(&mut self, config: Value) -> &mut Self` |
+| `add_pre_answer_verb` | `(&mut self, verb: &str, config: Value) -> &mut Self` |
+| `add_post_answer_verb` | `(&mut self, verb: &str, config: Value) -> &mut Self` |
+| `add_post_ai_verb` | `(&mut self, verb: &str, config: Value) -> &mut Self` |
 
 ### Callbacks
 
 | Method | Signature |
 |--------|-----------|
-| `set_dynamic_config_callback` | `(&mut self, cb: Arc<DynamicConfigCallback>) -> &mut Self` |
-| `set_summary_callback` | `(&mut self, cb: Arc<SummaryCallback>) -> &mut Self` |
-| `set_debug_event_handler` | `(&mut self, cb: Arc<DebugEventCallback>) -> &mut Self` |
+| `set_dynamic_config_callback` | `(&mut self, cb: DynamicConfigCallback) -> &mut Self` — `cb` is `Box<dyn Fn(&Map<String,Value>, &Option<Value>, &HashMap<String,String>, &mut AgentBase)>` |
+| `on_summary` | `(&mut self, cb: SummaryCallback) -> &mut Self` — `cb` is `Box<dyn Fn(&str, &Value, &HashMap<String,String>)>` |
+| `on_debug_event` | `(&mut self, cb: DebugEventCallback) -> &mut Self` — `cb` is `Box<dyn Fn(&Value, &HashMap<String,String>)>` |
 | `enable_debug_events` | `(&mut self, level: &str) -> &mut Self` |
 
 ### Skills and Contexts
 
 | Method | Signature |
 |--------|-----------|
-| `add_skill` | `(&mut self, skill: &str, config: Option<Value>) -> &mut Self` |
+| `add_skill` | `(&mut self, name: &str, params: Value) -> &mut Self` |
+| `remove_skill` | `(&mut self, name: &str) -> &mut Self` |
+| `list_skills` | `(&self) -> Vec<String>` |
 | `define_contexts` | `(&mut self) -> &mut ContextBuilder` |
 
 ### Session and Security
 
 | Method | Signature |
 |--------|-----------|
-| `get_basic_auth_credentials` | `(&self) -> (&str, &str)` |
+| `get_basic_auth_credentials` | `(&self) -> (String, String)` |
 | `set_post_prompt_url` | `(&mut self, url: &str) -> &mut Self` |
 | `set_webhook_url` | `(&mut self, url: &str) -> &mut Self` |
 
@@ -105,9 +108,9 @@ AgentBase::new(options: AgentOptions) -> Self
 
 | Method | Signature |
 |--------|-----------|
-| `run` | `(&self)` |
-| `get_app` | `(&self) -> App` |
-| `render_swml` | `(&self) -> Value` |
+| `run` | `(&self)` — serves on the host/port from `AgentOptions` |
+| `render_swml` | `(&self, headers: &HashMap<String, String>) -> Value` |
+| `build_ai_verb` | `(&self, headers: &HashMap<String, String>) -> Value` |
 
 ---
 
@@ -140,9 +143,9 @@ Returned from SWAIG tool handlers. Serialises to `{"response": "...", "action": 
 | `stop_record_call` | Stop a recording by control ID |
 | `play_background_file` | Play audio in background |
 | `stop_background_file` | Stop background audio |
-| `hold` | Put caller on hold |
-| `unhold` | Resume from hold |
+| `hold` | Put caller on hold (`hold(timeout: i64)`) |
 | `update_global_data` | Update session key/value pairs |
+| `remove_global_data` | Remove session keys |
 | `toggle_functions` | Enable/disable tools mid-call |
 | `update_settings` | Change AI settings mid-call |
 | `add_dynamic_hints` | Add speech recognition hints |

@@ -16,7 +16,7 @@ signalwire (crate root)
  │    ├── security/ – Auth, HMAC tokens, SSL
  │    └── server/   – AgentServer for multi-agent hosting
  ├── relay        – Real-time call/message control over WebSocket
- └── rest         – Async REST client for all SignalWire HTTP APIs
+ └── rest         – Synchronous REST client for all SignalWire HTTP APIs
 ```
 
 ## Core Concepts
@@ -39,7 +39,7 @@ POM is a structured prompt representation. Instead of a single string, prompts a
 Inbound call
     │
     ▼
-Platform requests SWML (POST /agent)
+Platform requests SWML (POST to the agent route, e.g. POST /)
     │
     ▼
 AgentBase builds SWML document
@@ -53,7 +53,7 @@ AgentBase builds SWML document
 Platform runs AI pipeline (STT → LLM → TTS)
     │
     ▼
-AI invokes tool → POST /agent/swaig
+AI invokes tool → POST <route>/swaig
     │
     ▼
 AgentBase dispatches to handler → FunctionResult

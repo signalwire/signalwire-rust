@@ -2,105 +2,49 @@
 
 ## Overview
 
-Model Context Protocol (MCP) integration allows SignalWire AI agents to both consume and expose tools via the MCP standard. This creates a bridge between voice AI agents and the broader MCP ecosystem.
+Model Context Protocol (MCP) integration lets a SignalWire AI agent consume tools that
+live behind an MCP gateway. The integration is provided entirely by the built-in
+`mcp_gateway` skill — there is no separate agent-level MCP API. The gateway bridges MCP
+servers to SWAIG so their tools become callable during a voice conversation.
 
-## Two Modes
+## Using the MCP Gateway Skill
 
-### MCP Client (Consume External Tools)
-
-Your agent connects to external MCP servers and uses their tools during voice calls:
-
-```rust
-agent.add_mcp_server(
-    "https://mcp.example.com/tools",
-    json!({"Authorization": "Bearer sk-key"}),
-);
-```
-
-### MCP Server (Expose Agent Tools)
-
-Your agent exposes its SWAIG tools as MCP endpoints for external clients:
+Add the `mcp_gateway` skill, pointing it at a running gateway:
 
 ```rust
-agent.enable_mcp_server();
-// Tools now available at /agent/mcp
+use serde_json::json;
+
+agent.add_skill("mcp_gateway", json!({
+    "gateway_url": "http://localhost:8080",
+    "auth_user": "admin",
+    "auth_password": "changeme",
+    "services": [{"name": "todo"}, {"name": "calendar"}]
+}));
 ```
 
-## Client Integration
+If `services` is omitted (or empty), the skill registers a single generic gateway tool
+(`<tool_prefix>call`, default prefix `mcp_`) that takes a `service`, a `tool`, and an
+`arguments` object. When `services` are listed, the skill registers one tool per
+service/tool pair.
 
-### Basic Tool Discovery
+### Configuration Parameters
 
-```rust
-// Connect to an MCP server
-// Tools are auto-discovered at call start and added to the AI's tool list
-agent.add_mcp_server(
-    "https://mcp.example.com/tools",
-    json!({
-        "Authorization": "Bearer sk-your-key"
-    }),
-);
-```
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `gateway_url` | `string` | yes | URL of the MCP gateway server |
+| `auth_user` | `string` | no | Basic auth username for the gateway |
+| `auth_password` | `string` | no | Basic auth password for the gateway |
+| `services` | `array` | no | MCP services to expose; one tool per service/tool pair |
+| `tool_prefix` | `string` | no | Prefix for generated tool names (default `mcp_`) |
 
-### With Resource Fetching
+## How Tool Invocation Works
 
-MCP servers can expose resources (read-only data). With resources enabled, data is fetched into `global_data` at session start:
-
-```rust
-agent.add_mcp_server_with_resources(
-    "https://mcp.example.com/crm",
-    json!({"Authorization": "Bearer sk-crm-key"}),
-    true,  // fetch resources
-    json!({
-        "caller_id": "${caller_id_number}",
-        "tenant": "acme-corp"
-    }),
-);
-
-// Reference resource data in prompts
-agent.prompt_add_section("Customer Context", "", vec![]);
-agent.prompt_add_to_section(
-    "Customer Context",
-    Some("Customer name: ${global_data.customer_name}\nAccount status: ${global_data.account_status}"),
-    vec![],
-);
-```
-
-### Resource Variables
-
-Resource variables substitute caller information into URI templates:
-
-| Variable | Description |
-|----------|-------------|
-| `${caller_id_number}` | Caller's phone number |
-| `${caller_id_name}` | Caller's name |
-| `${call_id}` | Call identifier |
-| `${ai_session_id}` | AI session identifier |
-
-## Server Integration
-
-### Exposing Tools
-
-```rust
-agent.enable_mcp_server();
-```
-
-This adds an `/mcp` endpoint that speaks JSON-RPC 2.0. MCP clients discover tools via `tools/list` and invoke them via `tools/call`.
-
-### Connecting from Claude Desktop
-
-```json
-{
-    "mcpServers": {
-        "my-agent": {
-            "url": "http://user:pass@localhost:3000/agent/mcp"
-        }
-    }
-}
-```
+1. SignalWire POSTs to the agent's `/swaig` endpoint when the AI calls an MCP-backed tool
+2. The skill's handler forwards the request to the MCP gateway
+3. The gateway invokes the tool on the appropriate MCP server via `tools/call`
+4. The result is returned to the AI as a `FunctionResult`
 
 ## Combined Example
-
-An agent that both consumes and exposes MCP tools:
 
 ```rust
 use signalwire::agent::{AgentBase, AgentOptions};
@@ -110,29 +54,15 @@ use serde_json::json;
 fn main() {
     let mut agent = AgentBase::new(AgentOptions::new("mcp-agent"));
 
-    // Expose our tools via MCP
-    agent.enable_mcp_server();
+    // Bridge external MCP services through a gateway
+    agent.add_skill("mcp_gateway", json!({
+        "gateway_url": "http://localhost:8080",
+        "services": [{"name": "todo"}, {"name": "calendar"}]
+    }));
 
-    // Consume tools from an external MCP server
-    agent.add_mcp_server(
-        "https://mcp.example.com/tools",
-        json!({"Authorization": "Bearer sk-key"}),
-    );
-
-    // Consume resources from a CRM MCP server
-    agent.add_mcp_server_with_resources(
-        "https://mcp.example.com/crm",
-        json!({"Authorization": "Bearer sk-crm-key"}),
-        true,
-        json!({"caller_id": "${caller_id_number}"}),
-    );
-
-    // Agent configuration
     agent.prompt_add_section("Role", "You are a customer support agent.", vec![]);
-    agent.prompt_add_section("Customer Context",
-        "Customer: ${global_data.customer_name}", vec![]);
 
-    // Define a tool (available via both SWAIG and MCP)
+    // A native SWAIG tool can coexist with the MCP-backed tools
     agent.define_tool(
         "lookup_order",
         "Look up an order by ID",
@@ -146,19 +76,6 @@ fn main() {
 
     agent.run();
 }
-```
-
-## Via MCP Gateway Skill
-
-For simpler integration without direct MCP server management:
-
-```rust
-agent.add_skill("mcp_gateway", Some(json!({
-    "gateway_url": "http://localhost:8080",
-    "auth_user": "admin",
-    "auth_password": "changeme",
-    "services": [{"name": "todo"}, {"name": "calendar"}]
-})));
 ```
 
 See [mcp_gateway_reference.md](mcp_gateway_reference.md) for gateway setup details.

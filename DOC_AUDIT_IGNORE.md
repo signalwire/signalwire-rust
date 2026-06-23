@@ -155,3 +155,10 @@ deliberately not Rust port surface — they name the Python single-source-of-
 truth the example must stay in sync with.
 
 corpus_ids: porting-sdk emission_corpus.corpus_ids() — the Python corpus id-set the Rust examples/emit_corpus.rs dump must match (referenced in its contract docstring, not a Rust symbol)
+
+## README/sub-doc audit (real methods not in surface enumeration, std, or example-local)
+
+get_hints: real SkillBase trait method (src/skills/skill_base.rs:48) — trait methods aren't enumerated into port_surface; referenced in skills_system.md lifecycle diagram
+get_prompt_sections: real SkillBase trait method (src/skills/skill_base.rs:58) — trait method not in surface; referenced in skills_system.md lifecycle diagram
+repr: real method on relay Call/Message (src/relay/call.rs:121) — not enumerated; referenced in relay/docs/getting-started.md
+is_some: Rust std Option::is_some — appears in a third_party_skills.md example expression, not a port symbol

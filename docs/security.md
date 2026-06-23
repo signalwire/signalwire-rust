@@ -83,7 +83,7 @@ export SWML_PROXY_URL_BASE=https://agents.example.com
 ```
 
 ```rust
-agent.set_proxy_url("https://agents.example.com");
+agent.manual_set_proxy_url("https://agents.example.com");
 ```
 
 ## Session Management
