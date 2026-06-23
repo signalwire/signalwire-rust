@@ -323,6 +323,12 @@ SKIP_PATH_RE = re.compile(
 
 # Recognize public-item declarations.
 RE_PUB_FN = re.compile(r"^\s*pub(?:\s*\([^)]*\))?\s+(?:async\s+)?fn\s+(\w+)\s*[<\(]")
+# Trait-body method signature: inside a `pub trait X { ... }` block, methods are
+# public by virtue of the trait and are written WITHOUT `pub` (required vs.
+# default-bodied both look like `fn name(...)`). Capture them so a trait's
+# public API (e.g. SkillBase::get_hints / get_prompt_sections) lands in the
+# surface, not just the trait name.
+RE_TRAIT_FN = re.compile(r"^\s*(?:async\s+)?fn\s+(\w+)\s*[<\(]")
 RE_PUB_STRUCT = re.compile(r"^\s*pub(?:\s*\([^)]*\))?\s+struct\s+(\w+)\b")
 RE_PUB_ENUM = re.compile(r"^\s*pub(?:\s*\([^)]*\))?\s+enum\s+(\w+)\b")
 RE_PUB_TRAIT = re.compile(r"^\s*pub(?:\s*\([^)]*\))?\s+trait\s+(\w+)\b")
@@ -403,6 +409,7 @@ def _parse_file(path: Path) -> tuple[set[str], dict[str, set[str]], set[str]]:
     lines = text.splitlines()
     impl_stack: list[str] = []  # current impl block class names (for nested-mod safety)
     brace_depth_for_impl: list[int] = []
+    in_trait_for_impl: list[bool] = []  # parallel to impl_stack: True if the frame is a `pub trait` body
     cur_brace = 0
 
     in_test_mod = False
@@ -438,17 +445,29 @@ def _parse_file(path: Path) -> tuple[set[str], dict[str, set[str]], set[str]]:
                 bucket.add(m.group(1))
 
         # Detect impl blocks. impl X for Y → methods go to Y. impl X → methods go to X.
+        # Detect `pub trait X {` blocks too → their body methods go to X.
         m_for = RE_IMPL_TRAIT_FOR.match(line)
         m_impl = RE_IMPL_BLOCK.match(line) if not m_for else None
+        m_trait = RE_PUB_TRAIT.match(line) if not (m_for or m_impl) else None
         if m_for and "{" in line:
             impl_stack.append(m_for.group(1))
             brace_depth_for_impl.append(cur_brace)
+            in_trait_for_impl.append(False)
         elif m_impl and "{" in line:
             impl_stack.append(m_impl.group(1))
             brace_depth_for_impl.append(cur_brace)
+            in_trait_for_impl.append(False)
+        elif m_trait and "{" in line:
+            # A `pub trait X { ... }` body — attribute its methods to X.
+            impl_stack.append(m_trait.group(1))
+            brace_depth_for_impl.append(cur_brace)
+            in_trait_for_impl.append(True)
 
-        # Detect pub fn — assign to top-of-stack class if inside an impl.
-        m_fn = RE_PUB_FN.match(line)
+        # Detect methods. In an impl block, only `pub fn` is public surface.
+        # In a trait body, every `fn` is public API (no `pub` keyword on trait
+        # methods), so use the looser trait-method regex there.
+        inside_trait = bool(impl_stack) and in_trait_for_impl[-1]
+        m_fn = RE_PUB_FN.match(line) or (RE_TRAIT_FN.match(line) if inside_trait else None)
         if m_fn:
             fn_name = m_fn.group(1)
             # Map Rust idiomatic constructor / dunder-equivalent names
@@ -467,6 +486,7 @@ def _parse_file(path: Path) -> tuple[set[str], dict[str, set[str]], set[str]]:
         while impl_stack and cur_brace <= brace_depth_for_impl[-1]:
             impl_stack.pop()
             brace_depth_for_impl.pop()
+            in_trait_for_impl.pop()
 
     return free_fns, dict(methods), classes
 

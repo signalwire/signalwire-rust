@@ -1,6 +1,6 @@
 {
   "version": "1",
-  "generated_from": "signalwire-rust @ 16fcaf6c75e2afa092dd918c6226de8d9b487822",
+  "generated_from": "signalwire-rust @ 794742dc28efa66e38d41d9080d350560e889b6e",
   "modules": {
     "signalwire": {
       "classes": {
@@ -340,6 +340,30 @@
           "token_expiry_secs",
           "validate_token",
           "with_defaults"
+        ]
+      },
+      "functions": []
+    },
+    "signalwire.core.skill_base": {
+      "classes": {
+        "SkillBase": [
+          "cleanup",
+          "description",
+          "get_global_data",
+          "get_hints",
+          "get_instance_key",
+          "get_parameter_schema",
+          "get_prompt_sections",
+          "get_swaig_fields",
+          "get_tool_name",
+          "name",
+          "params",
+          "register_tools",
+          "required_env_vars",
+          "setup",
+          "supports_multiple_instances",
+          "validate_env_vars",
+          "version"
         ]
       },
       "functions": []
@@ -871,6 +895,9 @@
           "put",
           "token",
           "with_stub"
+        ],
+        "HttpTransport": [
+          "execute"
         ],
         "StubTransport": [
           "__init__",
@@ -1581,6 +1608,9 @@
           "handle_lambda",
           "serve_detect",
           "status_text"
+        ],
+        "RequestHandler": [
+          "handle_request"
         ],
         "RuntimeEnvironment": [
           "as_str"
