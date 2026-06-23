@@ -5,9 +5,12 @@
 Skills are modular, reusable capabilities that can be added to any agent with a single method call. Each skill registers one or more SWAIG tools, adds prompt sections, and optionally configures hints.
 
 ```rust
-agent.add_skill("datetime", None);
-agent.add_skill("math", None);
-agent.add_skill("joke", Some(json!({"api_key": "your-key"})));
+use serde_json::json;
+
+// add_skill(name, params) — params is always a Value; use json!({}) for defaults
+agent.add_skill("datetime", json!({}));
+agent.add_skill("math", json!({}));
+agent.add_skill("joke", json!({"api_key": "your-key"}));
 ```
 
 ## Architecture
@@ -38,18 +41,18 @@ Skills accept an optional `Value` config object:
 
 ```rust
 // datetime with custom timezone
-agent.add_skill("datetime", Some(json!({"timezone": "America/New_York"})));
+agent.add_skill("datetime", json!({"timezone": "America/New_York"}));
 
 // joke with API key
-agent.add_skill("joke", Some(json!({"api_key": env::var("API_NINJAS_KEY").unwrap()})));
+agent.add_skill("joke", json!({"api_key": env::var("API_NINJAS_KEY").unwrap()}));
 
 // mcp_gateway connecting to external MCP server
-agent.add_skill("mcp_gateway", Some(json!({
+agent.add_skill("mcp_gateway", json!({
     "gateway_url": "http://localhost:8080",
     "auth_user": "admin",
     "auth_password": "changeme",
     "services": [{"name": "todo"}]
-})));
+}));
 ```
 
 ## How Skills Work
@@ -57,24 +60,27 @@ agent.add_skill("mcp_gateway", Some(json!({
 When `add_skill()` is called:
 
 1. The `SkillRegistry` looks up the skill factory by name
-2. The factory creates a `SkillBase` instance with the provided config
-3. The `SkillManager` calls `apply()` on the skill instance
-4. `apply()` registers tools, adds prompt sections, and sets hints on the agent
+2. The factory creates a `SkillBase` instance with the provided config params
+3. The `SkillManager` calls `setup()` to initialise the skill
+4. The manager applies the skill to the agent: `register_tools()` registers SWAIG tools,
+   and the agent pulls in `get_prompt_sections()`, `get_hints()`, and `get_global_data()`
 
 ## Skill Lifecycle
+
+The `SkillBase` trait exposes (among others): `name`, `description`, `setup`,
+`register_tools`, `get_hints`, `get_prompt_sections`, `get_global_data`.
 
 ```
 agent.add_skill("datetime", config)
     │
     ▼
-SkillRegistry::get("datetime") → DateTimeSkill::new(config)
+SkillRegistry → DateTimeSkill (params)
     │
     ▼
-DateTimeSkill::apply(&mut agent)
-  ├── agent.define_tool("get_current_time", ...)
-  ├── agent.define_tool("get_current_date", ...)
-  ├── agent.prompt_add_section("Available Skills", ...)
-  └── agent.add_hints(vec!["current time", "what time is it"])
+skill.setup()                       // initialise, validate env vars
+skill.register_tools(&mut agent)    // agent.define_tool("get_current_time", ...) etc.
+skill.get_prompt_sections()         // merged into the agent prompt
+skill.get_hints()                   // merged into the agent's speech hints
 ```
 
 ## Multiple Skill Instances
@@ -82,17 +88,17 @@ DateTimeSkill::apply(&mut agent)
 You can add the same skill type multiple times with different configs:
 
 ```rust
-agent.add_skill("joke", Some(json!({
+agent.add_skill("joke", json!({
     "api_key": api_key,
     "tool_name": "get_regular_joke",
     "default_joke_type": "jokes"
-})));
+}));
 
-agent.add_skill("joke", Some(json!({
+agent.add_skill("joke", json!({
     "api_key": api_key,
     "tool_name": "get_dad_joke",
     "default_joke_type": "dadjokes"
-})));
+}));
 ```
 
 ## Skills vs Raw Tools

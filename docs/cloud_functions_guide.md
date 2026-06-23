@@ -4,11 +4,17 @@
 
 SignalWire AI agents can be deployed to serverless platforms. The agent generates SWML and handles SWAIG callbacks in the same way -- the only difference is how HTTP requests reach the agent.
 
-## AWS Lambda
+## The Serverless Adapter
 
-### Setup
+The SDK ships a synchronous serverless adapter in `signalwire::serverless`. There is no
+async runtime or `get_app()`: an agent satisfies the `RequestHandler` trait via its
+`handle_request(method, path, headers, body) -> (u16, HashMap<String, String>, String)`
+method, and `Adapter` translates platform event JSON to and from that call.
 
-Use a Lambda-compatible HTTP adapter. The agent's `get_app()` method returns a framework-agnostic app that can be wrapped.
+`Adapter::detect()` returns a `RuntimeEnvironment` (`Lambda`, `Gcf`, `Azure`, `Cgi`, or
+`Server`) based on environment variables, so a single binary can branch at startup.
+
+### Building the Agent
 
 ```rust
 use signalwire::agent::{AgentBase, AgentOptions};
@@ -16,16 +22,12 @@ use signalwire::swaig::FunctionResult;
 use serde_json::json;
 
 fn create_agent() -> AgentBase {
-    let mut agent = AgentBase::new(AgentOptions {
-        name: "lambda-agent".to_string(),
-        route: Some("/".to_string()),
-        ..AgentOptions::new("lambda-agent")
-    });
+    let mut agent = AgentBase::new(AgentOptions::new("lambda-agent").route("/"));
 
     agent.add_language("English", "en-US", "inworld.Mark");
     agent.prompt_add_section(
         "Role",
-        "You are a helpful AI assistant running in AWS Lambda.",
+        "You are a helpful AI assistant running in a serverless function.",
         vec![],
     );
 
@@ -46,19 +48,18 @@ fn create_agent() -> AgentBase {
 }
 ```
 
-### Lambda Handler
+## AWS Lambda
+
+`Adapter::handle_lambda(&agent, &event)` parses an API Gateway event and returns an API
+Gateway response object:
 
 ```rust
-use lambda_http::{run, service_fn, Body, Error, Request, Response};
+use signalwire::serverless::Adapter;
+use serde_json::Value;
 
-#[tokio::main]
-async fn main() -> Result<(), Error> {
+fn lambda_entry(event: Value) -> Value {
     let agent = create_agent();
-    let app = agent.get_app();
-    run(service_fn(|req: Request| async {
-        // Route to the agent app
-        app.handle(req).await
-    })).await
+    Adapter::handle_lambda(&agent, &event)
 }
 ```
 
@@ -71,39 +72,30 @@ SWML_BASIC_AUTH_USER=myuser
 SWML_BASIC_AUTH_PASSWORD=mypassword
 ```
 
-## Google Cloud Functions
+## Azure Functions
+
+`Adapter::handle_azure(&agent, &request)` does the same for the Azure request shape:
 
 ```rust
-use signalwire::agent::{AgentBase, AgentOptions};
+use signalwire::serverless::Adapter;
+use serde_json::Value;
 
-fn create_agent() -> AgentBase {
-    let mut agent = AgentBase::new(AgentOptions::new("gcf-agent"));
-    agent.prompt_add_section("Role", "You are a helpful assistant.", vec![]);
-    agent
-}
-
-// Export the handler for Cloud Functions
-pub fn handler(req: HttpRequest) -> HttpResponse {
+fn azure_entry(request: Value) -> Value {
     let agent = create_agent();
-    agent.handle_request(req)
+    Adapter::handle_azure(&agent, &request)
 }
 ```
 
-## Azure Functions
+## Google Cloud Functions / CGI
+
+For environments without a dedicated adapter method, call `handle_request` directly with
+the method, path, headers, and body extracted from the incoming request, then build the
+platform response from the returned `(status, headers, body)` tuple:
 
 ```rust
-use signalwire::agent::{AgentBase, AgentOptions};
-
-fn create_agent() -> AgentBase {
-    let mut agent = AgentBase::new(AgentOptions::new("azure-agent"));
-    agent.prompt_add_section("Role", "You are a helpful assistant.", vec![]);
-    agent
-}
-
-pub async fn handler(req: HttpRequest) -> HttpResponse {
-    let agent = create_agent();
-    agent.handle_request(req)
-}
+let agent = create_agent();
+let (status, headers, body) =
+    agent.handle_request("POST", "/", &request_headers, &request_body);
 ```
 
 ## Deployment Considerations

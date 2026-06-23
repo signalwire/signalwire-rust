@@ -21,7 +21,7 @@ Caller
 The simplest way to connect to MCP servers:
 
 ```rust
-agent.add_skill("mcp_gateway", Some(json!({
+agent.add_skill("mcp_gateway", json!({
     "gateway_url": "http://localhost:8080",
     "auth_user": "admin",
     "auth_password": "changeme",
@@ -29,7 +29,7 @@ agent.add_skill("mcp_gateway", Some(json!({
         {"name": "todo"},
         {"name": "calendar"}
     ]
-})));
+}));
 ```
 
 ### Configuration Parameters
@@ -43,48 +43,18 @@ agent.add_skill("mcp_gateway", Some(json!({
 
 ### Service Configuration
 
-Each service entry specifies which MCP server to bridge:
+Each service entry names an MCP service to bridge; when listed, the skill registers one
+tool per service/tool pair. A service entry can carry a `tools` list:
 
 ```json
 {
     "name": "todo",
-    "description": "Task management tools",
-    "tool_filter": ["create_task", "list_tasks"]
+    "tools": ["create_task", "list_tasks"]
 }
 ```
 
-## Direct MCP Integration
-
-For more control, use the MCP client API directly:
-
-```rust
-// Add an MCP server as a tool source
-agent.add_mcp_server(
-    "https://mcp.example.com/tools",
-    json!({"Authorization": "Bearer sk-key"}),
-);
-
-// Add an MCP server with resource fetching
-agent.add_mcp_server_with_resources(
-    "https://mcp.example.com/crm",
-    json!({"Authorization": "Bearer sk-key"}),
-    true,  // fetch resources into global_data
-    json!({
-        "caller_id": "${caller_id_number}",
-        "tenant": "acme-corp"
-    }),
-);
-```
-
-## MCP Server Mode
-
-Expose agent tools as MCP endpoints for external clients:
-
-```rust
-agent.enable_mcp_server();
-```
-
-This adds an `/mcp` endpoint that speaks JSON-RPC 2.0. External MCP clients (Claude Desktop, other agents) can connect and discover tools.
+When `services` is empty or omitted, the skill instead registers a single generic
+`mcp_call` tool that takes `service`, `tool`, and `arguments`.
 
 ## Running the Gateway
 
@@ -136,12 +106,3 @@ When the AI calls a tool:
 2. The agent forwards the call to the MCP gateway
 3. The gateway invokes the tool on the appropriate MCP server via `tools/call`
 4. The result is returned as a `FunctionResult`
-
-### Resource Fetching
-
-With `resources=True`, the gateway fetches resource data at session start:
-
-1. Query the MCP server for `resources/list`
-2. Substitute `resource_vars` into URI templates
-3. Fetch each resource via `resources/read`
-4. Store results in `global_data`

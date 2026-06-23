@@ -8,36 +8,45 @@ Third-party skills extend the built-in skill system with custom capabilities. A 
 
 ### 1. Implement `SkillBase`
 
+A skill stores its config in `SkillParams`, registers tools in `register_tools`, and
+exposes prompt sections and hints via `get_prompt_sections` / `get_hints`. There is no
+`apply()` method — the manager calls `setup()` then `register_tools(&mut agent)`.
+
 ```rust
-use signalwire::skills::SkillBase;
 use signalwire::agent::AgentBase;
+use signalwire::skills::skill_base::{SkillBase, SkillParams};
 use signalwire::swaig::FunctionResult;
-use serde_json::{json, Value};
+use serde_json::{json, Map, Value};
 
 pub struct WeatherSkill {
-    api_key: String,
+    sp: SkillParams,
 }
 
 impl WeatherSkill {
-    pub fn new(config: Option<Value>) -> Self {
-        let api_key = config
-            .as_ref()
-            .and_then(|c| c.get("api_key"))
-            .and_then(|v| v.as_str())
-            .expect("weather skill requires api_key")
-            .to_string();
-        WeatherSkill { api_key }
+    pub fn new(params: Map<String, Value>) -> Self {
+        WeatherSkill { sp: SkillParams::new(params) }
     }
 }
 
 impl SkillBase for WeatherSkill {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "weather"
     }
 
-    fn apply(&self, agent: &mut AgentBase) {
-        let api_key = self.api_key.clone();
+    fn description(&self) -> &'static str {
+        "Get current weather for a location"
+    }
 
+    fn params(&self) -> &Map<String, Value> {
+        &self.sp.params
+    }
+
+    // Return false to abort registration (e.g. missing required config)
+    fn setup(&mut self) -> bool {
+        self.sp.get_str("api_key").is_some()
+    }
+
+    fn register_tools(&self, agent: &mut AgentBase) {
         agent.define_tool(
             "get_weather",
             "Get current weather for a location",
@@ -58,33 +67,40 @@ impl SkillBase for WeatherSkill {
             }),
             false,
         );
+    }
 
-        agent.prompt_add_section(
-            "Weather Skill",
-            "You can check the weather using the get_weather tool.",
-            vec![],
-        );
+    fn get_prompt_sections(&self) -> Vec<Value> {
+        vec![json!({
+            "title": "Weather Skill",
+            "body": "You can check the weather using the get_weather tool.",
+        })]
+    }
 
-        agent.add_hints(vec!["weather", "temperature", "forecast"]);
+    fn get_hints(&self) -> Vec<String> {
+        vec!["weather".into(), "temperature".into(), "forecast".into()]
     }
 }
 ```
 
 ### 2. Register the Skill
 
+`SkillRegistry::register_skill(name, factory)` takes a factory of type
+`Box<dyn Fn(Map<String, Value>) -> Box<dyn SkillBase>>`:
+
 ```rust
 use signalwire::skills::SkillRegistry;
 
 // At application startup
-SkillRegistry::register("weather", |config| {
-    Box::new(WeatherSkill::new(config))
-});
+SkillRegistry::register_skill(
+    "weather",
+    Box::new(|params| Box::new(WeatherSkill::new(params))),
+);
 ```
 
 ### 3. Use the Skill
 
 ```rust
-agent.add_skill("weather", Some(json!({"api_key": "your-key"})));
+agent.add_skill("weather", json!({"api_key": "your-key"}));
 ```
 
 ## DataMap Skills
@@ -93,8 +109,9 @@ Skills can use DataMap for serverless execution:
 
 ```rust
 impl SkillBase for JokeSkill {
-    fn apply(&self, agent: &mut AgentBase) {
-        agent.define_datamap_tool(json!({
+    fn register_tools(&self, agent: &mut AgentBase) {
+        // Build the DataMap and register its serialised SWAIG function.
+        agent.register_swaig_function(json!({
             "function": self.tool_name,
             "description": "Tell a joke",
             "data_map": {
@@ -130,9 +147,10 @@ Package your skill as a crate and instruct users to register it at startup:
 ```rust
 // In the skill crate
 pub fn register() {
-    signalwire::skills::SkillRegistry::register("weather", |config| {
-        Box::new(WeatherSkill::new(config))
-    });
+    signalwire::skills::SkillRegistry::register_skill(
+        "weather",
+        Box::new(|params| Box::new(WeatherSkill::new(params))),
+    );
 }
 
 // In the user's main.rs
@@ -140,7 +158,7 @@ fn main() {
     my_weather_skill::register();
 
     let mut agent = AgentBase::new(AgentOptions::new("my-agent"));
-    agent.add_skill("weather", Some(json!({"api_key": "..."})));
+    agent.add_skill("weather", json!({"api_key": "..."}));
     agent.run();
 }
 ```

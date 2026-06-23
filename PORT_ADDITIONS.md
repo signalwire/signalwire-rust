@@ -1110,3 +1110,27 @@ signalwire.rest.namespaces.lookup.LookupResource.base_path: namespace_field_acce
 signalwire.rest.namespaces.fabric.FabricResource.new_put: Rust constructor variant that builds the PUT-update fabric resource (Python FabricResourcePUT); Python expresses the PATCH/PUT split as two classes, Rust as one struct with two constructors.
 signalwire.rest.util.join: rust-helper — pub(crate) path-segment join shared across REST namespaces; Python uses module-private equivalents.
 signalwire.rest.util.params_to_string_map: rust-helper — pub(crate) JSON-object-to-query-map helper shared across REST namespaces; Python uses module-private equivalents.
+
+### SkillBase trait accessors (Rust method for Python class/instance attribute)
+
+The Rust `SkillBase` trait exposes as accessor methods what Python's `SkillBase`
+exposes as class/instance attributes (`SKILL_NAME`/`SKILL_DESCRIPTION`/
+`SKILL_VERSION`/`self.params`/etc.). Same surface, different idiom — Rust has no
+class attributes, so a trait method is the faithful expression. (Now emitted by
+enumerate_surface.py, which captures trait-body methods.)
+
+signalwire.core.skill_base.SkillBase.name: Rust accessor for Python's SKILL_NAME class attribute.
+signalwire.core.skill_base.SkillBase.description: Rust accessor for Python's SKILL_DESCRIPTION class attribute.
+signalwire.core.skill_base.SkillBase.version: Rust accessor for Python's SKILL_VERSION class attribute.
+signalwire.core.skill_base.SkillBase.params: Rust accessor for Python's self.params instance attribute.
+signalwire.core.skill_base.SkillBase.required_env_vars: Rust accessor for the skill's required env-var list; Python exposes the equivalent via REQUIRED_ENV_VARS / validate_env_vars.
+signalwire.core.skill_base.SkillBase.supports_multiple_instances: Rust accessor for Python's SUPPORTS_MULTIPLE_INSTANCES class attribute.
+signalwire.core.skill_base.SkillBase.get_swaig_fields: Rust accessor for Python's self.swaig_fields instance attribute (extracted from params).
+signalwire.core.skill_base.SkillBase.get_tool_name: Rust accessor that builds the instance-scoped tool name; Python computes the equivalent inline in define_tool.
+
+### Rust-internal abstraction traits (no public Python counterpart)
+
+signalwire.rest.http_client.HttpTransport: Rust-only trait abstracting the blocking HTTP transport (ureq) so tests can inject a recording transport; Python calls requests directly.
+signalwire.rest.http_client.HttpTransport.execute: method of the Rust-only HttpTransport trait.
+signalwire.serverless.adapter.RequestHandler: Rust-only trait abstracting a serverless request handler; Python uses duck-typed callables.
+signalwire.serverless.adapter.RequestHandler.handle_request: method of the Rust-only RequestHandler trait.

@@ -31,7 +31,7 @@ _Build AI voice agents, control live calls over WebSocket, and manage every Sign
 |-----------|-------------|------------|
 | **AI Agents** | Build voice agents that handle calls autonomously -- the platform runs the AI pipeline, your code defines the persona, tools, and call flow | [Agent Guide](#ai-agents) |
 | **RELAY Client** | Control live calls and SMS/MMS in real time over WebSocket -- answer, play, record, collect DTMF, conference, transfer, and more | [RELAY docs](relay/README.md) |
-| **REST Client** | Manage SignalWire resources over HTTP -- phone numbers, SIP endpoints, Fabric AI agents, video rooms, messaging, and 18+ API namespaces | [REST docs](rest/README.md) |
+| **REST Client** | Manage SignalWire resources over HTTP -- phone numbers, SIP endpoints, Fabric AI agents, video rooms, messaging, and 21 API namespaces | [REST docs](rest/README.md) |
 
 ```bash
 cargo add signalwire-sdk
@@ -46,37 +46,49 @@ cargo add signalwire-sdk
 Each agent is a self-contained microservice that generates [SWML](docs/swml_service_guide.md) (SignalWire Markup Language) and handles [SWAIG](docs/swaig_reference.md) (SignalWire AI Gateway) tool calls. The SignalWire platform runs the entire AI pipeline (STT, LLM, TTS) -- your agent just defines the behavior.
 
 ```rust
-use signalwire::agent::AgentBase;
+use serde_json::json;
+use signalwire::agent::{AgentBase, AgentOptions};
 use signalwire::swaig::FunctionResult;
-use std::collections::HashMap;
 
 fn main() {
-    let agent = AgentBase::builder("my-agent", "/agent")
-        .add_language("English", "en-US", "rime.spore")
-        .prompt_add_section("Role", "You are a helpful assistant.")
-        .define_tool("get_time", "Get the current time", |_args, _raw| {
+    let mut agent = AgentBase::new(AgentOptions::new("my-agent"));
+
+    agent.add_language("English", "en-US", "rime.spore");
+    agent.prompt_add_section("Role", "You are a helpful assistant.", vec![]);
+
+    agent.define_tool(
+        "get_time",
+        "Get the current time",
+        json!({}),
+        Box::new(|_args, _raw| {
             let now = chrono::Local::now().format("%H:%M:%S");
-            FunctionResult::new(format!("The time is {now}"))
-        })
-        .build();
+            FunctionResult::with_response(&format!("The time is {now}"))
+        }),
+        false,
+    );
 
     agent.run();
 }
 ```
 
-Test locally without running a server:
+Test locally without binding a port -- introspect an example by name, or
+point at a running SWAIG endpoint:
 
 ```bash
-cargo run --bin swaig-test -- --list-tools examples/simple_agent.rs
-cargo run --bin swaig-test -- --dump-swml examples/simple_agent.rs
-cargo run --bin swaig-test -- --exec get_time examples/simple_agent.rs
+# Introspect a SWMLService example in-process (by example name)
+cargo run --bin swaig-test -- --example swmlservice_swaig_standalone --list-tools
+cargo run --bin swaig-test -- --example swmlservice_swaig_standalone --dump-swml
+
+# Exercise a live SWAIG endpoint over HTTP
+cargo run --bin swaig-test -- --url http://user:pass@localhost:3000/ --list-tools
+cargo run --bin swaig-test -- --url http://user:pass@localhost:3000/ --exec get_time
 ```
 
 ### Agent Features
 
 - **Prompt Object Model (POM)** -- structured prompt composition via `prompt_add_section()`
 - **SWAIG tools** -- define functions with `define_tool()` that the AI calls mid-conversation, with native access to the call's media stack
-- **Skills system** -- add capabilities with one-liners: `agent.add_skill("datetime", None)`
+- **Skills system** -- add capabilities with one-liners: `agent.add_skill("datetime", json!({}))`
 - **Contexts and steps** -- structured multi-step workflows with navigation control
 - **DataMap tools** -- tools that execute on SignalWire's servers, calling REST APIs without your own webhook
 - **Dynamic configuration** -- per-request agent customization for multi-tenant deployments
@@ -110,41 +122,42 @@ See [examples/README.md](examples/README.md) for the full list organized by cate
 
 ## RELAY Client
 
-Real-time call control and messaging over WebSocket. The RELAY client connects to SignalWire via the Blade protocol and gives you async, imperative control over live phone calls and SMS/MMS.
+Real-time call control and messaging over WebSocket. The RELAY client connects to SignalWire via the Blade protocol and gives you imperative control over live phone calls and SMS/MMS. The client runs its event loop on a background thread, so the handler closures are synchronous.
 
 ```rust
-use signalwire::relay::RelayClient;
-use std::env;
+use signalwire::relay::Client;
+use std::sync::Arc;
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let client = RelayClient::builder()
-        .project(&env::var("SIGNALWIRE_PROJECT_ID")?)
-        .token(&env::var("SIGNALWIRE_API_TOKEN")?)
-        .space(&env::var("SIGNALWIRE_SPACE")?)
-        .contexts(vec!["default".into()])
-        .build()?;
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Reads SIGNALWIRE_PROJECT_ID / SIGNALWIRE_API_TOKEN / SIGNALWIRE_SPACE.
+    let client = Arc::new(Client::from_env()?);
 
-    client.on_call(|call| async move {
-        call.answer().await?;
-        let action = call.play(vec![serde_json::json!({
-            "type": "tts",
-            "text": "Welcome to SignalWire!"
-        })]).await?;
-        action.wait().await?;
-        call.hangup().await?;
-        Ok(())
+    client.on_call(|call, _event| {
+        let _ = call.answer();
+        let action = call.play(serde_json::json!({
+            "play": [{
+                "type": "tts",
+                "params": {"text": "Welcome to SignalWire!"}
+            }]
+        }));
+        let _ = action.is_done();
+        let _ = call.hangup();
     });
 
     println!("Waiting for inbound calls ...");
-    client.run().await?;
-    Ok(())
+    client.connect()?;
+    client.receive(&["default".to_string()]);
+
+    // Block while the relay loop runs in the background.
+    loop {
+        std::thread::sleep(std::time::Duration::from_secs(60));
+    }
 }
 ```
 
-- 57+ calling methods (play, record, collect, detect, tap, stream, AI, conferencing, and more)
+- 50+ calling methods (play, record, collect, detect, tap, stream, AI, conferencing, and more)
 - SMS/MMS messaging with delivery tracking
-- Action objects with `wait()`, `stop()`, `pause()`, `resume()`
+- `Action` objects with `is_done()`, `state()`, `result()`, `on_completed()`, `stop()`
 - Auto-reconnect with exponential backoff
 
 See the **[RELAY documentation](relay/README.md)** for the full guide, API reference, and examples.
@@ -153,38 +166,37 @@ See the **[RELAY documentation](relay/README.md)** for the full guide, API refer
 
 ## REST Client
 
-Async REST client for managing SignalWire resources and controlling calls over HTTP. No WebSocket required.
+Blocking (synchronous) REST client for managing SignalWire resources and controlling calls over HTTP. No WebSocket and no async runtime required.
 
 ```rust
+use serde_json::json;
 use signalwire::rest::RestClient;
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let client = RestClient::from_env()?;
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Reads SIGNALWIRE_PROJECT_ID / SIGNALWIRE_API_TOKEN / SIGNALWIRE_SPACE.
+    let client = RestClient::from_env().expect("missing SIGNALWIRE_* env vars");
 
-    client.fabric().ai_agents().create(serde_json::json!({
+    client.fabric().ai_agents().create(&json!({
         "name": "Support Bot",
         "prompt": {"text": "You are helpful."}
-    })).await?;
+    }))?;
 
-    client.calling().dial(serde_json::json!({
+    client.calling().dial(json!({
         "from": "+15559876543",
         "to": "+15551234567",
         "url": "https://example.com/call-handler"
-    })).await?;
+    }))?;
 
-    let results = client.phone_numbers().search(
-        &[("area_code", "512")]
-    ).await?;
+    let results = client.phone_numbers().search(&json!({ "area_code": "512" }))?;
     println!("{results:#?}");
 
     Ok(())
 }
 ```
 
-- 21 namespaced API surfaces: Fabric (13 resource types), Calling (37 commands), Video, Datasphere, Compat (Twilio-compatible), Phone Numbers, SIP, Queues, Recordings, and more
-- Connection pooling via `reqwest::Client`
-- `serde_json::Value` returns -- raw JSON, no wrapper objects
+- 21 namespaced API surfaces: Fabric, Calling, Video, Datasphere, Compat (Twilio-compatible), Phone Numbers, SIP, Queues, Recordings, and more
+- Backed by `ureq` (blocking HTTP) with a reusable `ureq::Agent` for connection pooling
+- `serde_json::Value` returns -- raw JSON, no wrapper objects; errors surface as `SignalWireRestError`
 
 See the **[REST documentation](rest/README.md)** for the full guide, API reference, and examples.
 
@@ -207,7 +219,7 @@ Or with `cargo`:
 cargo add signalwire-sdk
 ```
 
-Requires Rust edition 2024 (rustc 1.85+).
+Requires Rust edition 2024 with a minimum supported `rustc` of 1.88 (let-chains, enforced via `rust-version` in `Cargo.toml`).
 
 ## Documentation
 

@@ -65,33 +65,44 @@ result.add_action(json!({
 
 ### Action Helpers
 
-The SDK provides convenience methods for common actions:
+The SDK provides convenience methods for common actions. The action methods take
+`&mut self` and return `&mut Self`, so build the result, then chain on the binding:
 
 ```rust
-// Transfer the call
-FunctionResult::with_response("Connecting you.")
-    .connect("+15551234567");
+// Transfer the call: connect(destination, final, from)
+let mut result = FunctionResult::with_response("Connecting you.");
+result.connect("+15551234567", true, "+15550000000");
 
-// Send SMS
-FunctionResult::with_response("Sending confirmation.")
-    .send_sms("+15559876543", "+15551234567", "Your order is confirmed.");
-
-// Start recording
-FunctionResult::with_response("Recording started.")
-    .record_call();
+// Send SMS: send_sms(to, from, body, media, tags, region) -> Result
+let mut result = FunctionResult::with_response("Sending confirmation.");
+result
+    .send_sms(
+        "+15559876543",          // to
+        "+15551234567",          // from
+        "Your order is confirmed.", // body
+        vec![],                  // media
+        vec![],                  // tags
+        "",                      // region
+    )
+    .unwrap();
 
 // Update session data
-FunctionResult::with_response("Preferences saved.")
-    .update_global_data(json!({"preference": "premium"}));
+let mut result = FunctionResult::with_response("Preferences saved.");
+result.update_global_data(json!({"preference": "premium"}));
 
-// Enable/disable tools mid-call
-FunctionResult::with_response("Escalating.")
-    .toggle_functions(vec![], vec!["escalate"]);
+// Enable/disable tools mid-call: toggle_functions takes a Vec<Value> of toggles
+let mut result = FunctionResult::with_response("Escalating.");
+result.toggle_functions(vec![json!({"function": "escalate", "active": true})]);
 
 // Hang up
-FunctionResult::with_response("Goodbye.")
-    .hangup();
+let mut result = FunctionResult::with_response("Goodbye.");
+result.hangup();
 ```
+
+> `record_call` exists but takes the full set of recording parameters
+> (`control_id`, `stereo`, `format`, `direction`, `terminators`, `beep`,
+> `input_sensitivity`, `initial_timeout`, `end_silence_timeout`, `max_length`,
+> `status_url`) and returns a `Result`. See `src/swaig/function_result.rs`.
 
 ### Post-Processing
 
@@ -102,7 +113,7 @@ let mut result = FunctionResult::with_response(
     "I will transfer you to support. Is there anything else?"
 );
 result.set_post_process(true);
-result.connect("+15551234567");
+result.connect("+15551234567", true, "+15550000000");
 ```
 
 ## post_data Lifecycle
@@ -161,5 +172,5 @@ Built-in platform functions that do not require a webhook:
 - `cdata_storage` -- call data storage
 
 ```rust
-agent.add_native_functions(vec!["transfer", "check_voicemail"]);
+agent.set_native_functions(vec!["transfer", "check_voicemail"]);
 ```

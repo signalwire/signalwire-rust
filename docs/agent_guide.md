@@ -110,25 +110,28 @@ agent.define_tool(
 
 ## Dynamic Configuration
 
-For multi-tenant or per-request customisation, register a dynamic config callback:
+For multi-tenant or per-request customisation, register a dynamic config callback. The
+callback receives `(&Map<String, Value>, &Option<Value>, &HashMap<String, String>, &mut AgentBase)`
+— query params, request body, headers, and the agent clone to mutate for this request:
 
 ```rust
-use std::sync::Arc;
-
-agent.set_dynamic_config_callback(Arc::new(Box::new(
-    |query_params, body_params, headers, agent| {
-        let tier = query_params.get("tier").map(|s| s.as_str()).unwrap_or("standard");
+agent.set_dynamic_config_callback(Box::new(
+    |query_params, _body, _headers, agent| {
+        let tier = query_params
+            .get("tier")
+            .and_then(|v| v.as_str())
+            .unwrap_or("standard");
 
         if tier == "premium" {
             agent.add_language("English", "en-US", "inworld.Sarah");
-            agent.set_params_value("end_of_speech_timeout", json!(300));
+            agent.set_param("end_of_speech_timeout", json!(300));
         } else {
             agent.add_language("English", "en-US", "inworld.Mark");
         }
 
         agent.prompt_add_section("Role", "You are a helpful assistant.", vec![]);
     },
-)));
+));
 ```
 
 ## Languages and Voices
@@ -176,9 +179,10 @@ agent.set_global_data(json!({
 ```rust
 agent.set_post_prompt("Summarise the call: customer name, issue, resolution.");
 
-agent.set_summary_callback(Arc::new(Box::new(|summary, raw_data, headers| {
+// `on_summary` takes `Box<dyn Fn(&str, &Value, &HashMap<String, String>)>`.
+agent.on_summary(Box::new(|summary, _raw_data, _headers| {
     println!("Call summary: {summary}");
-})));
+}));
 ```
 
 ## Call Flow Verbs
@@ -194,30 +198,33 @@ agent.add_post_ai_verb("hangup", json!({}));
 ## Running the Agent
 
 ```rust
-// Single agent on port 3000
+// Single agent — serves on the host/port from AgentOptions (default 127.0.0.1:3000)
 agent.run();
-
-// Or get the underlying app for custom hosting
-let app = agent.get_app();
 ```
+
+To host multiple agents in one process, register them on an `AgentServer` (see below).
 
 ## Multi-Agent Server
 
-```rust
-use signalwire::server::AgentServer;
+`AgentServer::new` takes `Option<&str>` host and `Option<u16>` port. Register each agent
+with `register(agent, route)`; `run` also takes optional host/port overrides:
 
-let mut server = AgentServer::new("0.0.0.0", 3000);
-server.add_agent(sales_agent);
-server.add_agent(support_agent);
-server.run();
+```rust
+use signalwire::AgentServer;
+
+let mut server = AgentServer::new(Some("0.0.0.0"), Some(3000));
+server.register(sales_agent, Some("/sales")).unwrap();
+server.register(support_agent, Some("/support")).unwrap();
+server.run(None, None);
 ```
 
 ## CLI Testing
 
-Test locally without a running server:
+Test locally with the `swaig-test` binary. Introspect a registered example by name
+(`--example`) or point at a running endpoint (`--url`):
 
 ```bash
-cargo run --bin swaig-test -- --list-tools examples/simple_agent.rs
-cargo run --bin swaig-test -- --dump-swml examples/simple_agent.rs
-cargo run --bin swaig-test -- --exec get_time examples/simple_agent.rs
+cargo run --bin swaig-test -- --example simple_agent --list-tools
+cargo run --bin swaig-test -- --example simple_agent --dump-swml
+cargo run --bin swaig-test -- --url http://localhost:3000 --exec get_time --param city=Reno
 ```

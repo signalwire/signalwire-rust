@@ -28,7 +28,7 @@ Define functions the AI can call mid-conversation. Handlers receive arguments an
 
 ### Skills System
 
-One-liner integration of reusable capabilities: `agent.add_skill("datetime", None)`. Built-in skills include datetime, math, joke, and mcp_gateway.
+One-liner integration of reusable capabilities: `agent.add_skill("datetime", json!({}))`. The SDK ships 18 built-in skills, including datetime, math, joke, weather_api, web_search, wikipedia_search, and mcp_gateway.
 
 ### Contexts and Steps
 
@@ -86,7 +86,7 @@ Test agents locally with `swaig-test`: list tools, dump SWML, execute functions.
 | Add a tool | JSON function definition + webhook server | `define_tool()` with closure |
 | Multi-step flow | Nested JSON contexts | `define_contexts()` builder |
 | DataMap tool | Raw JSON data_map | `DataMap::new().webhook().output()` |
-| Multi-agent | Manual routing | `AgentServer::add_agent()` |
+| Multi-agent | Manual routing | `AgentServer::register()` |
 | Auth | Manual header checks | Automatic basic auth |
 | Testing | curl + manual JSON | `swaig-test` CLI |
 
@@ -96,7 +96,7 @@ Test agents locally with `swaig-test`: list tools, dump SWML, execute functions.
 - SMS/MMS messaging with delivery tracking
 - Action objects with `wait()`, `stop()`, `pause()`, `resume()`
 - Auto-reconnect with exponential backoff
-- Async/await with tokio
+- Synchronous/blocking API (no `async`/`await` required by callers)
 
 ## REST Features
 

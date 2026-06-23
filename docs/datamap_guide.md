@@ -12,55 +12,77 @@ DataMap tools execute entirely on SignalWire's servers. Instead of a webhook URL
 
 ## DataMap Builder
 
-The `DataMap` struct provides a fluent builder API:
+`DataMap::new(name)` returns a builder you configure with chainable `&mut self`
+methods, then serialise with `to_swaig_function()` and register on the agent via
+`register_swaig_function`:
 
 ```rust
 use signalwire::datamap::DataMap;
 use signalwire::swaig::FunctionResult;
+use serde_json::json;
 
-let tool = DataMap::new("get_weather")
-    .description("Get current weather for a city")
-    .parameter("city", "string", "City name", true)
+let mut weather = DataMap::new("get_weather");
+weather
+    .description("Get the current weather for a city")
+    // parameter(name, type, description, required, enum_values)
+    .parameter("city", "string", "City name", true, vec![])
+    // webhook(method, url, headers, form_param, input_args_as_params, require_args)
     .webhook(
         "GET",
         "https://api.weatherapi.com/v1/current.json",
-        json!({"key": "YOUR_API_KEY", "q": "${args.city}"}),
-        json!({"Accept": "application/json"}),
+        json!({}),
+        "",
+        false,
+        vec![],
     )
-    .output(FunctionResult::with_response(
-        "The weather in ${args.city} is ${response.current.condition.text}, \
-         temperature ${response.current.temp_f}F."
-    ))
-    .build();
+    // params/body apply to the most recently added webhook
+    .params(json!({"key": "YOUR_API_KEY", "q": "${args.city}"}))
+    // output() takes a Value — use FunctionResult::with_response(...).to_value()
+    .output(
+        FunctionResult::with_response(
+            "The weather in ${args.city} is ${response.current.condition.text}, \
+             temperature ${response.current.temp_f}F.",
+        )
+        .to_value(),
+    );
 
-agent.define_datamap_tool(tool);
+agent.register_swaig_function(weather.to_swaig_function());
 ```
 
 ## Expressions
 
-Expressions match a string against a regex pattern and return different responses:
+Expressions match a string against a regex pattern and return different responses.
+`expression(test_value, pattern, output, nomatch_output)` takes `Value` outputs and an
+optional `Option<Value>` for the no-match case:
 
 ```rust
-let tool = DataMap::new("command_processor")
+let mut commands = DataMap::new("command_processor");
+commands
     .description("Process user commands")
-    .parameter("command", "string", "User command", true)
+    .parameter("command", "string", "User command", true, vec![])
     .expression(
         "${args.command}",
         r"^start",
-        FunctionResult::with_response("Starting process."),
+        FunctionResult::with_response("Starting process.").to_value(),
+        None,
     )
     .expression(
         "${args.command}",
         r"^stop",
-        FunctionResult::with_response("Stopping process."),
+        FunctionResult::with_response("Stopping process.").to_value(),
+        None,
     )
-    .expression_with_nomatch(
+    .expression(
         "${args.command}",
         r"^status",
-        FunctionResult::with_response("Checking status."),
-        FunctionResult::with_response("Unknown command. Try start, stop, or status."),
-    )
-    .build();
+        FunctionResult::with_response("Checking status.").to_value(),
+        Some(
+            FunctionResult::with_response("Unknown command. Try start, stop, or status.")
+                .to_value(),
+        ),
+    );
+
+agent.register_swaig_function(commands.to_swaig_function());
 ```
 
 ## Webhook Configuration
@@ -68,102 +90,135 @@ let tool = DataMap::new("command_processor")
 ### Basic Webhook
 
 ```rust
-DataMap::new("search")
-    .webhook("GET", "https://api.example.com/search", json!({"q": "${args.query}"}), json!({}))
-    .output(FunctionResult::with_response("Results: ${response.data}"))
+let mut search = DataMap::new("search");
+search
+    .webhook("GET", "https://api.example.com/search", json!({}), "", false, vec![])
+    .params(json!({"q": "${args.query}"}))
+    .output(FunctionResult::with_response("Results: ${response.data}").to_value());
 ```
 
 ### With Auth Headers
 
+Headers are the third argument to `webhook`; per-request body goes through `body`:
+
 ```rust
-DataMap::new("knowledge_search")
+let mut search = DataMap::new("knowledge_search");
+search
     .webhook(
         "POST",
         "https://api.example.com/search",
-        json!({"query": "${args.query}"}),
         json!({
             "Authorization": "Bearer ${env.API_KEY}",
             "Content-Type": "application/json"
         }),
+        "",
+        false,
+        vec![],
     )
-    .output(FunctionResult::with_response("Found: ${response.results[0].text}"))
+    .body(json!({"query": "${args.query}"}))
+    .output(FunctionResult::with_response("Found: ${response.results[0].text}").to_value());
 ```
 
 ### Array Processing with foreach
 
+`for_each` takes a JSON config object that is attached to the last webhook:
+
 ```rust
-DataMap::new("list_items")
-    .webhook("GET", "https://api.example.com/items", json!({}), json!({}))
-    .foreach("response.items", "item", FunctionResult::with_response(
-        "Item: ${item.name} - ${item.description}"
-    ))
+let mut list = DataMap::new("list_items");
+list
+    .webhook("GET", "https://api.example.com/items", json!({}), "", false, vec![])
+    .for_each(json!({
+        "input_key": "items",
+        "output_key": "formatted",
+        "append": "Item: ${this.name} - ${this.description}\n"
+    }))
+    .output(FunctionResult::with_response("${formatted}").to_value());
 ```
 
 ## Advanced Features
 
 ### Post-Webhook Expressions
 
-Apply pattern matching on the API response:
+`webhook_expressions` sets expression rules on the most recently added webhook:
 
 ```rust
-DataMap::new("api_tool")
-    .webhook("POST", "https://api.example.com/action", json!({}), json!({}))
-    .webhook_expression(
-        "${response.status}",
-        "^success$",
-        FunctionResult::with_response("Operation completed."),
-    )
-    .webhook_expression(
-        "${response.status}",
-        "^error$",
-        FunctionResult::with_response("Error: ${response.message}"),
-    )
+let mut tool = DataMap::new("api_tool");
+tool
+    .webhook("POST", "https://api.example.com/action", json!({}), "", false, vec![])
+    .webhook_expressions(vec![
+        json!({
+            "string": "${response.status}",
+            "pattern": "^success$",
+            "output": {"response": "Operation completed."}
+        }),
+        json!({
+            "string": "${response.status}",
+            "pattern": "^error$",
+            "output": {"response": "Error: ${response.message}"}
+        }),
+    ]);
 ```
 
 ### Form Parameters
 
+The `form_param` argument (4th positional) names a form field to wrap the body in:
+
 ```rust
-DataMap::new("form_tool")
-    .webhook_with_form(
-        "POST",
-        "https://api.example.com/submit",
-        json!({}),
-        json!({}),
-        "payload",  // form_param name
-    )
+let mut form_tool = DataMap::new("form_tool");
+form_tool.webhook(
+    "POST",
+    "https://api.example.com/submit",
+    json!({}),
+    "payload", // form_param name
+    false,
+    vec![],
+);
 ```
 
 ### Input Args as Params
 
-Merge all function arguments into the request parameters:
+Set `input_args_as_params` (5th positional) to merge all function arguments into the
+request parameters; `require_args` (6th positional) lists arguments that must be present:
 
 ```rust
-DataMap::new("passthrough")
-    .webhook_with_options(
-        "POST",
-        "https://api.example.com/process",
-        json!({}),
-        json!({}),
-        true,   // input_args_as_params
-        None,   // form_param
-        None,   // require_args
-    )
+let mut passthrough = DataMap::new("passthrough");
+passthrough.webhook(
+    "POST",
+    "https://api.example.com/process",
+    json!({}),
+    "",
+    true,            // input_args_as_params
+    vec!["query"],   // require_args
+);
 ```
 
-## Raw DataMap JSON
+### Fallback and Error Keys
 
-You can also provide raw data_map JSON for full control:
+`fallback_output` sets a global output, `error_keys`/`global_error_keys` mark response
+keys that signal an error:
 
 ```rust
-agent.define_datamap_tool(json!({
-    "function": "get_joke",
-    "description": "Tell a joke",
-    "data_map": {
-        "webhooks": [{
-            "url": "https://api.api-ninjas.com/v1/${args.type}",
-            "headers": {"X-Api-Key": "YOUR_KEY"},
-            "output": {"response": "Tell the user: ${array[0].joke}"}
-        }]
-    }
-}));
+let mut tool = DataMap::new("resilient_tool");
+tool
+    .webhook("GET", "https://api.example.com/x", json!({}), "", false, vec![])
+    .error_keys(vec!["error", "errorMessage"])
+    .fallback_output(FunctionResult::with_response("The service is unavailable.").to_value());
+```
+
+## Static Helpers
+
+For the common single-webhook or expression-only case, the `DataMap` associated
+functions build the full SWAIG function definition in one call:
+
+```rust
+let func = DataMap::create_simple_api_tool(
+    "get_joke",
+    "Tell a joke",
+    vec![json!({"name": "type", "type": "string", "description": "Joke type", "required": false})],
+    "GET",
+    "https://api.api-ninjas.com/v1/${args.type}",
+    FunctionResult::with_response("Tell the user: ${array[0].joke}").to_value(),
+    json!({"X-Api-Key": "YOUR_KEY"}),
+);
+agent.register_swaig_function(func);
 ```

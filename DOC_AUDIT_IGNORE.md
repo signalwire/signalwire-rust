@@ -155,3 +155,8 @@ deliberately not Rust port surface — they name the Python single-source-of-
 truth the example must stay in sync with.
 
 corpus_ids: porting-sdk emission_corpus.corpus_ids() — the Python corpus id-set the Rust examples/emit_corpus.rs dump must match (referenced in its contract docstring, not a Rust symbol)
+
+## README/sub-doc audit (real methods not in surface enumeration, std, or example-local)
+
+is_some: Rust std Option::is_some — appears in a third_party_skills.md example expression, not a port symbol
+repr: real method Call::repr / Message::repr (src/relay/call.rs) — enumerate_surface deliberately folds repr→__repr__ in port_surface for parity with Python's __repr__, so the real Rust spelling used in relay/docs doesn't resolve by name; documenting the fold, not a phantom

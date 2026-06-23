@@ -62,10 +62,11 @@ agent.set_params(json!({
 
 ### Recording Configuration
 
+Recording is enabled through `AgentOptions` (the `record_call` flag) or by setting AI
+params. Use the fluent option builder, or assign the field directly:
+
 ```rust
-agent.set_record_call(true);
-agent.set_record_format("wav");
-agent.set_record_stereo(true);
+let agent = AgentBase::new(AgentOptions::new("recorder").record_call(true));
 ```
 
 ### Proxy Configuration
@@ -75,7 +76,7 @@ agent.set_record_stereo(true);
 // export SWML_PROXY_URL_BASE=https://agents.example.com
 
 // Or programmatically
-agent.set_proxy_url("https://agents.example.com");
+agent.manual_set_proxy_url("https://agents.example.com");
 ```
 
 ### SSL Configuration
@@ -108,12 +109,12 @@ Health and readiness endpoints are automatically available at `/health` and `/re
 When hosting multiple agents, use `AgentServer`:
 
 ```rust
-use signalwire::server::AgentServer;
+use signalwire::AgentServer;
 
-let mut server = AgentServer::new("0.0.0.0", 3000);
-server.add_agent(agent_a);  // route: /agent-a
-server.add_agent(agent_b);  // route: /agent-b
-server.run();
+let mut server = AgentServer::new(Some("0.0.0.0"), Some(3000));
+server.register(agent_a, Some("/agent-a")).unwrap();
+server.register(agent_b, Some("/agent-b")).unwrap();
+server.run(None, None);
 ```
 
 Each agent retains its own route, auth, and configuration.
