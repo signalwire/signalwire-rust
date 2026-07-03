@@ -1,6 +1,6 @@
 {
   "version": "1",
-  "generated_from": "signalwire-rust @ 781a8eb5351f6499ca4f684cc5e2861d401b456c",
+  "generated_from": "signalwire-rust @ 200b278abe7ddf486a9f6d4f66f89c52923416cc",
   "modules": {
     "signalwire": {
       "classes": {
@@ -840,7 +840,6 @@
           "base_url",
           "calling",
           "chat",
-          "compat",
           "datasphere",
           "fabric",
           "from_env",
@@ -982,155 +981,6 @@
         "Chat": [
           "__init__",
           "create_token"
-        ]
-      },
-      "functions": []
-    },
-    "signalwire.rest.namespaces.compat": {
-      "classes": {
-        "CompatAccounts": [
-          "__init__",
-          "base_path",
-          "create",
-          "get",
-          "list",
-          "update"
-        ],
-        "CompatApplications": [
-          "__init__",
-          "base_path",
-          "create",
-          "delete",
-          "get",
-          "list",
-          "update"
-        ],
-        "CompatCalls": [
-          "__init__",
-          "base_path",
-          "create",
-          "delete",
-          "get",
-          "list",
-          "start_recording",
-          "start_stream",
-          "stop_stream",
-          "update",
-          "update_recording"
-        ],
-        "CompatConferences": [
-          "__init__",
-          "base_path",
-          "delete_recording",
-          "get",
-          "get_participant",
-          "get_recording",
-          "list",
-          "list_participants",
-          "list_recordings",
-          "remove_participant",
-          "start_stream",
-          "stop_stream",
-          "update",
-          "update_participant",
-          "update_recording"
-        ],
-        "CompatFaxes": [
-          "__init__",
-          "base_path",
-          "create",
-          "delete",
-          "delete_media",
-          "get",
-          "get_media",
-          "list",
-          "list_media",
-          "update"
-        ],
-        "CompatLamlBins": [
-          "__init__",
-          "base_path",
-          "create",
-          "delete",
-          "get",
-          "list",
-          "update"
-        ],
-        "CompatMessages": [
-          "__init__",
-          "base_path",
-          "create",
-          "delete",
-          "delete_media",
-          "get",
-          "get_media",
-          "list",
-          "list_media",
-          "update"
-        ],
-        "CompatNamespace": [
-          "__init__",
-          "account_sid",
-          "accounts",
-          "applications",
-          "calls",
-          "client",
-          "conferences",
-          "faxes",
-          "laml_bins",
-          "messages",
-          "phone_numbers",
-          "queues",
-          "recordings",
-          "tokens",
-          "transcriptions"
-        ],
-        "CompatPhoneNumbers": [
-          "__init__",
-          "available_base",
-          "base_path",
-          "delete",
-          "get",
-          "import_number",
-          "list",
-          "list_available_countries",
-          "purchase",
-          "search_local",
-          "search_toll_free",
-          "update"
-        ],
-        "CompatQueues": [
-          "__init__",
-          "base_path",
-          "create",
-          "delete",
-          "dequeue_member",
-          "get",
-          "get_member",
-          "list",
-          "list_members",
-          "update"
-        ],
-        "CompatRecordings": [
-          "__init__",
-          "base_path",
-          "delete",
-          "get",
-          "list"
-        ],
-        "CompatTokens": [
-          "__init__",
-          "base_path",
-          "create",
-          "delete",
-          "update"
-        ],
-        "CompatTranscriptions": [
-          "__init__",
-          "base_path",
-          "delete",
-          "get",
-          "list"
         ]
       },
       "functions": []
@@ -1456,12 +1306,6 @@
         ]
       },
       "functions": []
-    },
-    "signalwire.rest.util": {
-      "classes": {},
-      "functions": [
-        "params_to_string_map"
-      ]
     },
     "signalwire.security.webhook": {
       "classes": {},

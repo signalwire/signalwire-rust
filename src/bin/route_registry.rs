@@ -54,8 +54,8 @@ use signalwire::rest::namespaces::generated::video_resources_generated as video_
 
 /// One path segment standing in for any path parameter (resource id, sid,
 /// e164, …). Normalised to `{id}` in the emitted template. The project id the
-/// client is constructed with also becomes a path segment (compat's
-/// `{AccountSid}`); we pass the same sentinel so it too normalises to `{id}`.
+/// client is constructed with also becomes a path segment where a route embeds
+/// it; we pass the same sentinel so it too normalises to `{id}`.
 const SENTINEL: &str = "__ID__";
 
 /// Methods that issue an HTTP request but do NOT map to a single canonical
@@ -350,99 +350,6 @@ fn invoke_all(c: &RestClient) {
     let _ = vs.get(id, hm);
     let _ = vs.update(id, video_gen::VideoStreamsUpdateRequest::new("x"));
     let _ = vs.delete(id);
-
-    // --- compat (account-scoped LAML) ---
-    let cm = c.compat();
-    let acc = cm.accounts();
-    let _ = acc.list(p);
-    let _ = acc.create(p);
-    let _ = acc.get(id);
-    let _ = acc.update(id, p);
-    let calls = cm.calls();
-    let _ = calls.list(p);
-    let _ = calls.create(p);
-    let _ = calls.get(id);
-    let _ = calls.update(id, p);
-    let _ = calls.delete(id);
-    let _ = calls.start_recording(id, p);
-    let _ = calls.update_recording(id, id, p);
-    let _ = calls.start_stream(id, p);
-    let _ = calls.stop_stream(id, id, p);
-    let msgs = cm.messages();
-    let _ = msgs.list(p);
-    let _ = msgs.create(p);
-    let _ = msgs.get(id);
-    let _ = msgs.update(id, p);
-    let _ = msgs.delete(id);
-    let _ = msgs.list_media(id, p);
-    let _ = msgs.get_media(id, id);
-    let _ = msgs.delete_media(id, id);
-    let faxes = cm.faxes();
-    let _ = faxes.list(p);
-    let _ = faxes.create(p);
-    let _ = faxes.get(id);
-    let _ = faxes.update(id, p);
-    let _ = faxes.delete(id);
-    let _ = faxes.list_media(id, p);
-    let _ = faxes.get_media(id, id);
-    let _ = faxes.delete_media(id, id);
-    let conferences = cm.conferences();
-    let _ = conferences.list(p);
-    let _ = conferences.get(id);
-    let _ = conferences.update(id, p);
-    let _ = conferences.list_participants(id, p);
-    let _ = conferences.get_participant(id, id);
-    let _ = conferences.update_participant(id, id, p);
-    let _ = conferences.remove_participant(id, id);
-    let _ = conferences.list_recordings(id, p);
-    let _ = conferences.get_recording(id, id);
-    let _ = conferences.update_recording(id, id, p);
-    let _ = conferences.delete_recording(id, id);
-    let _ = conferences.start_stream(id, p);
-    let _ = conferences.stop_stream(id, id, p);
-    let cpn = cm.phone_numbers();
-    let _ = cpn.list(p);
-    let _ = cpn.purchase(p);
-    let _ = cpn.get(id);
-    let _ = cpn.update(id, p);
-    let _ = cpn.delete(id);
-    let _ = cpn.import_number(p);
-    let _ = cpn.list_available_countries(p);
-    let _ = cpn.search_local(id, p);
-    let _ = cpn.search_toll_free(id, p);
-    let apps = cm.applications();
-    let _ = apps.list(p);
-    let _ = apps.create(p);
-    let _ = apps.get(id);
-    let _ = apps.update(id, p);
-    let _ = apps.delete(id);
-    let bins = cm.laml_bins();
-    let _ = bins.list(p);
-    let _ = bins.create(p);
-    let _ = bins.get(id);
-    let _ = bins.update(id, p);
-    let _ = bins.delete(id);
-    let cq = cm.queues();
-    let _ = cq.list(p);
-    let _ = cq.create(p);
-    let _ = cq.get(id);
-    let _ = cq.update(id, p);
-    let _ = cq.delete(id);
-    let _ = cq.list_members(id, p);
-    let _ = cq.get_member(id, id);
-    let _ = cq.dequeue_member(id, id, p);
-    let crec = cm.recordings();
-    let _ = crec.list(p);
-    let _ = crec.get(id);
-    let _ = crec.delete(id);
-    let ctr = cm.transcriptions();
-    let _ = ctr.list(p);
-    let _ = ctr.get(id);
-    let _ = ctr.delete(id);
-    let ctok = cm.tokens();
-    let _ = ctok.create(p);
-    let _ = ctok.update(id, p);
-    let _ = ctok.delete(id);
 
     // --- queues ---
     let q = c.queues();

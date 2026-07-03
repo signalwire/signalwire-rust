@@ -177,7 +177,6 @@ rest_coverage_gate() {
     fi
     python3 -c "import urllib.request; urllib.request.urlopen(urllib.request.Request('http://127.0.0.1:$port/__mock__/journal/reset',method='POST'),timeout=5).read()"
     MOCK_SIGNALWIRE_PORT="$port" cargo test \
-        --test rest_compat_coverage \
         --test rest_fabric_coverage \
         --test rest_misc_coverage \
         --test rest_relay_coverage \

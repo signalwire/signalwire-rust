@@ -6,7 +6,7 @@ use super::namespaces::generated::client_tree_generated as tree;
 /// Top-level SignalWire REST client.
 ///
 /// Provides lazy access to every API namespace (fabric, calling,
-/// `phone_numbers`, datasphere, video, compat, etc.). Credentials can
+/// `phone_numbers`, datasphere, video, etc.). Credentials can
 /// be supplied explicitly or pulled from environment variables.
 ///
 /// Production HTTP transport is `ureq` (sync, blocking, real network
@@ -148,8 +148,7 @@ impl RestClient {
     // the canonical specs + x-sdk-* markup into
     // src/rest/namespaces/generated/. The hand client composes the generated
     // resource tree; each accessor constructs the generated resource with the
-    // client's `HttpClient` (base paths baked in per §4). Compat is NOT part
-    // of the generated surface (Twilio-compat LAML) and is kept hand-written.
+    // client's `HttpClient` (base paths baked in per §4).
     //
     // Since every generated resource borrows `&HttpClient`, the returned
     // resources live as long as `&self`.
@@ -189,17 +188,6 @@ impl RestClient {
     /// tokens, streams).
     pub fn video(&self) -> tree::VideoNamespace<'_> {
         self.tree().video()
-    }
-
-    /// Compatibility (Twilio-compatible LAML) API namespace.
-    ///
-    /// Returns a [`Compat`](super::namespaces::compat::Compat) handle whose
-    /// sub-resources (`calls`, `messages`, `faxes`, `phone_numbers`,
-    /// `conferences`, `recordings`, `transcriptions`, `applications`,
-    /// `laml_bins`, `queues`, `tokens`, `accounts`) cover the full Python
-    /// `client.compat.*` surface. Not part of the generated REST surface.
-    pub fn compat(&self) -> super::namespaces::compat::Compat<'_> {
-        super::namespaces::compat::Compat::new(&self.http, &self.project_id)
     }
 
     /// Addresses (list / create / get / delete).
@@ -357,19 +345,6 @@ mod tests {
         let v = client.video();
         assert_eq!(v.rooms().base_path(), "/api/video/rooms");
         assert_eq!(v.streams().base_path(), "/api/video/streams");
-    }
-
-    #[test]
-    fn test_compat_path() {
-        let client = RestClient::new("proj", "tok", "test.sw.com").unwrap();
-        let c = client.compat();
-        // Compat namespace exposes sub-resources; calls() rooted under the
-        // account-scoped base path.
-        assert_eq!(
-            c.calls().base_path(),
-            "/api/laml/2010-04-01/Accounts/proj/Calls"
-        );
-        assert_eq!(c.account_sid(), "proj");
     }
 
     #[test]

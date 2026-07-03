@@ -98,15 +98,6 @@ The REST client provides 21 namespaced API surfaces. Each namespace groups relat
 | `recordings().get(sid)` | Get recording details |
 | `recordings().delete(sid)` | Delete recording |
 
-### Compat (Twilio-Compatible)
-
-| Method | Description |
-|--------|-------------|
-| `compat().calls().create(params)` | Create call |
-| `compat().calls().list(params)` | List calls |
-| `compat().messages().create(params)` | Send message |
-| `compat().messages().list(params)` | List messages |
-
 ### Additional Namespaces
 
 | Namespace | Description |

@@ -117,7 +117,7 @@ expression_with_nomatch: Python DataMap helper — Rust DataMap exposes expressi
 get_app: Python AgentServer.get_app (FastAPI app accessor) — Rust uses tiny_http directly, no equivalent
 incoming_phone_numbers: Python REST sub-namespace; Rust ships phone_numbers
 members: Python prefab attribute referenced in docs python blocks
-messages: Python REST sub-namespace / messaging helper; Rust ships rest::compat::messages
+messages: Python REST sub-namespace / messaging helper; Rust ships the generated message REST namespace + Client::send_message
 messaging: Python RelayClient messaging accessor; Rust ships Client::send_message and Message
 on_connect: Python Client.on_connect callback — Rust ships on_event for the unified callback
 on_disconnect: Python Client.on_disconnect callback — Rust uses on_event for unified disconnect dispatch

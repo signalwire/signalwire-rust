@@ -357,7 +357,6 @@ signalwire.rest.client.RestClient.addresses: Rust ships every REST namespace as 
 signalwire.rest.client.RestClient.base_url: Rust ships every REST namespace as a method on RestClient (calling, fabric, phone_numbers, …) — these methods are required by users to access the namespaces. Python users access namespaces via attribute access on RestClient. The data and behaviour are equivalent.
 signalwire.rest.client.RestClient.calling: Rust ships every REST namespace as a method on RestClient (calling, fabric, phone_numbers, …) — these methods are required by users to access the namespaces. Python users access namespaces via attribute access on RestClient. The data and behaviour are equivalent.
 signalwire.rest.client.RestClient.chat: Rust ships every REST namespace as a method on RestClient (calling, fabric, phone_numbers, …) — these methods are required by users to access the namespaces. Python users access namespaces via attribute access on RestClient. The data and behaviour are equivalent.
-signalwire.rest.client.RestClient.compat: Rust ships every REST namespace as a method on RestClient (calling, fabric, phone_numbers, …) — these methods are required by users to access the namespaces. Python users access namespaces via attribute access on RestClient. The data and behaviour are equivalent.
 signalwire.rest.client.RestClient.datasphere: Rust ships every REST namespace as a method on RestClient (calling, fabric, phone_numbers, …) — these methods are required by users to access the namespaces. Python users access namespaces via attribute access on RestClient. The data and behaviour are equivalent.
 signalwire.rest.client.RestClient.fabric: Rust ships every REST namespace as a method on RestClient (calling, fabric, phone_numbers, …) — these methods are required by users to access the namespaces. Python users access namespaces via attribute access on RestClient. The data and behaviour are equivalent.
 signalwire.rest.client.RestClient.from_env: Rust ships every REST namespace as a method on RestClient (calling, fabric, phone_numbers, …) — these methods are required by users to access the namespaces. Python users access namespaces via attribute access on RestClient. The data and behaviour are equivalent.
@@ -702,8 +701,7 @@ signalwire.utils.schema_utils.SchemaUtils.full_validation_available: @property i
 
 ### REST namespaces — explicit CRUD where Python uses inheritance
 
-The Python SDK derives CompatCalls / CompatMessages / CompatFaxes /
-CompatApplications / CompatLamlBins / CompatQueues / DatasphereDocuments /
+The Python SDK derives DatasphereDocuments /
 NumberGroupsResource / QueuesResource from CrudResource and uses class
 inheritance to hand off list / create / get / update / delete. Rust has
 no class inheritance; the port emits each method explicitly on every
@@ -711,37 +709,6 @@ struct so the user-facing surface matches one-to-one. This is the same
 "flatten-the-MRO" pattern the diff already excuses for the Agent / Skill
 side.
 
-signalwire.rest.namespaces.compat.CompatApplications.__init__: Rust port emits explicit CRUD where Python inherits via CrudResource; Python users have the same surface via inheritance.
-signalwire.rest.namespaces.compat.CompatApplications.create: Rust port emits explicit CRUD where Python inherits via CrudResource; Python users have the same surface via inheritance.
-signalwire.rest.namespaces.compat.CompatApplications.delete: Rust port emits explicit CRUD where Python inherits via CrudResource; Python users have the same surface via inheritance.
-signalwire.rest.namespaces.compat.CompatApplications.get: Rust port emits explicit CRUD where Python inherits via CrudResource; Python users have the same surface via inheritance.
-signalwire.rest.namespaces.compat.CompatApplications.list: Rust port emits explicit CRUD where Python inherits via CrudResource; Python users have the same surface via inheritance.
-signalwire.rest.namespaces.compat.CompatCalls.__init__: Rust port emits an explicit constructor; Python's BaseResource.__init__ is inherited.
-signalwire.rest.namespaces.compat.CompatConferences.__init__: Rust port emits an explicit constructor; Python's BaseResource.__init__ is inherited.
-signalwire.rest.namespaces.compat.CompatFaxes.__init__: Rust port emits an explicit constructor; Python's BaseResource.__init__ is inherited.
-signalwire.rest.namespaces.compat.CompatFaxes.create: Rust port emits explicit CRUD where Python inherits via CrudResource; Python users have the same surface via inheritance.
-signalwire.rest.namespaces.compat.CompatFaxes.delete: Rust port emits explicit CRUD where Python inherits via CrudResource; Python users have the same surface via inheritance.
-signalwire.rest.namespaces.compat.CompatFaxes.get: Rust port emits explicit CRUD where Python inherits via CrudResource; Python users have the same surface via inheritance.
-signalwire.rest.namespaces.compat.CompatFaxes.list: Rust port emits explicit CRUD where Python inherits via CrudResource; Python users have the same surface via inheritance.
-signalwire.rest.namespaces.compat.CompatLamlBins.__init__: Rust port emits an explicit constructor; Python's BaseResource.__init__ is inherited.
-signalwire.rest.namespaces.compat.CompatLamlBins.create: Rust port emits explicit CRUD where Python inherits via CrudResource; Python users have the same surface via inheritance.
-signalwire.rest.namespaces.compat.CompatLamlBins.delete: Rust port emits explicit CRUD where Python inherits via CrudResource; Python users have the same surface via inheritance.
-signalwire.rest.namespaces.compat.CompatLamlBins.get: Rust port emits explicit CRUD where Python inherits via CrudResource; Python users have the same surface via inheritance.
-signalwire.rest.namespaces.compat.CompatLamlBins.list: Rust port emits explicit CRUD where Python inherits via CrudResource; Python users have the same surface via inheritance.
-signalwire.rest.namespaces.compat.CompatMessages.__init__: Rust port emits an explicit constructor; Python's BaseResource.__init__ is inherited.
-signalwire.rest.namespaces.compat.CompatMessages.create: Rust port emits explicit CRUD where Python inherits via CrudResource; Python users have the same surface via inheritance.
-signalwire.rest.namespaces.compat.CompatMessages.delete: Rust port emits explicit CRUD where Python inherits via CrudResource; Python users have the same surface via inheritance.
-signalwire.rest.namespaces.compat.CompatMessages.get: Rust port emits explicit CRUD where Python inherits via CrudResource; Python users have the same surface via inheritance.
-signalwire.rest.namespaces.compat.CompatMessages.list: Rust port emits explicit CRUD where Python inherits via CrudResource; Python users have the same surface via inheritance.
-signalwire.rest.namespaces.compat.CompatNamespace.client: Rust borrow-accessor used by sub-resources; Python attribute access via __dict__ provides the same capability.
-signalwire.rest.namespaces.compat.CompatQueues.__init__: Rust port emits an explicit constructor; Python's BaseResource.__init__ is inherited.
-signalwire.rest.namespaces.compat.CompatQueues.create: Rust port emits explicit CRUD where Python inherits via CrudResource; Python users have the same surface via inheritance.
-signalwire.rest.namespaces.compat.CompatQueues.delete: Rust port emits explicit CRUD where Python inherits via CrudResource; Python users have the same surface via inheritance.
-signalwire.rest.namespaces.compat.CompatQueues.get: Rust port emits explicit CRUD where Python inherits via CrudResource; Python users have the same surface via inheritance.
-signalwire.rest.namespaces.compat.CompatQueues.list: Rust port emits explicit CRUD where Python inherits via CrudResource; Python users have the same surface via inheritance.
-signalwire.rest.namespaces.compat.CompatRecordings.__init__: Rust port emits an explicit constructor; Python's BaseResource.__init__ is inherited.
-signalwire.rest.namespaces.compat.CompatTokens.__init__: Rust port emits an explicit constructor; Python's BaseResource.__init__ is inherited.
-signalwire.rest.namespaces.compat.CompatTranscriptions.__init__: Rust port emits an explicit constructor; Python's BaseResource.__init__ is inherited.
 signalwire.rest.namespaces.datasphere.DatasphereDocuments.create: Rust port emits explicit CRUD where Python inherits via CrudResource.
 signalwire.rest.namespaces.datasphere.DatasphereDocuments.delete: Rust port emits explicit CRUD where Python inherits via CrudResource.
 signalwire.rest.namespaces.datasphere.DatasphereDocuments.get: Rust port emits explicit CRUD where Python inherits via CrudResource.
@@ -832,42 +799,12 @@ signalwire.rest._pagination.PaginatedIterator.path: idiomatic_getter: Rust acces
 
 ### REST namespace field accessors (base_path / client / project_id / sub-resource getters)
 
-namespace_field_accessor: Rust REST namespaces are structs whose fields are exposed via accessor functions (`pub fn base_path(&self) -> &str`, `pub fn client(&self) -> &Client`, `pub fn calls(&self) -> &CompatCalls`, etc.). Python keeps the equivalent state as private attributes accessed via `__dict__` / `self.calls`; Rust ships explicit getters so the surface is one-to-one with the C-style API the rest of the language expects.
+namespace_field_accessor: Rust REST namespaces are structs whose fields are exposed via accessor functions (`pub fn base_path(&self) -> &str`, `pub fn client(&self) -> &Client`, `pub fn subscribers(&self) -> &Subscribers`, etc.). Python keeps the equivalent state as private attributes accessed via `__dict__` / `self.subscribers`; Rust ships explicit getters so the surface is one-to-one with the C-style API the rest of the language expects.
 
 signalwire.rest.namespaces.calling.CallingNamespace.base_path: namespace_field_accessor: Rust accessor for the namespace's base path; Python uses a private class attribute.
 signalwire.rest.namespaces.calling.CallingNamespace.client: namespace_field_accessor: Rust accessor for the parent client reference; Python uses a private attribute.
 signalwire.rest.namespaces.calling.CallingNamespace.project_id: namespace_field_accessor: Rust accessor for the project_id field; Python uses an instance attribute.
 signalwire.rest.namespaces.chat.ChatResource.base_path: namespace_field_accessor: Rust accessor for the resource's base path; Python uses a class-level attribute.
-signalwire.rest.namespaces.compat.CompatAccounts.base_path: namespace_field_accessor: Rust accessor for the resource's base path; Python uses a class-level attribute.
-signalwire.rest.namespaces.compat.CompatApplications.base_path: namespace_field_accessor: Rust accessor for the resource's base path; Python uses a class-level attribute.
-signalwire.rest.namespaces.compat.CompatCalls.base_path: namespace_field_accessor: Rust accessor for the resource's base path; Python uses a class-level attribute.
-signalwire.rest.namespaces.compat.CompatCalls.create: Rust port emits explicit CRUD where Python inherits via CrudResource.
-signalwire.rest.namespaces.compat.CompatCalls.delete: Rust port emits explicit CRUD where Python inherits via CrudResource.
-signalwire.rest.namespaces.compat.CompatCalls.get: Rust port emits explicit CRUD where Python inherits via CrudResource.
-signalwire.rest.namespaces.compat.CompatCalls.list: Rust port emits explicit CRUD where Python inherits via CrudResource.
-signalwire.rest.namespaces.compat.CompatConferences.base_path: namespace_field_accessor: Rust accessor for the resource's base path; Python uses a class-level attribute.
-signalwire.rest.namespaces.compat.CompatFaxes.base_path: namespace_field_accessor: Rust accessor for the resource's base path; Python uses a class-level attribute.
-signalwire.rest.namespaces.compat.CompatLamlBins.base_path: namespace_field_accessor: Rust accessor for the resource's base path; Python uses a class-level attribute.
-signalwire.rest.namespaces.compat.CompatMessages.base_path: namespace_field_accessor: Rust accessor for the resource's base path; Python uses a class-level attribute.
-signalwire.rest.namespaces.compat.CompatNamespace.account_sid: namespace_field_accessor: Rust accessor for the account_sid field; Python uses an instance attribute.
-signalwire.rest.namespaces.compat.CompatNamespace.accounts: namespace_field_accessor: Rust sub-resource getter for the namespace; Python uses attribute access on the namespace instance.
-signalwire.rest.namespaces.compat.CompatNamespace.applications: namespace_field_accessor: Rust sub-resource getter for the namespace; Python uses attribute access on the namespace instance.
-signalwire.rest.namespaces.compat.CompatNamespace.calls: namespace_field_accessor: Rust sub-resource getter for the namespace; Python uses attribute access on the namespace instance.
-signalwire.rest.namespaces.compat.CompatNamespace.conferences: namespace_field_accessor: Rust sub-resource getter for the namespace; Python uses attribute access on the namespace instance.
-signalwire.rest.namespaces.compat.CompatNamespace.faxes: namespace_field_accessor: Rust sub-resource getter for the namespace; Python uses attribute access on the namespace instance.
-signalwire.rest.namespaces.compat.CompatNamespace.laml_bins: namespace_field_accessor: Rust sub-resource getter for the namespace; Python uses attribute access on the namespace instance.
-signalwire.rest.namespaces.compat.CompatNamespace.messages: namespace_field_accessor: Rust sub-resource getter for the namespace; Python uses attribute access on the namespace instance.
-signalwire.rest.namespaces.compat.CompatNamespace.phone_numbers: namespace_field_accessor: Rust sub-resource getter for the namespace; Python uses attribute access on the namespace instance.
-signalwire.rest.namespaces.compat.CompatNamespace.queues: namespace_field_accessor: Rust sub-resource getter for the namespace; Python uses attribute access on the namespace instance.
-signalwire.rest.namespaces.compat.CompatNamespace.recordings: namespace_field_accessor: Rust sub-resource getter for the namespace; Python uses attribute access on the namespace instance.
-signalwire.rest.namespaces.compat.CompatNamespace.tokens: namespace_field_accessor: Rust sub-resource getter for the namespace; Python uses attribute access on the namespace instance.
-signalwire.rest.namespaces.compat.CompatNamespace.transcriptions: namespace_field_accessor: Rust sub-resource getter for the namespace; Python uses attribute access on the namespace instance.
-signalwire.rest.namespaces.compat.CompatPhoneNumbers.available_base: namespace_field_accessor: Rust accessor for the available-numbers sub-path; Python keeps the equivalent as a class-level attribute.
-signalwire.rest.namespaces.compat.CompatPhoneNumbers.base_path: namespace_field_accessor: Rust accessor for the resource's base path; Python uses a class-level attribute.
-signalwire.rest.namespaces.compat.CompatQueues.base_path: namespace_field_accessor: Rust accessor for the resource's base path; Python uses a class-level attribute.
-signalwire.rest.namespaces.compat.CompatRecordings.base_path: namespace_field_accessor: Rust accessor for the resource's base path; Python uses a class-level attribute.
-signalwire.rest.namespaces.compat.CompatTokens.base_path: namespace_field_accessor: Rust accessor for the resource's base path; Python uses a class-level attribute.
-signalwire.rest.namespaces.compat.CompatTranscriptions.base_path: namespace_field_accessor: Rust accessor for the resource's base path; Python uses a class-level attribute.
 signalwire.rest.namespaces.datasphere.DatasphereDocuments.base_path: namespace_field_accessor: Rust accessor for the resource's base path; Python uses a class-level attribute.
 signalwire.rest.namespaces.datasphere.DatasphereNamespace.documents: namespace_field_accessor: Rust sub-resource getter for the namespace; Python uses attribute access on the namespace instance.
 signalwire.rest.namespaces.fabric.FabricAddresses.base_path: namespace_field_accessor: Rust accessor for the resource's base path; Python uses a class-level attribute.
@@ -936,7 +873,7 @@ signalwire.rest.namespaces.video.VideoNamespace.streams: namespace_field_accesso
 
 ### Rust REST resource constructors and explicit CRUD (flatten-the-MRO)
 
-Rust port emits explicit `__init__` constructors and CRUD methods on each resource struct since Rust has no class inheritance — same flatten-the-MRO pattern documented above for CompatApplications / CompatFaxes / etc. These resources extend the existing list with newly-added Fabric / Logs / Registry / Video resources whose entries weren't in the file yet.
+Rust port emits explicit `__init__` constructors and CRUD methods on each resource struct since Rust has no class inheritance — same flatten-the-MRO pattern documented above for DatasphereDocuments / NumberGroupsResource / etc. These resources extend the existing list with newly-added Fabric / Logs / Registry / Video resources whose entries weren't in the file yet.
 
 signalwire.rest.namespaces.fabric.CallFlowsResource.__init__: Rust port emits an explicit constructor; Python's BaseResource.__init__ is inherited.
 signalwire.rest.namespaces.fabric.CallFlowsResource.base_path: namespace_field_accessor: Rust accessor for the resource's base path; Python uses a class-level attribute.

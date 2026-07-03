@@ -35,7 +35,6 @@ let client = RestClient::new(project_id, api_token, space)?;
 | `datasphere()` | `DatasphereClient` | Document search |
 | `queues()` | `QueuesClient` | Call queues |
 | `recordings()` | `RecordingsClient` | Recording management |
-| `compat()` | `CompatClient` | Twilio-compatible API |
 | `fax()` | `FaxClient` | Fax operations |
 | `conferences()` | `ConferencesClient` | Conferences |
 | `transcriptions()` | `TranscriptionsClient` | Transcription operations |

@@ -100,8 +100,8 @@ Test agents locally with `swaig-test`: list tools, dump SWML, execute functions.
 
 ## REST Features
 
-- 21 namespaced API surfaces
+- Namespaced API surfaces
 - Fabric (13 resource types), Calling (37 commands), Video, Datasphere
-- Compat (Twilio-compatible), Phone Numbers, SIP, Queues, Recordings
+- Phone Numbers, SIP, Queues, Recordings
 - Connection pooling via reqwest
 - Raw `serde_json::Value` returns

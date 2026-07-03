@@ -52,10 +52,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 ## Documentation
 
 - [Getting Started](docs/getting-started.md) -- setup and first API call
-- [Namespaces](docs/namespaces.md) -- all 21 API namespaces
+- [Namespaces](docs/namespaces.md) -- all API namespaces
 - [Calling](docs/calling.md) -- voice call management
 - [Fabric](docs/fabric.md) -- AI agents, addresses, subscribers
-- [Compat](docs/compat.md) -- Twilio-compatible APIs
 - [Client Reference](docs/client-reference.md) -- RestClient API
 
 ## Examples

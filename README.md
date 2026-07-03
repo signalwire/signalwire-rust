@@ -194,7 +194,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
-- 21 namespaced API surfaces: Fabric, Calling, Video, Datasphere, Compat (Twilio-compatible), Phone Numbers, SIP, Queues, Recordings, and more
+- Namespaced API surfaces: Fabric, Calling, Video, Datasphere, Phone Numbers, SIP, Queues, Recordings, and more
 - Backed by `ureq` (blocking HTTP) with a reusable `ureq::Agent` for connection pooling
 - `serde_json::Value` returns -- raw JSON, no wrapper objects; errors surface as `SignalWireRestError`
 

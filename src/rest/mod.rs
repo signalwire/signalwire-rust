@@ -8,7 +8,6 @@ pub mod generated_bases;
 pub mod http_client;
 pub mod namespaces;
 pub mod pagination;
-pub(crate) mod util;
 
 pub use client::RestClient;
 pub use crud_resource::CrudResource;
