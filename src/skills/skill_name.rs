@@ -4,7 +4,7 @@
 //! takes a bare `str`), which keeps parity and lets callers load custom /
 //! third-party skills. The downside is that a typo — `add_skill("datetiem")`
 //! — compiles fine and only fails later at the server. [`SkillName`] gives the
-//! 18 built-in skills a typed alternative so the typo fails at the **call
+//! 17 built-in skills a typed alternative so the typo fails at the **call
 //! site** with editor autocompletion, while the string path stays available
 //! for parity and custom skills.
 //!
@@ -87,8 +87,6 @@ pub enum SkillName {
     Joke,
     /// `math`
     Math,
-    /// `mcp_gateway`
-    McpGateway,
     /// `native_vector_search`
     NativeVectorSearch,
     /// `play_background_file`
@@ -124,7 +122,6 @@ impl SkillName {
             SkillName::InfoGatherer => "info_gatherer",
             SkillName::Joke => "joke",
             SkillName::Math => "math",
-            SkillName::McpGateway => "mcp_gateway",
             SkillName::NativeVectorSearch => "native_vector_search",
             SkillName::PlayBackgroundFile => "play_background_file",
             SkillName::Spider => "spider",
@@ -149,7 +146,6 @@ impl SkillName {
             SkillName::InfoGatherer,
             SkillName::Joke,
             SkillName::Math,
-            SkillName::McpGateway,
             SkillName::NativeVectorSearch,
             SkillName::PlayBackgroundFile,
             SkillName::Spider,
@@ -227,8 +223,11 @@ mod tests {
     }
 
     #[test]
-    fn test_all_covers_eighteen_builtins() {
-        assert_eq!(SkillName::all().len(), 18);
+    fn test_all_covers_seventeen_builtins() {
+        // 17 built-ins: the standalone MCP-gateway skill was dropped (it is not
+        // part of the cross-port reference skill surface — Python ships the MCP
+        // gateway only as a separate server, not a skill).
+        assert_eq!(SkillName::all().len(), 17);
     }
 
     #[test]

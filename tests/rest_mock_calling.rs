@@ -730,11 +730,16 @@ fn test_calling_denoise_stop() {
         Some("calling.denoise.stop")
     );
     assert_eq!(body_obj.get("id").and_then(Value::as_str), Some("call-1"));
-    assert_eq!(
-        params_from_body(body_obj)
-            .get("control_id")
-            .and_then(Value::as_str),
-        Some("dn-1")
+    // denoise_stop takes NO command params (spec CallDenoiseStopRequest.params is
+    // empty; the Python oracle's denoise_stop is `(call_id, *, extras)` with an
+    // empty `params: {}` — see calling_resources_generated.py:662). The prior
+    // assertion of `params.control_id == "dn-1"` was a hand-test defect: Python's
+    // own test_denoise_stop asserts only command + id and sends no control_id
+    // (#33). control_id is required only on the *pause/resume/stop/volume* media
+    // commands (play_stop/record_pause/…), never on denoise_stop.
+    assert!(
+        params_from_body(body_obj).get("control_id").is_none(),
+        "denoise_stop must not send a control_id (parity with the Python oracle)"
     );
 }
 

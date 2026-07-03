@@ -241,32 +241,12 @@ Each line below is a Python symbol that the Rust port deliberately
 does not expose under that exact name. The rationale explains why
 (internal helper, Python-only mixin, alternate Rust idiom, etc.).
 
-signalwire.core.agent.prompt.manager.PromptManager: Python internal prompt-manager class; Rust merges this functionality into AgentBase directly
 signalwire.core.agent.prompt.manager.PromptManager.__init__: Python internal prompt-manager class; Rust merges this functionality into AgentBase directly
-signalwire.core.agent.prompt.manager.PromptManager.define_contexts: Python internal prompt-manager class; Rust merges this functionality into AgentBase directly
-signalwire.core.agent.prompt.manager.PromptManager.get_contexts: Python internal prompt-manager class; Rust merges this functionality into AgentBase directly
-signalwire.core.agent.prompt.manager.PromptManager.get_post_prompt: Python internal prompt-manager class; Rust merges this functionality into AgentBase directly
-signalwire.core.agent.prompt.manager.PromptManager.get_prompt: Python internal prompt-manager class; Rust merges this functionality into AgentBase directly
-signalwire.core.agent.prompt.manager.PromptManager.get_raw_prompt: Python internal prompt-manager class; Rust merges this functionality into AgentBase directly
-signalwire.core.agent.prompt.manager.PromptManager.prompt_add_section: Python internal prompt-manager class; Rust merges this functionality into AgentBase directly
-signalwire.core.agent.prompt.manager.PromptManager.prompt_add_subsection: Python internal prompt-manager class; Rust merges this functionality into AgentBase directly
-signalwire.core.agent.prompt.manager.PromptManager.prompt_add_to_section: Python internal prompt-manager class; Rust merges this functionality into AgentBase directly
-signalwire.core.agent.prompt.manager.PromptManager.prompt_has_section: Python internal prompt-manager class; Rust merges this functionality into AgentBase directly
-signalwire.core.agent.prompt.manager.PromptManager.set_post_prompt: Python internal prompt-manager class; Rust merges this functionality into AgentBase directly
-signalwire.core.agent.prompt.manager.PromptManager.set_prompt_pom: Python internal prompt-manager class; Rust merges this functionality into AgentBase directly
-signalwire.core.agent.prompt.manager.PromptManager.set_prompt_text: Python internal prompt-manager class; Rust merges this functionality into AgentBase directly
-signalwire.core.agent.tools.decorator.ToolDecorator: Python internal tool registry / decorator helpers; Rust merges this into Service's tool registry and AgentBase::define_tool
-signalwire.core.agent.tools.decorator.ToolDecorator.create_class_decorator: Python internal tool registry / decorator helpers; Rust merges this into Service's tool registry and AgentBase::define_tool
-signalwire.core.agent.tools.decorator.ToolDecorator.create_instance_decorator: Python internal tool registry / decorator helpers; Rust merges this into Service's tool registry and AgentBase::define_tool
-signalwire.core.agent.tools.registry.ToolRegistry: Python internal tool registry / decorator helpers; Rust merges this into Service's tool registry and AgentBase::define_tool
+signalwire.core.agent.tools.decorator.ToolDecorator: impossible: Python decorator-protocol class (ToolDecorator / class-decorated-tool registration) — Rust has no decorator syntax and no class-decoration hook; TS/PHP cousins also omit it (re-audited L18)
+signalwire.core.agent.tools.decorator.ToolDecorator.create_class_decorator: impossible: Python decorator-protocol class (ToolDecorator / class-decorated-tool registration) — Rust has no decorator syntax and no class-decoration hook; TS/PHP cousins also omit it (re-audited L18)
+signalwire.core.agent.tools.decorator.ToolDecorator.create_instance_decorator: impossible: Python decorator-protocol class (ToolDecorator / class-decorated-tool registration) — Rust has no decorator syntax and no class-decoration hook; TS/PHP cousins also omit it (re-audited L18)
 signalwire.core.agent.tools.registry.ToolRegistry.__init__: Python internal tool registry / decorator helpers; Rust merges this into Service's tool registry and AgentBase::define_tool
-signalwire.core.agent.tools.registry.ToolRegistry.define_tool: Python internal tool registry / decorator helpers; Rust merges this into Service's tool registry and AgentBase::define_tool
-signalwire.core.agent.tools.registry.ToolRegistry.get_all_functions: Python internal tool registry / decorator helpers; Rust merges this into Service's tool registry and AgentBase::define_tool
-signalwire.core.agent.tools.registry.ToolRegistry.get_function: Python internal tool registry / decorator helpers; Rust merges this into Service's tool registry and AgentBase::define_tool
-signalwire.core.agent.tools.registry.ToolRegistry.has_function: Python internal tool registry / decorator helpers; Rust merges this into Service's tool registry and AgentBase::define_tool
-signalwire.core.agent.tools.registry.ToolRegistry.register_class_decorated_tools: Python internal tool registry / decorator helpers; Rust merges this into Service's tool registry and AgentBase::define_tool
-signalwire.core.agent.tools.registry.ToolRegistry.register_swaig_function: Python internal tool registry / decorator helpers; Rust merges this into Service's tool registry and AgentBase::define_tool
-signalwire.core.agent.tools.registry.ToolRegistry.remove_function: Python internal tool registry / decorator helpers; Rust merges this into Service's tool registry and AgentBase::define_tool
+signalwire.core.agent.tools.registry.ToolRegistry.register_class_decorated_tools: impossible: Python decorator-protocol class (ToolDecorator / class-decorated-tool registration) — Rust has no decorator syntax and no class-decoration hook; TS/PHP cousins also omit it (re-audited L18)
 signalwire.core.agent.tools.type_inference.create_typed_handler_wrapper: Python internal tool registry / decorator helpers; Rust merges this into Service's tool registry and AgentBase::define_tool
 signalwire.core.agent.tools.type_inference.infer_schema: Python internal tool registry / decorator helpers; Rust merges this into Service's tool registry and AgentBase::define_tool
 signalwire.core.agent_base.AgentBase.add_answer_verb: Python-only convenience helpers; Rust users compose them via Service::route() / Service::host() / Service::port() directly
@@ -282,16 +262,6 @@ signalwire.core.auth_handler.AuthHandler.get_fastapi_dependency: Python FastAPI 
 signalwire.core.auth_handler.AuthHandler.verify_api_key: Python FastAPI auth-handler glue; Rust handles auth in Service::handle_request directly
 signalwire.core.auth_handler.AuthHandler.verify_basic_auth: Python FastAPI auth-handler glue; Rust handles auth in Service::handle_request directly
 signalwire.core.auth_handler.AuthHandler.verify_bearer_token: Python FastAPI auth-handler glue; Rust handles auth in Service::handle_request directly
-signalwire.core.config_loader.ConfigLoader: Python config-file loader; Rust users typically use std::env or env-loader crates of their choice
-signalwire.core.config_loader.ConfigLoader.__init__: Python config-file loader; Rust users typically use std::env or env-loader crates of their choice
-signalwire.core.config_loader.ConfigLoader.find_config_file: Python config-file loader; Rust users typically use std::env or env-loader crates of their choice
-signalwire.core.config_loader.ConfigLoader.get: Python config-file loader; Rust users typically use std::env or env-loader crates of their choice
-signalwire.core.config_loader.ConfigLoader.get_config: Python config-file loader; Rust users typically use std::env or env-loader crates of their choice
-signalwire.core.config_loader.ConfigLoader.get_config_file: Python config-file loader; Rust users typically use std::env or env-loader crates of their choice
-signalwire.core.config_loader.ConfigLoader.get_section: Python config-file loader; Rust users typically use std::env or env-loader crates of their choice
-signalwire.core.config_loader.ConfigLoader.has_config: Python config-file loader; Rust users typically use std::env or env-loader crates of their choice
-signalwire.core.config_loader.ConfigLoader.merge_with_env: Python config-file loader; Rust users typically use std::env or env-loader crates of their choice
-signalwire.core.config_loader.ConfigLoader.substitute_vars: Python config-file loader; Rust users typically use std::env or env-loader crates of their choice
 signalwire.core.contexts.Context.add_bullets: Python-internal Context helpers; Rust ContextBuilder/Context uses direct field access for these (the Context shape is built into ContextBuilder methods rather than exposing per-field setters)
 signalwire.core.contexts.Context.add_enter_filler: Python-internal Context helpers; Rust ContextBuilder/Context uses direct field access for these (the Context shape is built into ContextBuilder methods rather than exposing per-field setters)
 signalwire.core.contexts.Context.add_exit_filler: Python-internal Context helpers; Rust ContextBuilder/Context uses direct field access for these (the Context shape is built into ContextBuilder methods rather than exposing per-field setters)
@@ -302,12 +272,9 @@ signalwire.core.contexts.Context.set_consolidate: Python-internal Context helper
 signalwire.core.contexts.Context.set_full_reset: Python-internal Context helpers; Rust ContextBuilder/Context uses direct field access for these (the Context shape is built into ContextBuilder methods rather than exposing per-field setters)
 signalwire.core.contexts.Context.set_isolated: Python-internal Context helpers; Rust ContextBuilder/Context uses direct field access for these (the Context shape is built into ContextBuilder methods rather than exposing per-field setters)
 signalwire.core.contexts.Context.set_post_prompt: Python-internal Context helpers; Rust ContextBuilder/Context uses direct field access for these (the Context shape is built into ContextBuilder methods rather than exposing per-field setters)
-signalwire.core.contexts.Context.set_prompt: Python-internal Context helpers; Rust ContextBuilder/Context uses direct field access for these (the Context shape is built into ContextBuilder methods rather than exposing per-field setters)
 signalwire.core.contexts.Context.set_user_prompt: Python-internal Context helpers; Rust ContextBuilder/Context uses direct field access for these (the Context shape is built into ContextBuilder methods rather than exposing per-field setters)
 signalwire.core.contexts.Context.set_valid_contexts: Python-internal Context helpers; Rust ContextBuilder/Context uses direct field access for these (the Context shape is built into ContextBuilder methods rather than exposing per-field setters)
 signalwire.core.contexts.Context.set_valid_steps: Python-internal Context helpers; Rust ContextBuilder/Context uses direct field access for these (the Context shape is built into ContextBuilder methods rather than exposing per-field setters)
-signalwire.core.contexts.Context.to_dict: Python-internal Context helpers; Rust ContextBuilder/Context uses direct field access for these (the Context shape is built into ContextBuilder methods rather than exposing per-field setters)
-signalwire.core.contexts.ContextBuilder.to_dict: Python helper returning a dict; Rust's ContextBuilder serializes via serde to_value() directly
 signalwire.core.contexts.GatherInfo.to_dict: Python helper returning a dict; Rust's GatherInfo serializes via serde to_value() directly
 signalwire.core.contexts.GatherQuestion.to_dict: Python helper returning a dict; Rust's GatherQuestion serializes via serde to_value() directly
 signalwire.core.contexts.Step.add_bullets: Python-internal Step helpers; Rust Step uses direct field access
@@ -317,84 +284,30 @@ signalwire.core.contexts.Step.set_reset_full_reset: Python-internal Step helpers
 signalwire.core.contexts.Step.set_reset_system_prompt: Python-internal Step helpers; Rust Step uses direct field access
 signalwire.core.contexts.Step.set_reset_user_prompt: Python-internal Step helpers; Rust Step uses direct field access
 signalwire.core.contexts.Step.set_skip_to_next_step: Python-internal Step helpers; Rust Step uses direct field access
-signalwire.core.contexts.Step.to_dict: Python-internal Step helpers; Rust Step uses direct field access
 signalwire.core.contexts.create_simple_context: Python helper that wraps ContextBuilder; Rust users call ContextBuilder::new() directly
 signalwire.core.data_map.DataMap.foreach: Python helper; Rust DataMap supports foreach via DataMap::foreach (already exposed) — entry is duplicate from Python's chained API
 signalwire.core.data_map.create_expression_tool: Python helper functions; Rust ships create_simple_api_tool and create_expression_tool — already exposed (this entry is a duplicate from a Python-side path-prefix difference)
 signalwire.core.data_map.create_simple_api_tool: Python helper functions; Rust ships create_simple_api_tool and create_expression_tool — already exposed (this entry is a duplicate from a Python-side path-prefix difference)
 signalwire.core.function_result.FunctionResult.to_dict: Python FunctionResult.to_dict; Rust FunctionResult uses serde_json::to_value() / serialize() directly
 signalwire.core.logging_config.configure_logging: Python logging-config helper; Rust uses logging::Logger directly
-signalwire.core.logging_config.get_execution_mode: Python logging-config helper; Rust uses logging::Logger directly
 signalwire.core.logging_config.get_logger: Python logging-config helper; Rust uses logging::Logger directly
 signalwire.core.logging_config.reset_logging_configuration: Python logging-config helper; Rust uses logging::Logger directly
 signalwire.core.logging_config.strip_control_chars: Python logging-config helper; Rust uses logging::Logger directly
-signalwire.core.mixins.ai_config_mixin.AIConfigMixin: Python uses mixins for AgentBase composition; Rust uses Deref<Target=Service> + direct methods on AgentBase. The functionality is present but does not surface as a separate mixin class.
-signalwire.core.mixins.ai_config_mixin.AIConfigMixin.add_function_include: Python uses mixins for AgentBase composition; Rust uses Deref<Target=Service> + direct methods on AgentBase. The functionality is present but does not surface as a separate mixin class.
-signalwire.core.mixins.ai_config_mixin.AIConfigMixin.add_hint: Python uses mixins for AgentBase composition; Rust uses Deref<Target=Service> + direct methods on AgentBase. The functionality is present but does not surface as a separate mixin class.
-signalwire.core.mixins.ai_config_mixin.AIConfigMixin.add_hints: Python uses mixins for AgentBase composition; Rust uses Deref<Target=Service> + direct methods on AgentBase. The functionality is present but does not surface as a separate mixin class.
-signalwire.core.mixins.ai_config_mixin.AIConfigMixin.add_internal_filler: Python uses mixins for AgentBase composition; Rust uses Deref<Target=Service> + direct methods on AgentBase. The functionality is present but does not surface as a separate mixin class.
-signalwire.core.mixins.ai_config_mixin.AIConfigMixin.add_language: Python uses mixins for AgentBase composition; Rust uses Deref<Target=Service> + direct methods on AgentBase. The functionality is present but does not surface as a separate mixin class.
 signalwire.core.mixins.ai_config_mixin.AIConfigMixin.add_mcp_server: Python uses mixins for AgentBase composition; Rust uses Deref<Target=Service> + direct methods on AgentBase. The functionality is present but does not surface as a separate mixin class.
-signalwire.core.mixins.ai_config_mixin.AIConfigMixin.add_pattern_hint: Python uses mixins for AgentBase composition; Rust uses Deref<Target=Service> + direct methods on AgentBase. The functionality is present but does not surface as a separate mixin class.
-signalwire.core.mixins.ai_config_mixin.AIConfigMixin.add_pronunciation: Python uses mixins for AgentBase composition; Rust uses Deref<Target=Service> + direct methods on AgentBase. The functionality is present but does not surface as a separate mixin class.
-signalwire.core.mixins.ai_config_mixin.AIConfigMixin.enable_debug_events: Python uses mixins for AgentBase composition; Rust uses Deref<Target=Service> + direct methods on AgentBase. The functionality is present but does not surface as a separate mixin class.
 signalwire.core.mixins.ai_config_mixin.AIConfigMixin.enable_mcp_server: Python uses mixins for AgentBase composition; Rust uses Deref<Target=Service> + direct methods on AgentBase. The functionality is present but does not surface as a separate mixin class.
-signalwire.core.mixins.ai_config_mixin.AIConfigMixin.get_language_params: Python uses mixins for AgentBase composition; Rust uses Deref<Target=Service> + direct methods on AgentBase. The functionality is present but does not surface as a separate mixin class.
-signalwire.core.mixins.ai_config_mixin.AIConfigMixin.set_function_includes: Python uses mixins for AgentBase composition; Rust uses Deref<Target=Service> + direct methods on AgentBase. The functionality is present but does not surface as a separate mixin class.
-signalwire.core.mixins.ai_config_mixin.AIConfigMixin.set_global_data: Python uses mixins for AgentBase composition; Rust uses Deref<Target=Service> + direct methods on AgentBase. The functionality is present but does not surface as a separate mixin class.
-signalwire.core.mixins.ai_config_mixin.AIConfigMixin.set_internal_fillers: Python uses mixins for AgentBase composition; Rust uses Deref<Target=Service> + direct methods on AgentBase. The functionality is present but does not surface as a separate mixin class.
-signalwire.core.mixins.ai_config_mixin.AIConfigMixin.set_language_params: Python uses mixins for AgentBase composition; Rust uses Deref<Target=Service> + direct methods on AgentBase. The functionality is present but does not surface as a separate mixin class.
-signalwire.core.mixins.ai_config_mixin.AIConfigMixin.set_languages: Python uses mixins for AgentBase composition; Rust uses Deref<Target=Service> + direct methods on AgentBase. The functionality is present but does not surface as a separate mixin class.
-signalwire.core.mixins.ai_config_mixin.AIConfigMixin.set_native_functions: Python uses mixins for AgentBase composition; Rust uses Deref<Target=Service> + direct methods on AgentBase. The functionality is present but does not surface as a separate mixin class.
-signalwire.core.mixins.ai_config_mixin.AIConfigMixin.set_param: Python uses mixins for AgentBase composition; Rust uses Deref<Target=Service> + direct methods on AgentBase. The functionality is present but does not surface as a separate mixin class.
-signalwire.core.mixins.ai_config_mixin.AIConfigMixin.set_params: Python uses mixins for AgentBase composition; Rust uses Deref<Target=Service> + direct methods on AgentBase. The functionality is present but does not surface as a separate mixin class.
-signalwire.core.mixins.ai_config_mixin.AIConfigMixin.set_post_prompt_llm_params: Python uses mixins for AgentBase composition; Rust uses Deref<Target=Service> + direct methods on AgentBase. The functionality is present but does not surface as a separate mixin class.
-signalwire.core.mixins.ai_config_mixin.AIConfigMixin.set_prompt_llm_params: Python uses mixins for AgentBase composition; Rust uses Deref<Target=Service> + direct methods on AgentBase. The functionality is present but does not surface as a separate mixin class.
-signalwire.core.mixins.ai_config_mixin.AIConfigMixin.set_pronunciations: Python uses mixins for AgentBase composition; Rust uses Deref<Target=Service> + direct methods on AgentBase. The functionality is present but does not surface as a separate mixin class.
-signalwire.core.mixins.ai_config_mixin.AIConfigMixin.update_global_data: Python uses mixins for AgentBase composition; Rust uses Deref<Target=Service> + direct methods on AgentBase. The functionality is present but does not surface as a separate mixin class.
-signalwire.core.mixins.auth_mixin.AuthMixin: Python uses mixins for AgentBase composition; Rust uses Deref<Target=Service> + direct methods on AgentBase. The functionality is present but does not surface as a separate mixin class.
-signalwire.core.mixins.auth_mixin.AuthMixin.get_basic_auth_credentials: Python uses mixins for AgentBase composition; Rust uses Deref<Target=Service> + direct methods on AgentBase. The functionality is present but does not surface as a separate mixin class.
-signalwire.core.mixins.auth_mixin.AuthMixin.validate_basic_auth: Python uses mixins for AgentBase composition; Rust uses Deref<Target=Service> + direct methods on AgentBase. The functionality is present but does not surface as a separate mixin class.
-signalwire.core.mixins.mcp_server_mixin.MCPServerMixin: Python uses mixins for AgentBase composition; Rust uses Deref<Target=Service> + direct methods on AgentBase. The functionality is present but does not surface as a separate mixin class.
-signalwire.core.mixins.prompt_mixin.PromptMixin: Python uses mixins for AgentBase composition; Rust uses Deref<Target=Service> + direct methods on AgentBase. The functionality is present but does not surface as a separate mixin class.
+signalwire.core.mixins.mcp_server_mixin.MCPServerMixin: impossible: Python decorator-protocol surface (the @tool / MCPServerMixin decorator factory) — Rust has no decorator syntax; the OO cousins TS/PHP also express tool registration without this decorator method (re-audited L18)
 signalwire.core.mixins.prompt_mixin.PromptMixin.contexts: Python uses mixins for AgentBase composition; Rust uses Deref<Target=Service> + direct methods on AgentBase. The functionality is present but does not surface as a separate mixin class.
-signalwire.core.mixins.prompt_mixin.PromptMixin.define_contexts: Python uses mixins for AgentBase composition; Rust uses Deref<Target=Service> + direct methods on AgentBase. The functionality is present but does not surface as a separate mixin class.
-signalwire.core.mixins.prompt_mixin.PromptMixin.get_post_prompt: Python uses mixins for AgentBase composition; Rust uses Deref<Target=Service> + direct methods on AgentBase. The functionality is present but does not surface as a separate mixin class.
-signalwire.core.mixins.prompt_mixin.PromptMixin.get_prompt: Python uses mixins for AgentBase composition; Rust uses Deref<Target=Service> + direct methods on AgentBase. The functionality is present but does not surface as a separate mixin class.
-signalwire.core.mixins.prompt_mixin.PromptMixin.prompt_add_section: Python uses mixins for AgentBase composition; Rust uses Deref<Target=Service> + direct methods on AgentBase. The functionality is present but does not surface as a separate mixin class.
-signalwire.core.mixins.prompt_mixin.PromptMixin.prompt_add_subsection: Python uses mixins for AgentBase composition; Rust uses Deref<Target=Service> + direct methods on AgentBase. The functionality is present but does not surface as a separate mixin class.
-signalwire.core.mixins.prompt_mixin.PromptMixin.prompt_add_to_section: Python uses mixins for AgentBase composition; Rust uses Deref<Target=Service> + direct methods on AgentBase. The functionality is present but does not surface as a separate mixin class.
-signalwire.core.mixins.prompt_mixin.PromptMixin.prompt_has_section: Python uses mixins for AgentBase composition; Rust uses Deref<Target=Service> + direct methods on AgentBase. The functionality is present but does not surface as a separate mixin class.
-signalwire.core.mixins.prompt_mixin.PromptMixin.reset_contexts: Python uses mixins for AgentBase composition; Rust uses Deref<Target=Service> + direct methods on AgentBase. The functionality is present but does not surface as a separate mixin class.
-signalwire.core.mixins.prompt_mixin.PromptMixin.set_post_prompt: Python uses mixins for AgentBase composition; Rust uses Deref<Target=Service> + direct methods on AgentBase. The functionality is present but does not surface as a separate mixin class.
-signalwire.core.mixins.prompt_mixin.PromptMixin.set_prompt_pom: Python uses mixins for AgentBase composition; Rust uses Deref<Target=Service> + direct methods on AgentBase. The functionality is present but does not surface as a separate mixin class.
-signalwire.core.mixins.prompt_mixin.PromptMixin.set_prompt_text: Python uses mixins for AgentBase composition; Rust uses Deref<Target=Service> + direct methods on AgentBase. The functionality is present but does not surface as a separate mixin class.
 signalwire.core.mixins.serverless_mixin.ServerlessMixin: Python uses mixins for AgentBase composition; Rust uses Deref<Target=Service> + direct methods on AgentBase. The functionality is present but does not surface as a separate mixin class.
 signalwire.core.mixins.serverless_mixin.ServerlessMixin.handle_serverless_request: Python uses mixins for AgentBase composition; Rust uses Deref<Target=Service> + direct methods on AgentBase. The functionality is present but does not surface as a separate mixin class.
-signalwire.core.mixins.skill_mixin.SkillMixin: Python uses mixins for AgentBase composition; Rust uses Deref<Target=Service> + direct methods on AgentBase. The functionality is present but does not surface as a separate mixin class.
-signalwire.core.mixins.skill_mixin.SkillMixin.add_skill: Python uses mixins for AgentBase composition; Rust uses Deref<Target=Service> + direct methods on AgentBase. The functionality is present but does not surface as a separate mixin class.
-signalwire.core.mixins.skill_mixin.SkillMixin.has_skill: Python uses mixins for AgentBase composition; Rust uses Deref<Target=Service> + direct methods on AgentBase. The functionality is present but does not surface as a separate mixin class.
-signalwire.core.mixins.skill_mixin.SkillMixin.list_skills: Python uses mixins for AgentBase composition; Rust uses Deref<Target=Service> + direct methods on AgentBase. The functionality is present but does not surface as a separate mixin class.
-signalwire.core.mixins.skill_mixin.SkillMixin.remove_skill: Python uses mixins for AgentBase composition; Rust uses Deref<Target=Service> + direct methods on AgentBase. The functionality is present but does not surface as a separate mixin class.
-signalwire.core.mixins.state_mixin.StateMixin: Python uses mixins for AgentBase composition; Rust uses Deref<Target=Service> + direct methods on AgentBase. The functionality is present but does not surface as a separate mixin class.
-signalwire.core.mixins.state_mixin.StateMixin.validate_tool_token: Python uses mixins for AgentBase composition; Rust uses Deref<Target=Service> + direct methods on AgentBase. The functionality is present but does not surface as a separate mixin class.
-signalwire.core.mixins.tool_mixin.ToolMixin: Python uses mixins for AgentBase composition; Rust uses Deref<Target=Service> + direct methods on AgentBase. The functionality is present but does not surface as a separate mixin class.
 signalwire.core.mixins.tool_mixin.ToolMixin.define_tool: Python uses mixins for AgentBase composition; Rust uses Deref<Target=Service> + direct methods on AgentBase. The functionality is present but does not surface as a separate mixin class.
-signalwire.core.mixins.tool_mixin.ToolMixin.define_tools: Python uses mixins for AgentBase composition; Rust uses Deref<Target=Service> + direct methods on AgentBase. The functionality is present but does not surface as a separate mixin class.
 signalwire.core.mixins.tool_mixin.ToolMixin.on_function_call: Python uses mixins for AgentBase composition; Rust uses Deref<Target=Service> + direct methods on AgentBase. The functionality is present but does not surface as a separate mixin class.
 signalwire.core.mixins.tool_mixin.ToolMixin.register_swaig_function: Python uses mixins for AgentBase composition; Rust uses Deref<Target=Service> + direct methods on AgentBase. The functionality is present but does not surface as a separate mixin class.
-signalwire.core.mixins.tool_mixin.ToolMixin.tool: Python uses mixins for AgentBase composition; Rust uses Deref<Target=Service> + direct methods on AgentBase. The functionality is present but does not surface as a separate mixin class.
-signalwire.core.mixins.web_mixin.WebMixin: Python uses mixins for AgentBase composition; Rust uses Deref<Target=Service> + direct methods on AgentBase. The functionality is present but does not surface as a separate mixin class.
+signalwire.core.mixins.tool_mixin.ToolMixin.tool: impossible: Python decorator-protocol surface (the @tool / MCPServerMixin decorator factory) — Rust has no decorator syntax; the OO cousins TS/PHP also express tool registration without this decorator method (re-audited L18)
 signalwire.core.mixins.web_mixin.WebMixin.as_router: Python uses mixins for AgentBase composition; Rust uses Deref<Target=Service> + direct methods on AgentBase. The functionality is present but does not surface as a separate mixin class.
 signalwire.core.mixins.web_mixin.WebMixin.enable_debug_routes: Python uses mixins for AgentBase composition; Rust uses Deref<Target=Service> + direct methods on AgentBase. The functionality is present but does not surface as a separate mixin class.
 signalwire.core.mixins.web_mixin.WebMixin.get_app: Python uses mixins for AgentBase composition; Rust uses Deref<Target=Service> + direct methods on AgentBase. The functionality is present but does not surface as a separate mixin class.
-signalwire.core.mixins.web_mixin.WebMixin.manual_set_proxy_url: Python uses mixins for AgentBase composition; Rust uses Deref<Target=Service> + direct methods on AgentBase. The functionality is present but does not surface as a separate mixin class.
-signalwire.core.mixins.web_mixin.WebMixin.on_request: Python uses mixins for AgentBase composition; Rust uses Deref<Target=Service> + direct methods on AgentBase. The functionality is present but does not surface as a separate mixin class.
-signalwire.core.mixins.web_mixin.WebMixin.on_swml_request: Python uses mixins for AgentBase composition; Rust uses Deref<Target=Service> + direct methods on AgentBase. The functionality is present but does not surface as a separate mixin class.
 signalwire.core.mixins.web_mixin.WebMixin.register_routing_callback: Python uses mixins for AgentBase composition; Rust uses Deref<Target=Service> + direct methods on AgentBase. The functionality is present but does not surface as a separate mixin class.
-signalwire.core.mixins.web_mixin.WebMixin.run: Python uses mixins for AgentBase composition; Rust uses Deref<Target=Service> + direct methods on AgentBase. The functionality is present but does not surface as a separate mixin class.
 signalwire.core.mixins.web_mixin.WebMixin.serve: Python uses mixins for AgentBase composition; Rust uses Deref<Target=Service> + direct methods on AgentBase. The functionality is present but does not surface as a separate mixin class.
-signalwire.core.mixins.web_mixin.WebMixin.set_dynamic_config_callback: Python uses mixins for AgentBase composition; Rust uses Deref<Target=Service> + direct methods on AgentBase. The functionality is present but does not surface as a separate mixin class.
 signalwire.core.mixins.web_mixin.WebMixin.setup_graceful_shutdown: Python uses mixins for AgentBase composition; Rust uses Deref<Target=Service> + direct methods on AgentBase. The functionality is present but does not surface as a separate mixin class.
 signalwire.core.pom_builder.PomBuilder: Python POM builder helper class; Rust uses serde_json::Value directly
 signalwire.core.pom_builder.PomBuilder.__init__: Python POM builder helper class; Rust uses serde_json::Value directly
@@ -416,31 +329,10 @@ signalwire.core.security.session_manager.SessionManager.generate_token: Python S
 signalwire.core.security.session_manager.SessionManager.get_session_metadata: Python SessionManager session-tracking helpers; Rust ships the HMAC token primitives but not the per-call session-bookkeeping API — the equivalent is implemented inline by Service / AgentBase callers
 signalwire.core.security.session_manager.SessionManager.set_session_metadata: Python SessionManager session-tracking helpers; Rust ships the HMAC token primitives but not the per-call session-bookkeeping API — the equivalent is implemented inline by Service / AgentBase callers
 signalwire.core.security.session_manager.SessionManager.validate_tool_token: Python SessionManager session-tracking helpers; Rust ships the HMAC token primitives but not the per-call session-bookkeeping API — the equivalent is implemented inline by Service / AgentBase callers
-signalwire.core.security_config.SecurityConfig: Python security-config helper; Rust uses Service::basic_auth_credentials directly
-signalwire.core.security_config.SecurityConfig.__init__: Python security-config helper; Rust uses Service::basic_auth_credentials directly
-signalwire.core.security_config.SecurityConfig.get_basic_auth: Python security-config helper; Rust uses Service::basic_auth_credentials directly
-signalwire.core.security_config.SecurityConfig.get_cors_config: Python security-config helper; Rust uses Service::basic_auth_credentials directly
-signalwire.core.security_config.SecurityConfig.get_security_headers: Python security-config helper; Rust uses Service::basic_auth_credentials directly
-signalwire.core.security_config.SecurityConfig.get_ssl_context_kwargs: Python security-config helper; Rust uses Service::basic_auth_credentials directly
-signalwire.core.security_config.SecurityConfig.get_url_scheme: Python security-config helper; Rust uses Service::basic_auth_credentials directly
-signalwire.core.security_config.SecurityConfig.load_from_env: Python security-config helper; Rust uses Service::basic_auth_credentials directly
-signalwire.core.security_config.SecurityConfig.log_config: Python security-config helper; Rust uses Service::basic_auth_credentials directly
-signalwire.core.security_config.SecurityConfig.should_allow_host: Python security-config helper; Rust uses Service::basic_auth_credentials directly
-signalwire.core.security_config.SecurityConfig.validate_ssl_config: Python security-config helper; Rust uses Service::basic_auth_credentials directly
-signalwire.core.skill_base.SkillBase: Python SkillBase abstract class; Rust ships SkillBase as a trait — the trait surfaces under skill_base::SkillBase in Rust but the per-method enumerator may not pick up trait-method names
 signalwire.core.skill_base.SkillBase.__init__: Python SkillBase abstract methods; Rust SkillBase trait surface is narrower (init / setup / handlers) — Python-only helpers are language-private
-signalwire.core.skill_base.SkillBase.cleanup: Python SkillBase abstract methods; Rust SkillBase trait surface is narrower (init / setup / handlers) — Python-only helpers are language-private
 signalwire.core.skill_base.SkillBase.define_tool: Python SkillBase abstract methods; Rust SkillBase trait surface is narrower (init / setup / handlers) — Python-only helpers are language-private
-signalwire.core.skill_base.SkillBase.get_global_data: Python SkillBase abstract methods; Rust SkillBase trait surface is narrower (init / setup / handlers) — Python-only helpers are language-private
-signalwire.core.skill_base.SkillBase.get_hints: Python SkillBase abstract methods; Rust SkillBase trait surface is narrower (init / setup / handlers) — Python-only helpers are language-private
-signalwire.core.skill_base.SkillBase.get_instance_key: Python SkillBase abstract methods; Rust SkillBase trait surface is narrower (init / setup / handlers) — Python-only helpers are language-private
-signalwire.core.skill_base.SkillBase.get_parameter_schema: Python SkillBase abstract methods; Rust SkillBase trait surface is narrower (init / setup / handlers) — Python-only helpers are language-private
-signalwire.core.skill_base.SkillBase.get_prompt_sections: Python SkillBase abstract methods; Rust SkillBase trait surface is narrower (init / setup / handlers) — Python-only helpers are language-private
 signalwire.core.skill_base.SkillBase.get_skill_data: Python SkillBase abstract methods; Rust SkillBase trait surface is narrower (init / setup / handlers) — Python-only helpers are language-private
-signalwire.core.skill_base.SkillBase.register_tools: Python SkillBase abstract methods; Rust SkillBase trait surface is narrower (init / setup / handlers) — Python-only helpers are language-private
-signalwire.core.skill_base.SkillBase.setup: Python SkillBase abstract methods; Rust SkillBase trait surface is narrower (init / setup / handlers) — Python-only helpers are language-private
 signalwire.core.skill_base.SkillBase.update_skill_data: Python SkillBase abstract methods; Rust SkillBase trait surface is narrower (init / setup / handlers) — Python-only helpers are language-private
-signalwire.core.skill_base.SkillBase.validate_env_vars: Python SkillBase abstract methods; Rust SkillBase trait surface is narrower (init / setup / handlers) — Python-only helpers are language-private
 signalwire.core.skill_base.SkillBase.validate_packages: Python SkillBase abstract methods; Rust SkillBase trait surface is narrower (init / setup / handlers) — Python-only helpers are language-private
 signalwire.core.skill_manager.SkillManager.list_loaded_skills: Python SkillManager helper; Rust skill_manager exposes list() for this
 signalwire.core.swaig_function.SWAIGFunction: Python SWAIGFunction wrapper class; Rust merges into ToolDef on Service
@@ -482,75 +374,73 @@ signalwire.core.swml_service.SWMLService.add_section: Python-only SWMLService su
 signalwire.core.swml_service.SWMLService.add_verb_to_section: Python-only SWMLService surface (Python uses dynamic attribute lookup, FastAPI router, registered routing-callback dict, and a separate render/reset_document API); Rust users compose the equivalent via Service public methods
 signalwire.core.swml_service.SWMLService.as_router: Python-only SWMLService surface (Python uses dynamic attribute lookup, FastAPI router, registered routing-callback dict, and a separate render/reset_document API); Rust users compose the equivalent via Service public methods
 signalwire.core.swml_service.SWMLService.full_validation_enabled: Python-only SWMLService surface (Python uses dynamic attribute lookup, FastAPI router, registered routing-callback dict, and a separate render/reset_document API); Rust users compose the equivalent via Service public methods
-signalwire.core.swml_service.SWMLService.get_basic_auth_credentials: Python-only SWMLService surface (Python uses dynamic attribute lookup, FastAPI router, registered routing-callback dict, and a separate render/reset_document API); Rust users compose the equivalent via Service public methods
 signalwire.core.swml_service.SWMLService.get_document: Python-only SWMLService surface (Python uses dynamic attribute lookup, FastAPI router, registered routing-callback dict, and a separate render/reset_document API); Rust users compose the equivalent via Service public methods
 signalwire.core.swml_service.SWMLService.manual_set_proxy_url: Python-only SWMLService surface (Python uses dynamic attribute lookup, FastAPI router, registered routing-callback dict, and a separate render/reset_document API); Rust users compose the equivalent via Service public methods
-signalwire.core.swml_service.SWMLService.on_request: Python-only SWMLService surface (Python uses dynamic attribute lookup, FastAPI router, registered routing-callback dict, and a separate render/reset_document API); Rust users compose the equivalent via Service public methods
 signalwire.core.swml_service.SWMLService.register_routing_callback: Python-only SWMLService surface (Python uses dynamic attribute lookup, FastAPI router, registered routing-callback dict, and a separate render/reset_document API); Rust users compose the equivalent via Service public methods
 signalwire.core.swml_service.SWMLService.register_verb_handler: Python-only SWMLService surface (Python uses dynamic attribute lookup, FastAPI router, registered routing-callback dict, and a separate render/reset_document API); Rust users compose the equivalent via Service public methods
 signalwire.core.swml_service.SWMLService.render_document: Python-only SWMLService surface (Python uses dynamic attribute lookup, FastAPI router, registered routing-callback dict, and a separate render/reset_document API); Rust users compose the equivalent via Service public methods
 signalwire.core.swml_service.SWMLService.reset_document: Python-only SWMLService surface (Python uses dynamic attribute lookup, FastAPI router, registered routing-callback dict, and a separate render/reset_document API); Rust users compose the equivalent via Service public methods
 signalwire.core.swml_service.SWMLService.serve: Python-only SWMLService surface (Python uses dynamic attribute lookup, FastAPI router, registered routing-callback dict, and a separate render/reset_document API); Rust users compose the equivalent via Service public methods
 signalwire.core.swml_service.SWMLService.stop: Python-only SWMLService surface (Python uses dynamic attribute lookup, FastAPI router, registered routing-callback dict, and a separate render/reset_document API); Rust users compose the equivalent via Service public methods
-signalwire.livewire.Agent: livewire integration; Python-internal, not surfaced via cross-port skip list
-signalwire.livewire.Agent.__init__: livewire integration; Python-internal, not surfaced via cross-port skip list
-signalwire.livewire.Agent.llm_node: livewire integration; Python-internal, not surfaced via cross-port skip list
-signalwire.livewire.Agent.on_enter: livewire integration; Python-internal, not surfaced via cross-port skip list
-signalwire.livewire.Agent.on_exit: livewire integration; Python-internal, not surfaced via cross-port skip list
-signalwire.livewire.Agent.on_user_turn_completed: livewire integration; Python-internal, not surfaced via cross-port skip list
-signalwire.livewire.Agent.session: livewire integration; Python-internal, not surfaced via cross-port skip list
-signalwire.livewire.Agent.stt_node: livewire integration; Python-internal, not surfaced via cross-port skip list
-signalwire.livewire.Agent.tts_node: livewire integration; Python-internal, not surfaced via cross-port skip list
-signalwire.livewire.Agent.update_instructions: livewire integration; Python-internal, not surfaced via cross-port skip list
-signalwire.livewire.Agent.update_tools: livewire integration; Python-internal, not surfaced via cross-port skip list
-signalwire.livewire.AgentHandoff: livewire integration; Python-internal, not surfaced via cross-port skip list
-signalwire.livewire.AgentHandoff.__init__: livewire integration; Python-internal, not surfaced via cross-port skip list
-signalwire.livewire.AgentServer: livewire integration; Python-internal, not surfaced via cross-port skip list
-signalwire.livewire.AgentServer.__init__: livewire integration; Python-internal, not surfaced via cross-port skip list
-signalwire.livewire.AgentServer.rtc_session: livewire integration; Python-internal, not surfaced via cross-port skip list
-signalwire.livewire.AgentSession: livewire integration; Python-internal, not surfaced via cross-port skip list
-signalwire.livewire.AgentSession.__init__: livewire integration; Python-internal, not surfaced via cross-port skip list
-signalwire.livewire.AgentSession.generate_reply: livewire integration; Python-internal, not surfaced via cross-port skip list
-signalwire.livewire.AgentSession.history: livewire integration; Python-internal, not surfaced via cross-port skip list
-signalwire.livewire.AgentSession.interrupt: livewire integration; Python-internal, not surfaced via cross-port skip list
-signalwire.livewire.AgentSession.say: livewire integration; Python-internal, not surfaced via cross-port skip list
-signalwire.livewire.AgentSession.start: livewire integration; Python-internal, not surfaced via cross-port skip list
-signalwire.livewire.AgentSession.update_agent: livewire integration; Python-internal, not surfaced via cross-port skip list
-signalwire.livewire.AgentSession.userdata: livewire integration; Python-internal, not surfaced via cross-port skip list
-signalwire.livewire.ChatContext: livewire integration; Python-internal, not surfaced via cross-port skip list
-signalwire.livewire.ChatContext.__init__: livewire integration; Python-internal, not surfaced via cross-port skip list
-signalwire.livewire.ChatContext.append: livewire integration; Python-internal, not surfaced via cross-port skip list
-signalwire.livewire.InferenceLLM: livewire integration; Python-internal, not surfaced via cross-port skip list
-signalwire.livewire.InferenceLLM.__init__: livewire integration; Python-internal, not surfaced via cross-port skip list
-signalwire.livewire.InferenceSTT: livewire integration; Python-internal, not surfaced via cross-port skip list
-signalwire.livewire.InferenceSTT.__init__: livewire integration; Python-internal, not surfaced via cross-port skip list
-signalwire.livewire.InferenceTTS: livewire integration; Python-internal, not surfaced via cross-port skip list
-signalwire.livewire.InferenceTTS.__init__: livewire integration; Python-internal, not surfaced via cross-port skip list
-signalwire.livewire.JobContext: livewire integration; Python-internal, not surfaced via cross-port skip list
-signalwire.livewire.JobContext.__init__: livewire integration; Python-internal, not surfaced via cross-port skip list
-signalwire.livewire.JobContext.connect: livewire integration; Python-internal, not surfaced via cross-port skip list
-signalwire.livewire.JobContext.wait_for_participant: livewire integration; Python-internal, not surfaced via cross-port skip list
-signalwire.livewire.JobProcess: livewire integration; Python-internal, not surfaced via cross-port skip list
-signalwire.livewire.JobProcess.__init__: livewire integration; Python-internal, not surfaced via cross-port skip list
-signalwire.livewire.Room: livewire integration; Python-internal, not surfaced via cross-port skip list
-signalwire.livewire.RunContext: livewire integration; Python-internal, not surfaced via cross-port skip list
-signalwire.livewire.RunContext.__init__: livewire integration; Python-internal, not surfaced via cross-port skip list
-signalwire.livewire.RunContext.userdata: livewire integration; Python-internal, not surfaced via cross-port skip list
-signalwire.livewire.StopResponse: livewire integration; Python-internal, not surfaced via cross-port skip list
-signalwire.livewire.ToolError: livewire integration; Python-internal, not surfaced via cross-port skip list
-signalwire.livewire.function_tool: livewire integration; Python-internal, not surfaced via cross-port skip list
-signalwire.livewire.plugins.CartesiaTTS: livewire integration; Python-internal, not surfaced via cross-port skip list
-signalwire.livewire.plugins.CartesiaTTS.__init__: livewire integration; Python-internal, not surfaced via cross-port skip list
-signalwire.livewire.plugins.DeepgramSTT: livewire integration; Python-internal, not surfaced via cross-port skip list
-signalwire.livewire.plugins.DeepgramSTT.__init__: livewire integration; Python-internal, not surfaced via cross-port skip list
-signalwire.livewire.plugins.ElevenLabsTTS: livewire integration; Python-internal, not surfaced via cross-port skip list
-signalwire.livewire.plugins.ElevenLabsTTS.__init__: livewire integration; Python-internal, not surfaced via cross-port skip list
-signalwire.livewire.plugins.OpenAILLM: livewire integration; Python-internal, not surfaced via cross-port skip list
-signalwire.livewire.plugins.OpenAILLM.__init__: livewire integration; Python-internal, not surfaced via cross-port skip list
-signalwire.livewire.plugins.SileroVAD: livewire integration; Python-internal, not surfaced via cross-port skip list
-signalwire.livewire.plugins.SileroVAD.__init__: livewire integration; Python-internal, not surfaced via cross-port skip list
-signalwire.livewire.plugins.SileroVAD.load: livewire integration; Python-internal, not surfaced via cross-port skip list
-signalwire.livewire.run_app: livewire integration; Python-internal, not surfaced via cross-port skip list
+signalwire.livewire.Agent: approved: livewire ported only to Python + Node/TS (the LiveKit AGENTS SDK languages); it is invented surface in every other port — user, 2026-07 pass (§I.1/L21)
+signalwire.livewire.Agent.__init__: approved: livewire ported only to Python + Node/TS (the LiveKit AGENTS SDK languages); it is invented surface in every other port — user, 2026-07 pass (§I.1/L21)
+signalwire.livewire.Agent.llm_node: approved: livewire ported only to Python + Node/TS (the LiveKit AGENTS SDK languages); it is invented surface in every other port — user, 2026-07 pass (§I.1/L21)
+signalwire.livewire.Agent.on_enter: approved: livewire ported only to Python + Node/TS (the LiveKit AGENTS SDK languages); it is invented surface in every other port — user, 2026-07 pass (§I.1/L21)
+signalwire.livewire.Agent.on_exit: approved: livewire ported only to Python + Node/TS (the LiveKit AGENTS SDK languages); it is invented surface in every other port — user, 2026-07 pass (§I.1/L21)
+signalwire.livewire.Agent.on_user_turn_completed: approved: livewire ported only to Python + Node/TS (the LiveKit AGENTS SDK languages); it is invented surface in every other port — user, 2026-07 pass (§I.1/L21)
+signalwire.livewire.Agent.session: approved: livewire ported only to Python + Node/TS (the LiveKit AGENTS SDK languages); it is invented surface in every other port — user, 2026-07 pass (§I.1/L21)
+signalwire.livewire.Agent.stt_node: approved: livewire ported only to Python + Node/TS (the LiveKit AGENTS SDK languages); it is invented surface in every other port — user, 2026-07 pass (§I.1/L21)
+signalwire.livewire.Agent.tts_node: approved: livewire ported only to Python + Node/TS (the LiveKit AGENTS SDK languages); it is invented surface in every other port — user, 2026-07 pass (§I.1/L21)
+signalwire.livewire.Agent.update_instructions: approved: livewire ported only to Python + Node/TS (the LiveKit AGENTS SDK languages); it is invented surface in every other port — user, 2026-07 pass (§I.1/L21)
+signalwire.livewire.Agent.update_tools: approved: livewire ported only to Python + Node/TS (the LiveKit AGENTS SDK languages); it is invented surface in every other port — user, 2026-07 pass (§I.1/L21)
+signalwire.livewire.AgentHandoff: approved: livewire ported only to Python + Node/TS (the LiveKit AGENTS SDK languages); it is invented surface in every other port — user, 2026-07 pass (§I.1/L21)
+signalwire.livewire.AgentHandoff.__init__: approved: livewire ported only to Python + Node/TS (the LiveKit AGENTS SDK languages); it is invented surface in every other port — user, 2026-07 pass (§I.1/L21)
+signalwire.livewire.AgentServer: approved: livewire ported only to Python + Node/TS (the LiveKit AGENTS SDK languages); it is invented surface in every other port — user, 2026-07 pass (§I.1/L21)
+signalwire.livewire.AgentServer.__init__: approved: livewire ported only to Python + Node/TS (the LiveKit AGENTS SDK languages); it is invented surface in every other port — user, 2026-07 pass (§I.1/L21)
+signalwire.livewire.AgentServer.rtc_session: approved: livewire ported only to Python + Node/TS (the LiveKit AGENTS SDK languages); it is invented surface in every other port — user, 2026-07 pass (§I.1/L21)
+signalwire.livewire.AgentSession: approved: livewire ported only to Python + Node/TS (the LiveKit AGENTS SDK languages); it is invented surface in every other port — user, 2026-07 pass (§I.1/L21)
+signalwire.livewire.AgentSession.__init__: approved: livewire ported only to Python + Node/TS (the LiveKit AGENTS SDK languages); it is invented surface in every other port — user, 2026-07 pass (§I.1/L21)
+signalwire.livewire.AgentSession.generate_reply: approved: livewire ported only to Python + Node/TS (the LiveKit AGENTS SDK languages); it is invented surface in every other port — user, 2026-07 pass (§I.1/L21)
+signalwire.livewire.AgentSession.history: approved: livewire ported only to Python + Node/TS (the LiveKit AGENTS SDK languages); it is invented surface in every other port — user, 2026-07 pass (§I.1/L21)
+signalwire.livewire.AgentSession.interrupt: approved: livewire ported only to Python + Node/TS (the LiveKit AGENTS SDK languages); it is invented surface in every other port — user, 2026-07 pass (§I.1/L21)
+signalwire.livewire.AgentSession.say: approved: livewire ported only to Python + Node/TS (the LiveKit AGENTS SDK languages); it is invented surface in every other port — user, 2026-07 pass (§I.1/L21)
+signalwire.livewire.AgentSession.start: approved: livewire ported only to Python + Node/TS (the LiveKit AGENTS SDK languages); it is invented surface in every other port — user, 2026-07 pass (§I.1/L21)
+signalwire.livewire.AgentSession.update_agent: approved: livewire ported only to Python + Node/TS (the LiveKit AGENTS SDK languages); it is invented surface in every other port — user, 2026-07 pass (§I.1/L21)
+signalwire.livewire.AgentSession.userdata: approved: livewire ported only to Python + Node/TS (the LiveKit AGENTS SDK languages); it is invented surface in every other port — user, 2026-07 pass (§I.1/L21)
+signalwire.livewire.ChatContext: approved: livewire ported only to Python + Node/TS (the LiveKit AGENTS SDK languages); it is invented surface in every other port — user, 2026-07 pass (§I.1/L21)
+signalwire.livewire.ChatContext.__init__: approved: livewire ported only to Python + Node/TS (the LiveKit AGENTS SDK languages); it is invented surface in every other port — user, 2026-07 pass (§I.1/L21)
+signalwire.livewire.ChatContext.append: approved: livewire ported only to Python + Node/TS (the LiveKit AGENTS SDK languages); it is invented surface in every other port — user, 2026-07 pass (§I.1/L21)
+signalwire.livewire.InferenceLLM: approved: livewire ported only to Python + Node/TS (the LiveKit AGENTS SDK languages); it is invented surface in every other port — user, 2026-07 pass (§I.1/L21)
+signalwire.livewire.InferenceLLM.__init__: approved: livewire ported only to Python + Node/TS (the LiveKit AGENTS SDK languages); it is invented surface in every other port — user, 2026-07 pass (§I.1/L21)
+signalwire.livewire.InferenceSTT: approved: livewire ported only to Python + Node/TS (the LiveKit AGENTS SDK languages); it is invented surface in every other port — user, 2026-07 pass (§I.1/L21)
+signalwire.livewire.InferenceSTT.__init__: approved: livewire ported only to Python + Node/TS (the LiveKit AGENTS SDK languages); it is invented surface in every other port — user, 2026-07 pass (§I.1/L21)
+signalwire.livewire.InferenceTTS: approved: livewire ported only to Python + Node/TS (the LiveKit AGENTS SDK languages); it is invented surface in every other port — user, 2026-07 pass (§I.1/L21)
+signalwire.livewire.InferenceTTS.__init__: approved: livewire ported only to Python + Node/TS (the LiveKit AGENTS SDK languages); it is invented surface in every other port — user, 2026-07 pass (§I.1/L21)
+signalwire.livewire.JobContext: approved: livewire ported only to Python + Node/TS (the LiveKit AGENTS SDK languages); it is invented surface in every other port — user, 2026-07 pass (§I.1/L21)
+signalwire.livewire.JobContext.__init__: approved: livewire ported only to Python + Node/TS (the LiveKit AGENTS SDK languages); it is invented surface in every other port — user, 2026-07 pass (§I.1/L21)
+signalwire.livewire.JobContext.connect: approved: livewire ported only to Python + Node/TS (the LiveKit AGENTS SDK languages); it is invented surface in every other port — user, 2026-07 pass (§I.1/L21)
+signalwire.livewire.JobContext.wait_for_participant: approved: livewire ported only to Python + Node/TS (the LiveKit AGENTS SDK languages); it is invented surface in every other port — user, 2026-07 pass (§I.1/L21)
+signalwire.livewire.JobProcess: approved: livewire ported only to Python + Node/TS (the LiveKit AGENTS SDK languages); it is invented surface in every other port — user, 2026-07 pass (§I.1/L21)
+signalwire.livewire.JobProcess.__init__: approved: livewire ported only to Python + Node/TS (the LiveKit AGENTS SDK languages); it is invented surface in every other port — user, 2026-07 pass (§I.1/L21)
+signalwire.livewire.Room: approved: livewire ported only to Python + Node/TS (the LiveKit AGENTS SDK languages); it is invented surface in every other port — user, 2026-07 pass (§I.1/L21)
+signalwire.livewire.RunContext: approved: livewire ported only to Python + Node/TS (the LiveKit AGENTS SDK languages); it is invented surface in every other port — user, 2026-07 pass (§I.1/L21)
+signalwire.livewire.RunContext.__init__: approved: livewire ported only to Python + Node/TS (the LiveKit AGENTS SDK languages); it is invented surface in every other port — user, 2026-07 pass (§I.1/L21)
+signalwire.livewire.RunContext.userdata: approved: livewire ported only to Python + Node/TS (the LiveKit AGENTS SDK languages); it is invented surface in every other port — user, 2026-07 pass (§I.1/L21)
+signalwire.livewire.StopResponse: approved: livewire ported only to Python + Node/TS (the LiveKit AGENTS SDK languages); it is invented surface in every other port — user, 2026-07 pass (§I.1/L21)
+signalwire.livewire.ToolError: approved: livewire ported only to Python + Node/TS (the LiveKit AGENTS SDK languages); it is invented surface in every other port — user, 2026-07 pass (§I.1/L21)
+signalwire.livewire.function_tool: approved: livewire ported only to Python + Node/TS (the LiveKit AGENTS SDK languages); it is invented surface in every other port — user, 2026-07 pass (§I.1/L21)
+signalwire.livewire.plugins.CartesiaTTS: approved: livewire ported only to Python + Node/TS (the LiveKit AGENTS SDK languages); it is invented surface in every other port — user, 2026-07 pass (§I.1/L21)
+signalwire.livewire.plugins.CartesiaTTS.__init__: approved: livewire ported only to Python + Node/TS (the LiveKit AGENTS SDK languages); it is invented surface in every other port — user, 2026-07 pass (§I.1/L21)
+signalwire.livewire.plugins.DeepgramSTT: approved: livewire ported only to Python + Node/TS (the LiveKit AGENTS SDK languages); it is invented surface in every other port — user, 2026-07 pass (§I.1/L21)
+signalwire.livewire.plugins.DeepgramSTT.__init__: approved: livewire ported only to Python + Node/TS (the LiveKit AGENTS SDK languages); it is invented surface in every other port — user, 2026-07 pass (§I.1/L21)
+signalwire.livewire.plugins.ElevenLabsTTS: approved: livewire ported only to Python + Node/TS (the LiveKit AGENTS SDK languages); it is invented surface in every other port — user, 2026-07 pass (§I.1/L21)
+signalwire.livewire.plugins.ElevenLabsTTS.__init__: approved: livewire ported only to Python + Node/TS (the LiveKit AGENTS SDK languages); it is invented surface in every other port — user, 2026-07 pass (§I.1/L21)
+signalwire.livewire.plugins.OpenAILLM: approved: livewire ported only to Python + Node/TS (the LiveKit AGENTS SDK languages); it is invented surface in every other port — user, 2026-07 pass (§I.1/L21)
+signalwire.livewire.plugins.OpenAILLM.__init__: approved: livewire ported only to Python + Node/TS (the LiveKit AGENTS SDK languages); it is invented surface in every other port — user, 2026-07 pass (§I.1/L21)
+signalwire.livewire.plugins.SileroVAD: approved: livewire ported only to Python + Node/TS (the LiveKit AGENTS SDK languages); it is invented surface in every other port — user, 2026-07 pass (§I.1/L21)
+signalwire.livewire.plugins.SileroVAD.__init__: approved: livewire ported only to Python + Node/TS (the LiveKit AGENTS SDK languages); it is invented surface in every other port — user, 2026-07 pass (§I.1/L21)
+signalwire.livewire.plugins.SileroVAD.load: approved: livewire ported only to Python + Node/TS (the LiveKit AGENTS SDK languages); it is invented surface in every other port — user, 2026-07 pass (§I.1/L21)
+signalwire.livewire.run_app: approved: livewire ported only to Python + Node/TS (the LiveKit AGENTS SDK languages); it is invented surface in every other port — user, 2026-07 pass (§I.1/L21)
 signalwire.mcp_gateway.gateway_service.MCPGateway: standalone MCP gateway server; Rust ships the mcp_gateway *skill* (skill-level integration), not the standalone server
 signalwire.mcp_gateway.gateway_service.MCPGateway.__init__: standalone MCP gateway server; Rust ships the mcp_gateway *skill* (skill-level integration), not the standalone server
 signalwire.mcp_gateway.gateway_service.MCPGateway.run: standalone MCP gateway server; Rust ships the mcp_gateway *skill* (skill-level integration), not the standalone server
@@ -586,26 +476,6 @@ signalwire.mcp_gateway.session_manager.SessionManager.get_service_session_count:
 signalwire.mcp_gateway.session_manager.SessionManager.get_session: standalone MCP gateway server; Rust ships the mcp_gateway *skill* (skill-level integration), not the standalone server
 signalwire.mcp_gateway.session_manager.SessionManager.list_sessions: standalone MCP gateway server; Rust ships the mcp_gateway *skill* (skill-level integration), not the standalone server
 signalwire.mcp_gateway.session_manager.SessionManager.shutdown: standalone MCP gateway server; Rust ships the mcp_gateway *skill* (skill-level integration), not the standalone server
-signalwire.pom.pom.PromptObjectModel: Prompt Object Model internal helper classes; Rust accomplishes the same via JSON values on AgentBase (prompt_add_section, prompt_add_subsection, prompt_add_to_section)
-signalwire.pom.pom.PromptObjectModel.__init__: Prompt Object Model internal helper classes; Rust accomplishes the same via JSON values on AgentBase (prompt_add_section, prompt_add_subsection, prompt_add_to_section)
-signalwire.pom.pom.PromptObjectModel.add_pom_as_subsection: Prompt Object Model internal helper classes; Rust accomplishes the same via JSON values on AgentBase (prompt_add_section, prompt_add_subsection, prompt_add_to_section)
-signalwire.pom.pom.PromptObjectModel.add_section: Prompt Object Model internal helper classes; Rust accomplishes the same via JSON values on AgentBase (prompt_add_section, prompt_add_subsection, prompt_add_to_section)
-signalwire.pom.pom.PromptObjectModel.find_section: Prompt Object Model internal helper classes; Rust accomplishes the same via JSON values on AgentBase (prompt_add_section, prompt_add_subsection, prompt_add_to_section)
-signalwire.pom.pom.PromptObjectModel.from_json: Prompt Object Model internal helper classes; Rust accomplishes the same via JSON values on AgentBase (prompt_add_section, prompt_add_subsection, prompt_add_to_section)
-signalwire.pom.pom.PromptObjectModel.from_yaml: Prompt Object Model internal helper classes; Rust accomplishes the same via JSON values on AgentBase (prompt_add_section, prompt_add_subsection, prompt_add_to_section)
-signalwire.pom.pom.PromptObjectModel.render_markdown: Prompt Object Model internal helper classes; Rust accomplishes the same via JSON values on AgentBase (prompt_add_section, prompt_add_subsection, prompt_add_to_section)
-signalwire.pom.pom.PromptObjectModel.render_xml: Prompt Object Model internal helper classes; Rust accomplishes the same via JSON values on AgentBase (prompt_add_section, prompt_add_subsection, prompt_add_to_section)
-signalwire.pom.pom.PromptObjectModel.to_dict: Prompt Object Model internal helper classes; Rust accomplishes the same via JSON values on AgentBase (prompt_add_section, prompt_add_subsection, prompt_add_to_section)
-signalwire.pom.pom.PromptObjectModel.to_json: Prompt Object Model internal helper classes; Rust accomplishes the same via JSON values on AgentBase (prompt_add_section, prompt_add_subsection, prompt_add_to_section)
-signalwire.pom.pom.PromptObjectModel.to_yaml: Prompt Object Model internal helper classes; Rust accomplishes the same via JSON values on AgentBase (prompt_add_section, prompt_add_subsection, prompt_add_to_section)
-signalwire.pom.pom.Section: Prompt Object Model internal helper classes; Rust accomplishes the same via JSON values on AgentBase (prompt_add_section, prompt_add_subsection, prompt_add_to_section)
-signalwire.pom.pom.Section.__init__: Prompt Object Model internal helper classes; Rust accomplishes the same via JSON values on AgentBase (prompt_add_section, prompt_add_subsection, prompt_add_to_section)
-signalwire.pom.pom.Section.add_body: Prompt Object Model internal helper classes; Rust accomplishes the same via JSON values on AgentBase (prompt_add_section, prompt_add_subsection, prompt_add_to_section)
-signalwire.pom.pom.Section.add_bullets: Prompt Object Model internal helper classes; Rust accomplishes the same via JSON values on AgentBase (prompt_add_section, prompt_add_subsection, prompt_add_to_section)
-signalwire.pom.pom.Section.add_subsection: Prompt Object Model internal helper classes; Rust accomplishes the same via JSON values on AgentBase (prompt_add_section, prompt_add_subsection, prompt_add_to_section)
-signalwire.pom.pom.Section.render_markdown: Prompt Object Model internal helper classes; Rust accomplishes the same via JSON values on AgentBase (prompt_add_section, prompt_add_subsection, prompt_add_to_section)
-signalwire.pom.pom.Section.render_xml: Prompt Object Model internal helper classes; Rust accomplishes the same via JSON values on AgentBase (prompt_add_section, prompt_add_subsection, prompt_add_to_section)
-signalwire.pom.pom.Section.to_dict: Prompt Object Model internal helper classes; Rust accomplishes the same via JSON values on AgentBase (prompt_add_section, prompt_add_subsection, prompt_add_to_section)
 signalwire.pom.pom_tool.detect_file_format: Prompt Object Model internal helper classes; Rust accomplishes the same via JSON values on AgentBase (prompt_add_section, prompt_add_subsection, prompt_add_to_section)
 signalwire.pom.pom_tool.load_pom: Prompt Object Model internal helper classes; Rust accomplishes the same via JSON values on AgentBase (prompt_add_section, prompt_add_subsection, prompt_add_to_section)
 signalwire.pom.pom_tool.main: Prompt Object Model internal helper classes; Rust accomplishes the same via JSON values on AgentBase (prompt_add_section, prompt_add_subsection, prompt_add_to_section)
@@ -662,60 +532,11 @@ signalwire.relay.call.TranscribeAction.__init__: Python TranscribeAction class; 
 signalwire.relay.call.TranscribeAction.stop: Python TranscribeAction class; Rust merges into the Action surface — start/stop emitted via Call::transcribe / Call::stop_transcribe
 signalwire.relay.client.RelayClient.dial: Python-only RelayClient surface helpers — dial/execute are convenience wrappers; Rust users invoke equivalents via Call methods or direct connect() calls
 signalwire.relay.client.RelayClient.execute: Python-only RelayClient surface helpers — dial/execute are convenience wrappers; Rust users invoke equivalents via Call methods or direct connect() calls
-signalwire.relay.client.RelayClient.relay_protocol: Python-only RelayClient surface helpers — dial/execute are convenience wrappers; Rust users invoke equivalents via Call methods or direct connect() calls
+signalwire.relay.client.RelayClient.relay_protocol: impossible: Python abstract relay-protocol property hook — Rust models the RELAY protocol via concrete client methods, no abstract protocol accessor; TS/PHP cousins also omit it (re-audited L18)
 signalwire.relay.client.RelayClient.run: Python-only RelayClient surface helpers — dial/execute are convenience wrappers; Rust users invoke equivalents via Call methods or direct connect() calls
 signalwire.relay.client.RelayClient.send_message: Python-only RelayClient surface helpers — dial/execute are convenience wrappers; Rust users invoke equivalents via Call methods or direct connect() calls
 signalwire.relay.client.RelayError: Python RelayError exception class; Rust uses Result<_, String>
 signalwire.relay.client.RelayError.__init__: Python RelayError exception class; Rust uses Result<_, String>
-signalwire.relay.event.CallReceiveEvent: Python event-name constants are emitted as Rust associated consts on the Event enum; the per-symbol enumerator does not pick them up
-signalwire.relay.event.CallReceiveEvent.from_payload: Python event-name constants are emitted as Rust associated consts on the Event enum; the per-symbol enumerator does not pick them up
-signalwire.relay.event.CallStateEvent: Python event-name constants are emitted as Rust associated consts on the Event enum; the per-symbol enumerator does not pick them up
-signalwire.relay.event.CallStateEvent.from_payload: Python event-name constants are emitted as Rust associated consts on the Event enum; the per-symbol enumerator does not pick them up
-signalwire.relay.event.CallingErrorEvent: Python event-name constants are emitted as Rust associated consts on the Event enum; the per-symbol enumerator does not pick them up
-signalwire.relay.event.CallingErrorEvent.from_payload: Python event-name constants are emitted as Rust associated consts on the Event enum; the per-symbol enumerator does not pick them up
-signalwire.relay.event.CollectEvent: Python event-name constants are emitted as Rust associated consts on the Event enum; the per-symbol enumerator does not pick them up
-signalwire.relay.event.CollectEvent.from_payload: Python event-name constants are emitted as Rust associated consts on the Event enum; the per-symbol enumerator does not pick them up
-signalwire.relay.event.ConferenceEvent: Python event-name constants are emitted as Rust associated consts on the Event enum; the per-symbol enumerator does not pick them up
-signalwire.relay.event.ConferenceEvent.from_payload: Python event-name constants are emitted as Rust associated consts on the Event enum; the per-symbol enumerator does not pick them up
-signalwire.relay.event.ConnectEvent: Python event-name constants are emitted as Rust associated consts on the Event enum; the per-symbol enumerator does not pick them up
-signalwire.relay.event.ConnectEvent.from_payload: Python event-name constants are emitted as Rust associated consts on the Event enum; the per-symbol enumerator does not pick them up
-signalwire.relay.event.DenoiseEvent: Python event-name constants are emitted as Rust associated consts on the Event enum; the per-symbol enumerator does not pick them up
-signalwire.relay.event.DenoiseEvent.from_payload: Python event-name constants are emitted as Rust associated consts on the Event enum; the per-symbol enumerator does not pick them up
-signalwire.relay.event.DetectEvent: Python event-name constants are emitted as Rust associated consts on the Event enum; the per-symbol enumerator does not pick them up
-signalwire.relay.event.DetectEvent.from_payload: Python event-name constants are emitted as Rust associated consts on the Event enum; the per-symbol enumerator does not pick them up
-signalwire.relay.event.DialEvent: Python event-name constants are emitted as Rust associated consts on the Event enum; the per-symbol enumerator does not pick them up
-signalwire.relay.event.DialEvent.from_payload: Python event-name constants are emitted as Rust associated consts on the Event enum; the per-symbol enumerator does not pick them up
-signalwire.relay.event.EchoEvent: Python event-name constants are emitted as Rust associated consts on the Event enum; the per-symbol enumerator does not pick them up
-signalwire.relay.event.EchoEvent.from_payload: Python event-name constants are emitted as Rust associated consts on the Event enum; the per-symbol enumerator does not pick them up
-signalwire.relay.event.FaxEvent: Python event-name constants are emitted as Rust associated consts on the Event enum; the per-symbol enumerator does not pick them up
-signalwire.relay.event.FaxEvent.from_payload: Python event-name constants are emitted as Rust associated consts on the Event enum; the per-symbol enumerator does not pick them up
-signalwire.relay.event.HoldEvent: Python event-name constants are emitted as Rust associated consts on the Event enum; the per-symbol enumerator does not pick them up
-signalwire.relay.event.HoldEvent.from_payload: Python event-name constants are emitted as Rust associated consts on the Event enum; the per-symbol enumerator does not pick them up
-signalwire.relay.event.MessageReceiveEvent: Python event-name constants are emitted as Rust associated consts on the Event enum; the per-symbol enumerator does not pick them up
-signalwire.relay.event.MessageReceiveEvent.from_payload: Python event-name constants are emitted as Rust associated consts on the Event enum; the per-symbol enumerator does not pick them up
-signalwire.relay.event.MessageStateEvent: Python event-name constants are emitted as Rust associated consts on the Event enum; the per-symbol enumerator does not pick them up
-signalwire.relay.event.MessageStateEvent.from_payload: Python event-name constants are emitted as Rust associated consts on the Event enum; the per-symbol enumerator does not pick them up
-signalwire.relay.event.PayEvent: Python event-name constants are emitted as Rust associated consts on the Event enum; the per-symbol enumerator does not pick them up
-signalwire.relay.event.PayEvent.from_payload: Python event-name constants are emitted as Rust associated consts on the Event enum; the per-symbol enumerator does not pick them up
-signalwire.relay.event.PlayEvent: Python event-name constants are emitted as Rust associated consts on the Event enum; the per-symbol enumerator does not pick them up
-signalwire.relay.event.PlayEvent.from_payload: Python event-name constants are emitted as Rust associated consts on the Event enum; the per-symbol enumerator does not pick them up
-signalwire.relay.event.QueueEvent: Python event-name constants are emitted as Rust associated consts on the Event enum; the per-symbol enumerator does not pick them up
-signalwire.relay.event.QueueEvent.from_payload: Python event-name constants are emitted as Rust associated consts on the Event enum; the per-symbol enumerator does not pick them up
-signalwire.relay.event.RecordEvent: Python event-name constants are emitted as Rust associated consts on the Event enum; the per-symbol enumerator does not pick them up
-signalwire.relay.event.RecordEvent.from_payload: Python event-name constants are emitted as Rust associated consts on the Event enum; the per-symbol enumerator does not pick them up
-signalwire.relay.event.ReferEvent: Python event-name constants are emitted as Rust associated consts on the Event enum; the per-symbol enumerator does not pick them up
-signalwire.relay.event.ReferEvent.from_payload: Python event-name constants are emitted as Rust associated consts on the Event enum; the per-symbol enumerator does not pick them up
-signalwire.relay.event.RelayEvent: Python event-name constants are emitted as Rust associated consts on the Event enum; the per-symbol enumerator does not pick them up
-signalwire.relay.event.RelayEvent.from_payload: Python event-name constants are emitted as Rust associated consts on the Event enum; the per-symbol enumerator does not pick them up
-signalwire.relay.event.SendDigitsEvent: Python event-name constants are emitted as Rust associated consts on the Event enum; the per-symbol enumerator does not pick them up
-signalwire.relay.event.SendDigitsEvent.from_payload: Python event-name constants are emitted as Rust associated consts on the Event enum; the per-symbol enumerator does not pick them up
-signalwire.relay.event.StreamEvent: Python event-name constants are emitted as Rust associated consts on the Event enum; the per-symbol enumerator does not pick them up
-signalwire.relay.event.StreamEvent.from_payload: Python event-name constants are emitted as Rust associated consts on the Event enum; the per-symbol enumerator does not pick them up
-signalwire.relay.event.TapEvent: Python event-name constants are emitted as Rust associated consts on the Event enum; the per-symbol enumerator does not pick them up
-signalwire.relay.event.TapEvent.from_payload: Python event-name constants are emitted as Rust associated consts on the Event enum; the per-symbol enumerator does not pick them up
-signalwire.relay.event.TranscribeEvent: Python event-name constants are emitted as Rust associated consts on the Event enum; the per-symbol enumerator does not pick them up
-signalwire.relay.event.TranscribeEvent.from_payload: Python event-name constants are emitted as Rust associated consts on the Event enum; the per-symbol enumerator does not pick them up
-signalwire.relay.event.parse_event: Python event-name constants are emitted as Rust associated consts on the Event enum; the per-symbol enumerator does not pick them up
 signalwire.relay.message.Message.wait: Python Message.wait; Rust users register an on_completed callback or use the futures-style API
 signalwire.rest._base.BaseResource: Python REST base helper internals; Rust ships rest::CrudResource with a narrower public surface
 signalwire.rest._base.BaseResource.__init__: Python REST base helper internals; Rust ships rest::CrudResource with a narrower public surface
@@ -730,8 +551,6 @@ signalwire.rest._base.HttpClient.post: Python REST base helper internals; Rust s
 signalwire.rest._base.HttpClient.put: Python REST base helper internals; Rust ships rest::CrudResource with a narrower public surface
 signalwire.rest._base.SignalWireRestError: Python REST base helper internals; Rust ships rest::CrudResource with a narrower public surface
 signalwire.rest._base.SignalWireRestError.__init__: Python REST base helper internals; Rust ships rest::CrudResource with a narrower public surface
-signalwire.rest._pagination.PaginatedIterator: Python iterator class; Rust uses CrudResource::iter / list pagination via per-namespace methods
-signalwire.rest._pagination.PaginatedIterator.__init__: Python iterator class; Rust uses CrudResource::iter / list pagination via per-namespace methods
 signalwire.rest._pagination.PaginatedIterator.__iter__: Python iterator class; Rust uses CrudResource::iter / list pagination via per-namespace methods
 signalwire.rest._pagination.PaginatedIterator.__next__: Python iterator class; Rust uses CrudResource::iter / list pagination via per-namespace methods
 signalwire.rest.call_handler.PhoneCallHandler: Python PhoneCallHandler enum exposing the 11 wire values; Rust ships the same constants on rest::PhoneCallHandler at the rest module — but the per-symbol enumerator may not have it mapped
@@ -985,101 +804,24 @@ signalwire.search.search_engine.SearchEngine.search: search-related; not ported 
 signalwire.search.search_service.SearchService.search_direct: search-related; not ported per skip list
 signalwire.search.search_service.SearchService.start: search-related; not ported per skip list
 signalwire.search.search_service.SearchService.stop: search-related; not ported per skip list
-signalwire.skills.api_ninjas_trivia.skill.ApiNinjasTriviaSkill.get_instance_key: Python api_ninjas_trivia skill internals; Rust ships the canonical skill
-signalwire.skills.api_ninjas_trivia.skill.ApiNinjasTriviaSkill.get_parameter_schema: Python api_ninjas_trivia skill internals; Rust ships the canonical skill
 signalwire.skills.api_ninjas_trivia.skill.ApiNinjasTriviaSkill.get_tools: Python api_ninjas_trivia skill internals; Rust ships the canonical skill
-signalwire.skills.api_ninjas_trivia.skill.ApiNinjasTriviaSkill.register_tools: Python skill-internal hooks (mostly _-prefixed or setup helpers); Rust skill implementations override SkillBase methods directly
-signalwire.skills.api_ninjas_trivia.skill.ApiNinjasTriviaSkill.setup: Python skill-internal hooks (mostly _-prefixed or setup helpers); Rust skill implementations override SkillBase methods directly
-signalwire.skills.claude_skills.skill.ClaudeSkillsSkill.get_hints: claude_skills is a Python loader for SKILL.md packs; the Rust port exposes the registration hook but not the Python-specific loader plumbing
-signalwire.skills.claude_skills.skill.ClaudeSkillsSkill.get_instance_key: claude_skills is a Python loader for SKILL.md packs; the Rust port exposes the registration hook but not the Python-specific loader plumbing
-signalwire.skills.claude_skills.skill.ClaudeSkillsSkill.get_parameter_schema: claude_skills is a Python loader for SKILL.md packs; the Rust port exposes the registration hook but not the Python-specific loader plumbing
-signalwire.skills.claude_skills.skill.ClaudeSkillsSkill.register_tools: claude_skills is a Python loader for SKILL.md packs; the Rust port exposes the registration hook but not the Python-specific loader plumbing
-signalwire.skills.claude_skills.skill.ClaudeSkillsSkill.setup: claude_skills is a Python loader for SKILL.md packs; the Rust port exposes the registration hook but not the Python-specific loader plumbing
-signalwire.skills.datasphere.skill.DataSphereSkill.cleanup: Python skill-base internal hooks; Rust skills override SkillBase methods directly
-signalwire.skills.datasphere.skill.DataSphereSkill.get_global_data: Python datasphere skill internals; Rust ships the canonical skill
-signalwire.skills.datasphere.skill.DataSphereSkill.get_hints: Python datasphere skill internals; Rust ships the canonical skill
-signalwire.skills.datasphere.skill.DataSphereSkill.get_instance_key: Python datasphere skill internals; Rust ships the canonical skill
-signalwire.skills.datasphere.skill.DataSphereSkill.get_parameter_schema: Python datasphere skill internals; Rust ships the canonical skill
-signalwire.skills.datasphere.skill.DataSphereSkill.get_prompt_sections: Python datasphere skill internals; Rust ships the canonical skill
-signalwire.skills.datasphere.skill.DataSphereSkill.register_tools: Python skill-internal hooks (mostly _-prefixed or setup helpers); Rust skill implementations override SkillBase methods directly
-signalwire.skills.datasphere.skill.DataSphereSkill.setup: Python skill-internal hooks (mostly _-prefixed or setup helpers); Rust skill implementations override SkillBase methods directly
-signalwire.skills.datasphere_serverless.skill.DataSphereServerlessSkill.get_global_data: datasphere_serverless is a Python-experimental DataMap-based variant; Rust ships the canonical datasphere skill
-signalwire.skills.datasphere_serverless.skill.DataSphereServerlessSkill.get_hints: datasphere_serverless is a Python-experimental DataMap-based variant; Rust ships the canonical datasphere skill
-signalwire.skills.datasphere_serverless.skill.DataSphereServerlessSkill.get_instance_key: datasphere_serverless is a Python-experimental DataMap-based variant; Rust ships the canonical datasphere skill
-signalwire.skills.datasphere_serverless.skill.DataSphereServerlessSkill.get_parameter_schema: datasphere_serverless is a Python-experimental DataMap-based variant; Rust ships the canonical datasphere skill
-signalwire.skills.datasphere_serverless.skill.DataSphereServerlessSkill.get_prompt_sections: datasphere_serverless is a Python-experimental DataMap-based variant; Rust ships the canonical datasphere skill
-signalwire.skills.datasphere_serverless.skill.DataSphereServerlessSkill.register_tools: datasphere_serverless is a Python-experimental DataMap-based variant; Rust ships the canonical datasphere skill
-signalwire.skills.datasphere_serverless.skill.DataSphereServerlessSkill.setup: datasphere_serverless is a Python-experimental DataMap-based variant; Rust ships the canonical datasphere skill
-signalwire.skills.datetime.skill.DateTimeSkill.get_hints: Python datetime skill internals; Rust ships the canonical skill
-signalwire.skills.datetime.skill.DateTimeSkill.get_parameter_schema: Python datetime skill internals; Rust ships the canonical skill
-signalwire.skills.datetime.skill.DateTimeSkill.get_prompt_sections: Python datetime skill internals; Rust ships the canonical skill
-signalwire.skills.datetime.skill.DateTimeSkill.register_tools: Python skill-internal hooks (mostly _-prefixed or setup helpers); Rust skill implementations override SkillBase methods directly
-signalwire.skills.datetime.skill.DateTimeSkill.setup: Python skill-internal hooks (mostly _-prefixed or setup helpers); Rust skill implementations override SkillBase methods directly
 signalwire.skills.google_maps.skill.GoogleMapsClient: Python-internal Google Maps client helper; Rust google_maps skill issues HTTP directly
 signalwire.skills.google_maps.skill.GoogleMapsClient.__init__: Python-internal Google Maps client helper; Rust google_maps skill issues HTTP directly
 signalwire.skills.google_maps.skill.GoogleMapsClient.compute_route: Python-internal Google Maps client helper; Rust google_maps skill issues HTTP directly
 signalwire.skills.google_maps.skill.GoogleMapsClient.validate_address: Python-internal Google Maps client helper; Rust google_maps skill issues HTTP directly
-signalwire.skills.google_maps.skill.GoogleMapsSkill.get_hints: Python google_maps skill internals; Rust ships the canonical skill
-signalwire.skills.google_maps.skill.GoogleMapsSkill.get_parameter_schema: Python google_maps skill internals; Rust ships the canonical skill
-signalwire.skills.google_maps.skill.GoogleMapsSkill.get_prompt_sections: Python google_maps skill internals; Rust ships the canonical skill
-signalwire.skills.google_maps.skill.GoogleMapsSkill.register_tools: Python skill-internal hooks (mostly _-prefixed or setup helpers); Rust skill implementations override SkillBase methods directly
-signalwire.skills.google_maps.skill.GoogleMapsSkill.setup: Python skill-internal hooks (mostly _-prefixed or setup helpers); Rust skill implementations override SkillBase methods directly
-signalwire.skills.info_gatherer.skill.InfoGathererSkill.get_global_data: Python info_gatherer skill internals; Rust ships the canonical skill
-signalwire.skills.info_gatherer.skill.InfoGathererSkill.get_instance_key: Python info_gatherer skill internals; Rust ships the canonical skill
-signalwire.skills.info_gatherer.skill.InfoGathererSkill.get_parameter_schema: Python info_gatherer skill internals; Rust ships the canonical skill
-signalwire.skills.info_gatherer.skill.InfoGathererSkill.register_tools: Python skill-internal hooks (mostly _-prefixed or setup helpers); Rust skill implementations override SkillBase methods directly
-signalwire.skills.info_gatherer.skill.InfoGathererSkill.setup: Python skill-internal hooks (mostly _-prefixed or setup helpers); Rust skill implementations override SkillBase methods directly
-signalwire.skills.joke.skill.JokeSkill.get_global_data: Python joke skill internals; Rust ships the canonical skill
-signalwire.skills.joke.skill.JokeSkill.get_hints: Python joke skill internals; Rust ships the canonical skill
-signalwire.skills.joke.skill.JokeSkill.get_parameter_schema: Python joke skill internals; Rust ships the canonical skill
-signalwire.skills.joke.skill.JokeSkill.get_prompt_sections: Python joke skill internals; Rust ships the canonical skill
-signalwire.skills.joke.skill.JokeSkill.register_tools: Python skill-internal hooks (mostly _-prefixed or setup helpers); Rust skill implementations override SkillBase methods directly
-signalwire.skills.joke.skill.JokeSkill.setup: Python skill-internal hooks (mostly _-prefixed or setup helpers); Rust skill implementations override SkillBase methods directly
-signalwire.skills.math.skill.MathSkill.get_hints: Python math skill internals; Rust ships the canonical skill
-signalwire.skills.math.skill.MathSkill.get_parameter_schema: Python math skill internals; Rust ships the canonical skill
-signalwire.skills.math.skill.MathSkill.get_prompt_sections: Python math skill internals; Rust ships the canonical skill
-signalwire.skills.math.skill.MathSkill.register_tools: Python skill-internal hooks (mostly _-prefixed or setup helpers); Rust skill implementations override SkillBase methods directly
-signalwire.skills.math.skill.MathSkill.setup: Python skill-internal hooks (mostly _-prefixed or setup helpers); Rust skill implementations override SkillBase methods directly
 signalwire.skills.mcp_gateway.skill.MCPGatewaySkill.get_global_data: skill-level MCP wiring is exposed via the mcp_gateway skill in Rust; the Python sub-module helpers (skill.MCPGatewaySkill internals) are language-private
 signalwire.skills.mcp_gateway.skill.MCPGatewaySkill.get_hints: skill-level MCP wiring is exposed via the mcp_gateway skill in Rust; the Python sub-module helpers (skill.MCPGatewaySkill internals) are language-private
 signalwire.skills.mcp_gateway.skill.MCPGatewaySkill.get_parameter_schema: skill-level MCP wiring is exposed via the mcp_gateway skill in Rust; the Python sub-module helpers (skill.MCPGatewaySkill internals) are language-private
 signalwire.skills.mcp_gateway.skill.MCPGatewaySkill.get_prompt_sections: skill-level MCP wiring is exposed via the mcp_gateway skill in Rust; the Python sub-module helpers (skill.MCPGatewaySkill internals) are language-private
 signalwire.skills.mcp_gateway.skill.MCPGatewaySkill.register_tools: skill-level MCP wiring is exposed via the mcp_gateway skill in Rust; the Python sub-module helpers (skill.MCPGatewaySkill internals) are language-private
 signalwire.skills.mcp_gateway.skill.MCPGatewaySkill.setup: skill-level MCP wiring is exposed via the mcp_gateway skill in Rust; the Python sub-module helpers (skill.MCPGatewaySkill internals) are language-private
-signalwire.skills.native_vector_search.skill.NativeVectorSearchSkill.cleanup: vector-search skill requires Python ML stack; not ported per skip list
-signalwire.skills.native_vector_search.skill.NativeVectorSearchSkill.get_global_data: vector-search skill requires Python ML stack; not ported per skip list
-signalwire.skills.native_vector_search.skill.NativeVectorSearchSkill.get_hints: vector-search skill requires Python ML stack; not ported per skip list
-signalwire.skills.native_vector_search.skill.NativeVectorSearchSkill.get_instance_key: vector-search skill requires Python ML stack; not ported per skip list
-signalwire.skills.native_vector_search.skill.NativeVectorSearchSkill.get_parameter_schema: vector-search skill requires Python ML stack; not ported per skip list
-signalwire.skills.native_vector_search.skill.NativeVectorSearchSkill.get_prompt_sections: vector-search skill requires Python ML stack; not ported per skip list
-signalwire.skills.native_vector_search.skill.NativeVectorSearchSkill.register_tools: vector-search skill requires Python ML stack; not ported per skip list
-signalwire.skills.native_vector_search.skill.NativeVectorSearchSkill.setup: vector-search skill requires Python ML stack; not ported per skip list
-signalwire.skills.play_background_file.skill.PlayBackgroundFileSkill.get_instance_key: Python play_background_file internals; Rust ships the canonical skill
-signalwire.skills.play_background_file.skill.PlayBackgroundFileSkill.get_parameter_schema: Python play_background_file internals; Rust ships the canonical skill
 signalwire.skills.play_background_file.skill.PlayBackgroundFileSkill.get_tools: Python play_background_file internals; Rust ships the canonical skill
-signalwire.skills.play_background_file.skill.PlayBackgroundFileSkill.register_tools: Python skill-internal hooks (mostly _-prefixed or setup helpers); Rust skill implementations override SkillBase methods directly
-signalwire.skills.play_background_file.skill.PlayBackgroundFileSkill.setup: Python skill-internal hooks (mostly _-prefixed or setup helpers); Rust skill implementations override SkillBase methods directly
 signalwire.skills.registry.SkillRegistry.__init__: Python skill registry uses runtime .py loading; Rust registry is statically populated at compile time
 signalwire.skills.registry.SkillRegistry.discover_skills: Python skill registry uses runtime .py loading; Rust registry is statically populated at compile time
 signalwire.skills.registry.SkillRegistry.get_all_skills_schema: Python skill-registry internals; Rust ships SkillRegistry::register_skill, get_factory, list_skills with a narrower public surface
 signalwire.skills.registry.SkillRegistry.get_skill_class: Python skill-registry internals; Rust ships SkillRegistry::register_skill, get_factory, list_skills with a narrower public surface
 signalwire.skills.registry.SkillRegistry.list_all_skill_sources: Python skill-registry internals; Rust ships SkillRegistry::register_skill, get_factory, list_skills with a narrower public surface
-signalwire.skills.spider.skill.SpiderSkill.cleanup: Python skill-base internal hooks; Rust skills override SkillBase methods directly
-signalwire.skills.spider.skill.SpiderSkill.get_hints: Python spider skill internals; Rust ships the canonical spider skill with the same SkillBase surface
-signalwire.skills.spider.skill.SpiderSkill.get_instance_key: Python spider skill internals; Rust ships the canonical spider skill with the same SkillBase surface
-signalwire.skills.spider.skill.SpiderSkill.get_parameter_schema: Python spider skill internals; Rust ships the canonical spider skill with the same SkillBase surface
-signalwire.skills.spider.skill.SpiderSkill.register_tools: Python skill-internal hooks (mostly _-prefixed or setup helpers); Rust skill implementations override SkillBase methods directly
-signalwire.skills.spider.skill.SpiderSkill.setup: Python skill-internal hooks (mostly _-prefixed or setup helpers); Rust skill implementations override SkillBase methods directly
-signalwire.skills.swml_transfer.skill.SWMLTransferSkill.get_hints: Python swml_transfer skill internals; Rust ships the canonical swml_transfer skill
-signalwire.skills.swml_transfer.skill.SWMLTransferSkill.get_instance_key: Python swml_transfer skill internals; Rust ships the canonical swml_transfer skill
-signalwire.skills.swml_transfer.skill.SWMLTransferSkill.get_parameter_schema: Python swml_transfer skill internals; Rust ships the canonical swml_transfer skill
-signalwire.skills.swml_transfer.skill.SWMLTransferSkill.get_prompt_sections: Python swml_transfer skill internals; Rust ships the canonical swml_transfer skill
-signalwire.skills.swml_transfer.skill.SWMLTransferSkill.register_tools: Python skill-internal hooks (mostly _-prefixed or setup helpers); Rust skill implementations override SkillBase methods directly
-signalwire.skills.swml_transfer.skill.SWMLTransferSkill.setup: Python skill-internal hooks (mostly _-prefixed or setup helpers); Rust skill implementations override SkillBase methods directly
-signalwire.skills.weather_api.skill.WeatherApiSkill.get_parameter_schema: Python weather_api skill internals; Rust ships the canonical skill
 signalwire.skills.weather_api.skill.WeatherApiSkill.get_tools: Python weather_api skill internals; Rust ships the canonical skill
-signalwire.skills.weather_api.skill.WeatherApiSkill.register_tools: Python skill-internal hooks (mostly _-prefixed or setup helpers); Rust skill implementations override SkillBase methods directly
-signalwire.skills.weather_api.skill.WeatherApiSkill.setup: Python skill-internal hooks (mostly _-prefixed or setup helpers); Rust skill implementations override SkillBase methods directly
 signalwire.skills.web_search.skill.GoogleSearchScraper: Python-internal scraper helper; Rust web_search skill issues HTTP directly via its skill handler
 signalwire.skills.web_search.skill.GoogleSearchScraper.__init__: Python-internal scraper helper; Rust web_search skill issues HTTP directly via its skill handler
 signalwire.skills.web_search.skill.GoogleSearchScraper.extract_html_content: Python-internal scraper helper; Rust web_search skill issues HTTP directly via its skill handler
@@ -1089,13 +831,6 @@ signalwire.skills.web_search.skill.GoogleSearchScraper.is_reddit_url: Python-int
 signalwire.skills.web_search.skill.GoogleSearchScraper.search_and_scrape: Python-internal scraper helper; Rust web_search skill issues HTTP directly via its skill handler
 signalwire.skills.web_search.skill.GoogleSearchScraper.search_and_scrape_best: Python-internal scraper helper; Rust web_search skill issues HTTP directly via its skill handler
 signalwire.skills.web_search.skill.GoogleSearchScraper.search_google: Python-internal scraper helper; Rust web_search skill issues HTTP directly via its skill handler
-signalwire.skills.web_search.skill.WebSearchSkill.get_global_data: Python web_search skill internals; Rust ships the canonical skill
-signalwire.skills.web_search.skill.WebSearchSkill.get_hints: Python web_search skill internals; Rust ships the canonical skill
-signalwire.skills.web_search.skill.WebSearchSkill.get_instance_key: Python web_search skill internals; Rust ships the canonical skill
-signalwire.skills.web_search.skill.WebSearchSkill.get_parameter_schema: Python web_search skill internals; Rust ships the canonical skill
-signalwire.skills.web_search.skill.WebSearchSkill.get_prompt_sections: Python web_search skill internals; Rust ships the canonical skill
-signalwire.skills.web_search.skill.WebSearchSkill.register_tools: Python skill-internal hooks (mostly _-prefixed or setup helpers); Rust skill implementations override SkillBase methods directly
-signalwire.skills.web_search.skill.WebSearchSkill.setup: Python skill-internal hooks (mostly _-prefixed or setup helpers); Rust skill implementations override SkillBase methods directly
 signalwire.skills.web_search.skill_improved.GoogleSearchScraper: Python-experimental WebSearch variants; Rust ships the canonical web_search skill
 signalwire.skills.web_search.skill_improved.GoogleSearchScraper.__init__: Python-experimental WebSearch variants; Rust ships the canonical web_search skill
 signalwire.skills.web_search.skill_improved.GoogleSearchScraper.extract_text_from_url: Python-experimental WebSearch variants; Rust ships the canonical web_search skill
@@ -1123,28 +858,8 @@ signalwire.skills.web_search.skill_original.WebSearchSkill.get_parameter_schema:
 signalwire.skills.web_search.skill_original.WebSearchSkill.get_prompt_sections: Python-experimental WebSearch variants; Rust ships the canonical web_search skill
 signalwire.skills.web_search.skill_original.WebSearchSkill.register_tools: Python-experimental WebSearch variants; Rust ships the canonical web_search skill
 signalwire.skills.web_search.skill_original.WebSearchSkill.setup: Python-experimental WebSearch variants; Rust ships the canonical web_search skill
-signalwire.skills.wikipedia_search.skill.WikipediaSearchSkill.get_hints: Python wikipedia_search skill internals; Rust ships the canonical skill
-signalwire.skills.wikipedia_search.skill.WikipediaSearchSkill.get_parameter_schema: Python wikipedia_search skill internals; Rust ships the canonical skill
-signalwire.skills.wikipedia_search.skill.WikipediaSearchSkill.get_prompt_sections: Python wikipedia_search skill internals; Rust ships the canonical skill
-signalwire.skills.wikipedia_search.skill.WikipediaSearchSkill.register_tools: Python skill-internal hooks (mostly _-prefixed or setup helpers); Rust skill implementations override SkillBase methods directly
 signalwire.skills.wikipedia_search.skill.WikipediaSearchSkill.search_wiki: Python wikipedia_search skill internals; Rust ships the canonical skill
-signalwire.skills.wikipedia_search.skill.WikipediaSearchSkill.setup: Python skill-internal hooks (mostly _-prefixed or setup helpers); Rust skill implementations override SkillBase methods directly
 signalwire.utils.is_serverless_mode: Python utils package internals; Rust users compose equivalent helpers on the standard library
-signalwire.utils.schema_utils.SchemaUtils: Python utils package internals; Rust users compose equivalent helpers on the standard library
-signalwire.utils.schema_utils.SchemaUtils.__init__: Python schema utils; Rust ships swml::schema with a narrower public surface
-signalwire.utils.schema_utils.SchemaUtils.full_validation_available: Python schema utils; Rust ships swml::schema with a narrower public surface
-signalwire.utils.schema_utils.SchemaUtils.generate_method_body: Python schema utils; Rust ships swml::schema with a narrower public surface
-signalwire.utils.schema_utils.SchemaUtils.generate_method_signature: Python schema utils; Rust ships swml::schema with a narrower public surface
-signalwire.utils.schema_utils.SchemaUtils.get_all_verb_names: Python schema utils; Rust ships swml::schema with a narrower public surface
-signalwire.utils.schema_utils.SchemaUtils.get_verb_parameters: Python schema utils; Rust ships swml::schema with a narrower public surface
-signalwire.utils.schema_utils.SchemaUtils.get_verb_properties: Python schema utils; Rust ships swml::schema with a narrower public surface
-signalwire.utils.schema_utils.SchemaUtils.get_verb_required_properties: Python schema utils; Rust ships swml::schema with a narrower public surface
-signalwire.utils.schema_utils.SchemaUtils.load_schema: Python schema utils; Rust ships swml::schema with a narrower public surface
-signalwire.utils.schema_utils.SchemaUtils.validate_document: Python schema utils; Rust ships swml::schema with a narrower public surface
-signalwire.utils.schema_utils.SchemaUtils.validate_verb: Python schema utils; Rust ships swml::schema with a narrower public surface
-signalwire.utils.schema_utils.SchemaValidationError: Python utils package internals; Rust users compose equivalent helpers on the standard library
-signalwire.utils.schema_utils.SchemaValidationError.__init__: Python utils package internals; Rust users compose equivalent helpers on the standard library
-signalwire.utils.url_validator.validate_url: Python utils package internals; Rust users compose equivalent helpers on the standard library
 signalwire.web.web_service.WebService: Python WebService internals; Rust integrates static file serving into AgentServer
 signalwire.web.web_service.WebService.__init__: Python WebService internals; Rust integrates static file serving into AgentServer
 signalwire.web.web_service.WebService.add_directory: Python WebService internals; Rust integrates static file serving into AgentServer
@@ -1157,9 +872,9 @@ signalwire.relay.client.RelayClient.__del__
 
 ## Python async-context-manager dunders (Python-only)
 
-signalwire.relay.client.RelayClient.__aenter__: Python async-context-manager protocol; Rust uses RAII Drop semantics
-signalwire.relay.client.RelayClient.__aexit__: Python async-context-manager protocol; Rust uses RAII Drop semantics
-signalwire.relay.client.RelayClient.__del__: Python finalizer; Rust uses Drop
+signalwire.relay.client.RelayClient.__aenter__: impossible: Python async context-manager protocol dunder (__aenter__/__aexit__) — no Rust equivalent; TS/PHP cousins also omit these protocol methods (re-audited L18)
+signalwire.relay.client.RelayClient.__aexit__: impossible: Python async context-manager protocol dunder (__aenter__/__aexit__) — no Rust equivalent; TS/PHP cousins also omit these protocol methods (re-audited L18)
+signalwire.relay.client.RelayClient.__del__: impossible: Python finalizer dunder (__del__) — Rust uses Drop, not a reference-counted finalizer method on the public surface; TS/PHP cousins also omit it (re-audited L18)
 
 ## Python state-attribute accessors (Python-only)
 
@@ -1176,6 +891,16 @@ signalwire.core.skill_manager.SkillManager.logger: Python exposes ``self.logger`
 signalwire.core.swml_service.SWMLService.security: Python exposes ``self.security`` as the SecurityConfig attribute; Rust holds security configuration privately and exposes the relevant methods (get_basic_auth_credentials, validate_basic_auth) instead.
 signalwire.core.swml_service.SWMLService.verb_registry: Python exposes ``self.verb_registry`` as the VerbHandlerRegistry attribute; Rust holds the verb registry privately and exposes verb-registration methods on SWMLService instead.
 signalwire.skills.registry.SkillRegistry.logger: Python exposes ``self.logger`` as a public attribute on SkillRegistry; Rust uses tracing macros directly.
-signalwire.core.security.webhook_middleware.make_webhook_validation_dependency: Python ships a FastAPI dependency-factory free function; Rust ships the equivalent as a tower::Layer (``signalwire::security::webhook_layer::WebhookLayer``) per the axum/tower idiom. Functional parity exists — the surface shape differs because Rust has no FastAPI-style dependency-injection runtime.
+signalwire.core.security.webhook_middleware.make_webhook_validation_dependency: impossible: FastAPI dependency-factory (make_webhook_validation_dependency returns a Depends() callable) — a framework-specific DI primitive with no Rust equivalent; TS/PHP cousins also omit it (re-audited L18)
 signalwire.core.security.webhook_validator.validate_webhook_signature: idiomatic_divergence: implemented as static method on the WebhookValidator class (language idiom); see PORT_ADDITIONS.md
 signalwire.core.security.webhook_validator.validate_request: idiomatic_divergence: implemented as static method on the WebhookValidator class (language idiom); see PORT_ADDITIONS.md
+
+## Abstract RELAY action mixin bases (§H — flattened, TS/PHP flatten identically)
+
+signalwire.relay.call.PausableAction: impossible: abstract RELAY action mixin base — Rust flattens pause/resume onto each concrete Action (PlayAction/RecordAction), so there is no standalone base class to enumerate (TS/PHP flatten identically)
+signalwire.relay.call.PausableAction.pause: impossible: abstract RELAY action mixin-base method — flattened onto concrete PlayAction/RecordAction.pause in Rust (TS/PHP flatten identically)
+signalwire.relay.call.PausableAction.resume: impossible: abstract RELAY action mixin-base method — flattened onto concrete PlayAction/RecordAction.resume in Rust (TS/PHP flatten identically)
+signalwire.relay.call.StoppableAction: impossible: abstract RELAY action mixin base — Rust flattens stop onto each concrete Action (the base Action carries stop()), no standalone base class (TS/PHP flatten identically)
+signalwire.relay.call.StoppableAction.stop: impossible: abstract RELAY action mixin-base method — flattened onto the concrete Action.stop in Rust (TS/PHP flatten identically)
+signalwire.relay.call.VolumeAction: impossible: abstract RELAY action mixin base — Rust flattens volume onto concrete PlayAction, no standalone base class (TS/PHP flatten identically)
+signalwire.relay.call.VolumeAction.volume: impossible: abstract RELAY action mixin-base method — flattened onto concrete PlayAction.volume in Rust (TS/PHP flatten identically)

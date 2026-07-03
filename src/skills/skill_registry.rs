@@ -12,7 +12,7 @@ pub type SkillFactory = Box<dyn Fn(Map<String, Value>) -> Box<dyn SkillBase> + S
 
 /// Thread-safe global registry mapping `snake_case` skill names to factory functions.
 ///
-/// All 18 builtin skills are auto-registered on first access.
+/// All 17 builtin skills are auto-registered on first access.
 static REGISTRY: LazyLock<Mutex<SkillRegistryInner>> = LazyLock::new(|| {
     let mut inner = SkillRegistryInner::new();
     inner.register_builtins();
@@ -80,10 +80,6 @@ impl SkillRegistryInner {
         self.skills.insert(
             "math".to_string(),
             Box::new(|p| Box::new(builtin::math::Math::new(p))),
-        );
-        self.skills.insert(
-            "mcp_gateway".to_string(),
-            Box::new(|p| Box::new(builtin::mcp_gateway::McpGateway::new(p))),
         );
         self.skills.insert(
             "native_vector_search".to_string(),
@@ -232,11 +228,11 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_registry_lists_18_builtins() {
+    fn test_registry_lists_17_builtins() {
         let names = SkillRegistry::list_skills();
         assert!(
-            names.len() >= 18,
-            "Expected at least 18 builtins, got {}",
+            names.len() >= 17,
+            "Expected at least 17 builtins, got {}",
             names.len()
         );
         assert!(names.contains(&"datetime".to_string()));
@@ -255,7 +251,6 @@ mod tests {
         assert!(names.contains(&"native_vector_search".to_string()));
         assert!(names.contains(&"info_gatherer".to_string()));
         assert!(names.contains(&"claude_skills".to_string()));
-        assert!(names.contains(&"mcp_gateway".to_string()));
         assert!(names.contains(&"custom_skills".to_string()));
     }
 
@@ -275,7 +270,7 @@ mod tests {
 
     #[test]
     fn test_each_builtin_instantiable() {
-        // Iterate the *18 known builtins* directly rather than walking
+        // Iterate the *17 known builtins* directly rather than walking
         // `list_skills()`. The latter may include user-registered
         // skills from a sibling test (`test_register_custom_skill`)
         // that runs in parallel under the global lock — those have
@@ -300,7 +295,6 @@ mod tests {
             "native_vector_search",
             "info_gatherer",
             "claude_skills",
-            "mcp_gateway",
             "custom_skills",
         ];
         for name in builtins {

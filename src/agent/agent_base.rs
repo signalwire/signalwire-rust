@@ -198,6 +198,10 @@ pub struct AgentBase {
     // ── Languages / pronunciations ──────────────────────────────────────
     languages: Vec<Value>,
     pronunciations: Vec<Value>,
+    /// ASR-driven multilingual (Mode B) config, emitted as a top-level
+    /// `multilingual` object on the AI verb. Mutually exclusive with
+    /// `languages` (the server prefers `multilingual` when both are set).
+    multilingual: Option<Value>,
 
     // ── Params / data ───────────────────────────────────────────────────
     params: Map<String, Value>,
@@ -281,6 +285,7 @@ impl Clone for AgentBase {
             pattern_hints: self.pattern_hints.clone(),
             languages: self.languages.clone(),
             pronunciations: self.pronunciations.clone(),
+            multilingual: self.multilingual.clone(),
             params: self.params.clone(),
             global_data: self.global_data.clone(),
             native_functions: self.native_functions.clone(),
@@ -368,6 +373,7 @@ impl AgentBase {
             pattern_hints: Vec::new(),
             languages: Vec::new(),
             pronunciations: Vec::new(),
+            multilingual: None,
             params: Map::new(),
             global_data: Map::new(),
             native_functions: Vec::new(),
@@ -796,6 +802,20 @@ impl AgentBase {
 
     pub fn set_languages(&mut self, languages: Vec<Value>) -> &mut Self {
         self.languages = languages;
+        self
+    }
+
+    /// Configure ASR-driven multilingual mode (Mode B).
+    ///
+    /// Emits a top-level `multilingual` object on the AI verb: the recognizer
+    /// runs in code-switching mode and the agent answers in whatever language
+    /// the caller actually spoke. Mutually exclusive with [`set_languages`] —
+    /// if both are set the server uses `multilingual` and ignores `languages`.
+    /// Parity with Python's `AIConfigMixin.set_multilingual`.
+    pub fn set_multilingual(&mut self, config: Value) -> &mut Self {
+        if config.is_object() {
+            self.multilingual = Some(config);
+        }
         self
     }
 
@@ -1391,6 +1411,11 @@ impl AgentBase {
                 "languages".to_string(),
                 Value::Array(self.languages.clone()),
             );
+        }
+
+        // ── Multilingual (Mode B) — top-level `multilingual` on the AI verb.
+        if let Some(ml) = &self.multilingual {
+            ai.insert("multilingual".to_string(), ml.clone());
         }
 
         // ── Pronunciations ──────────────────────────────────────────────
@@ -2094,6 +2119,30 @@ mod tests {
         agent.add_language("English", "en-US", "Polly.Salli");
         agent.set_languages(vec![]);
         assert!(agent.languages.is_empty());
+    }
+
+    #[test]
+    fn test_set_multilingual_emits_ai_verb_object() {
+        let mut agent = AgentBase::new(default_options());
+        agent.set_multilingual(serde_json::json!({
+            "languages": ["en", "es"],
+            "start_language": "en",
+        }));
+        let swml = agent.render_swml(&HashMap::new());
+        // Locate the AI verb's `multilingual` object in the rendered document.
+        let doc = swml.to_string();
+        assert!(
+            doc.contains("multilingual"),
+            "AI verb should carry multilingual"
+        );
+        assert!(doc.contains("start_language"));
+    }
+
+    #[test]
+    fn test_set_multilingual_ignores_non_object() {
+        let mut agent = AgentBase::new(default_options());
+        agent.set_multilingual(serde_json::json!("not-an-object"));
+        assert!(agent.multilingual.is_none());
     }
 
     // -------------------------------------------------------------------

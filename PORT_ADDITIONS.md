@@ -1071,3 +1071,16 @@ signalwire.rest.http_client.HttpTransport: Rust-only trait abstracting the block
 signalwire.rest.http_client.HttpTransport.execute: method of the Rust-only HttpTransport trait.
 signalwire.serverless.adapter.RequestHandler: Rust-only trait abstracting a serverless request handler; Python uses duck-typed callables.
 signalwire.serverless.adapter.RequestHandler.handle_request: method of the Rust-only RequestHandler trait.
+
+## Flattened RELAY action mixin methods (§H abstract-action-base surface analog)
+
+signalwire.relay.call.PlayAction.pause: port-only: Rust flattens the abstract PausableAction/StoppableAction/VolumeAction mixin methods onto the concrete PlayAction (the reference declares pause on the abstract base)
+signalwire.relay.call.PlayAction.resume: port-only: Rust flattens the abstract mixin methods onto the concrete PlayAction (the reference declares resume on the abstract base)
+signalwire.relay.call.PlayAction.volume: port-only: Rust flattens the abstract mixin methods onto the concrete PlayAction (the reference declares volume on the abstract base)
+signalwire.relay.call.RecordAction.pause: port-only: Rust flattens the abstract mixin methods onto the concrete RecordAction (the reference declares pause on the abstract base)
+signalwire.relay.call.RecordAction.resume: port-only: Rust flattens the abstract mixin methods onto the concrete RecordAction (the reference declares resume on the abstract base)
+signalwire.skills.claude_skills.skill.ClaudeSkillsSkill.get_prompt_sections: port-only: Rust's claude_skills skill overrides get_prompt_sections; the Python reference's ClaudeSkillsSkill does not declare it (relies on the SkillBase default)
+signalwire.skills.custom_skills.skill.CustomSkillsSkill.register_tools: port-only: method of the Rust-only custom_skills skill (Python has no custom_skills module)
+signalwire.skills.custom_skills.skill.CustomSkillsSkill.setup: port-only: method of the Rust-only custom_skills skill (Python has no custom_skills module)
+signalwire.skills.info_gatherer.skill.InfoGathererSkill.get_prompt_sections: port-only: Rust's info_gatherer skill overrides get_prompt_sections; the Python reference's InfoGathererSkill does not declare it (relies on the SkillBase default)
+signalwire.core.agent_base.AgentBase.set_multilingual: These methods exist in Python's AgentBase too (via the AIConfigMixin). The Rust port hangs set_multilingual directly off AgentBase (and projects it onto AIConfigMixin), so the per-symbol enumerator also emits it under signalwire.core.agent_base.AgentBase. Python has the same surface.

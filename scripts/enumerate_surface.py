@@ -217,7 +217,6 @@ CLASS_MODULE_MAP: dict[str, str] = {
     "InfoGatherer": "signalwire.skills.info_gatherer.skill",
     "Joke": "signalwire.skills.joke.skill",
     "Math": "signalwire.skills.math.skill",
-    "McpGateway": "signalwire.skills.mcp_gateway.skill",
     "NativeVectorSearch": "signalwire.skills.native_vector_search.skill",
     "PlayBackgroundFile": "signalwire.skills.play_background_file.skill",
     "Spider": "signalwire.skills.spider.skill",
@@ -316,6 +315,30 @@ METHOD_RENAMES: dict[str, dict[str, str]] = {
         "render_markdown_at": None,
         "render_xml_at": None,
     },
+    # Contexts/Steps: Rust's fluent `to_value` == Python's `to_dict`; the
+    # borrow-checker `*_mut` companions and field-accessor idiom methods are
+    # Rust-only plumbing not on the reference contract → drop.
+    "Context": {
+        "to_value": "to_dict",
+        "get_step_mut": None,
+        "name": None,
+        "steps": None,
+        "step_order": None,
+        "set_prompt_text": "set_prompt",
+    },
+    "Step": {
+        "to_value": "to_dict",
+        "gather_info": None,
+        "name": None,
+        "valid_contexts": None,
+        "valid_steps": None,
+    },
+    "ContextBuilder": {
+        "to_value": "to_dict",
+        "get_context_mut": None,
+        "has_contexts": None,
+        "attach_tool_name_supplier": None,
+    },
 }
 
 
@@ -351,7 +374,6 @@ CLASS_RENAME_MAP: dict[str, str] = {
     "InfoGatherer": "InfoGathererSkill",
     "Joke": "JokeSkill",
     "Math": "MathSkill",
-    "McpGateway": "MCPGatewaySkill",
     "NativeVectorSearch": "NativeVectorSearchSkill",
     "PlayBackgroundFile": "PlayBackgroundFileSkill",
     "Spider": "SpiderSkill",
@@ -398,9 +420,30 @@ RE_IMPL_BLOCK = re.compile(
     + r")?\s*(?:where[^{]*)?\{"
 )
 RE_IMPL_TRAIT_FOR = re.compile(
-    r"^\s*impl(?:\s*" + _NESTED_ANGLES + r")?\s+\w+(?:\s*" + _NESTED_ANGLES
+    r"^\s*impl(?:\s*" + _NESTED_ANGLES + r")?\s+(\w+)(?:\s*" + _NESTED_ANGLES
     + r")?\s+for\s+(\w+)\b"
 )
+# Traits whose `impl Trait for Type` bodies expose PUBLIC API on Type — the
+# reference enumerates a Python subclass's overrides of an inherited interface
+# (e.g. every skill overriding SkillBase.setup / get_hints). In Rust these land
+# in `impl SkillBase for FooSkill` blocks whose methods carry no `pub` keyword,
+# so RE_PUB_FN misses them. Collect trait-impl methods (via RE_TRAIT_FN) ONLY
+# for these SDK traits; std/derive-trait impls (Default/Debug/Clone/Drop/From/
+# Display/PartialEq/Hash/Iterator/Serialize/…) are NOT part of the reference
+# surface and must stay excluded.
+PUBLIC_SURFACE_TRAITS = frozenset({
+    "SkillBase",
+})
+# SkillBase trait methods that are Rust-idiom accessors, NOT part of the Python
+# skill surface (Python exposes SKILL_NAME/SKILL_DESCRIPTION as class attributes
+# and stores params on the instance — none are enumerated methods). Drop them
+# from every `impl SkillBase for X` block so a skill's surface matches the
+# reference's per-subclass override set.
+SKILLBASE_IDIOM_METHOD_DROPS = frozenset({
+    "name", "description", "version", "params",
+    "required_env_vars", "supports_multiple_instances",
+    "get_tool_name", "get_swaig_fields",
+})
 # `pub use <path>::Name;` and `pub use <path>::{A, B};` and `pub use <path>::Name as Other;`
 RE_PUB_USE_ITEM = re.compile(r"^\s*pub\s+use\s+([\w:]+)::([\w?]+)(?:\s+as\s+(\w+))?\s*;")
 RE_PUB_USE_GROUP = re.compile(r"^\s*pub\s+use\s+([\w:]+)::\{([^}]+)\}\s*;")
@@ -497,6 +540,7 @@ def _parse_file(path: Path) -> tuple[set[str], dict[str, set[str]], set[str]]:
     impl_stack: list[str] = []  # current impl block class names (for nested-mod safety)
     brace_depth_for_impl: list[int] = []
     in_trait_for_impl: list[bool] = []  # parallel to impl_stack: True if the frame is a `pub trait` body
+    impl_trait_name: list[str | None] = []  # parallel: the trait name for `impl Trait for Type`, else None
     cur_brace = 0
 
     in_test_mod = False
@@ -537,18 +581,26 @@ def _parse_file(path: Path) -> tuple[set[str], dict[str, set[str]], set[str]]:
         m_impl = RE_IMPL_BLOCK.match(line) if not m_for else None
         m_trait = RE_PUB_TRAIT.match(line) if not (m_for or m_impl) else None
         if m_for and "{" in line:
-            impl_stack.append(m_for.group(1))
+            trait_name = m_for.group(1)
+            type_name = m_for.group(2)
+            impl_stack.append(type_name)
             brace_depth_for_impl.append(cur_brace)
-            in_trait_for_impl.append(False)
+            # For an SDK trait (e.g. SkillBase), the impl-block methods are the
+            # subclass's public interface overrides — collect them like a trait
+            # body (no `pub` keyword). std/derive traits stay method-excluded.
+            in_trait_for_impl.append(trait_name in PUBLIC_SURFACE_TRAITS)
+            impl_trait_name.append(trait_name)
         elif m_impl and "{" in line:
             impl_stack.append(m_impl.group(1))
             brace_depth_for_impl.append(cur_brace)
             in_trait_for_impl.append(False)
+            impl_trait_name.append(None)
         elif m_trait and "{" in line:
             # A `pub trait X { ... }` body — attribute its methods to X.
             impl_stack.append(m_trait.group(1))
             brace_depth_for_impl.append(cur_brace)
             in_trait_for_impl.append(True)
+            impl_trait_name.append(None)
 
         # Detect methods. In an impl block, only `pub fn` is public surface.
         # In a trait body, every `fn` is public API (no `pub` keyword on trait
@@ -563,7 +615,13 @@ def _parse_file(path: Path) -> tuple[set[str], dict[str, set[str]], set[str]]:
                 fn_name = "__init__"
             elif fn_name == "repr":
                 fn_name = "__repr__"
-            if impl_stack:
+            # Drop Rust-idiom SkillBase accessors that are not part of the Python
+            # skill surface (name/description/params/… — see the drop-set).
+            cur_trait = impl_trait_name[-1] if impl_trait_name else None
+            if (cur_trait in PUBLIC_SURFACE_TRAITS
+                    and fn_name in SKILLBASE_IDIOM_METHOD_DROPS):
+                pass
+            elif impl_stack:
                 methods[impl_stack[-1]].add(fn_name)
             else:
                 free_fns.add(fn_name)
@@ -574,6 +632,7 @@ def _parse_file(path: Path) -> tuple[set[str], dict[str, set[str]], set[str]]:
             impl_stack.pop()
             brace_depth_for_impl.pop()
             in_trait_for_impl.pop()
+            impl_trait_name.pop()
 
     return free_fns, dict(methods), classes
 
@@ -613,6 +672,161 @@ def _parse_lib_reexports(path: Path) -> set[str]:
     return out
 
 
+# ---------------------------------------------------------------------------
+# Surface projections (item H). The reference keeps a family of methods on
+# mixin / manager / abstract-base classes that Rust's composition idiom hosts
+# directly on AgentBase / Service (or on a concrete Action). Project the
+# reference-named methods onto the canonical class path so the two compare
+# EQUAL (Rule 2 — reconcile idiom in the enumerator, not via an omission).
+# Kept in sync with MIXIN_PROJECTIONS in scripts/enumerate_signatures.py.
+#
+# {(python_module, python_class): [ (donor_class, [reference-named methods]) ]}
+# A method is projected only if the donor class actually exposes it (a genuine
+# gap stays a gap). Projected mixin methods that are NOT on the reference's own
+# copy of the donor class are removed from the donor so they don't double-count.
+SURFACE_PROJECTIONS: dict[tuple[str, str], list[tuple[str, list[str]]]] = {
+    ("signalwire.core.mixins.ai_config_mixin", "AIConfigMixin"): [
+        ("AgentBase", [
+            "add_function_include", "add_hint", "add_hints", "add_internal_filler",
+            "add_language", "add_mcp_server", "add_pattern_hint", "add_pronunciation",
+            "enable_debug_events", "enable_mcp_server", "get_language_params",
+            "set_function_includes", "set_global_data", "set_internal_fillers",
+            "set_language_params", "set_languages", "set_multilingual",
+            "set_native_functions", "set_param", "set_params",
+            "set_post_prompt_llm_params", "set_prompt_llm_params", "set_pronunciations",
+            "update_global_data",
+        ]),
+    ],
+    ("signalwire.core.mixins.prompt_mixin", "PromptMixin"): [
+        ("AgentBase", [
+            "contexts", "define_contexts", "get_post_prompt", "get_prompt",
+            "prompt_add_section", "prompt_add_subsection", "prompt_add_to_section",
+            "prompt_has_section", "reset_contexts", "set_post_prompt", "set_prompt_pom",
+            "set_prompt_text",
+        ]),
+    ],
+    ("signalwire.core.mixins.skill_mixin", "SkillMixin"): [
+        ("AgentBase", ["add_skill", "has_skill", "list_skills", "remove_skill"]),
+    ],
+    ("signalwire.core.mixins.tool_mixin", "ToolMixin"): [
+        ("AgentBase", ["define_tool", "define_tools", "on_function_call",
+                       "register_swaig_function", "tool"]),
+    ],
+    ("signalwire.core.mixins.web_mixin", "WebMixin"): [
+        ("AgentBase", [
+            "as_router", "enable_debug_routes", "get_app", "manual_set_proxy_url",
+            "on_request", "on_swml_request", "register_routing_callback", "run",
+            "serve", "set_dynamic_config_callback", "setup_graceful_shutdown",
+        ]),
+        ("SWMLService", ["manual_set_proxy_url", "on_request", "on_swml_request",
+                         "register_routing_callback"]),
+    ],
+    ("signalwire.core.mixins.auth_mixin", "AuthMixin"): [
+        ("AgentBase", ["get_basic_auth_credentials", "validate_basic_auth"]),
+        ("SWMLService", ["get_basic_auth_credentials", "validate_basic_auth"]),
+    ],
+    ("signalwire.core.mixins.state_mixin", "StateMixin"): [
+        ("AgentBase", ["validate_tool_token"]),
+    ],
+    ("signalwire.core.mixins.serverless_mixin", "ServerlessMixin"): [
+        ("AgentBase", ["handle_serverless_request"]),
+        ("ServerlessAdapter", ["handle_serverless_request"]),
+    ],
+    # PromptManager / ToolRegistry: Python extracted these delegate classes;
+    # Rust hosts the same user-facing surface on AgentBase. Project so both
+    # paths are covered (a la the signature enumerator's MIXIN_PROJECTIONS).
+    ("signalwire.core.agent.prompt.manager", "PromptManager"): [
+        ("AgentBase", [
+            "define_contexts", "get_contexts", "get_post_prompt", "get_prompt",
+            "get_raw_prompt", "prompt_add_section", "prompt_add_subsection",
+            "prompt_add_to_section", "prompt_has_section", "set_post_prompt",
+            "set_prompt_pom", "set_prompt_text",
+        ]),
+    ],
+    ("signalwire.core.agent.tools.registry", "ToolRegistry"): [
+        ("AgentBase", ["define_tool", "register_swaig_function"]),
+        ("SWMLService", ["define_tool", "register_swaig_function", "has_function",
+                         "get_function", "get_all_functions", "remove_function"]),
+    ],
+    # ReadResource: Python's CrudResource inherits get/list from ReadResource;
+    # the reference records them on ReadResource (own methods), CrudResource
+    # keeps only create/update/delete. Rust's CrudResource carries get/list —
+    # donate them to ReadResource and drop from CrudResource.
+    ("signalwire.rest._base", "ReadResource"): [
+        ("CrudResource", ["get", "list"]),
+    ],
+    # SkillManager: Rust hosts the reference's SkillManager surface on
+    # SkillManager already; project the extra reference names it lacks from the
+    # existing manager methods where the donor exposes them.
+    ("signalwire.core.skill_manager", "SkillManager"): [
+        ("SkillManager", ["get_skill", "load_skill", "unload_skill"]),
+    ],
+}
+# Donor methods that MUST be removed from the donor class after projection
+# (they are projection-only — the reference does not record them on the donor).
+# {(donor_python_module, donor_class): {methods}}. get/list leave CrudResource;
+# the AgentBase mixin methods stay on AgentBase too only where the reference
+# also declares them there (it does not for the mixins → strip them).
+PROJECTION_DONOR_STRIPS: dict[tuple[str, str], set[str]] = {
+    ("signalwire.rest._base", "CrudResource"): {"get", "list"},
+}
+# Method-less base/abstract classes the reference declares that Rust realizes
+# only implicitly (flattened onto concrete types). Emit the bare class so the
+# reference's class symbol is present. Their flattened concrete copies are
+# recorded as port-additions (relay action mixin template, §H).
+SURFACE_BARE_CLASSES: dict[str, list[str]] = {
+    "signalwire.rest._base": ["FabricResource", "FabricResourcePUT"],
+}
+# Rust-idiom accessor methods to drop from EVERY class in a module — the Python
+# reference does not expose them. The typed RELAY event wrappers carry Rust
+# `base`/`event`/`event_type` views over the generic Event; Python's event
+# subclasses expose only `from_payload`.
+MODULE_METHOD_DROPS: dict[str, set[str]] = {
+    "signalwire.relay.event": {"base", "event", "event_type"},
+}
+# Module-level FREE FUNCTIONS to drop — `pub(crate)` crate-internal helpers the
+# public-fn regex captures but that are NOT public crate API (external callers
+# cannot reach them), so they are not part of the reference surface.
+FREE_FN_DROPS: dict[str, set[str]] = {
+    # The free-fn module is the file-path-derived path (src/skills/skill_base.rs
+    # → signalwire.skills.skill_base), distinct from the SkillBase CLASS module.
+    "signalwire.skills.skill_base": {"default_parameter_schema"},
+}
+# SkillBase interface projection. Python models each skill as a subclass that
+# OVERRIDES a specific subset of the SkillBase interface (setup / register_tools
+# / get_hints / get_parameter_schema / get_instance_key / get_global_data /
+# get_prompt_sections / cleanup). Rust's skills implement the same `SkillBase`
+# trait and expose the SAME callable interface — where a skill relies on a trait
+# DEFAULT rather than an explicit override, the method is still public API on
+# that skill. Project the reference's per-skill interface set onto each Rust
+# skill (only methods the Rust SkillBase trait actually provides) so the two
+# compare EQUAL — the surface analog of the mixin projection (Rule 2). Derived
+# from python_surface.json ∩ SkillBase interface; kept as an explicit table so
+# it is auditable and stable. Keys use the Python (translated) skill-class name.
+SKILL_INTERFACE_METHODS = frozenset({
+    "setup", "register_tools", "get_hints", "get_parameter_schema",
+    "get_instance_key", "get_global_data", "get_prompt_sections", "cleanup",
+})
+SKILL_INTERFACE_PROJECTION: dict[tuple[str, str], list[str]] = {
+    ("signalwire.skills.api_ninjas_trivia.skill", "ApiNinjasTriviaSkill"): ["get_instance_key", "get_parameter_schema", "register_tools", "setup"],
+    ("signalwire.skills.claude_skills.skill", "ClaudeSkillsSkill"): ["get_hints", "get_instance_key", "get_parameter_schema", "register_tools", "setup"],
+    ("signalwire.skills.datasphere.skill", "DataSphereSkill"): ["cleanup", "get_global_data", "get_hints", "get_instance_key", "get_parameter_schema", "get_prompt_sections", "register_tools", "setup"],
+    ("signalwire.skills.datasphere_serverless.skill", "DataSphereServerlessSkill"): ["get_global_data", "get_hints", "get_instance_key", "get_parameter_schema", "get_prompt_sections", "register_tools", "setup"],
+    ("signalwire.skills.datetime.skill", "DateTimeSkill"): ["get_hints", "get_parameter_schema", "get_prompt_sections", "register_tools", "setup"],
+    ("signalwire.skills.google_maps.skill", "GoogleMapsSkill"): ["get_hints", "get_parameter_schema", "get_prompt_sections", "register_tools", "setup"],
+    ("signalwire.skills.info_gatherer.skill", "InfoGathererSkill"): ["get_global_data", "get_instance_key", "get_parameter_schema", "register_tools", "setup"],
+    ("signalwire.skills.joke.skill", "JokeSkill"): ["get_global_data", "get_hints", "get_parameter_schema", "get_prompt_sections", "register_tools", "setup"],
+    ("signalwire.skills.math.skill", "MathSkill"): ["get_hints", "get_parameter_schema", "get_prompt_sections", "register_tools", "setup"],
+    ("signalwire.skills.native_vector_search.skill", "NativeVectorSearchSkill"): ["cleanup", "get_global_data", "get_hints", "get_instance_key", "get_parameter_schema", "get_prompt_sections", "register_tools", "setup"],
+    ("signalwire.skills.play_background_file.skill", "PlayBackgroundFileSkill"): ["get_instance_key", "get_parameter_schema", "register_tools", "setup"],
+    ("signalwire.skills.spider.skill", "SpiderSkill"): ["cleanup", "get_hints", "get_instance_key", "get_parameter_schema", "register_tools", "setup"],
+    ("signalwire.skills.swml_transfer.skill", "SWMLTransferSkill"): ["get_hints", "get_instance_key", "get_parameter_schema", "get_prompt_sections", "register_tools", "setup"],
+    ("signalwire.skills.weather_api.skill", "WeatherApiSkill"): ["get_parameter_schema", "register_tools", "setup"],
+    ("signalwire.skills.web_search.skill", "WebSearchSkill"): ["get_global_data", "get_hints", "get_instance_key", "get_parameter_schema", "get_prompt_sections", "register_tools", "setup"],
+    ("signalwire.skills.wikipedia_search.skill", "WikipediaSearchSkill"): ["get_hints", "get_parameter_schema", "get_prompt_sections", "register_tools", "setup"],
+}
+
+
 def build_surface() -> dict:
     modules: dict[str, dict] = defaultdict(lambda: {"classes": defaultdict(list), "functions": []})
     sha = _git_sha()
@@ -648,7 +862,8 @@ def build_surface() -> dict:
         if free_fns:
             mod = _module_path_for_class("__module__", rel)  # fallback path-derived
             mod = FREE_FN_MODULE_RENAMES.get(mod, mod)
-            modules[mod]["functions"].extend(sorted(free_fns))
+            drop = FREE_FN_DROPS.get(mod, set())
+            modules[mod]["functions"].extend(sorted(free_fns - drop))
 
     # Inject lib.rs `pub use` re-exports into the top-level module
     # so the surface mirrors Python's `signalwire/__init__.py` flat
@@ -708,6 +923,63 @@ def build_surface() -> dict:
             existing = set(modules[module_path]["classes"].get(translated, []))
             existing.update(renamed_methods)
             modules[module_path]["classes"][translated] = sorted(existing)
+
+    # --- Surface projections (item H) ------------------------------------
+    # Build a lookup of every class's current method-set (post-rename) keyed by
+    # the translated Python class name, so a donor lookup is language-agnostic.
+    donor_index: dict[str, set[str]] = {}
+    for mod_name, entry in modules.items():
+        for cls, ms in entry["classes"].items():
+            donor_index.setdefault(cls, set()).update(ms)
+
+    for (target_mod, target_cls), donors in SURFACE_PROJECTIONS.items():
+        projected: set[str] = set()
+        for donor_cls, names in donors:
+            have = donor_index.get(donor_cls, set())
+            projected.update(n for n in names if n in have)
+        if not projected:
+            continue
+        existing = set(modules[target_mod]["classes"].get(target_cls, []))
+        existing.update(projected)
+        modules[target_mod]["classes"][target_cls] = sorted(existing)
+
+    # Strip projection-only methods from their donor classes.
+    for (donor_mod, donor_cls), strip in PROJECTION_DONOR_STRIPS.items():
+        cur = set(modules.get(donor_mod, {}).get("classes", {}).get(donor_cls, []))
+        if cur:
+            modules[donor_mod]["classes"][donor_cls] = sorted(cur - strip)
+
+    # Emit reference-declared method-less base classes.
+    for mod_name, bare in SURFACE_BARE_CLASSES.items():
+        for cls in bare:
+            modules[mod_name]["classes"].setdefault(cls, [])
+
+    # Drop module-scoped Rust-idiom accessor methods.
+    for mod_name, drop in MODULE_METHOD_DROPS.items():
+        entry = modules.get(mod_name)
+        if not entry:
+            continue
+        for cls, ms in entry["classes"].items():
+            entry["classes"][cls] = sorted(set(ms) - drop)
+
+    # SkillBase interface projection: every Rust skill implements `SkillBase`
+    # and exposes its full interface (explicit overrides + trait defaults).
+    # Project the reference's per-skill interface set onto the skill class so
+    # trait-default-provided methods (which are still callable public API) line
+    # up with the reference's per-subclass override list. Only project methods
+    # the Rust SkillBase trait actually provides.
+    skillbase_provided = set(
+        modules.get("signalwire.core.skill_base", {})
+        .get("classes", {})
+        .get("SkillBase", [])
+    ) | SKILL_INTERFACE_METHODS
+    for (mod_name, cls), names in SKILL_INTERFACE_PROJECTION.items():
+        if mod_name not in modules or cls not in modules[mod_name]["classes"]:
+            continue  # skill class absent → real gap, not masked
+        proj = [n for n in names if n in skillbase_provided]
+        existing = set(modules[mod_name]["classes"][cls])
+        existing.update(proj)
+        modules[mod_name]["classes"][cls] = sorted(existing)
 
     # Stable sort + cleanup
     out_modules: dict = {}

@@ -2,6 +2,34 @@ use serde_json::{Map, Value};
 
 use crate::agent::AgentBase;
 
+/// The base JSON-schema documenting the configuration parameters every skill
+/// accepts via `SkillBase` (SWAIG-field merge, prompt-skip, tool-name
+/// override). Skills that add their own parameters build on top of this.
+///
+/// `pub(crate)` so per-skill `get_parameter_schema` overrides can reuse it
+/// without duplicating the shared controls; crate-internal → not public API.
+pub(crate) fn default_parameter_schema() -> Value {
+    serde_json::json!({
+        "type": "object",
+        "properties": {
+            "swaig_fields": {
+                "type": "array",
+                "description": "Additional SWAIG fields to merge into tool definitions",
+                "default": [],
+            },
+            "skip_prompt": {
+                "type": "boolean",
+                "description": "If true, skip adding prompt sections for this skill",
+                "default": false,
+            },
+            "tool_name": {
+                "type": "string",
+                "description": "Custom tool name override for this skill instance",
+            },
+        },
+    })
+}
+
 /// Trait implemented by all skills (both builtin and custom).
 ///
 /// A skill encapsulates tools, hints, global data, and prompt sections that can
@@ -69,25 +97,7 @@ pub trait SkillBase: Send + Sync {
 
     /// JSON-Schema describing accepted parameters.
     fn get_parameter_schema(&self) -> Value {
-        serde_json::json!({
-            "type": "object",
-            "properties": {
-                "swaig_fields": {
-                    "type": "array",
-                    "description": "Additional SWAIG fields to merge into tool definitions",
-                    "default": [],
-                },
-                "skip_prompt": {
-                    "type": "boolean",
-                    "description": "If true, skip adding prompt sections for this skill",
-                    "default": false,
-                },
-                "tool_name": {
-                    "type": "string",
-                    "description": "Custom tool name override for this skill instance",
-                },
-            },
-        })
+        default_parameter_schema()
     }
 
     /// Called when the skill is unloaded.

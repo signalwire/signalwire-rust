@@ -96,6 +96,794 @@ impl Event {
 }
 
 // ------------------------------------------------------------------
+// Typed RELAY event layer (parity with Python's per-event subclasses)
+// ------------------------------------------------------------------
+//
+// Python models each RELAY notification as a `RelayEvent` subclass
+// (CallStateEvent, PlayEvent, …) built via a `from_payload(payload)`
+// classmethod. Rust mirrors this with a base `RelayEvent` newtype over
+// the generic `Event` plus one thin typed wrapper per event family. Each
+// `from_payload` extracts the notification's `params` object and wraps it,
+// carrying the wire `event_type` so downstream dispatch stays type-agnostic.
+
+use serde_json::Value;
+
+/// Extract `(event_type, params)` from a RELAY notification payload.
+///
+/// RELAY notifications arrive as `{ "event_type": "...", "params": {...} }`
+/// (sometimes nested under `params.params`). This normalizes both shapes to
+/// the inner params object plus the declared `event_type`.
+fn split_payload(payload: &Value) -> (String, HashMap<String, Value>) {
+    let event_type = payload
+        .get("event_type")
+        .and_then(Value::as_str)
+        .unwrap_or_default()
+        .to_string();
+    let params_value = payload.get("params").unwrap_or(payload);
+    let params = params_value
+        .as_object()
+        .map(|m| m.iter().map(|(k, v)| (k.clone(), v.clone())).collect())
+        .unwrap_or_default();
+    (event_type, params)
+}
+
+/// Base RELAY event — a typed view over the generic [`Event`].
+///
+/// Parity with Python's `signalwire.relay.event.RelayEvent`. Concrete
+/// event families ([`CallStateEvent`], [`PlayEvent`], …) wrap this and are
+/// produced by their `from_payload` constructor.
+#[derive(Debug, Clone)]
+pub struct RelayEvent {
+    inner: Event,
+}
+
+impl RelayEvent {
+    /// Build a [`RelayEvent`] from a raw RELAY notification payload.
+    #[must_use]
+    pub fn from_payload(payload: &Value) -> Self {
+        let (event_type, params) = split_payload(payload);
+        RelayEvent {
+            inner: Event::new(&event_type, params, 0.0),
+        }
+    }
+
+    /// The underlying generic [`Event`].
+    #[must_use]
+    pub fn event(&self) -> &Event {
+        &self.inner
+    }
+
+    /// The wire `event_type` string.
+    #[must_use]
+    pub fn event_type(&self) -> &str {
+        self.inner.event_type()
+    }
+}
+
+/// `calling.call.receive` — inbound call received.
+///
+/// Parity with Python's `signalwire.relay.event.CallReceiveEvent`; built via
+/// [`CallReceiveEvent::from_payload`].
+#[derive(Debug, Clone)]
+pub struct CallReceiveEvent {
+    base: RelayEvent,
+}
+
+impl CallReceiveEvent {
+    /// Build this typed event from a raw RELAY notification payload.
+    #[must_use]
+    pub fn from_payload(payload: &Value) -> Self {
+        CallReceiveEvent {
+            base: RelayEvent::from_payload(payload),
+        }
+    }
+
+    /// The base [`RelayEvent`] view.
+    #[must_use]
+    pub fn base(&self) -> &RelayEvent {
+        &self.base
+    }
+
+    /// The wire `event_type` string.
+    #[must_use]
+    pub fn event_type(&self) -> &str {
+        self.base.event_type()
+    }
+}
+
+/// `calling.call.state` — call state transition.
+///
+/// Parity with Python's `signalwire.relay.event.CallStateEvent`; built via
+/// [`CallStateEvent::from_payload`].
+#[derive(Debug, Clone)]
+pub struct CallStateEvent {
+    base: RelayEvent,
+}
+
+impl CallStateEvent {
+    /// Build this typed event from a raw RELAY notification payload.
+    #[must_use]
+    pub fn from_payload(payload: &Value) -> Self {
+        CallStateEvent {
+            base: RelayEvent::from_payload(payload),
+        }
+    }
+
+    /// The base [`RelayEvent`] view.
+    #[must_use]
+    pub fn base(&self) -> &RelayEvent {
+        &self.base
+    }
+
+    /// The wire `event_type` string.
+    #[must_use]
+    pub fn event_type(&self) -> &str {
+        self.base.event_type()
+    }
+}
+
+/// A `calling.*` error notification.
+///
+/// Parity with Python's `signalwire.relay.event.CallingErrorEvent`; built via
+/// [`CallingErrorEvent::from_payload`].
+#[derive(Debug, Clone)]
+pub struct CallingErrorEvent {
+    base: RelayEvent,
+}
+
+impl CallingErrorEvent {
+    /// Build this typed event from a raw RELAY notification payload.
+    #[must_use]
+    pub fn from_payload(payload: &Value) -> Self {
+        CallingErrorEvent {
+            base: RelayEvent::from_payload(payload),
+        }
+    }
+
+    /// The base [`RelayEvent`] view.
+    #[must_use]
+    pub fn base(&self) -> &RelayEvent {
+        &self.base
+    }
+
+    /// The wire `event_type` string.
+    #[must_use]
+    pub fn event_type(&self) -> &str {
+        self.base.event_type()
+    }
+}
+
+/// `calling.call.collect` — digit/speech collection result.
+///
+/// Parity with Python's `signalwire.relay.event.CollectEvent`; built via
+/// [`CollectEvent::from_payload`].
+#[derive(Debug, Clone)]
+pub struct CollectEvent {
+    base: RelayEvent,
+}
+
+impl CollectEvent {
+    /// Build this typed event from a raw RELAY notification payload.
+    #[must_use]
+    pub fn from_payload(payload: &Value) -> Self {
+        CollectEvent {
+            base: RelayEvent::from_payload(payload),
+        }
+    }
+
+    /// The base [`RelayEvent`] view.
+    #[must_use]
+    pub fn base(&self) -> &RelayEvent {
+        &self.base
+    }
+
+    /// The wire `event_type` string.
+    #[must_use]
+    pub fn event_type(&self) -> &str {
+        self.base.event_type()
+    }
+}
+
+/// A conference-related notification.
+///
+/// Parity with Python's `signalwire.relay.event.ConferenceEvent`; built via
+/// [`ConferenceEvent::from_payload`].
+#[derive(Debug, Clone)]
+pub struct ConferenceEvent {
+    base: RelayEvent,
+}
+
+impl ConferenceEvent {
+    /// Build this typed event from a raw RELAY notification payload.
+    #[must_use]
+    pub fn from_payload(payload: &Value) -> Self {
+        ConferenceEvent {
+            base: RelayEvent::from_payload(payload),
+        }
+    }
+
+    /// The base [`RelayEvent`] view.
+    #[must_use]
+    pub fn base(&self) -> &RelayEvent {
+        &self.base
+    }
+
+    /// The wire `event_type` string.
+    #[must_use]
+    pub fn event_type(&self) -> &str {
+        self.base.event_type()
+    }
+}
+
+/// `calling.call.connect` — call connect result.
+///
+/// Parity with Python's `signalwire.relay.event.ConnectEvent`; built via
+/// [`ConnectEvent::from_payload`].
+#[derive(Debug, Clone)]
+pub struct ConnectEvent {
+    base: RelayEvent,
+}
+
+impl ConnectEvent {
+    /// Build this typed event from a raw RELAY notification payload.
+    #[must_use]
+    pub fn from_payload(payload: &Value) -> Self {
+        ConnectEvent {
+            base: RelayEvent::from_payload(payload),
+        }
+    }
+
+    /// The base [`RelayEvent`] view.
+    #[must_use]
+    pub fn base(&self) -> &RelayEvent {
+        &self.base
+    }
+
+    /// The wire `event_type` string.
+    #[must_use]
+    pub fn event_type(&self) -> &str {
+        self.base.event_type()
+    }
+}
+
+/// `calling.call.denoise` — noise-reduction state.
+///
+/// Parity with Python's `signalwire.relay.event.DenoiseEvent`; built via
+/// [`DenoiseEvent::from_payload`].
+#[derive(Debug, Clone)]
+pub struct DenoiseEvent {
+    base: RelayEvent,
+}
+
+impl DenoiseEvent {
+    /// Build this typed event from a raw RELAY notification payload.
+    #[must_use]
+    pub fn from_payload(payload: &Value) -> Self {
+        DenoiseEvent {
+            base: RelayEvent::from_payload(payload),
+        }
+    }
+
+    /// The base [`RelayEvent`] view.
+    #[must_use]
+    pub fn base(&self) -> &RelayEvent {
+        &self.base
+    }
+
+    /// The wire `event_type` string.
+    #[must_use]
+    pub fn event_type(&self) -> &str {
+        self.base.event_type()
+    }
+}
+
+/// `calling.call.detect` — detector result.
+///
+/// Parity with Python's `signalwire.relay.event.DetectEvent`; built via
+/// [`DetectEvent::from_payload`].
+#[derive(Debug, Clone)]
+pub struct DetectEvent {
+    base: RelayEvent,
+}
+
+impl DetectEvent {
+    /// Build this typed event from a raw RELAY notification payload.
+    #[must_use]
+    pub fn from_payload(payload: &Value) -> Self {
+        DetectEvent {
+            base: RelayEvent::from_payload(payload),
+        }
+    }
+
+    /// The base [`RelayEvent`] view.
+    #[must_use]
+    pub fn base(&self) -> &RelayEvent {
+        &self.base
+    }
+
+    /// The wire `event_type` string.
+    #[must_use]
+    pub fn event_type(&self) -> &str {
+        self.base.event_type()
+    }
+}
+
+/// A dial result notification.
+///
+/// Parity with Python's `signalwire.relay.event.DialEvent`; built via
+/// [`DialEvent::from_payload`].
+#[derive(Debug, Clone)]
+pub struct DialEvent {
+    base: RelayEvent,
+}
+
+impl DialEvent {
+    /// Build this typed event from a raw RELAY notification payload.
+    #[must_use]
+    pub fn from_payload(payload: &Value) -> Self {
+        DialEvent {
+            base: RelayEvent::from_payload(payload),
+        }
+    }
+
+    /// The base [`RelayEvent`] view.
+    #[must_use]
+    pub fn base(&self) -> &RelayEvent {
+        &self.base
+    }
+
+    /// The wire `event_type` string.
+    #[must_use]
+    pub fn event_type(&self) -> &str {
+        self.base.event_type()
+    }
+}
+
+/// `calling.call.echo` — echo-command notification.
+///
+/// Parity with Python's `signalwire.relay.event.EchoEvent`; built via
+/// [`EchoEvent::from_payload`].
+#[derive(Debug, Clone)]
+pub struct EchoEvent {
+    base: RelayEvent,
+}
+
+impl EchoEvent {
+    /// Build this typed event from a raw RELAY notification payload.
+    #[must_use]
+    pub fn from_payload(payload: &Value) -> Self {
+        EchoEvent {
+            base: RelayEvent::from_payload(payload),
+        }
+    }
+
+    /// The base [`RelayEvent`] view.
+    #[must_use]
+    pub fn base(&self) -> &RelayEvent {
+        &self.base
+    }
+
+    /// The wire `event_type` string.
+    #[must_use]
+    pub fn event_type(&self) -> &str {
+        self.base.event_type()
+    }
+}
+
+/// `calling.call.fax` — fax send/receive notification.
+///
+/// Parity with Python's `signalwire.relay.event.FaxEvent`; built via
+/// [`FaxEvent::from_payload`].
+#[derive(Debug, Clone)]
+pub struct FaxEvent {
+    base: RelayEvent,
+}
+
+impl FaxEvent {
+    /// Build this typed event from a raw RELAY notification payload.
+    #[must_use]
+    pub fn from_payload(payload: &Value) -> Self {
+        FaxEvent {
+            base: RelayEvent::from_payload(payload),
+        }
+    }
+
+    /// The base [`RelayEvent`] view.
+    #[must_use]
+    pub fn base(&self) -> &RelayEvent {
+        &self.base
+    }
+
+    /// The wire `event_type` string.
+    #[must_use]
+    pub fn event_type(&self) -> &str {
+        self.base.event_type()
+    }
+}
+
+/// A hold/unhold notification.
+///
+/// Parity with Python's `signalwire.relay.event.HoldEvent`; built via
+/// [`HoldEvent::from_payload`].
+#[derive(Debug, Clone)]
+pub struct HoldEvent {
+    base: RelayEvent,
+}
+
+impl HoldEvent {
+    /// Build this typed event from a raw RELAY notification payload.
+    #[must_use]
+    pub fn from_payload(payload: &Value) -> Self {
+        HoldEvent {
+            base: RelayEvent::from_payload(payload),
+        }
+    }
+
+    /// The base [`RelayEvent`] view.
+    #[must_use]
+    pub fn base(&self) -> &RelayEvent {
+        &self.base
+    }
+
+    /// The wire `event_type` string.
+    #[must_use]
+    pub fn event_type(&self) -> &str {
+        self.base.event_type()
+    }
+}
+
+/// `messaging.receive` — inbound message received.
+///
+/// Parity with Python's `signalwire.relay.event.MessageReceiveEvent`; built via
+/// [`MessageReceiveEvent::from_payload`].
+#[derive(Debug, Clone)]
+pub struct MessageReceiveEvent {
+    base: RelayEvent,
+}
+
+impl MessageReceiveEvent {
+    /// Build this typed event from a raw RELAY notification payload.
+    #[must_use]
+    pub fn from_payload(payload: &Value) -> Self {
+        MessageReceiveEvent {
+            base: RelayEvent::from_payload(payload),
+        }
+    }
+
+    /// The base [`RelayEvent`] view.
+    #[must_use]
+    pub fn base(&self) -> &RelayEvent {
+        &self.base
+    }
+
+    /// The wire `event_type` string.
+    #[must_use]
+    pub fn event_type(&self) -> &str {
+        self.base.event_type()
+    }
+}
+
+/// `messaging.state` — message state transition.
+///
+/// Parity with Python's `signalwire.relay.event.MessageStateEvent`; built via
+/// [`MessageStateEvent::from_payload`].
+#[derive(Debug, Clone)]
+pub struct MessageStateEvent {
+    base: RelayEvent,
+}
+
+impl MessageStateEvent {
+    /// Build this typed event from a raw RELAY notification payload.
+    #[must_use]
+    pub fn from_payload(payload: &Value) -> Self {
+        MessageStateEvent {
+            base: RelayEvent::from_payload(payload),
+        }
+    }
+
+    /// The base [`RelayEvent`] view.
+    #[must_use]
+    pub fn base(&self) -> &RelayEvent {
+        &self.base
+    }
+
+    /// The wire `event_type` string.
+    #[must_use]
+    pub fn event_type(&self) -> &str {
+        self.base.event_type()
+    }
+}
+
+/// `calling.call.pay` — pay-command notification.
+///
+/// Parity with Python's `signalwire.relay.event.PayEvent`; built via
+/// [`PayEvent::from_payload`].
+#[derive(Debug, Clone)]
+pub struct PayEvent {
+    base: RelayEvent,
+}
+
+impl PayEvent {
+    /// Build this typed event from a raw RELAY notification payload.
+    #[must_use]
+    pub fn from_payload(payload: &Value) -> Self {
+        PayEvent {
+            base: RelayEvent::from_payload(payload),
+        }
+    }
+
+    /// The base [`RelayEvent`] view.
+    #[must_use]
+    pub fn base(&self) -> &RelayEvent {
+        &self.base
+    }
+
+    /// The wire `event_type` string.
+    #[must_use]
+    pub fn event_type(&self) -> &str {
+        self.base.event_type()
+    }
+}
+
+/// `calling.call.play` — playback notification.
+///
+/// Parity with Python's `signalwire.relay.event.PlayEvent`; built via
+/// [`PlayEvent::from_payload`].
+#[derive(Debug, Clone)]
+pub struct PlayEvent {
+    base: RelayEvent,
+}
+
+impl PlayEvent {
+    /// Build this typed event from a raw RELAY notification payload.
+    #[must_use]
+    pub fn from_payload(payload: &Value) -> Self {
+        PlayEvent {
+            base: RelayEvent::from_payload(payload),
+        }
+    }
+
+    /// The base [`RelayEvent`] view.
+    #[must_use]
+    pub fn base(&self) -> &RelayEvent {
+        &self.base
+    }
+
+    /// The wire `event_type` string.
+    #[must_use]
+    pub fn event_type(&self) -> &str {
+        self.base.event_type()
+    }
+}
+
+/// A queue notification.
+///
+/// Parity with Python's `signalwire.relay.event.QueueEvent`; built via
+/// [`QueueEvent::from_payload`].
+#[derive(Debug, Clone)]
+pub struct QueueEvent {
+    base: RelayEvent,
+}
+
+impl QueueEvent {
+    /// Build this typed event from a raw RELAY notification payload.
+    #[must_use]
+    pub fn from_payload(payload: &Value) -> Self {
+        QueueEvent {
+            base: RelayEvent::from_payload(payload),
+        }
+    }
+
+    /// The base [`RelayEvent`] view.
+    #[must_use]
+    pub fn base(&self) -> &RelayEvent {
+        &self.base
+    }
+
+    /// The wire `event_type` string.
+    #[must_use]
+    pub fn event_type(&self) -> &str {
+        self.base.event_type()
+    }
+}
+
+/// `calling.call.record` — recording notification.
+///
+/// Parity with Python's `signalwire.relay.event.RecordEvent`; built via
+/// [`RecordEvent::from_payload`].
+#[derive(Debug, Clone)]
+pub struct RecordEvent {
+    base: RelayEvent,
+}
+
+impl RecordEvent {
+    /// Build this typed event from a raw RELAY notification payload.
+    #[must_use]
+    pub fn from_payload(payload: &Value) -> Self {
+        RecordEvent {
+            base: RelayEvent::from_payload(payload),
+        }
+    }
+
+    /// The base [`RelayEvent`] view.
+    #[must_use]
+    pub fn base(&self) -> &RelayEvent {
+        &self.base
+    }
+
+    /// The wire `event_type` string.
+    #[must_use]
+    pub fn event_type(&self) -> &str {
+        self.base.event_type()
+    }
+}
+
+/// `calling.call.refer` — refer notification.
+///
+/// Parity with Python's `signalwire.relay.event.ReferEvent`; built via
+/// [`ReferEvent::from_payload`].
+#[derive(Debug, Clone)]
+pub struct ReferEvent {
+    base: RelayEvent,
+}
+
+impl ReferEvent {
+    /// Build this typed event from a raw RELAY notification payload.
+    #[must_use]
+    pub fn from_payload(payload: &Value) -> Self {
+        ReferEvent {
+            base: RelayEvent::from_payload(payload),
+        }
+    }
+
+    /// The base [`RelayEvent`] view.
+    #[must_use]
+    pub fn base(&self) -> &RelayEvent {
+        &self.base
+    }
+
+    /// The wire `event_type` string.
+    #[must_use]
+    pub fn event_type(&self) -> &str {
+        self.base.event_type()
+    }
+}
+
+/// `calling.call.send_digits` — send-digits notification.
+///
+/// Parity with Python's `signalwire.relay.event.SendDigitsEvent`; built via
+/// [`SendDigitsEvent::from_payload`].
+#[derive(Debug, Clone)]
+pub struct SendDigitsEvent {
+    base: RelayEvent,
+}
+
+impl SendDigitsEvent {
+    /// Build this typed event from a raw RELAY notification payload.
+    #[must_use]
+    pub fn from_payload(payload: &Value) -> Self {
+        SendDigitsEvent {
+            base: RelayEvent::from_payload(payload),
+        }
+    }
+
+    /// The base [`RelayEvent`] view.
+    #[must_use]
+    pub fn base(&self) -> &RelayEvent {
+        &self.base
+    }
+
+    /// The wire `event_type` string.
+    #[must_use]
+    pub fn event_type(&self) -> &str {
+        self.base.event_type()
+    }
+}
+
+/// `calling.call.stream` — media-stream notification.
+///
+/// Parity with Python's `signalwire.relay.event.StreamEvent`; built via
+/// [`StreamEvent::from_payload`].
+#[derive(Debug, Clone)]
+pub struct StreamEvent {
+    base: RelayEvent,
+}
+
+impl StreamEvent {
+    /// Build this typed event from a raw RELAY notification payload.
+    #[must_use]
+    pub fn from_payload(payload: &Value) -> Self {
+        StreamEvent {
+            base: RelayEvent::from_payload(payload),
+        }
+    }
+
+    /// The base [`RelayEvent`] view.
+    #[must_use]
+    pub fn base(&self) -> &RelayEvent {
+        &self.base
+    }
+
+    /// The wire `event_type` string.
+    #[must_use]
+    pub fn event_type(&self) -> &str {
+        self.base.event_type()
+    }
+}
+
+/// `calling.call.tap` — media-tap notification.
+///
+/// Parity with Python's `signalwire.relay.event.TapEvent`; built via
+/// [`TapEvent::from_payload`].
+#[derive(Debug, Clone)]
+pub struct TapEvent {
+    base: RelayEvent,
+}
+
+impl TapEvent {
+    /// Build this typed event from a raw RELAY notification payload.
+    #[must_use]
+    pub fn from_payload(payload: &Value) -> Self {
+        TapEvent {
+            base: RelayEvent::from_payload(payload),
+        }
+    }
+
+    /// The base [`RelayEvent`] view.
+    #[must_use]
+    pub fn base(&self) -> &RelayEvent {
+        &self.base
+    }
+
+    /// The wire `event_type` string.
+    #[must_use]
+    pub fn event_type(&self) -> &str {
+        self.base.event_type()
+    }
+}
+
+/// `calling.call.transcribe` — live-transcription notification.
+///
+/// Parity with Python's `signalwire.relay.event.TranscribeEvent`; built via
+/// [`TranscribeEvent::from_payload`].
+#[derive(Debug, Clone)]
+pub struct TranscribeEvent {
+    base: RelayEvent,
+}
+
+impl TranscribeEvent {
+    /// Build this typed event from a raw RELAY notification payload.
+    #[must_use]
+    pub fn from_payload(payload: &Value) -> Self {
+        TranscribeEvent {
+            base: RelayEvent::from_payload(payload),
+        }
+    }
+
+    /// The base [`RelayEvent`] view.
+    #[must_use]
+    pub fn base(&self) -> &RelayEvent {
+        &self.base
+    }
+
+    /// The wire `event_type` string.
+    #[must_use]
+    pub fn event_type(&self) -> &str {
+        self.base.event_type()
+    }
+}
+
+/// Parse a raw RELAY notification payload into a [`RelayEvent`].
+///
+/// Parity with Python's module-level `signalwire.relay.event.parse_event`.
+/// The concrete event family is determined by the wire `event_type`; the
+/// returned base carries it for downstream dispatch.
+#[must_use]
+pub fn parse_event(payload: &Value) -> RelayEvent {
+    RelayEvent::from_payload(payload)
+}
+
+// ------------------------------------------------------------------
 // Tests
 // ------------------------------------------------------------------
 
@@ -185,5 +973,47 @@ mod tests {
         let ev = Event::new("test.event", HashMap::new(), 1.0);
         let dbg = format!("{ev:?}");
         assert!(dbg.contains("test.event"));
+    }
+
+    #[test]
+    fn test_relay_event_from_payload_nested_params() {
+        let payload = json!({
+            "event_type": "calling.call.state",
+            "params": {"call_id": "c1", "state": "answered"}
+        });
+        let ev = RelayEvent::from_payload(&payload);
+        assert_eq!(ev.event_type(), "calling.call.state");
+        assert_eq!(ev.event().call_id(), Some("c1"));
+        assert_eq!(ev.event().state(), Some("answered"));
+    }
+
+    #[test]
+    fn test_relay_event_from_payload_flat() {
+        let payload = json!({"event_type": "x", "call_id": "c2"});
+        let ev = RelayEvent::from_payload(&payload);
+        // Flat payload with no "params" key falls back to the payload itself.
+        assert_eq!(ev.event().call_id(), Some("c2"));
+    }
+
+    #[test]
+    fn test_typed_events_from_payload() {
+        let payload = json!({
+            "event_type": "calling.call.play",
+            "params": {"call_id": "cid", "control_id": "pl-1"}
+        });
+        let ev = PlayEvent::from_payload(&payload);
+        assert_eq!(ev.event_type(), "calling.call.play");
+        assert_eq!(ev.base().event().control_id(), Some("pl-1"));
+
+        let st = CallStateEvent::from_payload(&payload);
+        assert_eq!(st.base().event().call_id(), Some("cid"));
+    }
+
+    #[test]
+    fn test_parse_event_function() {
+        let payload = json!({"event_type": "messaging.receive", "params": {"tag": "t9"}});
+        let ev = parse_event(&payload);
+        assert_eq!(ev.event_type(), "messaging.receive");
+        assert_eq!(ev.event().tag(), Some("t9"));
     }
 }

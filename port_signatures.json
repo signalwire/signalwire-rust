@@ -1478,6 +1478,20 @@
               ],
               "returns": "any"
             },
+            "set_multilingual": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                },
+                {
+                  "name": "config",
+                  "type": "class:signalwire.value.Value",
+                  "required": true
+                }
+              ],
+              "returns": "any"
+            },
             "set_native_functions": {
               "params": [
                 {
@@ -16597,6 +16611,18 @@
             }
           }
         }
+      },
+      "functions": {
+        "parse_event": {
+          "params": [
+            {
+              "name": "payload",
+              "type": "class:signalwire.value.Value",
+              "required": true
+            }
+          ],
+          "returns": "class:signalwire.relayevent.RelayEvent"
+        }
       }
     },
     "signalwire.relay.message": {
@@ -23729,28 +23755,6 @@
     "signalwire.skills.math.skill": {
       "classes": {
         "MathSkill": {
-          "methods": {
-            "__init__": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                },
-                {
-                  "name": "params",
-                  "type": "dict<string,any>",
-                  "required": true
-                }
-              ],
-              "returns": "void"
-            }
-          }
-        }
-      }
-    },
-    "signalwire.skills.mcp_gateway.skill": {
-      "classes": {
-        "MCPGatewaySkill": {
           "methods": {
             "__init__": {
               "params": [
