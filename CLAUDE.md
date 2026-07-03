@@ -16,42 +16,39 @@ This is the SignalWire AI Agents Rust SDK -- a Rust port of the Python SignalWir
 cargo build
 ```
 
-### Testing
+### Testing, Linting, Formatting — the canonical scripts
+
+Format, lint, and test go through three canonical scripts under `scripts/`.
+**Do NOT call `cargo fmt` / `cargo clippy` / `cargo test` directly** — use these
+instead. They self-bootstrap the Rust toolchain (adding rustfmt/clippy if missing)
+and resolve the repo from their own path, so they run identically from ANY working
+directory. `run-ci.sh`'s FMT/LINT/TEST gates call these same scripts, so there is
+no drift between a local invocation and CI.
 
 ```bash
-# Run all tests
-cargo test
+# Format the tree in place (apply). --check = verify-only (the CI FMT gate).
+bash scripts/run-format.sh
+bash scripts/run-format.sh --check
 
-# Run with verbose output
+# Lint (cargo clippy --all-targets, -D warnings). --fix applies clippy autofixes.
+bash scripts/run-lint.sh
+bash scripts/run-lint.sh --fix
+
+# Run the test suite (cargo test --tests). Optional filter passes through to cargo.
+bash scripts/run-tests.sh
+bash scripts/run-tests.sh test_connect_returns_protocol_string
+```
+
+Other cargo test invocations (module subsets, verbose, coverage) still work when
+you want them directly:
+
+```bash
+# Verbose output
 cargo test -- --nocapture
-
-# Run tests for a specific module
-cargo test logging
-cargo test swml
-cargo test agent
-cargo test swaig
-cargo test relay
-cargo test rest
-
-# Run a single test by name
-cargo test test_logger_creation
 
 # Coverage (requires cargo-tarpaulin)
 cargo install cargo-tarpaulin
 cargo tarpaulin --out html
-```
-
-### Linting and Formatting
-
-```bash
-# Lint with Clippy
-cargo clippy -- -D warnings
-
-# Format code
-cargo fmt
-
-# Check formatting without applying
-cargo fmt -- --check
 ```
 
 ### Running Examples

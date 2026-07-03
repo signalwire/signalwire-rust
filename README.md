@@ -276,20 +276,32 @@ Guides are also available in the [`docs/`](docs/) directory:
 | `SIGNALWIRE_LOG_LEVEL` | All | Logging level (`debug`, `info`, `warn`, `error`) |
 | `SIGNALWIRE_LOG_MODE` | All | Set to `off` to suppress all logging |
 
-## Testing
+## Testing, Linting, Formatting
+
+Format, lint, and test go through three canonical scripts under `scripts/`. They
+self-bootstrap the Rust toolchain (adding `rustfmt`/`clippy` if missing) and
+resolve the repo from their own path, so they run identically from **any** working
+directory. `scripts/run-ci.sh`'s FMT/LINT/TEST gates call these same scripts — no
+drift between a local run and CI.
 
 ```bash
-# Run the test suite
-cargo test
+# Run the test suite (optional filter passes through to cargo)
+bash scripts/run-tests.sh
+bash scripts/run-tests.sh test_connect_returns_protocol_string
 
+# Lint (cargo clippy --all-targets, -D warnings); --fix applies clippy autofixes
+bash scripts/run-lint.sh
+
+# Format in place; --check for verify-only (the CI FMT gate)
+bash scripts/run-format.sh
+bash scripts/run-format.sh --check
+```
+
+Direct cargo invocations still work when you want them:
+
+```bash
 # Run with verbose output
 cargo test -- --nocapture
-
-# Run tests for a specific module
-cargo test logging
-cargo test agent
-cargo test relay
-cargo test rest
 
 # Coverage (requires cargo-tarpaulin)
 cargo tarpaulin --out html

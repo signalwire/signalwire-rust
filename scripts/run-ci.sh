@@ -4,6 +4,13 @@
 # Same script invoked locally (`bash scripts/run-ci.sh`) AND by the
 # GitHub Actions workflow. No drift between local and CI behavior.
 #
+# FMT / LINT / TEST entry points are the canonical scripts (callable standalone
+# from any CWD, self-bootstrapping the toolchain):
+#   scripts/run-format.sh   (rust: cargo fmt; --check for CI verify-only)
+#   scripts/run-lint.sh     (rust: cargo clippy --all-targets; --fix for autofix)
+#   scripts/run-tests.sh    (rust: cargo test --tests; optional name filter)
+# All three + this run-ci source the shared scripts/_env.sh bootstrap.
+#
 # Gates (in order, fail-fast):
 #   1. cargo test --tests                        — language test runner (parallel)
 #   2. signature regen (rustdoc + adapter)      — python adapter
@@ -72,14 +79,15 @@ cd "$PORT_ROOT"
 
 echo "==> running CI gates for $PORT_NAME (porting-sdk at $PORTING_SDK_DIR)"
 
-# Gate 1: cargo test (PARALLEL — cargo's default). The mock-backed suites are
-# session-isolated (relay: per-connection handshake `sessionid`; rest: per-test
-# random project => unique Authorization header), so the shared mock servers are
-# safe under concurrency without `--test-threads=1`. The few env-coupled unit
-# tests serialize among themselves with a file-local lock. No cross-test serial
-# crutch, no cross-binary flock.
-run_gate "TEST" "cargo test --tests (parallel)" \
-    cargo test --tests
+# Gate 1: TEST — the language test runner. Delegates to the canonical
+# scripts/run-tests.sh (cargo test --tests, PARALLEL — cargo's default). The
+# mock-backed suites are session-isolated (relay: per-connection handshake
+# `sessionid`; rest: per-test random project => unique Authorization header), so
+# the shared mock servers are safe under concurrency without `--test-threads=1`.
+# The few env-coupled unit tests serialize among themselves with a file-local
+# lock. The script self-bootstraps the toolchain and runs from any CWD.
+run_gate "TEST" "cargo test --tests (parallel) via scripts/run-tests.sh" \
+    bash "$PORT_ROOT/scripts/run-tests.sh"
 
 # Gate 1b: GEN-FRESH — the generated REST layer (src/rest/namespaces/generated/
 # *_resources_generated.rs + client_tree_generated.rs + mod.rs + the adapter
@@ -295,47 +303,30 @@ run_gate "SKILL-CONTRACT" "diff_skill_contracts vs python reference" \
         --dump-cmd 'cargo run --quiet --example emit_skills' \
         --port-repo "$PORT_ROOT"
 
-# Gate 7: FMT — the language format gate (rust: rustfmt). Canonical gate name is
-# language-neutral (FMT); each port runs its own formatter under it. Governed by
-# rustfmt.toml (style_edition 2024). Source-style only — proven surface/emission-
-# neutral (a reformat leaves port_signatures.json byte-identical); a Rust-internal
-# idiom gate, not parity.
+# Gate 7: FMT — the language format gate (rust: rustfmt). Delegates to the
+# canonical scripts/run-format.sh (which self-bootstraps rustfmt and runs from any
+# CWD). Governed by rustfmt.toml (style_edition 2024). Source-style only — proven
+# surface/emission-neutral (a reformat leaves port_signatures.json byte-identical);
+# a Rust-internal idiom gate, not parity.
 #
 # CI-AWARE behaviour (so the gate "just fixes it" locally but still guards CI):
-#   * LOCAL ($CI unset)  → `cargo fmt --all` in FIX mode: silently reformats your
-#     working tree. No error, no manual step — you never have to run cargo fmt by
-#     hand. If it had to rewrite anything, we still PASS (the files are now clean)
-#     but print a note so you know to stage them.
-#   * CI ($CI=true)      → `cargo fmt --all -- --check`: read-only safety net that
-#     FAILS if unformatted code reached CI (a committer who didn't run run-ci.sh).
-# Pinned to +stable: the SIGNATURES gate installs nightly (rustdoc-json) which can
-# become the default toolchain and may lack rustfmt/clippy; +stable is robust.
-fmt_gate() {
-    if [ -n "${CI:-}" ]; then
-        cargo +stable fmt --all -- --check
-    else
-        cargo +stable fmt --all
-        local rc=$?
-        if [ "$rc" -eq 0 ]; then
-            # fmt rewrites in place and exits 0 whether or not it changed files;
-            # surface any reformatting so the dev knows to `git add` it.
-            if ! git diff --quiet 2>/dev/null; then
-                echo "    (FMT auto-applied formatting to your working tree — review & stage)"
-            fi
-        fi
-        return $rc
-    fi
-}
-run_gate "FMT" "rustfmt (local: auto-fix; CI: --check)" fmt_gate
+#   * LOCAL ($CI unset)  → `run-format.sh` (apply): silently reformats your working
+#     tree. No error, no manual step — you never have to run cargo fmt by hand. If
+#     it rewrote anything we still PASS (the files are now clean) but the script
+#     prints a note so you know to stage them.
+#   * CI ($CI=true)      → `run-format.sh --check`: read-only safety net that FAILS
+#     if unformatted code reached CI (a committer who didn't run run-ci.sh).
+run_gate "FMT" "rustfmt via scripts/run-format.sh (local: auto-fix; CI: --check)" \
+    bash "$PORT_ROOT/scripts/run-format.sh" ${CI:+--check}
 
-# Gate 8: LINT — the language lint gate (rust: clippy). The canonical gate name
-# is language-neutral (LINT); each port runs its own linter under it. Here that
-# is clippy: Cargo.toml [lints.clippy] denies `all` + `pedantic` (with the
+# Gate 8: LINT — the language lint gate (rust: clippy). Delegates to the canonical
+# scripts/run-lint.sh (which self-bootstraps clippy and runs from any CWD). Here
+# that is clippy: Cargo.toml [lints.clippy] denies `all` + `pedantic` (with the
 # documented per-lint allows), so any new finding is an `error`. `-D warnings`
 # also promotes rustc warnings. `--all-targets` covers lib + bins + tests +
 # examples (the same scope the burn-down cleared).
-run_gate "LINT" "cargo clippy --all-targets (lint gate)" \
-    cargo +stable clippy --all-targets --all-features -- -D warnings
+run_gate "LINT" "cargo clippy --all-targets via scripts/run-lint.sh" \
+    bash "$PORT_ROOT/scripts/run-lint.sh"
 
 # Gate 9: doc-audit — every method/class referenced in docs/ + examples/ fenced
 # code blocks must resolve to a real symbol in port_surface.json (catches
