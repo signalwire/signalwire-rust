@@ -89,6 +89,34 @@ run_gate "TEST" "cargo test --tests (parallel)" \
 run_gate "GEN-FRESH" "generated REST layer matches the canonical specs (generate_rest.py --check)" \
     python3 scripts/generate_rest.py --check
 
+# Gate 1c–1e: GEN-FRESH for the READ-side typed-payload trees (SESSION_CHANGESET
+# item D/H/I). Each must be in lockstep with its vendored spec source:
+#   SWML-verb config types (src/swml/swml_verbs_generated.rs) <- schema.json $defs
+#   RELAY-protocol wire types (src/relay/protocol_types_generated.rs) <- relay-protocol/*.json
+#   SWAIG payloads (src/swaig/{post_prompt,swaig_request,swaig_actions}_generated.rs) <- swaig-specs/
+# (the swml/swaig generators also emit the gen-payload signature sidecars the
+# adapter consumes; GEN-FRESH gates those JSON files too). Fails if a spec changed
+# without regenerating or the tree was hand-edited.
+run_gate "GEN-FRESH-SWML" "generated SWML-verbs config tree matches schema.json (\$defs)" \
+    python3 scripts/generate_swml_verbs.py --check
+
+run_gate "GEN-FRESH-RELAY" "generated RELAY-protocol tree matches relay-protocol/*.json" \
+    python3 scripts/generate_relay_protocol.py --check
+
+run_gate "GEN-FRESH-SWAIG" "generated SWAIG payload tree matches swaig-specs/" \
+    python3 scripts/generate_swaig_payloads.py --check
+
+# Gate 1f: SWAIG-COVERAGE — every engine response action in the vendored
+# swaig-specs/swaig-response.yaml must be emittable by this port's FunctionResult
+# (or signed off in porting-sdk/SWAIG_COVERAGE_ALLOWLIST.md). The shared checker's
+# _sdk_emits_rust scraper captures the top-level keys of each
+# `self.actions.push(json!({ 'key': … }))` — landing at 25 of the 27 engine actions
+# (the 2 gaps, back_to_back_functions + user_event, are the shared signed-off
+# allowlist), matching go/ts/php/ruby.
+run_gate "SWAIG-COVERAGE" "every engine SWAIG action emittable (modulo allowlist)" \
+    python3 "$PORTING_SDK_DIR/scripts/swaig_coverage.py" --check \
+        --emission "$PORT_ROOT/src/swaig/function_result.rs"
+
 # Gate 2: signature regen — adapter shells out to rustdoc nightly internally.
 run_gate "SIGNATURES" "regenerate port_signatures.json (rustdoc + adapter)" \
     python3 scripts/enumerate_signatures.py

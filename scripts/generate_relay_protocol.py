@@ -1,0 +1,145 @@
+#!/usr/bin/env python3
+"""Generate the RELAY-protocol wire-type surface for signalwire-rust.
+
+The RUST realization of SESSION_CHANGESET_FOR_PORTS.md item I/D — the
+``signalwire.relay.protocol_types_generated`` module — mirroring python's
+``generate_relay_protocol`` and ruby/php's ``generate_relay_protocol.py``.
+
+Source: the canonical porting-sdk ``relay-protocol/*.json`` — one standalone
+JSON-Schema file per RELAY WS method+phase, named
+``<domain>.<method>.(params|result).json``. NOT derived from openapi.
+
+Class name = PascalCase(``x-method``, fallback filename base) + phase suffix:
+  calling.ai_hold.params.json  -> CallingAiHoldParams
+  signalwire.connect.result.json -> SignalwireConnectResult
+
+Emit/drop rule = the shared ``is_object_schema`` test: an OBJECT schema WITH
+properties -> a method-less Rust struct; empty-object / scalar / union placeholder
+-> NOT surfaced (the reference records those as a module-level ``TypeAlias`` its
+enumerator drops). 123 == the oracle exactly (0/0).
+
+These are NOT in the SIGNATURE oracle (the reference class carries no class-typed
+field the sig enumerator keeps) — emitted METHOD-LESS (no gen-payload sidecar).
+The surface enumerator routes the single module file by FILE PATH to the oracle
+module (winning over the name-keyed lookup, so an existing Relay SDK class —
+Call/Client/Event/… — is never misrouted).
+
+Output: a single module ``src/relay/protocol_types_generated.rs``.
+
+Usage:
+    python3 scripts/generate_relay_protocol.py            # write into the repo tree
+    python3 scripts/generate_relay_protocol.py --check    # GEN-FRESH: fail if stale
+    python3 scripts/generate_relay_protocol.py --out DIR  # scratch: emit into DIR
+"""
+from __future__ import annotations
+
+import argparse
+import importlib.util
+import json
+import re
+import sys
+from pathlib import Path
+
+
+def _load_rest_generator():
+    here = Path(__file__).resolve().parent
+    spec = importlib.util.spec_from_file_location("generate_rest", here / "generate_rest.py")
+    if spec is None or spec.loader is None:  # pragma: no cover
+        raise SystemExit("generate_relay_protocol.py: cannot load generate_rest.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+GR = _load_rest_generator()
+
+MODULE_FILE = "relay/protocol_types_generated.rs"
+_PHASES = (("params", "Params"), ("result", "Result"))
+
+
+def resolve_porting_sdk() -> Path:
+    return GR.resolve_porting_sdk()
+
+
+def repo_root() -> Path:
+    return Path(__file__).resolve().parents[1]
+
+
+def _pascal_method(method: str) -> str:
+    parts = [p for p in re.split(r"[._\-\s]", method) if p]
+    return "".join(w[:1].upper() + w[1:] for w in parts)
+
+
+def build_types(psdk: Path) -> list[tuple[str, dict, str]]:
+    relay_dir = psdk / "relay-protocol"
+    by_name = {p.name: p for p in relay_dir.glob("*.json")}
+    out: list[tuple[str, dict, str]] = []
+    seen: set = set()
+
+    # Emit the Params block then the Result block (reproduces reference decl order).
+    for phase, suffix in _PHASES:
+        tail = "." + phase + ".json"
+        for name in sorted(n for n in by_name if n.endswith(tail)):
+            node = json.loads(by_name[name].read_text())
+            if not isinstance(node, dict):
+                continue
+            method = node.get("x-method") or name[: -len(tail)]
+            rs_name = GR.type_name(_pascal_method(method) + suffix)
+            if not GR.is_object_schema(node):
+                continue
+            if rs_name in seen:
+                continue
+            seen.add(rs_name)
+            out.append((rs_name, node.get("properties") or {},
+                        f"RELAY method {method!r}, {phase}"))
+    return out
+
+
+def build_module(psdk: Path) -> str:
+    types = build_types(psdk)
+    desc = "Generated RELAY-protocol wire types from porting-sdk/relay-protocol/."
+    src = GR.TYPES_HEADER.format(gen="generate_relay_protocol.py", desc=desc) + "\n"
+    for rs_name, props, tdesc in types:
+        src += "\n" + GR.emit_methodless_struct(rs_name, props, tdesc,
+                                                "generate_relay_protocol.py") + "\n"
+    return GR._rustfmt(src)
+
+
+def build_outputs(psdk: Path) -> dict[str, str]:
+    return {MODULE_FILE: build_module(psdk)}
+
+
+def main(argv: list) -> int:
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument("--check", action="store_true", help="GEN-FRESH: exit non-zero if stale")
+    ap.add_argument("--out", default="", help="scratch: emit into this dir")
+    args = ap.parse_args(argv)
+
+    psdk = resolve_porting_sdk()
+    outs = build_outputs(psdk)
+    out_dir = Path(args.out) if args.out else repo_root() / "src"
+
+    if args.check:
+        stale: list = []
+        for fn, src in outs.items():
+            p = out_dir / fn
+            if not p.is_file() or p.read_text() != src:
+                stale.append(str(p))
+        if stale:
+            sys.stderr.write("GEN-FRESH FAIL: %d generated RELAY-protocol file(s) stale:\n" % len(stale))
+            for s in stale:
+                sys.stderr.write("  - %s\n" % s)
+            return 1
+        print("GEN-FRESH: generated RELAY-protocol files match porting-sdk/relay-protocol/.")
+        return 0
+
+    for fn, src in outs.items():
+        p = out_dir / fn
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(src)
+    print(f"generated {len(outs)} RELAY-protocol file(s) into {out_dir}")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main(sys.argv[1:]))

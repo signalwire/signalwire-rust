@@ -13,5 +13,6 @@ pub mod message_resources_generated;
 pub mod project_resources_generated;
 pub mod pubsub_resources_generated;
 pub mod relay_rest_resources_generated;
+pub mod types;
 pub mod video_resources_generated;
 pub mod voice_resources_generated;

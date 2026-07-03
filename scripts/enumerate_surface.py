@@ -240,6 +240,52 @@ FREE_FN_MODULE_RENAMES: dict[str, str] = {
     "signalwire.security.security_utils": "signalwire.core.security.security_utils",
 }
 
+# ---------------------------------------------------------------------------
+# Generated TYPE-surface routing (SESSION_CHANGESET §D3 / §H). The generated
+# read-side wire-type / payload modules (item D/H/I) declare method-less structs
+# / closed-set enums whose NAMES collide across namespaces AND with SDK class
+# names (DataMap / Section / Document / Call / Event). They are routed to their
+# reference module by the generated file's PATH (winning over the name-keyed
+# CLASS_MODULE_MAP), and surfaced METHOD-LESS (a struct's fields are not methods
+# in Rust — the surface records the bare type name, matching the reference whose
+# enumerator records these method-less). Restricted to these files so no other
+# type leaks into the oracle. The SURFACE-DIFF gen-type leaf fold then collapses
+# a type duplicated across several <ns>_types_generated modules on both sides.
+#
+# Route rule (checked in path order):
+#   src/rest/namespaces/generated/types/<ns>_types_generated.rs
+#       -> signalwire.rest.namespaces.<ns>_types_generated
+#   src/swml/swml_verbs_generated.rs   -> signalwire.core.swml_verbs_generated
+#   src/relay/protocol_types_generated.rs -> signalwire.relay.protocol_types_generated
+#   src/swaig/post_prompt_generated.rs -> signalwire.core.post_prompt_generated
+#   src/swaig/swaig_request_generated.rs -> signalwire.core.swaig_request_generated
+#   src/swaig/swaig_actions_generated.rs -> signalwire.core.swaig_actions_generated
+# ---------------------------------------------------------------------------
+
+_GEN_TYPE_FIXED_ROUTES: dict[str, str] = {
+    "src/swml/swml_verbs_generated.rs": "signalwire.core.swml_verbs_generated",
+    "src/relay/protocol_types_generated.rs": "signalwire.relay.protocol_types_generated",
+    "src/swaig/post_prompt_generated.rs": "signalwire.core.post_prompt_generated",
+    "src/swaig/swaig_request_generated.rs": "signalwire.core.swaig_request_generated",
+    "src/swaig/swaig_actions_generated.rs": "signalwire.core.swaig_actions_generated",
+}
+
+_GEN_TYPE_REST_DIR = "src/rest/namespaces/generated/types/"
+
+
+def gen_type_module_for_file(rel: Path) -> str | None:
+    """Return the oracle <ns>_types_generated / read-side-payload module a
+    generated-type FILE routes to, or None if the file is not a generated-type
+    module. PATH-based (wins over the name-keyed class→module map)."""
+    posix = rel.as_posix()
+    if posix in _GEN_TYPE_FIXED_ROUTES:
+        return _GEN_TYPE_FIXED_ROUTES[posix]
+    if posix.startswith(_GEN_TYPE_REST_DIR) and posix.endswith("_types_generated.rs"):
+        leaf = posix[len(_GEN_TYPE_REST_DIR):-len(".rs")]  # e.g. chat_types_generated
+        return f"signalwire.rest.namespaces.{leaf}"
+    return None
+
+
 # Per-class method renames: {class_name: {rust_method: python_method}}.
 # Used when a Rust method follows Rust idiom (e.g. `to_value`) but
 # the Python reference uses a different name (`to_dict`). Without
@@ -574,9 +620,26 @@ def build_surface() -> dict:
     sidecar = load_rest_sidecar()
     sidecar_classes, suppressed_classes = _sidecar_class_index(sidecar)
 
+    # Generated-type pass (§D3/§H): route each generated-type FILE by path and
+    # emit every declared struct/enum METHOD-LESS to the oracle module. Done first
+    # so the normal name-keyed passes can SKIP these files entirely.
+    gen_type_files: set[Path] = set()
+    for path in files:
+        rel = path.relative_to(REPO_ROOT)
+        gen_mod = gen_type_module_for_file(rel)
+        if gen_mod is None:
+            continue
+        gen_type_files.add(path)
+        _free, _methods, classes = _parse_file(path)
+        for cls in sorted(classes):
+            # Method-less: record the bare type name with an empty method list.
+            modules[gen_mod]["classes"].setdefault(cls, [])
+
     # First pass: collect class declarations + their files (module mapping)
     class_defining_files: dict[str, Path] = {}
     for path in files:
+        if path in gen_type_files:
+            continue
         free_fns, methods, classes = _parse_file(path)
         rel = path.relative_to(REPO_ROOT)
         for cls in classes:
@@ -600,6 +663,8 @@ def build_surface() -> dict:
 
     # Second pass: collect methods per class
     for path in files:
+        if path in gen_type_files:
+            continue
         free_fns, methods, classes = _parse_file(path)
         rel = path.relative_to(REPO_ROOT)
         for cls, meth_set in methods.items():

@@ -1,6 +1,9 @@
 pub mod function_result;
 pub mod media_enums;
 pub mod params_builder;
+pub mod post_prompt_generated;
+pub mod swaig_actions_generated;
+pub mod swaig_request_generated;
 
 pub use function_result::{FunctionResult, KeysArg};
 pub use media_enums::{Codec, RecordDirection, RecordFormat, TapDirection};

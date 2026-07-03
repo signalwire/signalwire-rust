@@ -11,6 +11,7 @@ pub mod device;
 pub mod error;
 pub mod event;
 pub mod message;
+pub mod protocol_types_generated;
 pub mod state_enums;
 
 pub use action::{

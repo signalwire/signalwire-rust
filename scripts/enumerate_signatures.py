@@ -169,6 +169,62 @@ def build_generated_signatures(sidecar: dict) -> dict:
 
 
 # ---------------------------------------------------------------------------
+# Gen-payload SIGNATURE sidecars (§D3, read side). The three read-side payload
+# modules the reference records WITH zero-arg accessors per class-typed field
+# (swml_verbs / post_prompt / swaig_request) have no accessor methods on the Rust
+# struct — rustdoc sees a method-less struct and drops it. The sibling generators
+# (generate_swml_verbs.py / generate_swaig_payloads.py) each write a
+# ``*_gen_payload.json`` next to their .rs module carrying {module, classes:{Name:
+# [accessor,...]}}. We synthesize an ``any``-return, self-only accessor per name
+# and route it to the oracle module. The diff tool's gen-payload fold +
+# _is_port_state_accessor excuse make these compare EQUAL to the reference
+# (class-typed fields fold by leaf; scalar fields excuse as port-side state).
+#
+# relay-protocol / swaig-actions / REST <ns>_types_generated are NOT in the
+# signature oracle (method-less on both sides) — no sidecar, nothing synthesized.
+# ---------------------------------------------------------------------------
+
+_GEN_PAYLOAD_SIDECAR_GLOBS = (
+    "src/swml/swml_verbs_gen_payload.json",
+    "src/swaig/post_prompt_gen_payload.json",
+    "src/swaig/swaig_request_gen_payload.json",
+)
+
+
+def load_gen_payload_sidecars() -> list[dict]:
+    out: list[dict] = []
+    for rel in _GEN_PAYLOAD_SIDECAR_GLOBS:
+        p = PORT_ROOT / rel
+        try:
+            out.append(json.loads(p.read_text(encoding="utf-8")))
+        except FileNotFoundError:
+            continue
+    return out
+
+
+def build_gen_payload_signatures(sidecars: list[dict]) -> dict:
+    """Build the port_signatures fragment for the read-side payload modules:
+    each class gets a synthesized zero-arg accessor per field (self-only,
+    ``any`` return). Returns {module: {"classes": {cls: {"methods": {...}}}}}."""
+    out: dict = {}
+    for sc in sidecars:
+        mod = sc.get("module")
+        if not mod:
+            continue
+        for cls, accessors in (sc.get("classes") or {}).items():
+            methods = {
+                acc: {
+                    "params": [{"name": "self", "kind": "self"}],
+                    "returns": "any",
+                }
+                for acc in accessors
+            }
+            out.setdefault(mod, {"classes": {}})
+            out[mod]["classes"][cls] = {"methods": dict(sorted(methods.items()))}
+    return out
+
+
+# ---------------------------------------------------------------------------
 # Rust type translation (rustdoc-json types model)
 # ---------------------------------------------------------------------------
 
@@ -756,6 +812,14 @@ def collect(rust_doc: dict, aliases: dict) -> tuple[dict, list]:
     # up with the oracle. Merge after everything else so a stray fallback-mapped
     # generated struct can't shadow them.
     for mod, entry in build_generated_signatures(sidecar).items():
+        out_modules.setdefault(mod, {"classes": {}})
+        out_modules[mod].setdefault("classes", {})
+        out_modules[mod]["classes"].update(entry["classes"])
+
+    # Merge the read-side payload modules (§D3): swml_verbs / post_prompt /
+    # swaig_request classes with synthesized per-field ``any``-return accessors
+    # from the gen-payload sidecars (Rust structs carry no accessor methods).
+    for mod, entry in build_gen_payload_signatures(load_gen_payload_sidecars()).items():
         out_modules.setdefault(mod, {"classes": {}})
         out_modules[mod].setdefault("classes", {})
         out_modules[mod]["classes"].update(entry["classes"])
