@@ -38,7 +38,10 @@ impl SkillBase for PlayBackgroundFile {
         !files.is_empty()
     }
 
-    fn register_tools(&self, agent: &mut AgentBase) {
+    /// Build the DataMap-backed background-playback tool.
+    ///
+    /// Mirrors Python `PlayBackgroundFileSkill.get_tools()`.
+    fn get_tools(&self) -> Vec<Value> {
         let tool_name = self.get_tool_name("play_background_file");
         let files = self.sp.get_array("files");
 
@@ -91,7 +94,7 @@ impl SkillBase for PlayBackgroundFile {
 
         let action_enum_values: Vec<Value> = action_enum.iter().map(|s| json!(s)).collect();
 
-        let mut func_def = json!({
+        vec![json!({
             "function": tool_name,
             "purpose": format!("Control background file playback for {}", tool_name),
             "argument": {
@@ -108,16 +111,19 @@ impl SkillBase for PlayBackgroundFile {
             "data_map": {
                 "expressions": expressions,
             },
-        });
+        })]
+    }
 
+    fn register_tools(&self, agent: &mut AgentBase) {
         let swaig_fields = self.get_swaig_fields();
-        if let Value::Object(ref mut obj) = func_def {
-            for (k, v) in swaig_fields {
-                obj.insert(k, v);
+        for mut func_def in self.get_tools() {
+            if let Value::Object(ref mut obj) = func_def {
+                for (k, v) in &swaig_fields {
+                    obj.insert(k.clone(), v.clone());
+                }
             }
+            agent.register_swaig_function(func_def);
         }
-
-        agent.register_swaig_function(func_def);
     }
 }
 
@@ -136,6 +142,27 @@ mod tests {
     fn test_play_background_file_setup_needs_files() {
         let mut skill = PlayBackgroundFile::new(Map::new());
         assert!(!skill.setup());
+    }
+
+    #[test]
+    fn test_play_background_file_get_tools() {
+        let mut params = Map::new();
+        params.insert(
+            "files".to_string(),
+            json!([{"key": "hold", "url": "https://example.com/hold.mp3", "description": "Hold music", "wait": true}]),
+        );
+        let skill = PlayBackgroundFile::new(params);
+        let tools = skill.get_tools();
+        assert_eq!(tools.len(), 1);
+        let t = &tools[0];
+        assert_eq!(t["function"], json!("play_background_file"));
+        // Action enum: start_<key> plus stop.
+        assert_eq!(
+            t["argument"]["properties"]["action"]["enum"],
+            json!(["start_hold", "stop"])
+        );
+        // Two expressions: the file + the stop.
+        assert_eq!(t["data_map"]["expressions"].as_array().unwrap().len(), 2);
     }
 
     #[test]

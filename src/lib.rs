@@ -58,6 +58,7 @@ pub mod skills;
 pub mod relay;
 pub mod rest;
 pub mod serverless;
+pub mod web;
 
 // ─── Top-level re-exports for parity with Python's `signalwire` package
 //

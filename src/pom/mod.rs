@@ -19,9 +19,11 @@
 // for a private module whose types are re-exported, so allow it here.)
 #[allow(clippy::module_inception)]
 mod pom;
+pub mod pom_builder;
 pub mod section;
 
 pub use pom::PromptObjectModel;
+pub use pom_builder::PomBuilder;
 pub use section::Section;
 
 #[cfg(test)]

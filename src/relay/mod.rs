@@ -16,7 +16,7 @@ pub mod state_enums;
 
 pub use action::{
     AIAction, Action, CollectAction, DetectAction, FaxAction, PayAction, PlayAction, RecordAction,
-    StreamAction, TapAction, TranscribeAction,
+    StandaloneCollectAction, StreamAction, TapAction, TranscribeAction,
 };
 pub use call::Call;
 pub use client::Client;

@@ -153,13 +153,42 @@ impl GatherInfo {
     }
 }
 
+// ── POM section rendering ─────────────────────────────────────────────────────
+
+/// Render a list of POM sections to markdown, mirroring Python's
+/// `_render_text` / `_render_prompt` / `_render_system_prompt`: each section
+/// emits a `## {title}` header followed by either its `body` or one `- {bullet}`
+/// line per bullet, then a blank spacer line; the whole thing is trimmed.
+fn render_sections(sections: &[Value]) -> String {
+    let mut parts: Vec<String> = Vec::new();
+    for section in sections {
+        let title = section["title"].as_str().unwrap_or("");
+        if let Some(bullets) = section.get("bullets").and_then(Value::as_array) {
+            parts.push(format!("## {title}"));
+            for bullet in bullets {
+                parts.push(format!("- {}", bullet.as_str().unwrap_or("")));
+            }
+        } else {
+            parts.push(format!("## {title}"));
+            parts.push(section["body"].as_str().unwrap_or("").to_string());
+        }
+        parts.push(String::new()); // spacing
+    }
+    parts.join("\n").trim().to_string()
+}
+
 // ── Step ────────────────────────────────────────────────────────────────────
 
 /// A single step within a context.
 // Field names (step_criteria, valid_steps, …) mirror Python's Step field names
 // 1:1 and serialize to those JSON keys; struct_field_names would strip the
 // `step_` prefix and diverge from the wire shape.
-#[allow(clippy::struct_field_names)]
+//
+// The five bool fields (end, skip_user_turn, skip_to_next_step,
+// reset_consolidate, reset_full_reset) each mirror a distinct Python Step
+// flag that serializes to its own JSON key; they are independent wire
+// signals, not a state machine, so struct_excessive_bools does not apply.
+#[allow(clippy::struct_field_names, clippy::struct_excessive_bools)]
 #[derive(Debug, Clone)]
 pub struct Step {
     name: String,
@@ -172,6 +201,13 @@ pub struct Step {
     gather_info: Option<GatherInfo>,
     end: bool,
     skip_user_turn: bool,
+    skip_to_next_step: bool,
+
+    // Reset object for context switching from steps.
+    reset_system_prompt: Option<String>,
+    reset_user_prompt: Option<String>,
+    reset_consolidate: bool,
+    reset_full_reset: bool,
 }
 
 impl Step {
@@ -187,6 +223,11 @@ impl Step {
             gather_info: None,
             end: false,
             skip_user_turn: false,
+            skip_to_next_step: false,
+            reset_system_prompt: None,
+            reset_user_prompt: None,
+            reset_consolidate: false,
+            reset_full_reset: false,
         }
     }
 
@@ -221,6 +262,31 @@ impl Step {
             "Cannot add POM sections when set_text() has been used"
         );
         self.sections.push(json!({"title": title, "body": body}));
+        self
+    }
+
+    /// Add a POM section with bullet points. Mutually exclusive with
+    /// `set_text`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `set_text` has already been used on this step
+    /// (`add_bullets` and `set_text` are mutually exclusive).
+    pub fn add_bullets(&mut self, title: &str, bullets: Vec<&str>) -> &mut Self {
+        assert!(
+            self.text.is_none(),
+            "Cannot add POM sections when set_text() has been used"
+        );
+        self.sections
+            .push(json!({"title": title, "bullets": bullets}));
+        self
+    }
+
+    /// Remove all POM sections and direct text from this step, allowing it
+    /// to be repopulated with new content.
+    pub fn clear_sections(&mut self) -> &mut Self {
+        self.sections.clear();
+        self.text = None;
         self
     }
 
@@ -308,6 +374,40 @@ impl Step {
         self
     }
 
+    /// Set whether to automatically advance to the next step.
+    pub fn set_skip_to_next_step(&mut self, skip: bool) -> &mut Self {
+        self.skip_to_next_step = skip;
+        self
+    }
+
+    /// Set the system prompt applied when this step navigates to a context
+    /// (part of the step's `reset` object).
+    pub fn set_reset_system_prompt(&mut self, system_prompt: &str) -> &mut Self {
+        self.reset_system_prompt = Some(system_prompt.to_string());
+        self
+    }
+
+    /// Set the user prompt injected when this step navigates to a context
+    /// (part of the step's `reset` object).
+    pub fn set_reset_user_prompt(&mut self, user_prompt: &str) -> &mut Self {
+        self.reset_user_prompt = Some(user_prompt.to_string());
+        self
+    }
+
+    /// Set whether to consolidate the conversation when this step switches
+    /// contexts (part of the step's `reset` object).
+    pub fn set_reset_consolidate(&mut self, consolidate: bool) -> &mut Self {
+        self.reset_consolidate = consolidate;
+        self
+    }
+
+    /// Set whether to do a full reset when this step switches contexts
+    /// (part of the step's `reset` object).
+    pub fn set_reset_full_reset(&mut self, full_reset: bool) -> &mut Self {
+        self.reset_full_reset = full_reset;
+        self
+    }
+
     /// Initialise `gather_info` for this step.
     pub fn set_gather_info(
         &mut self,
@@ -386,13 +486,7 @@ impl Step {
             self.name
         );
 
-        let mut parts = Vec::new();
-        for section in &self.sections {
-            let title = section["title"].as_str().unwrap_or("");
-            let body = section["body"].as_str().unwrap_or("");
-            parts.push(format!("## {title}\n{body}\n"));
-        }
-        parts.join("\n").trim_end().to_string()
+        render_sections(&self.sections)
     }
 
     #[must_use]
@@ -419,6 +513,28 @@ impl Step {
         if self.skip_user_turn {
             map.insert("skip_user_turn".to_string(), json!(true));
         }
+        if self.skip_to_next_step {
+            map.insert("skip_to_next_step".to_string(), json!(true));
+        }
+
+        // Reset object — emitted only if any reset field is set (Python parity).
+        let mut reset = Map::new();
+        if let Some(ref sp) = self.reset_system_prompt {
+            reset.insert("system_prompt".to_string(), json!(sp));
+        }
+        if let Some(ref up) = self.reset_user_prompt {
+            reset.insert("user_prompt".to_string(), json!(up));
+        }
+        if self.reset_consolidate {
+            reset.insert("consolidate".to_string(), json!(true));
+        }
+        if self.reset_full_reset {
+            reset.insert("full_reset".to_string(), json!(true));
+        }
+        if !reset.is_empty() {
+            map.insert("reset".to_string(), Value::Object(reset));
+        }
+
         if let Some(ref gi) = self.gather_info {
             map.insert("gather_info".to_string(), gi.to_value());
         }
@@ -439,8 +555,21 @@ pub struct Context {
     step_order: Vec<String>,
 
     initial_step: Option<String>,
-    prompt_text: Option<String>,
+    valid_contexts: Option<Vec<String>>,
+    valid_steps: Option<Vec<String>>,
+
+    // Context entry parameters.
+    post_prompt: Option<String>,
     system_prompt: Option<String>,
+    system_prompt_sections: Vec<Value>,
+    consolidate: bool,
+    full_reset: bool,
+    user_prompt: Option<String>,
+    isolated: bool,
+
+    // Context prompt (separate from system_prompt): text XOR POM sections.
+    prompt_text: Option<String>,
+    prompt_sections: Vec<Value>,
 
     enter_fillers: Option<Value>,
     exit_fillers: Option<Value>,
@@ -453,8 +582,17 @@ impl Context {
             steps: HashMap::new(),
             step_order: Vec::new(),
             initial_step: None,
-            prompt_text: None,
+            valid_contexts: None,
+            valid_steps: None,
+            post_prompt: None,
             system_prompt: None,
+            system_prompt_sections: Vec::new(),
+            consolidate: false,
+            full_reset: false,
+            user_prompt: None,
+            isolated: false,
+            prompt_text: None,
+            prompt_sections: Vec::new(),
             enter_fillers: None,
             exit_fillers: None,
         }
@@ -534,15 +672,157 @@ impl Context {
         self
     }
 
+    // ── Navigation ───────────────────────────────────────────────────────
+
+    /// Set which contexts can be navigated to from this context.
+    pub fn set_valid_contexts(&mut self, contexts: Vec<&str>) -> &mut Self {
+        self.valid_contexts = Some(
+            contexts
+                .into_iter()
+                .map(std::string::ToString::to_string)
+                .collect(),
+        );
+        self
+    }
+
+    /// Set which steps can be navigated to from any step in this context.
+    pub fn set_valid_steps(&mut self, steps: Vec<&str>) -> &mut Self {
+        self.valid_steps = Some(
+            steps
+                .into_iter()
+                .map(std::string::ToString::to_string)
+                .collect(),
+        );
+        self
+    }
+
+    // ── Context entry parameters ─────────────────────────────────────────
+
+    /// Set the post-prompt override for this context.
+    pub fn set_post_prompt(&mut self, post_prompt: &str) -> &mut Self {
+        self.post_prompt = Some(post_prompt.to_string());
+        self
+    }
+
+    /// Set whether to consolidate conversation history when entering this
+    /// context.
+    pub fn set_consolidate(&mut self, consolidate: bool) -> &mut Self {
+        self.consolidate = consolidate;
+        self
+    }
+
+    /// Set whether to do a full reset when entering this context.
+    pub fn set_full_reset(&mut self, full_reset: bool) -> &mut Self {
+        self.full_reset = full_reset;
+        self
+    }
+
+    /// Set the user prompt to inject when entering this context.
+    pub fn set_user_prompt(&mut self, user_prompt: &str) -> &mut Self {
+        self.user_prompt = Some(user_prompt.to_string());
+        self
+    }
+
+    /// Mark this context as isolated — entering it wipes conversation
+    /// history (subject to the `reset` exception; see the Python reference).
+    pub fn set_isolated(&mut self, isolated: bool) -> &mut Self {
+        self.isolated = isolated;
+        self
+    }
+
     // ── Prompt ───────────────────────────────────────────────────────────
 
+    /// Set the context's prompt text directly. Mutually exclusive with POM
+    /// prompt sections.
+    ///
+    /// # Panics
+    ///
+    /// Panics if POM prompt sections have already been added.
     pub fn set_prompt_text(&mut self, prompt: &str) -> &mut Self {
+        assert!(
+            self.prompt_sections.is_empty(),
+            "Cannot use set_prompt() when POM sections have been added"
+        );
         self.prompt_text = Some(prompt.to_string());
         self
     }
 
+    /// Add a POM section to the context prompt. Mutually exclusive with
+    /// `set_prompt_text`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `set_prompt_text` has already been used.
+    pub fn add_section(&mut self, title: &str, body: &str) -> &mut Self {
+        assert!(
+            self.prompt_text.is_none(),
+            "Cannot add POM sections when set_prompt() has been used"
+        );
+        self.prompt_sections
+            .push(json!({"title": title, "body": body}));
+        self
+    }
+
+    /// Add a POM section with bullet points to the context prompt.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `set_prompt_text` has already been used.
+    pub fn add_bullets(&mut self, title: &str, bullets: Vec<&str>) -> &mut Self {
+        assert!(
+            self.prompt_text.is_none(),
+            "Cannot add POM sections when set_prompt() has been used"
+        );
+        self.prompt_sections
+            .push(json!({"title": title, "bullets": bullets}));
+        self
+    }
+
+    // ── System prompt ────────────────────────────────────────────────────
+
+    /// Set the system prompt for context switching. Mutually exclusive with
+    /// system-prompt POM sections.
+    ///
+    /// # Panics
+    ///
+    /// Panics if system-prompt POM sections have already been added.
     pub fn set_system_prompt(&mut self, system_prompt: &str) -> &mut Self {
+        assert!(
+            self.system_prompt_sections.is_empty(),
+            "Cannot use set_system_prompt() when POM sections have been added for system prompt"
+        );
         self.system_prompt = Some(system_prompt.to_string());
+        self
+    }
+
+    /// Add a POM section to the system prompt. Mutually exclusive with
+    /// `set_system_prompt`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `set_system_prompt` has already been used.
+    pub fn add_system_section(&mut self, title: &str, body: &str) -> &mut Self {
+        assert!(
+            self.system_prompt.is_none(),
+            "Cannot add POM sections for system prompt when set_system_prompt() has been used"
+        );
+        self.system_prompt_sections
+            .push(json!({"title": title, "body": body}));
+        self
+    }
+
+    /// Add a POM section with bullet points to the system prompt.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `set_system_prompt` has already been used.
+    pub fn add_system_bullets(&mut self, title: &str, bullets: Vec<&str>) -> &mut Self {
+        assert!(
+            self.system_prompt.is_none(),
+            "Cannot add POM sections for system prompt when set_system_prompt() has been used"
+        );
+        self.system_prompt_sections
+            .push(json!({"title": title, "bullets": bullets}));
         self
     }
 
@@ -556,6 +836,46 @@ impl Context {
     pub fn set_exit_fillers(&mut self, fillers: Value) -> &mut Self {
         self.exit_fillers = Some(fillers);
         self
+    }
+
+    /// Add enter fillers for a specific language (or `"default"`).
+    pub fn add_enter_filler(&mut self, language_code: &str, fillers: Vec<&str>) -> &mut Self {
+        if language_code.is_empty() || fillers.is_empty() {
+            return self;
+        }
+        let map = self
+            .enter_fillers
+            .get_or_insert_with(|| Value::Object(Map::new()));
+        if let Some(obj) = map.as_object_mut() {
+            obj.insert(language_code.to_string(), json!(fillers));
+        }
+        self
+    }
+
+    /// Add exit fillers for a specific language (or `"default"`).
+    pub fn add_exit_filler(&mut self, language_code: &str, fillers: Vec<&str>) -> &mut Self {
+        if language_code.is_empty() || fillers.is_empty() {
+            return self;
+        }
+        let map = self
+            .exit_fillers
+            .get_or_insert_with(|| Value::Object(Map::new()));
+        if let Some(obj) = map.as_object_mut() {
+            obj.insert(language_code.to_string(), json!(fillers));
+        }
+        self
+    }
+
+    // ── System prompt rendering ──────────────────────────────────────────
+
+    fn render_system_prompt(&self) -> Option<String> {
+        if let Some(ref sp) = self.system_prompt {
+            return Some(sp.clone());
+        }
+        if self.system_prompt_sections.is_empty() {
+            return None;
+        }
+        Some(render_sections(&self.system_prompt_sections))
     }
 
     // ── Accessors ────────────────────────────────────────────────────────
@@ -581,15 +901,44 @@ impl Context {
             .collect();
         map.insert("steps".to_string(), Value::Array(step_arr));
 
+        if let Some(ref vc) = self.valid_contexts {
+            map.insert("valid_contexts".to_string(), json!(vc));
+        }
+        if let Some(ref vs) = self.valid_steps {
+            map.insert("valid_steps".to_string(), json!(vs));
+        }
         if let Some(ref is) = self.initial_step {
             map.insert("initial_step".to_string(), json!(is));
         }
-        if let Some(ref sp) = self.system_prompt {
+        if let Some(ref pp) = self.post_prompt {
+            map.insert("post_prompt".to_string(), json!(pp));
+        }
+        if let Some(sp) = self.render_system_prompt() {
             map.insert("system_prompt".to_string(), json!(sp));
         }
-        if let Some(ref pt) = self.prompt_text {
+        if self.consolidate {
+            map.insert("consolidate".to_string(), json!(true));
+        }
+        if self.full_reset {
+            map.insert("full_reset".to_string(), json!(true));
+        }
+        if let Some(ref up) = self.user_prompt {
+            map.insert("user_prompt".to_string(), json!(up));
+        }
+        if self.isolated {
+            map.insert("isolated".to_string(), json!(true));
+        }
+
+        // Context prompt: POM structure if sections exist, else string.
+        if !self.prompt_sections.is_empty() {
+            map.insert(
+                "pom".to_string(),
+                Value::Array(self.prompt_sections.clone()),
+            );
+        } else if let Some(ref pt) = self.prompt_text {
             map.insert("prompt".to_string(), json!(pt));
         }
+
         if let Some(ref ef) = self.enter_fillers {
             map.insert("enter_fillers".to_string(), ef.clone());
         }
@@ -792,6 +1141,19 @@ impl ContextBuilder {
             }
         }
 
+        // Validate context references in valid_contexts (context-level)
+        for (ctx_name, ctx) in &self.contexts {
+            if let Some(ref vc) = ctx.valid_contexts {
+                for valid_ctx in vc {
+                    if !self.contexts.contains_key(valid_ctx) {
+                        errors.push(format!(
+                            "Context '{ctx_name}' references unknown context '{valid_ctx}'"
+                        ));
+                    }
+                }
+            }
+        }
+
         // Validate context references in valid_contexts (step-level)
         for (ctx_name, ctx) in &self.contexts {
             for (step_name, step) in &ctx.steps {
@@ -926,11 +1288,12 @@ impl Default for ContextBuilder {
 
 // ── Factory ──────────────────────────────────────────────────────────────────
 
-/// Create a builder pre-populated with a single named context.
-pub fn create_simple_context(name: &str) -> ContextBuilder {
-    let mut builder = ContextBuilder::new();
-    builder.add_context(name);
-    builder
+/// Create a simple single [`Context`] with the given name (default
+/// `"default"` at the call site). Mirrors Python's
+/// `create_simple_context(name="default") -> Context`: it returns a bare,
+/// freshly-constructed context for method chaining, NOT a builder.
+pub fn create_simple_context(name: &str) -> Context {
+    Context::new(name)
 }
 
 #[cfg(test)]
@@ -1177,6 +1540,239 @@ mod tests {
         assert_eq!(val["exit_fillers"]["en"][0], "goodbye");
     }
 
+    // ── New Step method tests (Python parity) ────────────────────────────
+
+    #[test]
+    fn test_step_add_bullets_render() {
+        // Matches Python _render_text bullet markdown exactly.
+        let mut step = Step::new("s");
+        step.add_bullets("Process", vec!["one", "two"]);
+        let text = step.to_value()["text"].as_str().unwrap().to_string();
+        assert_eq!(text, "## Process\n- one\n- two");
+    }
+
+    #[test]
+    fn test_step_mixed_sections_and_bullets_render() {
+        let mut step = Step::new("s");
+        step.add_section("Task", "Do the thing");
+        step.add_bullets("Steps", vec!["a", "b"]);
+        let text = step.to_value()["text"].as_str().unwrap().to_string();
+        assert_eq!(text, "## Task\nDo the thing\n\n## Steps\n- a\n- b");
+    }
+
+    #[test]
+    fn test_step_clear_sections() {
+        let mut step = Step::new("s");
+        step.add_section("A", "B");
+        step.clear_sections();
+        // After clearing, set_text is allowed again.
+        step.set_text("fresh");
+        assert_eq!(step.to_value()["text"], "fresh");
+    }
+
+    #[test]
+    #[should_panic(expected = "Cannot add POM sections")]
+    fn test_step_add_bullets_after_text_panics() {
+        let mut step = Step::new("s");
+        step.set_text("raw");
+        step.add_bullets("A", vec!["x"]);
+    }
+
+    #[test]
+    fn test_step_skip_to_next_step() {
+        let mut step = Step::new("s");
+        step.set_text("t");
+        step.set_skip_to_next_step(true);
+        assert_eq!(step.to_value()["skip_to_next_step"], true);
+    }
+
+    #[test]
+    fn test_step_skip_to_next_step_omitted_when_false() {
+        let mut step = Step::new("s");
+        step.set_text("t");
+        assert!(step.to_value().get("skip_to_next_step").is_none());
+    }
+
+    #[test]
+    fn test_step_reset_object_full() {
+        // Python emits reset with system_prompt/user_prompt/consolidate/full_reset.
+        let mut step = Step::new("s");
+        step.set_text("t");
+        step.set_reset_system_prompt("new sys")
+            .set_reset_user_prompt("new user")
+            .set_reset_consolidate(true)
+            .set_reset_full_reset(true);
+        let reset = &step.to_value()["reset"];
+        assert_eq!(reset["system_prompt"], "new sys");
+        assert_eq!(reset["user_prompt"], "new user");
+        assert_eq!(reset["consolidate"], true);
+        assert_eq!(reset["full_reset"], true);
+    }
+
+    #[test]
+    fn test_step_reset_object_partial_omits_false_flags() {
+        let mut step = Step::new("s");
+        step.set_text("t");
+        step.set_reset_system_prompt("only sys");
+        let reset = &step.to_value()["reset"];
+        assert_eq!(reset["system_prompt"], "only sys");
+        assert!(reset.get("user_prompt").is_none());
+        assert!(reset.get("consolidate").is_none());
+        assert!(reset.get("full_reset").is_none());
+    }
+
+    #[test]
+    fn test_step_reset_object_omitted_when_empty() {
+        let mut step = Step::new("s");
+        step.set_text("t");
+        assert!(step.to_value().get("reset").is_none());
+    }
+
+    // ── New Context method tests (Python parity) ─────────────────────────
+
+    #[test]
+    fn test_context_add_bullets_uses_pom_key() {
+        // Python to_dict emits raw section list under "pom" when sections exist.
+        let mut ctx = Context::new("default");
+        ctx.add_bullets("Guidelines", vec!["be nice", "be brief"]);
+        ctx.add_step("s1").set_text("Hi");
+        let val = ctx.to_value();
+        assert!(val.get("prompt").is_none());
+        let pom = val["pom"].as_array().unwrap();
+        assert_eq!(pom[0]["title"], "Guidelines");
+        assert_eq!(pom[0]["bullets"][0], "be nice");
+    }
+
+    #[test]
+    fn test_context_add_section_uses_pom_key() {
+        let mut ctx = Context::new("default");
+        ctx.add_section("Role", "You help people");
+        ctx.add_step("s1").set_text("Hi");
+        let val = ctx.to_value();
+        assert_eq!(val["pom"][0]["title"], "Role");
+        assert_eq!(val["pom"][0]["body"], "You help people");
+    }
+
+    #[test]
+    fn test_context_prompt_text_still_uses_prompt_key() {
+        let mut ctx = Context::new("default");
+        ctx.set_prompt_text("Be helpful");
+        ctx.add_step("s1").set_text("Hi");
+        let val = ctx.to_value();
+        assert_eq!(val["prompt"], "Be helpful");
+        assert!(val.get("pom").is_none());
+    }
+
+    #[test]
+    fn test_context_system_bullets_and_section_render() {
+        let mut ctx = Context::new("default");
+        ctx.add_system_section("Persona", "You are terse.");
+        ctx.add_system_bullets("Rules", vec!["r1", "r2"]);
+        ctx.add_step("s1").set_text("Hi");
+        let val = ctx.to_value();
+        assert_eq!(
+            val["system_prompt"],
+            "## Persona\nYou are terse.\n\n## Rules\n- r1\n- r2"
+        );
+    }
+
+    #[test]
+    fn test_context_entry_params() {
+        let mut ctx = Context::new("default");
+        ctx.set_post_prompt("summarize")
+            .set_consolidate(true)
+            .set_full_reset(true)
+            .set_user_prompt("hi there")
+            .set_isolated(true);
+        ctx.add_step("s1").set_text("Hi");
+        let val = ctx.to_value();
+        assert_eq!(val["post_prompt"], "summarize");
+        assert_eq!(val["consolidate"], true);
+        assert_eq!(val["full_reset"], true);
+        assert_eq!(val["user_prompt"], "hi there");
+        assert_eq!(val["isolated"], true);
+    }
+
+    #[test]
+    fn test_context_entry_params_omitted_when_default() {
+        let mut ctx = Context::new("default");
+        ctx.add_step("s1").set_text("Hi");
+        let val = ctx.to_value();
+        assert!(val.get("post_prompt").is_none());
+        assert!(val.get("consolidate").is_none());
+        assert!(val.get("full_reset").is_none());
+        assert!(val.get("user_prompt").is_none());
+        assert!(val.get("isolated").is_none());
+    }
+
+    #[test]
+    fn test_context_valid_contexts_and_steps() {
+        let mut ctx = Context::new("default");
+        ctx.set_valid_contexts(vec!["default", "other"]);
+        ctx.set_valid_steps(vec!["next", "s1"]);
+        ctx.add_step("s1").set_text("Hi");
+        let val = ctx.to_value();
+        assert_eq!(val["valid_contexts"][1], "other");
+        assert_eq!(val["valid_steps"][0], "next");
+    }
+
+    #[test]
+    fn test_context_add_enter_and_exit_fillers() {
+        let mut ctx = Context::new("default");
+        ctx.add_enter_filler("en-US", vec!["Welcome", "Hello"]);
+        ctx.add_enter_filler("default", vec!["Entering"]);
+        ctx.add_exit_filler("en-US", vec!["Goodbye"]);
+        ctx.add_step("s1").set_text("Hi");
+        let val = ctx.to_value();
+        assert_eq!(val["enter_fillers"]["en-US"][0], "Welcome");
+        assert_eq!(val["enter_fillers"]["default"][0], "Entering");
+        assert_eq!(val["exit_fillers"]["en-US"][0], "Goodbye");
+    }
+
+    #[test]
+    fn test_context_add_enter_filler_ignores_empty() {
+        let mut ctx = Context::new("default");
+        ctx.add_enter_filler("", vec!["x"]);
+        ctx.add_enter_filler("en", vec![]);
+        ctx.add_step("s1").set_text("Hi");
+        let val = ctx.to_value();
+        assert!(val.get("enter_fillers").is_none());
+    }
+
+    #[test]
+    #[should_panic(expected = "Cannot add POM sections")]
+    fn test_context_add_section_after_prompt_text_panics() {
+        let mut ctx = Context::new("default");
+        ctx.set_prompt_text("raw");
+        ctx.add_section("A", "B");
+    }
+
+    #[test]
+    #[should_panic(expected = "Cannot use set_system_prompt()")]
+    fn test_context_set_system_prompt_after_sections_panics() {
+        let mut ctx = Context::new("default");
+        ctx.add_system_section("A", "B");
+        ctx.set_system_prompt("raw");
+    }
+
+    #[test]
+    fn test_builder_validate_context_level_valid_contexts() {
+        let mut builder = ContextBuilder::new();
+        builder.add_context("default").add_step("s1").set_text("a");
+        builder
+            .get_context_mut("default")
+            .unwrap()
+            .set_valid_contexts(vec!["nonexistent"]);
+        let result = builder.validate();
+        assert!(result.is_err());
+        assert!(
+            result
+                .unwrap_err()
+                .iter()
+                .any(|e| e.contains("unknown context"))
+        );
+    }
+
     #[test]
     fn test_context_step_ordering() {
         let mut ctx = Context::new("default");
@@ -1352,15 +1948,13 @@ mod tests {
 
     #[test]
     fn test_create_simple_context() {
-        let mut builder = create_simple_context("default");
-        assert!(builder.has_contexts());
-        // Add a step so it validates
-        builder
-            .get_context_mut("default")
-            .unwrap()
-            .add_step("s1")
-            .set_text("Hi");
-        assert!(builder.validate().is_ok());
+        // Mirrors Python: returns a bare Context (no steps) for chaining.
+        let mut ctx = create_simple_context("default");
+        assert_eq!(ctx.name(), "default");
+        assert!(ctx.steps().is_empty());
+        // The returned Context is usable for method chaining.
+        ctx.add_step("s1").set_text("Hi");
+        assert_eq!(ctx.steps().len(), 1);
     }
 
     // ── Default trait ────────────────────────────────────────────────────

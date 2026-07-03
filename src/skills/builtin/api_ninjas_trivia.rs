@@ -54,7 +54,11 @@ impl SkillBase for ApiNinjasTrivia {
         self.sp.get_str("api_key").is_some() || std::env::var("API_NINJAS_KEY").is_ok()
     }
 
-    fn register_tools(&self, agent: &mut AgentBase) {
+    /// Build the DataMap-backed trivia tool.
+    ///
+    /// Mirrors Python `ApiNinjasTriviaSkill.get_tools()`: returns the single
+    /// tool definition. `register_tools` merges `swaig_fields` and registers.
+    fn get_tools(&self) -> Vec<Value> {
         let tool_name = self.get_tool_name("get_trivia");
         // API key resolution: explicit param > API_NINJAS_KEY env > "".
         let api_key = self
@@ -82,7 +86,7 @@ impl SkillBase for ApiNinjasTrivia {
             base.trim_end_matches('/')
         );
 
-        let mut func_def = json!({
+        vec![json!({
             "function": tool_name,
             "purpose": format!("Get trivia questions for {}", tool_name),
             "argument": {
@@ -113,16 +117,19 @@ impl SkillBase for ApiNinjasTrivia {
                     },
                 }],
             },
-        });
+        })]
+    }
 
+    fn register_tools(&self, agent: &mut AgentBase) {
         let swaig_fields = self.get_swaig_fields();
-        if let Value::Object(ref mut obj) = func_def {
-            for (k, v) in swaig_fields {
-                obj.insert(k, v);
+        for mut func_def in self.get_tools() {
+            if let Value::Object(ref mut obj) = func_def {
+                for (k, v) in &swaig_fields {
+                    obj.insert(k.clone(), v.clone());
+                }
             }
+            agent.register_swaig_function(func_def);
         }
-
-        agent.register_swaig_function(func_def);
     }
 }
 
@@ -135,6 +142,32 @@ mod tests {
         let skill = ApiNinjasTrivia::new(Map::new());
         assert_eq!(skill.name(), "api_ninjas_trivia");
         assert!(skill.supports_multiple_instances());
+    }
+
+    #[test]
+    fn test_api_ninjas_trivia_get_tools() {
+        let mut params = Map::new();
+        params.insert("api_key".to_string(), json!("k"));
+        params.insert("tool_name".to_string(), json!("get_science"));
+        params.insert(
+            "categories".to_string(),
+            json!(["sciencenature", "general"]),
+        );
+        let skill = ApiNinjasTrivia::new(params);
+        let tools = skill.get_tools();
+        assert_eq!(tools.len(), 1);
+        let t = &tools[0];
+        assert_eq!(t["function"], json!("get_science"));
+        // Enum reflects the configured categories.
+        assert_eq!(
+            t["argument"]["properties"]["category"]["enum"],
+            json!(["sciencenature", "general"])
+        );
+        // API key threaded into the webhook header.
+        assert_eq!(
+            t["data_map"]["webhooks"][0]["headers"]["X-Api-Key"],
+            json!("k")
+        );
     }
 
     #[test]

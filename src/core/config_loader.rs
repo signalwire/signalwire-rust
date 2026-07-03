@@ -51,14 +51,13 @@ impl ConfigLoader {
 
     fn load_config(&mut self) {
         for path in &self.config_paths {
-            if Path::new(path).exists() {
-                if let Ok(text) = std::fs::read_to_string(path) {
-                    if let Ok(value) = serde_json::from_str::<Value>(&text) {
-                        self.config = Some(value);
-                        self.config_file = Some(path.clone());
-                        break;
-                    }
-                }
+            if Path::new(path).exists()
+                && let Ok(text) = std::fs::read_to_string(path)
+                && let Ok(value) = serde_json::from_str::<Value>(&text)
+            {
+                self.config = Some(value);
+                self.config_file = Some(path.clone());
+                break;
             }
         }
     }
@@ -89,10 +88,10 @@ impl ConfigLoader {
     /// matching JSON type, matching the Python loader's type coercion.
     #[must_use]
     pub fn substitute_vars(&self, value: &Value) -> Value {
-        self.substitute_vars_depth(value, 10)
+        Self::substitute_vars_depth(value, 10)
     }
 
-    fn substitute_vars_depth(&self, value: &Value, max_depth: i32) -> Value {
+    fn substitute_vars_depth(value: &Value, max_depth: i32) -> Value {
         if max_depth <= 0 {
             // Python raises; Rust returns the value unchanged rather than panic
             // on a pathological config. Depth 10 is never hit in practice.
@@ -102,13 +101,13 @@ impl ConfigLoader {
             Value::String(s) => Self::coerce(&substitute_string(s)),
             Value::Object(map) => Value::Object(
                 map.iter()
-                    .map(|(k, v)| (k.clone(), self.substitute_vars_depth(v, max_depth - 1)))
+                    .map(|(k, v)| (k.clone(), Self::substitute_vars_depth(v, max_depth - 1)))
                     .collect(),
             ),
             Value::Array(items) => Value::Array(
                 items
                     .iter()
-                    .map(|v| self.substitute_vars_depth(v, max_depth - 1))
+                    .map(|v| Self::substitute_vars_depth(v, max_depth - 1))
                     .collect(),
             ),
             other => other.clone(),
@@ -123,18 +122,19 @@ impl ConfigLoader {
         if lower == "false" {
             return Value::Bool(false);
         }
-        if !s.is_empty() && s.chars().all(|c| c.is_ascii_digit()) {
-            if let Ok(n) = s.parse::<i64>() {
-                return Value::from(n);
-            }
+        if !s.is_empty()
+            && s.chars().all(|c| c.is_ascii_digit())
+            && let Ok(n) = s.parse::<i64>()
+        {
+            return Value::from(n);
         }
         if let Ok(f) = s.parse::<f64>() {
             // Only coerce to float when it looks numeric (has a digit), so
             // ordinary strings stay strings.
-            if s.chars().any(|c| c.is_ascii_digit()) {
-                if let Some(n) = serde_json::Number::from_f64(f) {
-                    return Value::Number(n);
-                }
+            if s.chars().any(|c| c.is_ascii_digit())
+                && let Some(n) = serde_json::Number::from_f64(f)
+            {
+                return Value::Number(n);
             }
         }
         Value::String(s.to_string())
@@ -170,6 +170,11 @@ impl ConfigLoader {
     /// Merge the (substituted) config with environment variables under
     /// `env_prefix`. Config-file keys take precedence; env keys like
     /// `SWML_SSL_ENABLED` become nested `ssl.enabled`.
+    ///
+    /// # Panics
+    ///
+    /// Does not panic in practice: `result` is forced to a JSON object just
+    /// above the `as_object_mut().expect(...)`, so the `expect` is unreachable.
     #[must_use]
     pub fn merge_with_env(&self, env_prefix: &str) -> Value {
         let mut result = match &self.config {
@@ -224,17 +229,19 @@ fn substitute_string(input: &str) -> String {
     let bytes = input.as_bytes();
     let mut i = 0;
     while i < bytes.len() {
-        if bytes[i] == b'$' && i + 1 < bytes.len() && bytes[i + 1] == b'{' {
-            if let Some(end) = input[i + 2..].find('}') {
-                let inner = &input[i + 2..i + 2 + end];
-                let (var, default) = match inner.split_once('|') {
-                    Some((v, d)) => (v, d),
-                    None => (inner, ""),
-                };
-                out.push_str(&env::var(var).unwrap_or_else(|_| default.to_string()));
-                i = i + 2 + end + 1;
-                continue;
-            }
+        if bytes[i] == b'$'
+            && i + 1 < bytes.len()
+            && bytes[i + 1] == b'{'
+            && let Some(end) = input[i + 2..].find('}')
+        {
+            let inner = &input[i + 2..i + 2 + end];
+            let (var, default) = match inner.split_once('|') {
+                Some((v, d)) => (v, d),
+                None => (inner, ""),
+            };
+            out.push_str(&env::var(var).unwrap_or_else(|_| default.to_string()));
+            i = i + 2 + end + 1;
+            continue;
         }
         out.push(bytes[i] as char);
         i += 1;

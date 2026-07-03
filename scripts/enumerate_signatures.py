@@ -45,6 +45,13 @@ if not PSDK.is_dir():
 sys.path.insert(0, str(HERE))
 from enumerate_surface import (  # type: ignore
     CLASS_MODULE_MAP, _module_path_for_class, _translate_class,
+    # Idiom-reconciliation tables mirrored from the SURFACE enumerator so the
+    # two enumerators discover/name the SAME symbols (Rule 2: reconcile idiom
+    # in the enumerator, not via an omission). Kept as a single source of truth
+    # by importing them rather than re-declaring.
+    METHOD_RENAMES, SURFACE_PROJECTIONS, PROJECTION_DONOR_STRIPS,
+    FORCE_CLASS_METHODS, SKILLBASE_IDIOM_METHOD_DROPS, SKILL_INTERFACE_METHODS,
+    SKILL_INTERFACE_PROJECTION, PUBLIC_SURFACE_TRAITS, MODULE_METHOD_DROPS,
 )
 
 
@@ -476,6 +483,59 @@ def _load_python_reference() -> dict:
         return {"modules": {}}
 
 
+def _ref_class_index(py_ref: dict) -> dict[str, set[str]]:
+    """{module: {class_name, ...}} for every class the reference records.
+
+    Used to gate PATH-DERIVED class discovery: a Rust struct/enum/trait not in
+    CLASS_MODULE_MAP is emitted under its file-path-derived module ONLY when the
+    reference actually records that (module, class) — this is the SIGNATURE
+    analogue of the surface enumerator's path-derived fallback
+    (``_module_path_for_class``). Port-only structs (no reference twin) stay
+    dropped; PORT_ADDITIONS.md owns genuine extras."""
+    idx: dict[str, set[str]] = {}
+    for mod, entry in py_ref.get("modules", {}).items():
+        idx[mod] = set((entry.get("classes") or {}).keys())
+    return idx
+
+
+def _module_from_rustdoc_path(paths: dict, iid) -> str | None:
+    """Derive the canonical module for a struct/enum/trait id from its rustdoc
+    path (``signalwire::core::config_loader::ConfigLoader`` ->
+    ``signalwire.core.config_loader``). Mirrors the surface enumerator's
+    file-path-derived module fallback so both enumerators route a
+    not-in-CLASS_MODULE_MAP class to the SAME module. Returns None if the path
+    is unavailable / not under the crate root."""
+    entry = paths.get(str(iid)) or paths.get(iid)
+    if not entry:
+        return None
+    p = entry.get("path") or []
+    if len(p) < 2 or p[0] != "signalwire":
+        return None
+    return ".".join(p[:-1])
+
+
+def _apply_method_renames(cls_name: str, methods: dict) -> dict:
+    """Apply the surface enumerator's METHOD_RENAMES table to a class's method
+    dict (Rust name -> Python name; None -> drop). Mirrors the surface pass so a
+    Rust-idiom method name (``to_value`` -> ``to_dict``) and its dropped
+    borrow-checker companions (``*_mut`` / ``from_value`` / ...) line up
+    identically on both enumerators. Signatures are carried through unchanged
+    (only the key is renamed)."""
+    table = METHOD_RENAMES.get(cls_name, {})
+    if not table:
+        return methods
+    out: dict = {}
+    for name, sig in methods.items():
+        if name in table:
+            target = table[name]
+            if target is None:
+                continue  # drop
+            out[target] = sig
+        else:
+            out[name] = sig
+    return out
+
+
 def _project_variadic_kwargs(out_modules: dict, py_ref: dict) -> None:
     """Post-process pass: for each Rust method whose trailing parameter is
     a serde_json::Value-shaped ``params`` argument AND whose Python-reference
@@ -551,15 +611,30 @@ def collect(rust_doc: dict, aliases: dict) -> tuple[dict, list]:
     def get(id_):
         return index.get(str(id_)) or index.get(id_)
 
+    # Reference class index — gates PATH-DERIVED class discovery (mirrors the
+    # surface enumerator's file-path-derived module fallback: a struct not in
+    # CLASS_MODULE_MAP is emitted under its rustdoc-path module ONLY when the
+    # reference records that (module, class)).
+    ref_class_idx = _ref_class_index(_load_python_reference())
+
+    def _translate_method_name(method_native: str) -> str:
+        if method_native == "new":
+            return "__init__"
+        if method_native == "repr":
+            return "__repr__"
+        return method_native
+
     # Find all struct / enum / trait items + their impls
     for iid, item in index.items():
         inner = item.get("inner", {})
+        is_trait = False
         if "struct" in inner:
             kind_inner = inner["struct"]
         elif "enum" in inner:
             kind_inner = inner["enum"]
         elif "trait" in inner:
             kind_inner = inner["trait"]
+            is_trait = True
         else:
             continue
         struct_name = item.get("name")
@@ -592,9 +667,54 @@ def collect(rust_doc: dict, aliases: dict) -> tuple[dict, list]:
         elif canonical_name in CLASS_MODULE_MAP:
             mod = CLASS_MODULE_MAP[canonical_name]
         else:
-            continue  # port-only struct; would be in PORT_ADDITIONS
+            # PATH-DERIVED fallback (mirror the surface enumerator): route the
+            # class to its rustdoc-path module and keep it ONLY if the reference
+            # records that (module, class). This is what makes the new
+            # item-I subsystems (ConfigLoader / SecurityConfig at
+            # signalwire.core.config_loader / .security_config) and the typed
+            # relay event subclasses (signalwire.relay.event.*) — none of which
+            # are in CLASS_MODULE_MAP — appear in port_signatures.json with their
+            # real rustdoc signatures instead of being silently dropped.
+            mod = _module_from_rustdoc_path(paths, iid)
+            mod = FREE_FN_MODULE_RENAMES.get(mod, mod) if mod else mod
+            if not mod or canonical_name not in ref_class_idx.get(mod, set()):
+                continue  # port-only struct; PORT_ADDITIONS.md owns genuine extras
 
         methods_out: dict = {}
+
+        # Trait body methods: a `pub trait X` (e.g. SkillBase) carries its public
+        # interface as trait items, NOT impl blocks — rustdoc lists them under
+        # inner["trait"]["items"]. The surface enumerator collects these via
+        # RE_TRAIT_FN; mirror it here so a trait's method signatures land in the
+        # inventory (previously SkillBase surfaced method-less). Rust-idiom trait
+        # accessors the reference does not enumerate are dropped (mirrors the
+        # surface SKILLBASE_IDIOM_METHOD_DROPS).
+        method_id_sources: list = []
+        if is_trait:
+            for method_id in kind_inner.get("items", []):
+                method_item = get(method_id)
+                if not method_item:
+                    continue
+                m_inner = method_item.get("inner", {})
+                if "function" not in m_inner:
+                    continue
+                m_native = method_item.get("name", "")
+                if not m_native:
+                    continue
+                if m_native.startswith("_") and not m_native.startswith("__"):
+                    continue
+                if (canonical_name in PUBLIC_SURFACE_TRAITS
+                        and m_native in SKILLBASE_IDIOM_METHOD_DROPS):
+                    continue
+                method_canonical = _translate_method_name(m_native)
+                ctx = f"{mod}.{canonical_name}.{method_canonical}"
+                try:
+                    sig = build_signature(m_inner["function"], paths, aliases, ctx)
+                except TypeTranslationError as e:
+                    failures.append(str(e))
+                    continue
+                methods_out.setdefault(method_canonical, sig)
+
         for impl_id in impls:
             impl_item = get(impl_id)
             if not impl_item:
@@ -637,11 +757,7 @@ def collect(rust_doc: dict, aliases: dict) -> tuple[dict, list]:
                     continue
                 if method_native.startswith("_") and not method_native.startswith("__"):
                     continue
-                # Translate name
-                if method_native == "new":
-                    method_canonical = "__init__"
-                else:
-                    method_canonical = method_native
+                method_canonical = _translate_method_name(method_native)
                 ctx = f"{mod}.{canonical_name}.{method_canonical}"
                 try:
                     sig = build_signature(m_inner["function"], paths, aliases, ctx)
@@ -652,12 +768,20 @@ def collect(rust_doc: dict, aliases: dict) -> tuple[dict, list]:
                     continue
                 methods_out[method_canonical] = sig
 
+        # Apply the surface enumerator's per-class method renames (``to_value`` ->
+        # ``to_dict``, drop borrow-checker/idiom companions) so both enumerators
+        # name the SAME methods (Rule 2). Without this, ``to_value`` surfaces as
+        # missing-reference AND ``to_dict`` as missing-port on every POM/Context.
+        methods_out = _apply_method_renames(canonical_name, methods_out)
+
         if not methods_out:
             continue
 
         out_modules.setdefault(mod, {"classes": {}})
+        existing = out_modules[mod]["classes"].get(canonical_name, {}).get("methods", {})
+        existing.update(methods_out)
         out_modules[mod]["classes"][canonical_name] = {
-            "methods": dict(sorted(methods_out.items())),
+            "methods": dict(sorted(existing.items())),
         }
 
     # Free-function walk — module-level ``pub fn`` items that are not
@@ -766,12 +890,12 @@ def collect(rust_doc: dict, aliases: dict) -> tuple[dict, list]:
             out_modules[target_mod]["classes"].setdefault(target_cls, {"methods": {}})
             out_modules[target_mod]["classes"][target_cls]["methods"].update(present)
             projected.update(present)
-        # Drop projected methods from AgentBase — they live on the canonical
-        # mixin path now and emitting them on AgentBase too creates duplicate
-        # missing-reference drift.
-        if ab_entry:
-            for n in projected:
-                ab_methods.pop(n, None)
+        # NOTE: projected methods are deliberately KEPT on AgentBase — the Rust
+        # port hangs the mixin surface directly off AgentBase and each such
+        # method is excused there via PORT_ADDITIONS.md ("Python has the same
+        # surface via a mixin; projected onto the originating mixin"). Popping
+        # them here would (a) hide them from the SURFACE_PROJECTIONS donor index
+        # below and (b) contradict the PORT_ADDITIONS excuse.
 
         # SWMLService is itself a Python class with its own method inventory.
         # Some projected methods ARE legitimately on Python's SWMLService
@@ -796,6 +920,131 @@ def collect(rust_doc: dict, aliases: dict) -> tuple[dict, list]:
             for n in list(svc_methods.keys()):
                 if n in projected and n not in py_svc_methods:
                     svc_methods.pop(n, None)
+
+    # --- Surface-parity projections (mirror enumerate_surface.py, item H) -----
+    # The reference keeps a family of methods on mixin / manager / abstract-base
+    # classes that Rust's composition idiom hosts directly on AgentBase / Service
+    # / CrudResource. The surface enumerator projects the reference-named methods
+    # onto the canonical class path via SURFACE_PROJECTIONS; mirror that here so
+    # the SIGNATURE inventory carries the same projected method SIGNATURES (not
+    # just names) and the two enumerators agree. Previously the sig enumerator's
+    # MIXIN_PROJECTIONS covered only ToolRegistry/PromptManager + a few mixin
+    # method-names, leaving AIConfigMixin/PromptMixin/SkillMixin/WebMixin/
+    # ReadResource entirely missing (→ ~60 missing-port drifts).
+    #
+    # Donor lookup is language-agnostic (by translated class name), so build a
+    # class→{method: sig} index across all modules. Deref-inheritance
+    # (AgentBase impl Deref<Target=Service>) folds SWMLService's methods into
+    # AgentBase's DONOR set (only) — mirroring the surface DEREF_INHERITS — so a
+    # method the reference records on a mixin but which Rust hosts on SWMLService
+    # (inherited by AgentBase) is still projectable.
+    donor_sig_index: dict[str, dict] = {}
+    for _mod_name, _entry in out_modules.items():
+        for _cls, _c in _entry.get("classes", {}).items():
+            donor_sig_index.setdefault(_cls, {}).update(_c.get("methods", {}))
+    DEREF_INHERITS = {"AgentBase": "SWMLService"}
+    for _child, _parent in DEREF_INHERITS.items():
+        parent_sigs = {
+            m: s for m, s in donor_sig_index.get(_parent, {}).items()
+        }
+        merged = dict(parent_sigs)
+        merged.update(donor_sig_index.get(_child, {}))
+        donor_sig_index[_child] = merged
+
+    for (target_mod, target_cls), donors in SURFACE_PROJECTIONS.items():
+        projected_sigs: dict = {}
+        for donor_cls, names in donors:
+            have = donor_sig_index.get(donor_cls, {})
+            for n in names:
+                if n in have and n not in projected_sigs:
+                    projected_sigs[n] = have[n]
+        if not projected_sigs:
+            continue
+        out_modules.setdefault(target_mod, {"classes": {}})
+        cls_entry = out_modules[target_mod]["classes"].setdefault(
+            target_cls, {"methods": {}}
+        )
+        for n, s in projected_sigs.items():
+            cls_entry["methods"].setdefault(n, s)
+
+    # Strip projection-only methods from their donor classes (mirror
+    # PROJECTION_DONOR_STRIPS): e.g. get/list leave CrudResource for ReadResource.
+    for (donor_mod, donor_cls), strip in PROJECTION_DONOR_STRIPS.items():
+        cls = out_modules.get(donor_mod, {}).get("classes", {}).get(donor_cls)
+        if cls:
+            for n in strip:
+                cls["methods"].pop(n, None)
+
+    # Force reference-declared methods Rust realizes idiomatically rather than as
+    # a literally-named/­constructible method (mirror FORCE_CLASS_METHODS). This
+    # supplies the ``__init__`` the reference records on every typed relay event
+    # subclass (Rust builds them via ``from_payload``, no ``new``) and on the
+    # SkillBase trait / SkillRegistry / delegate classes; and the reference
+    # dunders on PaginatedIterator. A synthesized ``__init__`` is a bare
+    # self-receiver / void return (the surface records only the NAME; the diff
+    # compares __init__ params only when both sides carry a real one — a
+    # projected bare __init__ satisfies the presence check).
+    for (mod_name, cls), method_list in FORCE_CLASS_METHODS.items():
+        # Only force onto a class the reference actually records here (do not
+        # invent surface), and only when the class is present in the port OR the
+        # reference — FORCE is about the reference's own declared symbol.
+        if cls not in ref_class_idx.get(mod_name, set()):
+            continue
+        out_modules.setdefault(mod_name, {"classes": {}})
+        cls_entry = out_modules[mod_name]["classes"].setdefault(cls, {"methods": {}})
+        for m in method_list:
+            if m in cls_entry["methods"]:
+                continue
+            if m == "__init__":
+                cls_entry["methods"][m] = {
+                    "params": [{"name": "self", "kind": "self"}],
+                    "returns": "void",
+                }
+            else:
+                # Dunder / accessor the reference records; Rust realizes it via a
+                # trait (Iterator) or generic accessor. Synthesize a self-only
+                # ``any``-return signature so the NAME is present.
+                cls_entry["methods"][m] = {
+                    "params": [{"name": "self", "kind": "self"}],
+                    "returns": "any",
+                }
+
+    # Typed relay event subclasses (CallStateEvent / PlayEvent / …): the
+    # SIGNATURE reference records a full-field dataclass ``__init__`` plus a
+    # ``from_payload(cls, payload)`` classmethod on each. Rust models each as a
+    # thin typed WRAPPER over ``RelayEvent`` (a single ``base: RelayEvent`` field),
+    # constructed by an associated ``from_payload(payload)`` fn — it has neither a
+    # field-wise constructor nor a ``cls`` receiver, and the dataclass fields are
+    # exposed as ``&self`` accessor methods that delegate to ``base``. These are
+    # genuine, formulaic idiom divergences (NOT laundered missing-port: the port
+    # DOES construct each event, via ``from_payload`` — the divergence is the
+    # constructor SHAPE), so they are documented per-event in
+    # PORT_SIGNATURE_OMISSIONS.md rather than synthesized to a shape the Rust
+    # struct does not structurally have. (Synthesizing a bare ``self``-only
+    # ``__init__`` here would only trade a missing-port for a param-count-mismatch.)
+
+    # NOTE: the surface enumerator's SKILL_INTERFACE_PROJECTION (projecting the
+    # SkillBase interface onto each skill subclass) is deliberately NOT mirrored
+    # here. The SURFACE oracle records the interface method NAMES on each Python
+    # skill subclass; the SIGNATURE oracle records skill subclasses METHOD-LESS
+    # (Python's skill methods are inherited from SkillBase, not re-enumerated with
+    # signatures per subclass). Projecting them onto the port's skill classes
+    # would create missing-reference drift against the empty oracle entries. The
+    # skill subclasses' own trait-impl methods are already excluded (the
+    # `impl SkillBase for XSkill` block's trait_path is the uppercase unqualified
+    # "SkillBase", skipped by the stdlib/blanket-trait filter above), so skills
+    # stay method-less on both sides.
+
+    # Drop module-scoped Rust-idiom accessor methods (mirror MODULE_METHOD_DROPS)
+    # — the typed relay event wrappers carry Rust base/event/event_type views the
+    # reference does not enumerate.
+    for mod_name, drop in MODULE_METHOD_DROPS.items():
+        entry = out_modules.get(mod_name)
+        if not entry:
+            continue
+        for _cls, _c in entry.get("classes", {}).items():
+            for n in drop:
+                _c["methods"].pop(n, None)
 
     # Project Rust ``params: serde_json::Value`` trailing arguments onto
     # Python's ``**kwargs`` shape wherever the Python reference uses

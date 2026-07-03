@@ -254,6 +254,20 @@ pub struct AgentBase {
     /// signature validation is disabled and a startup warning was
     /// emitted. See `AgentOptions::signing_key`.
     signing_key: Option<String>,
+
+    // ── MCP (Model Context Protocol) ────────────────────────────────────
+    /// External MCP servers registered via [`AgentBase::add_mcp_server`].
+    mcp_servers: Vec<Value>,
+    /// Whether this agent exposes its tools as an MCP endpoint
+    /// ([`AgentBase::enable_mcp_server`]).
+    mcp_server_enabled: bool,
+
+    // ── Web-hook URL override / debug routes ────────────────────────────
+    /// Override for the default SWAIG `web_hook_url`
+    /// ([`AgentBase::set_web_hook_url`]).
+    web_hook_url_override: Option<String>,
+    /// Whether debug routes are enabled ([`AgentBase::enable_debug_routes`]).
+    debug_routes_enabled: bool,
 }
 
 impl Clone for AgentBase {
@@ -310,6 +324,10 @@ impl Clone for AgentBase {
             skills: self.skills.clone(),
             manual_proxy_url: self.manual_proxy_url.clone(),
             signing_key: self.signing_key.clone(),
+            mcp_servers: self.mcp_servers.clone(),
+            mcp_server_enabled: self.mcp_server_enabled,
+            web_hook_url_override: self.web_hook_url_override.clone(),
+            debug_routes_enabled: self.debug_routes_enabled,
         }
     }
 }
@@ -398,6 +416,10 @@ impl AgentBase {
             skills: Vec::new(),
             manual_proxy_url: None,
             signing_key,
+            mcp_servers: Vec::new(),
+            mcp_server_enabled: false,
+            web_hook_url_override: None,
+            debug_routes_enabled: false,
         }
     }
 
@@ -1262,6 +1284,234 @@ impl AgentBase {
         if !route.is_empty() {
             self.set_param("sip_route", json!(route));
         }
+        self
+    }
+
+    /// Automatically register common SIP usernames derived from this agent's
+    /// name and route. Python parity: `AgentBase.auto_map_sip_usernames`.
+    pub fn auto_map_sip_usernames(&mut self) -> &mut Self {
+        let clean = |s: &str| -> String {
+            s.to_lowercase()
+                .chars()
+                .filter(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || *c == '_')
+                .collect()
+        };
+        let name = self.service.name().to_string();
+        let route = self.service.route().to_string();
+        let clean_name = clean(&name);
+        if !clean_name.is_empty() {
+            self.register_sip_username(&clean_name, "");
+        }
+        let clean_route = clean(&route);
+        if !clean_route.is_empty() && clean_route != clean_name {
+            self.register_sip_username(&clean_route, "");
+        }
+        if clean_name.len() > 3 {
+            let no_vowels: String = clean_name
+                .chars()
+                .filter(|c| !"aeiou".contains(*c))
+                .collect();
+            if no_vowels != clean_name && no_vowels.len() > 2 {
+                self.register_sip_username(&no_vowels, "");
+            }
+        }
+        self
+    }
+
+    // ══════════════════════════════════════════════════════════════════════
+    //  Naming / URL helpers (Python AgentBase parity)
+    // ══════════════════════════════════════════════════════════════════════
+
+    /// Get the agent name. Python parity: `AgentBase.get_name`.
+    #[must_use]
+    pub fn get_name(&self) -> String {
+        self.service.name().to_string()
+    }
+
+    /// Get the full URL for this agent's endpoint (host, port, route), with
+    /// optional embedded basic-auth credentials. Python parity:
+    /// `AgentBase.get_full_url(include_auth=False)`.
+    ///
+    /// Prefers the manual proxy-URL override when set; otherwise composes from
+    /// the service host/port/route.
+    #[must_use]
+    pub fn get_full_url(&self, include_auth: bool) -> String {
+        let base = if let Some(proxy) = &self.manual_proxy_url {
+            proxy.trim_end_matches('/').to_string()
+        } else {
+            let host = self.service.host();
+            let host = if host == "0.0.0.0" { "localhost" } else { host };
+            let route = self.service.route();
+            format!("http://{host}:{}{route}", self.service.port())
+        };
+        if include_auth {
+            let (user, pass) = self.service.get_basic_auth_credentials();
+            if !user.is_empty() && !pass.is_empty() {
+                if let Some(rest) = base.strip_prefix("http://") {
+                    return format!("http://{user}:{pass}@{rest}");
+                }
+                if let Some(rest) = base.strip_prefix("https://") {
+                    return format!("https://{user}:{pass}@{rest}");
+                }
+            }
+        }
+        base
+    }
+
+    /// Override the default SWAIG `web_hook_url`. Python parity:
+    /// `AgentBase.set_web_hook_url`.
+    pub fn set_web_hook_url(&mut self, url: &str) -> &mut Self {
+        self.web_hook_url_override = Some(url.to_string());
+        self
+    }
+
+    /// Configure the `answer` verb. Python parity: `AgentBase.add_answer_verb`.
+    pub fn add_answer_verb(&mut self, config: Option<Value>) -> &mut Self {
+        self.answer_config = match config {
+            Some(Value::Object(m)) => m,
+            _ => Map::new(),
+        };
+        self
+    }
+
+    // ══════════════════════════════════════════════════════════════════════
+    //  MCP (Model Context Protocol) — Python AIConfigMixin parity
+    // ══════════════════════════════════════════════════════════════════════
+
+    /// Add an external MCP server for tool discovery and invocation.
+    /// Python parity: `AIConfigMixin.add_mcp_server`.
+    pub fn add_mcp_server(
+        &mut self,
+        url: &str,
+        headers: Option<Map<String, Value>>,
+        resources: bool,
+        resource_vars: Option<Map<String, Value>>,
+    ) -> &mut Self {
+        let mut server = Map::new();
+        server.insert("url".to_string(), json!(url));
+        if let Some(h) = headers
+            && !h.is_empty()
+        {
+            server.insert("headers".to_string(), Value::Object(h));
+        }
+        if resources {
+            server.insert("resources".to_string(), json!(true));
+        }
+        if let Some(rv) = resource_vars
+            && !rv.is_empty()
+        {
+            server.insert("resource_vars".to_string(), Value::Object(rv));
+        }
+        self.mcp_servers.push(Value::Object(server));
+        self
+    }
+
+    /// Expose this agent's tools as an MCP server endpoint. Python parity:
+    /// `AIConfigMixin.enable_mcp_server`.
+    pub fn enable_mcp_server(&mut self) -> &mut Self {
+        self.mcp_server_enabled = true;
+        self
+    }
+
+    /// The registered external MCP servers.
+    #[must_use]
+    pub fn mcp_servers(&self) -> &[Value] {
+        &self.mcp_servers
+    }
+
+    // ══════════════════════════════════════════════════════════════════════
+    //  Web surface — Python WebMixin parity
+    // ══════════════════════════════════════════════════════════════════════
+
+    /// Return this agent's mountable route (Rust idiom for Python's FastAPI
+    /// `as_router`). Python parity: `WebMixin.as_router`.
+    #[must_use]
+    pub fn as_router(&self) -> String {
+        self.service.as_router()
+    }
+
+    /// Return the mountable application handle (Rust idiom for Python's
+    /// `get_app`). Both `get_app` and `as_router` yield the same mount route in
+    /// the Rust port, which has no baked-in web framework object.
+    #[must_use]
+    pub fn get_app(&self) -> String {
+        self.as_router()
+    }
+
+    /// Enable debug routes. Python parity: `WebMixin.enable_debug_routes`.
+    pub fn enable_debug_routes(&mut self) -> &mut Self {
+        self.debug_routes_enabled = true;
+        self
+    }
+
+    /// Whether debug routes are enabled.
+    #[must_use]
+    pub fn debug_routes_enabled(&self) -> bool {
+        self.debug_routes_enabled
+    }
+
+    /// Start a web server for this agent (Python `WebMixin.serve`). Delegates
+    /// to [`AgentBase::run`], optionally overriding host/port first.
+    pub fn serve(&mut self, host: Option<&str>, port: Option<u16>) {
+        if let Some(h) = host {
+            self.service.set_host(h);
+        }
+        if let Some(p) = port {
+            self.service.set_port(p);
+        }
+        self.run();
+    }
+
+    /// Set up graceful shutdown signal handling (Python
+    /// `WebMixin.setup_graceful_shutdown`). The Rust `run` blocks
+    /// synchronously; this is the parity entry point (a no-op placeholder
+    /// until an async server backend is wired).
+    pub fn setup_graceful_shutdown(&self) {}
+
+    /// Register a routing callback for `path`. Python parity:
+    /// `WebMixin.register_routing_callback`.
+    pub fn register_routing_callback<F>(&mut self, callback: F, path: &str) -> &mut Self
+    where
+        F: Fn(&Value) -> Option<String> + Send + Sync + 'static,
+    {
+        self.service.register_routing_callback(callback, path);
+        self
+    }
+
+    // ══════════════════════════════════════════════════════════════════════
+    //  Serverless — Python ServerlessMixin parity
+    // ══════════════════════════════════════════════════════════════════════
+
+    /// Handle a request in a serverless environment. Renders the SWML document
+    /// for the given (optional) request headers and returns it as a JSON
+    /// string. Python parity: `ServerlessMixin.handle_serverless_request`.
+    #[must_use]
+    pub fn handle_serverless_request(&self, headers: Option<&HashMap<String, String>>) -> String {
+        let empty = HashMap::new();
+        let headers = headers.unwrap_or(&empty);
+        self.render_swml(headers).to_string()
+    }
+
+    /// Get the [`ContextBuilder`] for this agent (alias for
+    /// [`AgentBase::define_contexts`]). Python parity: `PromptMixin.contexts`.
+    pub fn contexts(&mut self) -> &mut ContextBuilder {
+        self.define_contexts()
+    }
+
+    /// Define a SWAIG tool. The Rust idiom for Python's `@AgentBase.tool(...)`
+    /// class-method decorator: Rust has no runtime method decorators, so `tool`
+    /// registers a handler directly (same effect as the decorated function
+    /// being registered). Python parity: `ToolMixin.tool`.
+    pub fn tool(
+        &mut self,
+        name: &str,
+        description: &str,
+        parameters: Value,
+        handler: FunctionHandler,
+        secure: bool,
+    ) -> &mut Self {
+        self.service
+            .define_tool(name, description, parameters, handler, secure);
         self
     }
 

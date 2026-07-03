@@ -160,3 +160,5 @@ corpus_ids: porting-sdk emission_corpus.corpus_ids() — the Python corpus id-se
 
 is_some: Rust std Option::is_some — appears in a third_party_skills.md example expression, not a port symbol
 repr: real method Call::repr / Message::repr (src/relay/call.rs) — enumerate_surface deliberately folds repr→__repr__ in port_surface for parity with Python's __repr__, so the real Rust spelling used in relay/docs doesn't resolve by name; documenting the fold, not a phantom
+
+message: real accessor SignalWireRestError::message (src/rest/error.rs), used in examples/rest_audit_harness.rs error formatting — enumerate_surface drops it from the SWAIGFunction/error surface (the reference SignalWireRestError enumerates only __init__), so the real Rust spelling used in the example doesn't resolve by name; documenting the fold, not a phantom

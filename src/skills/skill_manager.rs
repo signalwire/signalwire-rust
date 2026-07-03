@@ -179,6 +179,15 @@ impl SkillManager {
         keys
     }
 
+    /// List instance keys of currently loaded skills.
+    ///
+    /// Python parity: `SkillManager.list_loaded_skills`. Returns the same
+    /// (sorted) set as [`list_skills`](Self::list_skills); provided under
+    /// Python's method name so the surface matches.
+    pub fn list_loaded_skills(&self) -> Vec<String> {
+        self.list_skills()
+    }
+
     /// Check if a skill is loaded.
     pub fn has_skill(&self, key: &str) -> bool {
         self.loaded_skills.contains_key(key)
@@ -256,6 +265,17 @@ mod tests {
         let (ok, msg) = mgr.load_skill("math", Map::new(), &mut agent);
         assert!(ok, "load_skill failed: {msg}");
         assert!(mgr.has_skill("math"));
+    }
+
+    #[test]
+    fn test_list_loaded_skills_matches_list_skills() {
+        let mut mgr = SkillManager::new();
+        let mut agent = AgentBase::new(AgentOptions::new("test"));
+        assert!(mgr.list_loaded_skills().is_empty());
+        mgr.load_skill("datetime", Map::new(), &mut agent);
+        mgr.load_skill("math", Map::new(), &mut agent);
+        assert_eq!(mgr.list_loaded_skills(), mgr.list_skills());
+        assert_eq!(mgr.list_loaded_skills(), vec!["datetime", "math"]);
     }
 
     #[test]

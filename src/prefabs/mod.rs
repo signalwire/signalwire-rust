@@ -1,3 +1,14 @@
+use std::collections::HashMap;
+
+use serde_json::Value;
+
+/// Callback type for a prefab's post-prompt summary handler.
+///
+/// Mirrors `AgentBase`'s summary-callback shape: receives the summary text, the
+/// full summary `Value`, and the request headers. Registered via each prefab's
+/// `on_summary` method, which delegates to `AgentBase::on_summary`.
+pub type PrefabSummaryCallback = Box<dyn Fn(&str, &Value, &HashMap<String, String>) + Send + Sync>;
+
 pub mod bedrock;
 pub mod concierge;
 pub mod faq_bot;

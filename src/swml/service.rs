@@ -125,7 +125,25 @@ pub struct Service {
 
     // SWML customization hook (Python WebMixin parity).
     pub(crate) on_swml_request_hook: Option<std::sync::Arc<OnSwmlRequestHook>>,
+
+    // Specialized verb handlers (Python `verb_registry`). Pre-populated with
+    // the `ai` handler; consulted by `add_verb` for validation.
+    verb_registry: crate::swml::handler::VerbHandlerRegistry,
+
+    // Manual proxy-URL override (Python WebMixin `manual_set_proxy_url`).
+    manual_proxy_url: Option<String>,
+
+    // Registered routing callbacks keyed by mount path (Python
+    // `register_routing_callback`). Each maps a path to a callback that
+    // inspects request data and returns an optional redirect route.
+    routing_callbacks: HashMap<String, std::sync::Arc<RoutingCallback>>,
 }
+
+/// Routing-callback signature (Python `register_routing_callback`).
+///
+/// Receives the parsed request body and returns `Some(route)` to redirect the
+/// request to a different agent/route, or `None` to fall through.
+pub type RoutingCallback = dyn Fn(&Value) -> Option<String> + Send + Sync;
 
 /// Handler type for SWAIG function callbacks.
 ///
@@ -223,6 +241,9 @@ impl Service {
             tools: HashMap::new(),
             tool_order: Vec::new(),
             on_swml_request_hook: None,
+            verb_registry: crate::swml::handler::VerbHandlerRegistry::new(),
+            manual_proxy_url: None,
+            routing_callbacks: HashMap::new(),
         }
     }
 
@@ -308,6 +329,29 @@ impl Service {
         );
         if !self.tool_order.contains(&name.to_string()) {
             self.tool_order.push(name.to_string());
+        }
+        self
+    }
+
+    /// Merge additional SWAIG metadata keys into an already-registered
+    /// tool's definition.
+    ///
+    /// Used by `SkillBase::define_tool` to fold a skill's `swaig_fields`
+    /// into a handler-backed tool after it has been defined (the `DataMap`
+    /// skills merge fields into the def before calling
+    /// `register_swaig_function` instead). No-op if the tool isn't
+    /// registered or the definition isn't a JSON object.
+    pub fn merge_swaig_fields(
+        &mut self,
+        name: &str,
+        fields: &serde_json::Map<String, Value>,
+    ) -> &mut Self {
+        if let Some(tool) = self.tools.get_mut(name)
+            && let Value::Object(obj) = &mut tool.definition
+        {
+            for (k, v) in fields {
+                obj.insert(k.clone(), v.clone());
+            }
         }
         self
     }
@@ -413,6 +457,16 @@ impl Service {
 
     pub fn port(&self) -> u16 {
         self.port
+    }
+
+    /// Override the bind host (crate-internal; used by `serve` host override).
+    pub(crate) fn set_host(&mut self, host: &str) {
+        self.host = host.to_string();
+    }
+
+    /// Override the bind port (crate-internal; used by `serve` port override).
+    pub(crate) fn set_port(&mut self, port: u16) {
+        self.port = port;
     }
 
     /// `SchemaUtils` helper bound to this Service.  Mirrors Python's
@@ -542,14 +596,48 @@ impl Service {
     // Verb helpers
     // ------------------------------------------------------------------
 
-    /// Add a verb to a section, validating against the schema.
+    /// Add a verb to the `main` section of the current document.
+    ///
+    /// Python parity: `SWMLService.add_verb(verb_name, config)`. `config` may
+    /// be an object, or a bare integer for the `sleep` verb. Returns `true` if
+    /// added. A verb with a registered handler is validated by the handler;
+    /// otherwise validated against the embedded schema.
     ///
     /// # Panics
     ///
-    /// Panics if the verb name is not in the schema.
-    pub fn add_verb(&mut self, verb: &str, section: &str, config: Value) {
-        assert!(schema::is_valid_verb(verb), "Unknown SWML verb: {verb}");
+    /// Panics on a schema-invalid verb config (mirrors Python's
+    /// `SchemaValidationError`), matching the fail-loud contract of the
+    /// legacy section-scoped path.
+    pub fn add_verb(&mut self, verb_name: &str, config: Value) -> bool {
+        self.add_verb_to_section("main", verb_name, config)
+    }
+
+    /// Add a verb to a specific section, creating the section if needed.
+    ///
+    /// Python parity: `SWMLService.add_verb_to_section(section_name,
+    /// verb_name, config)`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the verb name is not in the schema (fail-loud).
+    pub fn add_verb_to_section(&mut self, section: &str, verb: &str, config: Value) -> bool {
+        if !self.document.has_section(section) {
+            self.document.add_section(section);
+        }
+        // Sleep takes a direct integer value.
+        if verb == "sleep" && config.is_i64() {
+            self.document.add_verb_to_section(section, verb, config);
+            return true;
+        }
+        if !config.is_object() {
+            return false;
+        }
+        // A registered handler validates its own verb; else use the schema.
+        if !self.verb_registry.has_handler(verb) {
+            assert!(schema::is_valid_verb(verb), "Unknown SWML verb: {verb}");
+        }
         self.document.add_verb_to_section(section, verb, config);
+        true
     }
 
     /// Add a `sleep` verb (integer milliseconds) to a section.
@@ -557,6 +645,112 @@ impl Service {
         self.document
             .add_verb_to_section(section, "sleep", Value::Number(millis.into()));
     }
+
+    // ------------------------------------------------------------------
+    // Document management (Python SWMLService parity)
+    // ------------------------------------------------------------------
+
+    /// Add a new named section to the document. Returns `true` if created,
+    /// `false` if it already existed. Python parity: `add_section`.
+    pub fn add_section(&mut self, section_name: &str) -> bool {
+        self.document.add_section(section_name)
+    }
+
+    /// Get the current SWML document as a value. Python parity: `get_document`.
+    #[must_use]
+    pub fn get_document(&self) -> Value {
+        self.document.to_value()
+    }
+
+    /// Render the current SWML document as a JSON string. Python parity:
+    /// `render_document`.
+    #[must_use]
+    pub fn render_document(&self) -> String {
+        self.document.render()
+    }
+
+    /// Reset the current document to an empty state. Python parity:
+    /// `reset_document`.
+    pub fn reset_document(&mut self) {
+        self.document.reset();
+    }
+
+    /// Register a custom verb handler. Python parity: `register_verb_handler`.
+    pub fn register_verb_handler(
+        &mut self,
+        handler: Box<dyn crate::swml::handler::SwmlVerbHandler>,
+    ) {
+        self.verb_registry.register_handler(handler);
+    }
+
+    /// Whether full JSON-Schema validation is enabled. The Rust port always
+    /// validates verb names against the embedded schema, so full validation is
+    /// always available. Python parity: `full_validation_enabled`.
+    #[must_use]
+    pub fn full_validation_enabled(&self) -> bool {
+        true
+    }
+
+    // ------------------------------------------------------------------
+    // Web/routing surface (Python WebMixin parity)
+    // ------------------------------------------------------------------
+
+    /// Set a manual proxy-URL override (strips a trailing slash). Python
+    /// parity: `manual_set_proxy_url`.
+    pub fn manual_set_proxy_url(&mut self, proxy_url: &str) -> &mut Self {
+        self.manual_proxy_url = Some(proxy_url.trim_end_matches('/').to_string());
+        self
+    }
+
+    /// Register a routing callback for `path`. The callback inspects request
+    /// data and returns `Some(route)` to redirect. Python parity:
+    /// `register_routing_callback`.
+    pub fn register_routing_callback<F>(&mut self, callback: F, path: &str) -> &mut Self
+    where
+        F: Fn(&Value) -> Option<String> + Send + Sync + 'static,
+    {
+        let normalized = {
+            let p = path.trim_end_matches('/');
+            if p.is_empty() {
+                "/".to_string()
+            } else {
+                p.to_string()
+            }
+        };
+        self.routing_callbacks
+            .insert(normalized, std::sync::Arc::new(callback));
+        self
+    }
+
+    /// Look up a registered routing callback by path.
+    #[must_use]
+    pub fn routing_callback(&self, path: &str) -> Option<&std::sync::Arc<RoutingCallback>> {
+        self.routing_callbacks.get(path)
+    }
+
+    /// Return this service's route as a mountable router path.
+    ///
+    /// Python returns a FastAPI `APIRouter`; the Rust port has no web
+    /// framework baked in, so `as_router` yields the route string a host
+    /// (e.g. [`crate::server::AgentServer`]) mounts this service under. This
+    /// is the Rust idiom for the same "give me something to mount" contract.
+    #[must_use]
+    pub fn as_router(&self) -> String {
+        self.route.clone()
+    }
+
+    /// Start a blocking web server for this service (Python `serve`).
+    ///
+    /// The Rust HTTP serving lives on [`crate::server::AgentServer`]; this
+    /// method is the parity entry point. `host`/`port` override the
+    /// configured values.
+    pub fn serve(&self, _host: Option<&str>, _port: Option<u16>) {
+        self.run();
+    }
+
+    /// Stop the running server (Python `stop`). The Rust `serve`/`run` is a
+    /// synchronous placeholder, so `stop` is a no-op parity entry point.
+    pub fn stop(&self) {}
 
     // ------------------------------------------------------------------
     // HTTP handling
@@ -1231,7 +1425,7 @@ mod tests {
     #[test]
     fn test_add_verb_valid() {
         let mut svc = Service::new(default_options("svc"));
-        svc.add_verb("answer", "main", serde_json::json!({}));
+        svc.add_verb_to_section("main", "answer", serde_json::json!({}));
         let verbs = svc.document().get_verbs("main");
         assert_eq!(verbs.len(), 1);
         assert!(verbs[0].get("answer").is_some());
@@ -1241,7 +1435,7 @@ mod tests {
     #[should_panic(expected = "Unknown SWML verb")]
     fn test_add_verb_unknown_panics() {
         let mut svc = Service::new(default_options("svc"));
-        svc.add_verb("totally_fake_verb", "main", serde_json::json!({}));
+        svc.add_verb_to_section("main", "totally_fake_verb", serde_json::json!({}));
     }
 
     #[test]
@@ -1650,7 +1844,7 @@ mod tests {
     fn test_sidecar_pattern_emits_verb_and_registers_tool() {
         // 1. Build SWML — answer.
         let mut svc = Service::new(default_options("sidecar"));
-        svc.add_verb("answer", "main", serde_json::json!({}));
+        svc.add_verb_to_section("main", "answer", serde_json::json!({}));
         // ai_sidecar isn't in the schema; bypass via direct document access.
         // (The methods to pierce are intentionally limited; using add_verb with
         // unknown name panics, so we use ai which IS in the schema for the

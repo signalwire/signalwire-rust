@@ -43,6 +43,103 @@ fn is_set(name: &str) -> bool {
     }
 }
 
+// ---------------------------------------------------------------------------
+// Global logging configuration entry points (Python signalwire.core.logging_config).
+// Python builds on `structlog`; the Rust port drives the `log`/`env_logger`
+// backend via `crate::logging`. Configuration is guarded by a global
+// "configured once" flag exactly as Python's `_logging_configured`.
+// ---------------------------------------------------------------------------
+
+use std::sync::atomic::{AtomicBool, Ordering};
+
+/// Global "configured once" flag (Python's `_logging_configured`).
+static LOGGING_CONFIGURED: AtomicBool = AtomicBool::new(false);
+
+/// Strip control characters from a string to prevent log injection.
+///
+/// Removes the C0/C1 control ranges (`\x00-\x08`, `\x0b`, `\x0c`,
+/// `\x0e-\x1f`, `\x7f-\x9f`) — the same set as Python's `_CONTROL_CHAR_RE`.
+/// Python operates on a structlog `event_dict`; the Rust surface analog
+/// sanitizes a single log value (the unit callers actually have).
+#[must_use]
+pub fn strip_control_chars(value: &str) -> String {
+    value
+        .chars()
+        .filter(|c| {
+            let n = *c as u32;
+            !((0x00..=0x08).contains(&n)
+                || n == 0x0b
+                || n == 0x0c
+                || (0x0e..=0x1f).contains(&n)
+                || (0x7f..=0x9f).contains(&n))
+        })
+        .collect()
+}
+
+/// Configure the logging system once, globally, from the environment.
+///
+/// Honors `SIGNALWIRE_LOG_MODE` / `SIGNALWIRE_LOG_LEVEL` via the underlying
+/// backend. Idempotent — subsequent calls are no-ops until
+/// [`reset_logging_configuration`]. Python parity: `configure_logging`.
+pub fn configure_logging() {
+    if LOGGING_CONFIGURED.swap(true, Ordering::SeqCst) {
+        return;
+    }
+    crate::logging::init();
+}
+
+/// Reset the configuration flag so a later [`configure_logging`] reconfigures.
+/// Python parity: `reset_logging_configuration`.
+pub fn reset_logging_configuration() {
+    LOGGING_CONFIGURED.store(false, Ordering::SeqCst);
+}
+
+/// Get a logger for `name`, ensuring logging is configured first. The single
+/// entry point for SDK logging. Python parity: `get_logger`.
+#[must_use]
+pub fn get_logger(name: &str) -> crate::logging::Logger {
+    configure_logging();
+    crate::logging::Logger::new(name)
+}
+
+#[cfg(test)]
+mod logging_setup_tests {
+    use super::*;
+
+    #[test]
+    fn test_strip_control_chars_removes_control_bytes() {
+        assert_eq!(
+            strip_control_chars("hello\x00wor\x1bld\x07!"),
+            "helloworld!"
+        );
+    }
+
+    #[test]
+    fn test_strip_control_chars_keeps_printable_and_whitespace() {
+        let s = "line1\tcol\nline2\r end";
+        assert_eq!(strip_control_chars(s), s);
+    }
+
+    #[test]
+    fn test_strip_control_chars_removes_c1_range() {
+        assert_eq!(strip_control_chars("a\u{0085}b\u{009f}c"), "abc");
+    }
+
+    #[test]
+    fn test_get_logger_returns_named_logger() {
+        get_logger("test.module").debug("configured");
+    }
+
+    #[test]
+    fn test_configure_and_reset_are_idempotent() {
+        reset_logging_configuration();
+        configure_logging();
+        configure_logging();
+        reset_logging_configuration();
+        configure_logging();
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -67,6 +67,9 @@ CLASS_MODULE_MAP: dict[str, str] = {
     # core/swaig
     "FunctionResult": "signalwire.core.function_result",
     "ToolDefinition": "signalwire.core.swaig_function",
+    # SwaigFunction — Rust struct at src/swaig/swaig_function.rs, folded to the
+    # reference SWAIGFunction (see CLASS_RENAME_MAP) at signalwire.core.swaig_function.
+    "SwaigFunction": "signalwire.core.swaig_function",
 
     # core/skills
     "SkillBase": "signalwire.core.skill_base",
@@ -82,16 +85,30 @@ CLASS_MODULE_MAP: dict[str, str] = {
     # swml
     "Service": "signalwire.core.swml_service",  # Rust's `Service` == Python's `SWMLService`
     "Document": "signalwire.core.swml_builder",
+    # SWMLBuilder / verb-handler trio / renderer (Rust structs use CamelCase
+    # `Swml*`/`Ai*`; folded to the reference `SWML*`/`AI*` via CLASS_RENAME_MAP).
+    "SwmlBuilder": "signalwire.core.swml_builder",
+    "SwmlVerbHandler": "signalwire.core.swml_handler",
+    "AiVerbHandler": "signalwire.core.swml_handler",
+    "VerbHandlerRegistry": "signalwire.core.swml_handler",
+    "SwmlRenderer": "signalwire.core.swml_renderer",
 
     # rest
     "RestClient": "signalwire.rest.client",
     "CrudResource": "signalwire.rest._base",
+    # HttpClient + SignalWireRestError: Rust hosts them at rest/http_client.rs
+    # and rest/error.rs; the Python reference records both under rest._base.
+    "HttpClient": "signalwire.rest._base",
+    "SignalWireRestError": "signalwire.rest._base",
 
     # pom — Rust's `signalwire::pom::pom` projects to Python's
     # canonical `signalwire.pom.pom` module (matches the Python
     # source layout signalwire-python/signalwire/signalwire/pom/pom.py).
     "PromptObjectModel": "signalwire.pom.pom",
     "Section": "signalwire.pom.pom",
+    # PomBuilder — Rust wrapper over PromptObjectModel at src/pom/pom_builder.rs;
+    # Python's canonical module is signalwire.core.pom_builder.
+    "PomBuilder": "signalwire.core.pom_builder",
 
     # SWMLService — Rust struct is named ``Service`` and renamed via
     # CLASS_RENAME_MAP. Canonical name after translate is SWMLService;
@@ -237,6 +254,17 @@ FREE_FN_MODULE_RENAMES: dict[str, str] = {
     # signalwire::security::security_utils; Python's canonical module is
     # signalwire.core.security.security_utils. The function names match 1:1.
     "signalwire.security.security_utils": "signalwire.core.security.security_utils",
+    # create_simple_context is a module-level free fn in Rust's
+    # contexts/context_builder.rs; Python's canonical module is
+    # signalwire.core.contexts.
+    "signalwire.contexts.context_builder": "signalwire.core.contexts",
+    # `src/utils/mod.rs` free fns are the `signalwire.utils` package module
+    # itself (Rust `mod.rs` == the package `__init__`), not a `utils.mod`
+    # submodule.
+    "signalwire.utils.mod": "signalwire.utils",
+    # webhook signature validators: Rust hosts them at src/security/webhook.rs;
+    # Python's canonical module is signalwire.core.security.webhook_validator.
+    "signalwire.security.webhook": "signalwire.core.security.webhook_validator",
 }
 
 # ---------------------------------------------------------------------------
@@ -339,6 +367,173 @@ METHOD_RENAMES: dict[str, dict[str, str]] = {
         "has_contexts": None,
         "attach_tool_name_supplier": None,
     },
+    # GatherInfo/GatherQuestion: Rust's `to_value` == Python's `to_dict`; the
+    # field-accessor idiom methods (`questions`/`completion_action`/`key`) are
+    # Rust-only reads not on the reference contract → drop.
+    "GatherInfo": {
+        "to_value": "to_dict",
+        "questions": None,
+        "completion_action": None,
+    },
+    "GatherQuestion": {
+        "to_value": "to_dict",
+        "key": None,
+    },
+    # SWMLBuilder: Rust exposes a generic `verb` accessor + `sleep` shortcut +
+    # `service_mut`/`validate_ai` helpers that the Python reference does not
+    # enumerate (Python auto-vivifies per-verb methods via __getattr__; the
+    # `__getattr__` surface entry is projected below). Drop the Rust-only
+    # plumbing so the surface matches the reference method set.
+    "SwmlBuilder": {
+        "verb": None,
+        "sleep": None,
+        "service_mut": None,
+        "validate_ai": None,
+    },
+    # AIVerbHandler: Python does not enumerate a constructor on the handler
+    # (it is `AIVerbHandler()` with no __init__ override). Drop Rust's `new`
+    # — which the parser has already folded to `__init__` before the rename
+    # table runs, so key on `__init__`.
+    "AiVerbHandler": {
+        "__init__": None,
+    },
+    # FunctionResult: Rust's `to_value` (serde_json::Value) == Python's
+    # `to_dict` (dict) — both serialize identically.
+    "FunctionResult": {
+        "to_value": "to_dict",
+    },
+    # PomBuilder: Rust's `to_value` == Python's `to_dict`; `pom` is the Rust
+    # read accessor for the wrapped PromptObjectModel (Python's `self.pom`
+    # attribute is not an enumerated method) → drop.
+    "PomBuilder": {
+        "to_value": "to_dict",
+        "pom": None,
+    },
+    # SessionManager: `set_debug_mode` is the Rust setter for the debug-mode
+    # gate on `debug_token` (Python sets `_debug_mode` at construction / as a
+    # private attr — no public setter method is enumerated). Drop it.
+    "SessionManager": {
+        "set_debug_mode": None,
+    },
+    # WebService: the reference records __init__/add_directory/remove_directory/
+    # start/stop. The Rust read accessors (port/directories/is_running/
+    # is_file_allowed/basic_auth/directory_browsing_enabled/max_file_size/
+    # cors_enabled) are field-accessor idiom over Python's instance attrs and
+    # private helpers — not enumerated methods. Drop them.
+    "WebService": {
+        "port": None,
+        "directories": None,
+        "is_running": None,
+        "is_file_allowed": None,
+        "basic_auth": None,
+        "directory_browsing_enabled": None,
+        "max_file_size": None,
+        "cors_enabled": None,
+    },
+    # AuthHandler: `with_bearer_token`/`with_api_key` are Rust builder-idiom
+    # setters enabling the optional auth methods (Python reads bearer_token /
+    # api_key as attributes off the SecurityConfig at construction — no
+    # enumerated setter methods). Drop them.
+    "AuthHandler": {
+        "with_bearer_token": None,
+        "with_api_key": None,
+    },
+    # SwaigFunction (== SWAIGFunction): Rust `call` == Python's `__call__`
+    # dunder. The builder setters (secure/required/webhook_url/fillers/
+    # wait_file/extra_field) and read accessors (name/is_external/is_secure)
+    # are the Rust-idiom face of Python's __init__ kwargs / instance attrs —
+    # not enumerated methods on the reference. Drop them.
+    "SwaigFunction": {
+        "call": "__call__",
+        "secure": None,
+        "required": None,
+        "webhook_url": None,
+        "fillers": None,
+        "wait_file": None,
+        "extra_field": None,
+        "name": None,
+        "is_external": None,
+        "is_secure": None,
+    },
+    # HttpClient: reference records __init__ + get/post/put/patch/delete. Drop
+    # the Rust-only accessors (project_id/token/base_url/auth_header), the
+    # test-only `with_stub` constructor, and `list_all` (a Rust pagination
+    # convenience not on the reference's HttpClient).
+    "HttpClient": {
+        "project_id": None,
+        "token": None,
+        "base_url": None,
+        "auth_header": None,
+        "with_stub": None,
+        "list_all": None,
+    },
+    # SignalWireRestError: reference records only __init__. Drop the Rust
+    # field-accessor reads (message/status_code/response_body).
+    "SignalWireRestError": {
+        "message": None,
+        "status_code": None,
+        "response_body": None,
+    },
+    # PaginatedIterator: Rust exposes borrow-checker/field-accessor idiom reads
+    # (data_key/http/index/is_done/items/params/path) + the manual-step
+    # `next_item`. The reference records only __init__/__iter__/__next__ (the
+    # dunders are projected via FORCE_CLASS_METHODS). Drop the Rust-only reads.
+    "PaginatedIterator": {
+        "data_key": None,
+        "http": None,
+        "index": None,
+        "is_done": None,
+        "items": None,
+        "next_item": None,
+        "params": None,
+        "path": None,
+    },
+    # Service (== SWMLService): `routing_callback` is the Rust read-side lookup
+    # companion to `register_routing_callback` (Python has no such getter — the
+    # callback is invoked internally). `set_host`/`set_port` are crate-internal
+    # `serve()` host/port override helpers (Python has no such setters — they
+    # take host/port as `serve` args). Drop these Rust-only accessors.
+    "Service": {
+        "routing_callback": None,
+        "set_host": None,
+        "set_port": None,
+        # Rust skill-support helper folding swaig_fields into a registered
+        # tool def (Python's SkillBase.define_tool merges before registering;
+        # no such standalone method on SWMLService). Drop from the surface.
+        "merge_swaig_fields": None,
+    },
+    # AgentBase: `mcp_servers` / `debug_routes_enabled` are Rust read-side
+    # accessors with no Python-reference counterpart (Python stores these as
+    # private attrs consulted internally). Drop them. The web/mcp/tool/contexts
+    # METHODS themselves are real and are projected onto their reference mixin
+    # modules (SURFACE_PROJECTIONS) then stripped from AgentBase's own module
+    # via PROJECTION_DONOR_STRIPS below.
+    "AgentBase": {
+        "mcp_servers": None,
+        "debug_routes_enabled": None,
+    },
+    # SkillBase base trait: `get_tools` (a per-skill OVERRIDE the reference
+    # records on the subclasses, not the base), `required_packages`, and
+    # `get_skill_namespace` are Rust trait-default helpers that surface on the
+    # base class. The reference's SkillBase base does not enumerate them —
+    # drop from the base (the subclass copies stay via their explicit impls).
+    "SkillBase": {
+        "get_tools": None,
+        "required_packages": None,
+        "get_skill_namespace": None,
+    },
+    # StandaloneCollectAction: `action`/`collect_result` are Rust-only views
+    # (Deref-to-Action companion + a result accessor). The reference records
+    # only __init__ + start_input_timers. Drop the Rust extras.
+    "StandaloneCollectAction": {
+        "action": None,
+        "collect_result": None,
+    },
+    # WikipediaSearchSkill: `required_packages` is a Rust trait-default helper
+    # not on the reference subclass surface. Drop it (search_wiki stays).
+    "WikipediaSearch": {
+        "required_packages": None,
+    },
 }
 
 
@@ -347,6 +542,11 @@ METHOD_RENAMES: dict[str, dict[str, str]] = {
 # `<Stem>Skill` (e.g. WikipediaSearchSkill); Rust uses just `<Stem>`.
 CLASS_RENAME_MAP: dict[str, str] = {
     "Service": "SWMLService",
+    # SWML builder/handler CamelCase → reference upper-acronym names.
+    "SwmlBuilder": "SWMLBuilder",
+    "SwmlVerbHandler": "SWMLVerbHandler",
+    "AiVerbHandler": "AIVerbHandler",
+    "SwaigFunction": "SWAIGFunction",
     "Client": "RelayClient",  # within relay/ module
     "Calling": "CallingNamespace",
     "Fabric": "FabricNamespace",
@@ -405,6 +605,12 @@ RE_PUB_FN = re.compile(r"^\s*pub(?:\s*\([^)]*\))?\s+(?:async\s+)?fn\s+(\w+)\s*[<
 # surface, not just the trait name.
 RE_TRAIT_FN = re.compile(r"^\s*(?:async\s+)?fn\s+(\w+)\s*[<\(]")
 RE_PUB_STRUCT = re.compile(r"^\s*pub(?:\s*\([^)]*\))?\s+struct\s+(\w+)\b")
+# `action_subclass!(Name, "wire.method")` — a macro that generates a public
+# newtype `Name` (a RELAY action subclass) with `new` (→ __init__), `action`
+# accessor, and Deref<Target=Action>. The regex parser can't expand macros, so
+# recognize the invocation and register the class + its constructor. The
+# Rust-only `action`/`collect_result` accessors are dropped via METHOD_RENAMES.
+RE_ACTION_SUBCLASS = re.compile(r"^\s*action_subclass!\(\s*(\w+)\s*,")
 RE_PUB_ENUM = re.compile(r"^\s*pub(?:\s*\([^)]*\))?\s+enum\s+(\w+)\b")
 RE_PUB_TRAIT = re.compile(r"^\s*pub(?:\s*\([^)]*\))?\s+trait\s+(\w+)\b")
 RE_PUB_TYPE = re.compile(r"^\s*pub(?:\s*\([^)]*\))?\s+type\s+(\w+)\b")
@@ -433,6 +639,11 @@ RE_IMPL_TRAIT_FOR = re.compile(
 # surface and must stay excluded.
 PUBLIC_SURFACE_TRAITS = frozenset({
     "SkillBase",
+    # SWML verb-handler interface: `impl SwmlVerbHandler for AiVerbHandler`
+    # carries the reference's per-handler public overrides (get_verb_name /
+    # validate_config / build_config). Collect them like a trait body so the
+    # `ai` handler's surface matches the reference `AIVerbHandler`.
+    "SwmlVerbHandler",
 })
 # SkillBase trait methods that are Rust-idiom accessors, NOT part of the Python
 # skill surface (Python exposes SKILL_NAME/SKILL_DESCRIPTION as class attributes
@@ -574,6 +785,16 @@ def _parse_file(path: Path) -> tuple[set[str], dict[str, set[str]], set[str]]:
             m = regex.match(line)
             if m:
                 bucket.add(m.group(1))
+
+        # Detect `action_subclass!(Name, ...)` macro-generated RELAY action
+        # subclasses: register the class + its macro-provided `__init__` and
+        # `action` accessor (the latter dropped in METHOD_RENAMES).
+        m_macro = RE_ACTION_SUBCLASS.match(line)
+        if m_macro:
+            cls_name = m_macro.group(1)
+            classes.add(cls_name)
+            methods[cls_name].add("__init__")
+            methods[cls_name].add("action")
 
         # Detect impl blocks. impl X for Y → methods go to Y. impl X → methods go to X.
         # Detect `pub trait X {` blocks too → their body methods go to X.
@@ -770,12 +991,72 @@ SURFACE_PROJECTIONS: dict[tuple[str, str], list[tuple[str, list[str]]]] = {
 PROJECTION_DONOR_STRIPS: dict[tuple[str, str], set[str]] = {
     ("signalwire.rest._base", "CrudResource"): {"get", "list"},
 }
+# Reference Python dunders that Rust realizes idiomatically rather than as a
+# literally-named method. `__getattr__` is Python's dynamic attribute hook: on
+# SWMLBuilder it auto-vivifies a method per SWML verb, and on SWMLService it
+# proxies verb methods onto the builder. The Rust idiom for both is a generic
+# verb accessor (`SwmlBuilder::verb`) plus (for the service) `Deref`/explicit
+# document methods — the callable capability is present, just not under a
+# `__getattr__` name. Force the reference dunder onto the class so the surface
+# compares EQUAL (Rule 2: idiom reconciled in the enumerator, not omitted).
+# {(python_module, python_class): [dunder names]}
+DUNDER_PROJECTIONS: dict[tuple[str, str], list[str]] = {
+    ("signalwire.core.swml_builder", "SWMLBuilder"): ["__getattr__"],
+    ("signalwire.core.swml_service", "SWMLService"): ["__getattr__"],
+}
 # Method-less base/abstract classes the reference declares that Rust realizes
 # only implicitly (flattened onto concrete types). Emit the bare class so the
 # reference's class symbol is present. Their flattened concrete copies are
 # recorded as port-additions (relay action mixin template, §H).
 SURFACE_BARE_CLASSES: dict[str, list[str]] = {
     "signalwire.rest._base": ["FabricResource", "FabricResourcePUT"],
+}
+# Reference classes Rust realizes in a DIFFERENT module than the reference
+# records them, forcing the class (with its reference method set) onto the
+# reference's module. `RelayError` is a typed enum in `relay/error.rs` (also
+# recorded there as a rust-typed-error PORT_ADDITION), but the Python reference
+# places it in `relay.client` as an exception with `__init__`. Emit the
+# reference symbol so the surface compares EQUAL (Rule 2 — the real type
+# exists, just in the port's error module). {(python_module, class): [methods]}
+FORCE_CLASS_METHODS: dict[tuple[str, str], list[str]] = {
+    ("signalwire.relay.client", "RelayError"): ["__init__"],
+    # Python delegate classes (PromptManager / ToolRegistry) that Rust folds
+    # onto AgentBase: their SURFACE_PROJECTIONS already project the method set,
+    # but the reference also records a bare __init__ on each. Emit it.
+    ("signalwire.core.agent.prompt.manager", "PromptManager"): ["__init__"],
+    ("signalwire.core.agent.tools.registry", "ToolRegistry"): ["__init__"],
+    # SkillBase (a Rust trait — no constructor) + SkillRegistry (Rust uses
+    # static methods, no `new`): the reference records `__init__` on both.
+    ("signalwire.core.skill_base", "SkillBase"): ["__init__"],
+    ("signalwire.skills.registry", "SkillRegistry"): ["__init__"],
+    # PaginatedIterator: Rust implements the std `Iterator` trait (`fn next`),
+    # whose methods the enumerator does not collect (std trait). Iterating a
+    # Rust Iterator is `for x in it` (== Python `__iter__`) and `next` (==
+    # `__next__`). Emit the reference dunders.
+    ("signalwire.rest._pagination", "PaginatedIterator"): ["__iter__", "__next__"],
+    # rest._base bases: BaseResource + CrudWithAddresses live in the skipped
+    # generated_bases.rs (SKIP_FILE_BASENAMES). BaseResource is the reference's
+    # bare CRUD base (__init__); CrudWithAddresses is the reference's
+    # addresses-capable mixin (list_addresses) — Rust's FabricResource carries
+    # the same `list_addresses`. Emit the reference symbols.
+    ("signalwire.rest._base", "BaseResource"): ["__init__"],
+    ("signalwire.rest._base", "CrudWithAddresses"): ["list_addresses"],
+}
+# Static/associated methods Rust hosts on a class that the Python reference
+# records as MODULE-LEVEL free functions. Project the method onto the target
+# module's `functions` list (the module-free-function FORM is the Python idiom;
+# Rust's file-per-class idiom hosts them on a facade class). Only projected when
+# the donor class actually exposes the method.
+# {(donor_class, method): (target_module, free_fn_name)}
+STATIC_METHOD_TO_FREE_FN: dict[tuple[str, str], tuple[str, str]] = {
+    ("DataMap", "create_simple_api_tool"): (
+        "signalwire.core.data_map",
+        "create_simple_api_tool",
+    ),
+    ("DataMap", "create_expression_tool"): (
+        "signalwire.core.data_map",
+        "create_expression_tool",
+    ),
 }
 # Rust-idiom accessor methods to drop from EVERY class in a module — the Python
 # reference does not expose them. The typed RELAY event wrappers carry Rust
@@ -932,6 +1213,21 @@ def build_surface() -> dict:
         for cls, ms in entry["classes"].items():
             donor_index.setdefault(cls, set()).update(ms)
 
+    # Deref inheritance (Rust idiom == Python subclassing). `AgentBase`
+    # `impl Deref<Target=Service>`, so every &Service / &mut Service method is
+    # callable on an AgentBase — exactly as Python's `AgentBase(SWMLService)`
+    # inherits every SWMLService method. The reference records those inherited
+    # methods on the mixin/SWMLService modules and projects them from the
+    # AgentBase donor (SURFACE_PROJECTIONS below); for the projection donor
+    # check to see them, fold the Deref-target's method set into the
+    # inheriting class's DONOR entry (only — the emitted AgentBase module
+    # surface stays its own small method set, matching the oracle).
+    # {inheriting_class: deref_target_class}
+    DEREF_INHERITS = {"AgentBase": "SWMLService"}
+    for child, parent in DEREF_INHERITS.items():
+        parent_methods = donor_index.get(parent, set())
+        donor_index.setdefault(child, set()).update(parent_methods)
+
     for (target_mod, target_cls), donors in SURFACE_PROJECTIONS.items():
         projected: set[str] = set()
         for donor_cls, names in donors:
@@ -953,6 +1249,38 @@ def build_surface() -> dict:
     for mod_name, bare in SURFACE_BARE_CLASSES.items():
         for cls in bare:
             modules[mod_name]["classes"].setdefault(cls, [])
+
+    # Force reference classes Rust realizes in a different module onto the
+    # reference's module with the reference method set.
+    for (mod_name, cls), method_list in FORCE_CLASS_METHODS.items():
+        existing = set(modules[mod_name]["classes"].get(cls, []))
+        existing.update(method_list)
+        modules[mod_name]["classes"][cls] = sorted(existing)
+
+    # Project static/associated methods that Rust hosts on a class but the
+    # reference records as module-level free functions: add to the target
+    # module's functions and drop from the donor class.
+    for (donor_cls, method), (tgt_mod, fn_name) in STATIC_METHOD_TO_FREE_FN.items():
+        if method in donor_index.get(donor_cls, set()):
+            fns = modules[tgt_mod]["functions"]
+            if fn_name not in fns:
+                fns.append(fn_name)
+                modules[tgt_mod]["functions"] = sorted(fns)
+            # Drop from every module that recorded it on the donor class.
+            for entry in modules.values():
+                if donor_cls in entry["classes"]:
+                    entry["classes"][donor_cls] = sorted(
+                        set(entry["classes"][donor_cls]) - {method}
+                    )
+
+    # Project reference dunders (e.g. __getattr__) that Rust realizes as a
+    # generic accessor rather than a literally-named method. Only apply when the
+    # target class is actually present (so an absent class stays a real gap).
+    for (mod_name, cls), dunders in DUNDER_PROJECTIONS.items():
+        if mod_name in modules and cls in modules[mod_name]["classes"]:
+            existing = set(modules[mod_name]["classes"][cls])
+            existing.update(dunders)
+            modules[mod_name]["classes"][cls] = sorted(existing)
 
     # Drop module-scoped Rust-idiom accessor methods.
     for mod_name, drop in MODULE_METHOD_DROPS.items():

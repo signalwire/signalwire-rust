@@ -133,6 +133,55 @@ impl Action {
         *self.notify_tx.lock().unwrap() = Some(tx);
     }
 
+    /// Block until the action reaches a terminal state, then return its
+    /// resolved result (the terminal payload).
+    ///
+    /// Mirrors Python's `Action.wait`. Python's coroutine awaits a Future
+    /// that resolves to the terminal `RelayEvent`; the Rust `Call` is a
+    /// synchronous command surface, so `wait` blocks the calling thread on
+    /// the same completion signal `resolve` fires and yields the resolved
+    /// `result()` (the terminal event payload the server delivered) instead
+    /// of an awaitable. Pass `Some(timeout)` to bound the wait; `None`
+    /// blocks indefinitely.
+    ///
+    /// Returns `Some(result)` once resolved (matching `result()` at that
+    /// point), or `None` if `timeout` elapsed first. If the action is
+    /// already done, returns immediately. `is_done()` disambiguates a
+    /// `None` caused by a timeout from an action that resolved with an
+    /// empty result.
+    ///
+    /// # Panics
+    /// Panics if an internal mutex is poisoned (i.e. another thread panicked
+    /// while holding the lock). This does not occur under normal operation.
+    #[must_use]
+    pub fn wait(&self, timeout: Option<std::time::Duration>) -> Option<Value> {
+        // Fast path: already resolved.
+        if self.is_done() {
+            return self.result();
+        }
+
+        let (tx, rx) = std::sync::mpsc::sync_channel::<()>(1);
+        self.set_notify_sender(tx);
+
+        // Re-check after installing the sender to close the race where the
+        // action resolved between the fast-path check and the install (in
+        // which case `resolve` already took the previous `None` sender).
+        if self.is_done() {
+            return self.result();
+        }
+
+        let recvd = match timeout {
+            Some(dur) => rx.recv_timeout(dur).is_ok(),
+            None => rx.recv().is_ok(),
+        };
+
+        if recvd || self.is_done() {
+            self.result()
+        } else {
+            None
+        }
+    }
+
     // ------------------------------------------------------------------
     // Callback registration
     // ------------------------------------------------------------------
@@ -399,6 +448,53 @@ impl CollectAction {
 }
 
 impl std::ops::Deref for CollectAction {
+    type Target = Action;
+    fn deref(&self) -> &Action {
+        &self.inner
+    }
+}
+
+// -- StandaloneCollectAction (calling.collect without a play phase) -----
+//
+// Mirrors Python's `StandaloneCollectAction`. The distinction from
+// `CollectAction`: Python's `CollectAction` is the play_and_collect handle
+// (its stop/pause/volume use the `play_and_collect` command prefix), while
+// `StandaloneCollectAction` is the bare `calling.collect` handle whose
+// control surface is the `collect` prefix (`calling.collect.stop` /
+// `calling.collect.start_input_timers`). Kept as a separate type so the
+// two collect flavours emit their correct, distinct stop wire methods.
+
+pub struct StandaloneCollectAction {
+    pub inner: Arc<Action>,
+}
+
+impl StandaloneCollectAction {
+    pub fn new(control_id: &str, call_id: &str, node_id: &str) -> Self {
+        StandaloneCollectAction {
+            inner: Arc::new(Action::with_stop_method(
+                control_id,
+                call_id,
+                node_id,
+                "calling.collect.stop",
+            )),
+        }
+    }
+
+    pub fn action(&self) -> &Action {
+        &self.inner
+    }
+
+    /// Start the initial-input timer on an active standalone collect.
+    pub fn start_input_timers(&self) {
+        self.execute_subcommand("calling.collect.start_input_timers", HashMap::new());
+    }
+
+    pub fn collect_result(&self) -> Option<Value> {
+        self.payload().get("result").cloned()
+    }
+}
+
+impl std::ops::Deref for StandaloneCollectAction {
     type Target = Action;
     fn deref(&self) -> &Action {
         &self.inner
@@ -737,5 +833,71 @@ mod tests {
         assert!(!pa.is_done());
         pa.resolve(None);
         assert!(pa.is_done());
+    }
+
+    // -- Action::wait tests --
+
+    #[test]
+    fn test_wait_returns_immediately_when_already_done() {
+        let a = Action::new("ctrl", "call", "node");
+        a.resolve(Some(json!({"ok": true})));
+        // Even with a zero timeout, the fast path returns the result.
+        let got = a.wait(Some(std::time::Duration::from_millis(0)));
+        assert_eq!(got, Some(json!({"ok": true})));
+    }
+
+    #[test]
+    fn test_wait_times_out_when_pending() {
+        let a = Action::new("ctrl", "call", "node");
+        let got = a.wait(Some(std::time::Duration::from_millis(20)));
+        assert_eq!(got, None);
+        assert!(!a.is_done());
+    }
+
+    #[test]
+    fn test_wait_unblocks_on_resolve() {
+        let a = Arc::new(Action::new("ctrl", "call", "node"));
+        let a2 = a.clone();
+        let handle = std::thread::spawn(move || a2.wait(None));
+        // Give the waiter time to install its notify sender, then resolve.
+        std::thread::sleep(std::time::Duration::from_millis(30));
+        a.resolve(Some(json!({"state": "finished"})));
+        let got = handle.join().unwrap();
+        assert_eq!(got, Some(json!({"state": "finished"})));
+    }
+
+    // -- StandaloneCollectAction tests --
+
+    #[test]
+    fn test_standalone_collect_stop_method() {
+        let sca = StandaloneCollectAction::new("ctrl", "call", "node");
+        assert_eq!(sca.stop_method(), "calling.collect.stop");
+    }
+
+    #[test]
+    fn test_standalone_collect_start_input_timers() {
+        let sca = StandaloneCollectAction::new("ctrl", "call", "node");
+        sca.start_input_timers();
+        let cmds = sca.sent_commands.lock().unwrap();
+        assert_eq!(cmds[0].0, "calling.collect.start_input_timers");
+        assert_eq!(cmds[0].1["control_id"], "ctrl");
+    }
+
+    #[test]
+    fn test_standalone_collect_stop_emits_collect_stop() {
+        let sca = StandaloneCollectAction::new("ctrl", "call", "node");
+        sca.stop();
+        let cmds = sca.sent_commands.lock().unwrap();
+        assert_eq!(cmds[0].0, "calling.collect.stop");
+    }
+
+    #[test]
+    fn test_standalone_collect_result() {
+        let sca = StandaloneCollectAction::new("ctrl", "call", "node");
+        let mut params = HashMap::new();
+        params.insert("result".to_string(), json!({"digits": "42"}));
+        let ev = Event::new("calling.call.collect", params, 1.0);
+        sca.handle_event(&ev);
+        assert_eq!(sca.collect_result().unwrap()["digits"], "42");
     }
 }

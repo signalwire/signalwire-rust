@@ -18,12 +18,12 @@ fn main() {
 
     // Build the SWML document using verb helper methods
     service.document_mut().reset();
-    service.add_verb("answer", "main", json!({}));
+    service.add_verb_to_section("main", "answer", json!({}));
 
     // Play greeting
-    service.add_verb(
-        "play",
+    service.add_verb_to_section(
         "main",
+        "play",
         json!({
             "url": "say:Hello! You've reached our voicemail. Please leave a message after the beep."
         }),
@@ -33,18 +33,18 @@ fn main() {
     service.sleep(1000, "main");
 
     // Beep
-    service.add_verb(
-        "play",
+    service.add_verb_to_section(
         "main",
+        "play",
         json!({
             "url": "https://example.com/beep.wav"
         }),
     );
 
     // Record
-    service.add_verb(
-        "record",
+    service.add_verb_to_section(
         "main",
+        "record",
         json!({
             "stereo": true,
             "format": "wav",
@@ -57,14 +57,14 @@ fn main() {
     );
 
     // Thank and hang up
-    service.add_verb(
-        "play",
+    service.add_verb_to_section(
         "main",
+        "play",
         json!({
             "url": "say:Thank you. Goodbye!"
         }),
     );
-    service.add_verb("hangup", "main", json!({}));
+    service.add_verb_to_section("main", "hangup", json!({}));
 
     // Dump the document
     let doc = service.render_pretty();

@@ -1270,6 +1270,80 @@ impl Client {
     }
 
     // ══════════════════════════════════════════════════════════════════
+    //  Python-parity method names
+    //
+    //  These mirror the exact names on the Python `RelayClient`
+    //  (`execute` / `dial` / `run` / `send_message`). The Rust client is a
+    //  blocking API whose implementations carry a `_blocking` suffix; these
+    //  parity-named wrappers delegate to them so both the Rust-idiom name
+    //  and the Python name resolve to the same behaviour.
+    // ══════════════════════════════════════════════════════════════════
+
+    /// Send an arbitrary JSON-RPC request and block for its result
+    /// (mirrors Python `RelayClient.execute`). Delegates to
+    /// [`execute_blocking`].
+    ///
+    /// # Errors
+    /// Propagates [`execute_blocking`]'s errors: `RelayError::Rpc` if the
+    /// server returns a JSON-RPC error, or `RelayError::Timeout` if no
+    /// response arrives within the deadline.
+    pub fn execute(&self, method: &str, params: Value) -> Result<Value, RelayError> {
+        self.execute_blocking(method, params)
+    }
+
+    /// Initiate an outbound call and block until it is answered or the
+    /// dial deadline elapses (mirrors Python `RelayClient.dial`). Delegates
+    /// to [`dial_blocking`].
+    ///
+    /// # Errors
+    /// Propagates [`dial_blocking`]'s errors: `RelayError::DialFailed` on a
+    /// failed dial or answer timeout.
+    pub fn dial(
+        self: &Arc<Self>,
+        devices: Value,
+        tag: Option<&str>,
+        max_duration: Option<u32>,
+        dial_timeout: Duration,
+    ) -> Result<Arc<Call>, RelayError> {
+        self.dial_blocking(devices, tag, max_duration, dial_timeout)
+    }
+
+    /// Send an outbound SMS/MMS message (mirrors Python
+    /// `RelayClient.send_message`). Delegates to [`send_message_blocking`].
+    ///
+    /// # Errors
+    /// Propagates [`send_message_blocking`]'s errors: `RelayError::
+    /// InvalidArgument` if neither body nor media is supplied, or the
+    /// `messaging.send` `RelayError::Rpc` / `RelayError::Timeout`.
+    #[allow(clippy::too_many_arguments)]
+    pub fn send_message(
+        &self,
+        to_number: &str,
+        from_number: &str,
+        body: Option<&str>,
+        media: Option<&[String]>,
+        tags: Option<&[String]>,
+        context: Option<&str>,
+    ) -> Result<Arc<Message>, RelayError> {
+        self.send_message_blocking(to_number, from_number, body, media, tags, context)
+    }
+
+    /// Blocking entry point — run the client's event loop until the
+    /// connection is torn down (mirrors Python `RelayClient.run`).
+    ///
+    /// The reader thread (spawned by [`connect`]) owns all socket I/O and
+    /// dispatches events. `run` blocks the calling thread until that reader
+    /// thread stops running (i.e. `is_running()` becomes false, e.g. after
+    /// [`disconnect`] or a lost connection), so a caller can `connect()`
+    /// then `run()` to stay alive for the session. Returns immediately if
+    /// the client is not currently running.
+    pub fn run(&self) {
+        while self.is_running() {
+            thread::sleep(Duration::from_millis(50));
+        }
+    }
+
+    // ══════════════════════════════════════════════════════════════════
     //  Private helpers
     // ══════════════════════════════════════════════════════════════════
 
@@ -1972,5 +2046,40 @@ mod tests {
         // Should have sent an ack
         let msgs = c.sent_messages.lock().unwrap();
         assert!(msgs.iter().any(|m| m["id"] == "evt-1"));
+    }
+
+    // -- Python-parity method wrappers --
+
+    #[test]
+    fn test_run_returns_immediately_when_not_running() {
+        // `run` blocks only while the reader loop is running; with no
+        // connection it must return promptly rather than hang.
+        let c = make_client();
+        assert!(!c.is_running());
+        let start = std::time::Instant::now();
+        c.run();
+        assert!(start.elapsed() < Duration::from_secs(1));
+    }
+
+    #[test]
+    fn test_run_unblocks_on_disconnect() {
+        let c = Arc::new(make_client());
+        *c.running.lock().unwrap() = true;
+        let c2 = c.clone();
+        let handle = std::thread::spawn(move || c2.run());
+        std::thread::sleep(Duration::from_millis(60));
+        // Flip the running flag (as disconnect would) and confirm run exits.
+        *c.running.lock().unwrap() = false;
+        handle.join().unwrap();
+    }
+
+    #[test]
+    fn test_send_message_parity_validates_args() {
+        // `send_message` delegates to `send_message_blocking`; the
+        // arg-validation path (neither body nor media) returns
+        // InvalidArgument without touching a socket.
+        let c = make_client();
+        let result = c.send_message("+15551112222", "+15553334444", None, None, None, None);
+        assert!(matches!(result, Err(RelayError::InvalidArgument { .. })));
     }
 }

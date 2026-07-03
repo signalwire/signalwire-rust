@@ -4,6 +4,7 @@ use std::fmt::Write as _;
 use serde_json::{Map, Value, json};
 
 use crate::agent::{AgentBase, AgentOptions};
+use crate::prefabs::PrefabSummaryCallback;
 use crate::swaig::FunctionResult;
 
 /// A pre-built concierge agent for venues — answers questions about services,
@@ -233,6 +234,81 @@ impl ConciergeAgent {
     pub fn amenities(&self) -> &HashMap<String, Value> {
         &self.amenities
     }
+
+    /// Check availability for a service on a specific date and time.
+    ///
+    /// Ported from Python `ConciergeAgent.check_availability`. Simulated: if the
+    /// requested service is one of the venue's offered services it reports it as
+    /// available, otherwise it lists the available services. `args` reads
+    /// `service`, `date`, and `time`; `raw_data` is accepted for handler-signature
+    /// parity but unused.
+    pub fn check_availability(
+        &self,
+        args: &Map<String, Value>,
+        _raw_data: &Map<String, Value>,
+    ) -> FunctionResult {
+        let service = args
+            .get("service")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_lowercase();
+        let date = args.get("date").and_then(|v| v.as_str()).unwrap_or("");
+        let time = args.get("time").and_then(|v| v.as_str()).unwrap_or("");
+
+        let known = self.services.iter().any(|s| s.to_lowercase() == service);
+        if known {
+            FunctionResult::with_response(&format!(
+                "Yes, {service} is available on {date} at {time}. Would you like to make a reservation?"
+            ))
+        } else {
+            FunctionResult::with_response(&format!(
+                "I'm sorry, we don't offer {service} at {}. Our available services are: {}.",
+                self.venue_name,
+                self.services.join(", ")
+            ))
+        }
+    }
+
+    /// Provide directions to a specific location or amenity.
+    ///
+    /// Ported from Python `ConciergeAgent.get_directions`. If the requested
+    /// location matches an amenity that declares a `location`, it gives directions
+    /// there; otherwise it defers to front-desk staff. `args` reads `location`;
+    /// `raw_data` is accepted for handler-signature parity but unused.
+    pub fn get_directions(
+        &self,
+        args: &Map<String, Value>,
+        _raw_data: &Map<String, Value>,
+    ) -> FunctionResult {
+        let location = args
+            .get("location")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_lowercase();
+
+        if let Some(info) = self.amenities.get(&location)
+            && let Some(amenity_location) = info.get("location").and_then(|v| v.as_str())
+        {
+            return FunctionResult::with_response(&format!(
+                "The {location} is located at {amenity_location}. \
+                 From the main entrance, follow the signs to {amenity_location}."
+            ));
+        }
+
+        FunctionResult::with_response(&format!(
+            "I don't have specific directions to {location}. \
+             You can ask our staff at the front desk for assistance."
+        ))
+    }
+
+    /// Register a callback that processes the interaction summary.
+    ///
+    /// Delegates to [`AgentBase::on_summary`], matching the Python
+    /// `ConciergeAgent.on_summary` override point (which logs the summary).
+    pub fn on_summary(&mut self, callback: PrefabSummaryCallback) -> &mut Self {
+        self.agent.on_summary(callback);
+        self
+    }
 }
 
 #[cfg(test)]
@@ -302,5 +378,94 @@ mod tests {
         let info = sample_venue_info();
         let agent = ConciergeAgent::new("", &info, None);
         assert_eq!(agent.agent().service().name(), "concierge");
+    }
+
+    #[test]
+    fn test_check_availability_known_service() {
+        let info = sample_venue_info();
+        let agent = ConciergeAgent::new("test", &info, None);
+        let raw = Map::new();
+        let mut args = Map::new();
+        args.insert("service".to_string(), json!("Spa"));
+        args.insert("date".to_string(), json!("2026-01-01"));
+        args.insert("time".to_string(), json!("14:00"));
+        let json_str = agent.check_availability(&args, &raw).to_json();
+        assert!(json_str.contains("available on 2026-01-01 at 14:00"));
+    }
+
+    #[test]
+    fn test_check_availability_unknown_service() {
+        let info = sample_venue_info();
+        let agent = ConciergeAgent::new("test", &info, None);
+        let raw = Map::new();
+        let mut args = Map::new();
+        args.insert("service".to_string(), json!("Skydiving"));
+        let json_str = agent.check_availability(&args, &raw).to_json();
+        assert!(json_str.contains("we don't offer skydiving"));
+        assert!(json_str.contains("Room Service"));
+    }
+
+    #[test]
+    fn test_get_directions_known_amenity() {
+        // Ported Python semantics: the lookup key is lowercased, so it matches
+        // only amenities whose map key is itself lowercase.
+        let mut info = Map::new();
+        info.insert("venue_name".to_string(), json!("Grand Hotel"));
+        info.insert(
+            "amenities".to_string(),
+            json!({"pool": {"hours": "6am-10pm", "location": "Floor 3"}}),
+        );
+        let agent = ConciergeAgent::new("test", &info, None);
+        let raw = Map::new();
+        let mut args = Map::new();
+        args.insert("location".to_string(), json!("Pool"));
+        let json_str = agent.get_directions(&args, &raw).to_json();
+        assert!(json_str.contains("Floor 3"));
+        assert!(json_str.contains("follow the signs to Floor 3"));
+    }
+
+    #[test]
+    fn test_get_directions_unknown_location() {
+        let info = sample_venue_info();
+        let agent = ConciergeAgent::new("test", &info, None);
+        let raw = Map::new();
+        let mut args = Map::new();
+        args.insert("location".to_string(), json!("Rooftop"));
+        let json_str = agent.get_directions(&args, &raw).to_json();
+        assert!(json_str.contains("don't have specific directions to rooftop"));
+    }
+
+    #[test]
+    fn test_concierge_on_summary_fires() {
+        use std::sync::{Arc, Mutex};
+
+        let info = sample_venue_info();
+        let mut agent = ConciergeAgent::new("test", &info, None);
+
+        let captured = Arc::new(Mutex::new(String::new()));
+        let captured_clone = Arc::clone(&captured);
+        agent.on_summary(Box::new(move |summary, _data, _headers| {
+            *captured_clone.lock().unwrap() = summary.to_string();
+        }));
+
+        // Drive the real /post_prompt path so the delegated callback fires.
+        let (user, pass) = agent.agent().service().basic_auth_credentials();
+        let auth = {
+            use base64::Engine;
+            use base64::engine::general_purpose::STANDARD as BASE64;
+            format!("Basic {}", BASE64.encode(format!("{user}:{pass}")))
+        };
+        let mut headers = std::collections::HashMap::new();
+        headers.insert("Authorization".to_string(), auth);
+
+        let body = json!({"summary": "Great concierge call"});
+        let (status, _, _) = agent.agent_mut().handle_request(
+            "POST",
+            "/concierge/post_prompt",
+            &headers,
+            &body.to_string(),
+        );
+        assert_eq!(status, 200);
+        assert_eq!(*captured.lock().unwrap(), "Great concierge call");
     }
 }

@@ -14,6 +14,8 @@ type HmacSha256 = Hmac<Sha256>;
 pub struct SessionManager {
     secret: Vec<u8>,
     token_expiry_secs: u64,
+    /// Whether `debug_token` returns component details (Python `_debug_mode`).
+    debug_mode: bool,
 }
 
 impl SessionManager {
@@ -24,7 +26,14 @@ impl SessionManager {
         SessionManager {
             secret,
             token_expiry_secs,
+            debug_mode: false,
         }
+    }
+
+    /// Enable or disable debug mode (gates [`SessionManager::debug_token`]).
+    pub fn set_debug_mode(&mut self, enabled: bool) -> &mut Self {
+        self.debug_mode = enabled;
+        self
     }
 
     /// Create a new session manager with the default expiry (3600 seconds).
@@ -112,6 +121,128 @@ impl SessionManager {
         }
 
         true
+    }
+
+    /// Generate a secure self-contained token. Python parity:
+    /// `generate_token` (the primary name; `create_token` is the Rust name).
+    #[must_use]
+    pub fn generate_token(&self, function_name: &str, call_id: &str) -> String {
+        self.create_token(function_name, call_id)
+    }
+
+    /// Alias for [`SessionManager::generate_token`], kept for backward
+    /// compatibility. Python parity: `create_tool_token`.
+    #[must_use]
+    pub fn create_tool_token(&self, function_name: &str, call_id: &str) -> String {
+        self.generate_token(function_name, call_id)
+    }
+
+    /// Validate a function-call token (argument order mirrors Python's
+    /// `validate_tool_token(function_name, token, call_id)`). Delegates to
+    /// [`SessionManager::validate_token`].
+    #[must_use]
+    pub fn validate_tool_token(&self, function_name: &str, token: &str, call_id: &str) -> bool {
+        self.validate_token(function_name, call_id, token)
+    }
+
+    /// Legacy session activation — stateless, always succeeds. Python parity:
+    /// `activate_session`.
+    #[allow(clippy::unused_self)]
+    #[must_use]
+    pub fn activate_session(&self, _call_id: &str) -> bool {
+        true
+    }
+
+    /// Legacy session teardown — stateless, always succeeds. Python parity:
+    /// `end_session`.
+    #[allow(clippy::unused_self)]
+    #[must_use]
+    pub fn end_session(&self, _call_id: &str) -> bool {
+        true
+    }
+
+    /// Legacy metadata read — stateless, always returns empty metadata. Python
+    /// parity: `get_session_metadata`.
+    #[allow(clippy::unused_self)]
+    #[must_use]
+    pub fn get_session_metadata(&self, _call_id: &str) -> serde_json::Value {
+        serde_json::json!({})
+    }
+
+    /// Legacy metadata write — stateless, always succeeds. Python parity:
+    /// `set_session_metadata`.
+    #[allow(clippy::unused_self)]
+    #[must_use]
+    pub fn set_session_metadata(
+        &self,
+        _call_id: &str,
+        _key: &str,
+        _value: serde_json::Value,
+    ) -> bool {
+        true
+    }
+
+    /// Decode a token and extract its components for debugging, WITHOUT
+    /// validating it. Requires debug mode (see
+    /// [`SessionManager::set_debug_mode`]). Python parity: `debug_token`.
+    #[must_use]
+    pub fn debug_token(&self, token: &str) -> serde_json::Value {
+        use serde_json::json;
+        if !self.debug_mode {
+            return json!({"error": "debug mode not enabled"});
+        }
+        let Ok(decoded) = URL_SAFE_NO_PAD.decode(token) else {
+            return json!({"valid_format": false, "error": "invalid base64", "token_length": token.len()});
+        };
+        let Ok(decoded_str) = String::from_utf8(decoded) else {
+            return json!({"valid_format": false, "error": "invalid utf-8", "token_length": token.len()});
+        };
+        let parts: Vec<&str> = decoded_str.split('.').collect();
+        if parts.len() != 5 {
+            return json!({
+                "valid_format": false,
+                "parts_count": parts.len(),
+                "token_length": token.len(),
+            });
+        }
+        let (call_id, function, expiry_s, nonce, signature) =
+            (parts[0], parts[1], parts[2], parts[3], parts[4]);
+        let current_time = current_time_secs();
+        let (is_expired, expires_in): (Option<bool>, Option<u64>) = match expiry_s.parse::<u64>() {
+            Ok(exp) => {
+                let expired = exp < current_time;
+                (
+                    Some(expired),
+                    Some(if expired { 0 } else { exp - current_time }),
+                )
+            }
+            Err(_) => (None, None),
+        };
+        let call_id_display = if call_id.len() > 8 {
+            format!("{}...", &call_id[..8])
+        } else {
+            call_id.to_string()
+        };
+        let sig_display = if signature.len() > 8 {
+            format!("{}...", &signature[..8])
+        } else {
+            signature.to_string()
+        };
+        json!({
+            "valid_format": true,
+            "components": {
+                "call_id": call_id_display,
+                "function": function,
+                "expiry": expiry_s,
+                "nonce": nonce,
+                "signature": sig_display,
+            },
+            "status": {
+                "current_time": current_time,
+                "is_expired": is_expired,
+                "expires_in_seconds": expires_in,
+            },
+        })
     }
 
     // ── Private helpers ──────────────────────────────────────────────────
@@ -311,6 +442,59 @@ mod tests {
         assert!(!constant_time_eq("hello", "world"));
         assert!(!constant_time_eq("hello", "hell"));
         assert!(constant_time_eq("", ""));
+    }
+
+    #[test]
+    fn test_generate_and_create_tool_token_aliases() {
+        let sm = SessionManager::with_defaults();
+        let t1 = sm.generate_token("func", "call-1");
+        assert!(sm.validate_token("func", "call-1", &t1));
+        let t2 = sm.create_tool_token("func", "call-1");
+        assert!(sm.validate_token("func", "call-1", &t2));
+    }
+
+    #[test]
+    fn test_validate_tool_token_arg_order() {
+        let sm = SessionManager::with_defaults();
+        let token = sm.generate_token("func", "call-1");
+        // validate_tool_token(function_name, token, call_id)
+        assert!(sm.validate_tool_token("func", &token, "call-1"));
+        assert!(!sm.validate_tool_token("wrong", &token, "call-1"));
+    }
+
+    #[test]
+    fn test_legacy_session_methods_are_noops() {
+        let sm = SessionManager::with_defaults();
+        assert!(sm.activate_session("c1"));
+        assert!(sm.end_session("c1"));
+        assert_eq!(sm.get_session_metadata("c1"), serde_json::json!({}));
+        assert!(sm.set_session_metadata("c1", "k", serde_json::json!("v")));
+    }
+
+    #[test]
+    fn test_debug_token_gated_by_debug_mode() {
+        let sm = SessionManager::with_defaults();
+        let token = sm.generate_token("func", "call-123456789");
+        // Off by default.
+        assert_eq!(sm.debug_token(&token)["error"], "debug mode not enabled");
+        let mut sm2 = SessionManager::with_defaults();
+        sm2.set_debug_mode(true);
+        let token2 = sm2.generate_token("func", "call-123456789");
+        let dbg = sm2.debug_token(&token2);
+        assert_eq!(dbg["valid_format"], true);
+        assert_eq!(dbg["components"]["function"], "func");
+        assert_eq!(dbg["components"]["call_id"], "call-123...");
+        assert_eq!(dbg["status"]["is_expired"], false);
+    }
+
+    #[test]
+    fn test_debug_token_bad_format() {
+        let mut sm = SessionManager::with_defaults();
+        sm.set_debug_mode(true);
+        let bad = URL_SAFE_NO_PAD.encode(b"a.b.c");
+        let dbg = sm.debug_token(&bad);
+        assert_eq!(dbg["valid_format"], false);
+        assert_eq!(dbg["parts_count"], 3);
     }
 
     #[test]
