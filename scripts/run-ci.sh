@@ -106,6 +106,17 @@ run_gate "GEN-FRESH-RELAY" "generated RELAY-protocol tree matches relay-protocol
 run_gate "GEN-FRESH-SWAIG" "generated SWAIG payload tree matches swaig-specs/" \
     python3 scripts/generate_swaig_payloads.py --check
 
+# Gate 1g: GEN-FRESH-TESTS — the generated full-mock REST wire-test suite
+# (tests/rest_generated_<spec>.rs) must be in lockstep with the route-registry ×
+# spec-operationId oracle. The generator captures the call plan from the REAL
+# client (the rest-test-plan binary), joins it to the canonical spec operationIds,
+# and emits one success + one error test per implemented route. Fails if a
+# spec/markup/SDK change wasn't regenerated (stale) or a generated file was
+# hand-edited (they carry a DO-NOT-EDIT header). Same shape as the ruby/php/go/ts
+# REST test GEN-FRESH gate.
+run_gate "GEN-FRESH-TESTS" "generated REST wire-test suite matches the route-registry × spec oracle (generate_rest_tests.py --check)" \
+    python3 scripts/generate_rest_tests.py --check
+
 # Gate 1f: SWAIG-COVERAGE — every engine response action in the vendored
 # swaig-specs/swaig-response.yaml must be emittable by this port's FunctionResult
 # (or signed off in porting-sdk/SWAIG_COVERAGE_ALLOWLIST.md). The shared checker's
@@ -204,11 +215,26 @@ rest_coverage_gate() {
         return 1
     fi
     python3 -c "import urllib.request; urllib.request.urlopen(urllib.request.Request('http://127.0.0.1:$port/__mock__/journal/reset',method='POST'),timeout=5).read()"
+    # The GENERATED wire-test suites (tests/rest_generated_<spec>.rs) are the
+    # authoritative REST coverage source: one success + one error test per
+    # implemented route, emitted from the route-registry × spec-operationId oracle
+    # (see scripts/generate_rest_tests.py). Run every generated namespace target
+    # serially (--test-threads=1) so all traffic lands in one journal for the
+    # coverage checker. The prior hand-written rest_*_coverage suites were deleted
+    # once the generated suites reached coverage parity (item E).
     MOCK_SIGNALWIRE_PORT="$port" cargo test \
-        --test rest_fabric_coverage \
-        --test rest_misc_coverage \
-        --test rest_relay_coverage \
-        --test rest_video_coverage \
+        --test rest_generated_calling \
+        --test rest_generated_chat \
+        --test rest_generated_datasphere \
+        --test rest_generated_fabric \
+        --test rest_generated_fax \
+        --test rest_generated_logs \
+        --test rest_generated_message \
+        --test rest_generated_project \
+        --test rest_generated_pubsub \
+        --test rest_generated_relay_rest \
+        --test rest_generated_video \
+        --test rest_generated_voice \
         -- --test-threads=1 || return 1
     python3 -m mock_signalwire.rest_coverage \
         --mock-url "http://127.0.0.1:$port" \

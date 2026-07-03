@@ -102,3 +102,9 @@ path = "src/cli/main.rs"
 [[bin]]
 name = "route-registry"
 path = "src/bin/route_registry.rs"
+
+# REST wire-test call plan (per-route call expression + wire capture; consumed
+# by scripts/generate_rest_tests.py — see src/bin/rest_test_plan.rs).
+[[bin]]
+name = "rest-test-plan"
+path = "src/bin/rest_test_plan.rs"
