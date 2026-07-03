@@ -9,6 +9,8 @@
 mod common;
 
 use serde_json::{Value, json};
+use signalwire::rest::namespaces::generated::fabric_resources_generated as fabric_gen;
+use std::collections::HashMap;
 
 // ---------------------------------------------------------------------------
 // Fabric Addresses (read-only, /api/fabric/addresses)
@@ -21,7 +23,7 @@ fn test_fabric_addresses_list_returns_data_collection() {
     let body = c
         .fabric()
         .addresses()
-        .list(&json!({}))
+        .list(&HashMap::new())
         .expect("addresses.list");
     assert!(body.is_object());
     let obj = body.as_object().unwrap();
@@ -61,32 +63,14 @@ fn test_fabric_addresses_get_uses_address_id() {
 }
 
 // ---------------------------------------------------------------------------
-// CxmlApplicationsResource.create — deliberate "not implemented"
+// CxmlApplicationsResource.create — removed
+//
+// The regenerated CxmlApplicationsResource exposes no `create` method (only
+// delete/get/list/list_addresses/update), so the former
+// `test_fabric_cxml_applications_create_raises_not_implemented` test — which
+// asserted that calling `create` returned an error without hitting the wire —
+// has been removed: there is no longer any `create` symbol to invoke.
 // ---------------------------------------------------------------------------
-
-#[test]
-fn test_fabric_cxml_applications_create_raises_not_implemented() {
-    let _g = common::mocktest::begin();
-    let c = common::mocktest::client();
-    let result = c
-        .fabric()
-        .cxml_applications()
-        .create(&json!({"name": "never_built"}));
-    let err = result.expect_err("expected error");
-    assert!(
-        err.message().contains("cXML applications"),
-        "unexpected message: {}",
-        err.message()
-    );
-
-    // Nothing should have hit the wire.
-    let entries = common::mocktest::journal_all();
-    assert!(
-        entries.is_empty(),
-        "expected no journal entries, got {} entries",
-        entries.len()
-    );
-}
 
 // ---------------------------------------------------------------------------
 // CallFlowsResource.list_addresses — singular 'call_flow' subpath
@@ -99,7 +83,7 @@ fn test_fabric_call_flows_list_addresses_uses_singular_path() {
     let body = c
         .fabric()
         .call_flows()
-        .list_addresses("cf-1", &json!({}))
+        .list_addresses("cf-1", &HashMap::new())
         .expect("list_addresses");
     assert!(body.is_object());
     let obj = body.as_object().unwrap();
@@ -127,7 +111,7 @@ fn test_fabric_conference_rooms_list_addresses_uses_singular_path() {
     let body = c
         .fabric()
         .conference_rooms()
-        .list_addresses("cr-1", &json!({}))
+        .list_addresses("cr-1", &HashMap::new())
         .expect("list_addresses");
     assert!(body.is_object());
     assert!(body.as_object().unwrap().contains_key("data"));
@@ -153,7 +137,7 @@ fn test_fabric_subscribers_get_sip_endpoint() {
     let body = c
         .fabric()
         .subscribers()
-        .get_sip_endpoint("sub-1", "ep-1")
+        .get_sip_endpoint("sub-1", "ep-1", &HashMap::new())
         .expect("get_sip_endpoint");
     assert!(body.is_object());
 
@@ -173,7 +157,11 @@ fn test_fabric_subscribers_update_sip_endpoint_uses_patch() {
     let body = c
         .fabric()
         .subscribers()
-        .update_sip_endpoint("sub-1", "ep-1", &json!({"username": "renamed"}))
+        .update_sip_endpoint(
+            "sub-1",
+            "ep-1",
+            fabric_gen::SubscribersUpdateSipEndpointRequest::new().username("renamed"),
+        )
         .expect("update_sip_endpoint");
     assert!(body.is_object());
 
@@ -221,7 +209,10 @@ fn test_fabric_tokens_create_invite_token() {
     let body = c
         .fabric()
         .tokens()
-        .create_invite_token(&json!({"email": "invitee@example.com"}))
+        .create_invite_token(
+            fabric_gen::FabricTokensCreateInviteTokenRequest::new("")
+                .extra("email", json!("invitee@example.com")),
+        )
         .expect("create_invite_token");
     assert!(body.is_object());
 
@@ -243,7 +234,10 @@ fn test_fabric_tokens_create_embed_token() {
     let body = c
         .fabric()
         .tokens()
-        .create_embed_token(&json!({"allowed_addresses": ["addr-1", "addr-2"]}))
+        .create_embed_token(
+            fabric_gen::FabricTokensCreateEmbedTokenRequest::new("")
+                .extra("allowed_addresses", json!(["addr-1", "addr-2"])),
+        )
         .expect("create_embed_token");
     assert!(body.is_object());
 
@@ -266,7 +260,9 @@ fn test_fabric_tokens_refresh_subscriber_token() {
     let body = c
         .fabric()
         .tokens()
-        .refresh_subscriber_token(&json!({"refresh_token": "abc-123"}))
+        .refresh_subscriber_token(fabric_gen::FabricTokensRefreshSubscriberTokenRequest::new(
+            "abc-123",
+        ))
         .expect("refresh_subscriber_token");
     assert!(body.is_object());
 
@@ -291,7 +287,7 @@ fn test_fabric_resources_list_returns_data_collection() {
     let body = c
         .fabric()
         .resources()
-        .list(&json!({}))
+        .list(&HashMap::new())
         .expect("resources.list");
     assert!(body.is_object());
     let obj = body.as_object().unwrap();
@@ -308,7 +304,11 @@ fn test_fabric_resources_list_returns_data_collection() {
 fn test_fabric_resources_get_returns_single() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let body = c.fabric().resources().get("res-1").expect("resources.get");
+    let body = c
+        .fabric()
+        .resources()
+        .get("res-1", &std::collections::HashMap::new())
+        .expect("resources.get");
     assert!(body.is_object());
 
     let entry = common::mocktest::journal_last();
@@ -340,7 +340,7 @@ fn test_fabric_resources_list_addresses() {
     let body = c
         .fabric()
         .resources()
-        .list_addresses("res-3", &json!({}))
+        .list_addresses("res-3", &HashMap::new())
         .expect("list_addresses");
     assert!(body.is_object());
     let obj = body.as_object().unwrap();
@@ -359,7 +359,10 @@ fn test_fabric_resources_assign_domain_application() {
     let body = c
         .fabric()
         .resources()
-        .assign_domain_application("res-4", &json!({"domain_application_id": "da-7"}))
+        .assign_domain_application(
+            "res-4",
+            fabric_gen::GenericResourcesAssignDomainApplicationRequest::new("da-7"),
+        )
         .expect("assign_domain_application");
     assert!(body.is_object());
 

@@ -4,6 +4,7 @@
 pub mod client;
 pub mod crud_resource;
 pub mod error;
+pub mod generated_bases;
 pub mod http_client;
 pub mod namespaces;
 pub mod pagination;

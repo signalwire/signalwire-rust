@@ -81,6 +81,14 @@ echo "==> running CI gates for $PORT_NAME (porting-sdk at $PORTING_SDK_DIR)"
 run_gate "TEST" "cargo test --tests (parallel)" \
     cargo test --tests
 
+# Gate 1b: GEN-FRESH — the generated REST layer (src/rest/namespaces/generated/
+# *_resources_generated.rs + client_tree_generated.rs + mod.rs + the adapter
+# sidecar rest_signatures.json) must be in lockstep with the canonical specs +
+# x-sdk-* markup. Fails if a spec/markup change wasn't regenerated (stale) or a
+# generated file was hand-edited. Same shape as the go/ts REST GEN-FRESH gate.
+run_gate "GEN-FRESH" "generated REST layer matches the canonical specs (generate_rest.py --check)" \
+    python3 scripts/generate_rest.py --check
+
 # Gate 2: signature regen — adapter shells out to rustdoc nightly internally.
 run_gate "SIGNATURES" "regenerate port_signatures.json (rustdoc + adapter)" \
     python3 scripts/enumerate_signatures.py

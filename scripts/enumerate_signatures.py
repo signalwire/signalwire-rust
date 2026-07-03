@@ -86,6 +86,89 @@ def load_aliases() -> dict[str, str]:
 
 
 # ---------------------------------------------------------------------------
+# Generated REST layer sidecar (L10). The generator (scripts/generate_rest.py)
+# emits src/rest/namespaces/generated/rest_signatures.json alongside the .rs
+# modules: the EXPLODED named-param model (kinds) of each generated method plus
+# the surface drop-set (base-delegated methods the runtime keeps but the oracle
+# does not record). rustdoc alone can't see inside the ``request: XRequest``
+# builder, so we UNFOLD from the sidecar: replace each generated method's params
+# with the reference-shaped exploded set, drop the silently-inherited base
+# methods, and suppress the port-internal GeneratedResourceTree glue struct.
+# ---------------------------------------------------------------------------
+
+_REST_SIDECAR_PATH = PORT_ROOT / "src" / "rest" / "namespaces" / "generated" / "rest_signatures.json"
+
+
+def load_rest_sidecar() -> dict:
+    try:
+        return json.loads(_REST_SIDECAR_PATH.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        return {"resources": {}, "containers": {}, "suppress_structs": []}
+
+
+def _sidecar_param(p: dict) -> dict:
+    """Map a sidecar param {name, kind, required, type} to a port_signatures
+    param. Path-id / string args carry their real ``string`` type (genuine
+    Rust ``&str``); body/command keyword fields carry the open ``any`` (the
+    drift gate compares count+kind on those — L10)."""
+    return {
+        "name": p["name"],
+        "kind": p["kind"],
+        "type": p.get("type", "any"),
+        "required": bool(p.get("required", False)),
+    }
+
+
+def build_generated_signatures(sidecar: dict) -> dict:
+    """Build the port_signatures fragment for the generated REST layer straight
+    from the sidecar (self + exploded params + a void __init__). Returns
+    {module: {"classes": {cls: {"methods": {...}}}}}."""
+    out: dict = {}
+    for _name, r in sidecar.get("resources", {}).items():
+        mod = r["module"]
+        cls = r["class"]
+        methods: dict = {
+            "__init__": {
+                "params": [
+                    {"name": "self", "kind": "self"},
+                    {"name": "http", "type": "any", "required": True},
+                ],
+                "returns": "void",
+            }
+        }
+        for m_name, params in r.get("methods", {}).items():
+            methods[m_name] = {
+                "params": [{"name": "self", "kind": "self"}]
+                + [_sidecar_param(p) for p in params],
+                "returns": "any",
+            }
+        out.setdefault(mod, {"classes": {}})
+        out[mod]["classes"][cls] = {"methods": dict(sorted(methods.items()))}
+    for _name, c in sidecar.get("containers", {}).items():
+        mod = c["module"]
+        cls = c["class"]
+        methods = {
+            "__init__": {
+                "params": [
+                    {"name": "self", "kind": "self"},
+                    {"name": "http", "type": "any", "required": True},
+                ],
+                "returns": "void",
+            }
+        }
+        # Sub-resource accessors (signature oracle records them; the surface
+        # oracle does not — the surface adapter drops them).
+        for acc_name, acc in (c.get("accessors") or {}).items():
+            methods[acc_name] = {
+                "params": [{"name": "self", "kind": "self"}],
+                "returns": acc.get("returns", "any"),
+            }
+        out.setdefault(mod, {"classes": {}})
+        out[mod]["classes"][cls] = {"methods": dict(sorted(methods.items()))}
+    return out
+
+
+# ---------------------------------------------------------------------------
 # Rust type translation (rustdoc-json types model)
 # ---------------------------------------------------------------------------
 
@@ -400,6 +483,14 @@ def collect(rust_doc: dict, aliases: dict) -> tuple[dict, list]:
     failures: list = []
     out_modules: dict = {}
 
+    # Generated REST layer: names handled entirely from the sidecar (below), so
+    # the rustdoc struct walk must SKIP them (their base-delegation methods and
+    # the port-internal tree glue would otherwise leak in under a fallback path).
+    sidecar = load_rest_sidecar()
+    generated_struct_names: set[str] = set(sidecar.get("resources", {}).keys())
+    generated_struct_names |= set(sidecar.get("containers", {}).keys())
+    generated_struct_names |= set(sidecar.get("suppress_structs", []))
+
     # Build a lookup: id → item
     def get(id_):
         return index.get(str(id_)) or index.get(id_)
@@ -417,6 +508,17 @@ def collect(rust_doc: dict, aliases: dict) -> tuple[dict, list]:
             continue
         struct_name = item.get("name")
         if not struct_name:
+            continue
+        # Generated REST structs/containers are emitted from the sidecar below.
+        if struct_name in generated_struct_names:
+            continue
+        # Port-internal generated-layer base resources
+        # (rest::generated_bases::{BaseResource,ReadResource,CrudResource,
+        # FabricResource}) compose the generated resources; the `_base` surface
+        # is represented by the legacy rest::CrudResource. Skip the
+        # generated_bases copies so they don't collide by struct name.
+        _pentry = paths.get(str(iid)) or paths.get(iid)
+        if _pentry and "generated_bases" in (_pentry.get("path") or []):
             continue
         impls = kind_inner.get("impls", [])
 
@@ -647,6 +749,16 @@ def collect(rust_doc: dict, aliases: dict) -> tuple[dict, list]:
     # treat the two as functionally equivalent.
     py_ref = _load_python_reference()
     _project_variadic_kwargs(out_modules, py_ref)
+
+    # Merge the generated REST layer (sidecar-unfolded — L10). These modules
+    # (<ns>_resources_generated + _client_tree_generated) come entirely from the
+    # generator sidecar, not rustdoc, so the exploded named params + kinds line
+    # up with the oracle. Merge after everything else so a stray fallback-mapped
+    # generated struct can't shadow them.
+    for mod, entry in build_generated_signatures(sidecar).items():
+        out_modules.setdefault(mod, {"classes": {}})
+        out_modules[mod].setdefault("classes", {})
+        out_modules[mod]["classes"].update(entry["classes"])
 
     sorted_modules = {}
     for k in sorted(out_modules):

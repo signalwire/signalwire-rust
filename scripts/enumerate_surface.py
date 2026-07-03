@@ -321,6 +321,13 @@ SKIP_PATH_RE = re.compile(
     r"(?:^|/)(?:target|tests|examples|build|.cargo|cli|bin)(?:/|$)"
 )
 
+# Port-internal implementation files whose public structs are NOT part of the
+# cross-port surface: generated_bases.rs holds the hand base resources
+# (BaseResource/ReadResource/CrudResource/FabricResource) that the generated
+# resource layer composes — the `_base` surface is represented by the legacy
+# rest::CrudResource (CLASS_MODULE_MAP) so these must not double-count / collide.
+SKIP_FILE_BASENAMES = {"generated_bases.rs"}
+
 # Recognize public-item declarations.
 RE_PUB_FN = re.compile(r"^\s*pub(?:\s*\([^)]*\))?\s+(?:async\s+)?fn\s+(\w+)\s*[<\(]")
 # Trait-body method signature: inside a `pub trait X { ... }` block, methods are
@@ -351,6 +358,38 @@ RE_IMPL_TRAIT_FOR = re.compile(
 # `pub use <path>::Name;` and `pub use <path>::{A, B};` and `pub use <path>::Name as Other;`
 RE_PUB_USE_ITEM = re.compile(r"^\s*pub\s+use\s+([\w:]+)::([\w?]+)(?:\s+as\s+(\w+))?\s*;")
 RE_PUB_USE_GROUP = re.compile(r"^\s*pub\s+use\s+([\w:]+)::\{([^}]+)\}\s*;")
+
+
+# ---------------------------------------------------------------------------
+# Generated REST layer sidecar (item B). The generator writes
+# src/rest/namespaces/generated/rest_signatures.json carrying, per generated
+# struct, its oracle module + the surface drop-set (base-delegated + base_path
+# methods the runtime keeps but the oracle does not record on the class). The
+# surface enumerator routes each generated struct/container onto its oracle
+# module and subtracts the drop-set so the projection lands 1:1 on the oracle.
+# GeneratedResourceTree is port-internal glue → suppressed.
+# ---------------------------------------------------------------------------
+
+_REST_SIDECAR_PATH = REPO_ROOT / "src" / "rest" / "namespaces" / "generated" / "rest_signatures.json"
+
+
+def load_rest_sidecar() -> dict:
+    try:
+        return json.loads(_REST_SIDECAR_PATH.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        return {"resources": {}, "containers": {}, "suppress_structs": []}
+
+
+def _sidecar_class_index(sidecar: dict) -> tuple[dict, set]:
+    """Return ({class_name: (module, drop_set)}, {suppressed_class_names})."""
+    idx: dict[str, tuple[str, set]] = {}
+    for _n, r in sidecar.get("resources", {}).items():
+        idx[r["class"]] = (r["module"], set(r.get("surface_drop", [])))
+    for _n, c in sidecar.get("containers", {}).items():
+        # Containers keep only __init__; every accessor method is property-like
+        # and NOT recorded by the oracle → treat every non-__init__ as dropped.
+        idx[c["class"]] = (c["module"], {"*accessors*"})
+    return idx, set(sidecar.get("suppress_structs", []))
 
 
 def _git_sha() -> str:
@@ -386,6 +425,8 @@ def _walk_source_files() -> list[Path]:
     for p in SRC_DIR.rglob("*.rs"):
         rel = p.relative_to(REPO_ROOT)
         if SKIP_PATH_RE.search("/" + str(rel)):
+            continue
+        if p.name in SKIP_FILE_BASENAMES:
             continue
         files.append(p)
     return sorted(files)
@@ -530,6 +571,8 @@ def build_surface() -> dict:
     modules: dict[str, dict] = defaultdict(lambda: {"classes": defaultdict(list), "functions": []})
     sha = _git_sha()
     files = _walk_source_files()
+    sidecar = load_rest_sidecar()
+    sidecar_classes, suppressed_classes = _sidecar_class_index(sidecar)
 
     # First pass: collect class declarations + their files (module mapping)
     class_defining_files: dict[str, Path] = {}
@@ -560,7 +603,28 @@ def build_surface() -> dict:
         free_fns, methods, classes = _parse_file(path)
         rel = path.relative_to(REPO_ROOT)
         for cls, meth_set in methods.items():
+            # Generated REST layer: route via the sidecar (oracle module +
+            # drop-set), suppress the port-internal tree glue.
+            if cls in suppressed_classes:
+                continue
+            if cls in sidecar_classes:
+                module_path, drop = sidecar_classes[cls]
+                if "*accessors*" in drop:
+                    meth_set = {m for m in meth_set if m == "__init__"}
+                else:
+                    meth_set = {m for m in meth_set if m not in drop}
+                existing = set(modules[module_path]["classes"].get(cls, []))
+                existing.update(meth_set)
+                modules[module_path]["classes"][cls] = sorted(existing)
+                continue
             module_path = _module_path_for_class(cls, class_defining_files.get(cls, rel))
+            # Port-internal builder request-structs (XRequest) in the generated
+            # dir fall through to a signalwire.rest.namespaces.generated.* path —
+            # these are the options-builders behind the exploded params, NOT part
+            # of the oracle surface (the real resources are re-routed above via
+            # the sidecar). Drop everything landing under that internal path.
+            if module_path.startswith("signalwire.rest.namespaces.generated."):
+                continue
             translated = _translate_class(cls)
             # Apply per-class method renames. Keys map Rust → Python;
             # value `None` means "drop this method from the surface

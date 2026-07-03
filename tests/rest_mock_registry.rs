@@ -6,7 +6,10 @@
 #[path = "common/mod.rs"]
 mod common;
 
+use std::collections::HashMap;
+
 use serde_json::{Value, json};
+use signalwire::rest::namespaces::generated::relay_rest_resources_generated as relay_gen;
 
 const REG_BASE: &str = "/api/relay/rest/registry/beta";
 
@@ -18,7 +21,11 @@ const REG_BASE: &str = "/api/relay/rest/registry/beta";
 fn test_registry_brands_list_returns_dict() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let body = c.registry().brands().list(&json!({})).expect("brands.list");
+    let body = c
+        .registry()
+        .brands()
+        .list(&HashMap::new())
+        .expect("brands.list");
     assert!(body.is_object());
 
     let entry = common::mocktest::journal_last();
@@ -31,7 +38,11 @@ fn test_registry_brands_list_returns_dict() {
 fn test_registry_brands_get_uses_id_in_path() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let body = c.registry().brands().get("brand-77").expect("brands.get");
+    let body = c
+        .registry()
+        .brands()
+        .get("brand-77", &HashMap::new())
+        .expect("brands.get");
     assert!(body.is_object());
 
     let entry = common::mocktest::journal_last();
@@ -46,7 +57,7 @@ fn test_registry_brands_list_campaigns_uses_brand_subpath() {
     let body = c
         .registry()
         .brands()
-        .list_campaigns("brand-1", &json!({}))
+        .list_campaigns("brand-1", &HashMap::new())
         .expect("list_campaigns");
     assert!(body.is_object());
 
@@ -92,7 +103,7 @@ fn test_registry_campaigns_get_uses_id_in_path() {
     let body = c
         .registry()
         .campaigns()
-        .get("camp-1")
+        .get("camp-1", &HashMap::new())
         .expect("campaigns.get");
     assert!(body.is_object());
 
@@ -108,7 +119,10 @@ fn test_registry_campaigns_update_uses_put() {
     let body = c
         .registry()
         .campaigns()
-        .update("camp-2", &json!({"description": "Updated"}))
+        .update(
+            "camp-2",
+            relay_gen::RegistryCampaignsUpdateRequest::new().extra("description", json!("Updated")),
+        )
         .expect("campaigns.update");
     assert!(body.is_object());
 
@@ -129,7 +143,7 @@ fn test_registry_campaigns_list_numbers_uses_subpath() {
     let body = c
         .registry()
         .campaigns()
-        .list_numbers("camp-3", &json!({}))
+        .list_numbers("camp-3", &HashMap::new())
         .expect("list_numbers");
     assert!(body.is_object());
 
@@ -146,7 +160,11 @@ fn test_registry_campaigns_create_order_posts_to_subpath() {
     let body = c
         .registry()
         .campaigns()
-        .create_order("camp-4", &json!({"numbers": ["pn-1", "pn-2"]}))
+        .create_order(
+            "camp-4",
+            relay_gen::RegistryCampaignsCreateOrderRequest::new()
+                .extra("numbers", json!(["pn-1", "pn-2"])),
+        )
         .expect("create_order");
     assert!(body.is_object());
 
@@ -170,7 +188,11 @@ fn test_registry_campaigns_create_order_posts_to_subpath() {
 fn test_registry_orders_get_uses_id_in_path() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let body = c.registry().orders().get("order-1").expect("orders.get");
+    let body = c
+        .registry()
+        .orders()
+        .get("order-1", &HashMap::new())
+        .expect("orders.get");
     assert!(body.is_object());
 
     let entry = common::mocktest::journal_last();

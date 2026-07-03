@@ -10,7 +10,15 @@
 #[path = "common/mod.rs"]
 mod common;
 
+use std::collections::HashMap;
+
 use serde_json::{Value, json};
+
+use signalwire::rest::namespaces::generated::calling_resources_generated as calling_gen;
+use signalwire::rest::namespaces::generated::chat_resources_generated as chat_gen;
+use signalwire::rest::namespaces::generated::datasphere_resources_generated as datasphere_gen;
+use signalwire::rest::namespaces::generated::project_resources_generated as project_gen;
+use signalwire::rest::namespaces::generated::pubsub_resources_generated as pubsub_gen;
 
 // ===========================================================================
 // datasphere — c.datasphere().documents()
@@ -23,7 +31,7 @@ fn test_datasphere_list_success() {
     let body = c
         .datasphere()
         .documents()
-        .list(&json!({}))
+        .list(&HashMap::new())
         .expect("datasphere.list");
     assert!(body.is_object());
     let e = common::mocktest::journal_last();
@@ -43,7 +51,7 @@ fn test_datasphere_list_error() {
     let err = c
         .datasphere()
         .documents()
-        .list(&json!({}))
+        .list(&HashMap::new())
         .expect_err("should fail");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -210,7 +218,9 @@ fn test_datasphere_search_success() {
     let body = c
         .datasphere()
         .documents()
-        .search(&json!({"query": "hello"}))
+        .search(datasphere_gen::DatasphereDocumentsSearchRequest::new(
+            "hello",
+        ))
         .expect("datasphere.search");
     assert!(body.is_object());
     let e = common::mocktest::journal_last();
@@ -230,7 +240,7 @@ fn test_datasphere_search_error() {
     let err = c
         .datasphere()
         .documents()
-        .search(&json!({}))
+        .search(datasphere_gen::DatasphereDocumentsSearchRequest::new(""))
         .expect_err("should fail");
     assert_eq!(err.status_code(), 422);
     let e = common::mocktest::journal_last();
@@ -248,7 +258,7 @@ fn test_datasphere_list_chunks_success() {
     let body = c
         .datasphere()
         .documents()
-        .list_chunks("doc-1", &json!({}))
+        .list_chunks("doc-1", &HashMap::new())
         .expect("datasphere.list_chunks");
     assert!(body.is_object());
     let e = common::mocktest::journal_last();
@@ -272,7 +282,7 @@ fn test_datasphere_list_chunks_error() {
     let err = c
         .datasphere()
         .documents()
-        .list_chunks("missing", &json!({}))
+        .list_chunks("missing", &HashMap::new())
         .expect_err("should fail");
     assert_eq!(err.status_code(), 404);
     let e = common::mocktest::journal_last();
@@ -290,7 +300,7 @@ fn test_datasphere_get_chunk_success() {
     let body = c
         .datasphere()
         .documents()
-        .get_chunk("doc-1", "chunk-1")
+        .get_chunk("doc-1", "chunk-1", &HashMap::new())
         .expect("datasphere.get_chunk");
     assert!(body.is_object());
     let e = common::mocktest::journal_last();
@@ -310,7 +320,7 @@ fn test_datasphere_get_chunk_error() {
     let err = c
         .datasphere()
         .documents()
-        .get_chunk("doc-1", "missing")
+        .get_chunk("doc-1", "missing", &HashMap::new())
         .expect_err("should fail");
     assert_eq!(err.status_code(), 404);
     let e = common::mocktest::journal_last();
@@ -373,7 +383,10 @@ fn test_project_create_token_success() {
     let body = c
         .project()
         .tokens()
-        .create(&json!({"name": "tok"}))
+        .create(project_gen::ProjectTokensCreateRequest::new(
+            "tok",
+            json!({}),
+        ))
         .expect("project.create_token");
     assert!(body.is_object());
     let e = common::mocktest::journal_last();
@@ -390,7 +403,7 @@ fn test_project_create_token_error() {
     let err = c
         .project()
         .tokens()
-        .create(&json!({}))
+        .create(project_gen::ProjectTokensCreateRequest::new("", json!({})))
         .expect_err("should fail");
     assert_eq!(err.status_code(), 422);
     let e = common::mocktest::journal_last();
@@ -405,7 +418,10 @@ fn test_project_update_token_success() {
     let body = c
         .project()
         .tokens()
-        .update("tok-1", &json!({"name": "renamed"}))
+        .update(
+            "tok-1",
+            project_gen::ProjectTokensUpdateRequest::new().name("renamed"),
+        )
         .expect("project.update_token");
     assert!(body.is_object());
     let e = common::mocktest::journal_last();
@@ -422,7 +438,10 @@ fn test_project_update_token_error() {
     let err = c
         .project()
         .tokens()
-        .update("missing", &json!({"name": "x"}))
+        .update(
+            "missing",
+            project_gen::ProjectTokensUpdateRequest::new().name("x"),
+        )
         .expect_err("should fail");
     assert_eq!(err.status_code(), 404);
     let e = common::mocktest::journal_last();
@@ -471,7 +490,10 @@ fn test_calling_dial_success() {
     let c = common::mocktest::client();
     let body = c
         .calling()
-        .dial(json!({"url": "https://example.com/swml", "to": "+15551234567"}))
+        .dial(
+            calling_gen::CallingDialRequest::new("", "+15551234567")
+                .url("https://example.com/swml"),
+        )
         .expect("calling.dial");
     assert!(body.is_object());
     let e = common::mocktest::journal_last();
@@ -492,7 +514,7 @@ fn test_calling_dial_error() {
     common::mocktest::scenario_set("calling.call-commands", 422, json!({"error": "bad"}));
     let err = c
         .calling()
-        .dial(json!({"url": "https://example.com/swml"}))
+        .dial(calling_gen::CallingDialRequest::new("", "").url("https://example.com/swml"))
         .expect_err("should fail");
     assert_eq!(err.status_code(), 422);
     let e = common::mocktest::journal_last();
@@ -510,7 +532,10 @@ fn test_chat_create_token_success() {
     let c = common::mocktest::client();
     let body = c
         .chat()
-        .create_token(&json!({"channels": {"room": {"read": true}}}))
+        .create_token(chat_gen::ChatCreateTokenRequest::new(
+            0,
+            json!({"room": {"read": true}}),
+        ))
         .expect("chat.create_token");
     assert!(body.is_object());
     let e = common::mocktest::journal_last();
@@ -524,7 +549,10 @@ fn test_chat_create_token_error() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
     common::mocktest::scenario_set("chat.create_chat_token", 422, json!({"error": "bad"}));
-    let err = c.chat().create_token(&json!({})).expect_err("should fail");
+    let err = c
+        .chat()
+        .create_token(chat_gen::ChatCreateTokenRequest::new(0, json!({})))
+        .expect_err("should fail");
     assert_eq!(err.status_code(), 422);
     let e = common::mocktest::journal_last();
     assert_eq!(e.response_status, Some(422));
@@ -541,7 +569,10 @@ fn test_pubsub_create_token_success() {
     let c = common::mocktest::client();
     let body = c
         .pubsub()
-        .create_token(&json!({"channels": {"topic": {"read": true}}}))
+        .create_token(pubsub_gen::PubSubCreateTokenRequest::new(
+            0,
+            json!({"topic": {"read": true}}),
+        ))
         .expect("pubsub.create_token");
     assert!(body.is_object());
     let e = common::mocktest::journal_last();
@@ -557,7 +588,7 @@ fn test_pubsub_create_token_error() {
     common::mocktest::scenario_set("pubsub.create_token", 422, json!({"error": "bad"}));
     let err = c
         .pubsub()
-        .create_token(&json!({}))
+        .create_token(pubsub_gen::PubSubCreateTokenRequest::new(0, json!({})))
         .expect_err("should fail");
     assert_eq!(err.status_code(), 422);
     let e = common::mocktest::journal_last();
@@ -573,7 +604,11 @@ fn test_pubsub_create_token_error() {
 fn test_logs_messages_list_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let body = c.logs().messages().list(&json!({})).expect("messages.list");
+    let body = c
+        .logs()
+        .messages()
+        .list(&HashMap::new())
+        .expect("messages.list");
     assert!(body.is_object());
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "GET");
@@ -592,7 +627,7 @@ fn test_logs_messages_list_error() {
     let err = c
         .logs()
         .messages()
-        .list(&json!({}))
+        .list(&HashMap::new())
         .expect_err("should fail");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -635,7 +670,7 @@ fn test_logs_messages_get_error() {
 fn test_logs_voice_list_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let body = c.logs().voice().list(&json!({})).expect("voice.list");
+    let body = c.logs().voice().list(&HashMap::new()).expect("voice.list");
     assert!(body.is_object());
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "GET");
@@ -648,7 +683,11 @@ fn test_logs_voice_list_error() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
     common::mocktest::scenario_set("voice.list_voice_logs", 500, json!({"error": "boom"}));
-    let err = c.logs().voice().list(&json!({})).expect_err("should fail");
+    let err = c
+        .logs()
+        .voice()
+        .list(&HashMap::new())
+        .expect_err("should fail");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
     assert_eq!(e.response_status, Some(500));
@@ -686,7 +725,7 @@ fn test_logs_voice_list_events_success() {
     let body = c
         .logs()
         .voice()
-        .list_events("vl-1", &json!({}))
+        .list_events("vl-1", &HashMap::new())
         .expect("voice.list_events");
     assert!(body.is_object());
     let e = common::mocktest::journal_last();
@@ -706,7 +745,7 @@ fn test_logs_voice_list_events_error() {
     let err = c
         .logs()
         .voice()
-        .list_events("missing", &json!({}))
+        .list_events("missing", &HashMap::new())
         .expect_err("should fail");
     assert_eq!(err.status_code(), 404);
     let e = common::mocktest::journal_last();
@@ -725,7 +764,7 @@ fn test_logs_voice_list_events_error() {
 fn test_logs_fax_list_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let body = c.logs().fax().list(&json!({})).expect("fax.list");
+    let body = c.logs().fax().list(&HashMap::new()).expect("fax.list");
     assert!(body.is_object());
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "GET");
@@ -738,7 +777,11 @@ fn test_logs_fax_list_error() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
     common::mocktest::scenario_set("fax.list_fax_logs", 500, json!({"error": "boom"}));
-    let err = c.logs().fax().list(&json!({})).expect_err("should fail");
+    let err = c
+        .logs()
+        .fax()
+        .list(&HashMap::new())
+        .expect_err("should fail");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
     assert_eq!(e.response_status, Some(500));
@@ -780,7 +823,7 @@ fn test_logs_conferences_list_success() {
     let body = c
         .logs()
         .conferences()
-        .list(&json!({}))
+        .list(&HashMap::new())
         .expect("conferences.list");
     assert!(body.is_object());
     let e = common::mocktest::journal_last();
@@ -797,7 +840,7 @@ fn test_logs_conferences_list_error() {
     let err = c
         .logs()
         .conferences()
-        .list(&json!({}))
+        .list(&HashMap::new())
         .expect_err("should fail");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();

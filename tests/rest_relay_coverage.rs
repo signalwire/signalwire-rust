@@ -15,6 +15,8 @@ use std::collections::HashMap;
 
 use serde_json::{Value, json};
 
+use signalwire::rest::namespaces::generated::relay_rest_resources_generated as relay_gen;
+
 // ===========================================================================
 // Phone Numbers — list / search / purchase / get / update (PUT) / release
 // ===========================================================================
@@ -62,9 +64,11 @@ fn test_phone_numbers_list_error() {
 fn test_phone_numbers_search_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
+    let mut params = HashMap::new();
+    params.insert("area_code".to_string(), "512".to_string());
     let body = c
         .phone_numbers()
-        .search(&json!({"area_code": "512"}))
+        .search(&params)
         .expect("phone_numbers.search");
     assert!(body.is_object());
     let e = common::mocktest::journal_last();
@@ -89,10 +93,9 @@ fn test_phone_numbers_search_error() {
         400,
         json!({"error": "bad area code"}),
     );
-    let err = c
-        .phone_numbers()
-        .search(&json!({"area_code": "999"}))
-        .expect_err("should fail");
+    let mut params = HashMap::new();
+    params.insert("area_code".to_string(), "999".to_string());
+    let err = c.phone_numbers().search(&params).expect_err("should fail");
     assert_eq!(err.status_code(), 400);
     let e = common::mocktest::journal_last();
     assert_eq!(e.response_status, Some(400));
@@ -306,7 +309,10 @@ fn test_addresses_create_success() {
     let c = common::mocktest::client();
     let body = c
         .addresses()
-        .create(&json!({"address_type": "commercial", "first_name": "Ada"}))
+        .create(
+            relay_gen::AddressesCreateRequest::new("", "", "Ada", "", "", "", "", "", "")
+                .address_type("commercial"),
+        )
         .expect("addresses.create");
     assert!(body.is_object());
     let e = common::mocktest::journal_last();
@@ -331,7 +337,10 @@ fn test_addresses_create_error() {
     );
     let err = c
         .addresses()
-        .create(&json!({"address_type": "x"}))
+        .create(
+            relay_gen::AddressesCreateRequest::new("", "", "", "", "", "", "", "", "")
+                .address_type("x"),
+        )
         .expect_err("should fail");
     assert_eq!(err.status_code(), 422);
     let e = common::mocktest::journal_last();
@@ -346,7 +355,10 @@ fn test_addresses_create_error() {
 fn test_addresses_get_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let body = c.addresses().get("addr-1").expect("addresses.get");
+    let body = c
+        .addresses()
+        .get("addr-1", &HashMap::new())
+        .expect("addresses.get");
     assert!(body.is_object());
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "GET");
@@ -359,7 +371,10 @@ fn test_addresses_get_error() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
     common::mocktest::scenario_set("relay-rest.get_address", 404, json!({"error": "nf"}));
-    let err = c.addresses().get("missing").expect_err("should fail");
+    let err = c
+        .addresses()
+        .get("missing", &HashMap::new())
+        .expect_err("should fail");
     assert_eq!(err.status_code(), 404);
     let e = common::mocktest::journal_last();
     assert_eq!(e.response_status, Some(404));
@@ -658,7 +673,10 @@ fn test_verified_callers_submit_verification_uses_put_success() {
     let c = common::mocktest::client();
     let body = c
         .verified_callers()
-        .submit_verification("vc-1", &json!({"code": "1234"}))
+        .submit_verification(
+            "vc-1",
+            relay_gen::VerifiedCallersSubmitVerificationRequest::new("1234"),
+        )
         .expect("submit_verification");
     assert!(body.is_object());
     let e = common::mocktest::journal_last();
@@ -672,7 +690,10 @@ fn test_verified_callers_submit_verification_uses_put_success() {
         Some("relay-rest.validate_verification_code")
     );
     let sent = e.body_object().expect("body");
-    assert_eq!(sent.get("code").and_then(Value::as_str), Some("1234"));
+    assert_eq!(
+        sent.get("verification_code").and_then(Value::as_str),
+        Some("1234")
+    );
 }
 
 #[test]
@@ -686,7 +707,10 @@ fn test_verified_callers_submit_verification_error() {
     );
     let err = c
         .verified_callers()
-        .submit_verification("vc-1", &json!({"code": "0000"}))
+        .submit_verification(
+            "vc-1",
+            relay_gen::VerifiedCallersSubmitVerificationRequest::new("0000"),
+        )
         .expect_err("should fail");
     assert_eq!(err.status_code(), 422);
     let e = common::mocktest::journal_last();
@@ -706,7 +730,7 @@ fn test_verified_callers_submit_verification_error() {
 fn test_queues_list_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let body = c.queues().list(&json!({})).expect("queues.list");
+    let body = c.queues().list(&HashMap::new()).expect("queues.list");
     assert!(body.is_object());
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "GET");
@@ -719,7 +743,7 @@ fn test_queues_list_error() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
     common::mocktest::scenario_set("relay-rest.list_queues", 500, json!({"error": "boom"}));
-    let err = c.queues().list(&json!({})).expect_err("should fail");
+    let err = c.queues().list(&HashMap::new()).expect_err("should fail");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
     assert_eq!(e.response_status, Some(500));
@@ -841,7 +865,7 @@ fn test_queues_list_members_success() {
     let c = common::mocktest::client();
     let body = c
         .queues()
-        .list_members("q-1", &json!({}))
+        .list_members("q-1", &HashMap::new())
         .expect("queues.list_members");
     assert!(body.is_object());
     let e = common::mocktest::journal_last();
@@ -860,7 +884,7 @@ fn test_queues_list_members_error() {
     common::mocktest::scenario_set("relay-rest.list_queue_members", 404, json!({"error": "nf"}));
     let err = c
         .queues()
-        .list_members("missing", &json!({}))
+        .list_members("missing", &HashMap::new())
         .expect_err("should fail");
     assert_eq!(err.status_code(), 404);
     let e = common::mocktest::journal_last();
@@ -877,7 +901,7 @@ fn test_queues_next_member_success() {
     let c = common::mocktest::client();
     let body = c
         .queues()
-        .get_next_member("q-1")
+        .get_next_member("q-1", &HashMap::new())
         .expect("queues.get_next_member");
     assert!(body.is_object());
     let e = common::mocktest::journal_last();
@@ -900,7 +924,7 @@ fn test_queues_next_member_error() {
     );
     let err = c
         .queues()
-        .get_next_member("missing")
+        .get_next_member("missing", &HashMap::new())
         .expect_err("should fail");
     assert_eq!(err.status_code(), 404);
     let e = common::mocktest::journal_last();
@@ -917,7 +941,7 @@ fn test_queues_get_member_success() {
     let c = common::mocktest::client();
     let body = c
         .queues()
-        .get_member("q-1", "mem-7")
+        .get_member("q-1", "mem-7", &HashMap::new())
         .expect("queues.get_member");
     assert!(body.is_object());
     let e = common::mocktest::journal_last();
@@ -940,7 +964,7 @@ fn test_queues_get_member_error() {
     );
     let err = c
         .queues()
-        .get_member("q-1", "missing")
+        .get_member("q-1", "missing", &HashMap::new())
         .expect_err("should fail");
     assert_eq!(err.status_code(), 404);
     let e = common::mocktest::journal_last();
@@ -995,7 +1019,10 @@ fn test_recordings_list_error() {
 fn test_recordings_get_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let body = c.recordings().get("rec-1").expect("recordings.get");
+    let body = c
+        .recordings()
+        .get("rec-1", &HashMap::new())
+        .expect("recordings.get");
     assert!(body.is_object());
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "GET");
@@ -1008,7 +1035,10 @@ fn test_recordings_get_error() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
     common::mocktest::scenario_set("relay-rest.get_recording", 404, json!({"error": "nf"}));
-    let err = c.recordings().get("missing").expect_err("should fail");
+    let err = c
+        .recordings()
+        .get("missing", &HashMap::new())
+        .expect_err("should fail");
     assert_eq!(err.status_code(), 404);
     let e = common::mocktest::journal_last();
     assert_eq!(e.response_status, Some(404));
@@ -1056,7 +1086,7 @@ fn test_number_groups_list_success() {
     let c = common::mocktest::client();
     let body = c
         .number_groups()
-        .list(&json!({}))
+        .list(&HashMap::new())
         .expect("number_groups.list");
     assert!(body.is_object());
     let e = common::mocktest::journal_last();
@@ -1077,7 +1107,10 @@ fn test_number_groups_list_error() {
         500,
         json!({"error": "boom"}),
     );
-    let err = c.number_groups().list(&json!({})).expect_err("should fail");
+    let err = c
+        .number_groups()
+        .list(&HashMap::new())
+        .expect_err("should fail");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
     assert_eq!(e.response_status, Some(500));
@@ -1247,7 +1280,7 @@ fn test_number_groups_list_memberships_success() {
     let c = common::mocktest::client();
     let body = c
         .number_groups()
-        .list_memberships("ng-1", &json!({}))
+        .list_memberships("ng-1", &HashMap::new())
         .expect("list_memberships");
     assert!(body.is_object());
     let e = common::mocktest::journal_last();
@@ -1273,7 +1306,7 @@ fn test_number_groups_list_memberships_error() {
     );
     let err = c
         .number_groups()
-        .list_memberships("missing", &json!({}))
+        .list_memberships("missing", &HashMap::new())
         .expect_err("should fail");
     assert_eq!(err.status_code(), 404);
     let e = common::mocktest::journal_last();
@@ -1290,7 +1323,10 @@ fn test_number_groups_add_membership_success() {
     let c = common::mocktest::client();
     let body = c
         .number_groups()
-        .add_membership("ng-1", &json!({"phone_number_id": "pn-1"}))
+        .add_membership(
+            "ng-1",
+            relay_gen::NumberGroupsAddMembershipRequest::new("pn-1"),
+        )
         .expect("add_membership");
     assert!(body.is_object());
     let e = common::mocktest::journal_last();
@@ -1321,7 +1357,7 @@ fn test_number_groups_add_membership_error() {
     );
     let err = c
         .number_groups()
-        .add_membership("ng-1", &json!({}))
+        .add_membership("ng-1", relay_gen::NumberGroupsAddMembershipRequest::new(""))
         .expect_err("should fail");
     assert_eq!(err.status_code(), 422);
     let e = common::mocktest::journal_last();
@@ -1338,7 +1374,7 @@ fn test_number_groups_get_membership_success() {
     let c = common::mocktest::client();
     let body = c
         .number_groups()
-        .get_membership("mem-1")
+        .get_membership("mem-1", &HashMap::new())
         .expect("get_membership");
     assert!(body.is_object());
     let e = common::mocktest::journal_last();
@@ -1361,7 +1397,7 @@ fn test_number_groups_get_membership_error() {
     );
     let err = c
         .number_groups()
-        .get_membership("missing")
+        .get_membership("missing", &HashMap::new())
         .expect_err("should fail");
     assert_eq!(err.status_code(), 404);
     let e = common::mocktest::journal_last();
@@ -1456,7 +1492,10 @@ fn test_short_codes_list_error() {
 fn test_short_codes_get_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let body = c.short_codes().get("sc-1").expect("short_codes.get");
+    let body = c
+        .short_codes()
+        .get("sc-1", &HashMap::new())
+        .expect("short_codes.get");
     assert!(body.is_object());
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "GET");
@@ -1476,7 +1515,10 @@ fn test_short_codes_get_error() {
         404,
         json!({"error": "nf"}),
     );
-    let err = c.short_codes().get("missing").expect_err("should fail");
+    let err = c
+        .short_codes()
+        .get("missing", &HashMap::new())
+        .expect_err("should fail");
     assert_eq!(err.status_code(), 404);
     let e = common::mocktest::journal_last();
     assert_eq!(e.response_status, Some(404));
@@ -1492,7 +1534,10 @@ fn test_short_codes_update_uses_put_success() {
     let c = common::mocktest::client();
     let body = c
         .short_codes()
-        .update("sc-1", &json!({"name": "Marketing"}))
+        .update(
+            "sc-1",
+            relay_gen::ShortCodesUpdateRequest::new("Marketing", ""),
+        )
         .expect("short_codes.update");
     assert!(body.is_object());
     let e = common::mocktest::journal_last();
@@ -1513,7 +1558,7 @@ fn test_short_codes_update_error() {
     common::mocktest::scenario_set("relay-rest.update_short_code", 404, json!({"error": "nf"}));
     let err = c
         .short_codes()
-        .update("missing", &json!({"name": "x"}))
+        .update("missing", relay_gen::ShortCodesUpdateRequest::new("x", ""))
         .expect_err("should fail");
     assert_eq!(err.status_code(), 404);
     let e = common::mocktest::journal_last();
@@ -1534,7 +1579,10 @@ fn test_imported_numbers_create_success() {
     let c = common::mocktest::client();
     let body = c
         .imported_numbers()
-        .create(&json!({"number": "+15551234567", "sip_username": "alice"}))
+        .create(
+            relay_gen::ImportedNumbersCreateRequest::new("+15551234567", "")
+                .extra("sip_username", json!("alice")),
+        )
         .expect("imported_numbers.create");
     assert!(body.is_object());
     let e = common::mocktest::journal_last();
@@ -1562,7 +1610,7 @@ fn test_imported_numbers_create_error() {
     );
     let err = c
         .imported_numbers()
-        .create(&json!({"number": "bad"}))
+        .create(relay_gen::ImportedNumbersCreateRequest::new("bad", ""))
         .expect_err("should fail");
     assert_eq!(err.status_code(), 422);
     let e = common::mocktest::journal_last();
@@ -1583,7 +1631,7 @@ fn test_mfa_sms_success() {
     let c = common::mocktest::client();
     let body = c
         .mfa()
-        .sms(&json!({"to": "+15551234567", "from": "+15559876543"}))
+        .sms(relay_gen::MfaSmsRequest::new("+15551234567").from("+15559876543"))
         .expect("mfa.sms");
     assert!(body.is_object());
     let e = common::mocktest::journal_last();
@@ -1606,7 +1654,10 @@ fn test_mfa_sms_error() {
         422,
         json!({"error": "invalid"}),
     );
-    let err = c.mfa().sms(&json!({"to": "bad"})).expect_err("should fail");
+    let err = c
+        .mfa()
+        .sms(relay_gen::MfaSmsRequest::new("bad"))
+        .expect_err("should fail");
     assert_eq!(err.status_code(), 422);
     let e = common::mocktest::journal_last();
     assert_eq!(e.response_status, Some(422));
@@ -1622,7 +1673,7 @@ fn test_mfa_call_success() {
     let c = common::mocktest::client();
     let body = c
         .mfa()
-        .call(&json!({"to": "+15551234567", "from": "+15559876543"}))
+        .call(relay_gen::MfaCallRequest::new("+15551234567").from("+15559876543"))
         .expect("mfa.call");
     assert!(body.is_object());
     let e = common::mocktest::journal_last();
@@ -1647,7 +1698,7 @@ fn test_mfa_call_error() {
     );
     let err = c
         .mfa()
-        .call(&json!({"to": "bad"}))
+        .call(relay_gen::MfaCallRequest::new("bad"))
         .expect_err("should fail");
     assert_eq!(err.status_code(), 422);
     let e = common::mocktest::journal_last();
@@ -1664,7 +1715,7 @@ fn test_mfa_verify_success() {
     let c = common::mocktest::client();
     let body = c
         .mfa()
-        .verify("req-1", &json!({"token": "123456"}))
+        .verify("req-1", relay_gen::MfaVerifyRequest::new("123456"))
         .expect("mfa.verify");
     assert!(body.is_object());
     let e = common::mocktest::journal_last();
@@ -1685,7 +1736,7 @@ fn test_mfa_verify_error() {
     common::mocktest::scenario_set("relay-rest.verify_mfa_token", 404, json!({"error": "nf"}));
     let err = c
         .mfa()
-        .verify("missing", &json!({"token": "000000"}))
+        .verify("missing", relay_gen::MfaVerifyRequest::new("000000"))
         .expect_err("should fail");
     assert_eq!(err.status_code(), 404);
     let e = common::mocktest::journal_last();
@@ -1704,7 +1755,10 @@ fn test_mfa_verify_error() {
 fn test_sip_profile_get_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let body = c.sip_profile().get().expect("sip_profile.get");
+    let body = c
+        .sip_profile()
+        .get(&HashMap::new())
+        .expect("sip_profile.get");
     assert!(body.is_object());
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "GET");
@@ -1724,7 +1778,10 @@ fn test_sip_profile_get_error() {
         500,
         json!({"error": "boom"}),
     );
-    let err = c.sip_profile().get().expect_err("should fail");
+    let err = c
+        .sip_profile()
+        .get(&HashMap::new())
+        .expect_err("should fail");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
     assert_eq!(e.response_status, Some(500));
@@ -1740,7 +1797,9 @@ fn test_sip_profile_update_uses_put_success() {
     let c = common::mocktest::client();
     let body = c
         .sip_profile()
-        .update(&json!({"domain": "myco.sip.signalwire.com"}))
+        .update(
+            relay_gen::SipProfileUpdateRequest::new().domain_identifier("myco.sip.signalwire.com"),
+        )
         .expect("sip_profile.update");
     assert!(body.is_object());
     let e = common::mocktest::journal_last();
@@ -1752,7 +1811,7 @@ fn test_sip_profile_update_uses_put_success() {
     );
     let sent = e.body_object().expect("body");
     assert_eq!(
-        sent.get("domain").and_then(Value::as_str),
+        sent.get("domain_identifier").and_then(Value::as_str),
         Some("myco.sip.signalwire.com")
     );
 }
@@ -1764,7 +1823,7 @@ fn test_sip_profile_update_error() {
     common::mocktest::scenario_set("relay-rest.update_sip_profile", 422, json!({"error": "x"}));
     let err = c
         .sip_profile()
-        .update(&json!({"domain": "bad"}))
+        .update(relay_gen::SipProfileUpdateRequest::new().domain_identifier("bad"))
         .expect_err("should fail");
     assert_eq!(err.status_code(), 422);
     let e = common::mocktest::journal_last();
@@ -1785,7 +1844,7 @@ fn test_lookup_phone_number_success() {
     let c = common::mocktest::client();
     let body = c
         .lookup()
-        .phone_number("+15551234567")
+        .phone_number("+15551234567", &HashMap::new())
         .expect("lookup.phone_number");
     assert!(body.is_object());
     let e = common::mocktest::journal_last();
@@ -1808,7 +1867,7 @@ fn test_lookup_phone_number_error() {
     );
     let err = c
         .lookup()
-        .phone_number("+10000000000")
+        .phone_number("+10000000000", &HashMap::new())
         .expect_err("should fail");
     assert_eq!(err.status_code(), 404);
     let e = common::mocktest::journal_last();
@@ -1827,7 +1886,11 @@ fn test_lookup_phone_number_error() {
 fn test_registry_brands_list_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let body = c.registry().brands().list(&json!({})).expect("brands.list");
+    let body = c
+        .registry()
+        .brands()
+        .list(&HashMap::new())
+        .expect("brands.list");
     assert!(body.is_object());
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "GET");
@@ -1843,7 +1906,7 @@ fn test_registry_brands_list_error() {
     let err = c
         .registry()
         .brands()
-        .list(&json!({}))
+        .list(&HashMap::new())
         .expect_err("should fail");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -1892,7 +1955,11 @@ fn test_registry_brands_create_error() {
 fn test_registry_brands_get_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let body = c.registry().brands().get("brand-1").expect("brands.get");
+    let body = c
+        .registry()
+        .brands()
+        .get("brand-1", &HashMap::new())
+        .expect("brands.get");
     assert!(body.is_object());
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "GET");
@@ -1911,7 +1978,7 @@ fn test_registry_brands_get_error() {
     let err = c
         .registry()
         .brands()
-        .get("missing")
+        .get("missing", &HashMap::new())
         .expect_err("should fail");
     assert_eq!(err.status_code(), 404);
     let e = common::mocktest::journal_last();
@@ -1929,7 +1996,7 @@ fn test_registry_brands_list_campaigns_success() {
     let body = c
         .registry()
         .brands()
-        .list_campaigns("brand-1", &json!({}))
+        .list_campaigns("brand-1", &HashMap::new())
         .expect("list_campaigns");
     assert!(body.is_object());
     let e = common::mocktest::journal_last();
@@ -1952,7 +2019,7 @@ fn test_registry_brands_list_campaigns_error() {
     let err = c
         .registry()
         .brands()
-        .list_campaigns("missing", &json!({}))
+        .list_campaigns("missing", &HashMap::new())
         .expect_err("should fail");
     assert_eq!(err.status_code(), 404);
     let e = common::mocktest::journal_last();
@@ -2016,7 +2083,7 @@ fn test_registry_campaigns_get_success() {
     let body = c
         .registry()
         .campaigns()
-        .get("camp-1")
+        .get("camp-1", &HashMap::new())
         .expect("campaigns.get");
     assert!(body.is_object());
     let e = common::mocktest::journal_last();
@@ -2036,7 +2103,7 @@ fn test_registry_campaigns_get_error() {
     let err = c
         .registry()
         .campaigns()
-        .get("missing")
+        .get("missing", &HashMap::new())
         .expect_err("should fail");
     assert_eq!(err.status_code(), 404);
     let e = common::mocktest::journal_last();
@@ -2054,7 +2121,10 @@ fn test_registry_campaigns_update_uses_put_success() {
     let body = c
         .registry()
         .campaigns()
-        .update("camp-1", &json!({"description": "Updated"}))
+        .update(
+            "camp-1",
+            relay_gen::RegistryCampaignsUpdateRequest::new().extra("description", json!("Updated")),
+        )
         .expect("campaigns.update");
     assert!(body.is_object());
     let e = common::mocktest::journal_last();
@@ -2079,7 +2149,10 @@ fn test_registry_campaigns_update_error() {
     let err = c
         .registry()
         .campaigns()
-        .update("missing", &json!({"description": "x"}))
+        .update(
+            "missing",
+            relay_gen::RegistryCampaignsUpdateRequest::new().extra("description", json!("x")),
+        )
         .expect_err("should fail");
     assert_eq!(err.status_code(), 404);
     let e = common::mocktest::journal_last();
@@ -2097,7 +2170,7 @@ fn test_registry_campaigns_list_numbers_success() {
     let body = c
         .registry()
         .campaigns()
-        .list_numbers("camp-1", &json!({}))
+        .list_numbers("camp-1", &HashMap::new())
         .expect("list_numbers");
     assert!(body.is_object());
     let e = common::mocktest::journal_last();
@@ -2124,7 +2197,7 @@ fn test_registry_campaigns_list_numbers_error() {
     let err = c
         .registry()
         .campaigns()
-        .list_numbers("missing", &json!({}))
+        .list_numbers("missing", &HashMap::new())
         .expect_err("should fail");
     assert_eq!(err.status_code(), 404);
     let e = common::mocktest::journal_last();
@@ -2142,7 +2215,7 @@ fn test_registry_campaigns_list_orders_success() {
     let body = c
         .registry()
         .campaigns()
-        .list_orders("camp-1", &json!({}))
+        .list_orders("camp-1", &HashMap::new())
         .expect("list_orders");
     assert!(body.is_object());
     let e = common::mocktest::journal_last();
@@ -2162,7 +2235,7 @@ fn test_registry_campaigns_list_orders_error() {
     let err = c
         .registry()
         .campaigns()
-        .list_orders("missing", &json!({}))
+        .list_orders("missing", &HashMap::new())
         .expect_err("should fail");
     assert_eq!(err.status_code(), 404);
     let e = common::mocktest::journal_last();
@@ -2177,7 +2250,11 @@ fn test_registry_campaigns_create_order_success() {
     let body = c
         .registry()
         .campaigns()
-        .create_order("camp-1", &json!({"numbers": ["pn-1", "pn-2"]}))
+        .create_order(
+            "camp-1",
+            relay_gen::RegistryCampaignsCreateOrderRequest::new()
+                .extra("numbers", json!(["pn-1", "pn-2"])),
+        )
         .expect("create_order");
     assert!(body.is_object());
     let e = common::mocktest::journal_last();
@@ -2204,7 +2281,10 @@ fn test_registry_campaigns_create_order_error() {
     let err = c
         .registry()
         .campaigns()
-        .create_order("camp-1", &json!({}))
+        .create_order(
+            "camp-1",
+            relay_gen::RegistryCampaignsCreateOrderRequest::new(),
+        )
         .expect_err("should fail");
     assert_eq!(err.status_code(), 422);
     let e = common::mocktest::journal_last();
@@ -2216,7 +2296,11 @@ fn test_registry_campaigns_create_order_error() {
 fn test_registry_orders_get_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let body = c.registry().orders().get("order-1").expect("orders.get");
+    let body = c
+        .registry()
+        .orders()
+        .get("order-1", &HashMap::new())
+        .expect("orders.get");
     assert!(body.is_object());
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "GET");
@@ -2235,7 +2319,7 @@ fn test_registry_orders_get_error() {
     let err = c
         .registry()
         .orders()
-        .get("missing")
+        .get("missing", &HashMap::new())
         .expect_err("should fail");
     assert_eq!(err.status_code(), 404);
     let e = common::mocktest::journal_last();

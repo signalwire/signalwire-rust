@@ -24,6 +24,8 @@
 mod common;
 
 use serde_json::{Value, json};
+use signalwire::rest::namespaces::generated::fabric_resources_generated as fabric_gen;
+use std::collections::HashMap;
 
 const BASE: &str = "/api/fabric/resources";
 
@@ -35,7 +37,7 @@ const BASE: &str = "/api/fabric/resources";
 fn test_fabric_addresses_list_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let body = c.fabric().addresses().list(&json!({})).expect("list");
+    let body = c.fabric().addresses().list(&HashMap::new()).expect("list");
     assert!(body.is_object());
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "GET");
@@ -51,7 +53,11 @@ fn test_fabric_addresses_list_error() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
     common::mocktest::scenario_set("fabric.list_fabric_addresses", 500, json!({"error":"boom"}));
-    let err = c.fabric().addresses().list(&json!({})).expect_err("err");
+    let err = c
+        .fabric()
+        .addresses()
+        .list(&HashMap::new())
+        .expect_err("err");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
     assert_eq!(e.response_status, Some(500));
@@ -102,7 +108,10 @@ fn test_fabric_create_embed_token_success() {
     let body = c
         .fabric()
         .tokens()
-        .create_embed_token(&json!({"allowed_addresses": ["a"]}))
+        .create_embed_token(
+            fabric_gen::FabricTokensCreateEmbedTokenRequest::new("")
+                .extra("allowed_addresses", json!(["a"])),
+        )
         .expect("embed");
     assert!(body.is_object());
     let e = common::mocktest::journal_last();
@@ -122,7 +131,7 @@ fn test_fabric_create_embed_token_error() {
     let err = c
         .fabric()
         .tokens()
-        .create_embed_token(&json!({}))
+        .create_embed_token(fabric_gen::FabricTokensCreateEmbedTokenRequest::new(""))
         .expect_err("err");
     assert_eq!(err.status_code(), 422);
     let e = common::mocktest::journal_last();
@@ -140,7 +149,9 @@ fn test_fabric_create_guest_token_success() {
     let body = c
         .fabric()
         .tokens()
-        .create_guest_token(&json!({"allowed_addresses": ["a"]}))
+        .create_guest_token(fabric_gen::FabricTokensCreateGuestTokenRequest::new(json!(
+            ["a"]
+        )))
         .expect("guest");
     assert!(body.is_object());
     let e = common::mocktest::journal_last();
@@ -164,7 +175,9 @@ fn test_fabric_create_guest_token_error() {
     let err = c
         .fabric()
         .tokens()
-        .create_guest_token(&json!({}))
+        .create_guest_token(fabric_gen::FabricTokensCreateGuestTokenRequest::new(
+            Value::Null,
+        ))
         .expect_err("err");
     assert_eq!(err.status_code(), 422);
     let e = common::mocktest::journal_last();
@@ -182,7 +195,9 @@ fn test_fabric_create_subscriber_token_success() {
     let body = c
         .fabric()
         .tokens()
-        .create_subscriber_token(&json!({"reference": "ref"}))
+        .create_subscriber_token(fabric_gen::FabricTokensCreateSubscriberTokenRequest::new(
+            "ref",
+        ))
         .expect("sub token");
     assert!(body.is_object());
     let e = common::mocktest::journal_last();
@@ -206,7 +221,9 @@ fn test_fabric_create_subscriber_token_error() {
     let err = c
         .fabric()
         .tokens()
-        .create_subscriber_token(&json!({}))
+        .create_subscriber_token(fabric_gen::FabricTokensCreateSubscriberTokenRequest::new(
+            "",
+        ))
         .expect_err("err");
     assert_eq!(err.status_code(), 422);
     let e = common::mocktest::journal_last();
@@ -224,7 +241,9 @@ fn test_fabric_refresh_subscriber_token_success() {
     let body = c
         .fabric()
         .tokens()
-        .refresh_subscriber_token(&json!({"refresh_token": "rt"}))
+        .refresh_subscriber_token(fabric_gen::FabricTokensRefreshSubscriberTokenRequest::new(
+            "rt",
+        ))
         .expect("refresh");
     assert!(body.is_object());
     let e = common::mocktest::journal_last();
@@ -248,7 +267,9 @@ fn test_fabric_refresh_subscriber_token_error() {
     let err = c
         .fabric()
         .tokens()
-        .refresh_subscriber_token(&json!({}))
+        .refresh_subscriber_token(fabric_gen::FabricTokensRefreshSubscriberTokenRequest::new(
+            "",
+        ))
         .expect_err("err");
     assert_eq!(err.status_code(), 422);
     let e = common::mocktest::journal_last();
@@ -266,7 +287,10 @@ fn test_fabric_create_invite_token_success() {
     let body = c
         .fabric()
         .tokens()
-        .create_invite_token(&json!({"email": "x@example.com"}))
+        .create_invite_token(
+            fabric_gen::FabricTokensCreateInviteTokenRequest::new("")
+                .extra("email", json!("x@example.com")),
+        )
         .expect("invite");
     assert!(body.is_object());
     let e = common::mocktest::journal_last();
@@ -291,7 +315,7 @@ fn test_fabric_create_invite_token_error() {
     let err = c
         .fabric()
         .tokens()
-        .create_invite_token(&json!({}))
+        .create_invite_token(fabric_gen::FabricTokensCreateInviteTokenRequest::new(""))
         .expect_err("err");
     assert_eq!(err.status_code(), 422);
     let e = common::mocktest::journal_last();
@@ -310,7 +334,7 @@ fn test_fabric_create_invite_token_error() {
 fn test_fabric_resources_list_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let body = c.fabric().resources().list(&json!({})).expect("list");
+    let body = c.fabric().resources().list(&HashMap::new()).expect("list");
     assert!(body.is_object());
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "GET");
@@ -323,7 +347,11 @@ fn test_fabric_resources_list_error() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
     common::mocktest::scenario_set("fabric.list_resources", 500, json!({"error":"boom"}));
-    let err = c.fabric().resources().list(&json!({})).expect_err("err");
+    let err = c
+        .fabric()
+        .resources()
+        .list(&HashMap::new())
+        .expect_err("err");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
     assert_eq!(e.response_status, Some(500));
@@ -334,7 +362,11 @@ fn test_fabric_resources_list_error() {
 fn test_fabric_resources_get_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let body = c.fabric().resources().get("res-1").expect("get");
+    let body = c
+        .fabric()
+        .resources()
+        .get("res-1", &std::collections::HashMap::new())
+        .expect("get");
     assert!(body.is_object());
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "GET");
@@ -347,7 +379,11 @@ fn test_fabric_resources_get_error() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
     common::mocktest::scenario_set("fabric.get_resource", 404, json!({"error":"nf"}));
-    let err = c.fabric().resources().get("missing").expect_err("err");
+    let err = c
+        .fabric()
+        .resources()
+        .get("missing", &std::collections::HashMap::new())
+        .expect_err("err");
     assert_eq!(err.status_code(), 404);
     let e = common::mocktest::journal_last();
     assert_eq!(e.response_status, Some(404));
@@ -385,7 +421,7 @@ fn test_fabric_resources_list_addresses_success() {
     let body = c
         .fabric()
         .resources()
-        .list_addresses("res-3", &json!({}))
+        .list_addresses("res-3", &HashMap::new())
         .expect("list_addresses");
     assert!(body.is_object());
     let e = common::mocktest::journal_last();
@@ -405,7 +441,7 @@ fn test_fabric_resources_list_addresses_error() {
     let err = c
         .fabric()
         .resources()
-        .list_addresses("missing", &json!({}))
+        .list_addresses("missing", &HashMap::new())
         .expect_err("err");
     assert_eq!(err.status_code(), 404);
     let e = common::mocktest::journal_last();
@@ -423,7 +459,10 @@ fn test_fabric_resources_assign_domain_application_success() {
     let body = c
         .fabric()
         .resources()
-        .assign_domain_application("res-4", &json!({"domain_application_id": "da-1"}))
+        .assign_domain_application(
+            "res-4",
+            fabric_gen::GenericResourcesAssignDomainApplicationRequest::new("da-1"),
+        )
         .expect("assign");
     assert!(body.is_object());
     let e = common::mocktest::journal_last();
@@ -447,7 +486,10 @@ fn test_fabric_resources_assign_domain_application_error() {
     let err = c
         .fabric()
         .resources()
-        .assign_domain_application("res-4", &json!({}))
+        .assign_domain_application(
+            "res-4",
+            fabric_gen::GenericResourcesAssignDomainApplicationRequest::new(""),
+        )
         .expect_err("err");
     assert_eq!(err.status_code(), 422);
     let e = common::mocktest::journal_last();
@@ -469,7 +511,7 @@ fn test_fabric_cxml_applications_list_success() {
     let body = c
         .fabric()
         .cxml_applications()
-        .list(&json!({}))
+        .list(&HashMap::new())
         .expect("list");
     assert!(body.is_object());
     let e = common::mocktest::journal_last();
@@ -493,7 +535,7 @@ fn test_fabric_cxml_applications_list_error() {
     let err = c
         .fabric()
         .cxml_applications()
-        .list(&json!({}))
+        .list(&HashMap::new())
         .expect_err("err");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -508,7 +550,11 @@ fn test_fabric_cxml_applications_list_error() {
 fn test_fabric_cxml_applications_get_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let body = c.fabric().cxml_applications().get("ca-1").expect("get");
+    let body = c
+        .fabric()
+        .cxml_applications()
+        .get("ca-1", &HashMap::new())
+        .expect("get");
     assert!(body.is_object());
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "GET");
@@ -527,7 +573,7 @@ fn test_fabric_cxml_applications_get_error() {
     let err = c
         .fabric()
         .cxml_applications()
-        .get("missing")
+        .get("missing", &HashMap::new())
         .expect_err("err");
     assert_eq!(err.status_code(), 404);
     let e = common::mocktest::journal_last();
@@ -545,7 +591,10 @@ fn test_fabric_cxml_applications_update_uses_put_success() {
     let body = c
         .fabric()
         .cxml_applications()
-        .update("ca-1", &json!({"name": "renamed"}))
+        .update(
+            "ca-1",
+            fabric_gen::CxmlApplicationsUpdateRequest::new().extra("name", json!("renamed")),
+        )
         .expect("update");
     assert!(body.is_object());
     let e = common::mocktest::journal_last();
@@ -567,7 +616,7 @@ fn test_fabric_cxml_applications_update_error() {
     let err = c
         .fabric()
         .cxml_applications()
-        .update("missing", &json!({}))
+        .update("missing", fabric_gen::CxmlApplicationsUpdateRequest::new())
         .expect_err("err");
     assert_eq!(err.status_code(), 404);
     let e = common::mocktest::journal_last();
@@ -616,29 +665,12 @@ fn test_fabric_cxml_applications_delete_error() {
     );
 }
 
-// NOTE: fabric.list_cxml_application_addresses is a confirmed gap — the
-// CxmlApplicationsResource accessor exposes no `list_addresses` method.
-
-#[test]
-fn test_fabric_cxml_applications_create_returns_err_no_request() {
-    let _g = common::mocktest::begin();
-    let c = common::mocktest::client();
-    let err = c
-        .fabric()
-        .cxml_applications()
-        .create(&json!({"name": "x"}))
-        .expect_err("create unsupported");
-    assert!(
-        err.message().contains("cXML applications"),
-        "unexpected message: {}",
-        err.message()
-    );
-    // No HTTP request should have been sent.
-    assert!(
-        common::mocktest::journal_all().is_empty(),
-        "create should not hit the wire"
-    );
-}
+// NOTE: the regenerated CxmlApplicationsResource has no `create` method at all
+// (only delete/get/list/list_addresses/update), so the former
+// `test_fabric_cxml_applications_create_returns_err_no_request` test — which
+// asserted that a `create` accessor returned an error without hitting the wire
+// — has been removed: there is no longer any `create` symbol to call.
+// `list_addresses` IS now generated and is exercised near the end of this file.
 
 // ---------------------------------------------------------------------------
 // Call flows — CRUD (PUT update) + singular `call_flow` sub-paths.
@@ -648,7 +680,7 @@ fn test_fabric_cxml_applications_create_returns_err_no_request() {
 fn test_fabric_call_flows_list_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let body = c.fabric().call_flows().list(&json!({})).expect("list");
+    let body = c.fabric().call_flows().list(&HashMap::new()).expect("list");
     assert!(body.is_object());
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "GET");
@@ -661,7 +693,11 @@ fn test_fabric_call_flows_list_error() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
     common::mocktest::scenario_set("fabric.list_call_flows", 500, json!({"error":"boom"}));
-    let err = c.fabric().call_flows().list(&json!({})).expect_err("err");
+    let err = c
+        .fabric()
+        .call_flows()
+        .list(&HashMap::new())
+        .expect_err("err");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
     assert_eq!(e.response_status, Some(500));
@@ -783,7 +819,7 @@ fn test_fabric_call_flow_list_addresses_singular_success() {
     let body = c
         .fabric()
         .call_flows()
-        .list_addresses("cf-1", &json!({}))
+        .list_addresses("cf-1", &HashMap::new())
         .expect("list_addresses");
     assert!(body.is_object());
     let e = common::mocktest::journal_last();
@@ -808,7 +844,7 @@ fn test_fabric_call_flow_list_addresses_error() {
     let err = c
         .fabric()
         .call_flows()
-        .list_addresses("missing", &json!({}))
+        .list_addresses("missing", &HashMap::new())
         .expect_err("err");
     assert_eq!(err.status_code(), 404);
     let e = common::mocktest::journal_last();
@@ -826,7 +862,7 @@ fn test_fabric_call_flow_list_versions_success() {
     let body = c
         .fabric()
         .call_flows()
-        .list_versions("cf-1", &json!({}))
+        .list_versions("cf-1", &HashMap::new())
         .expect("list_versions");
     assert!(body.is_object());
     let e = common::mocktest::journal_last();
@@ -846,7 +882,7 @@ fn test_fabric_call_flow_list_versions_error() {
     let err = c
         .fabric()
         .call_flows()
-        .list_versions("missing", &json!({}))
+        .list_versions("missing", &HashMap::new())
         .expect_err("err");
     assert_eq!(err.status_code(), 404);
     let e = common::mocktest::journal_last();
@@ -910,7 +946,7 @@ fn test_fabric_conference_rooms_list_success() {
     let body = c
         .fabric()
         .conference_rooms()
-        .list(&json!({}))
+        .list(&HashMap::new())
         .expect("list");
     assert!(body.is_object());
     let e = common::mocktest::journal_last();
@@ -930,7 +966,7 @@ fn test_fabric_conference_rooms_list_error() {
     let err = c
         .fabric()
         .conference_rooms()
-        .list(&json!({}))
+        .list(&HashMap::new())
         .expect_err("err");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -1096,7 +1132,7 @@ fn test_fabric_conference_room_list_addresses_singular_success() {
     let body = c
         .fabric()
         .conference_rooms()
-        .list_addresses("cr-1", &json!({}))
+        .list_addresses("cr-1", &HashMap::new())
         .expect("list_addresses");
     assert!(body.is_object());
     let e = common::mocktest::journal_last();
@@ -1121,7 +1157,7 @@ fn test_fabric_conference_room_list_addresses_error() {
     let err = c
         .fabric()
         .conference_rooms()
-        .list_addresses("missing", &json!({}))
+        .list_addresses("missing", &HashMap::new())
         .expect_err("err");
     assert_eq!(err.status_code(), 404);
     let e = common::mocktest::journal_last();
@@ -1140,7 +1176,11 @@ fn test_fabric_conference_room_list_addresses_error() {
 fn test_fabric_subscribers_list_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let body = c.fabric().subscribers().list(&json!({})).expect("list");
+    let body = c
+        .fabric()
+        .subscribers()
+        .list(&HashMap::new())
+        .expect("list");
     assert!(body.is_object());
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "GET");
@@ -1153,7 +1193,11 @@ fn test_fabric_subscribers_list_error() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
     common::mocktest::scenario_set("fabric.list_subscribers", 500, json!({"error":"boom"}));
-    let err = c.fabric().subscribers().list(&json!({})).expect_err("err");
+    let err = c
+        .fabric()
+        .subscribers()
+        .list(&HashMap::new())
+        .expect_err("err");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
     assert_eq!(e.response_status, Some(500));
@@ -1279,7 +1323,7 @@ fn test_fabric_subscribers_list_addresses_success() {
     let body = c
         .fabric()
         .subscribers()
-        .list_addresses("sub-1", &json!({}))
+        .list_addresses("sub-1", &HashMap::new())
         .expect("list_addresses");
     assert!(body.is_array() || body.is_object());
     let e = common::mocktest::journal_last();
@@ -1303,7 +1347,7 @@ fn test_fabric_subscribers_list_addresses_error() {
     let err = c
         .fabric()
         .subscribers()
-        .list_addresses("missing", &json!({}))
+        .list_addresses("missing", &HashMap::new())
         .expect_err("err");
     assert_eq!(err.status_code(), 404);
     let e = common::mocktest::journal_last();
@@ -1321,7 +1365,7 @@ fn test_fabric_subscribers_list_sip_endpoints_success() {
     let body = c
         .fabric()
         .subscribers()
-        .list_sip_endpoints("sub-1", &json!({}))
+        .list_sip_endpoints("sub-1", &HashMap::new())
         .expect("list_sip_endpoints");
     assert!(body.is_object());
     let e = common::mocktest::journal_last();
@@ -1345,7 +1389,7 @@ fn test_fabric_subscribers_list_sip_endpoints_error() {
     let err = c
         .fabric()
         .subscribers()
-        .list_sip_endpoints("missing", &json!({}))
+        .list_sip_endpoints("missing", &HashMap::new())
         .expect_err("err");
     assert_eq!(err.status_code(), 404);
     let e = common::mocktest::journal_last();
@@ -1363,7 +1407,10 @@ fn test_fabric_subscribers_create_sip_endpoint_success() {
     let body = c
         .fabric()
         .subscribers()
-        .create_sip_endpoint("sub-1", &json!({"username": "u"}))
+        .create_sip_endpoint(
+            "sub-1",
+            fabric_gen::SubscribersCreateSipEndpointRequest::new("u", ""),
+        )
         .expect("create_sip_endpoint");
     assert!(body.is_object());
     let e = common::mocktest::journal_last();
@@ -1387,7 +1434,10 @@ fn test_fabric_subscribers_create_sip_endpoint_error() {
     let err = c
         .fabric()
         .subscribers()
-        .create_sip_endpoint("sub-1", &json!({}))
+        .create_sip_endpoint(
+            "sub-1",
+            fabric_gen::SubscribersCreateSipEndpointRequest::new("", ""),
+        )
         .expect_err("err");
     assert_eq!(err.status_code(), 422);
     let e = common::mocktest::journal_last();
@@ -1405,7 +1455,7 @@ fn test_fabric_subscribers_get_sip_endpoint_success() {
     let body = c
         .fabric()
         .subscribers()
-        .get_sip_endpoint("sub-1", "ep-1")
+        .get_sip_endpoint("sub-1", "ep-1", &HashMap::new())
         .expect("get_sip_endpoint");
     assert!(body.is_object());
     let e = common::mocktest::journal_last();
@@ -1432,7 +1482,7 @@ fn test_fabric_subscribers_get_sip_endpoint_error() {
     let err = c
         .fabric()
         .subscribers()
-        .get_sip_endpoint("sub-1", "missing")
+        .get_sip_endpoint("sub-1", "missing", &HashMap::new())
         .expect_err("err");
     assert_eq!(err.status_code(), 404);
     let e = common::mocktest::journal_last();
@@ -1450,7 +1500,11 @@ fn test_fabric_subscribers_update_sip_endpoint_uses_patch_success() {
     let body = c
         .fabric()
         .subscribers()
-        .update_sip_endpoint("sub-1", "ep-1", &json!({"username": "renamed"}))
+        .update_sip_endpoint(
+            "sub-1",
+            "ep-1",
+            fabric_gen::SubscribersUpdateSipEndpointRequest::new().username("renamed"),
+        )
         .expect("update_sip_endpoint");
     assert!(body.is_object());
     let e = common::mocktest::journal_last();
@@ -1477,7 +1531,11 @@ fn test_fabric_subscribers_update_sip_endpoint_error() {
     let err = c
         .fabric()
         .subscribers()
-        .update_sip_endpoint("sub-1", "missing", &json!({}))
+        .update_sip_endpoint(
+            "sub-1",
+            "missing",
+            fabric_gen::SubscribersUpdateSipEndpointRequest::new(),
+        )
         .expect_err("err");
     assert_eq!(err.status_code(), 404);
     let e = common::mocktest::journal_last();
@@ -1557,7 +1615,7 @@ macro_rules! fabric_patch_resource_full {
             fn list_success() {
                 let _g = common::mocktest::begin();
                 let c = common::mocktest::client();
-                let body = c.fabric().$accessor().list(&json!({})).expect("list");
+                let body = c.fabric().$accessor().list(&HashMap::new()).expect("list");
                 assert!(body.is_array() || body.is_object());
                 let e = common::mocktest::journal_last();
                 assert_eq!(e.method, "GET");
@@ -1570,7 +1628,7 @@ macro_rules! fabric_patch_resource_full {
                 let _g = common::mocktest::begin();
                 let c = common::mocktest::client();
                 common::mocktest::scenario_set($rt_list, 500, json!({"error":"boom"}));
-                let err = c.fabric().$accessor().list(&json!({})).expect_err("err");
+                let err = c.fabric().$accessor().list(&HashMap::new()).expect_err("err");
                 assert_eq!(err.status_code(), 500);
                 let e = common::mocktest::journal_last();
                 assert_eq!(e.response_status, Some(500));
@@ -1698,7 +1756,7 @@ macro_rules! fabric_patch_resource_full {
                 let body = c
                     .fabric()
                     .$accessor()
-                    .list_addresses("id-1", &json!({}))
+                    .list_addresses("id-1", &HashMap::new())
                     .expect("list_addresses");
                 assert!(body.is_array() || body.is_object());
                 let e = common::mocktest::journal_last();
@@ -1715,7 +1773,7 @@ macro_rules! fabric_patch_resource_full {
                 let err = c
                     .fabric()
                     .$accessor()
-                    .list_addresses("missing", &json!({}))
+                    .list_addresses("missing", &HashMap::new())
                     .expect_err("err");
                 assert_eq!(err.status_code(), 404);
                 let e = common::mocktest::journal_last();
@@ -1775,7 +1833,11 @@ mod sip_gateways {
     fn list_success() {
         let _g = common::mocktest::begin();
         let c = common::mocktest::client();
-        let body = c.fabric().sip_gateways().list(&json!({})).expect("list");
+        let body = c
+            .fabric()
+            .sip_gateways()
+            .list(&HashMap::new())
+            .expect("list");
         assert!(body.is_object());
         let e = common::mocktest::journal_last();
         assert_eq!(e.method, "GET");
@@ -1788,7 +1850,11 @@ mod sip_gateways {
         let _g = common::mocktest::begin();
         let c = common::mocktest::client();
         common::mocktest::scenario_set("fabric.list_sip_gateways", 500, json!({"error":"boom"}));
-        let err = c.fabric().sip_gateways().list(&json!({})).expect_err("err");
+        let err = c
+            .fabric()
+            .sip_gateways()
+            .list(&HashMap::new())
+            .expect_err("err");
         assert_eq!(err.status_code(), 500);
         let e = common::mocktest::journal_last();
         assert_eq!(e.response_status, Some(500));
@@ -1952,7 +2018,7 @@ macro_rules! fabric_put_resource_full {
             fn list_success() {
                 let _g = common::mocktest::begin();
                 let c = common::mocktest::client();
-                let body = c.fabric().$accessor().list(&json!({})).expect("list");
+                let body = c.fabric().$accessor().list(&HashMap::new()).expect("list");
                 assert!(body.is_array() || body.is_object());
                 let e = common::mocktest::journal_last();
                 assert_eq!(e.method, "GET");
@@ -1965,7 +2031,7 @@ macro_rules! fabric_put_resource_full {
                 let _g = common::mocktest::begin();
                 let c = common::mocktest::client();
                 common::mocktest::scenario_set($rt_list, 500, json!({"error":"boom"}));
-                let err = c.fabric().$accessor().list(&json!({})).expect_err("err");
+                let err = c.fabric().$accessor().list(&HashMap::new()).expect_err("err");
                 assert_eq!(err.status_code(), 500);
                 let e = common::mocktest::journal_last();
                 assert_eq!(e.response_status, Some(500));
@@ -2093,7 +2159,7 @@ macro_rules! fabric_put_resource_full {
                 let body = c
                     .fabric()
                     .$accessor()
-                    .list_addresses("id-1", &json!({}))
+                    .list_addresses("id-1", &HashMap::new())
                     .expect("list_addresses");
                 assert!(body.is_array() || body.is_object());
                 let e = common::mocktest::journal_last();
@@ -2110,7 +2176,7 @@ macro_rules! fabric_put_resource_full {
                 let err = c
                     .fabric()
                     .$accessor()
-                    .list_addresses("missing", &json!({}))
+                    .list_addresses("missing", &HashMap::new())
                     .expect_err("err");
                 assert_eq!(err.status_code(), 404);
                 let e = common::mocktest::journal_last();
@@ -2198,7 +2264,7 @@ fn test_fabric_cxml_application_addresses_list_success() {
     let body = c
         .fabric()
         .cxml_applications()
-        .list_addresses("ca-1", &json!({}))
+        .list_addresses("ca-1", &HashMap::new())
         .expect("list_addresses");
     assert!(body.is_object());
     let e = common::mocktest::journal_last();
@@ -2222,7 +2288,7 @@ fn test_fabric_cxml_application_addresses_list_error() {
     let err = c
         .fabric()
         .cxml_applications()
-        .list_addresses("ca-1", &json!({}))
+        .list_addresses("ca-1", &HashMap::new())
         .expect_err("err");
     assert_eq!(err.status_code(), 404);
     let e = common::mocktest::journal_last();
@@ -2240,7 +2306,10 @@ fn test_fabric_assign_resource_phone_route_success() {
     let body = c
         .fabric()
         .resources()
-        .assign_phone_route("res-1", &json!({"phone_route_id": "pr-1"}))
+        .assign_phone_route(
+            "res-1",
+            fabric_gen::GenericResourcesAssignPhoneRouteRequest::new("pr-1", ""),
+        )
         .expect("assign_phone_route");
     assert!(body.is_object());
     let e = common::mocktest::journal_last();
@@ -2264,7 +2333,10 @@ fn test_fabric_assign_resource_phone_route_error() {
     let err = c
         .fabric()
         .resources()
-        .assign_phone_route("res-1", &json!({"phone_route_id": "pr-1"}))
+        .assign_phone_route(
+            "res-1",
+            fabric_gen::GenericResourcesAssignPhoneRouteRequest::new("pr-1", ""),
+        )
         .expect_err("err");
     assert_eq!(err.status_code(), 422);
     let e = common::mocktest::journal_last();

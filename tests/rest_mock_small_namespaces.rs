@@ -11,6 +11,8 @@ mod common;
 use std::collections::HashMap;
 
 use serde_json::{Value, json};
+use signalwire::rest::namespaces::generated::project_resources_generated as project_gen;
+use signalwire::rest::namespaces::generated::relay_rest_resources_generated as relay_gen;
 
 // ---------------------------------------------------------------------------
 // Addresses
@@ -45,12 +47,10 @@ fn test_small_addresses_create() {
     let c = common::mocktest::client();
     let body = c
         .addresses()
-        .create(&json!({
-            "address_type": "commercial",
-            "first_name": "Ada",
-            "last_name": "Lovelace",
-            "country": "US",
-        }))
+        .create(
+            relay_gen::AddressesCreateRequest::new("", "US", "Ada", "Lovelace", "", "", "", "", "")
+                .address_type("commercial"),
+        )
         .expect("addresses.create");
     assert!(body.is_object());
     let obj = body.as_object().unwrap();
@@ -72,7 +72,10 @@ fn test_small_addresses_create() {
 fn test_small_addresses_get() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let body = c.addresses().get("addr-123").expect("addresses.get");
+    let body = c
+        .addresses()
+        .get("addr-123", &HashMap::new())
+        .expect("addresses.get");
     assert!(body.is_object());
     assert!(body.as_object().unwrap().contains_key("id"));
 
@@ -131,7 +134,10 @@ fn test_small_recordings_list() {
 fn test_small_recordings_get() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let body = c.recordings().get("rec-123").expect("recordings.get");
+    let body = c
+        .recordings()
+        .get("rec-123", &HashMap::new())
+        .expect("recordings.get");
     assert!(body.is_object());
     assert!(body.as_object().unwrap().contains_key("id"));
 
@@ -182,7 +188,10 @@ fn test_small_short_codes_list() {
 fn test_small_short_codes_get() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let body = c.short_codes().get("sc-1").expect("short_codes.get");
+    let body = c
+        .short_codes()
+        .get("sc-1", &HashMap::new())
+        .expect("short_codes.get");
     assert!(body.is_object());
     assert!(body.as_object().unwrap().contains_key("id"));
 
@@ -197,7 +206,10 @@ fn test_small_short_codes_update() {
     let c = common::mocktest::client();
     let body = c
         .short_codes()
-        .update("sc-1", &json!({"name": "Marketing SMS"}))
+        .update(
+            "sc-1",
+            relay_gen::ShortCodesUpdateRequest::new("Marketing SMS", ""),
+        )
         .expect("short_codes.update");
     assert!(body.is_object());
     assert!(body.as_object().unwrap().contains_key("id"));
@@ -222,12 +234,12 @@ fn test_small_imported_numbers_create() {
     let c = common::mocktest::client();
     let body = c
         .imported_numbers()
-        .create(&json!({
-            "number": "+15551234567",
-            "sip_username": "alice",
-            "sip_password": "secret",
-            "sip_proxy": "sip.example.com",
-        }))
+        .create(
+            relay_gen::ImportedNumbersCreateRequest::new("+15551234567", "")
+                .extra("sip_username", json!("alice"))
+                .extra("sip_password", json!("secret"))
+                .extra("sip_proxy", json!("sip.example.com")),
+        )
         .expect("imported_numbers.create");
     assert!(body.is_object());
     assert!(body.as_object().unwrap().contains_key("id"));
@@ -260,11 +272,11 @@ fn test_small_mfa_call() {
     let c = common::mocktest::client();
     let body = c
         .mfa()
-        .call(&json!({
-            "to": "+15551234567",
-            "from_": "+15559876543",
-            "message": "Your code is {code}",
-        }))
+        .call(
+            relay_gen::MfaCallRequest::new("+15551234567")
+                .extra("from_", json!("+15559876543"))
+                .message("Your code is {code}"),
+        )
         .expect("mfa.call");
     assert!(body.is_object());
     assert!(body.as_object().unwrap().contains_key("id"));
@@ -294,10 +306,11 @@ fn test_small_sip_profile_update() {
     let c = common::mocktest::client();
     let body = c
         .sip_profile()
-        .update(&json!({
-            "domain": "myco.sip.signalwire.com",
-            "default_codecs": ["PCMU", "PCMA"],
-        }))
+        .update(
+            relay_gen::SipProfileUpdateRequest::new()
+                .extra("domain", json!("myco.sip.signalwire.com"))
+                .default_codecs(json!(["PCMU", "PCMA"])),
+        )
         .expect("sip_profile.update");
     assert!(body.is_object());
     let obj = body.as_object().unwrap();
@@ -331,9 +344,11 @@ fn test_small_sip_profile_update() {
 fn test_small_number_groups_list_memberships() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
+    let mut mem_params = HashMap::new();
+    mem_params.insert("page_size".to_string(), "10".to_string());
     let body = c
         .number_groups()
-        .list_memberships("ng-1", &json!({"page_size": "10"}))
+        .list_memberships("ng-1", &mem_params)
         .expect("list_memberships");
     assert!(body.is_object());
     let obj = body.as_object().unwrap();
@@ -386,7 +401,10 @@ fn test_small_project_tokens_update() {
     let body = c
         .project()
         .tokens()
-        .update("tok-1", &json!({"name": "renamed-token"}))
+        .update(
+            "tok-1",
+            project_gen::ProjectTokensUpdateRequest::new().name("renamed-token"),
+        )
         .expect("project.tokens.update");
     assert!(body.is_object());
     assert!(body.as_object().unwrap().contains_key("id"));
@@ -433,7 +451,7 @@ fn test_small_datasphere_get_chunk() {
     let body = c
         .datasphere()
         .documents()
-        .get_chunk("doc-1", "chunk-99")
+        .get_chunk("doc-1", "chunk-99", &HashMap::new())
         .expect("get_chunk");
     assert!(body.is_object());
     assert!(body.as_object().unwrap().contains_key("id"));
@@ -456,7 +474,7 @@ fn test_small_queues_get_member() {
     let c = common::mocktest::client();
     let body = c
         .queues()
-        .get_member("q-1", "mem-7")
+        .get_member("q-1", "mem-7", &HashMap::new())
         .expect("queues.get_member");
     assert!(body.is_object());
     let obj = body.as_object().unwrap();

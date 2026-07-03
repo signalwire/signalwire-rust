@@ -13,11 +13,6 @@ use std::collections::HashMap;
 
 use serde_json::Value;
 
-/// Join path segments with `/`. (Thin wrapper kept for call-site readability.)
-pub(crate) fn join(parts: &[&str]) -> String {
-    parts.join("/")
-}
-
 /// Flatten a JSON object into a `{string: string}` query-parameter map.
 ///
 /// String values pass through; `null` values are dropped; any other value is

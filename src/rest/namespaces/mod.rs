@@ -1,20 +1,10 @@
 //! REST API namespace modules.
+//!
+//! The REST resource surface is GENERATED from the canonical specs + x-sdk-*
+//! markup into the `generated` submodule (see `scripts/generate_rest.py`). The
+//! only hand-written namespace kept here is `compat` (the Twilio-compatible
+//! LAML API), which is NOT part of the generated surface.
 
-pub mod calling;
-pub mod chat;
+pub mod generated;
+
 pub mod compat;
-pub mod datasphere;
-pub mod fabric;
-pub mod logs;
-pub mod lookup;
-pub mod mfa;
-pub mod number_groups;
-pub mod phone_numbers;
-pub mod project;
-pub mod pubsub;
-pub mod queues;
-pub mod registry;
-pub mod simple_resources;
-pub mod sip_profile;
-pub mod verified_callers;
-pub mod video;

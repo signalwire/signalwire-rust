@@ -102,13 +102,13 @@ fn dispatch(client: &RestClient, op: &str, args: &Value) -> Result<Value, String
                 .map_err(|e| format!("{}: {}", op, e.message()))
         }
         "fabric.subscribers.list" => {
-            // fabric namespaces' list() take &Value (richer params); pass the raw
-            // args Value directly. (crud-based namespaces like phone_numbers take a
-            // &HashMap<String,String>, hence args_to_string_map there.)
+            // The generated Fabric resources take a &HashMap<String,String> query
+            // map (like every generated list()), so convert the args Value.
+            let params = args_to_string_map(args);
             client
                 .fabric()
                 .subscribers()
-                .list(args)
+                .list(&params)
                 .map_err(|e| format!("{}: {}", op, e.message()))
         }
         other => Err(format!(

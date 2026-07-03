@@ -1,6 +1,7 @@
 use std::env;
 
 use super::http_client::{HttpClient, UreqTransport};
+use super::namespaces::generated::client_tree_generated as tree;
 
 /// Top-level SignalWire REST client.
 ///
@@ -143,35 +144,51 @@ impl RestClient {
     // -----------------------------------------------------------------
     // Namespace accessors
     //
-    // Each returns a CrudResource or namespace struct bound to the
-    // correct API path.  Since CrudResource borrows &HttpClient, the
-    // returned resources live as long as `&self`.
+    // The REST resource surface is GENERATED (scripts/generate_rest.py) from
+    // the canonical specs + x-sdk-* markup into
+    // src/rest/namespaces/generated/. The hand client composes the generated
+    // resource tree; each accessor constructs the generated resource with the
+    // client's `HttpClient` (base paths baked in per §4). Compat is NOT part
+    // of the generated surface (Twilio-compat LAML) and is kept hand-written.
+    //
+    // Since every generated resource borrows `&HttpClient`, the returned
+    // resources live as long as `&self`.
     // -----------------------------------------------------------------
 
-    /// Fabric API (sub-resources: subscribers, `sip_endpoints`, `call_flows`, ...).
-    pub fn fabric(&self) -> super::namespaces::fabric::Fabric<'_> {
-        super::namespaces::fabric::Fabric::new(&self.http)
+    /// The generated resource tree (flat resources + namespace containers).
+    fn tree(&self) -> tree::GeneratedResourceTree<'_> {
+        tree::GeneratedResourceTree::new(&self.http)
     }
 
-    /// Calling API (37 call-control commands).
-    pub fn calling(&self) -> super::namespaces::calling::Calling<'_> {
-        super::namespaces::calling::Calling::new(&self.http, &self.project_id)
+    /// Fabric API namespace container (subscribers, `sip_endpoints`,
+    /// `call_flows`, resources, tokens, addresses, ...).
+    pub fn fabric(&self) -> tree::FabricNamespace<'_> {
+        self.tree().fabric()
     }
 
-    /// Phone numbers (CRUD + available-number `search`).
-    pub fn phone_numbers(&self) -> super::namespaces::phone_numbers::PhoneNumbersResource<'_> {
-        super::namespaces::phone_numbers::PhoneNumbersResource::new(&self.http)
+    /// Calling API (call-control command dispatch).
+    pub fn calling(
+        &self,
+    ) -> super::namespaces::generated::calling_resources_generated::Calling<'_> {
+        self.tree().calling()
+    }
+
+    /// Phone numbers (CRUD + available-number `search` + `set_*` wrappers).
+    pub fn phone_numbers(
+        &self,
+    ) -> super::namespaces::generated::relay_rest_resources_generated::PhoneNumbers<'_> {
+        self.tree().phone_numbers()
     }
 
     /// Datasphere namespace (documents + chunks + search).
-    pub fn datasphere(&self) -> super::namespaces::datasphere::DatasphereNamespace<'_> {
-        super::namespaces::datasphere::DatasphereNamespace::new(&self.http)
+    pub fn datasphere(&self) -> tree::DatasphereNamespace<'_> {
+        self.tree().datasphere()
     }
 
     /// Video API namespace (rooms, sessions, recordings, conferences,
     /// tokens, streams).
-    pub fn video(&self) -> super::namespaces::video::Video<'_> {
-        super::namespaces::video::Video::new(&self.http)
+    pub fn video(&self) -> tree::VideoNamespace<'_> {
+        self.tree().video()
     }
 
     /// Compatibility (Twilio-compatible LAML) API namespace.
@@ -180,89 +197,102 @@ impl RestClient {
     /// sub-resources (`calls`, `messages`, `faxes`, `phone_numbers`,
     /// `conferences`, `recordings`, `transcriptions`, `applications`,
     /// `laml_bins`, `queues`, `tokens`, `accounts`) cover the full Python
-    /// `client.compat.*` surface.
+    /// `client.compat.*` surface. Not part of the generated REST surface.
     pub fn compat(&self) -> super::namespaces::compat::Compat<'_> {
         super::namespaces::compat::Compat::new(&self.http, &self.project_id)
     }
 
     /// Addresses (list / create / get / delete).
-    pub fn addresses(&self) -> super::namespaces::simple_resources::AddressesResource<'_> {
-        super::namespaces::simple_resources::AddressesResource::new(&self.http)
+    pub fn addresses(
+        &self,
+    ) -> super::namespaces::generated::relay_rest_resources_generated::Addresses<'_> {
+        self.tree().addresses()
     }
 
     /// Queues namespace (CRUD + member operations).
-    pub fn queues(&self) -> super::namespaces::queues::Queues<'_> {
-        super::namespaces::queues::Queues::new(&self.http)
+    pub fn queues(
+        &self,
+    ) -> super::namespaces::generated::relay_rest_resources_generated::Queues<'_> {
+        self.tree().queues()
     }
 
     /// Recordings (list / get / delete).
-    pub fn recordings(&self) -> super::namespaces::simple_resources::RecordingsResource<'_> {
-        super::namespaces::simple_resources::RecordingsResource::new(&self.http)
+    pub fn recordings(
+        &self,
+    ) -> super::namespaces::generated::relay_rest_resources_generated::Recordings<'_> {
+        self.tree().recordings()
     }
 
     /// Number groups (CRUD + membership operations).
-    pub fn number_groups(&self) -> super::namespaces::number_groups::NumberGroups<'_> {
-        super::namespaces::number_groups::NumberGroups::new(&self.http)
+    pub fn number_groups(
+        &self,
+    ) -> super::namespaces::generated::relay_rest_resources_generated::NumberGroups<'_> {
+        self.tree().number_groups()
     }
 
     /// Verified caller IDs (CRUD + verification flow).
     pub fn verified_callers(
         &self,
-    ) -> super::namespaces::verified_callers::VerifiedCallersResource<'_> {
-        super::namespaces::verified_callers::VerifiedCallersResource::new(&self.http)
+    ) -> super::namespaces::generated::relay_rest_resources_generated::VerifiedCallers<'_> {
+        self.tree().verified_callers()
     }
 
-    /// Project SIP profile (singular: singleton resource at
-    /// `/api/relay/rest/sip_profile`).
-    pub fn sip_profile(&self) -> super::namespaces::sip_profile::SipProfile<'_> {
-        super::namespaces::sip_profile::SipProfile::new(&self.http)
+    /// Project SIP profile (singleton resource at `/api/relay/rest/sip_profile`).
+    pub fn sip_profile(
+        &self,
+    ) -> super::namespaces::generated::relay_rest_resources_generated::SipProfile<'_> {
+        self.tree().sip_profile()
     }
 
     /// Phone number lookup.
-    pub fn lookup(&self) -> super::namespaces::lookup::LookupResource<'_> {
-        super::namespaces::lookup::LookupResource::new(&self.http)
+    pub fn lookup(
+        &self,
+    ) -> super::namespaces::generated::relay_rest_resources_generated::Lookup<'_> {
+        self.tree().lookup()
     }
 
     /// Short codes (list / get / update).
-    pub fn short_codes(&self) -> super::namespaces::simple_resources::ShortCodesResource<'_> {
-        super::namespaces::simple_resources::ShortCodesResource::new(&self.http)
+    pub fn short_codes(
+        &self,
+    ) -> super::namespaces::generated::relay_rest_resources_generated::ShortCodes<'_> {
+        self.tree().short_codes()
     }
 
     /// Imported phone numbers (create only).
     pub fn imported_numbers(
         &self,
-    ) -> super::namespaces::simple_resources::ImportedNumbersResource<'_> {
-        super::namespaces::simple_resources::ImportedNumbersResource::new(&self.http)
+    ) -> super::namespaces::generated::relay_rest_resources_generated::ImportedNumbers<'_> {
+        self.tree().imported_numbers()
     }
 
     /// Multi-factor authentication (sms/call/verify).
-    pub fn mfa(&self) -> super::namespaces::mfa::Mfa<'_> {
-        super::namespaces::mfa::Mfa::new(&self.http)
+    pub fn mfa(&self) -> super::namespaces::generated::relay_rest_resources_generated::Mfa<'_> {
+        self.tree().mfa()
     }
 
     /// Registry (10DLC brands, campaigns, orders, numbers).
-    pub fn registry(&self) -> super::namespaces::registry::Registry<'_> {
-        super::namespaces::registry::Registry::new(&self.http)
+    pub fn registry(&self) -> tree::RegistryNamespace<'_> {
+        self.tree().registry()
     }
 
     /// Logs (messages, voice, fax, conferences).
-    pub fn logs(&self) -> super::namespaces::logs::Logs<'_> {
-        super::namespaces::logs::Logs::new(&self.http)
+    pub fn logs(&self) -> tree::LogsNamespace<'_> {
+        self.tree().logs()
     }
 
     /// Project namespace (exposes `tokens` sub-resource).
-    pub fn project(&self) -> super::namespaces::project::Project<'_> {
-        super::namespaces::project::Project::new(&self.http)
+    pub fn project(&self) -> tree::ProjectNamespace<'_> {
+        self.tree().project()
     }
 
     /// `PubSub` tokens (`create_token` → POST `/api/pubsub/tokens`).
-    pub fn pubsub(&self) -> super::namespaces::pubsub::PubSubResource<'_> {
-        super::namespaces::pubsub::PubSubResource::new(&self.http)
+    pub fn pubsub(&self) -> super::namespaces::generated::pubsub_resources_generated::PubSub<'_> {
+        self.tree().pubsub()
     }
 
     /// Chat tokens (`create_token` → POST `/api/chat/tokens`).
-    pub fn chat(&self) -> super::namespaces::chat::ChatResource<'_> {
-        super::namespaces::chat::ChatResource::new(&self.http)
+    pub fn chat(&self) -> super::namespaces::generated::chat_resources_generated::Chat<'_> {
+        self.tree().chat()
     }
 }
 
