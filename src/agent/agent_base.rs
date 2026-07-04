@@ -841,12 +841,16 @@ impl AgentBase {
         self
     }
 
-    pub fn add_pronunciation(&mut self, replace: &str, with: &str, ignore: &str) -> &mut Self {
+    /// Add a pronunciation rule. Mirrors Python
+    /// `add_pronunciation(replace, with_text, ignore_case=False)`: the SWML
+    /// wire keys are `replace`, `with`, and `ignore_case` (a bool, emitted
+    /// only when true — matches signalwire-agents schema.json `Pronounce`).
+    pub fn add_pronunciation(&mut self, replace: &str, with: &str, ignore_case: bool) -> &mut Self {
         let mut entry = Map::new();
         entry.insert("replace".to_string(), json!(replace));
         entry.insert("with".to_string(), json!(with));
-        if !ignore.is_empty() {
-            entry.insert("ignore".to_string(), json!(ignore));
+        if ignore_case {
+            entry.insert("ignore_case".to_string(), json!(true));
         }
         self.pronunciations.push(Value::Object(entry));
         self
@@ -2525,23 +2529,30 @@ mod tests {
 
     #[test]
     fn test_add_pronunciation() {
+        // Wire keys: replace, with; `ignore_case` (bool) omitted when false.
         let mut agent = AgentBase::new(default_options());
-        agent.add_pronunciation("SignalWire", "signal wire", "");
+        agent.add_pronunciation("SignalWire", "signal wire", false);
         assert_eq!(agent.pronunciations[0]["replace"], "SignalWire");
+        assert_eq!(agent.pronunciations[0]["with"], "signal wire");
+        assert!(agent.pronunciations[0].get("ignore_case").is_none());
+        // The old (wrong) `ignore` string key must never be emitted.
         assert!(agent.pronunciations[0].get("ignore").is_none());
     }
 
     #[test]
-    fn test_add_pronunciation_with_ignore() {
+    fn test_add_pronunciation_with_ignore_case() {
+        // ignore_case=true emits the bool wire key `ignore_case: true`
+        // (matches signalwire-agents schema.json + Python add_pronunciation).
         let mut agent = AgentBase::new(default_options());
-        agent.add_pronunciation("AI", "A.I.", "context");
-        assert_eq!(agent.pronunciations[0]["ignore"], "context");
+        agent.add_pronunciation("AI", "A.I.", true);
+        assert_eq!(agent.pronunciations[0]["ignore_case"], json!(true));
+        assert!(agent.pronunciations[0].get("ignore").is_none());
     }
 
     #[test]
     fn test_set_pronunciations() {
         let mut agent = AgentBase::new(default_options());
-        agent.add_pronunciation("a", "b", "");
+        agent.add_pronunciation("a", "b", false);
         agent.set_pronunciations(vec![]);
         assert!(agent.pronunciations.is_empty());
     }
@@ -2995,7 +3006,7 @@ mod tests {
     #[test]
     fn test_build_ai_verb_pronunciations() {
         let mut agent = AgentBase::new(default_options());
-        agent.add_pronunciation("AI", "A.I.", "");
+        agent.add_pronunciation("AI", "A.I.", false);
         let ai = agent.build_ai_verb(&HashMap::new());
         assert_eq!(ai["pronounce"][0]["replace"], "AI");
     }

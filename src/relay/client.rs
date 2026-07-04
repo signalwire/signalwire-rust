@@ -1851,10 +1851,10 @@ mod tests {
             "params": {"call_id": "call-1", "node_id": "node-1"},
         }));
 
-        // Send state event
+        // Send state event (real wire key is `call_state`).
         c.handle_event(&json!({
             "event_type": "calling.call.state",
-            "params": {"call_id": "call-1", "state": "ringing"},
+            "params": {"call_id": "call-1", "call_state": "ringing"},
         }));
 
         let call = c.get_call("call-1").unwrap();
@@ -1872,7 +1872,7 @@ mod tests {
 
         c.handle_event(&json!({
             "event_type": "calling.call.state",
-            "params": {"call_id": "call-1", "state": "ended"},
+            "params": {"call_id": "call-1", "call_state": "ended"},
         }));
 
         assert!(c.get_call("call-1").is_none());
@@ -1936,10 +1936,10 @@ mod tests {
             *resolved2.lock().unwrap() = Some(call);
         });
 
-        // First create call via state event with tag
+        // First create call via state event with tag (wire key: call_state)
         c.handle_event(&json!({
             "event_type": "calling.call.state",
-            "params": {"call_id": "call-dial-1", "tag": "tag-dial-1", "state": "created"},
+            "params": {"call_id": "call-dial-1", "tag": "tag-dial-1", "call_state": "created"},
         }));
 
         // Then the dial event resolves it

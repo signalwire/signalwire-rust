@@ -1077,8 +1077,8 @@
                   "required": true
                 },
                 {
-                  "name": "ignore",
-                  "type": "string",
+                  "name": "ignore_case",
+                  "type": "bool",
                   "required": true
                 }
               ],
@@ -4832,8 +4832,8 @@
                   "required": true
                 },
                 {
-                  "name": "ignore",
-                  "type": "string",
+                  "name": "ignore_case",
+                  "type": "bool",
                   "required": true
                 }
               ],

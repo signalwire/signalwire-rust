@@ -37,7 +37,8 @@ fn state_push_frame(call_id: &str, call_state: &str) -> Value {
                 "call_id": call_id,
                 "node_id": "mock-relay-node-1",
                 "tag": "",
-                "state": call_state,
+                // Real RELAY wire key is `call_state` (matches mock_relay).
+                "call_state": call_state,
                 "direction": "inbound",
                 "device": {
                     "type": "phone",

@@ -442,7 +442,8 @@ fn test_call_state_event_updates_state() {
     let call = answered_inbound_call(&client, "ec-stt");
     relay_mocktest::push(bare_event_frame(
         "calling.call.state",
-        json!({"call_id": "ec-stt", "state": "ending", "direction": "inbound"}),
+        // Real RELAY wire key is `call_state` (matches mock_relay server.py).
+        json!({"call_id": "ec-stt", "call_state": "ending", "direction": "inbound"}),
     ));
     assert!(wait_until(2000, || call.current_state() == "ending"));
     client.disconnect();
@@ -530,7 +531,7 @@ fn test_call_state_typed_accessor_tracks_real_state_event() {
     // Drive a REAL calling.call.state event through the mock → SDK recv loop.
     relay_mocktest::push(bare_event_frame(
         "calling.call.state",
-        json!({"call_id": "ec-stt-typed", "state": "ending", "direction": "inbound"}),
+        json!({"call_id": "ec-stt-typed", "call_state": "ending", "direction": "inbound"}),
     ));
     assert!(wait_until(2000, || call.call_state() == CallState::Ending));
     // Typed and string accessors stay in lock-step, still non-terminal.
@@ -541,7 +542,7 @@ fn test_call_state_typed_accessor_tracks_real_state_event() {
     // Terminal transition: the enum reports terminal exactly when the call ends.
     relay_mocktest::push(bare_event_frame(
         "calling.call.state",
-        json!({"call_id": "ec-stt-typed", "state": "ended", "direction": "inbound"}),
+        json!({"call_id": "ec-stt-typed", "call_state": "ended", "direction": "inbound"}),
     ));
     assert!(wait_until(2000, || call.call_state().is_terminal()));
     assert_eq!(call.call_state(), CallState::Ended);

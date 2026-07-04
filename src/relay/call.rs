@@ -64,7 +64,7 @@ impl Call {
                 .map(std::string::ToString::to_string),
             state: Mutex::new(
                 params
-                    .get("state")
+                    .get("call_state")
                     .and_then(|v| v.as_str())
                     .unwrap_or("created")
                     .to_string(),
@@ -148,7 +148,7 @@ impl Call {
 
         // ── call-level state events ──────────────────────────────────
         if event_type == "calling.call.state" {
-            if let Some(s) = params.get("state").and_then(|v| v.as_str()) {
+            if let Some(s) = params.get("call_state").and_then(|v| v.as_str()) {
                 *self.state.lock().unwrap() = s.to_string();
             }
             if let Some(r) = params.get("end_reason").and_then(|v| v.as_str()) {
@@ -895,7 +895,7 @@ mod tests {
     #[test]
     fn test_dispatch_state_event() {
         let call = make_call();
-        let ev = make_event("calling.call.state", json!({"state": "ringing"}));
+        let ev = make_event("calling.call.state", json!({"call_state": "ringing"}));
         call.dispatch_event(&ev);
         assert_eq!(call.current_state(), "ringing");
     }
@@ -906,7 +906,7 @@ mod tests {
         let action = call.play(json!({}));
         assert!(!action.is_done());
 
-        let ev = make_event("calling.call.state", json!({"state": "ended"}));
+        let ev = make_event("calling.call.state", json!({"call_state": "ended"}));
         call.dispatch_event(&ev);
         assert!(action.is_done());
         assert!(call.actions.lock().unwrap().is_empty());
@@ -972,7 +972,7 @@ mod tests {
             *count2.lock().unwrap() += 1;
         });
 
-        let ev = make_event("calling.call.state", json!({"state": "ringing"}));
+        let ev = make_event("calling.call.state", json!({"call_state": "ringing"}));
         call.dispatch_event(&ev);
         assert_eq!(*count.lock().unwrap(), 1);
     }
@@ -1369,7 +1369,7 @@ mod tests {
         let call = Call::new(&json!({
             "call_id": "call-1",
             "node_id": "node-1",
-            "state": "answered",
+            "call_state": "answered",
         }));
         let ev = call
             .wait_for_ringing(Some(std::time::Duration::from_millis(0)))
