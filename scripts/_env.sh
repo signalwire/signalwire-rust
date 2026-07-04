@@ -68,6 +68,37 @@ sw_ensure_components() {
     fi
 }
 
+# --- sccache: availability-gated compiler cache (pure speedup) ---------------
+# sccache is a persistent (on-disk) compiler cache. Rust already has cargo's
+# INCREMENTAL cache, so the LOCAL marginal win is small — but a persistent cache
+# pays off on CLEAN builds and in CI, where every matrix run checks out fresh and
+# cargo-incremental starts from nothing. This is the SMALLER of the compiler-cache
+# wins (ccache-for-cpp is the bigger one); we keep it proportionate.
+#
+# DECLARATION (per AGENT_RULES §7 "declare in BOTH layers"):
+#   (a) LOCAL bootstrap — sccache is an OPTIONAL dev dependency. Install it with:
+#         cargo install sccache --locked      # any platform
+#         brew install sccache                # macOS
+#       It is availability-gated below: present => used; absent => no-op. A build
+#       NEVER fails because sccache is missing.
+#   (b) CI — declared in porting-sdk/.github/workflows/cross-port.yml (the rust
+#       matrix entry), which installs sccache and persists $SCCACHE_DIR via
+#       actions/cache so the cross-port matrix's clean checkouts hit a warm cache.
+#
+# GATE: only wire RUSTC_WRAPPER when sccache is actually on PATH. When it is not,
+# do nothing — cargo/rustc run exactly as before. Respect a caller who already set
+# RUSTC_WRAPPER (don't clobber an intentional override, and avoid double-wrapping).
+if [ -z "${RUSTC_WRAPPER:-}" ] && command -v sccache >/dev/null 2>&1; then
+    export RUSTC_WRAPPER=sccache
+    # Repo-local cache dir by default (gitignored via .sw-tmp/), overridable by a
+    # caller/CI that wants a shared or workflow-cached location. Keeping it under
+    # the repo keeps it self-contained and easy to persist with actions/cache.
+    if [ -z "${SCCACHE_DIR:-}" ]; then
+        export SCCACHE_DIR="$REPO/.sw-tmp/sccache"
+    fi
+    mkdir -p "$SCCACHE_DIR" 2>/dev/null || true
+fi
+
 # CARGO invocation prefix. We pin +stable because the SIGNATURES gate installs a
 # nightly toolchain (for rustdoc-json) which can become the default and may lack
 # rustfmt/clippy; +stable is robust. Callers use "${CARGO[@]}".

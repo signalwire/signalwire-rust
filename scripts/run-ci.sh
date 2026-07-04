@@ -36,6 +36,21 @@ set -o pipefail
 PORT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 PORT_NAME="signalwire-rust"
 
+# sccache: availability-gated compiler cache (pure speedup, no-op when absent).
+# The canonical run-{tests,format,lint}.sh gates source scripts/_env.sh and get
+# this automatically; run-ci ALSO invokes cargo directly for several gates
+# (REST-COVERAGE, route-registry, emit_corpus/emit_skills, swaig-test), so wire
+# the same gate here in run-ci's own process. We do NOT `source _env.sh` (it sets
+# `set -e`, and run-ci deliberately runs every gate to collect failures). Mirror
+# only the availability gate — see scripts/_env.sh for the declaration/rationale.
+if [ -z "${RUSTC_WRAPPER:-}" ] && command -v sccache >/dev/null 2>&1; then
+    export RUSTC_WRAPPER=sccache
+    if [ -z "${SCCACHE_DIR:-}" ]; then
+        export SCCACHE_DIR="$PORT_ROOT/.sw-tmp/sccache"
+    fi
+    mkdir -p "$SCCACHE_DIR" 2>/dev/null || true
+fi
+
 resolve_porting_sdk() {
     if [ -n "${PORTING_SDK:-}" ] && [ -d "$PORTING_SDK/scripts" ]; then
         echo "$PORTING_SDK"
