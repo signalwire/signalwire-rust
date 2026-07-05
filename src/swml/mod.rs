@@ -2,6 +2,8 @@ pub mod builder;
 pub mod document;
 pub mod handler;
 pub mod renderer;
+#[cfg(feature = "tower-middleware")]
+pub mod router;
 pub mod schema;
 pub mod service;
 pub mod swml_verbs_generated;

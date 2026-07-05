@@ -1064,6 +1064,12 @@ STATIC_METHOD_TO_FREE_FN: dict[tuple[str, str], tuple[str, str]] = {
 # subclasses expose only `from_payload`.
 MODULE_METHOD_DROPS: dict[str, set[str]] = {
     "signalwire.relay.event": {"base", "event", "event_type"},
+    # `clone_box` is Clone-support plumbing on the SWMLVerbHandler trait (it
+    # lets VerbHandlerRegistry — and therefore Service — be Clone, which
+    # as_router relies on to hand a shared snapshot to the mountable axum
+    # handler). It is the trait analog of a `Clone` impl, not part of the
+    # reference contract. Python's SWMLVerbHandler exposes no such method.
+    "signalwire.core.swml_handler": {"clone_box"},
 }
 # Module-level FREE FUNCTIONS to drop — `pub(crate)` crate-internal helpers the
 # public-fn regex captures but that are NOT public crate API (external callers
@@ -1072,6 +1078,10 @@ FREE_FN_DROPS: dict[str, set[str]] = {
     # The free-fn module is the file-path-derived path (src/skills/skill_base.rs
     # → signalwire.skills.skill_base), distinct from the SkillBase CLASS module.
     "signalwire.skills.skill_base": {"default_parameter_schema"},
+    # `build_router` is the `pub(crate)` constructor behind `as_router` — it
+    # wraps a Service in the mountable axum::Router. Crate-internal plumbing
+    # (external callers reach it only via as_router), not reference surface.
+    "signalwire.swml.router": {"build_router"},
 }
 # SkillBase interface projection. Python models each skill as a subclass that
 # OVERRIDES a specific subset of the SkillBase interface (setup / register_tools

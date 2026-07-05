@@ -1427,19 +1427,25 @@ impl AgentBase {
     //  Web surface — Python WebMixin parity
     // ══════════════════════════════════════════════════════════════════════
 
-    /// Return this agent's mountable route (Rust idiom for Python's FastAPI
-    /// `as_router`). Python parity: `WebMixin.as_router`.
-    #[must_use]
-    pub fn as_router(&self) -> String {
+    /// Return a mountable [`axum::Router`] serving this agent's HTTP routes.
+    ///
+    /// Rust equivalent of Python's `WebMixin.as_router` (a FastAPI
+    /// `APIRouter`): the "embed my routes in a host app" unit. The returned
+    /// router can be [`axum::Router::nest`]ed into a caller's own axum/hyper
+    /// application or served directly. Gated behind the default
+    /// `tower-middleware` feature (which provides `axum`).
+    #[cfg(feature = "tower-middleware")]
+    pub fn as_router(&self) -> axum::Router {
         self.service.as_router()
     }
 
-    /// Return the mountable application handle (Rust idiom for Python's
-    /// `get_app`). Both `get_app` and `as_router` yield the same mount route in
-    /// the Rust port, which has no baked-in web framework object.
+    /// Return the app mount identifier (Rust idiom for Python's `get_app`,
+    /// which returns a FastAPI application object). The Rust port has no
+    /// single baked-in web-application object, so `get_app` yields the mount
+    /// route string; use [`AgentBase::as_router`] for the mountable handler.
     #[must_use]
     pub fn get_app(&self) -> String {
-        self.as_router()
+        self.service.route().to_string()
     }
 
     /// Enable debug routes. Python parity: `WebMixin.enable_debug_routes`.

@@ -86,6 +86,24 @@ RETURN_TYPE_OVERRIDE: dict[str, str] = {
     )
 }
 
+# as_router() returns a real mountable handler — an ``axum::Router`` (Rust's
+# "embed my routes in a host app" unit, mounted via ``Router::nest`` into a
+# caller's own axum/hyper app). Python's WebMixin.as_router / SWMLService.as_router
+# return the behaviour-neutral ``HostAppRouter`` (a FastAPI ``APIRouter`` subclass)
+# — the SAME capability in each language's idiom. rustdoc spells the return type
+# ``axum::Router`` (a foreign crate's type the type-alias table can't resolve to a
+# Python class), so map it here per-method to the canonical HostAppRouter. This is
+# the tool handling the idiom (the full method contract is still compared), NOT an
+# omission — as_router now drifts 0 against the reference.
+RETURN_TYPE_OVERRIDE.update({
+    ctx: "class:signalwire.core.web.HostAppRouter"
+    for ctx in (
+        "signalwire.core.swml_service.SWMLService.as_router",
+        "signalwire.core.mixins.web_mixin.WebMixin.as_router",
+        "signalwire.core.agent_base.AgentBase.as_router",
+    )
+})
+
 
 def load_aliases() -> dict[str, str]:
     data = yaml.safe_load((PSDK / "type_aliases.yaml").read_text(encoding="utf-8"))

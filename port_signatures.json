@@ -1125,7 +1125,7 @@
                   "kind": "self"
                 }
               ],
-              "returns": "string"
+              "returns": "class:signalwire.core.web.HostAppRouter"
             },
             "auto_map_sip_usernames": {
               "params": [
@@ -5587,7 +5587,7 @@
                   "kind": "self"
                 }
               ],
-              "returns": "string"
+              "returns": "class:signalwire.core.web.HostAppRouter"
             },
             "enable_debug_routes": {
               "params": [
@@ -9244,7 +9244,7 @@
                   "kind": "self"
                 }
               ],
-              "returns": "string"
+              "returns": "class:signalwire.core.web.HostAppRouter"
             },
             "basic_auth_credentials": {
               "params": [

@@ -105,6 +105,7 @@ pub type OnSwmlRequestHook =
     Box<dyn Fn(Option<&Value>, Option<&str>) -> Option<Value> + Send + Sync>;
 
 /// SWML service: holds a document, auth credentials, and handles HTTP requests.
+#[derive(Clone)]
 pub struct Service {
     name: String,
     route: String,
@@ -728,15 +729,19 @@ impl Service {
         self.routing_callbacks.get(path)
     }
 
-    /// Return this service's route as a mountable router path.
+    /// Return a mountable [`axum::Router`] that serves this service's routes.
     ///
-    /// Python returns a FastAPI `APIRouter`; the Rust port has no web
-    /// framework baked in, so `as_router` yields the route string a host
-    /// (e.g. [`crate::server::AgentServer`]) mounts this service under. This
-    /// is the Rust idiom for the same "give me something to mount" contract.
-    #[must_use]
-    pub fn as_router(&self) -> String {
-        self.route.clone()
+    /// This is the Rust equivalent of Python's `WebMixin.as_router` /
+    /// `SWMLService.as_router`, which return a FastAPI `APIRouter` (the
+    /// "embed my routes in a host app" unit). The returned router wraps this
+    /// service's HTTP request handling (SWML render, `/swaig`, `/post_prompt`,
+    /// `/health`, `/ready`) and can be mounted into a caller's own axum/hyper
+    /// application with [`axum::Router::nest`] or served directly. The service
+    /// is cloned into an [`std::sync::Arc`] so the router owns its state.
+    #[cfg(feature = "tower-middleware")]
+    pub fn as_router(&self) -> axum::Router {
+        let svc = std::sync::Arc::new(self.clone());
+        crate::swml::router::build_router(svc)
     }
 
     /// Start a blocking web server for this service (Python `serve`).

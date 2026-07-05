@@ -4,6 +4,7 @@ use serde_json::Value;
 
 /// SWML document: version + named sections containing verb arrays.
 #[must_use]
+#[derive(Clone)]
 pub struct Document {
     version: String,
     sections: HashMap<String, Vec<Value>>,

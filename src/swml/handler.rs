@@ -31,6 +31,13 @@ pub trait SwmlVerbHandler: Send + Sync {
 
     /// Build a configuration for this verb from provided arguments.
     fn build_config(&self, args: &Map<String, Value>) -> Value;
+
+    /// Clone this handler into a fresh boxed trait object.
+    ///
+    /// Enables `VerbHandlerRegistry` (and therefore `Service`) to be `Clone`,
+    /// which `as_router` relies on to hand a shared snapshot to the mountable
+    /// axum handler.
+    fn clone_box(&self) -> Box<dyn SwmlVerbHandler>;
 }
 
 /// Handler for the SWML `ai` verb.
@@ -50,6 +57,10 @@ impl AiVerbHandler {
 impl SwmlVerbHandler for AiVerbHandler {
     fn get_verb_name(&self) -> String {
         "ai".to_string()
+    }
+
+    fn clone_box(&self) -> Box<dyn SwmlVerbHandler> {
+        Box::new(self.clone())
     }
 
     fn validate_config(&self, config: &Value) -> (bool, Vec<String>) {
@@ -191,6 +202,18 @@ impl SwmlVerbHandler for AiVerbHandler {
 #[derive(Default)]
 pub struct VerbHandlerRegistry {
     handlers: HashMap<String, Box<dyn SwmlVerbHandler>>,
+}
+
+impl Clone for VerbHandlerRegistry {
+    fn clone(&self) -> Self {
+        VerbHandlerRegistry {
+            handlers: self
+                .handlers
+                .iter()
+                .map(|(k, v)| (k.clone(), v.clone_box()))
+                .collect(),
+        }
+    }
 }
 
 impl VerbHandlerRegistry {
@@ -348,6 +371,7 @@ mod tests {
 
     #[test]
     fn test_register_custom_handler() {
+        #[derive(Clone)]
         struct HangupHandler;
         impl SwmlVerbHandler for HangupHandler {
             fn get_verb_name(&self) -> String {
@@ -358,6 +382,9 @@ mod tests {
             }
             fn build_config(&self, _args: &Map<String, Value>) -> Value {
                 json!({})
+            }
+            fn clone_box(&self) -> Box<dyn SwmlVerbHandler> {
+                Box::new(self.clone())
             }
         }
         let mut reg = VerbHandlerRegistry::new();

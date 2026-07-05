@@ -1,6 +1,6 @@
 {
   "version": "1",
-  "generated_from": "signalwire-rust @ 21592925dc41729d56a117199d177aa3fb97fc6e",
+  "generated_from": "signalwire-rust @ 3f1fb725ff38a9d3a91be6e862e238a031f44402",
   "modules": {
     "signalwire": {
       "classes": {
@@ -3285,6 +3285,10 @@
           "required"
         ]
       },
+      "functions": []
+    },
+    "signalwire.swml.router": {
+      "classes": {},
       "functions": []
     },
     "signalwire.swml.schema": {
