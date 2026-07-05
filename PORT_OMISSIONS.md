@@ -892,8 +892,6 @@ signalwire.core.swml_service.SWMLService.security: Python exposes ``self.securit
 signalwire.core.swml_service.SWMLService.verb_registry: Python exposes ``self.verb_registry`` as the VerbHandlerRegistry attribute; Rust holds the verb registry privately and exposes verb-registration methods on SWMLService instead.
 signalwire.skills.registry.SkillRegistry.logger: Python exposes ``self.logger`` as a public attribute on SkillRegistry; Rust uses tracing macros directly.
 signalwire.core.security.webhook_middleware.make_webhook_validation_dependency: impossible: FastAPI dependency-factory (make_webhook_validation_dependency returns a Depends() callable) — a framework-specific DI primitive with no Rust equivalent; TS/PHP cousins also omit it (re-audited L18)
-signalwire.core.security.webhook_validator.validate_webhook_signature: idiomatic_divergence: implemented as static method on the WebhookValidator class (language idiom); see PORT_ADDITIONS.md
-signalwire.core.security.webhook_validator.validate_request: idiomatic_divergence: implemented as static method on the WebhookValidator class (language idiom); see PORT_ADDITIONS.md
 
 ## Abstract RELAY action mixin bases (§H — flattened, TS/PHP flatten identically)
 

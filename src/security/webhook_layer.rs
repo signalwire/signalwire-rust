@@ -20,6 +20,7 @@
 //!
 //! Copyright (c) 2025 SignalWire. Licensed under the MIT License.
 
+use std::collections::HashMap;
 use std::convert::Infallible;
 use std::future::Future;
 use std::pin::Pin;
@@ -37,6 +38,80 @@ use super::webhook::validate_webhook_signature;
 /// the legacy `X-Twilio-Signature` exists for cXML/Compatibility-API
 /// integrations migrating from Twilio.
 const SIGNATURE_HEADERS: &[&str] = &["x-signalwire-signature", "x-twilio-signature"];
+
+// ---------------------------------------------------------------------------
+//  Framework-free decomposed validation core (cross-port contract).
+//
+//  This is the language-neutral decision core mandated by
+//  `porting-sdk/webhooks.md` + the hidden-surface audit's decompose-at-the-
+//  boundary ruling: every port ships the SAME shape (dotnet
+//  `WebhookValidationMiddleware.Validate`, a Rack/PSGI middleware `.call`,
+//  Python `webhook_middleware.validate`, …). The tower [`WebhookLayer`] below
+//  is the Rust framework *wrapper* idiom on top of it; this function is the
+//  part that is required cross-port.
+// ---------------------------------------------------------------------------
+
+/// Framework-free webhook-validation decision.
+///
+/// Takes a request decomposed into language-neutral primitives and returns
+/// either a `403`-shaped response triple to short-circuit with, or `None`
+/// to let the downstream handler run.
+///
+/// The signature is read from the `headers` map (`X-SignalWire-Signature`,
+/// falling back to the legacy `X-Twilio-Signature` alias — lookups are
+/// case-insensitive). `method` is accepted for cross-port signature parity
+/// but is not part of the HMAC. On any failure (missing/bad signature,
+/// validator error) the function returns `Some((403, {}, ""))` — no body
+/// detail, so which branch tripped is not leaked.
+///
+/// An empty `signing_key` is a programming error (the key is mandatory
+/// configuration). Mirroring Python's `ValueError`, this is caught by a
+/// debug assertion; in release builds it degrades to the reject triple
+/// rather than authenticating an unsigned request.
+///
+/// # Returns
+/// * `None` if the signature is valid — run the handler.
+/// * `Some((403, {}, ""))` otherwise — short-circuit with `403 Forbidden`.
+// `implicit_hasher`: the `HashMap<String, String>` shape is the fixed
+// cross-port decomposed-validation contract (`dict<string,string>` in the
+// signature oracle). Generalizing over the hasher would break the enumerated
+// contract shape for no caller benefit, so keep the concrete map.
+#[allow(clippy::implicit_hasher)]
+#[must_use]
+pub fn validate(
+    method: &str,
+    url: &str,
+    headers: &HashMap<String, String>,
+    body: &str,
+    signing_key: &str,
+) -> Option<(u16, HashMap<String, String>, String)> {
+    let _ = method; // part of the cross-port contract; not HMAC'd.
+    debug_assert!(!signing_key.is_empty(), "signing_key is required");
+
+    let reject = || Some((403u16, HashMap::new(), String::new()));
+
+    if signing_key.is_empty() {
+        return reject();
+    }
+
+    // Case-insensitive header lookup for the signature (X-SignalWire first,
+    // then the legacy X-Twilio alias).
+    let signature = SIGNATURE_HEADERS.iter().find_map(|want| {
+        headers
+            .iter()
+            .find(|(k, _)| k.eq_ignore_ascii_case(want))
+            .map(|(_, v)| v.as_str())
+    });
+
+    let Some(signature) = signature.filter(|s| !s.is_empty()) else {
+        return reject();
+    };
+
+    match validate_webhook_signature(signing_key, signature, url, body) {
+        Ok(true) => None,
+        _ => reject(),
+    }
+}
 
 /// Tower [`Layer`] that wraps any `Service<Request<Body>>` with
 /// SignalWire webhook signature validation.
@@ -131,13 +206,10 @@ where
         let cfg = self.cfg.clone();
 
         Box::pin(async move {
-            // Pull the signature header (case-insensitive — axum's
-            // HeaderMap already normalises to lowercase).
-            let sig: Option<String> = SIGNATURE_HEADERS
-                .iter()
-                .find_map(|name| req.headers().get(*name))
-                .and_then(|v| v.to_str().ok())
-                .map(std::string::ToString::to_string);
+            // Collect the decomposed primitives, then hand them to the
+            // framework-free [`validate`] core so the tower wrapper and the
+            // cross-port decision logic never diverge.
+            let method = req.method().as_str().to_string();
 
             // Reconstruct the URL the platform signed.
             let url = match cfg.url_override.as_ref() {
@@ -150,6 +222,15 @@ where
                 ),
                 None => reconstruct_url_from_request(req.headers(), req.uri()),
             };
+
+            // Snapshot the headers into the language-neutral string map the
+            // core consumes (axum's HeaderMap keys are already lowercase).
+            let mut header_map: HashMap<String, String> = HashMap::new();
+            for (name, value) in req.headers() {
+                if let Ok(v) = value.to_str() {
+                    header_map.insert(name.as_str().to_string(), v.to_string());
+                }
+            }
 
             // Buffer the body fully so we can hand it to the inner
             // service after validation. This is unavoidable: the
@@ -172,17 +253,17 @@ where
                 }
             };
 
-            let signature = sig.as_deref().unwrap_or("");
-            let valid = validate_webhook_signature(
-                cfg.signing_key.as_str(),
-                signature,
+            // Framework-free decision core: `None` = pass, `Some(triple)` = reject.
+            if let Some((status, _headers, _body)) = validate(
+                &method,
                 &url,
+                &header_map,
                 &raw_body_str,
-            )
-            .unwrap_or(false);
-
-            if !valid {
-                return Ok(forbidden_response());
+                cfg.signing_key.as_str(),
+            ) {
+                let mut resp = Response::new(Body::empty());
+                *resp.status_mut() = StatusCode::from_u16(status).unwrap_or(StatusCode::FORBIDDEN);
+                return Ok(resp);
             }
 
             // Rebuild the request with the buffered body so downstream
@@ -259,5 +340,62 @@ mod tests {
             layer.inner.url_override.as_deref(),
             Some("https://example.com")
         );
+    }
+
+    // -- Framework-free decomposed `validate` core --------------------------
+    //
+    // Canonical Scheme-A vector from porting-sdk/webhooks.md.
+
+    const V_KEY: &str = "PSKtest1234567890abcdef";
+    const V_URL: &str = "https://example.ngrok.io/webhook";
+    const V_BODY: &str =
+        r#"{"event":"call.state","params":{"call_id":"abc-123","state":"answered"}}"#;
+    const V_SIG: &str = "c3c08c1fefaf9ee198a100d5906765a6f394bf0f";
+
+    #[test]
+    fn validate_core_valid_signature_returns_none() {
+        // A valid X-SignalWire-Signature → None (let the handler run).
+        let mut headers = HashMap::new();
+        headers.insert("x-signalwire-signature".to_string(), V_SIG.to_string());
+        let out = validate("POST", V_URL, &headers, V_BODY, V_KEY);
+        assert_eq!(out, None, "valid signature must pass (None)");
+    }
+
+    #[test]
+    fn validate_core_bad_signature_returns_403_triple() {
+        let mut headers = HashMap::new();
+        headers.insert(
+            "x-signalwire-signature".to_string(),
+            "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef".to_string(),
+        );
+        let out = validate("POST", V_URL, &headers, V_BODY, V_KEY);
+        assert_eq!(out, Some((403, HashMap::new(), String::new())));
+    }
+
+    #[test]
+    fn validate_core_missing_signature_returns_403_triple() {
+        // No signature header at all → reject, never panic.
+        let headers = HashMap::new();
+        let out = validate("POST", V_URL, &headers, V_BODY, V_KEY);
+        assert_eq!(out, Some((403, HashMap::new(), String::new())));
+    }
+
+    #[test]
+    fn validate_core_x_twilio_signature_alias_honored() {
+        // The legacy X-Twilio-Signature alias must be accepted for the same
+        // signature the X-SignalWire header would carry.
+        let mut headers = HashMap::new();
+        headers.insert("X-Twilio-Signature".to_string(), V_SIG.to_string());
+        let out = validate("POST", V_URL, &headers, V_BODY, V_KEY);
+        assert_eq!(out, None, "X-Twilio-Signature alias must be honored");
+    }
+
+    #[test]
+    fn validate_core_header_lookup_is_case_insensitive() {
+        // Header keys may arrive in any casing; the core lowercases-compares.
+        let mut headers = HashMap::new();
+        headers.insert("X-SignalWire-Signature".to_string(), V_SIG.to_string());
+        let out = validate("POST", V_URL, &headers, V_BODY, V_KEY);
+        assert_eq!(out, None);
     }
 }

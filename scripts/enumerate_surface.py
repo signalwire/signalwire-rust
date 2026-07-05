@@ -265,6 +265,11 @@ FREE_FN_MODULE_RENAMES: dict[str, str] = {
     # webhook signature validators: Rust hosts them at src/security/webhook.rs;
     # Python's canonical module is signalwire.core.security.webhook_validator.
     "signalwire.security.webhook": "signalwire.core.security.webhook_validator",
+    # decomposed framework-free validation core: Rust's tower wrapper module
+    # src/security/webhook_layer.rs hosts the cross-port `validate` free fn;
+    # Python's canonical module is signalwire.core.security.webhook_middleware
+    # (matches enumerate_signatures.py's FREE_FN_MODULE_RENAMES).
+    "signalwire.security.webhook_layer": "signalwire.core.security.webhook_middleware",
 }
 
 # ---------------------------------------------------------------------------

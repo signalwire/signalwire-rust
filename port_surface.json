@@ -1,6 +1,6 @@
 {
   "version": "1",
-  "generated_from": "signalwire-rust @ 3f1fb725ff38a9d3a91be6e862e238a031f44402",
+  "generated_from": "signalwire-rust @ db7ed5351f435d7ebc621eff3c78381ec832dc4a",
   "modules": {
     "signalwire": {
       "classes": {
@@ -593,6 +593,12 @@
         ]
       },
       "functions": []
+    },
+    "signalwire.core.security.webhook_middleware": {
+      "classes": {},
+      "functions": [
+        "validate"
+      ]
     },
     "signalwire.core.security.webhook_validator": {
       "classes": {},

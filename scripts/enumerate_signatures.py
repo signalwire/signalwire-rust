@@ -858,6 +858,7 @@ def collect(rust_doc: dict, aliases: dict) -> tuple[dict, list]:
     # are emitted; everything else is treated as a port-only extension
     # and dropped (PORT_ADDITIONS.md owns surface-level extras).
     free_fn_targets = _collect_free_function_targets()
+    _PY_REF = _load_python_reference()
     for iid, item in index.items():
         inner = item.get("inner", {})
         if "function" not in inner:
@@ -898,6 +899,26 @@ def collect(rust_doc: dict, aliases: dict) -> tuple[dict, list]:
         params = sig.get("params", [])
         if params and params[0].get("kind") == "self":
             sig["params"] = params[1:]
+        # Kind-align keyword-only params to the reference by name. Python marks
+        # some free-function params keyword-only (``*, signing_key``); Rust has
+        # no keyword-only args, so rustdoc reports them positional. This is pure
+        # idiom (Rule 2: reconcile in the enumerator, not via an omission) — when
+        # the reference records a same-named param as ``keyword``, mirror that
+        # kind onto the Rust positional so the two compare EQUAL.
+        ref_fn = (
+            _PY_REF.get("modules", {})
+            .get(target_module, {})
+            .get("functions", {})
+            .get(target_function, {})
+        )
+        ref_kind_by_name = {
+            p.get("name"): p.get("kind")
+            for p in ref_fn.get("params", [])
+            if p.get("kind") == "keyword"
+        }
+        for p in sig.get("params", []):
+            if p.get("name") in ref_kind_by_name and p.get("kind", "positional") == "positional":
+                p["kind"] = "keyword"
         out_modules.setdefault(target_module, {"classes": {}})
         out_modules[target_module].setdefault("functions", {})
         out_modules[target_module]["functions"][target_function] = sig

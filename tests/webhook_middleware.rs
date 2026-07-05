@@ -255,3 +255,59 @@ async fn handler_can_re_read_the_buffered_body() {
         "handler must see the original body bytes"
     );
 }
+
+// ---------------------------------------------------------------------------
+//  Framework-free decomposed `validate` core — cross-port contract.
+//
+//  The tower Layer above is the Rust framework *wrapper* idiom; the
+//  language-neutral decision core `signalwire::security::validate` is the
+//  part required cross-port (webhooks.md + hidden-surface decompose ruling).
+//  It takes primitives (method, url, headers, body, signing_key) and returns
+//  `None` to pass or `Some((status, headers, body))` to short-circuit.
+// ---------------------------------------------------------------------------
+
+#[test]
+fn decomposed_validate_core_public_boundary() {
+    use signalwire::security::validate;
+    use std::collections::HashMap;
+
+    let url = "https://example.ngrok.io/webhook";
+
+    // Valid signature → None (let the handler run).
+    let mut headers = HashMap::new();
+    headers.insert("x-signalwire-signature".to_string(), VALID_SIG.to_string());
+    assert_eq!(
+        validate("POST", url, &headers, BODY, KEY),
+        None,
+        "valid signature must pass (None)"
+    );
+
+    // Bad signature → 403 triple.
+    let mut bad = HashMap::new();
+    bad.insert(
+        "x-signalwire-signature".to_string(),
+        "0000000000000000000000000000000000000000".to_string(),
+    );
+    assert_eq!(
+        validate("POST", url, &bad, BODY, KEY),
+        Some((403, HashMap::new(), String::new())),
+        "bad signature must reject with (403, {{}}, \"\")"
+    );
+
+    // Missing signature header → 403 triple (never panics).
+    let empty: HashMap<String, String> = HashMap::new();
+    assert_eq!(
+        validate("POST", url, &empty, BODY, KEY),
+        Some((403, HashMap::new(), String::new())),
+        "missing signature must reject"
+    );
+
+    // Legacy X-Twilio-Signature alias honored (any casing).
+    let mut twilio = HashMap::new();
+    twilio.insert("X-Twilio-Signature".to_string(), VALID_SIG.to_string());
+    assert_eq!(
+        validate("POST", url, &twilio, BODY, KEY),
+        None,
+        "X-Twilio-Signature alias must be honored"
+    );
+}

@@ -213,7 +213,6 @@ signalwire.pom.pom.Section.__init__: rust-builder-mut-ref — Rust ``Section::ne
 signalwire.pom.pom.Section.add_subsection: rust-builder-mut-ref — Rust ``add_subsection(title)`` returns ``&mut Section`` for chained configuration; the full Python signature is exposed via the ``add_subsection_full`` companion method (title, body, bullets, numbered, numbered_bullets).
 signalwire.pom.pom.Section.render_markdown: rust-public-default — Rust public ``render_markdown()`` always renders at the conventional top-level (level=2, no section_number); the recursion-internal variant is the crate-private ``render_markdown_at(level, section_number)`` invoked by `PromptObjectModel`.
 signalwire.pom.pom.Section.render_xml: rust-public-default — Rust public ``render_xml()`` always renders at indent=0 with no section_number; the recursion-internal variant is the crate-private ``render_xml_at(indent, section_number)`` invoked by `PromptObjectModel`.
-signalwire.core.security.webhook_validator.validate_request: rust-typed-enum-instead-of-union — Python takes ``Union[str, Mapping[str, Any], List[Tuple[str, Any]], None]`` for the 4th argument; Rust uses an explicit ``ParamsOrBody`` enum (``Body(String)`` / ``Params(Vec<(String, Vec<String>)>)``) for the same dispatch. Rust does not collapse union inputs into a single positional argument.
 
 
 ## Generated REST layer — loose write-body residual (item B; closed by item H types_generated)
