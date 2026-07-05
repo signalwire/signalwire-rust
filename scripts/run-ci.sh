@@ -85,11 +85,15 @@ pick_free_port() {
 # SIGNATURES gate's cache), compare against the committed copy MODULO the volatile
 # generated_from git-sha, then always restore the file.
 surface_fresh_gate() {
-    git show HEAD:port_surface.json > /tmp/committed_surface.json 2>/dev/null \
-        || cp "$PORT_ROOT/port_surface.json" /tmp/committed_surface.json
+    # Scratch under the repo-local, gitignored .sw-tmp/ (never machine-wide /tmp,
+    # which invites cross-run pollution + leftover files).
+    mkdir -p "$PORT_ROOT/.sw-tmp"
+    local committed="$PORT_ROOT/.sw-tmp/committed_surface.json"
+    git show HEAD:port_surface.json > "$committed" 2>/dev/null \
+        || cp "$PORT_ROOT/port_surface.json" "$committed"
     python3 scripts/enumerate_surface.py || { git checkout -- port_surface.json; return 1; }
     python3 "$PORTING_SDK_DIR/scripts/check_surface_freshness.py" \
-        --committed /tmp/committed_surface.json \
+        --committed "$committed" \
         --fresh "$PORT_ROOT/port_surface.json"
     local rc=$?
     git checkout -- port_surface.json
@@ -104,8 +108,11 @@ rest_coverage_gate() {
     port="$(pick_free_port)" || { echo "could not allocate a free port" >&2; return 1; }
     local mock_pkg_parent="$PORTING_SDK_DIR/test_harness/mock_signalwire"
     export PYTHONPATH="$mock_pkg_parent${PYTHONPATH:+:$PYTHONPATH}"
+    # Mock log under the repo-local, gitignored .sw-tmp/ (never machine-wide /tmp).
+    mkdir -p "$PORT_ROOT/.sw-tmp"
+    local mock_log="$PORT_ROOT/.sw-tmp/rest_cov_mock_rust.$$.log"
     python3 -m mock_signalwire --host 127.0.0.1 --port "$port" --log-level error \
-        >/tmp/rest_cov_mock_rust.$$.log 2>&1 &
+        >"$mock_log" 2>&1 &
     local mock_pid=$!
     # shellcheck disable=SC2064
     trap "kill $mock_pid 2>/dev/null" RETURN
@@ -113,7 +120,7 @@ rest_coverage_gate() {
     for i in $(seq 1 60); do
         if ! kill -0 "$mock_pid" 2>/dev/null; then
             echo "mock_signalwire died on port $port — log:" >&2
-            cat "/tmp/rest_cov_mock_rust.$$.log" >&2
+            cat "$mock_log" >&2
             return 1
         fi
         if python3 -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:$port/__mock__/health',timeout=1)" 2>/dev/null; then
