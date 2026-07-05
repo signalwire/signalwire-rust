@@ -360,8 +360,15 @@ macro_rules! action_subclass {
 action_subclass!(PlayAction, "calling.play.stop");
 
 impl PlayAction {
-    pub fn pause(&self) {
-        self.execute_subcommand("calling.play.pause", HashMap::new());
+    /// Pause the running play. Mirrors Python's
+    /// `PausableAction.pause(behavior: str | None = None)`: when `behavior`
+    /// is `Some`, it rides in the `behavior` param; when `None` it is omitted.
+    pub fn pause(&self, behavior: Option<&str>) {
+        let mut extra = HashMap::new();
+        if let Some(b) = behavior {
+            extra.insert("behavior".to_string(), Value::String(b.to_string()));
+        }
+        self.execute_subcommand("calling.play.pause", extra);
     }
 
     pub fn resume(&self) {
@@ -380,8 +387,14 @@ impl PlayAction {
 action_subclass!(RecordAction, "calling.record.stop");
 
 impl RecordAction {
-    pub fn pause(&self) {
-        self.execute_subcommand("calling.record.pause", HashMap::new());
+    /// Pause the running record. Mirrors Python's
+    /// `PausableAction.pause(behavior: str | None = None)`.
+    pub fn pause(&self, behavior: Option<&str>) {
+        let mut extra = HashMap::new();
+        if let Some(b) = behavior {
+            extra.insert("behavior".to_string(), Value::String(b.to_string()));
+        }
+        self.execute_subcommand("calling.record.pause", extra);
     }
 
     pub fn resume(&self) {
@@ -421,7 +434,7 @@ impl CollectAction {
                 control_id,
                 call_id,
                 node_id,
-                "calling.collect.stop",
+                "calling.play_and_collect.stop",
             )),
         }
     }
@@ -430,6 +443,32 @@ impl CollectAction {
         &self.inner
     }
 
+    /// Pause the running `play_and_collect`. Mirrors Python's
+    /// `PausableAction.pause(behavior: str | None = None)` under the
+    /// `play_and_collect` command prefix.
+    pub fn pause(&self, behavior: Option<&str>) {
+        let mut extra = HashMap::new();
+        if let Some(b) = behavior {
+            extra.insert("behavior".to_string(), Value::String(b.to_string()));
+        }
+        self.execute_subcommand("calling.play_and_collect.pause", extra);
+    }
+
+    /// Resume the paused `play_and_collect` (`play_and_collect.resume`).
+    pub fn resume(&self) {
+        self.execute_subcommand("calling.play_and_collect.resume", HashMap::new());
+    }
+
+    /// Adjust play volume during `play_and_collect` (`play_and_collect.volume`).
+    pub fn volume(&self, db: f64) {
+        let mut extra = HashMap::new();
+        extra.insert("volume".to_string(), serde_json::json!(db));
+        self.execute_subcommand("calling.play_and_collect.volume", extra);
+    }
+
+    /// Start the initial-input timer on an active collect. The timer command
+    /// keeps the bare `collect` prefix even for `play_and_collect` (mirrors the
+    /// Python reference + `relay_apis.c` `collect.start_input_timers`).
     pub fn start_input_timers(&self) {
         self.execute_subcommand("calling.collect.start_input_timers", HashMap::new());
     }
@@ -695,15 +734,50 @@ mod tests {
     #[test]
     fn test_play_action_pause_resume_volume() {
         let pa = PlayAction::new("ctrl", "call", "node");
-        pa.pause();
+        pa.pause(None);
         pa.resume();
         pa.volume(-3.5);
         let cmds = pa.sent_commands.lock().unwrap();
         assert_eq!(cmds.len(), 3);
         assert_eq!(cmds[0].0, "calling.play.pause");
+        // pause() with no behavior omits the behavior param.
+        assert!(!cmds[0].1.contains_key("behavior"));
         assert_eq!(cmds[1].0, "calling.play.resume");
         assert_eq!(cmds[2].0, "calling.play.volume");
         assert_eq!(cmds[2].1["volume"], json!(-3.5));
+    }
+
+    #[test]
+    fn test_play_action_pause_with_behavior() {
+        let pa = PlayAction::new("ctrl", "call", "node");
+        pa.pause(Some("hold"));
+        let cmds = pa.sent_commands.lock().unwrap();
+        assert_eq!(cmds[0].0, "calling.play.pause");
+        assert_eq!(cmds[0].1["behavior"], json!("hold"));
+    }
+
+    // The concrete play action exposes the full stop/pause/resume/volume
+    // control surface (the reference projects StoppableAction/PausableAction/
+    // VolumeAction onto PlayAction). `stop` reaches it via Deref to Action.
+    #[test]
+    fn test_play_action_control_surface() {
+        let pa = PlayAction::new("ctrl", "call", "node");
+        assert_eq!(pa.stop_method(), "calling.play.stop");
+        pa.stop();
+        pa.pause(None);
+        pa.resume();
+        pa.volume(0.0);
+        let cmds = pa.sent_commands.lock().unwrap();
+        let methods: Vec<&str> = cmds.iter().map(|(m, _)| m.as_str()).collect();
+        assert_eq!(
+            methods,
+            vec![
+                "calling.play.stop",
+                "calling.play.pause",
+                "calling.play.resume",
+                "calling.play.volume",
+            ]
+        );
     }
 
     // -- RecordAction tests --
@@ -726,11 +800,27 @@ mod tests {
     #[test]
     fn test_record_action_pause_resume() {
         let ra = RecordAction::new("ctrl", "call", "node");
-        ra.pause();
+        ra.pause(None);
         ra.resume();
         let cmds = ra.sent_commands.lock().unwrap();
         assert_eq!(cmds[0].0, "calling.record.pause");
         assert_eq!(cmds[1].0, "calling.record.resume");
+    }
+
+    // RecordAction exposes stop/pause/resume but NOT volume (the reference
+    // records RecordAction under PausableAction, not VolumeAction).
+    #[test]
+    fn test_record_action_control_surface() {
+        let ra = RecordAction::new("ctrl", "call", "node");
+        assert_eq!(ra.stop_method(), "calling.record.stop");
+        ra.stop();
+        ra.pause(Some("skip")); // behavior rides in the param
+        ra.resume();
+        let cmds = ra.sent_commands.lock().unwrap();
+        assert_eq!(cmds[0].0, "calling.record.stop");
+        assert_eq!(cmds[1].0, "calling.record.pause");
+        assert_eq!(cmds[1].1["behavior"], json!("skip"));
+        assert_eq!(cmds[2].0, "calling.record.resume");
     }
 
     // -- CollectAction tests --
@@ -763,6 +853,34 @@ mod tests {
         let ev = Event::new("calling.call.collect", params, 1.0);
         ca.handle_event(&ev);
         assert_eq!(ca.collect_result().unwrap()["digits"], "1234");
+    }
+
+    // CollectAction is the play_and_collect handle: stop/pause/resume/volume
+    // use the `play_and_collect` prefix (matching the Python reference's
+    // `_command_prefix = "play_and_collect"` + `relay_apis.c`), while the
+    // input-timer command keeps the bare `collect` prefix.
+    #[test]
+    fn test_collect_action_control_surface() {
+        let ca = CollectAction::new("ctrl", "call", "node");
+        assert_eq!(ca.stop_method(), "calling.play_and_collect.stop");
+        ca.stop();
+        ca.pause(None);
+        ca.resume();
+        ca.volume(-6.0);
+        ca.start_input_timers();
+        let cmds = ca.sent_commands.lock().unwrap();
+        let methods: Vec<&str> = cmds.iter().map(|(m, _)| m.as_str()).collect();
+        assert_eq!(
+            methods,
+            vec![
+                "calling.play_and_collect.stop",
+                "calling.play_and_collect.pause",
+                "calling.play_and_collect.resume",
+                "calling.play_and_collect.volume",
+                "calling.collect.start_input_timers",
+            ]
+        );
+        assert_eq!(cmds[3].1["volume"], json!(-6.0));
     }
 
     // -- DetectAction tests --

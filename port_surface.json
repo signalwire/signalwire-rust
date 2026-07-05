@@ -1,6 +1,6 @@
 {
   "version": "1",
-  "generated_from": "signalwire-rust @ db7ed5351f435d7ebc621eff3c78381ec832dc4a",
+  "generated_from": "signalwire-rust @ 30f76e8d5f5be36b153014d2b466cd0530949a29",
   "modules": {
     "signalwire": {
       "classes": {
@@ -1107,7 +1107,8 @@
       "classes": {
         "AIAction": [
           "__init__",
-          "action"
+          "action",
+          "stop"
         ],
         "Action": [
           "__init__",
@@ -1200,27 +1201,35 @@
           "action",
           "collect_result",
           "handle_event_filtered",
-          "start_input_timers"
+          "pause",
+          "resume",
+          "start_input_timers",
+          "stop",
+          "volume"
         ],
         "DetectAction": [
           "__init__",
           "action",
-          "detect_result"
+          "detect_result",
+          "stop"
         ],
         "FaxAction": [
           "__init__",
           "action",
-          "fax_type"
+          "fax_type",
+          "stop"
         ],
         "PayAction": [
           "__init__",
-          "action"
+          "action",
+          "stop"
         ],
         "PlayAction": [
           "__init__",
           "action",
           "pause",
           "resume",
+          "stop",
           "volume"
         ],
         "RecordAction": [
@@ -1230,23 +1239,28 @@
           "pause",
           "resume",
           "size",
+          "stop",
           "url"
         ],
         "StandaloneCollectAction": [
           "__init__",
-          "start_input_timers"
+          "start_input_timers",
+          "stop"
         ],
         "StreamAction": [
           "__init__",
-          "action"
+          "action",
+          "stop"
         ],
         "TapAction": [
           "__init__",
-          "action"
+          "action",
+          "stop"
         ],
         "TranscribeAction": [
           "__init__",
-          "action"
+          "action",
+          "stop"
         ]
       },
       "functions": []

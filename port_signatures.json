@@ -17932,6 +17932,15 @@
                 }
               ],
               "returns": "class:signalwire.relay.call.Action"
+            },
+            "stop": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "void"
             }
           }
         },
@@ -19070,7 +19079,53 @@
               ],
               "returns": "void"
             },
+            "pause": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                },
+                {
+                  "name": "behavior",
+                  "type": "optional<string>",
+                  "required": true
+                }
+              ],
+              "returns": "void"
+            },
+            "resume": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "void"
+            },
             "start_input_timers": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "void"
+            },
+            "volume": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                },
+                {
+                  "name": "db",
+                  "type": "float",
+                  "required": true
+                }
+              ],
+              "returns": "void"
+            },
+            "stop": {
               "params": [
                 {
                   "name": "self",
@@ -19124,6 +19179,15 @@
                 }
               ],
               "returns": "optional<class:signalwire.value.Value>"
+            },
+            "stop": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "void"
             }
           }
         },
@@ -19175,6 +19239,15 @@
                 }
               ],
               "returns": "string"
+            },
+            "stop": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "void"
             }
           }
         },
@@ -19212,6 +19285,15 @@
                 }
               ],
               "returns": "class:signalwire.relay.call.Action"
+            },
+            "stop": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "void"
             }
           }
         },
@@ -19255,6 +19337,11 @@
                 {
                   "name": "self",
                   "kind": "self"
+                },
+                {
+                  "name": "behavior",
+                  "type": "optional<string>",
+                  "required": true
                 }
               ],
               "returns": "void"
@@ -19278,6 +19365,15 @@
                   "name": "db",
                   "type": "float",
                   "required": true
+                }
+              ],
+              "returns": "void"
+            },
+            "stop": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
                 }
               ],
               "returns": "void"
@@ -19333,6 +19429,11 @@
                 {
                   "name": "self",
                   "kind": "self"
+                },
+                {
+                  "name": "behavior",
+                  "type": "optional<string>",
+                  "required": true
                 }
               ],
               "returns": "void"
@@ -19363,6 +19464,15 @@
                 }
               ],
               "returns": "optional<string>"
+            },
+            "stop": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "void"
             }
           }
         },
@@ -19393,6 +19503,15 @@
               "returns": "void"
             },
             "start_input_timers": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "void"
+            },
+            "stop": {
               "params": [
                 {
                   "name": "self",
@@ -19437,6 +19556,15 @@
                 }
               ],
               "returns": "class:signalwire.relay.call.Action"
+            },
+            "stop": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "void"
             }
           }
         },
@@ -19474,6 +19602,15 @@
                 }
               ],
               "returns": "class:signalwire.relay.call.Action"
+            },
+            "stop": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "void"
             }
           }
         },
@@ -19511,6 +19648,15 @@
                 }
               ],
               "returns": "class:signalwire.relay.call.Action"
+            },
+            "stop": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "void"
             }
           }
         }

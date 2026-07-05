@@ -495,7 +495,6 @@ signalwire.prefabs.survey.SurveyAgent.on_summary: Python SurveyAgent internals; 
 signalwire.prefabs.survey.SurveyAgent.validate_response: Python SurveyAgent internals; Rust ships the canonical prefab
 signalwire.relay.call.AIAction: Python AI action class (Bedrock/AI verb dispatch); Rust merges AI action handling into the prefab BedrockAgent and the SWML AI verb
 signalwire.relay.call.AIAction.__init__: Python AI action class (Bedrock/AI verb dispatch); Rust merges AI action handling into the prefab BedrockAgent and the SWML AI verb
-signalwire.relay.call.AIAction.stop: Python AI action class (Bedrock/AI verb dispatch); Rust merges AI action handling into the prefab BedrockAgent and the SWML AI verb
 signalwire.relay.call.Action.wait: Python Action.wait method; Rust action surface uses its own wait() — but the per-symbol enumerator may map differently
 signalwire.relay.call.Call.echo: Python Call.echo helper; Rust Call exposes equivalent functionality through the dial / echo APIs in the broader Action surface
 signalwire.relay.call.Call.pass_: Python Call.pass_ helper (reserved-word-wrapped 'pass'); Rust uses Call::pass_call to avoid the keyword collision
@@ -505,31 +504,13 @@ signalwire.relay.call.Call.wait_for_answered: Python state-wait helper built on 
 signalwire.relay.call.Call.wait_for_ended: Python Call event-bus helpers; Rust Call exposes register_event_callback for the same effect
 signalwire.relay.call.Call.wait_for_ending: Python state-wait helper built on the wait_for async primitive (which Rust omits); Rust Call is a synchronous command surface and observes call_state via register_event_callback, so there is no wait_for to short-circuit against
 signalwire.relay.call.Call.wait_for_ringing: Python state-wait helper built on the wait_for async primitive (which Rust omits); Rust Call is a synchronous command surface and observes call_state via register_event_callback, so there is no wait_for to short-circuit against
-signalwire.relay.call.CollectAction.stop: Python CollectAction.stop; Rust delegates via the unified Action surface
-signalwire.relay.call.CollectAction.volume: Python CollectAction.volume; Rust delegates volume control via the unified Action surface
 signalwire.relay.call.DetectAction.__init__: Python DetectAction constructor; Rust constructs DetectAction internally during call.detect()
-signalwire.relay.call.DetectAction.stop: Python DetectAction.stop; Rust delegates stop via the unified Action surface
-signalwire.relay.call.FaxAction.stop: Python FaxAction.stop; Rust delegates stop via the unified Action surface
 signalwire.relay.call.PayAction: Python PayAction class; Rust ships PayAction via the unified Action enum
 signalwire.relay.call.PayAction.__init__: Python PayAction constructor; Rust constructs PayAction internally during call.pay()
-signalwire.relay.call.PayAction.stop: Python PayAction.stop; Rust delegates stop via the unified Action surface
 signalwire.relay.call.PlayAction.__init__: Python PlayAction constructor; Rust constructs PlayAction internally during call.play()
-signalwire.relay.call.PlayAction.stop: Python PlayAction.stop; Rust delegates stop via the unified Action surface
 signalwire.relay.call.RecordAction.__init__: Python RecordAction constructor; Rust constructs RecordAction internally during call.record()
-signalwire.relay.call.RecordAction.stop: Python RecordAction.stop; Rust delegates stop via the unified Action surface
-signalwire.relay.call.StandaloneCollectAction: Python standalone collect action variant; Rust merges into the unified CollectAction (the standalone variant is dispatched via the same Action type with a different parameter set)
-signalwire.relay.call.StandaloneCollectAction.__init__: Python standalone collect action variant; Rust merges into the unified CollectAction (the standalone variant is dispatched via the same Action type with a different parameter set)
-signalwire.relay.call.StandaloneCollectAction.start_input_timers: Python standalone collect action variant; Rust merges into the unified CollectAction (the standalone variant is dispatched via the same Action type with a different parameter set)
-signalwire.relay.call.StandaloneCollectAction.stop: Python standalone collect action variant; Rust merges into the unified CollectAction (the standalone variant is dispatched via the same Action type with a different parameter set)
-signalwire.relay.call.StreamAction: Python stream action class; Rust merges stream control into the unified Action surface (start/stop emitted via Call methods)
-signalwire.relay.call.StreamAction.__init__: Python stream action class; Rust merges stream control into the unified Action surface (start/stop emitted via Call methods)
-signalwire.relay.call.StreamAction.stop: Python stream action class; Rust merges stream control into the unified Action surface (start/stop emitted via Call methods)
 signalwire.relay.call.TapAction: Python TapAction class; Rust merges TapAction into the Action enum
 signalwire.relay.call.TapAction.__init__: Python TapAction constructor; Rust constructs TapAction internally during call.tap()
-signalwire.relay.call.TapAction.stop: Python TapAction.stop; Rust calls stop via the underlying Action surface
-signalwire.relay.call.TranscribeAction: Python TranscribeAction class; Rust merges into the Action surface — start/stop emitted via Call::transcribe / Call::stop_transcribe
-signalwire.relay.call.TranscribeAction.__init__: Python TranscribeAction class; Rust merges into the Action surface — start/stop emitted via Call::transcribe / Call::stop_transcribe
-signalwire.relay.call.TranscribeAction.stop: Python TranscribeAction class; Rust merges into the Action surface — start/stop emitted via Call::transcribe / Call::stop_transcribe
 signalwire.relay.client.RelayClient.dial: Python-only RelayClient surface helpers — dial/execute are convenience wrappers; Rust users invoke equivalents via Call methods or direct connect() calls
 signalwire.relay.client.RelayClient.execute: Python-only RelayClient surface helpers — dial/execute are convenience wrappers; Rust users invoke equivalents via Call methods or direct connect() calls
 signalwire.relay.client.RelayClient.relay_protocol: impossible: Python abstract relay-protocol property hook — Rust models the RELAY protocol via concrete client methods, no abstract protocol accessor; TS/PHP cousins also omit it (re-audited L18)
@@ -895,10 +876,3 @@ signalwire.core.security.webhook_middleware.make_webhook_validation_dependency: 
 
 ## Abstract RELAY action mixin bases (§H — flattened, TS/PHP flatten identically)
 
-signalwire.relay.call.PausableAction: impossible: abstract RELAY action mixin base — Rust flattens pause/resume onto each concrete Action (PlayAction/RecordAction), so there is no standalone base class to enumerate (TS/PHP flatten identically)
-signalwire.relay.call.PausableAction.pause: impossible: abstract RELAY action mixin-base method — flattened onto concrete PlayAction/RecordAction.pause in Rust (TS/PHP flatten identically)
-signalwire.relay.call.PausableAction.resume: impossible: abstract RELAY action mixin-base method — flattened onto concrete PlayAction/RecordAction.resume in Rust (TS/PHP flatten identically)
-signalwire.relay.call.StoppableAction: impossible: abstract RELAY action mixin base — Rust flattens stop onto each concrete Action (the base Action carries stop()), no standalone base class (TS/PHP flatten identically)
-signalwire.relay.call.StoppableAction.stop: impossible: abstract RELAY action mixin-base method — flattened onto the concrete Action.stop in Rust (TS/PHP flatten identically)
-signalwire.relay.call.VolumeAction: impossible: abstract RELAY action mixin base — Rust flattens volume onto concrete PlayAction, no standalone base class (TS/PHP flatten identically)
-signalwire.relay.call.VolumeAction.volume: impossible: abstract RELAY action mixin-base method — flattened onto concrete PlayAction.volume in Rust (TS/PHP flatten identically)

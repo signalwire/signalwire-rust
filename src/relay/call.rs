@@ -398,7 +398,11 @@ impl Call {
     }
 
     pub fn play_and_collect(&self, params: Value) -> Arc<Action> {
-        self.start_action("calling.play_and_collect", "calling.collect.stop", params)
+        self.start_action(
+            "calling.play_and_collect",
+            "calling.play_and_collect.stop",
+            params,
+        )
     }
 
     pub fn detect(&self, params: Value) -> Arc<Action> {
@@ -1113,7 +1117,7 @@ mod tests {
     fn test_play_and_collect_creates_action() {
         let call = make_call();
         let action = call.play_and_collect(json!({}));
-        assert_eq!(action.stop_method(), "calling.collect.stop");
+        assert_eq!(action.stop_method(), "calling.play_and_collect.stop");
     }
 
     // -- Typed convenience wrapper tests (built media/params shapes) --
@@ -1261,7 +1265,7 @@ mod tests {
             json!({"digits": {"max": 1}}),
             json!({"voice": "spore", "volume": 0.5}),
         );
-        assert_eq!(action.stop_method(), "calling.collect.stop");
+        assert_eq!(action.stop_method(), "calling.play_and_collect.stop");
         let p = one_built(&call, "calling.play_and_collect");
         assert_eq!(p["play"][0]["type"], "tts");
         assert_eq!(p["play"][0]["params"]["text"], "Pick one");

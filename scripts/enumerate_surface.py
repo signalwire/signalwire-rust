@@ -987,6 +987,27 @@ SURFACE_PROJECTIONS: dict[tuple[str, str], list[tuple[str, list[str]]]] = {
     ("signalwire.core.skill_manager", "SkillManager"): [
         ("SkillManager", ["get_skill", "load_skill", "unload_skill"]),
     ],
+    # RELAY action `stop` (Pass-2 action-contract reconcile). The reference no
+    # longer has StoppableAction/PausableAction/VolumeAction mixin bases — it
+    # projects their control methods directly onto each CONCRETE action. Rust
+    # hosts `stop` on the base `Action` struct and each concrete action reaches
+    # it via `Deref<Target=Action>`; the enumerator skips Deref trait impls, so
+    # `stop` never lands on the concrete action by itself. Project it from the
+    # `Action` donor onto every concrete action so the surface matches the
+    # oracle's concrete-action `stop` (pause/resume/volume are defined directly
+    # on the concrete actions in source and need no projection). Rule 2: idiom
+    # reconciled in the enumerator, not documented as an omission.
+    ("signalwire.relay.call", "PlayAction"): [("Action", ["stop"])],
+    ("signalwire.relay.call", "RecordAction"): [("Action", ["stop"])],
+    ("signalwire.relay.call", "CollectAction"): [("Action", ["stop"])],
+    ("signalwire.relay.call", "StandaloneCollectAction"): [("Action", ["stop"])],
+    ("signalwire.relay.call", "DetectAction"): [("Action", ["stop"])],
+    ("signalwire.relay.call", "FaxAction"): [("Action", ["stop"])],
+    ("signalwire.relay.call", "TapAction"): [("Action", ["stop"])],
+    ("signalwire.relay.call", "PayAction"): [("Action", ["stop"])],
+    ("signalwire.relay.call", "StreamAction"): [("Action", ["stop"])],
+    ("signalwire.relay.call", "TranscribeAction"): [("Action", ["stop"])],
+    ("signalwire.relay.call", "AIAction"): [("Action", ["stop"])],
 }
 # Donor methods that MUST be removed from the donor class after projection
 # (they are projection-only — the reference does not record them on the donor).
