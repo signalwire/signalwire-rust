@@ -536,29 +536,93 @@ def _apply_method_renames(cls_name: str, methods: dict) -> dict:
     return out
 
 
-def _project_variadic_kwargs(out_modules: dict, py_ref: dict) -> None:
-    """Post-process pass: for each Rust method whose trailing parameter is
-    a serde_json::Value-shaped ``params`` argument AND whose Python-reference
-    twin has a ``var_keyword`` parameter at the same position, rewrite the
-    Rust param entry to match Python's variadic shape.
+# Rust parameter names used as the ``*args`` / ``**kwargs`` variadic-equivalent
+# (a single ``serde_json::Value`` / ``Vec<..>`` / ``HashMap<..>`` carries what
+# Python spells with a splat). Only these names are treated as variadic tails.
+_VARIADIC_TAIL_NAMES = ("params", "kwargs", "args", "options")
 
-    Rationale: the Rust SDK uses ``params: serde_json::Value`` as its
-    universal **kwargs equivalent — every ``Call.ai(params)``,
-    ``Calling.dial(params)``, etc. takes a single JSON-object argument
-    that carries every named keyword. Python's reference adapter emits
-    these as ``**kwargs``. Without projection, every such method shows
-    up as drift (``kind 'var_keyword' vs 'positional'``). Projecting
-    here lines them up so PORT_SIGNATURE_OMISSIONS.md only carries
-    actually divergent cases.
 
-    Conditions for projection:
-      1. The Rust method has a final positional parameter named ``params``.
-      2. The translated canonical type is ``any`` or
-         ``class:signalwire.value.Value``.
-      3. Python reference's same fully-qualified method has a final
-         parameter with kind=``var_keyword``.
+def _reconcile_variadic_tail(py_sig: dict, rust_sig: dict) -> None:
+    """Reconcile a Rust method/function's trailing variadic-equivalent
+    parameter(s) against the Python reference twin, so pure ``*args`` /
+    ``**kwargs`` idiom does not surface as drift.
+
+    Rust has no native splat: it spells Python's ``*args`` as a
+    ``Vec<..>`` and ``**kwargs`` as a single ``serde_json::Value`` /
+    ``HashMap<..>``. Python's reference adapter (porting-sdk #58) now
+    STRIPS the trailing ``**kwargs`` (var_keyword) entirely from the
+    oracle and records a trailing ``*args`` (var_positional) as an
+    OPTIONAL param (``required: false``). Two consequences the diff must
+    tolerate:
+
+      * A stripped ``**kwargs`` tail leaves the Python ref with FEWER
+        params than the Rust twin. The Rust trailing variadic param is a
+        legitimate optional extra — mark it ``required: false`` (and
+        project the type to the ``dict<string,any>`` **kwargs shape) so
+        diff_port_signatures excuses it as an optional-extra param rather
+        than flagging a param-count mismatch.
+      * A retained ``*args`` (var_positional) tail: align the overlapping
+        Rust param to that variadic shape (optional).
+
+    Named tails only (``params`` / ``kwargs`` / ``args`` / ``options``)
+    with a JSON-value / list / dict / any translated type — a genuine
+    concrete positional param is never touched.
     """
     PROJECTED_TYPE = "dict<string,any>"
+    py_params = py_sig.get("params", [])
+    rust_params = sig_params = rust_sig.get("params", [])
+    if not rust_params:
+        return
+
+    def _is_variadic_tail(p: dict) -> bool:
+        if p.get("kind") in ("self", "var_keyword"):
+            return False
+        name = p.get("name", "")
+        if name not in _VARIADIC_TAIL_NAMES:
+            return False
+        t = (p.get("type") or "").replace(" ", "")
+        return (
+            t in ("any", "class:signalwire.value.Value")
+            or t.startswith("dict<")
+            or t.startswith("list<")
+        )
+
+    # Count the Python reference's non-self param arity. When the Rust
+    # method carries MORE params than the reference (because a var_keyword
+    # tail was stripped, or because Rust splits *args + **kwargs into two
+    # concrete params), every trailing param beyond the reference arity
+    # that is a variadic-equivalent is an optional extra.
+    n_ref = len(py_params)
+    py_last = py_params[-1] if py_params else None
+    ref_ends_var_positional = bool(py_last) and py_last.get("kind") == "var_positional"
+
+    # Walk trailing params from the end; each variadic-equivalent tail that
+    # sits at or beyond the reference arity becomes an optional extra.
+    for i in range(len(rust_params) - 1, -1, -1):
+        p = rust_params[i]
+        if not _is_variadic_tail(p):
+            break  # stop at the first non-variadic (concrete) param
+        beyond_ref = i >= n_ref
+        aligns_var_positional = ref_ends_var_positional and i == n_ref - 1
+        if beyond_ref:
+            # Extra tail (stripped **kwargs, or the second of *args/**kwargs):
+            # optional **kwargs shape.
+            p["kind"] = "var_keyword"
+            p["type"] = PROJECTED_TYPE
+            p["required"] = False
+        elif aligns_var_positional:
+            # Overlaps the reference's trailing *args: keep it optional to
+            # match the var_positional shape.
+            p["required"] = False
+            break
+        else:
+            break
+
+
+def _project_variadic_kwargs(out_modules: dict, py_ref: dict) -> None:
+    """Post-process pass: reconcile every Rust method AND module-level
+    function trailing variadic-equivalent parameter against its Python
+    reference twin (see ``_reconcile_variadic_tail``)."""
     py_modules = py_ref.get("modules", {})
     for mod_name, mod_entry in out_modules.items():
         py_mod = py_modules.get(mod_name, {})
@@ -568,29 +632,12 @@ def _project_variadic_kwargs(out_modules: dict, py_ref: dict) -> None:
                 py_sig = py_cls.get("methods", {}).get(m_name)
                 if not py_sig:
                     continue
-                py_params = py_sig.get("params", [])
-                rust_params = sig.get("params", [])
-                if not py_params or not rust_params:
-                    continue
-                # Trailing-position check on both sides.
-                py_last = py_params[-1]
-                rust_last = rust_params[-1]
-                if py_last.get("kind") != "var_keyword":
-                    continue
-                if rust_last.get("kind") in ("self", "var_keyword"):
-                    continue
-                rust_name = rust_last.get("name", "")
-                rust_type = (rust_last.get("type") or "").replace(" ", "")
-                # Accept the conventional ``params`` parameter name and the
-                # canonical type forms emitted for serde_json::Value.
-                if rust_name not in ("params", "kwargs", "options"):
-                    continue
-                if rust_type not in ("any", "class:signalwire.value.Value"):
-                    continue
-                # Project to Python's variadic shape.
-                rust_last["kind"] = "var_keyword"
-                rust_last["type"] = PROJECTED_TYPE
-                rust_last["required"] = False
+                _reconcile_variadic_tail(py_sig, sig)
+        for fn_name, sig in mod_entry.get("functions", {}).items():
+            py_sig = py_mod.get("functions", {}).get(fn_name)
+            if not py_sig:
+                continue
+            _reconcile_variadic_tail(py_sig, sig)
 
 
 def collect(rust_doc: dict, aliases: dict) -> tuple[dict, list]:

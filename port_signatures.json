@@ -9,12 +9,13 @@
             {
               "name": "args",
               "type": "list<string>",
-              "required": true
+              "required": false
             },
             {
               "name": "kwargs",
-              "type": "dict<string,string>",
-              "required": true
+              "type": "dict<string,any>",
+              "required": false,
+              "kind": "var_keyword"
             }
           ],
           "returns": "class:signalwire.rest.client.RestClient"
@@ -9025,7 +9026,8 @@
                 {
                   "name": "args",
                   "type": "dict<string,any>",
-                  "required": true
+                  "required": false,
+                  "kind": "var_keyword"
                 }
               ],
               "returns": "class:signalwire.value.Value"
@@ -18163,9 +18165,8 @@
                 },
                 {
                   "name": "params",
-                  "type": "dict<string,any>",
-                  "required": false,
-                  "kind": "var_keyword"
+                  "type": "class:signalwire.value.Value",
+                  "required": true
                 }
               ],
               "returns": "class:signalwire.relay.call.Action"
@@ -18187,9 +18188,8 @@
                 },
                 {
                   "name": "params",
-                  "type": "dict<string,any>",
-                  "required": false,
-                  "kind": "var_keyword"
+                  "type": "class:signalwire.value.Value",
+                  "required": true
                 }
               ],
               "returns": "class:signalwire.value.Value"
@@ -18211,9 +18211,8 @@
                 },
                 {
                   "name": "params",
-                  "type": "dict<string,any>",
-                  "required": false,
-                  "kind": "var_keyword"
+                  "type": "class:signalwire.value.Value",
+                  "required": true
                 }
               ],
               "returns": "class:signalwire.value.Value"
@@ -18235,9 +18234,8 @@
                 },
                 {
                   "name": "params",
-                  "type": "dict<string,any>",
-                  "required": false,
-                  "kind": "var_keyword"
+                  "type": "class:signalwire.value.Value",
+                  "required": true
                 }
               ],
               "returns": "class:signalwire.value.Value"
@@ -18268,9 +18266,8 @@
                 },
                 {
                   "name": "params",
-                  "type": "dict<string,any>",
-                  "required": false,
-                  "kind": "var_keyword"
+                  "type": "class:signalwire.value.Value",
+                  "required": true
                 }
               ],
               "returns": "class:signalwire.relay.call.Action"
@@ -18283,9 +18280,8 @@
                 },
                 {
                   "name": "params",
-                  "type": "dict<string,any>",
-                  "required": false,
-                  "kind": "var_keyword"
+                  "type": "class:signalwire.value.Value",
+                  "required": true
                 }
               ],
               "returns": "class:signalwire.value.Value"
@@ -18325,9 +18321,8 @@
                 },
                 {
                   "name": "params",
-                  "type": "dict<string,any>",
-                  "required": false,
-                  "kind": "var_keyword"
+                  "type": "class:signalwire.value.Value",
+                  "required": true
                 }
               ],
               "returns": "class:signalwire.relay.call.Action"
@@ -18405,9 +18400,8 @@
                 },
                 {
                   "name": "params",
-                  "type": "dict<string,any>",
-                  "required": false,
-                  "kind": "var_keyword"
+                  "type": "class:signalwire.value.Value",
+                  "required": true
                 }
               ],
               "returns": "class:signalwire.value.Value"
@@ -18447,9 +18441,8 @@
                 },
                 {
                   "name": "params",
-                  "type": "dict<string,any>",
-                  "required": false,
-                  "kind": "var_keyword"
+                  "type": "class:signalwire.value.Value",
+                  "required": true
                 }
               ],
               "returns": "class:signalwire.value.Value"
@@ -18462,9 +18455,8 @@
                 },
                 {
                   "name": "params",
-                  "type": "dict<string,any>",
-                  "required": false,
-                  "kind": "var_keyword"
+                  "type": "class:signalwire.value.Value",
+                  "required": true
                 }
               ],
               "returns": "class:signalwire.value.Value"
@@ -18495,9 +18487,8 @@
                 },
                 {
                   "name": "params",
-                  "type": "dict<string,any>",
-                  "required": false,
-                  "kind": "var_keyword"
+                  "type": "class:signalwire.value.Value",
+                  "required": true
                 }
               ],
               "returns": "class:signalwire.value.Value"
@@ -18510,9 +18501,8 @@
                 },
                 {
                   "name": "params",
-                  "type": "dict<string,any>",
-                  "required": false,
-                  "kind": "var_keyword"
+                  "type": "class:signalwire.value.Value",
+                  "required": true
                 }
               ],
               "returns": "class:signalwire.value.Value"
@@ -18557,9 +18547,8 @@
                 },
                 {
                   "name": "params",
-                  "type": "dict<string,any>",
-                  "required": false,
-                  "kind": "var_keyword"
+                  "type": "class:signalwire.value.Value",
+                  "required": true
                 }
               ],
               "returns": "class:signalwire.relay.call.Action"
@@ -18572,9 +18561,8 @@
                 },
                 {
                   "name": "params",
-                  "type": "dict<string,any>",
-                  "required": false,
-                  "kind": "var_keyword"
+                  "type": "class:signalwire.value.Value",
+                  "required": true
                 }
               ],
               "returns": "class:signalwire.relay.call.Action"
@@ -18587,9 +18575,8 @@
                 },
                 {
                   "name": "params",
-                  "type": "dict<string,any>",
-                  "required": false,
-                  "kind": "var_keyword"
+                  "type": "class:signalwire.value.Value",
+                  "required": true
                 }
               ],
               "returns": "class:signalwire.relay.call.Action"
@@ -18721,9 +18708,8 @@
                 },
                 {
                   "name": "params",
-                  "type": "dict<string,any>",
-                  "required": false,
-                  "kind": "var_keyword"
+                  "type": "class:signalwire.value.Value",
+                  "required": true
                 }
               ],
               "returns": "class:signalwire.value.Value"
@@ -18745,9 +18731,8 @@
                 },
                 {
                   "name": "params",
-                  "type": "dict<string,any>",
-                  "required": false,
-                  "kind": "var_keyword"
+                  "type": "class:signalwire.value.Value",
+                  "required": true
                 }
               ],
               "returns": "class:signalwire.relay.call.Action"
@@ -18760,9 +18745,8 @@
                 },
                 {
                   "name": "params",
-                  "type": "dict<string,any>",
-                  "required": false,
-                  "kind": "var_keyword"
+                  "type": "class:signalwire.value.Value",
+                  "required": true
                 }
               ],
               "returns": "class:signalwire.relay.call.Action"
@@ -18775,9 +18759,8 @@
                 },
                 {
                   "name": "params",
-                  "type": "dict<string,any>",
-                  "required": false,
-                  "kind": "var_keyword"
+                  "type": "class:signalwire.value.Value",
+                  "required": true
                 }
               ],
               "returns": "class:signalwire.value.Value"
@@ -18827,9 +18810,8 @@
                 },
                 {
                   "name": "params",
-                  "type": "dict<string,any>",
-                  "required": false,
-                  "kind": "var_keyword"
+                  "type": "class:signalwire.value.Value",
+                  "required": true
                 }
               ],
               "returns": "class:signalwire.relay.call.Action"
@@ -18842,9 +18824,8 @@
                 },
                 {
                   "name": "params",
-                  "type": "dict<string,any>",
-                  "required": false,
-                  "kind": "var_keyword"
+                  "type": "class:signalwire.value.Value",
+                  "required": true
                 }
               ],
               "returns": "class:signalwire.relay.call.Action"
@@ -18857,9 +18838,8 @@
                 },
                 {
                   "name": "params",
-                  "type": "dict<string,any>",
-                  "required": false,
-                  "kind": "var_keyword"
+                  "type": "class:signalwire.value.Value",
+                  "required": true
                 }
               ],
               "returns": "class:signalwire.relay.call.Action"
@@ -18872,9 +18852,8 @@
                 },
                 {
                   "name": "params",
-                  "type": "dict<string,any>",
-                  "required": false,
-                  "kind": "var_keyword"
+                  "type": "class:signalwire.value.Value",
+                  "required": true
                 }
               ],
               "returns": "class:signalwire.relay.call.Action"
@@ -18887,9 +18866,8 @@
                 },
                 {
                   "name": "params",
-                  "type": "dict<string,any>",
-                  "required": false,
-                  "kind": "var_keyword"
+                  "type": "class:signalwire.value.Value",
+                  "required": true
                 }
               ],
               "returns": "class:signalwire.value.Value"
@@ -18911,9 +18889,8 @@
                 },
                 {
                   "name": "params",
-                  "type": "dict<string,any>",
-                  "required": false,
-                  "kind": "var_keyword"
+                  "type": "class:signalwire.value.Value",
+                  "required": true
                 }
               ],
               "returns": "class:signalwire.value.Value"
@@ -21014,8 +20991,9 @@
                 },
                 {
                   "name": "params",
-                  "type": "dict<string,string>",
-                  "required": true
+                  "type": "dict<string,any>",
+                  "required": false,
+                  "kind": "var_keyword"
                 }
               ],
               "returns": "class:signalwire.value.Value"
