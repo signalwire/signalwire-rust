@@ -1,6 +1,6 @@
 {
   "version": "1",
-  "generated_from": "signalwire-rust @ fe827c17c1df995134b000cf1b0c4d327bd60bb3",
+  "generated_from": "signalwire-rust @ 892ff010252c239c0ee6a96526a6502d95a15925",
   "modules": {
     "signalwire": {
       "classes": {
@@ -198,12 +198,18 @@
           "set_global_data",
           "set_internal_fillers",
           "set_internal_fillers_map",
+          "set_language_engine",
+          "set_language_fillers",
+          "set_language_model",
           "set_language_params",
           "set_languages",
           "set_multilingual",
           "set_native_functions",
           "set_param",
           "set_params",
+          "set_pattern_hint_hint",
+          "set_pattern_hint_ignore_case",
+          "set_pattern_hint_replace",
           "set_post_prompt",
           "set_post_prompt_llm_params",
           "set_post_prompt_url",

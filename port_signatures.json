@@ -1829,6 +1829,53 @@
               ],
               "returns": "any"
             },
+            "set_language_engine": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                },
+                {
+                  "name": "engine",
+                  "type": "string",
+                  "required": true
+                }
+              ],
+              "returns": "any"
+            },
+            "set_language_fillers": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                },
+                {
+                  "name": "speech_fillers",
+                  "type": "optional<list<string>>",
+                  "required": true
+                },
+                {
+                  "name": "function_fillers",
+                  "type": "optional<list<string>>",
+                  "required": true
+                }
+              ],
+              "returns": "any"
+            },
+            "set_language_model": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                },
+                {
+                  "name": "model",
+                  "type": "string",
+                  "required": true
+                }
+              ],
+              "returns": "any"
+            },
             "set_language_params": {
               "params": [
                 {
@@ -1918,6 +1965,48 @@
                 {
                   "name": "params",
                   "type": "class:signalwire.value.Value",
+                  "required": true
+                }
+              ],
+              "returns": "any"
+            },
+            "set_pattern_hint_hint": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                },
+                {
+                  "name": "hint",
+                  "type": "string",
+                  "required": true
+                }
+              ],
+              "returns": "any"
+            },
+            "set_pattern_hint_ignore_case": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                },
+                {
+                  "name": "ignore_case",
+                  "type": "bool",
+                  "required": true
+                }
+              ],
+              "returns": "any"
+            },
+            "set_pattern_hint_replace": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                },
+                {
+                  "name": "replace",
+                  "type": "string",
                   "required": true
                 }
               ],

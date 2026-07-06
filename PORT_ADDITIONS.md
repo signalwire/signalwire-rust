@@ -1040,6 +1040,17 @@ signalwire.swml.service.ServiceOptions.host: rust-builder-method — fluent sett
 signalwire.swml.service.ServiceOptions.port: rust-builder-method — fluent setter for the bind port; Python passes `port=` to `SWMLService.__init__`.
 signalwire.swml.service.ServiceOptions.basic_auth: rust-builder-method — fluent setter for Basic-Auth credentials; Python passes `basic_auth=(user,pass)` to `SWMLService.__init__`.
 
+### Fluent setters for the structured pattern-hint / language idiom (Contract 8)
+
+Behavioral Contract 8 requires `add_pattern_hint` to attach a STRUCTURED hint (`{hint, pattern, replace, ignore_case}`) and `add_language` to carry `engine` / `model` / fillers into the rendered SWML `ai.languages` entry. Python takes all of these as inline keyword arguments to a single `add_pattern_hint(hint, pattern, replace, ignore_case)` / `add_language(name, code, voice, speech_fillers, function_fillers, engine, model, params)` call. The Rust port keeps the core-args signature (`add_pattern_hint(pattern)` / `add_language(name, code, voice)`, per PORT_SIGNATURE_OMISSIONS.md's builder-idiom entries) and refines the just-added entry via these fluent setters — the builder half of that idiom. They mutate the most-recently-added pattern hint / language and have no Python method counterpart (Python packs the fields into the one call).
+
+signalwire.core.agent_base.AgentBase.set_pattern_hint_hint: rust-builder-method — set the `hint` (match text) on the most-recently-added structured pattern hint; Python passes `hint=` to `add_pattern_hint`.
+signalwire.core.agent_base.AgentBase.set_pattern_hint_replace: rust-builder-method — set the `replace` (replacement text) on the most-recently-added structured pattern hint; Python passes `replace=` to `add_pattern_hint`.
+signalwire.core.agent_base.AgentBase.set_pattern_hint_ignore_case: rust-builder-method — set the `ignore_case` flag on the most-recently-added structured pattern hint; Python passes `ignore_case=` to `add_pattern_hint`.
+signalwire.core.agent_base.AgentBase.set_language_engine: rust-builder-method — set the TTS `engine` on the most-recently-added language; Python passes `engine=` to `add_language`.
+signalwire.core.agent_base.AgentBase.set_language_model: rust-builder-method — set the TTS `model` on the most-recently-added language; Python passes `model=` to `add_language`.
+signalwire.core.agent_base.AgentBase.set_language_fillers: rust-builder-method — attach `speech_fillers` / `function_fillers` (or the deprecated combined `fillers`) to the most-recently-added language; Python passes `speech_fillers=` / `function_fillers=` to `add_language`.
+
 ### Pre-existing relay/server transport helpers (Layer-B only; not gated by run-ci)
 
 These two Rust-only transport entry points predate this pass but were never documented because run-ci only gates Layer A (signatures), not Layer B (surface). Documented here so the surface diff is clean. Both are internal transport plumbing with no Python equivalent.

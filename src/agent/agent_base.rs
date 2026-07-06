@@ -193,7 +193,12 @@ pub struct AgentBase {
 
     // ── Hints ───────────────────────────────────────────────────────────
     hints: Vec<String>,
-    pattern_hints: Vec<String>,
+    /// Structured pattern hints. Each entry mirrors Python's
+    /// `{hint, pattern, replace, ignore_case}` object (`ai_config_mixin`
+    /// `add_pattern_hint`). Built via `add_pattern_hint(pattern)` + the
+    /// fluent `set_pattern_hint_*` setters (Rust builder idiom for Python's
+    /// all-args-inline call).
+    pattern_hints: Vec<Value>,
 
     // ── Languages / pronunciations ──────────────────────────────────────
     languages: Vec<Value>,
@@ -760,14 +765,128 @@ impl AgentBase {
         self
     }
 
+    /// Add a structured pattern hint. Python parity:
+    /// `add_pattern_hint(hint, pattern, replace, ignore_case)` appends a
+    /// `{hint, pattern, replace, ignore_case}` object to the AI `hints` list
+    /// (`ai_config_mixin`). Rust's builder idiom seeds the entry from `pattern`
+    /// (used as both the initial `hint` and `pattern`, `replace` defaults to
+    /// the pattern, `ignore_case` false); refine with `set_pattern_hint_hint`
+    /// / `set_pattern_hint_replace` / `set_pattern_hint_ignore_case`, which
+    /// mutate the most-recently-added pattern hint. The rendered SWML carries
+    /// the full structured object, not a bare string.
     pub fn add_pattern_hint(&mut self, pattern: &str) -> &mut Self {
-        self.pattern_hints.push(pattern.to_string());
+        self.pattern_hints.push(json!({
+            "hint": pattern,
+            "pattern": pattern,
+            "replace": pattern,
+            "ignore_case": false,
+        }));
         self
     }
 
+    /// Set the `hint` (the text to match) on the most-recently-added pattern
+    /// hint. No-op if none has been added. Python parity: the `hint` field of
+    /// the pattern-hint object.
+    pub fn set_pattern_hint_hint(&mut self, hint: &str) -> &mut Self {
+        if let Some(obj) = self.pattern_hints.last_mut().and_then(Value::as_object_mut) {
+            obj.insert("hint".to_string(), json!(hint));
+        }
+        self
+    }
+
+    /// Set the `replace` (replacement text) on the most-recently-added
+    /// pattern hint. No-op if none has been added. Python parity: the
+    /// `replace` field of the pattern-hint object.
+    pub fn set_pattern_hint_replace(&mut self, replace: &str) -> &mut Self {
+        if let Some(obj) = self.pattern_hints.last_mut().and_then(Value::as_object_mut) {
+            obj.insert("replace".to_string(), json!(replace));
+        }
+        self
+    }
+
+    /// Set the `ignore_case` flag on the most-recently-added pattern hint.
+    /// No-op if none has been added. Python parity: the `ignore_case` field
+    /// of the pattern-hint object.
+    pub fn set_pattern_hint_ignore_case(&mut self, ignore_case: bool) -> &mut Self {
+        if let Some(obj) = self.pattern_hints.last_mut().and_then(Value::as_object_mut) {
+            obj.insert("ignore_case".to_string(), json!(ignore_case));
+        }
+        self
+    }
+
+    /// Add a language configuration. Python parity: `add_language(name, code,
+    /// voice, speech_fillers, function_fillers, engine, model, params)`. Rust's
+    /// builder idiom takes the core three args here and attaches the optional
+    /// `engine` / `model` / `speech_fillers` / `function_fillers` / `params`
+    /// via the fluent `set_language_*` setters (or the combined
+    /// `engine.voice:model` string form Python also parses). All of these
+    /// survive into the rendered SWML `ai.languages` entry.
     pub fn add_language(&mut self, name: &str, code: &str, voice: &str) -> &mut Self {
-        self.languages
-            .push(json!({"name": name, "code": code, "voice": voice}));
+        let mut language = serde_json::Map::new();
+        language.insert("name".to_string(), json!(name));
+        language.insert("code".to_string(), json!(code));
+
+        // Parse the combined "engine.voice:model" string form (Python parity).
+        if voice.contains('.') && voice.contains(':') {
+            if let Some((engine_voice, model_part)) = voice.split_once(':')
+                && let Some((engine_part, voice_part)) = engine_voice.split_once('.')
+            {
+                language.insert("voice".to_string(), json!(voice_part));
+                language.insert("engine".to_string(), json!(engine_part));
+                language.insert("model".to_string(), json!(model_part));
+            } else {
+                language.insert("voice".to_string(), json!(voice));
+            }
+        } else {
+            language.insert("voice".to_string(), json!(voice));
+        }
+
+        self.languages.push(Value::Object(language));
+        self
+    }
+
+    /// Set the TTS `engine` on the most-recently-added language. No-op if none
+    /// has been added. Python parity: the `engine` field carried into the
+    /// SWML `ai.languages` entry.
+    pub fn set_language_engine(&mut self, engine: &str) -> &mut Self {
+        if let Some(obj) = self.languages.last_mut().and_then(Value::as_object_mut) {
+            obj.insert("engine".to_string(), json!(engine));
+        }
+        self
+    }
+
+    /// Set the TTS `model` on the most-recently-added language. No-op if none
+    /// has been added. Python parity: the `model` field carried into the SWML
+    /// `ai.languages` entry.
+    pub fn set_language_model(&mut self, model: &str) -> &mut Self {
+        if let Some(obj) = self.languages.last_mut().and_then(Value::as_object_mut) {
+            obj.insert("model".to_string(), json!(model));
+        }
+        self
+    }
+
+    /// Attach filler phrases to the most-recently-added language. Python
+    /// parity (`add_language` fillers handling): if both `speech_fillers` and
+    /// `function_fillers` are given they are emitted as separate keys;
+    /// if only one is given it goes to the deprecated combined `fillers` key.
+    /// No-op if no language has been added.
+    pub fn set_language_fillers(
+        &mut self,
+        speech_fillers: Option<Vec<&str>>,
+        function_fillers: Option<Vec<&str>>,
+    ) -> &mut Self {
+        if let Some(obj) = self.languages.last_mut().and_then(Value::as_object_mut) {
+            match (speech_fillers, function_fillers) {
+                (Some(speech), Some(func)) => {
+                    obj.insert("speech_fillers".to_string(), json!(speech));
+                    obj.insert("function_fillers".to_string(), json!(func));
+                }
+                (Some(fillers), None) | (None, Some(fillers)) => {
+                    obj.insert("fillers".to_string(), json!(fillers));
+                }
+                (None, None) => {}
+            }
+        }
         self
     }
 
@@ -1669,7 +1788,7 @@ impl AgentBase {
         // ── Hints ───────────────────────────────────────────────────────
         let mut all_hints: Vec<Value> = self.hints.iter().map(|h| json!(h)).collect();
         for ph in &self.pattern_hints {
-            all_hints.push(json!(ph));
+            all_hints.push(ph.clone());
         }
         if !all_hints.is_empty() {
             ai.insert("hints".to_string(), Value::Array(all_hints));
@@ -2381,6 +2500,104 @@ mod tests {
         let mut agent = AgentBase::new(default_options());
         agent.add_language("English", "en-US", "Polly.Salli");
         assert_eq!(agent.languages[0]["name"], "English");
+    }
+
+    // ── Behavioral Contract 8: AI/LLM structured add_pattern_hint / add_language ──
+    //
+    // Python (ai_config mixin): `add_pattern_hint` attaches a STRUCTURED hint
+    // ({hint, pattern, replace, ignore_case}), not a bare string; `add_language`
+    // carries engine + model + fillers (list) into the rendered SWML
+    // `ai.languages` entry. A degraded body (bare-string hint / no
+    // engine/model/fillers) would drop these — this test asserts every field
+    // survives into the rendered document. FAILS against the old bare-string
+    // `pattern_hints: Vec<String>` + 3-field-only `add_language` body.
+    #[test]
+    fn test_contract8_structured_pattern_hint_and_language_fillers_survive_render() {
+        let mut agent = AgentBase::new(default_options());
+
+        // Structured pattern hint WITH a replacement + hint text + ignore_case.
+        agent
+            .add_pattern_hint("AI")
+            .set_pattern_hint_hint("AI")
+            .set_pattern_hint_replace("Artificial Intelligence")
+            .set_pattern_hint_ignore_case(true);
+
+        // Language WITH engine + model + fillers.
+        agent
+            .add_language("English", "en-US", "josh")
+            .set_language_engine("elevenlabs")
+            .set_language_model("eleven_turbo_v2_5")
+            .set_language_fillers(
+                Some(vec!["um", "let me think"]),
+                Some(vec!["one moment", "checking"]),
+            );
+
+        let ai = agent.build_ai_verb(&HashMap::new());
+
+        // ── Structured pattern hint ──────────────────────────────────────
+        let hints = ai["hints"].as_array().expect("ai.hints must be present");
+        let structured = hints
+            .iter()
+            .find(|h| h.is_object())
+            .expect("pattern hint must render as a STRUCTURED object, not a bare string");
+        assert_eq!(structured["hint"], "AI");
+        assert_eq!(structured["pattern"], "AI");
+        assert_eq!(
+            structured["replace"], "Artificial Intelligence",
+            "replacement must survive into the rendered hint"
+        );
+        assert_eq!(structured["ignore_case"], true);
+
+        // ── Language engine + model + fillers ────────────────────────────
+        let langs = ai["languages"]
+            .as_array()
+            .expect("ai.languages must be present");
+        let lang = &langs[0];
+        assert_eq!(lang["name"], "English");
+        assert_eq!(lang["code"], "en-US");
+        assert_eq!(lang["voice"], "josh");
+        assert_eq!(
+            lang["engine"], "elevenlabs",
+            "engine must survive into the rendered language"
+        );
+        assert_eq!(
+            lang["model"], "eleven_turbo_v2_5",
+            "model must survive into the rendered language"
+        );
+        assert_eq!(
+            lang["speech_fillers"],
+            json!(["um", "let me think"]),
+            "speech_fillers must survive"
+        );
+        assert_eq!(
+            lang["function_fillers"],
+            json!(["one moment", "checking"]),
+            "function_fillers must survive"
+        );
+    }
+
+    // The combined "engine.voice:model" voice string is parsed into separate
+    // engine / voice / model keys (Python parity).
+    #[test]
+    fn test_contract8_combined_voice_string_parsed() {
+        let mut agent = AgentBase::new(default_options());
+        agent.add_language("English", "en-US", "elevenlabs.josh:eleven_turbo_v2_5");
+        let lang = &agent.languages[0];
+        assert_eq!(lang["engine"], "elevenlabs");
+        assert_eq!(lang["voice"], "josh");
+        assert_eq!(lang["model"], "eleven_turbo_v2_5");
+    }
+
+    // Single filler kind uses the deprecated combined `fillers` key.
+    #[test]
+    fn test_contract8_single_filler_kind_uses_combined_key() {
+        let mut agent = AgentBase::new(default_options());
+        agent
+            .add_language("English", "en-US", "josh")
+            .set_language_fillers(Some(vec!["um"]), None);
+        let lang = &agent.languages[0];
+        assert_eq!(lang["fillers"], json!(["um"]));
+        assert!(lang.get("speech_fillers").is_none());
     }
 
     #[test]

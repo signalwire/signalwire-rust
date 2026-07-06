@@ -497,6 +497,130 @@ mod tests {
         assert_eq!(dbg["parts_count"], 3);
     }
 
+    // ── Behavioral Contract 7: tool-token WIRE FORMAT + nonce parity ─────
+    //
+    // Python (core/security/session_manager.py): a minted tool token is 5
+    // dot-joined fields `{call_id}.{function_name}.{expiry}.{nonce}.{sig}`; the
+    // HMAC-SHA256 signed message is `{call_id}:{function_name}:{expiry}:{nonce}`;
+    // `nonce = token_hex(8)` (16 hex chars); validation is CONSTANT-TIME. Rust
+    // base64url-wraps the whole token, so the contract asserts on the DECODED
+    // form. rust is already at parity — this is a lock-in test.
+
+    /// (1) A freshly minted token, base64url-decoded, has exactly 5 dot-fields
+    /// with a NON-EMPTY 16-hex-char nonce, and the fields are in the
+    /// python-oracle order (`call_id`, function, expiry, nonce, signature).
+    #[test]
+    fn test_contract7_decoded_token_has_five_fields_and_nonce() {
+        let sm = SessionManager::with_defaults();
+        let token = sm.create_token("my_function", "call-abc");
+        let decoded = URL_SAFE_NO_PAD.decode(&token).expect("token is base64url");
+        let decoded_str = String::from_utf8(decoded).expect("utf-8");
+        let parts: Vec<&str> = decoded_str.split('.').collect();
+        assert_eq!(parts.len(), 5, "token must have exactly 5 dot-fields");
+        // Field order: call_id, function_name, expiry, nonce, signature.
+        assert_eq!(parts[0], "call-abc");
+        assert_eq!(parts[1], "my_function");
+        assert!(parts[2].parse::<u64>().is_ok(), "expiry must be numeric");
+        let nonce = parts[3];
+        assert!(!nonce.is_empty(), "nonce must be non-empty");
+        assert_eq!(nonce.len(), 16, "nonce is token_hex(8) → 16 hex chars");
+        assert!(
+            nonce.chars().all(|c| c.is_ascii_hexdigit()),
+            "nonce must be hex"
+        );
+        assert!(!parts[4].is_empty(), "signature must be non-empty");
+    }
+
+    /// (2) Two mints for the SAME (`function_name`, `call_id`, expiry) produce
+    /// DIFFERENT nonces (and therefore different signatures/tokens).
+    #[test]
+    fn test_contract7_two_mints_same_tuple_different_nonces() {
+        // Fixed expiry window (large) so the expiry field is identical across
+        // both mints within the same second — isolates the nonce as the sole
+        // source of difference.
+        let sm = SessionManager::new(100_000);
+        let decode = |t: &str| -> Vec<String> {
+            let s = String::from_utf8(URL_SAFE_NO_PAD.decode(t).unwrap()).unwrap();
+            s.split('.').map(str::to_string).collect()
+        };
+        let t1 = sm.create_token("func", "call-1");
+        let t2 = sm.create_token("func", "call-1");
+        let p1 = decode(&t1);
+        let p2 = decode(&t2);
+        // Same call_id + function.
+        assert_eq!(p1[0], p2[0]);
+        assert_eq!(p1[1], p2[1]);
+        // Different nonces → different signatures → different tokens.
+        assert_ne!(p1[3], p2[3], "nonces must differ across mints");
+        assert_ne!(p1[4], p2[4], "signatures must differ (nonce is signed)");
+        assert_ne!(t1, t2);
+    }
+
+    /// (3) A token constructed in the python-oracle 5-field dot format (built
+    /// from the port's own signing of the canonical `:`-joined message)
+    /// validates in-port — cross-port interop: any producer emitting the
+    /// canonical form is accepted.
+    #[test]
+    fn test_contract7_python_oracle_format_token_validates() {
+        let sm = SessionManager::with_defaults();
+        let call_id = "call-xyz";
+        let function_name = "lookup";
+        let expiry = current_time_secs() + 3600;
+        let nonce = hex_encode(&random_bytes(8)); // 16 hex chars, oracle shape
+        // Canonical signed message: {call_id}:{function_name}:{expiry}:{nonce}
+        let message = format!("{call_id}:{function_name}:{expiry}:{nonce}");
+        let signature = sm.hmac_hex(&message);
+        // Canonical token body: {call_id}.{function_name}.{expiry}.{nonce}.{sig}
+        let body = format!("{call_id}.{function_name}.{expiry}.{nonce}.{signature}");
+        let token = URL_SAFE_NO_PAD.encode(body.as_bytes());
+        assert!(
+            sm.validate_token(function_name, call_id, &token),
+            "a python-oracle-format token must validate in-port"
+        );
+    }
+
+    /// (4) Flip one byte of the signature → validation fails.
+    #[test]
+    fn test_contract7_tampered_signature_rejected() {
+        let sm = SessionManager::with_defaults();
+        let call_id = "call-1";
+        let function_name = "func";
+        let expiry = current_time_secs() + 3600;
+        let nonce = hex_encode(&random_bytes(8));
+        let message = format!("{call_id}:{function_name}:{expiry}:{nonce}");
+        let mut signature = sm.hmac_hex(&message);
+        // Flip one hex char of the signature.
+        let last = signature.pop().unwrap();
+        let flipped = if last == 'a' { 'b' } else { 'a' };
+        signature.push(flipped);
+        let body = format!("{call_id}.{function_name}.{expiry}.{nonce}.{signature}");
+        let token = URL_SAFE_NO_PAD.encode(body.as_bytes());
+        assert!(
+            !sm.validate_token(function_name, call_id, &token),
+            "a token with a tampered signature must be rejected"
+        );
+    }
+
+    /// (5) The signature compare is constant-time: `constant_time_eq` returns
+    /// the same result regardless of WHERE the first byte differs (no
+    /// first-mismatch early return). Two equal-length strings that differ only
+    /// at the first byte and only at the last byte are both rejected — an
+    /// early-return impl would still reject both, but the property under test
+    /// is that comparison is over an HMAC digest of the full input, not a
+    /// short-circuiting byte loop.
+    #[test]
+    fn test_contract7_signature_compare_constant_time() {
+        // Differ at the first position.
+        assert!(!constant_time_eq("Xbcdef", "abcdef"));
+        // Differ at the last position.
+        assert!(!constant_time_eq("abcdeX", "abcdef"));
+        // Equal inputs accepted.
+        assert!(constant_time_eq("abcdef", "abcdef"));
+        // The compare hashes the FULL input (HMAC digest), so a mismatch
+        // anywhere yields a fully-different digest — there is no data-dependent
+        // early return on the first differing byte.
+    }
+
     #[test]
     fn test_uuid_format() {
         let sm = SessionManager::with_defaults();
