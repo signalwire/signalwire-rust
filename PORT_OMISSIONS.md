@@ -241,147 +241,20 @@ Each line below is a Python symbol that the Rust port deliberately
 does not expose under that exact name. The rationale explains why
 (internal helper, Python-only mixin, alternate Rust idiom, etc.).
 
-signalwire.core.agent.prompt.manager.PromptManager.__init__: Python internal prompt-manager class; Rust merges this functionality into AgentBase directly
 signalwire.core.agent.tools.decorator.ToolDecorator: impossible: Python decorator-protocol class (ToolDecorator / class-decorated-tool registration) — Rust has no decorator syntax and no class-decoration hook; TS/PHP cousins also omit it (re-audited L18)
 signalwire.core.agent.tools.decorator.ToolDecorator.create_class_decorator: impossible: Python decorator-protocol class (ToolDecorator / class-decorated-tool registration) — Rust has no decorator syntax and no class-decoration hook; TS/PHP cousins also omit it (re-audited L18)
 signalwire.core.agent.tools.decorator.ToolDecorator.create_instance_decorator: impossible: Python decorator-protocol class (ToolDecorator / class-decorated-tool registration) — Rust has no decorator syntax and no class-decoration hook; TS/PHP cousins also omit it (re-audited L18)
-signalwire.core.agent.tools.registry.ToolRegistry.__init__: Python internal tool registry / decorator helpers; Rust merges this into Service's tool registry and AgentBase::define_tool
 signalwire.core.agent.tools.registry.ToolRegistry.register_class_decorated_tools: impossible: Python decorator-protocol class (ToolDecorator / class-decorated-tool registration) — Rust has no decorator syntax and no class-decoration hook; TS/PHP cousins also omit it (re-audited L18)
 signalwire.core.agent.tools.type_inference.infer_schema: impossible: derives a JSON-Schema parameter object by introspecting a Python function's signature at runtime (inspect.signature / typing.get_type_hints). Rust erases parameter types at compile time and closures carry no runtime type-hint metadata, so no equivalent introspection exists — the OO-idiom cousins hit the same wall (TypeScript's types are likewise erased at runtime). Rust developers pass the parameter JSON Schema explicitly to define_tool.
 signalwire.core.agent.tools.type_inference.create_typed_handler_wrapper: impossible: wraps a handler with runtime type-coercion derived from the same signature introspection as infer_schema (inspect.signature). Rust has no runtime function-signature reflection (types are compile-time-erased; the same limit TypeScript hits), so a signature-driven typed wrapper cannot be synthesized — the handler receives the already-parsed args map.
-signalwire.core.agent_base.AgentBase.add_answer_verb: Python-only convenience helpers; Rust users compose them via Service::route() / Service::host() / Service::port() directly
-signalwire.core.agent_base.AgentBase.auto_map_sip_usernames: Python-only convenience helpers; Rust users compose them via Service::route() / Service::host() / Service::port() directly
-signalwire.core.agent_base.AgentBase.get_full_url: Python-only convenience helpers; Rust users compose them via Service::route() / Service::host() / Service::port() directly
-signalwire.core.agent_base.AgentBase.get_name: Python-only convenience helpers; Rust users compose them via Service::route() / Service::host() / Service::port() directly
-signalwire.core.agent_base.AgentBase.set_web_hook_url: Python-only convenience helpers; Rust users compose them via Service::route() / Service::host() / Service::port() directly
-signalwire.core.auth_handler.AuthHandler: Python FastAPI auth-handler glue; Rust handles auth in Service::handle_request directly
-signalwire.core.auth_handler.AuthHandler.__init__: Python FastAPI auth-handler glue; Rust handles auth in Service::handle_request directly
-signalwire.core.auth_handler.AuthHandler.flask_decorator: Python FastAPI auth-handler glue; Rust handles auth in Service::handle_request directly
-signalwire.core.auth_handler.AuthHandler.get_auth_info: Python FastAPI auth-handler glue; Rust handles auth in Service::handle_request directly
-signalwire.core.auth_handler.AuthHandler.get_fastapi_dependency: Python FastAPI auth-handler glue; Rust handles auth in Service::handle_request directly
-signalwire.core.auth_handler.AuthHandler.verify_api_key: Python FastAPI auth-handler glue; Rust handles auth in Service::handle_request directly
-signalwire.core.auth_handler.AuthHandler.verify_basic_auth: Python FastAPI auth-handler glue; Rust handles auth in Service::handle_request directly
-signalwire.core.auth_handler.AuthHandler.verify_bearer_token: Python FastAPI auth-handler glue; Rust handles auth in Service::handle_request directly
-signalwire.core.contexts.Context.add_bullets: Python-internal Context helpers; Rust ContextBuilder/Context uses direct field access for these (the Context shape is built into ContextBuilder methods rather than exposing per-field setters)
-signalwire.core.contexts.Context.add_enter_filler: Python-internal Context helpers; Rust ContextBuilder/Context uses direct field access for these (the Context shape is built into ContextBuilder methods rather than exposing per-field setters)
-signalwire.core.contexts.Context.add_exit_filler: Python-internal Context helpers; Rust ContextBuilder/Context uses direct field access for these (the Context shape is built into ContextBuilder methods rather than exposing per-field setters)
-signalwire.core.contexts.Context.add_section: Python-internal Context helpers; Rust ContextBuilder/Context uses direct field access for these (the Context shape is built into ContextBuilder methods rather than exposing per-field setters)
-signalwire.core.contexts.Context.add_system_bullets: Python-internal Context helpers; Rust ContextBuilder/Context uses direct field access for these (the Context shape is built into ContextBuilder methods rather than exposing per-field setters)
-signalwire.core.contexts.Context.add_system_section: Python-internal Context helpers; Rust ContextBuilder/Context uses direct field access for these (the Context shape is built into ContextBuilder methods rather than exposing per-field setters)
-signalwire.core.contexts.Context.set_consolidate: Python-internal Context helpers; Rust ContextBuilder/Context uses direct field access for these (the Context shape is built into ContextBuilder methods rather than exposing per-field setters)
-signalwire.core.contexts.Context.set_full_reset: Python-internal Context helpers; Rust ContextBuilder/Context uses direct field access for these (the Context shape is built into ContextBuilder methods rather than exposing per-field setters)
-signalwire.core.contexts.Context.set_isolated: Python-internal Context helpers; Rust ContextBuilder/Context uses direct field access for these (the Context shape is built into ContextBuilder methods rather than exposing per-field setters)
-signalwire.core.contexts.Context.set_post_prompt: Python-internal Context helpers; Rust ContextBuilder/Context uses direct field access for these (the Context shape is built into ContextBuilder methods rather than exposing per-field setters)
-signalwire.core.contexts.Context.set_user_prompt: Python-internal Context helpers; Rust ContextBuilder/Context uses direct field access for these (the Context shape is built into ContextBuilder methods rather than exposing per-field setters)
-signalwire.core.contexts.Context.set_valid_contexts: Python-internal Context helpers; Rust ContextBuilder/Context uses direct field access for these (the Context shape is built into ContextBuilder methods rather than exposing per-field setters)
-signalwire.core.contexts.Context.set_valid_steps: Python-internal Context helpers; Rust ContextBuilder/Context uses direct field access for these (the Context shape is built into ContextBuilder methods rather than exposing per-field setters)
-signalwire.core.contexts.GatherInfo.to_dict: Python helper returning a dict; Rust's GatherInfo serializes via serde to_value() directly
-signalwire.core.contexts.GatherQuestion.to_dict: Python helper returning a dict; Rust's GatherQuestion serializes via serde to_value() directly
-signalwire.core.contexts.Step.add_bullets: Python-internal Step helpers; Rust Step uses direct field access
-signalwire.core.contexts.Step.clear_sections: Python-internal Step helpers; Rust Step uses direct field access
-signalwire.core.contexts.Step.set_reset_consolidate: Python-internal Step helpers; Rust Step uses direct field access
-signalwire.core.contexts.Step.set_reset_full_reset: Python-internal Step helpers; Rust Step uses direct field access
-signalwire.core.contexts.Step.set_reset_system_prompt: Python-internal Step helpers; Rust Step uses direct field access
-signalwire.core.contexts.Step.set_reset_user_prompt: Python-internal Step helpers; Rust Step uses direct field access
-signalwire.core.contexts.Step.set_skip_to_next_step: Python-internal Step helpers; Rust Step uses direct field access
 signalwire.core.contexts.create_simple_context: Python helper that wraps ContextBuilder; Rust users call ContextBuilder::new() directly
-signalwire.core.data_map.DataMap.foreach: Python helper; Rust DataMap supports foreach via DataMap::foreach (already exposed) — entry is duplicate from Python's chained API
 signalwire.core.data_map.create_expression_tool: Python helper functions; Rust ships create_simple_api_tool and create_expression_tool — already exposed (this entry is a duplicate from a Python-side path-prefix difference)
 signalwire.core.data_map.create_simple_api_tool: Python helper functions; Rust ships create_simple_api_tool and create_expression_tool — already exposed (this entry is a duplicate from a Python-side path-prefix difference)
-signalwire.core.function_result.FunctionResult.to_dict: Python FunctionResult.to_dict; Rust FunctionResult uses serde_json::to_value() / serialize() directly
-signalwire.core.logging_config.configure_logging: Python logging-config helper; Rust uses logging::Logger directly
-signalwire.core.logging_config.get_logger: Python logging-config helper; Rust uses logging::Logger directly
-signalwire.core.logging_config.reset_logging_configuration: Python logging-config helper; Rust uses logging::Logger directly
-signalwire.core.logging_config.strip_control_chars: Python logging-config helper; Rust uses logging::Logger directly
-signalwire.core.mixins.ai_config_mixin.AIConfigMixin.add_mcp_server: Python uses mixins for AgentBase composition; Rust uses Deref<Target=Service> + direct methods on AgentBase. The functionality is present but does not surface as a separate mixin class.
-signalwire.core.mixins.ai_config_mixin.AIConfigMixin.enable_mcp_server: Python uses mixins for AgentBase composition; Rust uses Deref<Target=Service> + direct methods on AgentBase. The functionality is present but does not surface as a separate mixin class.
 signalwire.core.mixins.mcp_server_mixin.MCPServerMixin: impossible: Python decorator-protocol surface (the @tool / MCPServerMixin decorator factory) — Rust has no decorator syntax; the OO cousins TS/PHP also express tool registration without this decorator method (re-audited L18)
-signalwire.core.mixins.prompt_mixin.PromptMixin.contexts: Python uses mixins for AgentBase composition; Rust uses Deref<Target=Service> + direct methods on AgentBase. The functionality is present but does not surface as a separate mixin class.
-signalwire.core.mixins.serverless_mixin.ServerlessMixin: Python uses mixins for AgentBase composition; Rust uses Deref<Target=Service> + direct methods on AgentBase. The functionality is present but does not surface as a separate mixin class.
-signalwire.core.mixins.serverless_mixin.ServerlessMixin.handle_serverless_request: Python uses mixins for AgentBase composition; Rust uses Deref<Target=Service> + direct methods on AgentBase. The functionality is present but does not surface as a separate mixin class.
-signalwire.core.mixins.tool_mixin.ToolMixin.define_tool: Python uses mixins for AgentBase composition; Rust uses Deref<Target=Service> + direct methods on AgentBase. The functionality is present but does not surface as a separate mixin class.
-signalwire.core.mixins.tool_mixin.ToolMixin.on_function_call: Python uses mixins for AgentBase composition; Rust uses Deref<Target=Service> + direct methods on AgentBase. The functionality is present but does not surface as a separate mixin class.
-signalwire.core.mixins.tool_mixin.ToolMixin.register_swaig_function: Python uses mixins for AgentBase composition; Rust uses Deref<Target=Service> + direct methods on AgentBase. The functionality is present but does not surface as a separate mixin class.
-signalwire.core.mixins.tool_mixin.ToolMixin.tool: impossible: Python decorator-protocol surface (the @tool / MCPServerMixin decorator factory) — Rust has no decorator syntax; the OO cousins TS/PHP also express tool registration without this decorator method (re-audited L18)
-signalwire.core.mixins.web_mixin.WebMixin.as_router: Python uses mixins for AgentBase composition; Rust uses Deref<Target=Service> + direct methods on AgentBase. The functionality is present but does not surface as a separate mixin class.
-signalwire.core.mixins.web_mixin.WebMixin.enable_debug_routes: Python uses mixins for AgentBase composition; Rust uses Deref<Target=Service> + direct methods on AgentBase. The functionality is present but does not surface as a separate mixin class.
-signalwire.core.mixins.web_mixin.WebMixin.get_app: Python uses mixins for AgentBase composition; Rust uses Deref<Target=Service> + direct methods on AgentBase. The functionality is present but does not surface as a separate mixin class.
-signalwire.core.mixins.web_mixin.WebMixin.register_routing_callback: Python uses mixins for AgentBase composition; Rust uses Deref<Target=Service> + direct methods on AgentBase. The functionality is present but does not surface as a separate mixin class.
-signalwire.core.mixins.web_mixin.WebMixin.serve: Python uses mixins for AgentBase composition; Rust uses Deref<Target=Service> + direct methods on AgentBase. The functionality is present but does not surface as a separate mixin class.
-signalwire.core.mixins.web_mixin.WebMixin.setup_graceful_shutdown: Python uses mixins for AgentBase composition; Rust uses Deref<Target=Service> + direct methods on AgentBase. The functionality is present but does not surface as a separate mixin class.
 signalwire.core.pom_builder.PomBuilder: Python POM builder helper class; Rust uses serde_json::Value directly
-signalwire.core.pom_builder.PomBuilder.__init__: Python POM builder helper class; Rust uses serde_json::Value directly
-signalwire.core.pom_builder.PomBuilder.add_section: Python POM builder helper class; Rust uses serde_json::Value directly
-signalwire.core.pom_builder.PomBuilder.add_subsection: Python POM builder helper class; Rust uses serde_json::Value directly
-signalwire.core.pom_builder.PomBuilder.add_to_section: Python POM builder helper class; Rust uses serde_json::Value directly
-signalwire.core.pom_builder.PomBuilder.from_sections: Python POM builder helper class; Rust uses serde_json::Value directly
-signalwire.core.pom_builder.PomBuilder.get_section: Python POM builder helper class; Rust uses serde_json::Value directly
-signalwire.core.pom_builder.PomBuilder.has_section: Python POM builder helper class; Rust uses serde_json::Value directly
-signalwire.core.pom_builder.PomBuilder.render_markdown: Python POM builder helper class; Rust uses serde_json::Value directly
-signalwire.core.pom_builder.PomBuilder.render_xml: Python POM builder helper class; Rust uses serde_json::Value directly
-signalwire.core.pom_builder.PomBuilder.to_dict: Python POM builder helper class; Rust uses serde_json::Value directly
-signalwire.core.pom_builder.PomBuilder.to_json: Python POM builder helper class; Rust uses serde_json::Value directly
-signalwire.core.security.session_manager.SessionManager.activate_session: Python SessionManager session-tracking helpers; Rust ships the HMAC token primitives but not the per-call session-bookkeeping API — the equivalent is implemented inline by Service / AgentBase callers
-signalwire.core.security.session_manager.SessionManager.create_tool_token: Python SessionManager session-tracking helpers; Rust ships the HMAC token primitives but not the per-call session-bookkeeping API — the equivalent is implemented inline by Service / AgentBase callers
-signalwire.core.security.session_manager.SessionManager.debug_token: Python SessionManager session-tracking helpers; Rust ships the HMAC token primitives but not the per-call session-bookkeeping API — the equivalent is implemented inline by Service / AgentBase callers
-signalwire.core.security.session_manager.SessionManager.end_session: Python SessionManager session-tracking helpers; Rust ships the HMAC token primitives but not the per-call session-bookkeeping API — the equivalent is implemented inline by Service / AgentBase callers
-signalwire.core.security.session_manager.SessionManager.generate_token: Python SessionManager session-tracking helpers; Rust ships the HMAC token primitives but not the per-call session-bookkeeping API — the equivalent is implemented inline by Service / AgentBase callers
-signalwire.core.security.session_manager.SessionManager.get_session_metadata: Python SessionManager session-tracking helpers; Rust ships the HMAC token primitives but not the per-call session-bookkeeping API — the equivalent is implemented inline by Service / AgentBase callers
-signalwire.core.security.session_manager.SessionManager.set_session_metadata: Python SessionManager session-tracking helpers; Rust ships the HMAC token primitives but not the per-call session-bookkeeping API — the equivalent is implemented inline by Service / AgentBase callers
-signalwire.core.security.session_manager.SessionManager.validate_tool_token: Python SessionManager session-tracking helpers; Rust ships the HMAC token primitives but not the per-call session-bookkeeping API — the equivalent is implemented inline by Service / AgentBase callers
-signalwire.core.skill_base.SkillBase.__init__: Python SkillBase abstract methods; Rust SkillBase trait surface is narrower (init / setup / handlers) — Python-only helpers are language-private
-signalwire.core.skill_base.SkillBase.define_tool: Python SkillBase abstract methods; Rust SkillBase trait surface is narrower (init / setup / handlers) — Python-only helpers are language-private
-signalwire.core.skill_base.SkillBase.get_skill_data: Python SkillBase abstract methods; Rust SkillBase trait surface is narrower (init / setup / handlers) — Python-only helpers are language-private
-signalwire.core.skill_base.SkillBase.update_skill_data: Python SkillBase abstract methods; Rust SkillBase trait surface is narrower (init / setup / handlers) — Python-only helpers are language-private
-signalwire.core.skill_base.SkillBase.validate_packages: Python SkillBase abstract methods; Rust SkillBase trait surface is narrower (init / setup / handlers) — Python-only helpers are language-private
-signalwire.core.skill_manager.SkillManager.list_loaded_skills: Python SkillManager helper; Rust skill_manager exposes list() for this
 signalwire.core.swaig_function.SWAIGFunction: Python SWAIGFunction wrapper class; Rust merges into ToolDef on Service
-signalwire.core.swaig_function.SWAIGFunction.__call__: Python SWAIGFunction wrapper class; Rust merges into ToolDef on Service
-signalwire.core.swaig_function.SWAIGFunction.__init__: Python SWAIGFunction wrapper class; Rust merges into ToolDef on Service
-signalwire.core.swaig_function.SWAIGFunction.execute: Python SWAIGFunction wrapper class; Rust merges into ToolDef on Service
-signalwire.core.swaig_function.SWAIGFunction.to_swaig: Python SWAIGFunction wrapper class; Rust merges into ToolDef on Service
-signalwire.core.swaig_function.SWAIGFunction.validate_args: Python SWAIGFunction wrapper class; Rust merges into ToolDef on Service
 signalwire.core.swml_builder.SWMLBuilder: Python SWMLBuilder helper class; Rust uses serde_json::Value directly
-signalwire.core.swml_builder.SWMLBuilder.__getattr__: Python SWMLBuilder helper class; Rust uses serde_json::Value directly
-signalwire.core.swml_builder.SWMLBuilder.__init__: Python SWMLBuilder helper class; Rust uses serde_json::Value directly
-signalwire.core.swml_builder.SWMLBuilder.add_section: Python SWMLBuilder helper class; Rust uses serde_json::Value directly
-signalwire.core.swml_builder.SWMLBuilder.ai: Python SWMLBuilder helper class; Rust uses serde_json::Value directly
-signalwire.core.swml_builder.SWMLBuilder.answer: Python SWMLBuilder helper class; Rust uses serde_json::Value directly
-signalwire.core.swml_builder.SWMLBuilder.build: Python SWMLBuilder helper class; Rust uses serde_json::Value directly
-signalwire.core.swml_builder.SWMLBuilder.hangup: Python SWMLBuilder helper class; Rust uses serde_json::Value directly
-signalwire.core.swml_builder.SWMLBuilder.play: Python SWMLBuilder helper class; Rust uses serde_json::Value directly
-signalwire.core.swml_builder.SWMLBuilder.render: Python SWMLBuilder helper class; Rust uses serde_json::Value directly
-signalwire.core.swml_builder.SWMLBuilder.reset: Python SWMLBuilder helper class; Rust uses serde_json::Value directly
-signalwire.core.swml_builder.SWMLBuilder.say: Python SWMLBuilder helper class; Rust uses serde_json::Value directly
-signalwire.core.swml_handler.AIVerbHandler: Python SWML request-handler helper; Rust merges into Service::handle_request and AgentBase::handle_request
 signalwire.core.swml_handler.AIVerbHandler.build_config: Python SWML request-handler helper; Rust merges into Service::handle_request and AgentBase::handle_request
-signalwire.core.swml_handler.AIVerbHandler.get_verb_name: Python SWML request-handler helper; Rust merges into Service::handle_request and AgentBase::handle_request
-signalwire.core.swml_handler.AIVerbHandler.validate_config: Python SWML request-handler helper; Rust merges into Service::handle_request and AgentBase::handle_request
-signalwire.core.swml_handler.SWMLVerbHandler: Python SWML request-handler helper; Rust merges into Service::handle_request and AgentBase::handle_request
-signalwire.core.swml_handler.SWMLVerbHandler.build_config: Python SWML request-handler helper; Rust merges into Service::handle_request and AgentBase::handle_request
-signalwire.core.swml_handler.SWMLVerbHandler.get_verb_name: Python SWML request-handler helper; Rust merges into Service::handle_request and AgentBase::handle_request
-signalwire.core.swml_handler.SWMLVerbHandler.validate_config: Python SWML request-handler helper; Rust merges into Service::handle_request and AgentBase::handle_request
-signalwire.core.swml_handler.VerbHandlerRegistry: Python SWML request-handler helper; Rust merges into Service::handle_request and AgentBase::handle_request
-signalwire.core.swml_handler.VerbHandlerRegistry.__init__: Python SWML request-handler helper; Rust merges into Service::handle_request and AgentBase::handle_request
-signalwire.core.swml_handler.VerbHandlerRegistry.get_handler: Python SWML request-handler helper; Rust merges into Service::handle_request and AgentBase::handle_request
-signalwire.core.swml_handler.VerbHandlerRegistry.has_handler: Python SWML request-handler helper; Rust merges into Service::handle_request and AgentBase::handle_request
-signalwire.core.swml_handler.VerbHandlerRegistry.register_handler: Python SWML request-handler helper; Rust merges into Service::handle_request and AgentBase::handle_request
-signalwire.core.swml_renderer.SwmlRenderer: Python SWML renderer helper; Rust merges into Service::render_document and AgentBase::render_swml
-signalwire.core.swml_renderer.SwmlRenderer.render_function_response_swml: Python SWML renderer helper; Rust merges into Service::render_document and AgentBase::render_swml
-signalwire.core.swml_renderer.SwmlRenderer.render_swml: Python SWML renderer helper; Rust merges into Service::render_document and AgentBase::render_swml
-signalwire.core.swml_service.SWMLService.__getattr__: Python-only SWMLService surface (Python uses dynamic attribute lookup, FastAPI router, registered routing-callback dict, and a separate render/reset_document API); Rust users compose the equivalent via Service public methods
-signalwire.core.swml_service.SWMLService.add_section: Python-only SWMLService surface (Python uses dynamic attribute lookup, FastAPI router, registered routing-callback dict, and a separate render/reset_document API); Rust users compose the equivalent via Service public methods
-signalwire.core.swml_service.SWMLService.add_verb_to_section: Python-only SWMLService surface (Python uses dynamic attribute lookup, FastAPI router, registered routing-callback dict, and a separate render/reset_document API); Rust users compose the equivalent via Service public methods
-signalwire.core.swml_service.SWMLService.as_router: Python-only SWMLService surface (Python uses dynamic attribute lookup, FastAPI router, registered routing-callback dict, and a separate render/reset_document API); Rust users compose the equivalent via Service public methods
-signalwire.core.swml_service.SWMLService.full_validation_enabled: Python-only SWMLService surface (Python uses dynamic attribute lookup, FastAPI router, registered routing-callback dict, and a separate render/reset_document API); Rust users compose the equivalent via Service public methods
-signalwire.core.swml_service.SWMLService.get_document: Python-only SWMLService surface (Python uses dynamic attribute lookup, FastAPI router, registered routing-callback dict, and a separate render/reset_document API); Rust users compose the equivalent via Service public methods
-signalwire.core.swml_service.SWMLService.manual_set_proxy_url: Python-only SWMLService surface (Python uses dynamic attribute lookup, FastAPI router, registered routing-callback dict, and a separate render/reset_document API); Rust users compose the equivalent via Service public methods
-signalwire.core.swml_service.SWMLService.register_routing_callback: Python-only SWMLService surface (Python uses dynamic attribute lookup, FastAPI router, registered routing-callback dict, and a separate render/reset_document API); Rust users compose the equivalent via Service public methods
-signalwire.core.swml_service.SWMLService.register_verb_handler: Python-only SWMLService surface (Python uses dynamic attribute lookup, FastAPI router, registered routing-callback dict, and a separate render/reset_document API); Rust users compose the equivalent via Service public methods
-signalwire.core.swml_service.SWMLService.render_document: Python-only SWMLService surface (Python uses dynamic attribute lookup, FastAPI router, registered routing-callback dict, and a separate render/reset_document API); Rust users compose the equivalent via Service public methods
-signalwire.core.swml_service.SWMLService.reset_document: Python-only SWMLService surface (Python uses dynamic attribute lookup, FastAPI router, registered routing-callback dict, and a separate render/reset_document API); Rust users compose the equivalent via Service public methods
-signalwire.core.swml_service.SWMLService.serve: Python-only SWMLService surface (Python uses dynamic attribute lookup, FastAPI router, registered routing-callback dict, and a separate render/reset_document API); Rust users compose the equivalent via Service public methods
-signalwire.core.swml_service.SWMLService.stop: Python-only SWMLService surface (Python uses dynamic attribute lookup, FastAPI router, registered routing-callback dict, and a separate render/reset_document API); Rust users compose the equivalent via Service public methods
 signalwire.livewire.Agent: approved: livewire ported only to Python + Node/TS (the LiveKit AGENTS SDK languages); it is invented surface in every other port — user, 2026-07 pass (§I.1/L21)
 signalwire.livewire.Agent.__init__: approved: livewire ported only to Python + Node/TS (the LiveKit AGENTS SDK languages); it is invented surface in every other port — user, 2026-07 pass (§I.1/L21)
 signalwire.livewire.Agent.llm_node: approved: livewire ported only to Python + Node/TS (the LiveKit AGENTS SDK languages); it is invented surface in every other port — user, 2026-07 pass (§I.1/L21)
@@ -480,60 +353,11 @@ signalwire.pom.pom_tool.detect_file_format: Prompt Object Model internal helper 
 signalwire.pom.pom_tool.load_pom: Prompt Object Model internal helper classes; Rust accomplishes the same via JSON values on AgentBase (prompt_add_section, prompt_add_subsection, prompt_add_to_section)
 signalwire.pom.pom_tool.main: Prompt Object Model internal helper classes; Rust accomplishes the same via JSON values on AgentBase (prompt_add_section, prompt_add_subsection, prompt_add_to_section)
 signalwire.pom.pom_tool.render_pom: Prompt Object Model internal helper classes; Rust accomplishes the same via JSON values on AgentBase (prompt_add_section, prompt_add_subsection, prompt_add_to_section)
-signalwire.prefabs.concierge.ConciergeAgent.check_availability: Python ConciergeAgent internals; Rust ships the canonical prefab
-signalwire.prefabs.concierge.ConciergeAgent.get_directions: Python ConciergeAgent internals; Rust ships the canonical prefab
 signalwire.prefabs.concierge.ConciergeAgent.on_summary: Python ConciergeAgent internals; Rust ships the canonical prefab
 signalwire.prefabs.faq_bot.FAQBotAgent.on_summary: Python FAQBotAgent internals; Rust ships the canonical prefab
-signalwire.prefabs.faq_bot.FAQBotAgent.search_faqs: Python FAQBotAgent internals; Rust ships the canonical prefab
-signalwire.prefabs.info_gatherer.InfoGathererAgent.on_swml_request: Python InfoGathererAgent internals; Rust ships the canonical prefab with overlapping public surface
-signalwire.prefabs.info_gatherer.InfoGathererAgent.set_question_callback: Python InfoGathererAgent internals; Rust ships the canonical prefab with overlapping public surface
-signalwire.prefabs.info_gatherer.InfoGathererAgent.start_questions: Python InfoGathererAgent internals; Rust ships the canonical prefab with overlapping public surface
-signalwire.prefabs.info_gatherer.InfoGathererAgent.submit_answer: Python InfoGathererAgent internals; Rust ships the canonical prefab with overlapping public surface
 signalwire.prefabs.receptionist.ReceptionistAgent.on_summary: Python ReceptionistAgent internals; Rust ships the canonical prefab
-signalwire.prefabs.survey.SurveyAgent.log_response: Python SurveyAgent internals; Rust ships the canonical prefab
 signalwire.prefabs.survey.SurveyAgent.on_summary: Python SurveyAgent internals; Rust ships the canonical prefab
-signalwire.prefabs.survey.SurveyAgent.validate_response: Python SurveyAgent internals; Rust ships the canonical prefab
-signalwire.relay.call.AIAction: Python AI action class (Bedrock/AI verb dispatch); Rust merges AI action handling into the prefab BedrockAgent and the SWML AI verb
-signalwire.relay.call.AIAction.__init__: Python AI action class (Bedrock/AI verb dispatch); Rust merges AI action handling into the prefab BedrockAgent and the SWML AI verb
-signalwire.relay.call.Action.wait: Python Action.wait method; Rust action surface uses its own wait() — but the per-symbol enumerator may map differently
-signalwire.relay.call.Call.echo: Python Call.echo helper; Rust Call exposes equivalent functionality through the dial / echo APIs in the broader Action surface
-signalwire.relay.call.Call.pass_: Python Call.pass_ helper (reserved-word-wrapped 'pass'); Rust uses Call::pass_call to avoid the keyword collision
-signalwire.relay.call.Call.refer: Python Call.refer (SIP REFER); Rust delegates SIP refer via the underlying ReferAction surface
-signalwire.relay.call.Call.wait_for: Python Call event-bus helpers; Rust Call exposes register_event_callback for the same effect
-signalwire.relay.call.Call.wait_for_answered: Python state-wait helper built on the wait_for async primitive (which Rust omits); Rust Call is a synchronous command surface and observes call_state via register_event_callback, so there is no wait_for to short-circuit against
-signalwire.relay.call.Call.wait_for_ended: Python Call event-bus helpers; Rust Call exposes register_event_callback for the same effect
-signalwire.relay.call.Call.wait_for_ending: Python state-wait helper built on the wait_for async primitive (which Rust omits); Rust Call is a synchronous command surface and observes call_state via register_event_callback, so there is no wait_for to short-circuit against
-signalwire.relay.call.Call.wait_for_ringing: Python state-wait helper built on the wait_for async primitive (which Rust omits); Rust Call is a synchronous command surface and observes call_state via register_event_callback, so there is no wait_for to short-circuit against
-signalwire.relay.call.DetectAction.__init__: Python DetectAction constructor; Rust constructs DetectAction internally during call.detect()
-signalwire.relay.call.PayAction: Python PayAction class; Rust ships PayAction via the unified Action enum
-signalwire.relay.call.PayAction.__init__: Python PayAction constructor; Rust constructs PayAction internally during call.pay()
-signalwire.relay.call.PlayAction.__init__: Python PlayAction constructor; Rust constructs PlayAction internally during call.play()
-signalwire.relay.call.RecordAction.__init__: Python RecordAction constructor; Rust constructs RecordAction internally during call.record()
-signalwire.relay.call.TapAction: Python TapAction class; Rust merges TapAction into the Action enum
-signalwire.relay.call.TapAction.__init__: Python TapAction constructor; Rust constructs TapAction internally during call.tap()
-signalwire.relay.client.RelayClient.dial: Python-only RelayClient surface helpers — dial/execute are convenience wrappers; Rust users invoke equivalents via Call methods or direct connect() calls
-signalwire.relay.client.RelayClient.execute: Python-only RelayClient surface helpers — dial/execute are convenience wrappers; Rust users invoke equivalents via Call methods or direct connect() calls
 signalwire.relay.client.RelayClient.relay_protocol: impossible: Python abstract relay-protocol property hook — Rust models the RELAY protocol via concrete client methods, no abstract protocol accessor; TS/PHP cousins also omit it (re-audited L18)
-signalwire.relay.client.RelayClient.run: Python-only RelayClient surface helpers — dial/execute are convenience wrappers; Rust users invoke equivalents via Call methods or direct connect() calls
-signalwire.relay.client.RelayClient.send_message: Python-only RelayClient surface helpers — dial/execute are convenience wrappers; Rust users invoke equivalents via Call methods or direct connect() calls
-signalwire.relay.client.RelayError: Python RelayError exception class; Rust uses Result<_, String>
-signalwire.relay.client.RelayError.__init__: Python RelayError exception class; Rust uses Result<_, String>
-signalwire.relay.message.Message.wait: Python Message.wait; Rust users register an on_completed callback or use the futures-style API
-signalwire.rest._base.BaseResource: Python REST base helper internals; Rust ships rest::CrudResource with a narrower public surface
-signalwire.rest._base.BaseResource.__init__: Python REST base helper internals; Rust ships rest::CrudResource with a narrower public surface
-signalwire.rest._base.CrudWithAddresses: Python REST base helper internals; Rust ships rest::CrudResource with a narrower public surface
-signalwire.rest._base.CrudWithAddresses.list_addresses: Python REST base helper internals; Rust ships rest::CrudResource with a narrower public surface
-signalwire.rest._base.HttpClient: Python REST base helper internals; Rust ships rest::CrudResource with a narrower public surface
-signalwire.rest._base.HttpClient.__init__: Python REST base helper internals; Rust ships rest::CrudResource with a narrower public surface
-signalwire.rest._base.HttpClient.delete: Python REST base helper internals; Rust ships rest::CrudResource with a narrower public surface
-signalwire.rest._base.HttpClient.get: Python REST base helper internals; Rust ships rest::CrudResource with a narrower public surface
-signalwire.rest._base.HttpClient.patch: Python REST base helper internals; Rust ships rest::CrudResource with a narrower public surface
-signalwire.rest._base.HttpClient.post: Python REST base helper internals; Rust ships rest::CrudResource with a narrower public surface
-signalwire.rest._base.HttpClient.put: Python REST base helper internals; Rust ships rest::CrudResource with a narrower public surface
-signalwire.rest._base.SignalWireRestError: Python REST base helper internals; Rust ships rest::CrudResource with a narrower public surface
-signalwire.rest._base.SignalWireRestError.__init__: Python REST base helper internals; Rust ships rest::CrudResource with a narrower public surface
-signalwire.rest._pagination.PaginatedIterator.__iter__: Python iterator class; Rust uses CrudResource::iter / list pagination via per-namespace methods
-signalwire.rest._pagination.PaginatedIterator.__next__: Python iterator class; Rust uses CrudResource::iter / list pagination via per-namespace methods
 signalwire.rest.call_handler.PhoneCallHandler: Python PhoneCallHandler enum exposing the 11 wire values; Rust ships the same constants on rest::PhoneCallHandler at the rest module — but the per-symbol enumerator may not have it mapped
 signalwire.rest.namespaces.addresses.AddressesResource: Python REST sub-namespace helper class methods; Rust ships the namespace-level access points and primary CRUD methods, leaving Python-internal helper methods as language-private
 signalwire.rest.namespaces.addresses.AddressesResource.__init__: Python REST sub-namespace helper class methods; Rust ships the namespace-level access points and primary CRUD methods, leaving Python-internal helper methods as language-private
@@ -797,11 +621,6 @@ signalwire.skills.mcp_gateway.skill.MCPGatewaySkill.get_prompt_sections: skill-l
 signalwire.skills.mcp_gateway.skill.MCPGatewaySkill.register_tools: skill-level MCP wiring is exposed via the mcp_gateway skill in Rust; the Python sub-module helpers (skill.MCPGatewaySkill internals) are language-private
 signalwire.skills.mcp_gateway.skill.MCPGatewaySkill.setup: skill-level MCP wiring is exposed via the mcp_gateway skill in Rust; the Python sub-module helpers (skill.MCPGatewaySkill internals) are language-private
 signalwire.skills.play_background_file.skill.PlayBackgroundFileSkill.get_tools: Python play_background_file internals; Rust ships the canonical skill
-signalwire.skills.registry.SkillRegistry.__init__: Python skill registry uses runtime .py loading; Rust registry is statically populated at compile time
-signalwire.skills.registry.SkillRegistry.discover_skills: Python skill registry uses runtime .py loading; Rust registry is statically populated at compile time
-signalwire.skills.registry.SkillRegistry.get_all_skills_schema: Python skill-registry internals; Rust ships SkillRegistry::register_skill, get_factory, list_skills with a narrower public surface
-signalwire.skills.registry.SkillRegistry.get_skill_class: Python skill-registry internals; Rust ships SkillRegistry::register_skill, get_factory, list_skills with a narrower public surface
-signalwire.skills.registry.SkillRegistry.list_all_skill_sources: Python skill-registry internals; Rust ships SkillRegistry::register_skill, get_factory, list_skills with a narrower public surface
 signalwire.skills.weather_api.skill.WeatherApiSkill.get_tools: Python weather_api skill internals; Rust ships the canonical skill
 signalwire.skills.web_search.skill.GoogleSearchScraper: Python-internal scraper helper; Rust web_search skill issues HTTP directly via its skill handler
 signalwire.skills.web_search.skill.GoogleSearchScraper.__init__: Python-internal scraper helper; Rust web_search skill issues HTTP directly via its skill handler
@@ -839,14 +658,7 @@ signalwire.skills.web_search.skill_original.WebSearchSkill.get_parameter_schema:
 signalwire.skills.web_search.skill_original.WebSearchSkill.get_prompt_sections: Python-experimental WebSearch variants; Rust ships the canonical web_search skill
 signalwire.skills.web_search.skill_original.WebSearchSkill.register_tools: Python-experimental WebSearch variants; Rust ships the canonical web_search skill
 signalwire.skills.web_search.skill_original.WebSearchSkill.setup: Python-experimental WebSearch variants; Rust ships the canonical web_search skill
-signalwire.skills.wikipedia_search.skill.WikipediaSearchSkill.search_wiki: Python wikipedia_search skill internals; Rust ships the canonical skill
-signalwire.utils.is_serverless_mode: Python utils package internals; Rust users compose equivalent helpers on the standard library
 signalwire.web.web_service.WebService: Python WebService internals; Rust integrates static file serving into AgentServer
-signalwire.web.web_service.WebService.__init__: Python WebService internals; Rust integrates static file serving into AgentServer
-signalwire.web.web_service.WebService.add_directory: Python WebService internals; Rust integrates static file serving into AgentServer
-signalwire.web.web_service.WebService.remove_directory: Python WebService internals; Rust integrates static file serving into AgentServer
-signalwire.web.web_service.WebService.start: Python WebService internals; Rust integrates static file serving into AgentServer
-signalwire.web.web_service.WebService.stop: Python WebService internals; Rust integrates static file serving into AgentServer
 signalwire.relay.client.RelayClient.__aenter__
 signalwire.relay.client.RelayClient.__aexit__
 signalwire.relay.client.RelayClient.__del__
