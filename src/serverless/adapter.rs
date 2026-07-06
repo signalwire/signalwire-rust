@@ -197,6 +197,124 @@ impl Adapter {
         })
     }
 
+    /// Handle a Google Cloud Function (HTTP-triggered) invocation.
+    ///
+    /// GCF passes a Flask-style request object. We accept the same JSON
+    /// envelope shape as the other handlers (`method`, `path`/`url`,
+    /// `headers`, `body`), forward it to `agent.handle_request()`, and
+    /// return a `(status, headers, body)`-shaped response dict — mirroring
+    /// Python's `_handle_google_cloud_function_request`, which dispatches to
+    /// a real SWML doc / SWAIG result rather than falling through to `serve()`.
+    pub fn handle_gcf(
+        agent: &dyn RequestHandler,
+        request: &serde_json::Value,
+    ) -> serde_json::Value {
+        let method = request
+            .get("method")
+            .and_then(|v| v.as_str())
+            .unwrap_or("GET")
+            .to_uppercase();
+
+        // GCF exposes the request path directly; accept `path` or a full `url`.
+        let raw = request
+            .get("path")
+            .or_else(|| request.get("url"))
+            .and_then(|v| v.as_str())
+            .unwrap_or("/");
+        let path = if let Some(pos) = raw.find("://") {
+            let after = &raw[pos + 3..];
+            after.find('/').map_or("/", |slash| {
+                let pq = &after[slash..];
+                pq.find('?').map_or(pq, |q| &pq[..q])
+            })
+        } else {
+            raw.find('?').map_or(raw, |q| &raw[..q])
+        };
+
+        let body = request.get("body").and_then(|v| v.as_str()).unwrap_or("");
+
+        let headers: HashMap<String, String> = request
+            .get("headers")
+            .and_then(|v| v.as_object())
+            .map(|obj| {
+                obj.iter()
+                    .filter_map(|(k, v)| v.as_str().map(|s| (k.clone(), s.to_string())))
+                    .collect()
+            })
+            .unwrap_or_default();
+
+        let (status, resp_headers, resp_body) = agent.handle_request(&method, path, &headers, body);
+
+        serde_json::json!({
+            "status": status,
+            "headers": resp_headers,
+            "body": resp_body,
+        })
+    }
+
+    /// Handle a CGI invocation.
+    ///
+    /// CGI carries the request in the process environment (`REQUEST_METHOD`,
+    /// `PATH_INFO`, `CONTENT_LENGTH`, `HTTP_*` headers) with the body on
+    /// stdin. This takes the env as a map and the already-read body so it is
+    /// testable and CWD/stdin-independent, forwards to
+    /// `agent.handle_request()`, and returns a `(status, headers, body)`
+    /// response — mirroring Python's `mode == "cgi"` branch, which dispatches
+    /// to a real SWML/SWAIG response rather than falling through to `serve()`.
+    ///
+    /// `env` is the CGI variable map (e.g. from `std::env::vars()`), `body`
+    /// is the stdin payload.
+    pub fn handle_cgi(
+        agent: &dyn RequestHandler,
+        env: &HashMap<String, String>,
+        body: &str,
+    ) -> serde_json::Value {
+        let method = env
+            .get("REQUEST_METHOD")
+            .map_or_else(|| "GET".to_string(), |m| m.to_uppercase());
+
+        // PATH_INFO holds the path under the script; default to "/".
+        let path_info = env.get("PATH_INFO").map_or("/", String::as_str);
+        let path = if path_info.is_empty() {
+            "/".to_string()
+        } else if path_info.starts_with('/') {
+            path_info.to_string()
+        } else {
+            format!("/{path_info}")
+        };
+
+        // Reconstruct request headers from CGI `HTTP_*` vars (HTTP_X_FOO →
+        // X-Foo) plus the special-cased CONTENT_TYPE / CONTENT_LENGTH.
+        let mut headers: HashMap<String, String> = HashMap::new();
+        for (k, v) in env {
+            if let Some(name) = k.strip_prefix("HTTP_") {
+                let header = name
+                    .split('_')
+                    .map(|part| {
+                        let mut c = part.chars();
+                        c.next().map_or_else(String::new, |first| {
+                            first.to_uppercase().collect::<String>() + &c.as_str().to_lowercase()
+                        })
+                    })
+                    .collect::<Vec<_>>()
+                    .join("-");
+                headers.insert(header, v.clone());
+            }
+        }
+        if let Some(ct) = env.get("CONTENT_TYPE") {
+            headers.insert("Content-Type".to_string(), ct.clone());
+        }
+
+        let (status, resp_headers, resp_body) =
+            agent.handle_request(&method, &path, &headers, body);
+
+        serde_json::json!({
+            "status": status,
+            "headers": resp_headers,
+            "body": resp_body,
+        })
+    }
+
     /// Auto-detect the runtime environment and return the environment type.
     /// The caller can then dispatch accordingly.
     pub fn serve_detect() -> RuntimeEnvironment {
@@ -464,5 +582,83 @@ mod tests {
         // it does not panic.  The combined env detection test above
         // covers the full matrix.
         let _env = Adapter::serve_detect();
+    }
+
+    // ===================================================================
+    // Tier-2 behavioral contract #5: serverless per-platform DISPATCH.
+    // For lambda + gcf + cgi, feed a synthetic platform event/env and
+    // assert the agent DISPATCHES to a real response (200 + the routed
+    // method/path/body), NOT an unsupported/empty/fall-through result.
+    // (lambda is covered by the handlers above; gcf + cgi are the newly
+    // added dispatchers.)
+    // ===================================================================
+
+    #[test]
+    fn test_handle_gcf_dispatches() {
+        let agent = EchoHandler;
+        let request = json!({
+            "method": "POST",
+            "path": "/swaig",
+            "headers": {"Content-Type": "application/json"},
+            "body": "{\"function\":\"get_time\"}",
+        });
+
+        let response = Adapter::handle_gcf(&agent, &request);
+        // Real dispatch: a 200 with the routed request echoed back.
+        assert_eq!(response["status"], 200);
+        let body: serde_json::Value =
+            serde_json::from_str(response["body"].as_str().unwrap()).unwrap();
+        assert_eq!(body["method"], "POST");
+        assert_eq!(body["path"], "/swaig");
+        assert_eq!(body["body"], "{\"function\":\"get_time\"}");
+    }
+
+    #[test]
+    fn test_handle_gcf_strips_query_and_scheme() {
+        let agent = EchoHandler;
+        let request = json!({
+            "method": "GET",
+            "url": "https://region-project.cloudfunctions.net/agent/health?x=1",
+            "headers": {},
+            "body": "",
+        });
+        let response = Adapter::handle_gcf(&agent, &request);
+        let body: serde_json::Value =
+            serde_json::from_str(response["body"].as_str().unwrap()).unwrap();
+        assert_eq!(body["path"], "/agent/health");
+    }
+
+    #[test]
+    fn test_handle_cgi_dispatches() {
+        let agent = EchoHandler;
+        let mut env = HashMap::new();
+        env.insert("REQUEST_METHOD".to_string(), "POST".to_string());
+        env.insert("PATH_INFO".to_string(), "/swaig".to_string());
+        env.insert("CONTENT_TYPE".to_string(), "application/json".to_string());
+        env.insert("CONTENT_LENGTH".to_string(), "24".to_string());
+        env.insert("HTTP_X_CALL_ID".to_string(), "abc123".to_string());
+
+        let body = "{\"function\":\"get_time\"}";
+        let response = Adapter::handle_cgi(&agent, &env, body);
+
+        assert_eq!(response["status"], 200);
+        let parsed: serde_json::Value =
+            serde_json::from_str(response["body"].as_str().unwrap()).unwrap();
+        assert_eq!(parsed["method"], "POST");
+        assert_eq!(parsed["path"], "/swaig");
+        assert_eq!(parsed["body"], body);
+        // CGI HTTP_* vars are reconstructed into request headers.
+        assert_eq!(response["headers"]["Content-Type"], "application/json");
+    }
+
+    #[test]
+    fn test_handle_cgi_defaults_path_to_root() {
+        let agent = EchoHandler;
+        let env = HashMap::new(); // no REQUEST_METHOD / PATH_INFO
+        let response = Adapter::handle_cgi(&agent, &env, "");
+        let parsed: serde_json::Value =
+            serde_json::from_str(response["body"].as_str().unwrap()).unwrap();
+        assert_eq!(parsed["method"], "GET");
+        assert_eq!(parsed["path"], "/");
     }
 }

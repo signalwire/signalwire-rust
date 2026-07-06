@@ -439,6 +439,46 @@ mod tests {
         assert!(json_str.contains("\"key_name\":\"name\""));
     }
 
+    // Tier-2 behavioral contract #3: InfoGatherer submit_answer STATE MACHINE.
+    // Start with 2 questions (index 0); submit an answer; assert (a) the answer
+    // is recorded in global_data.answers, (b) question_index advanced to 1, and
+    // (c) the result presents the 2nd question. A "recorded" echo stub with no
+    // state would fail (a) and (b). Asserts against the emitted
+    // set_global_data action so the whole state transition is proven.
+    #[test]
+    fn test_submit_answer_state_machine() {
+        let agent = InfoGathererAgent::new("test", sample_questions(), None);
+        let qs = sample_questions();
+        let raw = global_data(&qs, 0, json!([]));
+        let mut args = Map::new();
+        args.insert("answer".to_string(), json!("Alice"));
+
+        let value = agent.submit_answer(&args, &raw).to_value();
+
+        // Locate the set_global_data action carrying the advanced state.
+        let actions = value["action"].as_array().expect("actions present");
+        let sgd = actions
+            .iter()
+            .find_map(|a| a.get("set_global_data"))
+            .expect("submit_answer must emit a set_global_data action (state, not an echo)");
+
+        // (a) answer recorded under the current question's key_name.
+        let answers = sgd["answers"].as_array().expect("answers array");
+        assert_eq!(answers.len(), 1);
+        assert_eq!(answers[0]["key_name"], "name");
+        assert_eq!(answers[0]["answer"], "Alice");
+
+        // (b) question_index advanced 0 → 1.
+        assert_eq!(sgd["question_index"], 1);
+
+        // (c) the result presents the 2nd question.
+        let response = value["response"].as_str().unwrap_or("");
+        assert!(
+            response.contains("What is your email?"),
+            "should present the 2nd question, got: {response}"
+        );
+    }
+
     #[test]
     fn test_submit_answer_completes() {
         let agent = InfoGathererAgent::new("test", sample_questions(), None);

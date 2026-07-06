@@ -1042,15 +1042,25 @@ impl AgentBase {
     }
 
     pub fn set_prompt_llm_params(&mut self, params: Value) -> &mut Self {
+        // MERGE, not replace — mirrors Python's
+        // `self._prompt_llm_params.update(params)` (ai_config_mixin.py:669).
+        // Repeated calls with distinct keys accumulate; a repeated key
+        // overwrites its previous value.
         if let Value::Object(map) = params {
-            self.prompt_llm_params = map;
+            for (k, v) in map {
+                self.prompt_llm_params.insert(k, v);
+            }
         }
         self
     }
 
     pub fn set_post_prompt_llm_params(&mut self, params: Value) -> &mut Self {
+        // MERGE, not replace — mirrors Python's
+        // `self._post_prompt_llm_params.update(params)` (ai_config_mixin.py:703).
         if let Value::Object(map) = params {
-            self.post_prompt_llm_params = map;
+            for (k, v) in map {
+                self.post_prompt_llm_params.insert(k, v);
+            }
         }
         self
     }
@@ -2726,6 +2736,45 @@ mod tests {
         let mut agent = AgentBase::new(default_options());
         agent.set_post_prompt_llm_params(json!({"top_p": 0.9}));
         assert_eq!(agent.post_prompt_llm_params["top_p"], 0.9);
+    }
+
+    // Tier-2 behavioral contract #2: set_prompt_llm_params / set_post_prompt_llm_params
+    // MERGE (not replace). Two calls with distinct keys must both survive into the
+    // rendered AI verb — a replace-stub would drop the first key. (Python:
+    // ai_config_mixin.py:669,703 `.update(params)`.)
+    #[test]
+    fn test_set_prompt_llm_params_merges_across_calls() {
+        let mut agent = AgentBase::new(default_options());
+        agent.set_prompt_llm_params(json!({"temperature": 0.5}));
+        agent.set_prompt_llm_params(json!({"top_p": 0.9}));
+        // Both retained on the struct...
+        assert_eq!(agent.prompt_llm_params["temperature"], 0.5);
+        assert_eq!(agent.prompt_llm_params["top_p"], 0.9);
+        // ...and both rendered into the AI verb's prompt block.
+        let ai = agent.build_ai_verb(&HashMap::new());
+        let prompt = &ai["prompt"];
+        assert_eq!(
+            prompt["temperature"], 0.5,
+            "temperature must not be dropped by the 2nd call"
+        );
+        assert_eq!(prompt["top_p"], 0.9);
+    }
+
+    #[test]
+    fn test_set_post_prompt_llm_params_merges_across_calls() {
+        let mut agent = AgentBase::new(default_options());
+        agent.set_post_prompt("Summarize the call.");
+        agent.set_post_prompt_llm_params(json!({"temperature": 0.3}));
+        agent.set_post_prompt_llm_params(json!({"top_p": 0.8}));
+        assert_eq!(agent.post_prompt_llm_params["temperature"], 0.3);
+        assert_eq!(agent.post_prompt_llm_params["top_p"], 0.8);
+        let ai = agent.build_ai_verb(&HashMap::new());
+        let pp = &ai["post_prompt"];
+        assert_eq!(
+            pp["temperature"], 0.3,
+            "temperature must not be dropped by the 2nd call"
+        );
+        assert_eq!(pp["top_p"], 0.8);
     }
 
     // ── Verbs ────────────────────────────────────────────────────────────

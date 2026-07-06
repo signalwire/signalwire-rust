@@ -1,6 +1,6 @@
 {
   "version": "1",
-  "generated_from": "signalwire-rust @ e9279ce08f7f7665d224de8ae2b5661c0deb662d",
+  "generated_from": "signalwire-rust @ fe827c17c1df995134b000cf1b0c4d327bd60bb3",
   "modules": {
     "signalwire": {
       "classes": {
@@ -2947,6 +2947,8 @@
         "Adapter": [
           "detect",
           "handle_azure",
+          "handle_cgi",
+          "handle_gcf",
           "handle_lambda",
           "serve_detect",
           "status_text"
