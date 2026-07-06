@@ -104,6 +104,52 @@ RETURN_TYPE_OVERRIDE.update({
     )
 })
 
+# Per-method PARAMETER reconcile: rename a param and/or remap its type to the
+# canonical Python spelling where the Rust idiom names/types it differently but
+# the method contract is otherwise identical. This is the parameter analog of
+# RETURN_TYPE_OVERRIDE — the tool handling the idiom in the enumerator (Rule 2:
+# reconcile idiom in the enumerator, not via an omission), so the full method
+# still compares and drifts 0. Shape: {context: {rust_param_name: {"name": ...,
+# "type": ...}}}. A missing key leaves that facet unchanged.
+#
+# handle_request: Python's framework-free dispatch core is
+#   handle_request(method, url, headers, body: Optional[dict]) -> (status, headers, body).
+# Rust's handler receives the request as an HTTP handler does on the wire: the
+# request-target as `path` and the raw request `body: &str`, which it parses to a
+# JSON dict internally (see Service::handle_request). Reconcile the two idiomatic
+# spellings — `path`→`url`, raw `body: &str`→ the parsed `optional<dict<string,any>>`
+# — so the port's dispatch core compares equal to the oracle's.
+PARAM_RECONCILE: dict[str, dict[str, dict[str, str]]] = {
+    ctx: {
+        "path": {"name": "url"},
+        "body": {"type": "optional<dict<string,any>>"},
+    }
+    for ctx in (
+        "signalwire.core.swml_service.SWMLService.handle_request",
+        "signalwire.core.agent_base.AgentBase.handle_request",
+    )
+}
+# create_typed_handler_wrapper's `func` is a handler CALLABLE — Rust spells it
+# with the `TypedHandler` = `Box<dyn Fn(..) -> FunctionResult>` type alias, which
+# rustdoc renders as a bare class name. Remap it to the canonical `callable<..>`
+# so the wrapper's arg compares equal to the oracle's `func: callable<list<any>,any>`.
+PARAM_RECONCILE["signalwire.core.agent.tools.type_inference.create_typed_handler_wrapper"] = {
+    "func": {"type": "callable<list<any>,any>"},
+}
+
+# Return-type reconcile for the type_inference free fns: rustdoc leaks the
+# `TypedHandler` / `InferredSchema` type aliases as class names. Map them to the
+# concrete canonical types they alias — `create_typed_handler_wrapper` returns a
+# handler callable; `infer_schema` returns the `(parameters, required,
+# description, is_typed, has_raw_data)` tuple — so both return-compare equal to
+# the oracle (the tool handling the idiom, not an omission).
+RETURN_TYPE_OVERRIDE.update({
+    "signalwire.core.agent.tools.type_inference.create_typed_handler_wrapper":
+        "callable<list<any>,any>",
+    "signalwire.core.agent.tools.type_inference.infer_schema":
+        "tuple<dict<string,dict<string,any>>,list<string>,optional<string>,bool,bool>",
+})
+
 
 def load_aliases() -> dict[str, str]:
     data = yaml.safe_load((PSDK / "type_aliases.yaml").read_text(encoding="utf-8"))
@@ -480,6 +526,13 @@ FREE_FN_MODULE_RENAMES: dict[str, str] = {
     # (filter_sensitive_headers / redact_url / is_valid_hostname), so the
     # rename alone lines them up — no additions/omissions paperwork needed.
     "signalwire.security.security_utils": "signalwire.core.security.security_utils",
+    # typed-handler → SWAIG param-schema inference — Rust hosts the free fns
+    # (``infer_schema`` / ``create_typed_handler_wrapper``) at
+    # ``src/agent/type_inference.rs``; the Python reference lives at
+    # ``signalwire.core.agent.tools.type_inference``. Rust builds the schema from
+    # a typed ParamsBuilder rather than reflecting a handler signature (types are
+    # compile-time-erased) — the static-port idiom for the same inference.
+    "signalwire.agent.type_inference": "signalwire.core.agent.tools.type_inference",
 }
 
 
@@ -1195,9 +1248,10 @@ def build_signature(fn: dict, paths: dict, aliases: dict, context: str) -> dict:
             is_method = True
             continue
         canon = translate_rust_type(t, paths, aliases, f"{context}[{name}]")
+        reconcile = PARAM_RECONCILE.get(context, {}).get(name, {})
         params_out.append({
-            "name": name,
-            "type": canon,
+            "name": reconcile.get("name", name),
+            "type": reconcile.get("type", canon),
             "required": True,  # Rust has no defaults
         })
     # Constructors have no Rust receiver but Python's canonical signature

@@ -142,9 +142,12 @@ pub struct Service {
 
 /// Routing-callback signature (Python `register_routing_callback`).
 ///
-/// Receives the parsed request body and returns `Some(route)` to redirect the
-/// request to a different agent/route, or `None` to fall through.
-pub type RoutingCallback = dyn Fn(&Value) -> Option<String> + Send + Sync;
+/// Receives `(body, headers)` — the parsed request body and the request
+/// headers — and returns `Some(route)` to redirect the request to a different
+/// agent/route, or `None` to fall through. Python decomposed the callback to
+/// `callback_fn(body, headers)` (it no longer takes a framework `Request`); the
+/// Rust closure mirrors that `(body, headers)` shape.
+pub type RoutingCallback = dyn Fn(&Value, &HashMap<String, String>) -> Option<String> + Send + Sync;
 
 /// Handler type for SWAIG function callbacks.
 ///
@@ -708,7 +711,7 @@ impl Service {
     /// `register_routing_callback`.
     pub fn register_routing_callback<F>(&mut self, callback: F, path: &str) -> &mut Self
     where
-        F: Fn(&Value) -> Option<String> + Send + Sync + 'static,
+        F: Fn(&Value, &HashMap<String, String>) -> Option<String> + Send + Sync + 'static,
     {
         let normalized = {
             let p = path.trim_end_matches('/');

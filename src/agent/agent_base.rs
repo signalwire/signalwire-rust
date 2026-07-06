@@ -1482,7 +1482,7 @@ impl AgentBase {
     /// `WebMixin.register_routing_callback`.
     pub fn register_routing_callback<F>(&mut self, callback: F, path: &str) -> &mut Self
     where
-        F: Fn(&Value) -> Option<String> + Send + Sync + 'static,
+        F: Fn(&Value, &HashMap<String, String>) -> Option<String> + Send + Sync + 'static,
     {
         self.service.register_routing_callback(callback, path);
         self

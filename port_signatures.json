@@ -825,6 +825,45 @@
         }
       }
     },
+    "signalwire.core.agent.tools.type_inference": {
+      "functions": {
+        "create_typed_handler_wrapper": {
+          "params": [
+            {
+              "name": "func",
+              "type": "callable<list<any>,any>",
+              "required": true
+            },
+            {
+              "name": "has_raw_data",
+              "type": "bool",
+              "required": true
+            }
+          ],
+          "returns": "callable<list<any>,any>"
+        },
+        "infer_schema": {
+          "params": [
+            {
+              "name": "params",
+              "type": "class:signalwire.paramsbuilder.ParamsBuilder",
+              "required": true
+            },
+            {
+              "name": "description",
+              "type": "optional<string>",
+              "required": true
+            },
+            {
+              "name": "has_raw_data",
+              "type": "bool",
+              "required": true
+            }
+          ],
+          "returns": "tuple<dict<string,dict<string,any>>,list<string>,optional<string>,bool,bool>"
+        }
+      }
+    },
     "signalwire.core.agent_base": {
       "classes": {
         "AgentBase": {
@@ -1390,7 +1429,7 @@
                   "required": true
                 },
                 {
-                  "name": "path",
+                  "name": "url",
                   "type": "string",
                   "required": true
                 },
@@ -1401,7 +1440,7 @@
                 },
                 {
                   "name": "body",
-                  "type": "string",
+                  "type": "optional<dict<string,any>>",
                   "required": true
                 }
               ],
@@ -9380,7 +9419,7 @@
                   "required": true
                 },
                 {
-                  "name": "path",
+                  "name": "url",
                   "type": "string",
                   "required": true
                 },
@@ -9391,7 +9430,7 @@
                 },
                 {
                   "name": "body",
-                  "type": "string",
+                  "type": "optional<dict<string,any>>",
                   "required": true
                 }
               ],

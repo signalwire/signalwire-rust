@@ -1,6 +1,6 @@
 {
   "version": "1",
-  "generated_from": "signalwire-rust @ 30f76e8d5f5be36b153014d2b466cd0530949a29",
+  "generated_from": "signalwire-rust @ e9279ce08f7f7665d224de8ae2b5661c0deb662d",
   "modules": {
     "signalwire": {
       "classes": {
@@ -118,6 +118,13 @@
         ]
       },
       "functions": []
+    },
+    "signalwire.core.agent.tools.type_inference": {
+      "classes": {},
+      "functions": [
+        "create_typed_handler_wrapper",
+        "infer_schema"
+      ]
     },
     "signalwire.core.agent_base": {
       "classes": {
@@ -3291,6 +3298,7 @@
           "object",
           "property",
           "required",
+          "required_names",
           "string"
         ],
         "PropertyBuilder": [

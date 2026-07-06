@@ -270,6 +270,14 @@ FREE_FN_MODULE_RENAMES: dict[str, str] = {
     # Python's canonical module is signalwire.core.security.webhook_middleware
     # (matches enumerate_signatures.py's FREE_FN_MODULE_RENAMES).
     "signalwire.security.webhook_layer": "signalwire.core.security.webhook_middleware",
+    # typed-handler → SWAIG param-schema inference: Rust hosts the free fns
+    # (`infer_schema`, `create_typed_handler_wrapper`) at src/agent/type_inference.rs;
+    # Python's canonical module is signalwire.core.agent.tools.type_inference.
+    # Rust builds the schema from a typed ParamsBuilder rather than reflecting a
+    # handler's signature (types are compile-time-erased) — the static-port idiom
+    # for the same inference (mirrored in enumerate_signatures.py via the shared
+    # import of this table).
+    "signalwire.agent.type_inference": "signalwire.core.agent.tools.type_inference",
 }
 
 # ---------------------------------------------------------------------------

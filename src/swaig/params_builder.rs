@@ -412,6 +412,16 @@ impl ParamsBuilder {
     fn properties_map(&self) -> Map<String, Value> {
         self.properties.clone()
     }
+
+    /// The declared top-level required-parameter names (the list
+    /// [`required`](Self::required) set). Empty when none were declared.
+    ///
+    /// Used by [`infer_schema`](crate::agent::type_inference::infer_schema) to
+    /// return the `required` element of its schema tuple.
+    #[must_use]
+    pub fn required_names(&self) -> &[String] {
+        &self.required
+    }
 }
 
 #[cfg(test)]
