@@ -127,6 +127,16 @@ fn split_payload(payload: &Value) -> (String, HashMap<String, Value>) {
     (event_type, params)
 }
 
+/// Read a string field from an event's params map, defaulting to `""`
+/// (Python's `p.get(<key>, "")` on the typed-event decoders).
+fn str_field(params: &HashMap<String, Value>, key: &str) -> String {
+    params
+        .get(key)
+        .and_then(Value::as_str)
+        .unwrap_or_default()
+        .to_string()
+}
+
 /// Base RELAY event — a typed view over the generic [`Event`].
 ///
 /// Parity with Python's `signalwire.relay.event.RelayEvent`. Concrete
@@ -157,6 +167,57 @@ impl RelayEvent {
     #[must_use]
     pub fn event_type(&self) -> &str {
         self.inner.event_type()
+    }
+
+    /// The typed-event class name this payload dispatches to, mirroring
+    /// Python's `EVENT_CLASS_MAP` (`type(parse_event(payload)).__name__`).
+    /// Unmapped event types fall back to `"RelayEvent"`.
+    #[must_use]
+    pub fn class_name(&self) -> &'static str {
+        match self.inner.event_type() {
+            "calling.call.state" => "CallStateEvent",
+            "calling.call.receive" => "CallReceiveEvent",
+            "calling.call.play" => "PlayEvent",
+            "calling.call.record" => "RecordEvent",
+            "calling.call.collect" => "CollectEvent",
+            "calling.call.connect" => "ConnectEvent",
+            "calling.call.detect" => "DetectEvent",
+            "calling.call.fax" => "FaxEvent",
+            "calling.call.tap" => "TapEvent",
+            "calling.call.stream" => "StreamEvent",
+            "calling.call.send_digits" => "SendDigitsEvent",
+            "calling.call.dial" => "DialEvent",
+            "calling.call.refer" => "ReferEvent",
+            "calling.call.denoise" => "DenoiseEvent",
+            "calling.call.pay" => "PayEvent",
+            "calling.call.queue" => "QueueEvent",
+            "calling.call.echo" => "EchoEvent",
+            "calling.call.transcribe" => "TranscribeEvent",
+            "calling.call.hold" => "HoldEvent",
+            "calling.conference" => "ConferenceEvent",
+            "calling.error" => "CallingErrorEvent",
+            "messaging.receive" => "MessageReceiveEvent",
+            "messaging.state" => "MessageStateEvent",
+            _ => "RelayEvent",
+        }
+    }
+
+    /// The `call_id` from params (default `""`).
+    #[must_use]
+    pub fn call_id(&self) -> String {
+        str_field(self.inner.params(), "call_id")
+    }
+
+    /// The `call_state` from params (default `""`), for `calling.call.state`.
+    #[must_use]
+    pub fn call_state(&self) -> String {
+        str_field(self.inner.params(), "call_state")
+    }
+
+    /// The `direction` from params (default `""`).
+    #[must_use]
+    pub fn direction(&self) -> String {
+        str_field(self.inner.params(), "direction")
     }
 }
 
@@ -220,6 +281,27 @@ impl CallStateEvent {
     pub fn event_type(&self) -> &str {
         self.base.event_type()
     }
+
+    /// The `call_id` from the event params (Python parity:
+    /// `CallStateEvent.call_id`).
+    #[must_use]
+    pub fn call_id(&self) -> String {
+        str_field(self.base.event().params(), "call_id")
+    }
+
+    /// The `call_state` from the event params (Python parity:
+    /// `CallStateEvent.call_state`).
+    #[must_use]
+    pub fn call_state(&self) -> String {
+        str_field(self.base.event().params(), "call_state")
+    }
+
+    /// The `direction` from the event params (Python parity:
+    /// `CallStateEvent.direction`).
+    #[must_use]
+    pub fn direction(&self) -> String {
+        str_field(self.base.event().params(), "direction")
+    }
 }
 
 /// A `calling.*` error notification.
@@ -281,6 +363,41 @@ impl CollectEvent {
     #[must_use]
     pub fn event_type(&self) -> &str {
         self.base.event_type()
+    }
+
+    /// The `control_id` (Python parity: `CollectEvent.control_id`).
+    #[must_use]
+    pub fn control_id(&self) -> String {
+        str_field(self.base.event().params(), "control_id")
+    }
+
+    /// The collection `state` (Python parity: `CollectEvent.state`).
+    #[must_use]
+    pub fn state(&self) -> String {
+        str_field(self.base.event().params(), "state")
+    }
+
+    /// The `result` object (Python parity: `CollectEvent.result`, default
+    /// `{}`).
+    #[must_use]
+    pub fn result(&self) -> Value {
+        self.base
+            .event()
+            .params()
+            .get("result")
+            .cloned()
+            .unwrap_or_else(|| Value::Object(serde_json::Map::new()))
+    }
+
+    /// The tri-state `final` flag (Python parity: `CollectEvent.final`,
+    /// `bool | None`). `None` when absent.
+    #[must_use]
+    pub fn is_final(&self) -> Option<bool> {
+        self.base
+            .event()
+            .params()
+            .get("final")
+            .and_then(Value::as_bool)
     }
 }
 
@@ -685,6 +802,55 @@ impl QueueEvent {
     pub fn event_type(&self) -> &str {
         self.base.event_type()
     }
+
+    /// The `control_id` (Python parity: `QueueEvent.control_id`).
+    #[must_use]
+    pub fn control_id(&self) -> String {
+        str_field(self.base.event().params(), "control_id")
+    }
+
+    /// The queue `status` (Python parity: `QueueEvent.status`).
+    #[must_use]
+    pub fn status(&self) -> String {
+        str_field(self.base.event().params(), "status")
+    }
+
+    /// The queue id (Python parity: `QueueEvent.queue_id`, RENAMED from the
+    /// wire `id` field).
+    #[must_use]
+    pub fn queue_id(&self) -> String {
+        str_field(self.base.event().params(), "id")
+    }
+
+    /// The queue name (Python parity: `QueueEvent.queue_name`, RENAMED from
+    /// the wire `name` field).
+    #[must_use]
+    pub fn queue_name(&self) -> String {
+        str_field(self.base.event().params(), "name")
+    }
+
+    /// The caller's position in the queue (Python parity:
+    /// `QueueEvent.position`, default `0`).
+    #[must_use]
+    pub fn position(&self) -> i64 {
+        self.base
+            .event()
+            .params()
+            .get("position")
+            .and_then(Value::as_i64)
+            .unwrap_or(0)
+    }
+
+    /// The queue size (Python parity: `QueueEvent.size`, default `0`).
+    #[must_use]
+    pub fn size(&self) -> i64 {
+        self.base
+            .event()
+            .params()
+            .get("size")
+            .and_then(Value::as_i64)
+            .unwrap_or(0)
+    }
 }
 
 /// `calling.call.record` — recording notification.
@@ -715,6 +881,60 @@ impl RecordEvent {
     #[must_use]
     pub fn event_type(&self) -> &str {
         self.base.event_type()
+    }
+
+    /// The `control_id` (Python parity: `RecordEvent.control_id`).
+    #[must_use]
+    pub fn control_id(&self) -> String {
+        str_field(self.base.event().params(), "control_id")
+    }
+
+    /// The recording `state` (Python parity: `RecordEvent.state`).
+    #[must_use]
+    pub fn state(&self) -> String {
+        str_field(self.base.event().params(), "state")
+    }
+
+    /// The recording `url` (Python parity: `RecordEvent.url` — nested
+    /// `record.url` first, then a flat `url`, else `""`).
+    #[must_use]
+    pub fn url(&self) -> String {
+        self.record_field("url")
+            .as_ref()
+            .and_then(Value::as_str)
+            .unwrap_or_default()
+            .to_string()
+    }
+
+    /// The recording `duration` (Python parity: `RecordEvent.duration` —
+    /// nested `record.duration` first, then flat `duration`, else `0.0`).
+    #[must_use]
+    pub fn duration(&self) -> f64 {
+        self.record_field("duration")
+            .as_ref()
+            .and_then(Value::as_f64)
+            .unwrap_or(0.0)
+    }
+
+    /// The recording `size` in bytes (Python parity: `RecordEvent.size` —
+    /// nested `record.size` first, then flat `size`, else `0`).
+    #[must_use]
+    pub fn size(&self) -> i64 {
+        self.record_field("size")
+            .as_ref()
+            .and_then(Value::as_i64)
+            .unwrap_or(0)
+    }
+
+    /// Resolve a field with the `RecordEvent` fallback: the nested `record`
+    /// object's key, else the flat top-level key.
+    fn record_field(&self, key: &str) -> Option<Value> {
+        let params = self.base.event().params();
+        params
+            .get("record")
+            .and_then(|r| r.get(key))
+            .or_else(|| params.get(key))
+            .cloned()
     }
 }
 

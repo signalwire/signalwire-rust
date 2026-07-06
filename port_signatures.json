@@ -1367,6 +1367,15 @@
               ],
               "returns": "string"
             },
+            "get_global_data": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "class:signalwire.value.Value"
+            },
             "get_language_params": {
               "params": [
                 {
@@ -2171,6 +2180,15 @@
                 }
               ],
               "returns": "optional<string>"
+            },
+            "sip_usernames": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "list<string>"
             },
             "tool": {
               "params": [
@@ -7720,6 +7738,21 @@
             "with_defaults": {
               "params": [],
               "returns": "any"
+            },
+            "with_secret": {
+              "params": [
+                {
+                  "name": "token_expiry_secs",
+                  "type": "int",
+                  "required": true
+                },
+                {
+                  "name": "secret_key",
+                  "type": "string",
+                  "required": true
+                }
+              ],
+              "returns": "any"
             }
           }
         }
@@ -9245,6 +9278,15 @@
               ],
               "returns": "optional<any>"
             },
+            "handler_names": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "list<string>"
+            },
             "has_handler": {
               "params": [
                 {
@@ -9718,6 +9760,15 @@
                 }
               ],
               "returns": "optional<class:signalwire.routingcallback.RoutingCallback>"
+            },
+            "routing_callback_paths": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "list<string>"
             },
             "run": {
               "params": [
@@ -18222,6 +18273,15 @@
               ],
               "returns": "optional<class:signalwire.value.Value>"
             },
+            "sent_commands": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "list<tuple<string,dict<string,class:signalwire.value.Value>>>"
+            },
             "set_notify_sender": {
               "params": [
                 {
@@ -20370,6 +20430,33 @@
         },
         "CallStateEvent": {
           "methods": {
+            "call_id": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "string"
+            },
+            "call_state": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "string"
+            },
+            "direction": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "string"
+            },
             "from_payload": {
               "params": [
                 {
@@ -20398,6 +20485,15 @@
         },
         "CollectEvent": {
           "methods": {
+            "control_id": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "string"
+            },
             "from_payload": {
               "params": [
                 {
@@ -20407,6 +20503,33 @@
                 }
               ],
               "returns": "any"
+            },
+            "is_final": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "optional<bool>"
+            },
+            "result": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "class:signalwire.value.Value"
+            },
+            "state": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "string"
             }
           }
         },
@@ -20695,6 +20818,15 @@
         },
         "QueueEvent": {
           "methods": {
+            "control_id": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "string"
+            },
             "from_payload": {
               "params": [
                 {
@@ -20704,11 +20836,74 @@
                 }
               ],
               "returns": "any"
+            },
+            "position": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "int"
+            },
+            "queue_id": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "string"
+            },
+            "queue_name": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "string"
+            },
+            "size": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "int"
+            },
+            "status": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "string"
             }
           }
         },
         "RecordEvent": {
           "methods": {
+            "control_id": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "string"
+            },
+            "duration": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "float"
+            },
             "from_payload": {
               "params": [
                 {
@@ -20718,6 +20913,33 @@
                 }
               ],
               "returns": "any"
+            },
+            "size": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "int"
+            },
+            "state": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "string"
+            },
+            "url": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "string"
             }
           }
         },
@@ -20737,6 +20959,42 @@
         },
         "RelayEvent": {
           "methods": {
+            "call_id": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "string"
+            },
+            "call_state": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "string"
+            },
+            "class_name": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "string"
+            },
+            "direction": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "string"
+            },
             "from_payload": {
               "params": [
                 {

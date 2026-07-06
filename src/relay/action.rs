@@ -119,6 +119,19 @@ impl Action {
         &self.stop_method
     }
 
+    /// The sub-command frames this action has emitted, as
+    /// `(method, params)` pairs (e.g. `("calling.play.stop", {control_id,
+    /// call_id, node_id})`). Recorded in-memory by
+    /// [`Action::execute_subcommand`]; read for wire-frame inspection/tests.
+    ///
+    /// # Panics
+    /// Panics if an internal mutex is poisoned (another thread panicked while
+    /// holding the lock). This does not occur under normal operation.
+    #[must_use]
+    pub fn sent_commands(&self) -> Vec<(String, HashMap<String, Value>)> {
+        self.sent_commands.lock().unwrap().clone()
+    }
+
     // ------------------------------------------------------------------
     // Async wait support
     // ------------------------------------------------------------------

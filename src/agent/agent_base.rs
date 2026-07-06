@@ -211,6 +211,12 @@ pub struct AgentBase {
     // ── Params / data ───────────────────────────────────────────────────
     params: Map<String, Value>,
     global_data: Map<String, Value>,
+    /// SIP usernames routed to this agent. Python parity
+    /// (`AgentBase._sip_usernames`): a case-folded, deduplicated set —
+    /// `register_sip_username` lowercases each name before inserting. A
+    /// `BTreeSet` keeps `sip_usernames()` sorted (Python reads
+    /// `sorted(self._sip_usernames)`).
+    sip_usernames: std::collections::BTreeSet<String>,
 
     // ── Native functions / fillers / debug ───────────────────────────────
     native_functions: Vec<String>,
@@ -307,6 +313,7 @@ impl Clone for AgentBase {
             multilingual: self.multilingual.clone(),
             params: self.params.clone(),
             global_data: self.global_data.clone(),
+            sip_usernames: self.sip_usernames.clone(),
             native_functions: self.native_functions.clone(),
             internal_fillers: self.internal_fillers.clone(),
             internal_fillers_map: self.internal_fillers_map.clone(),
@@ -399,6 +406,7 @@ impl AgentBase {
             multilingual: None,
             params: Map::new(),
             global_data: Map::new(),
+            sip_usernames: std::collections::BTreeSet::new(),
             native_functions: Vec::new(),
             internal_fillers: Vec::new(),
             internal_fillers_map: HashMap::new(),
@@ -500,7 +508,11 @@ impl AgentBase {
         self.use_pom = true;
         let mut section = Map::new();
         section.insert("title".to_string(), json!(title));
-        section.insert("body".to_string(), json!(body));
+        // POM parity (Python `Section.to_dict`): an empty body is OMITTED, not
+        // emitted as `"body": ""`. A section may carry bullets with no body.
+        if !body.is_empty() {
+            section.insert("body".to_string(), json!(body));
+        }
         if !bullets.is_empty() {
             section.insert("bullets".to_string(), json!(bullets));
         }
@@ -1013,6 +1025,14 @@ impl AgentBase {
         self
     }
 
+    /// The accumulated global-data map, as a JSON object. Python parity:
+    /// reading `AgentBase._global_data` (the merged result of
+    /// `set_global_data` / `update_global_data`).
+    #[must_use]
+    pub fn get_global_data(&self) -> Value {
+        Value::Object(self.global_data.clone())
+    }
+
     pub fn set_native_functions(&mut self, functions: Vec<&str>) -> &mut Self {
         self.native_functions = functions
             .into_iter()
@@ -1413,11 +1433,22 @@ impl AgentBase {
     }
 
     pub fn register_sip_username(&mut self, username: &str, route: &str) -> &mut Self {
+        // Python parity (`AgentBase.register_sip_username`): accumulate the name
+        // into a case-folded, deduplicated set. Registering "Bob"/"BOB"/"bob"
+        // collapses to a single "bob" entry; `sip_usernames()` reads it sorted.
+        self.sip_usernames.insert(username.to_lowercase());
         self.set_param("sip_username", json!(username));
         if !route.is_empty() {
             self.set_param("sip_route", json!(route));
         }
         self
+    }
+
+    /// The registered SIP usernames, lowercased and sorted. Python parity:
+    /// `sorted(self._sip_usernames)`.
+    #[must_use]
+    pub fn sip_usernames(&self) -> Vec<String> {
+        self.sip_usernames.iter().cloned().collect()
     }
 
     /// Automatically register common SIP usernames derived from this agent's
@@ -1877,15 +1908,18 @@ impl AgentBase {
             return json_response(404, &json!({"error": "Not found"}));
         };
 
-        // Auth
+        // Auth — framework-free contract (Python `_handle_request_core`): a
+        // 401 is `(401, {"WWW-Authenticate": "Basic"}, {"error":
+        // "Unauthorized"})` — JSON body, bare `WWW-Authenticate: Basic` header,
+        // no Content-Type/security headers (the HTTP adapter re-adds them).
         if !self.check_auth(headers) {
             let mut resp_headers = HashMap::new();
-            resp_headers.insert("Content-Type".to_string(), "text/plain".to_string());
-            resp_headers.insert(
-                "WWW-Authenticate".to_string(),
-                "Basic realm=\"SignalWire Agent\"".to_string(),
+            resp_headers.insert("WWW-Authenticate".to_string(), "Basic".to_string());
+            return (
+                401,
+                resp_headers,
+                json!({"error": "Unauthorized"}).to_string(),
             );
-            return (401, resp_headers, "Unauthorized".to_string());
         }
 
         // Webhook signature validation. Mounted on POSTs to the

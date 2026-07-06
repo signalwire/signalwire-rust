@@ -44,6 +44,22 @@ pub trait RequestHandler {
     ) -> (u16, HashMap<String, String>, String);
 }
 
+/// `AgentBase` is a serverless request handler: the `Adapter::handle_*`
+/// entry points forward each decoded (method, path, headers, body) to the
+/// agent's framework-free `handle_request`. Python parity: `ServerlessMixin`
+/// dispatches events straight into the agent's request core.
+impl RequestHandler for crate::agent::AgentBase {
+    fn handle_request(
+        &self,
+        method: &str,
+        path: &str,
+        headers: &HashMap<String, String>,
+        body: &str,
+    ) -> (u16, HashMap<String, String>, String) {
+        crate::agent::AgentBase::handle_request(self, method, path, headers, body)
+    }
+}
+
 /// Auto-detect and handle serverless environments (Lambda, Azure, GCF, CGI)
 /// or fall back to the built-in server.
 pub struct Adapter;

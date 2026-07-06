@@ -41,6 +41,22 @@ impl SessionManager {
         Self::new(3600)
     }
 
+    /// Create a session manager with an explicit signing secret.
+    ///
+    /// Python parity: `SessionManager(token_expiry_secs, secret_key)` — the
+    /// `secret_key` string's UTF-8 bytes become the HMAC key (Python signs with
+    /// `self.secret_key.encode()`). Rust's `new` generates a random secret; this
+    /// constructor is the escape hatch for callers who need a fixed, shared
+    /// secret (e.g. validating a token minted elsewhere with the same key).
+    #[must_use]
+    pub fn with_secret(token_expiry_secs: u64, secret_key: &str) -> Self {
+        SessionManager {
+            secret: secret_key.as_bytes().to_vec(),
+            token_expiry_secs,
+            debug_mode: false,
+        }
+    }
+
     /// Get the configured token expiry in seconds.
     pub fn token_expiry_secs(&self) -> u64 {
         self.token_expiry_secs

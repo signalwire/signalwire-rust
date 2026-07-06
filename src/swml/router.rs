@@ -55,6 +55,14 @@ async fn dispatch(State(service): State<Arc<Service>>, request: Request<Body>) -
 
     let (status, resp_headers, resp_body) = service.handle_request(&method, &path, &headers, &body);
 
+    // `handle_request` returns the framework-free bare-header triple; the HTTP
+    // layer re-adds `Content-Type: application/json` for non-empty bodies
+    // (mirrors FastAPI's `media_type="application/json"`), unless the core
+    // already set a Content-Type.
+    let has_content_type = resp_headers
+        .keys()
+        .any(|k| k.eq_ignore_ascii_case("content-type"));
+
     let mut builder = Response::builder()
         .status(StatusCode::from_u16(status).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR));
     for (k, v) in resp_headers {
@@ -64,6 +72,12 @@ async fn dispatch(State(service): State<Arc<Service>>, request: Request<Body>) -
         ) {
             builder = builder.header(name, value);
         }
+    }
+    if !has_content_type && !resp_body.is_empty() {
+        builder = builder.header(
+            HeaderName::from_static("content-type"),
+            HeaderValue::from_static("application/json"),
+        );
     }
     builder.body(Body::from(resp_body)).unwrap_or_else(|_| {
         error_response(StatusCode::INTERNAL_SERVER_ERROR, "response build failed")

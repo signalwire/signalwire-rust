@@ -5,7 +5,6 @@ use base64::Engine;
 use base64::engine::general_purpose::STANDARD as BASE64;
 use hmac::{Hmac, KeyInit, Mac};
 use rand::RngExt;
-use regex::Regex;
 use serde_json::Value;
 use sha2::Sha256;
 
@@ -713,12 +712,17 @@ impl Service {
     where
         F: Fn(&Value, &HashMap<String, String>) -> Option<String> + Send + Sync + 'static,
     {
+        // Path normalization mirrors Python's `register_routing_callback`
+        // (swml_service.py): strip trailing '/', then ensure a leading '/'.
+        // "/sip/" -> "/sip"; "voice" -> "/voice"; "" -> "/".
         let normalized = {
             let p = path.trim_end_matches('/');
             if p.is_empty() {
                 "/".to_string()
-            } else {
+            } else if p.starts_with('/') {
                 p.to_string()
+            } else {
+                format!("/{p}")
             }
         };
         self.routing_callbacks
@@ -730,6 +734,15 @@ impl Service {
     #[must_use]
     pub fn routing_callback(&self, path: &str) -> Option<&std::sync::Arc<RoutingCallback>> {
         self.routing_callbacks.get(path)
+    }
+
+    /// The registered (normalized) routing-callback paths, sorted. Python
+    /// parity: `sorted(self._routing_callbacks.keys())`.
+    #[must_use]
+    pub fn routing_callback_paths(&self) -> Vec<String> {
+        let mut paths: Vec<String> = self.routing_callbacks.keys().cloned().collect();
+        paths.sort();
+        paths
     }
 
     /// Return a mountable [`axum::Router`] that serves this service's routes.
@@ -803,20 +816,23 @@ impl Service {
             return self.json_response(404, &serde_json::json!({"error": "Not found"}));
         };
 
-        // Auth required for everything under the route
+        // Auth required for everything under the route.
+        //
+        // Framework-free contract (Python `_handle_request_core`): a 401 is the
+        // bare triple `(401, {"WWW-Authenticate": "Basic"}, {"error":
+        // "Unauthorized"})` — a JSON body, a single `WWW-Authenticate: Basic`
+        // header (no realm), and NO Content-Type/security headers (the HTTP
+        // adapter layer re-adds Content-Type). Matches the cross-port oracle.
         if !self.check_basic_auth(headers) {
             self.logger
                 .warn(&format!("basic auth failed for {method} {path}"));
             let mut resp_headers = HashMap::new();
-            resp_headers.insert("Content-Type".to_string(), "text/plain".to_string());
-            resp_headers.insert(
-                "WWW-Authenticate".to_string(),
-                "Basic realm=\"SignalWire SWML Service\"".to_string(),
+            resp_headers.insert("WWW-Authenticate".to_string(), "Basic".to_string());
+            return (
+                401,
+                resp_headers,
+                serde_json::json!({"error": "Unauthorized"}).to_string(),
             );
-            for (k, v) in security_headers() {
-                resp_headers.insert(k, v);
-            }
-            return (401, resp_headers, "Unauthorized".to_string());
         }
 
         // Parse body
@@ -845,17 +861,30 @@ impl Service {
             }
         };
 
-        // Route dispatch
+        // Routing-callback dispatch (Python `_handle_request_core`): if a
+        // callback is registered for this sub-path, invoke it with (body,
+        // headers). A returned route string becomes a 307 redirect preserving
+        // method+body: `(307, {"Location": route}, "")`. `None` falls through to
+        // normal SWML processing.
+        if let Some(callback) = self.routing_callbacks.get(sub_path.as_str()) {
+            let body_for_cb = request_data.clone().unwrap_or(Value::Null);
+            if let Some(route) = callback(&body_for_cb, headers) {
+                let mut resp_headers = HashMap::new();
+                resp_headers.insert("Location".to_string(), route);
+                return (307, resp_headers, String::new());
+            }
+        }
+
+        // Route dispatch. `/swaig` is the tool-dispatch endpoint; every OTHER
+        // authed sub-path under the route falls through to the SWML document —
+        // matching Python's framework-free `_handle_request_core`, which serves
+        // the doc for any path after the routing-callback check (a
+        // routing-callback path that returns `None` is a passthrough → 200
+        // SWML, NOT a 404). The 404-for-unknown-path is a web-framework concern
+        // in Python (a FastAPI route miss), not part of the decomposed core.
         match sub_path.as_str() {
-            "/" | "" => self.handle_swml_request(method, &request_data, headers),
             "/swaig" => self.handle_swaig_request(method, &request_data, headers),
-            // `/post_prompt` is an AgentBase-only route (Python parity:
-            // post_prompt lives on agent's WebMixin, not on SWMLService).
-            // AgentBase implements its own handle_request that intercepts
-            // /post_prompt before falling through to Service. Service users
-            // who don't have an AgentBase wrapper get 404 here — which is
-            // correct: a non-agent SWML service has no post-prompt semantic.
-            _ => self.json_response(404, &serde_json::json!({"error": "Not found"})),
+            _ => self.handle_swml_request(method, &request_data, headers),
         }
     }
 
@@ -863,45 +892,34 @@ impl Service {
     // SIP username extraction
     // ------------------------------------------------------------------
 
-    /// Extract SIP username from a request body.
-    /// Validates format: only `[a-zA-Z0-9._-]`, max 64 chars.
+    /// Extract the SIP username from a request body's `call.to` field.
     ///
-    /// # Panics
+    /// Mirrors Python's `SWMLService.extract_sip_username` exactly
+    /// (`swml_service.py`): reads only `call.to`, then branches on the URI
+    /// scheme —
     ///
-    /// Panics only if the built-in `^[a-zA-Z0-9._-]+$` validation regex
-    /// fails to compile, which cannot happen for that fixed pattern.
+    /// - `sip:user@domain` -> the username part (between `sip:` and `@`), or
+    ///   the whole remainder if there is no `@`;
+    /// - `tel:+1234567890` -> the phone-number part (after `tel:`);
+    /// - otherwise -> the whole `to` field verbatim.
+    ///
+    /// Returns `None` when there is no `call.to` string. There is no charset or
+    /// length validation (Python performs none), so `tel:` numbers with a `+`
+    /// survive.
     pub fn extract_sip_username(body: &Value) -> Option<String> {
-        // Look for SIP URI in common locations
-        let sip_uri = body
-            .get("call")
-            .and_then(|c| c.get("to"))
-            .and_then(|v| v.as_str())
-            .or_else(|| body.get("to").and_then(|v| v.as_str()));
+        let to_field = body.get("call")?.get("to")?.as_str()?;
 
-        let sip_uri = sip_uri?;
-
-        // Extract username from sip:username@host
-        let username = if let Some(caps) = Regex::new(r"^sip:([^@]+)@")
-            .ok()
-            .and_then(|re| re.captures(sip_uri))
-        {
-            caps.get(1).map(|m| m.as_str().to_string())
+        if let Some(rest) = to_field.strip_prefix("sip:") {
+            Some(
+                rest.split_once('@')
+                    .map_or(rest, |(user, _)| user)
+                    .to_string(),
+            )
+        } else if let Some(number) = to_field.strip_prefix("tel:") {
+            Some(number.to_string())
         } else {
-            Some(sip_uri.to_string())
-        };
-
-        let username = username?;
-
-        // Validate format
-        if username.len() > 64 {
-            return None;
+            Some(to_field.to_string())
         }
-        let valid = Regex::new(r"^[a-zA-Z0-9._-]+$").unwrap();
-        if !valid.is_match(&username) {
-            return None;
-        }
-
-        Some(username)
     }
 
     // ------------------------------------------------------------------
@@ -990,7 +1008,14 @@ impl Service {
         _request_data: &Option<Value>,
         _headers: &HashMap<String, String>,
     ) -> (u16, HashMap<String, String>, String) {
-        self.json_response(200, &self.document.to_value())
+        // Framework-free contract (Python `_handle_request_core`): the SWML
+        // happy path is the bare triple `(200, {}, swml_string)` — NO headers
+        // (not even Content-Type). The HTTP adapter layer (router / serverless)
+        // re-adds `Content-Type: application/json` when marshaling to the wire,
+        // mirroring FastAPI's `Response(..., media_type="application/json")`.
+        let body =
+            serde_json::to_string(&self.document.to_value()).unwrap_or_else(|_| "{}".to_string());
+        (200, HashMap::new(), body)
     }
 
     /// Handle `/swaig` — the SWAIG dispatch endpoint.
@@ -1391,8 +1416,11 @@ mod tests {
         let svc = Service::new(default_options("svc"));
         let (status, headers, body) = svc.handle_request("POST", "/", &HashMap::new(), "");
         assert_eq!(status, 401);
-        assert_eq!(body, "Unauthorized");
-        assert!(headers.contains_key("WWW-Authenticate"));
+        // Framework-free contract: JSON error body + bare `WWW-Authenticate:
+        // Basic` header (no realm, no Content-Type).
+        let parsed: Value = serde_json::from_str(&body).unwrap();
+        assert_eq!(parsed["error"], "Unauthorized");
+        assert_eq!(headers.get("WWW-Authenticate").unwrap(), "Basic");
     }
 
     #[test]
@@ -1463,39 +1491,29 @@ mod tests {
     }
 
     #[test]
-    fn test_sip_extraction_top_level_to() {
-        let body = serde_json::json!({"to": "sip:bob@example.com"});
+    fn test_sip_extraction_tel_uri() {
+        // Python parity: tel: URIs strip the "tel:" prefix (incl. the '+').
+        let body = serde_json::json!({"call": {"to": "tel:+15551234567"}});
         let result = Service::extract_sip_username(&body);
-        assert_eq!(result, Some("bob".to_string()));
+        assert_eq!(result, Some("+15551234567".to_string()));
     }
 
     #[test]
     fn test_sip_extraction_plain_username() {
-        let body = serde_json::json!({"to": "charlie"});
+        // Non-sip/non-tel 'to' is returned verbatim (Python parity).
+        let body = serde_json::json!({"call": {"to": "support"}});
         let result = Service::extract_sip_username(&body);
-        assert_eq!(result, Some("charlie".to_string()));
+        assert_eq!(result, Some("support".to_string()));
     }
 
     #[test]
     fn test_sip_extraction_missing() {
+        // Only `call.to` is consulted; a top-level `to` (or none) yields None.
         let body = serde_json::json!({"other": "data"});
         let result = Service::extract_sip_username(&body);
         assert!(result.is_none());
-    }
-
-    #[test]
-    fn test_sip_extraction_too_long() {
-        let long_name = "a".repeat(65);
-        let body = serde_json::json!({"to": long_name});
-        let result = Service::extract_sip_username(&body);
-        assert!(result.is_none());
-    }
-
-    #[test]
-    fn test_sip_extraction_invalid_chars() {
-        let body = serde_json::json!({"to": "user name!@#"});
-        let result = Service::extract_sip_username(&body);
-        assert!(result.is_none());
+        let top_level = serde_json::json!({"to": "sip:bob@example.com"});
+        assert!(Service::extract_sip_username(&top_level).is_none());
     }
 
     // Cargo runs tests in parallel by default; the proxy tests below mutate
@@ -1702,25 +1720,28 @@ mod tests {
     }
 
     #[test]
-    fn test_post_prompt_route_returns_404_on_swml_service() {
-        // /post_prompt is an AgentBase-only route per Python parity. A
-        // bare SWMLService that someone instantiates directly (sidecar,
-        // non-agent SWML host) does not have post-prompt semantics; POST
-        // /post_prompt must 404.
+    fn test_post_prompt_route_serves_swml_on_swml_service() {
+        // Framework-free core parity (Python `_handle_request_core`): every
+        // authed sub-path under the route that is NOT `/swaig` falls through to
+        // the SWML document. A bare SWMLService has no `/post_prompt` semantic,
+        // so it serves the doc (200) rather than 404-ing — the 404 for an
+        // unknown route is a web-framework concern, layered above this core.
         let svc = Service::new(default_options("svc"));
         let headers = authed_headers("testuser", "testpass");
         let (status, _, body) = svc.handle_request("POST", "/post_prompt", &headers, "");
-        assert_eq!(status, 404);
+        assert_eq!(status, 200);
         let parsed: Value = serde_json::from_str(&body).unwrap();
-        assert_eq!(parsed["error"], "Not found");
+        assert_eq!(parsed["version"], "1.0.0");
     }
 
     #[test]
-    fn test_not_found_route() {
+    fn test_unknown_subpath_serves_swml() {
+        // A sub-path under the route (not `/swaig`) serves the SWML doc, per
+        // the framework-free core contract.
         let svc = Service::new(default_options("svc"));
         let headers = authed_headers("testuser", "testpass");
         let (status, _, _) = svc.handle_request("GET", "/unknown", &headers, "");
-        assert_eq!(status, 404);
+        assert_eq!(status, 200);
     }
 
     #[test]

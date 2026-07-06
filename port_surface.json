@@ -1,6 +1,6 @@
 {
   "version": "1",
-  "generated_from": "signalwire-rust @ 892ff010252c239c0ee6a96526a6502d95a15925",
+  "generated_from": "signalwire-rust @ 1e2cf246b968b6a07bd6206d14eb435e1cc00d7c",
   "modules": {
     "signalwire": {
       "classes": {
@@ -165,6 +165,7 @@
           "get_basic_auth_credentials",
           "get_contexts",
           "get_full_url",
+          "get_global_data",
           "get_language_params",
           "get_name",
           "get_post_prompt",
@@ -222,6 +223,7 @@
           "set_webhook_url",
           "setup_graceful_shutdown",
           "signing_key",
+          "sip_usernames",
           "tool",
           "update_global_data",
           "validate_tool_token"
@@ -602,7 +604,8 @@
           "token_expiry_secs",
           "validate_token",
           "validate_tool_token",
-          "with_defaults"
+          "with_defaults",
+          "with_secret"
         ]
       },
       "functions": []
@@ -757,6 +760,7 @@
         "VerbHandlerRegistry": [
           "__init__",
           "get_handler",
+          "handler_names",
           "has_handler",
           "register_handler"
         ]
@@ -813,6 +817,7 @@
           "render_pretty",
           "reset_document",
           "route",
+          "routing_callback_paths",
           "run",
           "schema_utils",
           "serve",
@@ -1136,6 +1141,7 @@
           "payload",
           "resolve",
           "result",
+          "sent_commands",
           "set_notify_sender",
           "state",
           "stop",
@@ -1359,13 +1365,20 @@
           "from_payload"
         ],
         "CallStateEvent": [
+          "call_id",
+          "call_state",
+          "direction",
           "from_payload"
         ],
         "CallingErrorEvent": [
           "from_payload"
         ],
         "CollectEvent": [
-          "from_payload"
+          "control_id",
+          "from_payload",
+          "is_final",
+          "result",
+          "state"
         ],
         "ConferenceEvent": [
           "from_payload"
@@ -1416,15 +1429,30 @@
           "from_payload"
         ],
         "QueueEvent": [
-          "from_payload"
+          "control_id",
+          "from_payload",
+          "position",
+          "queue_id",
+          "queue_name",
+          "size",
+          "status"
         ],
         "RecordEvent": [
-          "from_payload"
+          "control_id",
+          "duration",
+          "from_payload",
+          "size",
+          "state",
+          "url"
         ],
         "ReferEvent": [
           "from_payload"
         ],
         "RelayEvent": [
+          "call_id",
+          "call_state",
+          "class_name",
+          "direction",
           "from_payload"
         ],
         "SendDigitsEvent": [

@@ -87,6 +87,19 @@ respond: tiny_http::Request::respond
 status: ureq response accessor
 peekable: stdlib Iterator::peekable
 peek: stdlib Iterator::peek
+copied: stdlib Iterator::copied / Option::copied
+finalize: hmac Mac::finalize (crypto)
+find_map: stdlib Iterator::find_map
+fold: stdlib Iterator::fold
+into_bytes: hmac CtOutput::into_bytes / stdlib String::into_bytes
+into_iter: stdlib IntoIterator::into_iter
+is_ascii_hexdigit: stdlib char::is_ascii_hexdigit
+is_ascii_uppercase: stdlib char::is_ascii_uppercase
+last: stdlib Iterator::last / slice::last
+last_mut: stdlib slice::last_mut
+map_or: stdlib Option::map_or / Result::map_or
+repeat: stdlib str::repeat
+rev: stdlib Iterator::rev
 
 ## Python-SDK names referenced in legacy Python code blocks
 

@@ -1107,3 +1107,36 @@ signalwire.skills.custom_skills.skill.CustomSkillsSkill.register_tools: port-onl
 signalwire.skills.custom_skills.skill.CustomSkillsSkill.setup: port-only: method of the Rust-only custom_skills skill (Python has no custom_skills module)
 signalwire.skills.info_gatherer.skill.InfoGathererSkill.get_prompt_sections: port-only: Rust's info_gatherer skill overrides get_prompt_sections; the Python reference's InfoGathererSkill does not declare it (relies on the SkillBase default)
 signalwire.core.agent_base.AgentBase.set_multilingual: These methods exist in Python's AgentBase too (via the AIConfigMixin). The Rust port hangs set_multilingual directly off AgentBase (and projects it onto AIConfigMixin), so the per-symbol enumerator also emits it under signalwire.core.agent_base.AgentBase. Python has the same surface.
+
+### Layer-D dump accessors (read-only observers for the cross-port behavioral differs)
+
+These are read-only accessors the Layer-D per-surface dump programs (examples/{wire,swml,state,http,wire_relay}_dump.rs) use to observe state the Python oracle reads via its own accessors / private attributes. Each surfaces functionality Python already has; the Python *surface enumerator* simply doesn't record it (a private attribute, a dataclass field, or a constructor kwarg), so the port's idiomatic accessor shows up here.
+
+signalwire.core.agent_base.AgentBase.get_global_data: Rust accessor for the accumulated global-data map; Python reads the equivalent `AgentBase._global_data` private attribute directly.
+signalwire.core.agent_base.AgentBase.sip_usernames: Rust accessor for the registered SIP-username set (lowercased, sorted); Python reads `sorted(AgentBase._sip_usernames)` off the private set.
+signalwire.core.security.session_manager.SessionManager.with_secret: Rust named constructor exposing an explicit signing secret; Python takes the equivalent via the `secret_key` kwarg of `SessionManager.__init__` (which the Rust `new` intentionally omits — see PORT_SIGNATURE_OMISSIONS.md — so the escape hatch is a separate constructor).
+signalwire.core.swml_handler.VerbHandlerRegistry.handler_names: Rust accessor for the sorted verb-handler names; Python reads `sorted(VerbHandlerRegistry._handlers.keys())` off the private dict.
+signalwire.core.swml_service.SWMLService.routing_callback_paths: Rust accessor for the sorted normalized routing-callback paths; Python reads `sorted(SWMLService._routing_callbacks.keys())` off the private dict.
+signalwire.relay.call.Action.sent_commands: Rust read accessor for the in-memory sub-command frames an Action has emitted (wire-frame introspection); Python inspects the equivalent via its recording test stub.
+signalwire.relay.event.RelayEvent.class_name: Rust accessor returning the typed-event class name a payload dispatches to (mirrors Python `type(parse_event(payload)).__name__` over the EVENT_CLASS_MAP dispatch table).
+signalwire.relay.event.RelayEvent.call_id: Rust accessor for the `call_id` event field; Python exposes it as the `RelayEvent.call_id` dataclass field (not recorded by the surface enumerator, which skips dataclass fields).
+signalwire.relay.event.RelayEvent.call_state: Rust accessor for the `call_state` event field; Python `CallStateEvent.call_state` dataclass field.
+signalwire.relay.event.RelayEvent.direction: Rust accessor for the `direction` event field; Python `CallStateEvent.direction` dataclass field.
+signalwire.relay.event.CallStateEvent.call_id: Rust accessor for the `call_id` field; Python `CallStateEvent.call_id` dataclass field.
+signalwire.relay.event.CallStateEvent.call_state: Rust accessor for the `call_state` field; Python `CallStateEvent.call_state` dataclass field.
+signalwire.relay.event.CallStateEvent.direction: Rust accessor for the `direction` field; Python `CallStateEvent.direction` dataclass field.
+signalwire.relay.event.QueueEvent.control_id: Rust accessor for the `control_id` field; Python `QueueEvent.control_id` dataclass field.
+signalwire.relay.event.QueueEvent.status: Rust accessor for the `status` field; Python `QueueEvent.status` dataclass field.
+signalwire.relay.event.QueueEvent.queue_id: Rust accessor for the `queue_id` field (renamed from wire `id`); Python `QueueEvent.queue_id` dataclass field.
+signalwire.relay.event.QueueEvent.queue_name: Rust accessor for the `queue_name` field (renamed from wire `name`); Python `QueueEvent.queue_name` dataclass field.
+signalwire.relay.event.QueueEvent.position: Rust accessor for the `position` field; Python `QueueEvent.position` dataclass field.
+signalwire.relay.event.QueueEvent.size: Rust accessor for the `size` field; Python `QueueEvent.size` dataclass field.
+signalwire.relay.event.RecordEvent.control_id: Rust accessor for the `control_id` field; Python `RecordEvent.control_id` dataclass field.
+signalwire.relay.event.RecordEvent.state: Rust accessor for the `state` field; Python `RecordEvent.state` dataclass field.
+signalwire.relay.event.RecordEvent.url: Rust accessor for the `url` field (nested `record.url` fallback); Python `RecordEvent.url` dataclass field.
+signalwire.relay.event.RecordEvent.duration: Rust accessor for the `duration` field (nested `record.duration` fallback); Python `RecordEvent.duration` dataclass field.
+signalwire.relay.event.RecordEvent.size: Rust accessor for the `size` field (nested `record.size` fallback); Python `RecordEvent.size` dataclass field.
+signalwire.relay.event.CollectEvent.control_id: Rust accessor for the `control_id` field; Python `CollectEvent.control_id` dataclass field.
+signalwire.relay.event.CollectEvent.state: Rust accessor for the `state` field; Python `CollectEvent.state` dataclass field.
+signalwire.relay.event.CollectEvent.result: Rust accessor for the `result` object; Python `CollectEvent.result` dataclass field.
+signalwire.relay.event.CollectEvent.is_final: Rust accessor for the tri-state `final` flag (named `is_final` to avoid the Rust `final` reserved-word clash); Python `CollectEvent.final` dataclass field.
