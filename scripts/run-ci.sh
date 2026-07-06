@@ -224,6 +224,42 @@ sched_gate EMISSION desc="diff_port_emission vs python to_dict() oracle" \
         --dump-cmd 'cargo run --quiet --example emit_corpus' \
         --port-repo "$PORT_ROOT"
 
+# BEHAVIORAL-* (Layer D) — 5 wire-shape differs vs the python oracle. Each runs a
+# tiny `<surface>_dump` example that emits ONLY JSON on stdout and structurally
+# compares it against signalwire-python's behavior for the same corpus. The python
+# oracle is auto-resolved by the differ exactly as EMISSION does (no --python-sdk
+# flag; --python-sdk defaults to the adjacent/installed signalwire package, which is
+# the sibling checkout in CI). The 5 dump examples are prebuilt ONCE below so cargo
+# emits no build noise onto the dump's stdout mid-gate.
+cargo build --quiet \
+    --example wire_dump --example swml_dump --example state_dump \
+    --example http_dump --example wire_relay_dump 2>/dev/null || true
+
+sched_gate BEHAVIORAL-WIRE desc="diff_port_wire vs python oracle (Layer D)" \
+    -- python3 "$PORTING_SDK_DIR/scripts/diff_port_wire.py" \
+        --port rust \
+        --dump-cmd 'cargo run -q --example wire_dump 2>/dev/null'
+
+sched_gate BEHAVIORAL-SWML desc="diff_port_swml vs python oracle (Layer D)" \
+    -- python3 "$PORTING_SDK_DIR/scripts/diff_port_swml.py" \
+        --port rust \
+        --dump-cmd 'cargo run -q --example swml_dump 2>/dev/null'
+
+sched_gate BEHAVIORAL-STATE desc="diff_port_state vs python oracle (Layer D)" \
+    -- python3 "$PORTING_SDK_DIR/scripts/diff_port_state.py" \
+        --port rust \
+        --dump-cmd 'cargo run -q --example state_dump 2>/dev/null'
+
+sched_gate BEHAVIORAL-HTTP desc="diff_port_http vs python oracle (Layer D)" \
+    -- python3 "$PORTING_SDK_DIR/scripts/diff_port_http.py" \
+        --port rust \
+        --dump-cmd 'cargo run -q --example http_dump 2>/dev/null'
+
+sched_gate BEHAVIORAL-WIRE-RELAY desc="diff_port_wire_relay vs python oracle (Layer D)" \
+    -- python3 "$PORTING_SDK_DIR/scripts/diff_port_wire_relay.py" \
+        --port rust \
+        --dump-cmd 'cargo run -q --example wire_relay_dump 2>/dev/null'
+
 sched_gate SKILL-CONTRACT desc="diff_skill_contracts vs python reference" \
     -- python3 "$PORTING_SDK_DIR/scripts/diff_skill_contracts.py" \
         --dump-cmd 'cargo run --quiet --example emit_skills' \
