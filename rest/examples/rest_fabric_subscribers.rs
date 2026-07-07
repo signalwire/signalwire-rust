@@ -3,28 +3,33 @@
 //
 //! Manage Fabric subscribers via the REST API.
 //!
-//! Environment: SIGNALWIRE_PROJECT_ID, SIGNALWIRE_API_TOKEN, SIGNALWIRE_SPACE
+//! The REST client is synchronous. `create`/`update` take a
+//! `&serde_json::Value`; `list` takes a `&HashMap<String, String>`. Every
+//! method returns `Result<Value, SignalWireRestError>`.
+//!
+//! Environment: `SIGNALWIRE_PROJECT_ID`, `SIGNALWIRE_API_TOKEN`, `SIGNALWIRE_SPACE`
 
+use serde_json::json;
 use signalwire::rest::RestClient;
+use std::collections::HashMap;
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     let client = RestClient::from_env()?;
 
-    // Create a subscriber
+    // Create a subscriber.
     println!("Creating subscriber ...");
-    let sub = client.fabric().subscribers().create(serde_json::json!({
+    let sub = client.fabric().subscribers().create(&json!({
         "email": "alice@example.com",
         "first_name": "Alice",
         "last_name": "Smith",
-        "display_name": "Alice Smith",
-    })).await?;
+        "display_name": "Alice Smith"
+    }))?;
 
-    let sub_id = sub["id"].as_str().unwrap_or("unknown");
+    let sub_id = sub["id"].as_str().unwrap_or("unknown").to_string();
     println!("Subscriber created: {sub_id}");
 
-    // List all subscribers
-    let subs = client.fabric().subscribers().list(&[]).await?;
+    // List all subscribers.
+    let subs = client.fabric().subscribers().list(&HashMap::new())?;
     if let Some(arr) = subs.as_array() {
         println!("\nAll subscribers ({}):", arr.len());
         for s in arr {
@@ -35,15 +40,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    // Update subscriber
+    // Update subscriber.
     println!("\nUpdating subscriber ...");
-    client.fabric().subscribers().update(sub_id, serde_json::json!({
-        "display_name": "Alice S.",
-    })).await?;
+    client.fabric().subscribers().update(
+        &sub_id,
+        &json!({
+            "display_name": "Alice S."
+        }),
+    )?;
     println!("Subscriber updated.");
 
-    // Get subscriber details
-    let details = client.fabric().subscribers().get(sub_id).await?;
+    // Get subscriber details.
+    let details = client.fabric().subscribers().get(&sub_id)?;
     println!("Display name: {}", details["display_name"]);
 
     Ok(())

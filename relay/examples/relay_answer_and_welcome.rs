@@ -3,47 +3,48 @@
 //
 //! Answer an inbound call and say "Welcome to SignalWire!"
 //!
-//! Set these env vars (or pass them directly to RelayClient):
-//!   SIGNALWIRE_PROJECT_ID   - your SignalWire project ID
-//!   SIGNALWIRE_API_TOKEN    - your SignalWire API token
-//!   SIGNALWIRE_SPACE        - your SignalWire space (e.g. example.signalwire.com)
+//! The RELAY client is synchronous: it runs its WebSocket/Blade event loop on a
+//! background thread and invokes the `on_call` handler on that thread. There is
+//! no `async`/`await` and no `tokio` runtime to set up.
+//!
+//! Set these env vars (or pass them directly to `Client::new`):
+//!   `SIGNALWIRE_PROJECT_ID`   - your SignalWire project ID
+//!   `SIGNALWIRE_API_TOKEN`    - your SignalWire API token
+//!   `SIGNALWIRE_SPACE`        - your SignalWire space (e.g. example.signalwire.com)
 //!
 //! For full WebSocket / JSON-RPC debug output:
-//!   SIGNALWIRE_LOG_LEVEL=debug
+//!   `SIGNALWIRE_LOG_LEVEL=debug`
 
-use signalwire::relay::RelayClient;
-use std::env;
+use signalwire::relay::Client;
+use std::sync::Arc;
+use std::time::Duration;
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Optionally enable debug logging
-    if env::var("SIGNALWIRE_LOG_LEVEL").is_err() {
-        env::set_var("SIGNALWIRE_LOG_LEVEL", "debug");
-    }
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Reads SIGNALWIRE_PROJECT_ID / SIGNALWIRE_API_TOKEN / SIGNALWIRE_SPACE.
+    let client = Arc::new(Client::from_env()?);
 
-    let client = RelayClient::builder()
-        .project(&env::var("SIGNALWIRE_PROJECT_ID")?)
-        .token(&env::var("SIGNALWIRE_API_TOKEN")?)
-        .space(&env::var("SIGNALWIRE_SPACE")?)
-        .contexts(vec!["default".into()])
-        .build()?;
+    client.on_call(|call, _event| {
+        println!("Incoming call: {}", call.repr());
+        let _ = call.answer();
 
-    client.on_call(|call| async move {
-        println!("Incoming call: {}", call.call_id);
-        call.answer().await?;
+        // Media verbs return an `Arc<Action>`; block on `wait()` for completion.
+        let action = call.play(serde_json::json!({
+            "play": [{
+                "type": "tts",
+                "params": {"text": "Welcome to SignalWire!"}
+            }]
+        }));
+        let _ = action.wait(Some(Duration::from_secs(30)));
 
-        let action = call.play(vec![serde_json::json!({
-            "type": "tts",
-            "params": {"text": "Welcome to SignalWire!"}
-        })]).await?;
-        action.wait().await?;
-
-        call.hangup().await?;
-        println!("Call ended: {}", call.call_id);
-        Ok(())
+        let _ = call.hangup();
+        println!("Call ended: {}", call.repr());
     });
 
     println!("Waiting for inbound calls on context 'default' ...");
-    client.run().await?;
+    client.connect()?;
+    client.receive(&["default".to_string()]);
+
+    // Block while the relay loop runs on its background thread.
+    client.run();
     Ok(())
 }
