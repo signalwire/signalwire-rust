@@ -37,6 +37,10 @@ exclude = [
     "examples/relay_audit_harness.rs",
     "examples/rest_audit_harness.rs",
     "examples/skills_audit_harness.rs",
+    # Sub-dir examples are [[example]] targets (gated by --all-targets, #115)
+    # but are in-repo docs, not part of the published library tarball.
+    "rest/examples/",
+    "relay/examples/",
     "scripts/",
     "eng/",
 ]
@@ -137,3 +141,78 @@ path = "src/bin/route_registry.rs"
 [[bin]]
 name = "rest-test-plan"
 path = "src/bin/rest_test_plan.rs"
+
+# ---------------------------------------------------------------------------
+# Sub-directory examples (rest/examples/, relay/examples/).
+#
+# Cargo only auto-discovers example targets under the top-level `examples/`
+# dir, so files under `rest/examples/` and `relay/examples/` are NOT compiled
+# by anything unless declared here. Left undeclared they rot silently — they
+# had drifted to a fictional async API undetected until the #109 rewrite. These
+# [[example]] entries make them real `--all-targets` targets, so the LINT gate
+# (`cargo clippy --all-targets`), `cargo build --examples`, and `cargo test`
+# all compile them and any future drift fails the build (#115). Keep an entry
+# here for every file added to those two dirs.
+[[example]]
+name = "rest_buy_phone_number"
+path = "rest/examples/rest_buy_phone_number.rs"
+
+[[example]]
+name = "rest_create_sip_endpoint"
+path = "rest/examples/rest_create_sip_endpoint.rs"
+
+[[example]]
+name = "rest_datasphere"
+path = "rest/examples/rest_datasphere.rs"
+
+[[example]]
+name = "rest_fabric_agent"
+path = "rest/examples/rest_fabric_agent.rs"
+
+[[example]]
+name = "rest_fabric_subscribers"
+path = "rest/examples/rest_fabric_subscribers.rs"
+
+[[example]]
+name = "rest_list_phone_numbers"
+path = "rest/examples/rest_list_phone_numbers.rs"
+
+[[example]]
+name = "rest_list_recordings"
+path = "rest/examples/rest_list_recordings.rs"
+
+[[example]]
+name = "rest_make_call"
+path = "rest/examples/rest_make_call.rs"
+
+[[example]]
+name = "rest_manage_queues"
+path = "rest/examples/rest_manage_queues.rs"
+
+[[example]]
+name = "rest_search_phone_numbers"
+path = "rest/examples/rest_search_phone_numbers.rs"
+
+[[example]]
+name = "rest_send_sms"
+path = "rest/examples/rest_send_sms.rs"
+
+[[example]]
+name = "rest_video_rooms"
+path = "rest/examples/rest_video_rooms.rs"
+
+# `relay_answer_and_welcome` is also an auto-discovered top-level example
+# (examples/relay_answer_and_welcome.rs, an older copy linked from
+# examples/README.md); Cargo forbids two example targets of the same name, so
+# the RELAY-subdir copy is registered under a `_relay` suffix to gate it too.
+[[example]]
+name = "relay_answer_and_welcome_relay"
+path = "relay/examples/relay_answer_and_welcome.rs"
+
+[[example]]
+name = "relay_dial_and_play"
+path = "relay/examples/relay_dial_and_play.rs"
+
+[[example]]
+name = "relay_ivr_connect"
+path = "relay/examples/relay_ivr_connect.rs"
