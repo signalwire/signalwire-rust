@@ -21355,6 +21355,11 @@
                   "name": "base_path",
                   "type": "string",
                   "required": true
+                },
+                {
+                  "name": "update_method",
+                  "type": "string",
+                  "required": true
                 }
               ],
               "returns": "void"
@@ -21404,6 +21409,20 @@
                 }
               ],
               "returns": "class:signalwire.value.Value"
+            },
+            "path": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                },
+                {
+                  "name": "parts",
+                  "type": "list<string>",
+                  "required": true
+                }
+              ],
+              "returns": "string"
             },
             "update": {
               "params": [

@@ -169,6 +169,20 @@ spec_parity_gate() {
         --gaps "$PORTING_SDK_DIR/SPEC_IMPLEMENTATION_GAPS.md"
 }
 
+# ROUTE-COLLISION (expansion) — no duplicate CRUD base + no split route classes.
+# Needs the port's route-registry (same deterministic Set B the SPEC-PARITY gate
+# builds via the route-registry binary). Enforcing (no --report-only); the port's
+# ROUTE_COLLISION_ALLOW.md, when present, is honored by the gate.
+route_collision_gate() {
+    local reg
+    reg="$(mktemp -t rust_route_collision.XXXXXX.json)"
+    # shellcheck disable=SC2064
+    trap "rm -f '$reg'" RETURN
+    cargo run --quiet --bin route-registry >"$reg" || return 1
+    python3 "$PORTING_SDK_DIR/scripts/route_collision.py" \
+        --port rust --repo . --registry-json "$reg"
+}
+
 # ARTIFACT-DENY (Day-one) — authoritative --listing mode. Feed the REAL published
 # package file listing (`cargo package --list`) to artifact_deny.py rather than the
 # git-ls-files proxy, which over-reports files tracked in-repo but excluded from the
@@ -313,6 +327,18 @@ sched_gate META-CONSISTENT res=dayone desc="package metadata consistency" \
     -- python3 "$PORTING_SDK_DIR/scripts/meta_consistent.py" --port rust --repo .
 sched_gate ARTIFACT-DENY res=dayone desc="no porting artifacts in the PUBLISHED package (authoritative listing)" \
     --fn dayone_artifact_deny
+
+# ---- expansion gates (backlog burned to zero; now enforcing) -----------------
+sched_gate GEN-TYPE-DEGENERACY desc="generated typed I/O is not degenerate (modulo GEN_TYPE_DEGENERACY_ALLOW.md)" \
+    -- python3 "$PORTING_SDK_DIR/scripts/gen_type_degeneracy.py" --port rust --repo .
+sched_gate PUBLIC-JARGON desc="no porting/internal jargon leaked into public docs/identifiers" \
+    -- python3 "$PORTING_SDK_DIR/scripts/public_jargon.py" --port rust --repo .
+sched_gate ROUTE-COLLISION desc="no duplicate CRUD base / split route classes (route-registry × modulo ROUTE_COLLISION_ALLOW.md)" \
+    --fn route_collision_gate
+sched_gate GEN-IDIOM desc="generated code is not lint-excluded (idiom parity with hand-written)" \
+    -- python3 "$PORTING_SDK_DIR/scripts/gen_idiom.py" --port rust --repo .
+sched_gate RELEASE-FRESH desc="publish path is gated (gates-before-publish); release freshness" \
+    -- python3 "$PORTING_SDK_DIR/scripts/release_fresh.py" --port rust --repo .
 
 sched_run
 rc=$?

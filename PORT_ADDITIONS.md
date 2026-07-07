@@ -154,11 +154,12 @@ signalwire.relay.call.Call.set_client: Port-only wiring setter with no Python co
 
 ### Rust CrudResource constructor / accessors
 
-Rust CrudResource is a base struct with explicit accessors. Python's _base.CrudResource is internal.
+Rust CrudResource is a base struct with explicit accessors. Python's _base.CrudResource is internal. Consolidated to a SINGLE CrudResource (the former generated-layer duplicate was merged in): the constructor now bakes in the update HTTP verb (`PUT`/`PATCH`) and the base's collection+item URL composer `path` is exposed, matching the BaseResource/ReadResource path helpers.
 
 signalwire.rest._base.CrudResource.__init__: Rust CrudResource is a base struct with explicit accessors. Python's _base.CrudResource is internal.
 signalwire.rest._base.CrudResource.base_path: Rust CrudResource is a base struct with explicit accessors. Python's _base.CrudResource is internal.
 signalwire.rest._base.CrudResource.client: Rust CrudResource is a base struct with explicit accessors. Python's _base.CrudResource is internal.
+signalwire.rest._base.CrudResource.path: Rust CrudResource exposes the base's collection+item URL composer `path(parts)`; Python composes item paths inline per method. Rust base-helper idiom, same shape as the BaseResource/ReadResource path helpers. Surfaced when the port consolidated to a single CrudResource.
 
 ### Rust Document builder type
 
