@@ -224,7 +224,6 @@ Port every one of these. Each must contain code examples in the target language,
 - [x] swml_service_guide.md
 - [x] web_service.md
 - [x] cloud_functions_guide.md
-- [x] mcp_gateway_reference.md
 - [x] mcp_integration.md
 
 Skip: search_*.md (4 files), bedrock_agent.md, livekit_comparison.md, pipecat_comparison.md
