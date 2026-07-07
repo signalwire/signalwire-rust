@@ -89,7 +89,7 @@ impl PomBuilder {
     }
 
     /// Add content (body text and/or bullets) to an existing section,
-    /// auto-creating it if it does not exist. Python parity: `add_to_section`.
+    /// auto-creating it if it does not exist.
     pub fn add_to_section(
         &mut self,
         title: &str,
@@ -121,7 +121,6 @@ impl PomBuilder {
     }
 
     /// Add a subsection to an existing section, creating the parent if needed.
-    /// Python parity: `add_subsection`.
     pub fn add_subsection(
         &mut self,
         parent_title: &str,
@@ -138,40 +137,37 @@ impl PomBuilder {
         self
     }
 
-    /// Whether a section with the given title exists. Python parity:
-    /// `has_section`.
+    /// Whether a section with the given title exists.
     #[must_use]
     pub fn has_section(&self, title: &str) -> bool {
         self.pom.find_section(title).is_some()
     }
 
-    /// Get a section by title. Python parity: `get_section`.
+    /// Get a section by title.
     #[must_use]
     pub fn get_section(&self, title: &str) -> Option<&Section> {
         self.pom.find_section(title)
     }
 
-    /// Render the POM as markdown. Python parity: `render_markdown`.
+    /// Render the POM as markdown.
     #[must_use]
     pub fn render_markdown(&self) -> String {
         self.pom.render_markdown()
     }
 
-    /// Render the POM as XML. Python parity: `render_xml`.
+    /// Render the POM as XML.
     #[must_use]
     pub fn render_xml(&self) -> String {
         self.pom.render_xml()
     }
 
-    /// Convert the POM to a list of section values. Python parity: `to_dict`
-    /// (Rust's `to_value` analog — the POM's `to_value` already yields the
-    /// section array).
+    /// Convert the POM to a list of section values.
     #[must_use]
     pub fn to_value(&self) -> Value {
         self.pom.to_value()
     }
 
-    /// Convert the POM to a JSON string. Python parity: `to_json`.
+    /// Convert the POM to a JSON string.
     ///
     /// # Panics
     ///
@@ -184,8 +180,7 @@ impl PomBuilder {
             .expect("POM serialization should not fail")
     }
 
-    /// Create a `PomBuilder` from a list of section values. Python parity:
-    /// `from_sections`.
+    /// Create a `PomBuilder` from a list of section values.
     ///
     /// # Panics
     ///

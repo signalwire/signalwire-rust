@@ -38,8 +38,7 @@ pub struct SwaigFunction {
 }
 
 impl SwaigFunction {
-    /// Initialize a new SWAIG function. Python parity:
-    /// `SWAIGFunction.__init__`.
+    /// Initialize a new SWAIG function.
     ///
     /// `parameters` is the JSON-Schema parameters object (or the raw
     /// properties map, wrapped on demand by [`SwaigFunction::to_swaig`]).
@@ -121,15 +120,13 @@ impl SwaigFunction {
         self.secure
     }
 
-    /// Call the underlying handler directly. Python parity:
-    /// `SWAIGFunction.__call__` (the enumerator maps Rust `call` → the
-    /// reference `__call__` dunder).
+    /// Call the underlying handler directly.
     pub fn call(&self, args: &Map<String, Value>, raw_data: &Map<String, Value>) -> FunctionResult {
         (self.handler)(args, raw_data)
     }
 
     /// Execute the function and return its result as a value (from
-    /// [`FunctionResult::to_value`]). Python parity: `SWAIGFunction.execute`.
+    /// [`FunctionResult::to_value`]).
     #[must_use]
     pub fn execute(
         &self,
@@ -145,8 +142,7 @@ impl SwaigFunction {
     /// `(is_valid, errors)`. The Rust port performs a lightweight
     /// required-key check (there is no runtime JSON-Schema validator wired in);
     /// this mirrors the reference's "skip when no validator is available"
-    /// fallback, tightened to enforce the `required` list. Python parity:
-    /// `SWAIGFunction.validate_args`.
+    /// fallback, tightened to enforce the `required` list.
     #[must_use]
     pub fn validate_args(&self, args: &Map<String, Value>) -> (bool, Vec<String>) {
         let schema = self.ensure_parameter_structure();
@@ -168,7 +164,6 @@ impl SwaigFunction {
     }
 
     /// Convert this function to a SWAIG-compatible value for SWML. Python
-    /// parity: `SWAIGFunction.to_swaig`.
     #[must_use]
     pub fn to_swaig(&self, base_url: &str, token: Option<&str>, call_id: Option<&str>) -> Value {
         let mut url = format!("{base_url}/swaig");

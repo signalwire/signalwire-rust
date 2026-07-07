@@ -11,8 +11,7 @@ use crate::swaig::FunctionResult;
 /// (`skills/native_vector_search/skill.py`): posts a JSON body to the
 /// `/search` sub-path of the configured remote URL and reads the
 /// `results: [{content, score, metadata}]` list from the JSON response.
-/// On any transport / non-200 / parse error, returns an empty vector
-/// (parity with Python's log-and-return-`[]`).
+/// On any transport / non-200 / parse error, returns an empty vector.
 fn search_remote(remote_url: &str, query: &str, index_name: &str, count: i64) -> Vec<Value> {
     let base = remote_url.trim_end_matches('/');
     let url = format!("{base}/search");

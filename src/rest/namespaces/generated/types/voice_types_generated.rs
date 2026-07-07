@@ -5,22 +5,18 @@
 // Read-side wire types (open shapes) — method-less serde structs / closed-set
 // enums. Regenerate with: python3 scripts/generate_rest.py
 //
-// ``non_camel_case_types``: a few wire schema keys carry dotted names
-// (``Types.StatusCodes.StatusCode400``) whose folded type identifier
-// (``Types_StatusCodes_StatusCode400``) is the CROSS-PORT LEAF token the surface
-// diff compares — it must stay verbatim, so the naming lint is allowed here (the
-// name is parity-mandated, not idiomatic-optional).
-#![allow(
-    non_camel_case_types,
-    clippy::doc_markdown,
-    clippy::struct_field_names,
-    clippy::module_name_repetitions,
-    dead_code
-)]
+// Two narrow lint allows, both grounded in the generated wire shape:
+//   * non_camel_case_types — a few wire schema keys carry dotted names
+//     (``Types.StatusCodes.StatusCode400``); the type identifier folds the dots
+//     to underscores (``Types_StatusCodes_StatusCode400``) and must stay verbatim
+//     so it matches the wire schema key, which the naming lint would rewrite.
+//   * clippy::doc_markdown — the generated doc comments echo raw wire schema key
+//     names in prose; backticking every one mechanically is not meaningful here.
+#![allow(non_camel_case_types, clippy::doc_markdown)]
 
 use serde::{Deserialize, Serialize};
 
-/// `ChargeDetail` — generated read-side wire type ('voice' spec components/schemas 'ChargeDetail').
+/// `ChargeDetail` — generated read-side wire type ('voice' REST API, schema 'ChargeDetail').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -32,7 +28,7 @@ pub struct ChargeDetail {
     pub charge: Option<f64>,
 }
 
-/// `DialogflowVoiceLog` — generated read-side wire type ('voice' spec components/schemas 'DialogflowVoiceLog').
+/// `DialogflowVoiceLog` — generated read-side wire type ('voice' REST API, schema 'DialogflowVoiceLog').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -62,7 +58,7 @@ pub struct DialogflowVoiceLog {
     pub duration: Option<serde_json::Value>,
 }
 
-/// `DiscardedVoiceLog` — generated read-side wire type ('voice' spec components/schemas 'DiscardedVoiceLog').
+/// `DiscardedVoiceLog` — generated read-side wire type ('voice' REST API, schema 'DiscardedVoiceLog').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -76,7 +72,7 @@ pub struct DiscardedVoiceLog {
     pub created_at: Option<String>,
 }
 
-/// `FabricVoiceLog` — generated read-side wire type ('voice' spec components/schemas 'FabricVoiceLog').
+/// `FabricVoiceLog` — generated read-side wire type ('voice' REST API, schema 'FabricVoiceLog').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -106,7 +102,7 @@ pub struct FabricVoiceLog {
     pub status: Option<serde_json::Value>,
 }
 
-/// `LogEvent` — generated read-side wire type ('voice' spec components/schemas 'LogEvent').
+/// `LogEvent` — generated read-side wire type ('voice' REST API, schema 'LogEvent').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -126,7 +122,7 @@ pub struct LogEvent {
     pub log_id: Option<serde_json::Value>,
 }
 
-/// `LogEventsListResponse` — generated read-side wire type ('voice' spec components/schemas 'LogEventsListResponse').
+/// `LogEventsListResponse` — generated read-side wire type ('voice' REST API, schema 'LogEventsListResponse').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -136,7 +132,7 @@ pub struct LogEventsListResponse {
     pub data: Option<serde_json::Value>,
 }
 
-/// `LogListResponse` — generated read-side wire type ('voice' spec components/schemas 'LogListResponse').
+/// `LogListResponse` — generated read-side wire type ('voice' REST API, schema 'LogListResponse').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -148,7 +144,7 @@ pub struct LogListResponse {
     pub data: Option<serde_json::Value>,
 }
 
-/// `LogPaginationResponse` — generated read-side wire type ('voice' spec components/schemas 'LogPaginationResponse').
+/// `LogPaginationResponse` — generated read-side wire type ('voice' REST API, schema 'LogPaginationResponse').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -164,7 +160,7 @@ pub struct LogPaginationResponse {
     pub prev: Option<String>,
 }
 
-/// `RelayVoiceLog` — generated read-side wire type ('voice' spec components/schemas 'RelayVoiceLog').
+/// `RelayVoiceLog` — generated read-side wire type ('voice' REST API, schema 'RelayVoiceLog').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -202,7 +198,7 @@ pub struct RelayVoiceLog {
     pub parent_id: Option<serde_json::Value>,
 }
 
-/// `Types_StatusCodes_RestApiErrorItem` — generated read-side wire type ('voice' spec components/schemas 'Types.StatusCodes.RestApiErrorItem').
+/// `Types_StatusCodes_RestApiErrorItem` — generated read-side wire type ('voice' REST API, schema 'Types.StatusCodes.RestApiErrorItem').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -220,7 +216,7 @@ pub struct Types_StatusCodes_RestApiErrorItem {
     pub url: Option<String>,
 }
 
-/// `Types_StatusCodes_StatusCode400` — generated read-side wire type ('voice' spec components/schemas 'Types.StatusCodes.StatusCode400').
+/// `Types_StatusCodes_StatusCode400` — generated read-side wire type ('voice' REST API, schema 'Types.StatusCodes.StatusCode400').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -230,7 +226,7 @@ pub struct Types_StatusCodes_StatusCode400 {
     pub error: Option<serde_json::Value>,
 }
 
-/// `Types_StatusCodes_StatusCode401` — generated read-side wire type ('voice' spec components/schemas 'Types.StatusCodes.StatusCode401').
+/// `Types_StatusCodes_StatusCode401` — generated read-side wire type ('voice' REST API, schema 'Types.StatusCodes.StatusCode401').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -240,7 +236,7 @@ pub struct Types_StatusCodes_StatusCode401 {
     pub error: Option<serde_json::Value>,
 }
 
-/// `Types_StatusCodes_StatusCode404` — generated read-side wire type ('voice' spec components/schemas 'Types.StatusCodes.StatusCode404').
+/// `Types_StatusCodes_StatusCode404` — generated read-side wire type ('voice' REST API, schema 'Types.StatusCodes.StatusCode404').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -250,7 +246,7 @@ pub struct Types_StatusCodes_StatusCode404 {
     pub error: Option<serde_json::Value>,
 }
 
-/// `Types_StatusCodes_StatusCode422` — generated read-side wire type ('voice' spec components/schemas 'Types.StatusCodes.StatusCode422').
+/// `Types_StatusCodes_StatusCode422` — generated read-side wire type ('voice' REST API, schema 'Types.StatusCodes.StatusCode422').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -260,7 +256,7 @@ pub struct Types_StatusCodes_StatusCode422 {
     pub errors: Option<serde_json::Value>,
 }
 
-/// `Types_StatusCodes_StatusCode500` — generated read-side wire type ('voice' spec components/schemas 'Types.StatusCodes.StatusCode500').
+/// `Types_StatusCodes_StatusCode500` — generated read-side wire type ('voice' REST API, schema 'Types.StatusCodes.StatusCode500').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -270,7 +266,7 @@ pub struct Types_StatusCodes_StatusCode500 {
     pub error: Option<serde_json::Value>,
 }
 
-/// `VideoRoomVoiceLog` — generated read-side wire type ('voice' spec components/schemas 'VideoRoomVoiceLog').
+/// `VideoRoomVoiceLog` — generated read-side wire type ('voice' REST API, schema 'VideoRoomVoiceLog').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -304,7 +300,7 @@ pub struct VideoRoomVoiceLog {
     pub duration_ms: Option<serde_json::Value>,
 }
 
-/// `VoiceLogsListStatusCode422` — generated read-side wire type ('voice' spec components/schemas 'VoiceLogsListStatusCode422').
+/// `VoiceLogsListStatusCode422` — generated read-side wire type ('voice' REST API, schema 'VoiceLogsListStatusCode422').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.

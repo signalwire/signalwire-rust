@@ -80,7 +80,7 @@ pub fn strip_control_chars(value: &str) -> String {
 ///
 /// Honors `SIGNALWIRE_LOG_MODE` / `SIGNALWIRE_LOG_LEVEL` via the underlying
 /// backend. Idempotent — subsequent calls are no-ops until
-/// [`reset_logging_configuration`]. Python parity: `configure_logging`.
+/// [`reset_logging_configuration`].
 pub fn configure_logging() {
     if LOGGING_CONFIGURED.swap(true, Ordering::SeqCst) {
         return;
@@ -89,13 +89,12 @@ pub fn configure_logging() {
 }
 
 /// Reset the configuration flag so a later [`configure_logging`] reconfigures.
-/// Python parity: `reset_logging_configuration`.
 pub fn reset_logging_configuration() {
     LOGGING_CONFIGURED.store(false, Ordering::SeqCst);
 }
 
 /// Get a logger for `name`, ensuring logging is configured first. The single
-/// entry point for SDK logging. Python parity: `get_logger`.
+/// entry point for SDK logging.
 #[must_use]
 pub fn get_logger(name: &str) -> crate::logging::Logger {
     configure_logging();

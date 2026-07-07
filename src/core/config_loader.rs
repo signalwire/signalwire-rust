@@ -2,7 +2,7 @@
 //!
 //! Rust port of Python's `signalwire.core.config_loader.ConfigLoader`. Loads a
 //! JSON config file from a search path and resolves `${VAR|default}`
-//! references against the process environment. Parity surface:
+//! references against the process environment. Configures:
 //! `__init__`, `find_config_file`, `get`, `get_config`, `get_config_file`,
 //! `get_section`, `has_config`, `merge_with_env`, `substitute_vars`.
 

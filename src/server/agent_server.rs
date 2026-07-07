@@ -150,8 +150,7 @@ impl AgentServer {
 
     /// Map a SIP username to a route.
     ///
-    /// The username is stored lowercased (Python parity:
-    /// `_sip_username_mapping[username.lower()] = route`), so SIP username
+    /// The username is stored lowercased, so SIP username
     /// lookup at dispatch time is case-insensitive.
     pub fn register_sip_username(&mut self, username: &str, route: &str) -> &mut Self {
         let route = self.normalize_route(route);
@@ -208,7 +207,7 @@ impl AgentServer {
     /// `AgentServer.serve_static_files(directory, route="/")`. Behaves
     /// identically to [`AgentServer::serve_static`] (which kept the
     /// shorter Rust-idiomatic name) — both are kept so existing code
-    /// keeps working and the Python-name parity is preserved for the
+    /// keeps working and the original name is preserved for the
     /// surface diff.
     ///
     /// # Errors

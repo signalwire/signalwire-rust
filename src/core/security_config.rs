@@ -2,7 +2,7 @@
 //!
 //! Rust port of Python's `signalwire.core.security_config.SecurityConfig`.
 //! Centralizes SSL, CORS, allowed-host, HSTS, and basic-auth settings, loaded
-//! from `SWML_*` environment variables. Parity surface: `__init__`,
+//! from `SWML_*` environment variables. Configures: `__init__`,
 //! `get_basic_auth`, `get_cors_config`, `get_security_headers`,
 //! `get_ssl_context_kwargs`, `get_url_scheme`, `load_from_env`, `log_config`,
 //! `should_allow_host`, `validate_ssl_config`.
@@ -266,8 +266,7 @@ fn env_int(var: &str, default: i64) -> i64 {
         .unwrap_or(default)
 }
 
-/// Generate a URL-safe random token of `n_bytes` entropy, base64url-encoded
-/// (parity with Python's `secrets.token_urlsafe`).
+/// Generate a URL-safe random token of `n_bytes` entropy, base64url-encoded.
 fn generate_url_safe_token(n_bytes: usize) -> String {
     use base64::Engine as _;
     use rand::RngExt;

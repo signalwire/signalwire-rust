@@ -240,8 +240,8 @@ impl ConciergeAgent {
     /// Ported from Python `ConciergeAgent.check_availability`. Simulated: if the
     /// requested service is one of the venue's offered services it reports it as
     /// available, otherwise it lists the available services. `args` reads
-    /// `service`, `date`, and `time`; `raw_data` is accepted for handler-signature
-    /// parity but unused.
+    /// `service`, `date`, and `time`; `raw_data` is accepted for
+    /// handler-signature compatibility but unused.
     pub fn check_availability(
         &self,
         args: &Map<String, Value>,
@@ -274,7 +274,7 @@ impl ConciergeAgent {
     /// Ported from Python `ConciergeAgent.get_directions`. If the requested
     /// location matches an amenity that declares a `location`, it gives directions
     /// there; otherwise it defers to front-desk staff. `args` reads `location`;
-    /// `raw_data` is accepted for handler-signature parity but unused.
+    /// `raw_data` is accepted for handler-signature compatibility but unused.
     pub fn get_directions(
         &self,
         args: &Map<String, Value>,

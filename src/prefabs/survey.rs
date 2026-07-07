@@ -238,7 +238,7 @@ impl SurveyAgent {
     /// Ported from Python `SurveyAgent.validate_response`. Reads `question_id` and
     /// `response`; validates per the question's `type` (rating within its `scale`,
     /// `multiple_choice` against its `options`, `yes_no`, and non-empty for a
-    /// required `open_ended`). `raw_data` is accepted for handler-signature parity
+    /// required `open_ended`). `raw_data` is accepted for handler-signature compatibility
     /// but unused.
     pub fn validate_response(
         &self,
@@ -328,7 +328,7 @@ impl SurveyAgent {
     ///
     /// Ported from Python `SurveyAgent.log_response`. Acknowledges the response by
     /// the question's text. Reads `question_id`; `raw_data` is accepted for
-    /// handler-signature parity but unused.
+    /// handler-signature compatibility but unused.
     pub fn log_response(
         &self,
         args: &Map<String, Value>,

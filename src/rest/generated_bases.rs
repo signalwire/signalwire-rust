@@ -1,7 +1,7 @@
-//! Hand-written base resources for the generated REST layer.
+//! Base resources shared by the REST resource layer.
 //!
-//! The generated modules under `src/rest/namespaces/generated/` compose one of
-//! four base resources per `x-sdk-resource.base` (`REST_GENERATOR_RULES` §2):
+//! Every REST resource composes one of four base resources, by the method set it
+//! needs:
 //!
 //! | base             | methods                                        |
 //! |------------------|------------------------------------------------|
@@ -10,15 +10,10 @@
 //! | `CrudResource`   | `list`, `create`, `get`, `update`, `delete`    |
 //! | `FabricResource` | CRUD + `list_addresses`                         |
 //!
-//! Each base bakes in its resource's base path (§4) and, for the write-capable
-//! bases, the resource's `update` HTTP verb (`PUT` vs `PATCH`, from
-//! `x-sdk-resource.update_method`). These carry the genuinely-behavioral REST
-//! code (path composition, the HTTP verb dispatch, delegation to `HttpClient`);
-//! the generated per-resource structs delegate to them.
-//!
-//! This is the hand-written half of the REST generator contract: the generator
-//! emits ONLY the per-resource structs, their constructors, and their
-//! declared/command/set methods — never these bases.
+//! Each base bakes in its resource's base path and, for the write-capable bases,
+//! the resource's `update` HTTP verb (`PUT` or `PATCH`). These carry the REST
+//! behaviour (path composition, the HTTP verb dispatch, delegation to
+//! `HttpClient`); each per-resource struct delegates to its base.
 
 use std::collections::HashMap;
 
@@ -29,9 +24,9 @@ use super::http_client::HttpClient;
 
 /// Shared path/client helpers for a generated resource bound to a base API path.
 ///
-/// `BaseResource` provides no CRUD verbs of its own; a resource whose
-/// `x-sdk-resource.base` is `BaseResource` declares every method explicitly in
-/// its spec markup. The path helpers here are used by those declared methods.
+/// `BaseResource` provides no CRUD verbs of its own; a resource built on it
+/// declares every method explicitly. The path helpers here are used by those
+/// declared methods.
 pub struct BaseResource<'a> {
     client: &'a HttpClient,
     base_path: String,
@@ -124,8 +119,8 @@ impl<'a> ReadResource<'a> {
 
 /// A full CRUD resource: `list`, `create`, `get`, `update`, `delete`.
 ///
-/// The `update` HTTP verb is `PUT` or `PATCH` per the resource's
-/// `x-sdk-resource.update_method` (§9); the generated ctor passes it in.
+/// The `update` HTTP verb is `PUT` or `PATCH` depending on the resource; the
+/// constructor passes it in.
 pub struct CrudResource<'a> {
     base: BaseResource<'a>,
     update_method: String,

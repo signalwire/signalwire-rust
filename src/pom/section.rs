@@ -168,11 +168,8 @@ impl Section {
         Value::Object(data)
     }
 
-    /// Render this section (and all nested subsections) as
-    /// markdown. Output matches Python's
-    /// `Section.render_markdown` byte-for-byte — see
-    /// `signalwire-python/tests/unit/pom/test_pom_render_parity.py`
-    /// for the cross-port contract.
+    /// Render this section (and all nested subsections) as markdown. The output
+    /// is stable and covered byte-for-byte by this crate's tests.
     #[must_use]
     pub fn render_markdown(&self) -> String {
         self.render_markdown_at(2, &[])

@@ -35,8 +35,8 @@ type WsStream = WebSocket<MaybeTlsStream<TcpStream>>;
 /// The crate enables tungstenite's `rustls-tls-webpki-roots` feature, so
 /// `wss://` connections verify against the bundled Mozilla root set out of the
 /// box. rustls deliberately does NOT consult `SSL_CERT_FILE` or the OS trust
-/// store, so to trust a private / self-signed CA (e.g. the porting-sdk test CA
-/// for the WSS capability test, or a corporate proxy CA in production) the
+/// store, so to trust a private / self-signed CA (e.g. a self-signed CA in a
+/// test environment, or a corporate proxy CA in production) the
 /// caller sets `SIGNALWIRE_RELAY_CA_FILE` to a PEM bundle. When set, we build a
 /// dedicated `rustls::ClientConfig` whose root store is *exactly* that CA and
 /// hand it to tungstenite as a custom `Connector` — real verification against a

@@ -127,7 +127,7 @@ fn templatize(url: &str) -> String {
 
 /// Invoke every public REST method once so the stub records its route. This is
 /// the ONE place the methods are enumerated; it is cross-checked against the
-/// canonical spec by the SPEC-PARITY diff (a forgotten method => phantom A-B
+/// canonical spec by the route-coverage diff (a forgotten method => phantom A-B
 /// gap; a non-spec route => B-A divergence). Keep it exhaustive.
 #[allow(clippy::too_many_lines)]
 fn invoke_all(c: &RestClient) {

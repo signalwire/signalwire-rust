@@ -5,22 +5,18 @@
 // Read-side wire types (open shapes) — method-less serde structs / closed-set
 // enums. Regenerate with: python3 scripts/generate_rest.py
 //
-// ``non_camel_case_types``: a few wire schema keys carry dotted names
-// (``Types.StatusCodes.StatusCode400``) whose folded type identifier
-// (``Types_StatusCodes_StatusCode400``) is the CROSS-PORT LEAF token the surface
-// diff compares — it must stay verbatim, so the naming lint is allowed here (the
-// name is parity-mandated, not idiomatic-optional).
-#![allow(
-    non_camel_case_types,
-    clippy::doc_markdown,
-    clippy::struct_field_names,
-    clippy::module_name_repetitions,
-    dead_code
-)]
+// Two narrow lint allows, both grounded in the generated wire shape:
+//   * non_camel_case_types — a few wire schema keys carry dotted names
+//     (``Types.StatusCodes.StatusCode400``); the type identifier folds the dots
+//     to underscores (``Types_StatusCodes_StatusCode400``) and must stay verbatim
+//     so it matches the wire schema key, which the naming lint would rewrite.
+//   * clippy::doc_markdown — the generated doc comments echo raw wire schema key
+//     names in prose; backticking every one mechanically is not meaningful here.
+#![allow(non_camel_case_types, clippy::doc_markdown)]
 
 use serde::{Deserialize, Serialize};
 
-/// `ChatPermissionWithRead` — generated read-side wire type ('chat' spec components/schemas 'ChatPermissionWithRead').
+/// `ChatPermissionWithRead` — generated read-side wire type ('chat' REST API, schema 'ChatPermissionWithRead').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -32,7 +28,7 @@ pub struct ChatPermissionWithRead {
     pub write: Option<bool>,
 }
 
-/// `ChatPermissionWithWrite` — generated read-side wire type ('chat' spec components/schemas 'ChatPermissionWithWrite').
+/// `ChatPermissionWithWrite` — generated read-side wire type ('chat' REST API, schema 'ChatPermissionWithWrite').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -44,7 +40,7 @@ pub struct ChatPermissionWithWrite {
     pub write: Option<bool>,
 }
 
-/// `ChatToken` — generated read-side wire type ('chat' spec components/schemas 'ChatToken').
+/// `ChatToken` — generated read-side wire type ('chat' REST API, schema 'ChatToken').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -54,7 +50,7 @@ pub struct ChatToken {
     pub token: Option<String>,
 }
 
-/// `ChatToken422Error` — generated read-side wire type ('chat' spec components/schemas 'ChatToken422Error').
+/// `ChatToken422Error` — generated read-side wire type ('chat' REST API, schema 'ChatToken422Error').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -64,7 +60,7 @@ pub struct ChatToken422Error {
     pub errors: Option<serde_json::Value>,
 }
 
-/// `NewChatToken` — generated read-side wire type ('chat' spec components/schemas 'NewChatToken').
+/// `NewChatToken` — generated read-side wire type ('chat' REST API, schema 'NewChatToken').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -80,7 +76,7 @@ pub struct NewChatToken {
     pub state: Option<serde_json::Value>,
 }
 
-/// `Types_StatusCodes_RestApiErrorItem` — generated read-side wire type ('chat' spec components/schemas 'Types.StatusCodes.RestApiErrorItem').
+/// `Types_StatusCodes_RestApiErrorItem` — generated read-side wire type ('chat' REST API, schema 'Types.StatusCodes.RestApiErrorItem').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -98,7 +94,7 @@ pub struct Types_StatusCodes_RestApiErrorItem {
     pub url: Option<String>,
 }
 
-/// `Types_StatusCodes_StatusCode400` — generated read-side wire type ('chat' spec components/schemas 'Types.StatusCodes.StatusCode400').
+/// `Types_StatusCodes_StatusCode400` — generated read-side wire type ('chat' REST API, schema 'Types.StatusCodes.StatusCode400').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -108,7 +104,7 @@ pub struct Types_StatusCodes_StatusCode400 {
     pub error: Option<serde_json::Value>,
 }
 
-/// `Types_StatusCodes_StatusCode401` — generated read-side wire type ('chat' spec components/schemas 'Types.StatusCodes.StatusCode401').
+/// `Types_StatusCodes_StatusCode401` — generated read-side wire type ('chat' REST API, schema 'Types.StatusCodes.StatusCode401').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.

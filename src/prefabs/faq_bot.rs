@@ -186,8 +186,8 @@ impl FAQBotAgent {
     /// Ported from Python `FAQBotAgent.search_faqs`. Scores each FAQ by
     /// substring/prefix match on the `query` (exact match 100, substring 50, a
     /// prefix bonus of 25) plus 30 for a matching `category`, then returns the
-    /// top three matching questions. `raw_data` is accepted for handler-signature
-    /// parity but unused.
+    /// top three matching questions. `raw_data` is accepted for
+    /// handler-signature compatibility but unused.
     pub fn search_faqs(
         &self,
         args: &Map<String, Value>,

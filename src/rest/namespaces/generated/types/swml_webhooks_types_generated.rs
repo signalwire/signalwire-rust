@@ -5,22 +5,18 @@
 // Read-side wire types (open shapes) — method-less serde structs / closed-set
 // enums. Regenerate with: python3 scripts/generate_rest.py
 //
-// ``non_camel_case_types``: a few wire schema keys carry dotted names
-// (``Types.StatusCodes.StatusCode400``) whose folded type identifier
-// (``Types_StatusCodes_StatusCode400``) is the CROSS-PORT LEAF token the surface
-// diff compares — it must stay verbatim, so the naming lint is allowed here (the
-// name is parity-mandated, not idiomatic-optional).
-#![allow(
-    non_camel_case_types,
-    clippy::doc_markdown,
-    clippy::struct_field_names,
-    clippy::module_name_repetitions,
-    dead_code
-)]
+// Two narrow lint allows, both grounded in the generated wire shape:
+//   * non_camel_case_types — a few wire schema keys carry dotted names
+//     (``Types.StatusCodes.StatusCode400``); the type identifier folds the dots
+//     to underscores (``Types_StatusCodes_StatusCode400``) and must stay verbatim
+//     so it matches the wire schema key, which the naming lint would rewrite.
+//   * clippy::doc_markdown — the generated doc comments echo raw wire schema key
+//     names in prose; backticking every one mechanically is not meaningful here.
+#![allow(non_camel_case_types, clippy::doc_markdown)]
 
 use serde::{Deserialize, Serialize};
 
-/// `SwaigRequestData` — generated read-side wire type ('swml-webhooks' spec components/schemas 'SwaigRequestData').
+/// `SwaigRequestData` — generated read-side wire type ('swml-webhooks' REST API, schema 'SwaigRequestData').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -52,7 +48,7 @@ pub struct SwaigRequestData {
     pub version: Option<String>,
 }
 
-/// `SwaigArgument` — generated read-side wire type ('swml-webhooks' spec components/schemas 'SwaigArgument').
+/// `SwaigArgument` — generated read-side wire type ('swml-webhooks' REST API, schema 'SwaigArgument').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -66,7 +62,7 @@ pub struct SwaigArgument {
     pub substituted: Option<String>,
 }
 
-/// `PostPromptData` — generated read-side wire type ('swml-webhooks' spec components/schemas 'PostPromptData').
+/// `PostPromptData` — generated read-side wire type ('swml-webhooks' REST API, schema 'PostPromptData').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -86,7 +82,7 @@ pub struct PostPromptData {
     pub params: Option<serde_json::Value>,
 }
 
-/// `PostPromptParams` — generated read-side wire type ('swml-webhooks' spec components/schemas 'PostPromptParams').
+/// `PostPromptParams` — generated read-side wire type ('swml-webhooks' REST API, schema 'PostPromptParams').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -108,7 +104,7 @@ pub struct PostPromptParams {
     pub function_calls: Option<serde_json::Value>,
 }
 
-/// `PostPromptConversationTurn` — generated read-side wire type ('swml-webhooks' spec components/schemas 'PostPromptConversationTurn').
+/// `PostPromptConversationTurn` — generated read-side wire type ('swml-webhooks' REST API, schema 'PostPromptConversationTurn').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -120,7 +116,7 @@ pub struct PostPromptConversationTurn {
     pub content: Option<String>,
 }
 
-/// `PostPromptFunctionCall` — generated read-side wire type ('swml-webhooks' spec components/schemas 'PostPromptFunctionCall').
+/// `PostPromptFunctionCall` — generated read-side wire type ('swml-webhooks' REST API, schema 'PostPromptFunctionCall').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -134,7 +130,7 @@ pub struct PostPromptFunctionCall {
     pub result: Option<serde_json::Value>,
 }
 
-/// `SwmlRequestData` — generated read-side wire type ('swml-webhooks' spec components/schemas 'SwmlRequestData').
+/// `SwmlRequestData` — generated read-side wire type ('swml-webhooks' REST API, schema 'SwmlRequestData').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -150,7 +146,7 @@ pub struct SwmlRequestData {
     pub params: Option<serde_json::Value>,
 }
 
-/// `SwmlRequestCall` — generated read-side wire type ('swml-webhooks' spec components/schemas 'SwmlRequestCall').
+/// `SwmlRequestCall` — generated read-side wire type ('swml-webhooks' REST API, schema 'SwmlRequestCall').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -184,7 +180,7 @@ pub struct SwmlRequestCall {
     pub headers: Option<serde_json::Value>,
 }
 
-/// `SignalWireErrorBody` — generated read-side wire type ('swml-webhooks' spec components/schemas 'SignalWireErrorBody').
+/// `SignalWireErrorBody` — generated read-side wire type ('swml-webhooks' REST API, schema 'SignalWireErrorBody').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.

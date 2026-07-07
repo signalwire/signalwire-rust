@@ -245,8 +245,7 @@ impl VerbHandlerRegistry {
         self.handlers.contains_key(verb_name)
     }
 
-    /// The registered verb names, sorted. Python parity:
-    /// `sorted(VerbHandlerRegistry._handlers.keys())`.
+    /// The registered verb names, sorted.
     #[must_use]
     pub fn handler_names(&self) -> Vec<String> {
         let mut names: Vec<String> = self.handlers.keys().cloned().collect();

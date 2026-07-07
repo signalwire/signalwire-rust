@@ -179,9 +179,7 @@ impl SkillManager {
         keys
     }
 
-    /// List instance keys of currently loaded skills.
-    ///
-    /// Python parity: `SkillManager.list_loaded_skills`. Returns the same
+    /// List instance keys of currently loaded skills. Returns the same
     /// (sorted) set as [`list_skills`](Self::list_skills); provided under
     /// Python's method name so the surface matches.
     pub fn list_loaded_skills(&self) -> Vec<String> {

@@ -408,26 +408,24 @@ impl Service {
     }
 
     /// Whether a SWAIG function with the given name is registered.
-    /// Python parity: `ToolRegistry.has_function`.
     pub fn has_function(&self, name: &str) -> bool {
         self.tools.contains_key(name)
     }
 
     /// Get a registered SWAIG function definition by name, or `None`
-    /// when absent. Python parity: `ToolRegistry.get_function`.
+    /// when absent.
     pub fn get_function(&self, name: &str) -> Option<&ToolDef> {
         self.tools.get(name)
     }
 
     /// Snapshot of all registered SWAIG functions keyed by name.
-    /// Python parity: `ToolRegistry.get_all_functions`.
     pub fn get_all_functions(&self) -> HashMap<String, ToolDef> {
         self.tools.clone()
     }
 
     /// Remove a registered SWAIG function. Returns `true` when the
     /// function was found and removed; `false` when it wasn't
-    /// registered. Python parity: `ToolRegistry.remove_function`.
+    /// registered.
     pub fn remove_function(&mut self, name: &str) -> bool {
         if self.tools.remove(name).is_some() {
             self.tool_order.retain(|n| n != name);
@@ -519,8 +517,7 @@ impl Service {
         (&self.basic_auth_user, &self.basic_auth_password)
     }
 
-    /// Get (user, password) — Python-canonical name.
-    /// Python parity: ``AuthMixin.get_basic_auth_credentials``.
+    /// Get the (user, password) basic-auth credentials.
     pub fn get_basic_auth_credentials(&self) -> (String, String) {
         (
             self.basic_auth_user.clone(),
@@ -529,8 +526,7 @@ impl Service {
     }
 
     /// Get (user, password, source) where source is one of "provided",
-    /// "environment", or "generated". Python parity:
-    /// ``AuthMixin.get_basic_auth_credentials(include_source=True)``.
+    /// "environment", or "generated".
     pub fn get_basic_auth_credentials_with_source(&self) -> (String, String, String) {
         let user = self.basic_auth_user.clone();
         let pass = self.basic_auth_password.clone();
@@ -548,8 +544,8 @@ impl Service {
         (user, pass, source)
     }
 
-    /// Validate provided basic-auth credentials against the configured ones.
-    /// Python parity: ``AuthMixin.validate_basic_auth(username, password)``.
+    /// Validate provided basic-auth credentials against the configured
+    /// ones.
     pub fn validate_basic_auth(&self, username: &str, password: &str) -> bool {
         constant_time_eq(username, &self.basic_auth_user)
             && constant_time_eq(password, &self.basic_auth_password)
@@ -593,8 +589,6 @@ impl Service {
     ///
     /// Returning `None` uses the default rendered SWML; returning a
     /// non-`None` value applies modifications to the rendered document.
-    ///
-    /// Python parity: `WebMixin.on_request(request_data, callback_path)`.
     pub fn on_request(
         &self,
         request_data: Option<&Value>,
@@ -607,8 +601,6 @@ impl Service {
     /// If a hook has been registered via
     /// [`Service::set_on_swml_request_hook`] the hook is invoked;
     /// otherwise this returns `None` (no modification).
-    ///
-    /// Python parity: `WebMixin.on_swml_request(request_data, callback_path)`.
     /// The Python third `request` argument is FastAPI-specific and
     /// intentionally not mirrored.
     pub fn on_swml_request(
@@ -626,9 +618,7 @@ impl Service {
     // Verb helpers
     // ------------------------------------------------------------------
 
-    /// Add a verb to the `main` section of the current document.
-    ///
-    /// Python parity: `SWMLService.add_verb(verb_name, config)`. `config` may
+    /// Add a verb to the `main` section of the current document. `config` may
     /// be an object, or a bare integer for the `sleep` verb. Returns `true` if
     /// added. A verb with a registered handler is validated by the handler;
     /// otherwise validated against the embedded schema.
@@ -643,9 +633,6 @@ impl Service {
     }
 
     /// Add a verb to a specific section, creating the section if needed.
-    ///
-    /// Python parity: `SWMLService.add_verb_to_section(section_name,
-    /// verb_name, config)`.
     ///
     /// # Panics
     ///
@@ -681,31 +668,29 @@ impl Service {
     // ------------------------------------------------------------------
 
     /// Add a new named section to the document. Returns `true` if created,
-    /// `false` if it already existed. Python parity: `add_section`.
+    /// `false` if it already existed.
     pub fn add_section(&mut self, section_name: &str) -> bool {
         self.document.add_section(section_name)
     }
 
-    /// Get the current SWML document as a value. Python parity: `get_document`.
+    /// Get the current SWML document as a value.
     #[must_use]
     pub fn get_document(&self) -> Value {
         self.document.to_value()
     }
 
-    /// Render the current SWML document as a JSON string. Python parity:
-    /// `render_document`.
+    /// Render the current SWML document as a JSON string.
     #[must_use]
     pub fn render_document(&self) -> String {
         self.document.render()
     }
 
-    /// Reset the current document to an empty state. Python parity:
-    /// `reset_document`.
+    /// Reset the current document to an empty state.
     pub fn reset_document(&mut self) {
         self.document.reset();
     }
 
-    /// Register a custom verb handler. Python parity: `register_verb_handler`.
+    /// Register a custom verb handler.
     pub fn register_verb_handler(
         &mut self,
         handler: Box<dyn crate::swml::handler::SwmlVerbHandler>,
@@ -715,7 +700,7 @@ impl Service {
 
     /// Whether full JSON-Schema validation is enabled. The Rust port always
     /// validates verb names against the embedded schema, so full validation is
-    /// always available. Python parity: `full_validation_enabled`.
+    /// always available.
     #[must_use]
     pub fn full_validation_enabled(&self) -> bool {
         true
@@ -726,15 +711,13 @@ impl Service {
     // ------------------------------------------------------------------
 
     /// Set a manual proxy-URL override (strips a trailing slash). Python
-    /// parity: `manual_set_proxy_url`.
     pub fn manual_set_proxy_url(&mut self, proxy_url: &str) -> &mut Self {
         self.manual_proxy_url = Some(proxy_url.trim_end_matches('/').to_string());
         self
     }
 
     /// Register a routing callback for `path`. The callback inspects request
-    /// data and returns `Some(route)` to redirect. Python parity:
-    /// `register_routing_callback`.
+    /// data and returns `Some(route)` to redirect.
     pub fn register_routing_callback<F>(&mut self, callback: F, path: &str) -> &mut Self
     where
         F: Fn(&Value, &HashMap<String, String>) -> Option<String> + Send + Sync + 'static,
@@ -764,7 +747,6 @@ impl Service {
     }
 
     /// The registered (normalized) routing-callback paths, sorted. Python
-    /// parity: `sorted(self._routing_callbacks.keys())`.
     #[must_use]
     pub fn routing_callback_paths(&self) -> Vec<String> {
         let mut paths: Vec<String> = self.routing_callbacks.keys().cloned().collect();
@@ -790,14 +772,14 @@ impl Service {
     /// Start a blocking web server for this service (Python `serve`).
     ///
     /// The Rust HTTP serving lives on [`crate::server::AgentServer`]; this
-    /// method is the parity entry point. `host`/`port` override the
+    /// method is the entry point. `host`/`port` override the
     /// configured values.
     pub fn serve(&self, _host: Option<&str>, _port: Option<u16>) {
         self.run();
     }
 
     /// Stop the running server (Python `stop`). The Rust `serve`/`run` is a
-    /// synchronous placeholder, so `stop` is a no-op parity entry point.
+    /// synchronous placeholder, so `stop` is a no-op entry point.
     pub fn stop(&self) {}
 
     // ------------------------------------------------------------------

@@ -248,9 +248,7 @@ impl SkillRegistry {
     }
 
     /// Get the factory (Rust analog of Python's skill *class*) for a skill by
-    /// name, or `None` when it isn't registered.
-    ///
-    /// Python parity: `SkillRegistry.get_skill_class`. Python returns a
+    /// name, or `None` when it isn't registered. Python returns a
     /// `type[SkillBase]`; Rust has no runtime class object, so the callable
     /// factory that constructs an instance is the equivalent surface. This
     /// delegates to [`get_factory`](Self::get_factory).
@@ -263,10 +261,8 @@ impl SkillRegistry {
         Self::get_factory(name)
     }
 
-    /// Discover all available skills and return their metadata.
-    ///
-    /// Python parity: `SkillRegistry.discover_skills`, which scans the
-    /// filesystem for skill packages. Rust skills are compiled in, so this
+    /// Discover all available skills and return their metadata. Rust skills are compiled
+    /// in, so this
     /// enumerates the statically-registered factories instead. Each entry is
     /// a JSON object with `name`, `description`, `version`,
     /// `required_packages`, `required_env_vars`, and
@@ -289,9 +285,7 @@ impl SkillRegistry {
         out
     }
 
-    /// Build the complete schema for every available skill, keyed by name.
-    ///
-    /// Python parity: `SkillRegistry.get_all_skills_schema`. Each value
+    /// Build the complete schema for every available skill, keyed by name. Each value
     /// contains the skill metadata plus its `parameters` schema (from
     /// [`SkillBase::get_parameter_schema`]) and a `source` tag
     /// (`"built-in"` for the compiled-in skills, `"registered"` for skills
@@ -322,9 +316,7 @@ impl SkillRegistry {
         schema
     }
 
-    /// List all skill sources and the skills available from each.
-    ///
-    /// Python parity: `SkillRegistry.list_all_skill_sources`. Returns a map
+    /// List all skill sources and the skills available from each. Returns a map
     /// from source type to the skill names available there:
     /// `built-in`, `external_paths`, `entry_points`, `registered`. Rust has
     /// no Python-style entry points or filesystem-scanned external skills, so

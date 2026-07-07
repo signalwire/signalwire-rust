@@ -139,7 +139,7 @@ fn str_field(params: &HashMap<String, Value>, key: &str) -> String {
 
 /// Base RELAY event — a typed view over the generic [`Event`].
 ///
-/// Parity with Python's `signalwire.relay.event.RelayEvent`. Concrete
+/// Concrete
 /// event families ([`CallStateEvent`], [`PlayEvent`], …) wrap this and are
 /// produced by their `from_payload` constructor.
 #[derive(Debug, Clone)]
@@ -223,7 +223,7 @@ impl RelayEvent {
 
 /// `calling.call.receive` — inbound call received.
 ///
-/// Parity with Python's `signalwire.relay.event.CallReceiveEvent`; built via
+/// Built via
 /// [`CallReceiveEvent::from_payload`].
 #[derive(Debug, Clone)]
 pub struct CallReceiveEvent {
@@ -254,7 +254,7 @@ impl CallReceiveEvent {
 
 /// `calling.call.state` — call state transition.
 ///
-/// Parity with Python's `signalwire.relay.event.CallStateEvent`; built via
+/// Built via
 /// [`CallStateEvent::from_payload`].
 #[derive(Debug, Clone)]
 pub struct CallStateEvent {
@@ -282,22 +282,19 @@ impl CallStateEvent {
         self.base.event_type()
     }
 
-    /// The `call_id` from the event params (Python parity:
-    /// `CallStateEvent.call_id`).
+    /// The `call_id` from the event params.
     #[must_use]
     pub fn call_id(&self) -> String {
         str_field(self.base.event().params(), "call_id")
     }
 
-    /// The `call_state` from the event params (Python parity:
-    /// `CallStateEvent.call_state`).
+    /// The `call_state` from the event params.
     #[must_use]
     pub fn call_state(&self) -> String {
         str_field(self.base.event().params(), "call_state")
     }
 
-    /// The `direction` from the event params (Python parity:
-    /// `CallStateEvent.direction`).
+    /// The `direction` from the event params.
     #[must_use]
     pub fn direction(&self) -> String {
         str_field(self.base.event().params(), "direction")
@@ -306,7 +303,7 @@ impl CallStateEvent {
 
 /// A `calling.*` error notification.
 ///
-/// Parity with Python's `signalwire.relay.event.CallingErrorEvent`; built via
+/// Built via
 /// [`CallingErrorEvent::from_payload`].
 #[derive(Debug, Clone)]
 pub struct CallingErrorEvent {
@@ -337,7 +334,7 @@ impl CallingErrorEvent {
 
 /// `calling.call.collect` — digit/speech collection result.
 ///
-/// Parity with Python's `signalwire.relay.event.CollectEvent`; built via
+/// Built via
 /// [`CollectEvent::from_payload`].
 #[derive(Debug, Clone)]
 pub struct CollectEvent {
@@ -365,20 +362,19 @@ impl CollectEvent {
         self.base.event_type()
     }
 
-    /// The `control_id` (Python parity: `CollectEvent.control_id`).
+    /// The `control_id`.
     #[must_use]
     pub fn control_id(&self) -> String {
         str_field(self.base.event().params(), "control_id")
     }
 
-    /// The collection `state` (Python parity: `CollectEvent.state`).
+    /// The collection `state`.
     #[must_use]
     pub fn state(&self) -> String {
         str_field(self.base.event().params(), "state")
     }
 
-    /// The `result` object (Python parity: `CollectEvent.result`, default
-    /// `{}`).
+    /// The `result` object.
     #[must_use]
     pub fn result(&self) -> Value {
         self.base
@@ -389,7 +385,7 @@ impl CollectEvent {
             .unwrap_or_else(|| Value::Object(serde_json::Map::new()))
     }
 
-    /// The tri-state `final` flag (Python parity: `CollectEvent.final`,
+    /// The tri-state `final` flag (
     /// `bool | None`). `None` when absent.
     #[must_use]
     pub fn is_final(&self) -> Option<bool> {
@@ -403,7 +399,7 @@ impl CollectEvent {
 
 /// A conference-related notification.
 ///
-/// Parity with Python's `signalwire.relay.event.ConferenceEvent`; built via
+/// Built via
 /// [`ConferenceEvent::from_payload`].
 #[derive(Debug, Clone)]
 pub struct ConferenceEvent {
@@ -434,7 +430,7 @@ impl ConferenceEvent {
 
 /// `calling.call.connect` — call connect result.
 ///
-/// Parity with Python's `signalwire.relay.event.ConnectEvent`; built via
+/// Built via
 /// [`ConnectEvent::from_payload`].
 #[derive(Debug, Clone)]
 pub struct ConnectEvent {
@@ -465,7 +461,7 @@ impl ConnectEvent {
 
 /// `calling.call.denoise` — noise-reduction state.
 ///
-/// Parity with Python's `signalwire.relay.event.DenoiseEvent`; built via
+/// Built via
 /// [`DenoiseEvent::from_payload`].
 #[derive(Debug, Clone)]
 pub struct DenoiseEvent {
@@ -496,7 +492,7 @@ impl DenoiseEvent {
 
 /// `calling.call.detect` — detector result.
 ///
-/// Parity with Python's `signalwire.relay.event.DetectEvent`; built via
+/// Built via
 /// [`DetectEvent::from_payload`].
 #[derive(Debug, Clone)]
 pub struct DetectEvent {
@@ -527,7 +523,7 @@ impl DetectEvent {
 
 /// A dial result notification.
 ///
-/// Parity with Python's `signalwire.relay.event.DialEvent`; built via
+/// Built via
 /// [`DialEvent::from_payload`].
 #[derive(Debug, Clone)]
 pub struct DialEvent {
@@ -558,7 +554,7 @@ impl DialEvent {
 
 /// `calling.call.echo` — echo-command notification.
 ///
-/// Parity with Python's `signalwire.relay.event.EchoEvent`; built via
+/// Built via
 /// [`EchoEvent::from_payload`].
 #[derive(Debug, Clone)]
 pub struct EchoEvent {
@@ -589,7 +585,7 @@ impl EchoEvent {
 
 /// `calling.call.fax` — fax send/receive notification.
 ///
-/// Parity with Python's `signalwire.relay.event.FaxEvent`; built via
+/// Built via
 /// [`FaxEvent::from_payload`].
 #[derive(Debug, Clone)]
 pub struct FaxEvent {
@@ -620,7 +616,7 @@ impl FaxEvent {
 
 /// A hold/unhold notification.
 ///
-/// Parity with Python's `signalwire.relay.event.HoldEvent`; built via
+/// Built via
 /// [`HoldEvent::from_payload`].
 #[derive(Debug, Clone)]
 pub struct HoldEvent {
@@ -651,7 +647,7 @@ impl HoldEvent {
 
 /// `messaging.receive` — inbound message received.
 ///
-/// Parity with Python's `signalwire.relay.event.MessageReceiveEvent`; built via
+/// Built via
 /// [`MessageReceiveEvent::from_payload`].
 #[derive(Debug, Clone)]
 pub struct MessageReceiveEvent {
@@ -682,7 +678,7 @@ impl MessageReceiveEvent {
 
 /// `messaging.state` — message state transition.
 ///
-/// Parity with Python's `signalwire.relay.event.MessageStateEvent`; built via
+/// Built via
 /// [`MessageStateEvent::from_payload`].
 #[derive(Debug, Clone)]
 pub struct MessageStateEvent {
@@ -713,7 +709,7 @@ impl MessageStateEvent {
 
 /// `calling.call.pay` — pay-command notification.
 ///
-/// Parity with Python's `signalwire.relay.event.PayEvent`; built via
+/// Built via
 /// [`PayEvent::from_payload`].
 #[derive(Debug, Clone)]
 pub struct PayEvent {
@@ -744,7 +740,7 @@ impl PayEvent {
 
 /// `calling.call.play` — playback notification.
 ///
-/// Parity with Python's `signalwire.relay.event.PlayEvent`; built via
+/// Built via
 /// [`PlayEvent::from_payload`].
 #[derive(Debug, Clone)]
 pub struct PlayEvent {
@@ -775,7 +771,7 @@ impl PlayEvent {
 
 /// A queue notification.
 ///
-/// Parity with Python's `signalwire.relay.event.QueueEvent`; built via
+/// Built via
 /// [`QueueEvent::from_payload`].
 #[derive(Debug, Clone)]
 pub struct QueueEvent {
@@ -803,34 +799,31 @@ impl QueueEvent {
         self.base.event_type()
     }
 
-    /// The `control_id` (Python parity: `QueueEvent.control_id`).
+    /// The `control_id`.
     #[must_use]
     pub fn control_id(&self) -> String {
         str_field(self.base.event().params(), "control_id")
     }
 
-    /// The queue `status` (Python parity: `QueueEvent.status`).
+    /// The queue `status`.
     #[must_use]
     pub fn status(&self) -> String {
         str_field(self.base.event().params(), "status")
     }
 
-    /// The queue id (Python parity: `QueueEvent.queue_id`, RENAMED from the
-    /// wire `id` field).
+    /// The queue id.
     #[must_use]
     pub fn queue_id(&self) -> String {
         str_field(self.base.event().params(), "id")
     }
 
-    /// The queue name (Python parity: `QueueEvent.queue_name`, RENAMED from
-    /// the wire `name` field).
+    /// The queue name.
     #[must_use]
     pub fn queue_name(&self) -> String {
         str_field(self.base.event().params(), "name")
     }
 
-    /// The caller's position in the queue (Python parity:
-    /// `QueueEvent.position`, default `0`).
+    /// The caller's position in the queue.
     #[must_use]
     pub fn position(&self) -> i64 {
         self.base
@@ -841,7 +834,7 @@ impl QueueEvent {
             .unwrap_or(0)
     }
 
-    /// The queue size (Python parity: `QueueEvent.size`, default `0`).
+    /// The queue size.
     #[must_use]
     pub fn size(&self) -> i64 {
         self.base
@@ -855,7 +848,7 @@ impl QueueEvent {
 
 /// `calling.call.record` — recording notification.
 ///
-/// Parity with Python's `signalwire.relay.event.RecordEvent`; built via
+/// Built via
 /// [`RecordEvent::from_payload`].
 #[derive(Debug, Clone)]
 pub struct RecordEvent {
@@ -883,20 +876,19 @@ impl RecordEvent {
         self.base.event_type()
     }
 
-    /// The `control_id` (Python parity: `RecordEvent.control_id`).
+    /// The `control_id`.
     #[must_use]
     pub fn control_id(&self) -> String {
         str_field(self.base.event().params(), "control_id")
     }
 
-    /// The recording `state` (Python parity: `RecordEvent.state`).
+    /// The recording `state`.
     #[must_use]
     pub fn state(&self) -> String {
         str_field(self.base.event().params(), "state")
     }
 
-    /// The recording `url` (Python parity: `RecordEvent.url` — nested
-    /// `record.url` first, then a flat `url`, else `""`).
+    /// The recording `url`.
     #[must_use]
     pub fn url(&self) -> String {
         self.record_field("url")
@@ -906,8 +898,7 @@ impl RecordEvent {
             .to_string()
     }
 
-    /// The recording `duration` (Python parity: `RecordEvent.duration` —
-    /// nested `record.duration` first, then flat `duration`, else `0.0`).
+    /// The recording `duration`.
     #[must_use]
     pub fn duration(&self) -> f64 {
         self.record_field("duration")
@@ -916,8 +907,7 @@ impl RecordEvent {
             .unwrap_or(0.0)
     }
 
-    /// The recording `size` in bytes (Python parity: `RecordEvent.size` —
-    /// nested `record.size` first, then flat `size`, else `0`).
+    /// The recording `size` in bytes.
     #[must_use]
     pub fn size(&self) -> i64 {
         self.record_field("size")
@@ -940,7 +930,7 @@ impl RecordEvent {
 
 /// `calling.call.refer` — refer notification.
 ///
-/// Parity with Python's `signalwire.relay.event.ReferEvent`; built via
+/// Built via
 /// [`ReferEvent::from_payload`].
 #[derive(Debug, Clone)]
 pub struct ReferEvent {
@@ -971,7 +961,7 @@ impl ReferEvent {
 
 /// `calling.call.send_digits` — send-digits notification.
 ///
-/// Parity with Python's `signalwire.relay.event.SendDigitsEvent`; built via
+/// Built via
 /// [`SendDigitsEvent::from_payload`].
 #[derive(Debug, Clone)]
 pub struct SendDigitsEvent {
@@ -1002,7 +992,7 @@ impl SendDigitsEvent {
 
 /// `calling.call.stream` — media-stream notification.
 ///
-/// Parity with Python's `signalwire.relay.event.StreamEvent`; built via
+/// Built via
 /// [`StreamEvent::from_payload`].
 #[derive(Debug, Clone)]
 pub struct StreamEvent {
@@ -1033,7 +1023,7 @@ impl StreamEvent {
 
 /// `calling.call.tap` — media-tap notification.
 ///
-/// Parity with Python's `signalwire.relay.event.TapEvent`; built via
+/// Built via
 /// [`TapEvent::from_payload`].
 #[derive(Debug, Clone)]
 pub struct TapEvent {
@@ -1064,7 +1054,7 @@ impl TapEvent {
 
 /// `calling.call.transcribe` — live-transcription notification.
 ///
-/// Parity with Python's `signalwire.relay.event.TranscribeEvent`; built via
+/// Built via
 /// [`TranscribeEvent::from_payload`].
 #[derive(Debug, Clone)]
 pub struct TranscribeEvent {
@@ -1095,7 +1085,6 @@ impl TranscribeEvent {
 
 /// Parse a raw RELAY notification payload into a [`RelayEvent`].
 ///
-/// Parity with Python's module-level `signalwire.relay.event.parse_event`.
 /// The concrete event family is determined by the wire `event_type`; the
 /// returned base carries it for downstream dispatch.
 #[must_use]

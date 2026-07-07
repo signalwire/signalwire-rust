@@ -233,7 +233,7 @@ impl InfoGathererAgent {
     /// Ported from Python `InfoGathererAgent.start_questions`. Reads `questions`
     /// and `question_index` from `raw_data["global_data"]` and returns the
     /// instruction for the current question. `args` is accepted for
-    /// handler-signature parity but unused.
+    /// handler-signature compatibility but unused.
     pub fn start_questions(
         &self,
         _args: &Map<String, Value>,

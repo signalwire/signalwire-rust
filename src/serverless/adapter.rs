@@ -46,8 +46,7 @@ pub trait RequestHandler {
 
 /// `AgentBase` is a serverless request handler: the `Adapter::handle_*`
 /// entry points forward each decoded (method, path, headers, body) to the
-/// agent's framework-free `handle_request`. Python parity: `ServerlessMixin`
-/// dispatches events straight into the agent's request core.
+/// agent's framework-free `handle_request`.
 impl RequestHandler for crate::agent::AgentBase {
     fn handle_request(
         &self,

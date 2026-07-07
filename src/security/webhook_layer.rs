@@ -59,7 +59,7 @@ const SIGNATURE_HEADERS: &[&str] = &["x-signalwire-signature", "x-twilio-signatu
 ///
 /// The signature is read from the `headers` map (`X-SignalWire-Signature`,
 /// falling back to the legacy `X-Twilio-Signature` alias — lookups are
-/// case-insensitive). `method` is accepted for cross-port signature parity
+/// case-insensitive). `method` is accepted for a stable signature
 /// but is not part of the HMAC. On any failure (missing/bad signature,
 /// validator error) the function returns `Some((403, {}, ""))` — no body
 /// detail, so which branch tripped is not leaked.

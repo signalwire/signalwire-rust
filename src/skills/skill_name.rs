@@ -1,17 +1,17 @@
 //! Built-in skill names as a typed, compile-time-checked closed set.
 //!
-//! Skill names are an open *string* set in the Python reference (`add_skill`
-//! takes a bare `str`), which keeps parity and lets callers load custom /
+//! Skill names are an open *string* set (`add_skill` takes a bare `str`), which
+//! lets callers load custom /
 //! third-party skills. The downside is that a typo — `add_skill("datetiem")`
 //! — compiles fine and only fails later at the server. [`SkillName`] gives the
 //! 17 built-in skills a typed alternative so the typo fails at the **call
 //! site** with editor autocompletion, while the string path stays available
-//! for parity and custom skills.
+//! for built-in and custom skills.
 //!
 //! [`AgentBase::add_skill`](crate::agent::AgentBase::add_skill),
 //! [`remove_skill`](crate::agent::AgentBase::remove_skill) and
 //! [`has_skill`](crate::agent::AgentBase::has_skill) keep their `&str`
-//! parameter (parity with Python's `str`); [`SkillName`] plugs into them via
+//! parameter; [`SkillName`] plugs into them via
 //! [`SkillName::as_str`] / [`AsRef<str>`], so the wire behaviour is identical:
 //!
 //! ```no_run
@@ -21,7 +21,7 @@
 //!
 //! let mut agent = AgentBase::new(AgentOptions::new("demo"));
 //! agent.add_skill(SkillName::Datetime.as_str(), json!({})); // typed, autocompleted
-//! agent.add_skill("datetime", json!({}));                   // string still works (parity)
+//! agent.add_skill("datetime", json!({}));                   // string still works
 //! agent.add_skill("my_custom_skill", json!({}));            // open set: custom skills ok
 //! assert!(agent.has_skill(SkillName::Datetime.as_str()));
 //! ```

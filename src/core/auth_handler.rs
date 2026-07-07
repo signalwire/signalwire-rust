@@ -36,8 +36,6 @@ impl AuthHandler {
     ///
     /// Basic auth is always enabled (backward compatibility); Bearer and API
     /// key are enabled when `bearer_token` / `api_key` are supplied. Python
-    /// parity: `AuthHandler.__init__` (which reads the same optional
-    /// attributes off the config).
     #[must_use]
     pub fn new(security_config: &mut SecurityConfig) -> Self {
         let (user, password) = security_config.get_basic_auth();
@@ -65,15 +63,14 @@ impl AuthHandler {
         self
     }
 
-    /// Verify Basic-auth credentials (timing-safe). Python parity:
-    /// `verify_basic_auth`.
+    /// Verify Basic-auth credentials (timing-safe).
     #[must_use]
     pub fn verify_basic_auth(&self, username: &str, password: &str) -> bool {
         compare_digest(username, &self.basic_user) && compare_digest(password, &self.basic_password)
     }
 
     /// Verify a Bearer token (timing-safe). Returns false if Bearer auth is not
-    /// configured. Python parity: `verify_bearer_token`.
+    /// configured.
     #[must_use]
     pub fn verify_bearer_token(&self, token: &str) -> bool {
         match &self.bearer_token {
@@ -83,7 +80,7 @@ impl AuthHandler {
     }
 
     /// Verify an API key (timing-safe). Returns false if API-key auth is not
-    /// configured. Python parity: `verify_api_key`.
+    /// configured.
     #[must_use]
     pub fn verify_api_key(&self, api_key: &str) -> bool {
         match &self.api_key {
@@ -117,8 +114,7 @@ impl AuthHandler {
         move |headers| self.authenticate_headers(headers)
     }
 
-    /// Get information about the configured auth methods. Python parity:
-    /// `get_auth_info`.
+    /// Get information about the configured auth methods.
     #[must_use]
     pub fn get_auth_info(&self) -> Value {
         let mut info = serde_json::Map::new();

@@ -205,7 +205,7 @@ impl DataMap {
     ///
     /// `foreach_config` is an object with keys `input_key`, `output_key`,
     /// `append` (all required) and an optional `max`. Attaches to the most
-    /// recent webhook. Python parity: `DataMap.foreach`.
+    /// recent webhook.
     ///
     /// # Panics
     ///

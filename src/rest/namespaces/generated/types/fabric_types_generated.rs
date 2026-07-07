@@ -5,22 +5,18 @@
 // Read-side wire types (open shapes) — method-less serde structs / closed-set
 // enums. Regenerate with: python3 scripts/generate_rest.py
 //
-// ``non_camel_case_types``: a few wire schema keys carry dotted names
-// (``Types.StatusCodes.StatusCode400``) whose folded type identifier
-// (``Types_StatusCodes_StatusCode400``) is the CROSS-PORT LEAF token the surface
-// diff compares — it must stay verbatim, so the naming lint is allowed here (the
-// name is parity-mandated, not idiomatic-optional).
-#![allow(
-    non_camel_case_types,
-    clippy::doc_markdown,
-    clippy::struct_field_names,
-    clippy::module_name_repetitions,
-    dead_code
-)]
+// Two narrow lint allows, both grounded in the generated wire shape:
+//   * non_camel_case_types — a few wire schema keys carry dotted names
+//     (``Types.StatusCodes.StatusCode400``); the type identifier folds the dots
+//     to underscores (``Types_StatusCodes_StatusCode400``) and must stay verbatim
+//     so it matches the wire schema key, which the naming lint would rewrite.
+//   * clippy::doc_markdown — the generated doc comments echo raw wire schema key
+//     names in prose; backticking every one mechanically is not meaningful here.
+#![allow(non_camel_case_types, clippy::doc_markdown)]
 
 use serde::{Deserialize, Serialize};
 
-/// `AI` — generated read-side wire type ('fabric' spec components/schemas 'AI').
+/// `AI` — generated read-side wire type ('fabric' REST API, schema 'AI').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -30,7 +26,7 @@ pub struct AI {
     pub ai: Option<serde_json::Value>,
 }
 
-/// `AIAddressPaginationResponse` — generated read-side wire type ('fabric' spec components/schemas 'AIAddressPaginationResponse').
+/// `AIAddressPaginationResponse` — generated read-side wire type ('fabric' REST API, schema 'AIAddressPaginationResponse').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -46,7 +42,7 @@ pub struct AIAddressPaginationResponse {
     pub prev: Option<String>,
 }
 
-/// `AIAgent` — generated read-side wire type ('fabric' spec components/schemas 'AIAgent').
+/// `AIAgent` — generated read-side wire type ('fabric' REST API, schema 'AIAgent').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -76,7 +72,7 @@ pub struct AIAgent {
     pub name: Option<String>,
 }
 
-/// `AIAgentAddressListResponse` — generated read-side wire type ('fabric' spec components/schemas 'AIAgentAddressListResponse').
+/// `AIAgentAddressListResponse` — generated read-side wire type ('fabric' REST API, schema 'AIAgentAddressListResponse').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -88,7 +84,7 @@ pub struct AIAgentAddressListResponse {
     pub links: Option<serde_json::Value>,
 }
 
-/// `AIAgentCreateRequest` — generated read-side wire type ('fabric' spec components/schemas 'AIAgentCreateRequest').
+/// `AIAgentCreateRequest` — generated read-side wire type ('fabric' REST API, schema 'AIAgentCreateRequest').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -118,7 +114,7 @@ pub struct AIAgentCreateRequest {
     pub name: Option<String>,
 }
 
-/// `AIAgentCreateStatusCode422` — generated read-side wire type ('fabric' spec components/schemas 'AIAgentCreateStatusCode422').
+/// `AIAgentCreateStatusCode422` — generated read-side wire type ('fabric' REST API, schema 'AIAgentCreateStatusCode422').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -128,7 +124,7 @@ pub struct AIAgentCreateStatusCode422 {
     pub errors: Option<serde_json::Value>,
 }
 
-/// `AIAgentListResponse` — generated read-side wire type ('fabric' spec components/schemas 'AIAgentListResponse').
+/// `AIAgentListResponse` — generated read-side wire type ('fabric' REST API, schema 'AIAgentListResponse').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -140,7 +136,7 @@ pub struct AIAgentListResponse {
     pub links: Option<serde_json::Value>,
 }
 
-/// `AIAgentPaginationResponse` — generated read-side wire type ('fabric' spec components/schemas 'AIAgentPaginationResponse').
+/// `AIAgentPaginationResponse` — generated read-side wire type ('fabric' REST API, schema 'AIAgentPaginationResponse').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -156,7 +152,7 @@ pub struct AIAgentPaginationResponse {
     pub prev: Option<String>,
 }
 
-/// `AIAgentResponse` — generated read-side wire type ('fabric' spec components/schemas 'AIAgentResponse').
+/// `AIAgentResponse` — generated read-side wire type ('fabric' REST API, schema 'AIAgentResponse').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -178,7 +174,7 @@ pub struct AIAgentResponse {
     pub ai_agent: Option<serde_json::Value>,
 }
 
-/// `AIAgentUpdateRequest` — generated read-side wire type ('fabric' spec components/schemas 'AIAgentUpdateRequest').
+/// `AIAgentUpdateRequest` — generated read-side wire type ('fabric' REST API, schema 'AIAgentUpdateRequest').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -208,7 +204,7 @@ pub struct AIAgentUpdateRequest {
     pub name: Option<String>,
 }
 
-/// `AIAgentUpdateStatusCode422` — generated read-side wire type ('fabric' spec components/schemas 'AIAgentUpdateStatusCode422').
+/// `AIAgentUpdateStatusCode422` — generated read-side wire type ('fabric' REST API, schema 'AIAgentUpdateStatusCode422').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -218,7 +214,7 @@ pub struct AIAgentUpdateStatusCode422 {
     pub errors: Option<serde_json::Value>,
 }
 
-/// `AIObject` — generated read-side wire type ('fabric' spec components/schemas 'AIObject').
+/// `AIObject` — generated read-side wire type ('fabric' REST API, schema 'AIObject').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -244,7 +240,7 @@ pub struct AIObject {
     pub swaig: Option<serde_json::Value>,
 }
 
-/// `AIParams` — generated read-side wire type ('fabric' spec components/schemas 'AIParams').
+/// `AIParams` — generated read-side wire type ('fabric' REST API, schema 'AIParams').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -436,7 +432,7 @@ pub struct AIParams {
     pub eleven_labs_similarity: Option<serde_json::Value>,
 }
 
-/// `AIPostPromptPom` — generated read-side wire type ('fabric' spec components/schemas 'AIPostPromptPom').
+/// `AIPostPromptPom` — generated read-side wire type ('fabric' REST API, schema 'AIPostPromptPom').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -458,7 +454,7 @@ pub struct AIPostPromptPom {
     pub pom: Option<serde_json::Value>,
 }
 
-/// `AIPostPromptPomUpdate` — generated read-side wire type ('fabric' spec components/schemas 'AIPostPromptPomUpdate').
+/// `AIPostPromptPomUpdate` — generated read-side wire type ('fabric' REST API, schema 'AIPostPromptPomUpdate').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -480,7 +476,7 @@ pub struct AIPostPromptPomUpdate {
     pub pom: Option<serde_json::Value>,
 }
 
-/// `AIPostPromptText` — generated read-side wire type ('fabric' spec components/schemas 'AIPostPromptText').
+/// `AIPostPromptText` — generated read-side wire type ('fabric' REST API, schema 'AIPostPromptText').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -502,7 +498,7 @@ pub struct AIPostPromptText {
     pub text: Option<String>,
 }
 
-/// `AIPostPromptTextUpdate` — generated read-side wire type ('fabric' spec components/schemas 'AIPostPromptTextUpdate').
+/// `AIPostPromptTextUpdate` — generated read-side wire type ('fabric' REST API, schema 'AIPostPromptTextUpdate').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -524,7 +520,7 @@ pub struct AIPostPromptTextUpdate {
     pub text: Option<String>,
 }
 
-/// `AIPromptPom` — generated read-side wire type ('fabric' spec components/schemas 'AIPromptPom').
+/// `AIPromptPom` — generated read-side wire type ('fabric' REST API, schema 'AIPromptPom').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -548,7 +544,7 @@ pub struct AIPromptPom {
     pub contexts: Option<serde_json::Value>,
 }
 
-/// `AIPromptPomUpdate` — generated read-side wire type ('fabric' spec components/schemas 'AIPromptPomUpdate').
+/// `AIPromptPomUpdate` — generated read-side wire type ('fabric' REST API, schema 'AIPromptPomUpdate').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -572,7 +568,7 @@ pub struct AIPromptPomUpdate {
     pub contexts: Option<serde_json::Value>,
 }
 
-/// `AIPromptText` — generated read-side wire type ('fabric' spec components/schemas 'AIPromptText').
+/// `AIPromptText` — generated read-side wire type ('fabric' REST API, schema 'AIPromptText').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -596,7 +592,7 @@ pub struct AIPromptText {
     pub contexts: Option<serde_json::Value>,
 }
 
-/// `AIPromptTextUpdate` — generated read-side wire type ('fabric' spec components/schemas 'AIPromptTextUpdate').
+/// `AIPromptTextUpdate` — generated read-side wire type ('fabric' REST API, schema 'AIPromptTextUpdate').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -620,7 +616,7 @@ pub struct AIPromptTextUpdate {
     pub contexts: Option<serde_json::Value>,
 }
 
-/// `AllOfProperty` — generated read-side wire type ('fabric' spec components/schemas 'AllOfProperty').
+/// `AllOfProperty` — generated read-side wire type ('fabric' REST API, schema 'AllOfProperty').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -630,7 +626,7 @@ pub struct AllOfProperty {
     pub all_of: Option<serde_json::Value>,
 }
 
-/// `AmazonBedrock` — generated read-side wire type ('fabric' spec components/schemas 'AmazonBedrock').
+/// `AmazonBedrock` — generated read-side wire type ('fabric' REST API, schema 'AmazonBedrock').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -640,7 +636,7 @@ pub struct AmazonBedrock {
     pub amazon_bedrock: Option<serde_json::Value>,
 }
 
-/// `AmazonBedrockObject` — generated read-side wire type ('fabric' spec components/schemas 'AmazonBedrockObject').
+/// `AmazonBedrockObject` — generated read-side wire type ('fabric' REST API, schema 'AmazonBedrockObject').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -660,7 +656,7 @@ pub struct AmazonBedrockObject {
     pub swaig: Option<serde_json::Value>,
 }
 
-/// `Answer` — generated read-side wire type ('fabric' spec components/schemas 'Answer').
+/// `Answer` — generated read-side wire type ('fabric' REST API, schema 'Answer').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -670,7 +666,7 @@ pub struct Answer {
     pub answer: Option<serde_json::Value>,
 }
 
-/// `AnyOfProperty` — generated read-side wire type ('fabric' spec components/schemas 'AnyOfProperty').
+/// `AnyOfProperty` — generated read-side wire type ('fabric' REST API, schema 'AnyOfProperty').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -680,7 +676,7 @@ pub struct AnyOfProperty {
     pub any_of: Option<serde_json::Value>,
 }
 
-/// `ArrayProperty` — generated read-side wire type ('fabric' spec components/schemas 'ArrayProperty').
+/// `ArrayProperty` — generated read-side wire type ('fabric' REST API, schema 'ArrayProperty').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -698,7 +694,7 @@ pub struct ArrayProperty {
     pub items: Option<serde_json::Value>,
 }
 
-/// `AudioChannel` — generated read-side wire type ('fabric' spec components/schemas 'AudioChannel').
+/// `AudioChannel` — generated read-side wire type ('fabric' REST API, schema 'AudioChannel').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -708,7 +704,7 @@ pub struct AudioChannel {
     pub audio: Option<String>,
 }
 
-/// `BedrockParams` — generated read-side wire type ('fabric' spec components/schemas 'BedrockParams').
+/// `BedrockParams` — generated read-side wire type ('fabric' REST API, schema 'BedrockParams').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -730,7 +726,7 @@ pub struct BedrockParams {
     pub hard_stop_prompt: Option<String>,
 }
 
-/// `BedrockSWAIG` — generated read-side wire type ('fabric' spec components/schemas 'BedrockSWAIG').
+/// `BedrockSWAIG` — generated read-side wire type ('fabric' REST API, schema 'BedrockSWAIG').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -746,7 +742,7 @@ pub struct BedrockSWAIG {
     pub includes: Option<serde_json::Value>,
 }
 
-/// `BooleanProperty` — generated read-side wire type ('fabric' spec components/schemas 'BooleanProperty').
+/// `BooleanProperty` — generated read-side wire type ('fabric' REST API, schema 'BooleanProperty').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -762,7 +758,7 @@ pub struct BooleanProperty {
     pub default: Option<serde_json::Value>,
 }
 
-/// `CXMLScript` — generated read-side wire type ('fabric' spec components/schemas 'CXMLScript').
+/// `CXMLScript` — generated read-side wire type ('fabric' REST API, schema 'CXMLScript').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -788,7 +784,7 @@ pub struct CXMLScript {
     pub status_callback_method: Option<serde_json::Value>,
 }
 
-/// `CXMLScriptAddressListResponse` — generated read-side wire type ('fabric' spec components/schemas 'CXMLScriptAddressListResponse').
+/// `CXMLScriptAddressListResponse` — generated read-side wire type ('fabric' REST API, schema 'CXMLScriptAddressListResponse').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -800,7 +796,7 @@ pub struct CXMLScriptAddressListResponse {
     pub links: Option<serde_json::Value>,
 }
 
-/// `CXMLScriptAddressPaginationResponse` — generated read-side wire type ('fabric' spec components/schemas 'CXMLScriptAddressPaginationResponse').
+/// `CXMLScriptAddressPaginationResponse` — generated read-side wire type ('fabric' REST API, schema 'CXMLScriptAddressPaginationResponse').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -816,7 +812,7 @@ pub struct CXMLScriptAddressPaginationResponse {
     pub prev: Option<String>,
 }
 
-/// `CXMLScriptCreateRequest` — generated read-side wire type ('fabric' spec components/schemas 'CXMLScriptCreateRequest').
+/// `CXMLScriptCreateRequest` — generated read-side wire type ('fabric' REST API, schema 'CXMLScriptCreateRequest').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -832,7 +828,7 @@ pub struct CXMLScriptCreateRequest {
     pub status_callback_method: Option<serde_json::Value>,
 }
 
-/// `CXMLScriptCreateStatusCode422` — generated read-side wire type ('fabric' spec components/schemas 'CXMLScriptCreateStatusCode422').
+/// `CXMLScriptCreateStatusCode422` — generated read-side wire type ('fabric' REST API, schema 'CXMLScriptCreateStatusCode422').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -842,7 +838,7 @@ pub struct CXMLScriptCreateStatusCode422 {
     pub errors: Option<serde_json::Value>,
 }
 
-/// `CXMLScriptListResponse` — generated read-side wire type ('fabric' spec components/schemas 'CXMLScriptListResponse').
+/// `CXMLScriptListResponse` — generated read-side wire type ('fabric' REST API, schema 'CXMLScriptListResponse').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -854,7 +850,7 @@ pub struct CXMLScriptListResponse {
     pub links: Option<serde_json::Value>,
 }
 
-/// `CXMLScriptResponse` — generated read-side wire type ('fabric' spec components/schemas 'CXMLScriptResponse').
+/// `CXMLScriptResponse` — generated read-side wire type ('fabric' REST API, schema 'CXMLScriptResponse').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -876,7 +872,7 @@ pub struct CXMLScriptResponse {
     pub cxml_script: Option<serde_json::Value>,
 }
 
-/// `CXMLScriptUpdateRequest` — generated read-side wire type ('fabric' spec components/schemas 'CXMLScriptUpdateRequest').
+/// `CXMLScriptUpdateRequest` — generated read-side wire type ('fabric' REST API, schema 'CXMLScriptUpdateRequest').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -892,7 +888,7 @@ pub struct CXMLScriptUpdateRequest {
     pub status_callback_method: Option<serde_json::Value>,
 }
 
-/// `CXMLScriptUpdateStatusCode422` — generated read-side wire type ('fabric' spec components/schemas 'CXMLScriptUpdateStatusCode422').
+/// `CXMLScriptUpdateStatusCode422` — generated read-side wire type ('fabric' REST API, schema 'CXMLScriptUpdateStatusCode422').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -902,7 +898,7 @@ pub struct CXMLScriptUpdateStatusCode422 {
     pub errors: Option<serde_json::Value>,
 }
 
-/// `CXMLWebhook` — generated read-side wire type ('fabric' spec components/schemas 'CXMLWebhook').
+/// `CXMLWebhook` — generated read-side wire type ('fabric' REST API, schema 'CXMLWebhook').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -928,7 +924,7 @@ pub struct CXMLWebhook {
     pub status_callback_method: Option<serde_json::Value>,
 }
 
-/// `CXMLWebhookAddressListResponse` — generated read-side wire type ('fabric' spec components/schemas 'CXMLWebhookAddressListResponse').
+/// `CXMLWebhookAddressListResponse` — generated read-side wire type ('fabric' REST API, schema 'CXMLWebhookAddressListResponse').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -940,7 +936,7 @@ pub struct CXMLWebhookAddressListResponse {
     pub links: Option<serde_json::Value>,
 }
 
-/// `CXMLWebhookAddressPaginationResponse` — generated read-side wire type ('fabric' spec components/schemas 'CXMLWebhookAddressPaginationResponse').
+/// `CXMLWebhookAddressPaginationResponse` — generated read-side wire type ('fabric' REST API, schema 'CXMLWebhookAddressPaginationResponse').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -956,7 +952,7 @@ pub struct CXMLWebhookAddressPaginationResponse {
     pub prev: Option<String>,
 }
 
-/// `CXMLWebhookCreateRequest` — generated read-side wire type ('fabric' spec components/schemas 'CXMLWebhookCreateRequest').
+/// `CXMLWebhookCreateRequest` — generated read-side wire type ('fabric' REST API, schema 'CXMLWebhookCreateRequest').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -980,7 +976,7 @@ pub struct CXMLWebhookCreateRequest {
     pub status_callback_method: Option<serde_json::Value>,
 }
 
-/// `CXMLWebhookCreateStatusCode422` — generated read-side wire type ('fabric' spec components/schemas 'CXMLWebhookCreateStatusCode422').
+/// `CXMLWebhookCreateStatusCode422` — generated read-side wire type ('fabric' REST API, schema 'CXMLWebhookCreateStatusCode422').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -990,7 +986,7 @@ pub struct CXMLWebhookCreateStatusCode422 {
     pub errors: Option<serde_json::Value>,
 }
 
-/// `CXMLWebhookListResponse` — generated read-side wire type ('fabric' spec components/schemas 'CXMLWebhookListResponse').
+/// `CXMLWebhookListResponse` — generated read-side wire type ('fabric' REST API, schema 'CXMLWebhookListResponse').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1002,7 +998,7 @@ pub struct CXMLWebhookListResponse {
     pub links: Option<serde_json::Value>,
 }
 
-/// `CXMLWebhookPaginationResponse` — generated read-side wire type ('fabric' spec components/schemas 'CXMLWebhookPaginationResponse').
+/// `CXMLWebhookPaginationResponse` — generated read-side wire type ('fabric' REST API, schema 'CXMLWebhookPaginationResponse').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1018,7 +1014,7 @@ pub struct CXMLWebhookPaginationResponse {
     pub prev: Option<String>,
 }
 
-/// `CXMLWebhookResponse` — generated read-side wire type ('fabric' spec components/schemas 'CXMLWebhookResponse').
+/// `CXMLWebhookResponse` — generated read-side wire type ('fabric' REST API, schema 'CXMLWebhookResponse').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1040,7 +1036,7 @@ pub struct CXMLWebhookResponse {
     pub cxml_webhook: Option<serde_json::Value>,
 }
 
-/// `CXMLWebhookUpdateRequest` — generated read-side wire type ('fabric' spec components/schemas 'CXMLWebhookUpdateRequest').
+/// `CXMLWebhookUpdateRequest` — generated read-side wire type ('fabric' REST API, schema 'CXMLWebhookUpdateRequest').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1064,7 +1060,7 @@ pub struct CXMLWebhookUpdateRequest {
     pub status_callback_method: Option<serde_json::Value>,
 }
 
-/// `CXMLWebhookUpdateStatusCode422` — generated read-side wire type ('fabric' spec components/schemas 'CXMLWebhookUpdateStatusCode422').
+/// `CXMLWebhookUpdateStatusCode422` — generated read-side wire type ('fabric' REST API, schema 'CXMLWebhookUpdateStatusCode422').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1074,7 +1070,7 @@ pub struct CXMLWebhookUpdateStatusCode422 {
     pub errors: Option<serde_json::Value>,
 }
 
-/// `CallFlow` — generated read-side wire type ('fabric' spec components/schemas 'CallFlow').
+/// `CallFlow` — generated read-side wire type ('fabric' REST API, schema 'CallFlow').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1092,7 +1088,7 @@ pub struct CallFlow {
     pub document_version: Option<i64>,
 }
 
-/// `CallFlowAddressListResponse` — generated read-side wire type ('fabric' spec components/schemas 'CallFlowAddressListResponse').
+/// `CallFlowAddressListResponse` — generated read-side wire type ('fabric' REST API, schema 'CallFlowAddressListResponse').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1104,7 +1100,7 @@ pub struct CallFlowAddressListResponse {
     pub links: Option<serde_json::Value>,
 }
 
-/// `CallFlowAddressPaginationResponse` — generated read-side wire type ('fabric' spec components/schemas 'CallFlowAddressPaginationResponse').
+/// `CallFlowAddressPaginationResponse` — generated read-side wire type ('fabric' REST API, schema 'CallFlowAddressPaginationResponse').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1120,7 +1116,7 @@ pub struct CallFlowAddressPaginationResponse {
     pub prev: Option<String>,
 }
 
-/// `CallFlowCreateRequest` — generated read-side wire type ('fabric' spec components/schemas 'CallFlowCreateRequest').
+/// `CallFlowCreateRequest` — generated read-side wire type ('fabric' REST API, schema 'CallFlowCreateRequest').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1130,7 +1126,7 @@ pub struct CallFlowCreateRequest {
     pub title: Option<String>,
 }
 
-/// `CallFlowCreateStatusCode422` — generated read-side wire type ('fabric' spec components/schemas 'CallFlowCreateStatusCode422').
+/// `CallFlowCreateStatusCode422` — generated read-side wire type ('fabric' REST API, schema 'CallFlowCreateStatusCode422').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1140,7 +1136,7 @@ pub struct CallFlowCreateStatusCode422 {
     pub errors: Option<serde_json::Value>,
 }
 
-/// `CallFlowListResponse` — generated read-side wire type ('fabric' spec components/schemas 'CallFlowListResponse').
+/// `CallFlowListResponse` — generated read-side wire type ('fabric' REST API, schema 'CallFlowListResponse').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1152,7 +1148,7 @@ pub struct CallFlowListResponse {
     pub data: Option<serde_json::Value>,
 }
 
-/// `CallFlowResponse` — generated read-side wire type ('fabric' spec components/schemas 'CallFlowResponse').
+/// `CallFlowResponse` — generated read-side wire type ('fabric' REST API, schema 'CallFlowResponse').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1174,7 +1170,7 @@ pub struct CallFlowResponse {
     pub call_flow: Option<serde_json::Value>,
 }
 
-/// `CallFlowUpdateRequest` — generated read-side wire type ('fabric' spec components/schemas 'CallFlowUpdateRequest').
+/// `CallFlowUpdateRequest` — generated read-side wire type ('fabric' REST API, schema 'CallFlowUpdateRequest').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1186,7 +1182,7 @@ pub struct CallFlowUpdateRequest {
     pub document_version: Option<i64>,
 }
 
-/// `CallFlowUpdateStatusCode422` — generated read-side wire type ('fabric' spec components/schemas 'CallFlowUpdateStatusCode422').
+/// `CallFlowUpdateStatusCode422` — generated read-side wire type ('fabric' REST API, schema 'CallFlowUpdateStatusCode422').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1196,7 +1192,7 @@ pub struct CallFlowUpdateStatusCode422 {
     pub errors: Option<serde_json::Value>,
 }
 
-/// `CallFlowVersion` — generated read-side wire type ('fabric' spec components/schemas 'CallFlowVersion').
+/// `CallFlowVersion` — generated read-side wire type ('fabric' REST API, schema 'CallFlowVersion').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1216,7 +1212,7 @@ pub struct CallFlowVersion {
     pub relayml: Option<String>,
 }
 
-/// `CallFlowVersionDeployByDocumentVersion` — generated read-side wire type ('fabric' spec components/schemas 'CallFlowVersionDeployByDocumentVersion').
+/// `CallFlowVersionDeployByDocumentVersion` — generated read-side wire type ('fabric' REST API, schema 'CallFlowVersionDeployByDocumentVersion').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1226,7 +1222,7 @@ pub struct CallFlowVersionDeployByDocumentVersion {
     pub document_version: Option<i64>,
 }
 
-/// `CallFlowVersionDeployByVersionId` — generated read-side wire type ('fabric' spec components/schemas 'CallFlowVersionDeployByVersionId').
+/// `CallFlowVersionDeployByVersionId` — generated read-side wire type ('fabric' REST API, schema 'CallFlowVersionDeployByVersionId').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1236,7 +1232,7 @@ pub struct CallFlowVersionDeployByVersionId {
     pub call_flow_version_id: Option<serde_json::Value>,
 }
 
-/// `CallFlowVersionDeployResponse` — generated read-side wire type ('fabric' spec components/schemas 'CallFlowVersionDeployResponse').
+/// `CallFlowVersionDeployResponse` — generated read-side wire type ('fabric' REST API, schema 'CallFlowVersionDeployResponse').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1256,7 +1252,7 @@ pub struct CallFlowVersionDeployResponse {
     pub relayml: Option<String>,
 }
 
-/// `CallFlowVersionListResponse` — generated read-side wire type ('fabric' spec components/schemas 'CallFlowVersionListResponse').
+/// `CallFlowVersionListResponse` — generated read-side wire type ('fabric' REST API, schema 'CallFlowVersionListResponse').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1268,7 +1264,7 @@ pub struct CallFlowVersionListResponse {
     pub links: Option<serde_json::Value>,
 }
 
-/// `CallFlowVersionsPaginationResponse` — generated read-side wire type ('fabric' spec components/schemas 'CallFlowVersionsPaginationResponse').
+/// `CallFlowVersionsPaginationResponse` — generated read-side wire type ('fabric' REST API, schema 'CallFlowVersionsPaginationResponse').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1284,7 +1280,7 @@ pub struct CallFlowVersionsPaginationResponse {
     pub prev: Option<String>,
 }
 
-/// `ChangeContextAction` — generated read-side wire type ('fabric' spec components/schemas 'ChangeContextAction').
+/// `ChangeContextAction` — generated read-side wire type ('fabric' REST API, schema 'ChangeContextAction').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1294,7 +1290,7 @@ pub struct ChangeContextAction {
     pub change_context: Option<String>,
 }
 
-/// `ChangeStepAction` — generated read-side wire type ('fabric' spec components/schemas 'ChangeStepAction').
+/// `ChangeStepAction` — generated read-side wire type ('fabric' REST API, schema 'ChangeStepAction').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1304,7 +1300,7 @@ pub struct ChangeStepAction {
     pub change_step: Option<String>,
 }
 
-/// `Cond` — generated read-side wire type ('fabric' spec components/schemas 'Cond').
+/// `Cond` — generated read-side wire type ('fabric' REST API, schema 'Cond').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1314,7 +1310,7 @@ pub struct Cond {
     pub cond: Option<serde_json::Value>,
 }
 
-/// `CondElse` — generated read-side wire type ('fabric' spec components/schemas 'CondElse').
+/// `CondElse` — generated read-side wire type ('fabric' REST API, schema 'CondElse').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1324,7 +1320,7 @@ pub struct CondElse {
     pub r#else: Option<serde_json::Value>,
 }
 
-/// `CondReg` — generated read-side wire type ('fabric' spec components/schemas 'CondReg').
+/// `CondReg` — generated read-side wire type ('fabric' REST API, schema 'CondReg').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1338,7 +1334,7 @@ pub struct CondReg {
     pub r#else: Option<serde_json::Value>,
 }
 
-/// `ConferenceRoom` — generated read-side wire type ('fabric' spec components/schemas 'ConferenceRoom').
+/// `ConferenceRoom` — generated read-side wire type ('fabric' REST API, schema 'ConferenceRoom').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1386,7 +1382,7 @@ pub struct ConferenceRoom {
     pub prioritize_handraise: Option<bool>,
 }
 
-/// `ConferenceRoomAddressListResponse` — generated read-side wire type ('fabric' spec components/schemas 'ConferenceRoomAddressListResponse').
+/// `ConferenceRoomAddressListResponse` — generated read-side wire type ('fabric' REST API, schema 'ConferenceRoomAddressListResponse').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1398,7 +1394,7 @@ pub struct ConferenceRoomAddressListResponse {
     pub links: Option<serde_json::Value>,
 }
 
-/// `ConferenceRoomAddressPaginationResponse` — generated read-side wire type ('fabric' spec components/schemas 'ConferenceRoomAddressPaginationResponse').
+/// `ConferenceRoomAddressPaginationResponse` — generated read-side wire type ('fabric' REST API, schema 'ConferenceRoomAddressPaginationResponse').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1414,7 +1410,7 @@ pub struct ConferenceRoomAddressPaginationResponse {
     pub prev: Option<String>,
 }
 
-/// `ConferenceRoomCreateRequest` — generated read-side wire type ('fabric' spec components/schemas 'ConferenceRoomCreateRequest').
+/// `ConferenceRoomCreateRequest` — generated read-side wire type ('fabric' REST API, schema 'ConferenceRoomCreateRequest').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1456,7 +1452,7 @@ pub struct ConferenceRoomCreateRequest {
     pub user_join_video_off: Option<bool>,
 }
 
-/// `ConferenceRoomCreateStatusCode422` — generated read-side wire type ('fabric' spec components/schemas 'ConferenceRoomCreateStatusCode422').
+/// `ConferenceRoomCreateStatusCode422` — generated read-side wire type ('fabric' REST API, schema 'ConferenceRoomCreateStatusCode422').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1466,7 +1462,7 @@ pub struct ConferenceRoomCreateStatusCode422 {
     pub errors: Option<serde_json::Value>,
 }
 
-/// `ConferenceRoomListResponse` — generated read-side wire type ('fabric' spec components/schemas 'ConferenceRoomListResponse').
+/// `ConferenceRoomListResponse` — generated read-side wire type ('fabric' REST API, schema 'ConferenceRoomListResponse').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1478,7 +1474,7 @@ pub struct ConferenceRoomListResponse {
     pub data: Option<serde_json::Value>,
 }
 
-/// `ConferenceRoomResponse` — generated read-side wire type ('fabric' spec components/schemas 'ConferenceRoomResponse').
+/// `ConferenceRoomResponse` — generated read-side wire type ('fabric' REST API, schema 'ConferenceRoomResponse').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1500,7 +1496,7 @@ pub struct ConferenceRoomResponse {
     pub conference_room: Option<serde_json::Value>,
 }
 
-/// `ConferenceRoomUpdateRequest` — generated read-side wire type ('fabric' spec components/schemas 'ConferenceRoomUpdateRequest').
+/// `ConferenceRoomUpdateRequest` — generated read-side wire type ('fabric' REST API, schema 'ConferenceRoomUpdateRequest').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1542,7 +1538,7 @@ pub struct ConferenceRoomUpdateRequest {
     pub user_join_video_off: Option<bool>,
 }
 
-/// `ConferenceRoomUpdateStatusCode422` — generated read-side wire type ('fabric' spec components/schemas 'ConferenceRoomUpdateStatusCode422').
+/// `ConferenceRoomUpdateStatusCode422` — generated read-side wire type ('fabric' REST API, schema 'ConferenceRoomUpdateStatusCode422').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1552,7 +1548,7 @@ pub struct ConferenceRoomUpdateStatusCode422 {
     pub errors: Option<serde_json::Value>,
 }
 
-/// `Connect` — generated read-side wire type ('fabric' spec components/schemas 'Connect').
+/// `Connect` — generated read-side wire type ('fabric' REST API, schema 'Connect').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1562,7 +1558,7 @@ pub struct Connect {
     pub connect: Option<serde_json::Value>,
 }
 
-/// `ConnectDeviceParallel` — generated read-side wire type ('fabric' spec components/schemas 'ConnectDeviceParallel').
+/// `ConnectDeviceParallel` — generated read-side wire type ('fabric' REST API, schema 'ConnectDeviceParallel').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1610,7 +1606,7 @@ pub struct ConnectDeviceParallel {
     pub parallel: Option<serde_json::Value>,
 }
 
-/// `ConnectDeviceSerial` — generated read-side wire type ('fabric' spec components/schemas 'ConnectDeviceSerial').
+/// `ConnectDeviceSerial` — generated read-side wire type ('fabric' REST API, schema 'ConnectDeviceSerial').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1658,7 +1654,7 @@ pub struct ConnectDeviceSerial {
     pub serial: Option<serde_json::Value>,
 }
 
-/// `ConnectDeviceSerialParallel` — generated read-side wire type ('fabric' spec components/schemas 'ConnectDeviceSerialParallel').
+/// `ConnectDeviceSerialParallel` — generated read-side wire type ('fabric' REST API, schema 'ConnectDeviceSerialParallel').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1706,7 +1702,7 @@ pub struct ConnectDeviceSerialParallel {
     pub serial_parallel: Option<serde_json::Value>,
 }
 
-/// `ConnectDeviceSingle` — generated read-side wire type ('fabric' spec components/schemas 'ConnectDeviceSingle').
+/// `ConnectDeviceSingle` — generated read-side wire type ('fabric' REST API, schema 'ConnectDeviceSingle').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1766,7 +1762,7 @@ pub struct ConnectDeviceSingle {
     pub custom_parameters: Option<serde_json::Value>,
 }
 
-/// `ConnectHeaders` — generated read-side wire type ('fabric' spec components/schemas 'ConnectHeaders').
+/// `ConnectHeaders` — generated read-side wire type ('fabric' REST API, schema 'ConnectHeaders').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1778,7 +1774,7 @@ pub struct ConnectHeaders {
     pub value: Option<String>,
 }
 
-/// `ConnectSwitch` — generated read-side wire type ('fabric' spec components/schemas 'ConnectSwitch').
+/// `ConnectSwitch` — generated read-side wire type ('fabric' REST API, schema 'ConnectSwitch').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1792,7 +1788,7 @@ pub struct ConnectSwitch {
     pub default: Option<serde_json::Value>,
 }
 
-/// `ConstProperty` — generated read-side wire type ('fabric' spec components/schemas 'ConstProperty').
+/// `ConstProperty` — generated read-side wire type ('fabric' REST API, schema 'ConstProperty').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1802,7 +1798,7 @@ pub struct ConstProperty {
     pub r#const: Option<serde_json::Value>,
 }
 
-/// `ContextPOMSteps` — generated read-side wire type ('fabric' spec components/schemas 'ContextPOMSteps').
+/// `ContextPOMSteps` — generated read-side wire type ('fabric' REST API, schema 'ContextPOMSteps').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1826,7 +1822,7 @@ pub struct ContextPOMSteps {
     pub pom: Option<serde_json::Value>,
 }
 
-/// `ContextSwitchAction` — generated read-side wire type ('fabric' spec components/schemas 'ContextSwitchAction').
+/// `ContextSwitchAction` — generated read-side wire type ('fabric' REST API, schema 'ContextSwitchAction').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1836,7 +1832,7 @@ pub struct ContextSwitchAction {
     pub context_switch: Option<serde_json::Value>,
 }
 
-/// `ContextTextSteps` — generated read-side wire type ('fabric' spec components/schemas 'ContextTextSteps').
+/// `ContextTextSteps` — generated read-side wire type ('fabric' REST API, schema 'ContextTextSteps').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1860,7 +1856,7 @@ pub struct ContextTextSteps {
     pub text: Option<String>,
 }
 
-/// `Contexts` — generated read-side wire type ('fabric' spec components/schemas 'Contexts').
+/// `Contexts` — generated read-side wire type ('fabric' REST API, schema 'Contexts').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1870,7 +1866,7 @@ pub struct Contexts {
     pub default: Option<serde_json::Value>,
 }
 
-/// `ContextsPOMObject` — generated read-side wire type ('fabric' spec components/schemas 'ContextsPOMObject').
+/// `ContextsPOMObject` — generated read-side wire type ('fabric' REST API, schema 'ContextsPOMObject').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1888,7 +1884,7 @@ pub struct ContextsPOMObject {
     pub pom: Option<serde_json::Value>,
 }
 
-/// `ContextsPOMObjectUpdate` — generated read-side wire type ('fabric' spec components/schemas 'ContextsPOMObjectUpdate').
+/// `ContextsPOMObjectUpdate` — generated read-side wire type ('fabric' REST API, schema 'ContextsPOMObjectUpdate').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1906,7 +1902,7 @@ pub struct ContextsPOMObjectUpdate {
     pub pom: Option<serde_json::Value>,
 }
 
-/// `ContextsTextObject` — generated read-side wire type ('fabric' spec components/schemas 'ContextsTextObject').
+/// `ContextsTextObject` — generated read-side wire type ('fabric' REST API, schema 'ContextsTextObject').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1924,7 +1920,7 @@ pub struct ContextsTextObject {
     pub text: Option<String>,
 }
 
-/// `ContextsTextObjectUpdate` — generated read-side wire type ('fabric' spec components/schemas 'ContextsTextObjectUpdate').
+/// `ContextsTextObjectUpdate` — generated read-side wire type ('fabric' REST API, schema 'ContextsTextObjectUpdate').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1942,7 +1938,7 @@ pub struct ContextsTextObjectUpdate {
     pub text: Option<String>,
 }
 
-/// `ContextsUpdate` — generated read-side wire type ('fabric' spec components/schemas 'ContextsUpdate').
+/// `ContextsUpdate` — generated read-side wire type ('fabric' REST API, schema 'ContextsUpdate').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1952,7 +1948,7 @@ pub struct ContextsUpdate {
     pub default: Option<serde_json::Value>,
 }
 
-/// `ConversationMessage` — generated read-side wire type ('fabric' spec components/schemas 'ConversationMessage').
+/// `ConversationMessage` — generated read-side wire type ('fabric' REST API, schema 'ConversationMessage').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1966,7 +1962,7 @@ pub struct ConversationMessage {
     pub lang: Option<String>,
 }
 
-/// `CxmlApplication` — generated read-side wire type ('fabric' spec components/schemas 'CxmlApplication').
+/// `CxmlApplication` — generated read-side wire type ('fabric' REST API, schema 'CxmlApplication').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2004,7 +2000,7 @@ pub struct CxmlApplication {
     pub sms_status_callback_method: Option<serde_json::Value>,
 }
 
-/// `CxmlApplicationAddressListResponse` — generated read-side wire type ('fabric' spec components/schemas 'CxmlApplicationAddressListResponse').
+/// `CxmlApplicationAddressListResponse` — generated read-side wire type ('fabric' REST API, schema 'CxmlApplicationAddressListResponse').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2016,7 +2012,7 @@ pub struct CxmlApplicationAddressListResponse {
     pub links: Option<serde_json::Value>,
 }
 
-/// `CxmlApplicationAddressPaginationResponse` — generated read-side wire type ('fabric' spec components/schemas 'CxmlApplicationAddressPaginationResponse').
+/// `CxmlApplicationAddressPaginationResponse` — generated read-side wire type ('fabric' REST API, schema 'CxmlApplicationAddressPaginationResponse').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2032,7 +2028,7 @@ pub struct CxmlApplicationAddressPaginationResponse {
     pub prev: Option<String>,
 }
 
-/// `CxmlApplicationListResponse` — generated read-side wire type ('fabric' spec components/schemas 'CxmlApplicationListResponse').
+/// `CxmlApplicationListResponse` — generated read-side wire type ('fabric' REST API, schema 'CxmlApplicationListResponse').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2044,7 +2040,7 @@ pub struct CxmlApplicationListResponse {
     pub links: Option<serde_json::Value>,
 }
 
-/// `CxmlApplicationPaginationResponse` — generated read-side wire type ('fabric' spec components/schemas 'CxmlApplicationPaginationResponse').
+/// `CxmlApplicationPaginationResponse` — generated read-side wire type ('fabric' REST API, schema 'CxmlApplicationPaginationResponse').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2060,7 +2056,7 @@ pub struct CxmlApplicationPaginationResponse {
     pub prev: Option<String>,
 }
 
-/// `CxmlApplicationResponse` — generated read-side wire type ('fabric' spec components/schemas 'CxmlApplicationResponse').
+/// `CxmlApplicationResponse` — generated read-side wire type ('fabric' REST API, schema 'CxmlApplicationResponse').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2082,7 +2078,7 @@ pub struct CxmlApplicationResponse {
     pub cxml_application: Option<serde_json::Value>,
 }
 
-/// `CxmlApplicationUpdateRequest` — generated read-side wire type ('fabric' spec components/schemas 'CxmlApplicationUpdateRequest').
+/// `CxmlApplicationUpdateRequest` — generated read-side wire type ('fabric' REST API, schema 'CxmlApplicationUpdateRequest').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2118,7 +2114,7 @@ pub struct CxmlApplicationUpdateRequest {
     pub sms_status_callback_method: Option<serde_json::Value>,
 }
 
-/// `CxmlApplicationUpdateStatusCode422` — generated read-side wire type ('fabric' spec components/schemas 'CxmlApplicationUpdateStatusCode422').
+/// `CxmlApplicationUpdateStatusCode422` — generated read-side wire type ('fabric' REST API, schema 'CxmlApplicationUpdateStatusCode422').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2128,7 +2124,7 @@ pub struct CxmlApplicationUpdateStatusCode422 {
     pub errors: Option<serde_json::Value>,
 }
 
-/// `DataMap` — generated read-side wire type ('fabric' spec components/schemas 'DataMap').
+/// `DataMap` — generated read-side wire type ('fabric' REST API, schema 'DataMap').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2142,7 +2138,7 @@ pub struct DataMap {
     pub webhooks: Option<serde_json::Value>,
 }
 
-/// `Denoise` — generated read-side wire type ('fabric' spec components/schemas 'Denoise').
+/// `Denoise` — generated read-side wire type ('fabric' REST API, schema 'Denoise').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2152,7 +2148,7 @@ pub struct Denoise {
     pub denoise: Option<serde_json::Value>,
 }
 
-/// `DetectMachine` — generated read-side wire type ('fabric' spec components/schemas 'DetectMachine').
+/// `DetectMachine` — generated read-side wire type ('fabric' REST API, schema 'DetectMachine').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2162,7 +2158,7 @@ pub struct DetectMachine {
     pub detect_machine: Option<serde_json::Value>,
 }
 
-/// `DialogFlowPaginationResponse` — generated read-side wire type ('fabric' spec components/schemas 'DialogFlowPaginationResponse').
+/// `DialogFlowPaginationResponse` — generated read-side wire type ('fabric' REST API, schema 'DialogFlowPaginationResponse').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2178,7 +2174,7 @@ pub struct DialogFlowPaginationResponse {
     pub prev: Option<String>,
 }
 
-/// `DialogflowAgent` — generated read-side wire type ('fabric' spec components/schemas 'DialogflowAgent').
+/// `DialogflowAgent` — generated read-side wire type ('fabric' REST API, schema 'DialogflowAgent').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2200,7 +2196,7 @@ pub struct DialogflowAgent {
     pub dialogflow_reference_name: Option<String>,
 }
 
-/// `DialogflowAgentAddressListResponse` — generated read-side wire type ('fabric' spec components/schemas 'DialogflowAgentAddressListResponse').
+/// `DialogflowAgentAddressListResponse` — generated read-side wire type ('fabric' REST API, schema 'DialogflowAgentAddressListResponse').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2212,7 +2208,7 @@ pub struct DialogflowAgentAddressListResponse {
     pub links: Option<serde_json::Value>,
 }
 
-/// `DialogflowAgentAddressPaginationResponse` — generated read-side wire type ('fabric' spec components/schemas 'DialogflowAgentAddressPaginationResponse').
+/// `DialogflowAgentAddressPaginationResponse` — generated read-side wire type ('fabric' REST API, schema 'DialogflowAgentAddressPaginationResponse').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2228,7 +2224,7 @@ pub struct DialogflowAgentAddressPaginationResponse {
     pub prev: Option<String>,
 }
 
-/// `DialogflowAgentListResponse` — generated read-side wire type ('fabric' spec components/schemas 'DialogflowAgentListResponse').
+/// `DialogflowAgentListResponse` — generated read-side wire type ('fabric' REST API, schema 'DialogflowAgentListResponse').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2240,7 +2236,7 @@ pub struct DialogflowAgentListResponse {
     pub links: Option<serde_json::Value>,
 }
 
-/// `DialogflowAgentResponse` — generated read-side wire type ('fabric' spec components/schemas 'DialogflowAgentResponse').
+/// `DialogflowAgentResponse` — generated read-side wire type ('fabric' REST API, schema 'DialogflowAgentResponse').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2262,7 +2258,7 @@ pub struct DialogflowAgentResponse {
     pub dialogflow_agent: Option<serde_json::Value>,
 }
 
-/// `DialogflowAgentUpdateRequest` — generated read-side wire type ('fabric' spec components/schemas 'DialogflowAgentUpdateRequest').
+/// `DialogflowAgentUpdateRequest` — generated read-side wire type ('fabric' REST API, schema 'DialogflowAgentUpdateRequest').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2278,7 +2274,7 @@ pub struct DialogflowAgentUpdateRequest {
     pub voice: Option<String>,
 }
 
-/// `DialogflowAgentUpdateStatusCode422` — generated read-side wire type ('fabric' spec components/schemas 'DialogflowAgentUpdateStatusCode422').
+/// `DialogflowAgentUpdateStatusCode422` — generated read-side wire type ('fabric' REST API, schema 'DialogflowAgentUpdateStatusCode422').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2288,7 +2284,7 @@ pub struct DialogflowAgentUpdateStatusCode422 {
     pub errors: Option<serde_json::Value>,
 }
 
-/// `DomainApplicationAssignRequest` — generated read-side wire type ('fabric' spec components/schemas 'DomainApplicationAssignRequest').
+/// `DomainApplicationAssignRequest` — generated read-side wire type ('fabric' REST API, schema 'DomainApplicationAssignRequest').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2298,7 +2294,7 @@ pub struct DomainApplicationAssignRequest {
     pub domain_application_id: Option<serde_json::Value>,
 }
 
-/// `DomainApplicationCreateStatusCode422` — generated read-side wire type ('fabric' spec components/schemas 'DomainApplicationCreateStatusCode422').
+/// `DomainApplicationCreateStatusCode422` — generated read-side wire type ('fabric' REST API, schema 'DomainApplicationCreateStatusCode422').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2308,7 +2304,7 @@ pub struct DomainApplicationCreateStatusCode422 {
     pub errors: Option<serde_json::Value>,
 }
 
-/// `DomainApplicationResponse` — generated read-side wire type ('fabric' spec components/schemas 'DomainApplicationResponse').
+/// `DomainApplicationResponse` — generated read-side wire type ('fabric' REST API, schema 'DomainApplicationResponse').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2334,7 +2330,7 @@ pub struct DomainApplicationResponse {
     pub r#type: Option<serde_json::Value>,
 }
 
-/// `EmbedTokenCreateStatusCode422` — generated read-side wire type ('fabric' spec components/schemas 'EmbedTokenCreateStatusCode422').
+/// `EmbedTokenCreateStatusCode422` — generated read-side wire type ('fabric' REST API, schema 'EmbedTokenCreateStatusCode422').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2344,7 +2340,7 @@ pub struct EmbedTokenCreateStatusCode422 {
     pub errors: Option<serde_json::Value>,
 }
 
-/// `EmbedsTokensRequest` — generated read-side wire type ('fabric' spec components/schemas 'EmbedsTokensRequest').
+/// `EmbedsTokensRequest` — generated read-side wire type ('fabric' REST API, schema 'EmbedsTokensRequest').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2354,7 +2350,7 @@ pub struct EmbedsTokensRequest {
     pub token: Option<String>,
 }
 
-/// `EmbedsTokensResponse` — generated read-side wire type ('fabric' spec components/schemas 'EmbedsTokensResponse').
+/// `EmbedsTokensResponse` — generated read-side wire type ('fabric' REST API, schema 'EmbedsTokensResponse').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2364,7 +2360,7 @@ pub struct EmbedsTokensResponse {
     pub token: Option<String>,
 }
 
-/// `EnterQueue` — generated read-side wire type ('fabric' spec components/schemas 'EnterQueue').
+/// `EnterQueue` — generated read-side wire type ('fabric' REST API, schema 'EnterQueue').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2374,7 +2370,7 @@ pub struct EnterQueue {
     pub enter_queue: Option<serde_json::Value>,
 }
 
-/// `EnterQueueObject` — generated read-side wire type ('fabric' spec components/schemas 'EnterQueueObject').
+/// `EnterQueueObject` — generated read-side wire type ('fabric' REST API, schema 'EnterQueueObject').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2392,7 +2388,7 @@ pub struct EnterQueueObject {
     pub wait_time: Option<serde_json::Value>,
 }
 
-/// `Execute` — generated read-side wire type ('fabric' spec components/schemas 'Execute').
+/// `Execute` — generated read-side wire type ('fabric' REST API, schema 'Execute').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2402,7 +2398,7 @@ pub struct Execute {
     pub execute: Option<serde_json::Value>,
 }
 
-/// `ExecuteSwitch` — generated read-side wire type ('fabric' spec components/schemas 'ExecuteSwitch').
+/// `ExecuteSwitch` — generated read-side wire type ('fabric' REST API, schema 'ExecuteSwitch').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2416,7 +2412,7 @@ pub struct ExecuteSwitch {
     pub default: Option<serde_json::Value>,
 }
 
-/// `Expression` — generated read-side wire type ('fabric' spec components/schemas 'Expression').
+/// `Expression` — generated read-side wire type ('fabric' REST API, schema 'Expression').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2430,7 +2426,7 @@ pub struct Expression {
     pub output: Option<serde_json::Value>,
 }
 
-/// `FabricAddress` — generated read-side wire type ('fabric' spec components/schemas 'FabricAddress').
+/// `FabricAddress` — generated read-side wire type ('fabric' REST API, schema 'FabricAddress').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2456,7 +2452,7 @@ pub struct FabricAddress {
     pub r#type: Option<serde_json::Value>,
 }
 
-/// `FabricAddressApp` — generated read-side wire type ('fabric' spec components/schemas 'FabricAddressApp').
+/// `FabricAddressApp` — generated read-side wire type ('fabric' REST API, schema 'FabricAddressApp').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2482,7 +2478,7 @@ pub struct FabricAddressApp {
     pub r#type: Option<serde_json::Value>,
 }
 
-/// `FabricAddressCall` — generated read-side wire type ('fabric' spec components/schemas 'FabricAddressCall').
+/// `FabricAddressCall` — generated read-side wire type ('fabric' REST API, schema 'FabricAddressCall').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2508,7 +2504,7 @@ pub struct FabricAddressCall {
     pub r#type: Option<serde_json::Value>,
 }
 
-/// `FabricAddressPaginationResponse` — generated read-side wire type ('fabric' spec components/schemas 'FabricAddressPaginationResponse').
+/// `FabricAddressPaginationResponse` — generated read-side wire type ('fabric' REST API, schema 'FabricAddressPaginationResponse').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2524,7 +2520,7 @@ pub struct FabricAddressPaginationResponse {
     pub prev: Option<String>,
 }
 
-/// `FabricAddressRoom` — generated read-side wire type ('fabric' spec components/schemas 'FabricAddressRoom').
+/// `FabricAddressRoom` — generated read-side wire type ('fabric' REST API, schema 'FabricAddressRoom').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2550,7 +2546,7 @@ pub struct FabricAddressRoom {
     pub r#type: Option<serde_json::Value>,
 }
 
-/// `FabricAddressSubscriber` — generated read-side wire type ('fabric' spec components/schemas 'FabricAddressSubscriber').
+/// `FabricAddressSubscriber` — generated read-side wire type ('fabric' REST API, schema 'FabricAddressSubscriber').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2576,7 +2572,7 @@ pub struct FabricAddressSubscriber {
     pub r#type: Option<serde_json::Value>,
 }
 
-/// `FabricAddressesResponse` — generated read-side wire type ('fabric' spec components/schemas 'FabricAddressesResponse').
+/// `FabricAddressesResponse` — generated read-side wire type ('fabric' REST API, schema 'FabricAddressesResponse').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2588,7 +2584,7 @@ pub struct FabricAddressesResponse {
     pub links: Option<serde_json::Value>,
 }
 
-/// `FreeswitchConectorPaginationResponse` — generated read-side wire type ('fabric' spec components/schemas 'FreeswitchConectorPaginationResponse').
+/// `FreeswitchConectorPaginationResponse` — generated read-side wire type ('fabric' REST API, schema 'FreeswitchConectorPaginationResponse').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2604,7 +2600,7 @@ pub struct FreeswitchConectorPaginationResponse {
     pub prev: Option<String>,
 }
 
-/// `FreeswitchConnector` — generated read-side wire type ('fabric' spec components/schemas 'FreeswitchConnector').
+/// `FreeswitchConnector` — generated read-side wire type ('fabric' REST API, schema 'FreeswitchConnector').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2620,7 +2616,7 @@ pub struct FreeswitchConnector {
     pub send_as: Option<serde_json::Value>,
 }
 
-/// `FreeswitchConnectorAddressListResponse` — generated read-side wire type ('fabric' spec components/schemas 'FreeswitchConnectorAddressListResponse').
+/// `FreeswitchConnectorAddressListResponse` — generated read-side wire type ('fabric' REST API, schema 'FreeswitchConnectorAddressListResponse').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2632,7 +2628,7 @@ pub struct FreeswitchConnectorAddressListResponse {
     pub links: Option<serde_json::Value>,
 }
 
-/// `FreeswitchConnectorAddressPaginationResponse` — generated read-side wire type ('fabric' spec components/schemas 'FreeswitchConnectorAddressPaginationResponse').
+/// `FreeswitchConnectorAddressPaginationResponse` — generated read-side wire type ('fabric' REST API, schema 'FreeswitchConnectorAddressPaginationResponse').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2648,7 +2644,7 @@ pub struct FreeswitchConnectorAddressPaginationResponse {
     pub prev: Option<String>,
 }
 
-/// `FreeswitchConnectorCreateRequest` — generated read-side wire type ('fabric' spec components/schemas 'FreeswitchConnectorCreateRequest').
+/// `FreeswitchConnectorCreateRequest` — generated read-side wire type ('fabric' REST API, schema 'FreeswitchConnectorCreateRequest').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2660,7 +2656,7 @@ pub struct FreeswitchConnectorCreateRequest {
     pub token: Option<serde_json::Value>,
 }
 
-/// `FreeswitchConnectorCreateStatusCode422` — generated read-side wire type ('fabric' spec components/schemas 'FreeswitchConnectorCreateStatusCode422').
+/// `FreeswitchConnectorCreateStatusCode422` — generated read-side wire type ('fabric' REST API, schema 'FreeswitchConnectorCreateStatusCode422').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2670,7 +2666,7 @@ pub struct FreeswitchConnectorCreateStatusCode422 {
     pub errors: Option<serde_json::Value>,
 }
 
-/// `FreeswitchConnectorListResponse` — generated read-side wire type ('fabric' spec components/schemas 'FreeswitchConnectorListResponse').
+/// `FreeswitchConnectorListResponse` — generated read-side wire type ('fabric' REST API, schema 'FreeswitchConnectorListResponse').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2682,7 +2678,7 @@ pub struct FreeswitchConnectorListResponse {
     pub data: Option<serde_json::Value>,
 }
 
-/// `FreeswitchConnectorResponse` — generated read-side wire type ('fabric' spec components/schemas 'FreeswitchConnectorResponse').
+/// `FreeswitchConnectorResponse` — generated read-side wire type ('fabric' REST API, schema 'FreeswitchConnectorResponse').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2704,7 +2700,7 @@ pub struct FreeswitchConnectorResponse {
     pub freeswitch_connector: Option<serde_json::Value>,
 }
 
-/// `FreeswitchConnectorUpdateRequest` — generated read-side wire type ('fabric' spec components/schemas 'FreeswitchConnectorUpdateRequest').
+/// `FreeswitchConnectorUpdateRequest` — generated read-side wire type ('fabric' REST API, schema 'FreeswitchConnectorUpdateRequest').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2718,7 +2714,7 @@ pub struct FreeswitchConnectorUpdateRequest {
     pub send_as: Option<String>,
 }
 
-/// `FreeswitchConnectorUpdateStatusCode422` — generated read-side wire type ('fabric' spec components/schemas 'FreeswitchConnectorUpdateStatusCode422').
+/// `FreeswitchConnectorUpdateStatusCode422` — generated read-side wire type ('fabric' REST API, schema 'FreeswitchConnectorUpdateStatusCode422').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2728,7 +2724,7 @@ pub struct FreeswitchConnectorUpdateStatusCode422 {
     pub errors: Option<serde_json::Value>,
 }
 
-/// `FunctionParameters` — generated read-side wire type ('fabric' spec components/schemas 'FunctionParameters').
+/// `FunctionParameters` — generated read-side wire type ('fabric' REST API, schema 'FunctionParameters').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2742,7 +2738,7 @@ pub struct FunctionParameters {
     pub required: Option<serde_json::Value>,
 }
 
-/// `Goto` — generated read-side wire type ('fabric' spec components/schemas 'Goto').
+/// `Goto` — generated read-side wire type ('fabric' REST API, schema 'Goto').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2752,7 +2748,7 @@ pub struct Goto {
     pub goto: Option<serde_json::Value>,
 }
 
-/// `GuestTokenCreateStatusCode422` — generated read-side wire type ('fabric' spec components/schemas 'GuestTokenCreateStatusCode422').
+/// `GuestTokenCreateStatusCode422` — generated read-side wire type ('fabric' REST API, schema 'GuestTokenCreateStatusCode422').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2762,7 +2758,7 @@ pub struct GuestTokenCreateStatusCode422 {
     pub errors: Option<serde_json::Value>,
 }
 
-/// `HangUpHookSWAIGFunction` — generated read-side wire type ('fabric' spec components/schemas 'HangUpHookSWAIGFunction').
+/// `HangUpHookSWAIGFunction` — generated read-side wire type ('fabric' REST API, schema 'HangUpHookSWAIGFunction').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2800,7 +2796,7 @@ pub struct HangUpHookSWAIGFunction {
     pub function: Option<serde_json::Value>,
 }
 
-/// `Hangup` — generated read-side wire type ('fabric' spec components/schemas 'Hangup').
+/// `Hangup` — generated read-side wire type ('fabric' REST API, schema 'Hangup').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2810,7 +2806,7 @@ pub struct Hangup {
     pub hangup: Option<serde_json::Value>,
 }
 
-/// `HangupAction` — generated read-side wire type ('fabric' spec components/schemas 'HangupAction').
+/// `HangupAction` — generated read-side wire type ('fabric' REST API, schema 'HangupAction').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2820,7 +2816,7 @@ pub struct HangupAction {
     pub hangup: Option<serde_json::Value>,
 }
 
-/// `Hint` — generated read-side wire type ('fabric' spec components/schemas 'Hint').
+/// `Hint` — generated read-side wire type ('fabric' REST API, schema 'Hint').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2836,7 +2832,7 @@ pub struct Hint {
     pub ignore_case: Option<serde_json::Value>,
 }
 
-/// `HoldAction` — generated read-side wire type ('fabric' spec components/schemas 'HoldAction').
+/// `HoldAction` — generated read-side wire type ('fabric' REST API, schema 'HoldAction').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2846,7 +2842,7 @@ pub struct HoldAction {
     pub hold: Option<serde_json::Value>,
 }
 
-/// `InjectAction` — generated read-side wire type ('fabric' spec components/schemas 'InjectAction').
+/// `InjectAction` — generated read-side wire type ('fabric' REST API, schema 'InjectAction').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2856,7 +2852,7 @@ pub struct InjectAction {
     pub inject: Option<serde_json::Value>,
 }
 
-/// `IntegerProperty` — generated read-side wire type ('fabric' spec components/schemas 'IntegerProperty').
+/// `IntegerProperty` — generated read-side wire type ('fabric' REST API, schema 'IntegerProperty').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2874,7 +2870,7 @@ pub struct IntegerProperty {
     pub default: Option<serde_json::Value>,
 }
 
-/// `InviteTokenCreateStatusCode422` — generated read-side wire type ('fabric' spec components/schemas 'InviteTokenCreateStatusCode422').
+/// `InviteTokenCreateStatusCode422` — generated read-side wire type ('fabric' REST API, schema 'InviteTokenCreateStatusCode422').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2884,7 +2880,7 @@ pub struct InviteTokenCreateStatusCode422 {
     pub errors: Option<serde_json::Value>,
 }
 
-/// `JoinConference` — generated read-side wire type ('fabric' spec components/schemas 'JoinConference').
+/// `JoinConference` — generated read-side wire type ('fabric' REST API, schema 'JoinConference').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2894,7 +2890,7 @@ pub struct JoinConference {
     pub join_conference: Option<serde_json::Value>,
 }
 
-/// `JoinConferenceObject` — generated read-side wire type ('fabric' spec components/schemas 'JoinConferenceObject').
+/// `JoinConferenceObject` — generated read-side wire type ('fabric' REST API, schema 'JoinConferenceObject').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2938,7 +2934,7 @@ pub struct JoinConferenceObject {
     pub result: Option<serde_json::Value>,
 }
 
-/// `JoinRoom` — generated read-side wire type ('fabric' spec components/schemas 'JoinRoom').
+/// `JoinRoom` — generated read-side wire type ('fabric' REST API, schema 'JoinRoom').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2948,7 +2944,7 @@ pub struct JoinRoom {
     pub join_room: Option<serde_json::Value>,
 }
 
-/// `Label` — generated read-side wire type ('fabric' spec components/schemas 'Label').
+/// `Label` — generated read-side wire type ('fabric' REST API, schema 'Label').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2958,7 +2954,7 @@ pub struct Label {
     pub label: Option<String>,
 }
 
-/// `LanguageParams` — generated read-side wire type ('fabric' spec components/schemas 'LanguageParams').
+/// `LanguageParams` — generated read-side wire type ('fabric' REST API, schema 'LanguageParams').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2970,7 +2966,7 @@ pub struct LanguageParams {
     pub similarity: Option<serde_json::Value>,
 }
 
-/// `LanguagesWithFillers` — generated read-side wire type ('fabric' spec components/schemas 'LanguagesWithFillers').
+/// `LanguagesWithFillers` — generated read-side wire type ('fabric' REST API, schema 'LanguagesWithFillers').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2998,7 +2994,7 @@ pub struct LanguagesWithFillers {
     pub speech_fillers: Option<serde_json::Value>,
 }
 
-/// `LanguagesWithSoloFillers` — generated read-side wire type ('fabric' spec components/schemas 'LanguagesWithSoloFillers').
+/// `LanguagesWithSoloFillers` — generated read-side wire type ('fabric' REST API, schema 'LanguagesWithSoloFillers').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -3024,7 +3020,7 @@ pub struct LanguagesWithSoloFillers {
     pub fillers: Option<serde_json::Value>,
 }
 
-/// `LiveTranscribe` — generated read-side wire type ('fabric' spec components/schemas 'LiveTranscribe').
+/// `LiveTranscribe` — generated read-side wire type ('fabric' REST API, schema 'LiveTranscribe').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -3034,7 +3030,7 @@ pub struct LiveTranscribe {
     pub live_transcribe: Option<serde_json::Value>,
 }
 
-/// `LiveTranslate` — generated read-side wire type ('fabric' spec components/schemas 'LiveTranslate').
+/// `LiveTranslate` — generated read-side wire type ('fabric' REST API, schema 'LiveTranslate').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -3044,7 +3040,7 @@ pub struct LiveTranslate {
     pub live_translate: Option<serde_json::Value>,
 }
 
-/// `MessagingChannel` — generated read-side wire type ('fabric' spec components/schemas 'MessagingChannel').
+/// `MessagingChannel` — generated read-side wire type ('fabric' REST API, schema 'MessagingChannel').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -3054,7 +3050,7 @@ pub struct MessagingChannel {
     pub messaging: Option<String>,
 }
 
-/// `NullProperty` — generated read-side wire type ('fabric' spec components/schemas 'NullProperty').
+/// `NullProperty` — generated read-side wire type ('fabric' REST API, schema 'NullProperty').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -3066,7 +3062,7 @@ pub struct NullProperty {
     pub description: Option<String>,
 }
 
-/// `NumberProperty` — generated read-side wire type ('fabric' spec components/schemas 'NumberProperty').
+/// `NumberProperty` — generated read-side wire type ('fabric' REST API, schema 'NumberProperty').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -3084,7 +3080,7 @@ pub struct NumberProperty {
     pub default: Option<serde_json::Value>,
 }
 
-/// `ObjectProperty` — generated read-side wire type ('fabric' spec components/schemas 'ObjectProperty').
+/// `ObjectProperty` — generated read-side wire type ('fabric' REST API, schema 'ObjectProperty').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -3104,7 +3100,7 @@ pub struct ObjectProperty {
     pub required: Option<serde_json::Value>,
 }
 
-/// `OneOfProperty` — generated read-side wire type ('fabric' spec components/schemas 'OneOfProperty').
+/// `OneOfProperty` — generated read-side wire type ('fabric' REST API, schema 'OneOfProperty').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -3114,7 +3110,7 @@ pub struct OneOfProperty {
     pub one_of: Option<serde_json::Value>,
 }
 
-/// `Output` — generated read-side wire type ('fabric' spec components/schemas 'Output').
+/// `Output` — generated read-side wire type ('fabric' REST API, schema 'Output').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -3126,7 +3122,7 @@ pub struct Output {
     pub action: Option<serde_json::Value>,
 }
 
-/// `Pay` — generated read-side wire type ('fabric' spec components/schemas 'Pay').
+/// `Pay` — generated read-side wire type ('fabric' REST API, schema 'Pay').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -3136,7 +3132,7 @@ pub struct Pay {
     pub pay: Option<serde_json::Value>,
 }
 
-/// `PayParameters` — generated read-side wire type ('fabric' spec components/schemas 'PayParameters').
+/// `PayParameters` — generated read-side wire type ('fabric' REST API, schema 'PayParameters').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -3148,7 +3144,7 @@ pub struct PayParameters {
     pub value: Option<String>,
 }
 
-/// `PayPromptPlayAction` — generated read-side wire type ('fabric' spec components/schemas 'PayPromptPlayAction').
+/// `PayPromptPlayAction` — generated read-side wire type ('fabric' REST API, schema 'PayPromptPlayAction').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -3160,7 +3156,7 @@ pub struct PayPromptPlayAction {
     pub phrase: Option<String>,
 }
 
-/// `PayPromptSayAction` — generated read-side wire type ('fabric' spec components/schemas 'PayPromptSayAction').
+/// `PayPromptSayAction` — generated read-side wire type ('fabric' REST API, schema 'PayPromptSayAction').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -3172,7 +3168,7 @@ pub struct PayPromptSayAction {
     pub phrase: Option<String>,
 }
 
-/// `PayPrompts` — generated read-side wire type ('fabric' spec components/schemas 'PayPrompts').
+/// `PayPrompts` — generated read-side wire type ('fabric' REST API, schema 'PayPrompts').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -3190,7 +3186,7 @@ pub struct PayPrompts {
     pub error_type: Option<String>,
 }
 
-/// `PhoneRouteAssignRequest` — generated read-side wire type ('fabric' spec components/schemas 'PhoneRouteAssignRequest').
+/// `PhoneRouteAssignRequest` — generated read-side wire type ('fabric' REST API, schema 'PhoneRouteAssignRequest').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -3202,7 +3198,7 @@ pub struct PhoneRouteAssignRequest {
     pub handler: Option<serde_json::Value>,
 }
 
-/// `PhoneRouteCreateStatusCode422` — generated read-side wire type ('fabric' spec components/schemas 'PhoneRouteCreateStatusCode422').
+/// `PhoneRouteCreateStatusCode422` — generated read-side wire type ('fabric' REST API, schema 'PhoneRouteCreateStatusCode422').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -3212,7 +3208,7 @@ pub struct PhoneRouteCreateStatusCode422 {
     pub errors: Option<serde_json::Value>,
 }
 
-/// `PhoneRouteResponse` — generated read-side wire type ('fabric' spec components/schemas 'PhoneRouteResponse').
+/// `PhoneRouteResponse` — generated read-side wire type ('fabric' REST API, schema 'PhoneRouteResponse').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -3238,7 +3234,7 @@ pub struct PhoneRouteResponse {
     pub r#type: Option<serde_json::Value>,
 }
 
-/// `Play` — generated read-side wire type ('fabric' spec components/schemas 'Play').
+/// `Play` — generated read-side wire type ('fabric' REST API, schema 'Play').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -3248,7 +3244,7 @@ pub struct Play {
     pub play: Option<serde_json::Value>,
 }
 
-/// `PlayWithURL` — generated read-side wire type ('fabric' spec components/schemas 'PlayWithURL').
+/// `PlayWithURL` — generated read-side wire type ('fabric' REST API, schema 'PlayWithURL').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -3270,7 +3266,7 @@ pub struct PlayWithURL {
     pub url: Option<serde_json::Value>,
 }
 
-/// `PlayWithURLS` — generated read-side wire type ('fabric' spec components/schemas 'PlayWithURLS').
+/// `PlayWithURLS` — generated read-side wire type ('fabric' REST API, schema 'PlayWithURLS').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -3292,7 +3288,7 @@ pub struct PlayWithURLS {
     pub urls: Option<serde_json::Value>,
 }
 
-/// `PlaybackBGAction` — generated read-side wire type ('fabric' spec components/schemas 'PlaybackBGAction').
+/// `PlaybackBGAction` — generated read-side wire type ('fabric' REST API, schema 'PlaybackBGAction').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -3302,7 +3298,7 @@ pub struct PlaybackBGAction {
     pub playback_bg: Option<serde_json::Value>,
 }
 
-/// `PomSectionBodyContent` — generated read-side wire type ('fabric' spec components/schemas 'PomSectionBodyContent').
+/// `PomSectionBodyContent` — generated read-side wire type ('fabric' REST API, schema 'PomSectionBodyContent').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -3326,7 +3322,7 @@ pub struct PomSectionBodyContent {
     pub bullets: Option<serde_json::Value>,
 }
 
-/// `PomSectionBulletsContent` — generated read-side wire type ('fabric' spec components/schemas 'PomSectionBulletsContent').
+/// `PomSectionBulletsContent` — generated read-side wire type ('fabric' REST API, schema 'PomSectionBulletsContent').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -3350,7 +3346,7 @@ pub struct PomSectionBulletsContent {
     pub bullets: Option<serde_json::Value>,
 }
 
-/// `Prompt` — generated read-side wire type ('fabric' spec components/schemas 'Prompt').
+/// `Prompt` — generated read-side wire type ('fabric' REST API, schema 'Prompt').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -3360,7 +3356,7 @@ pub struct Prompt {
     pub prompt: Option<serde_json::Value>,
 }
 
-/// `Pronounce` — generated read-side wire type ('fabric' spec components/schemas 'Pronounce').
+/// `Pronounce` — generated read-side wire type ('fabric' REST API, schema 'Pronounce').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -3374,7 +3370,7 @@ pub struct Pronounce {
     pub ignore_case: Option<serde_json::Value>,
 }
 
-/// `ReceiveFax` — generated read-side wire type ('fabric' spec components/schemas 'ReceiveFax').
+/// `ReceiveFax` — generated read-side wire type ('fabric' REST API, schema 'ReceiveFax').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -3384,7 +3380,7 @@ pub struct ReceiveFax {
     pub receive_fax: Option<serde_json::Value>,
 }
 
-/// `Record` — generated read-side wire type ('fabric' spec components/schemas 'Record').
+/// `Record` — generated read-side wire type ('fabric' REST API, schema 'Record').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -3394,7 +3390,7 @@ pub struct Record {
     pub record: Option<serde_json::Value>,
 }
 
-/// `RecordCall` — generated read-side wire type ('fabric' spec components/schemas 'RecordCall').
+/// `RecordCall` — generated read-side wire type ('fabric' REST API, schema 'RecordCall').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -3404,7 +3400,7 @@ pub struct RecordCall {
     pub record_call: Option<serde_json::Value>,
 }
 
-/// `RefreshTokenStatusCode422` — generated read-side wire type ('fabric' spec components/schemas 'RefreshTokenStatusCode422').
+/// `RefreshTokenStatusCode422` — generated read-side wire type ('fabric' REST API, schema 'RefreshTokenStatusCode422').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -3414,7 +3410,7 @@ pub struct RefreshTokenStatusCode422 {
     pub errors: Option<serde_json::Value>,
 }
 
-/// `RelayApplication` — generated read-side wire type ('fabric' spec components/schemas 'RelayApplication').
+/// `RelayApplication` — generated read-side wire type ('fabric' REST API, schema 'RelayApplication').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -3430,7 +3426,7 @@ pub struct RelayApplication {
     pub call_status_callback_url: Option<serde_json::Value>,
 }
 
-/// `RelayApplicationAddressListResponse` — generated read-side wire type ('fabric' spec components/schemas 'RelayApplicationAddressListResponse').
+/// `RelayApplicationAddressListResponse` — generated read-side wire type ('fabric' REST API, schema 'RelayApplicationAddressListResponse').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -3442,7 +3438,7 @@ pub struct RelayApplicationAddressListResponse {
     pub links: Option<serde_json::Value>,
 }
 
-/// `RelayApplicationAddressPaginationResponse` — generated read-side wire type ('fabric' spec components/schemas 'RelayApplicationAddressPaginationResponse').
+/// `RelayApplicationAddressPaginationResponse` — generated read-side wire type ('fabric' REST API, schema 'RelayApplicationAddressPaginationResponse').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -3458,7 +3454,7 @@ pub struct RelayApplicationAddressPaginationResponse {
     pub prev: Option<String>,
 }
 
-/// `RelayApplicationCreateRequest` — generated read-side wire type ('fabric' spec components/schemas 'RelayApplicationCreateRequest').
+/// `RelayApplicationCreateRequest` — generated read-side wire type ('fabric' REST API, schema 'RelayApplicationCreateRequest').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -3472,7 +3468,7 @@ pub struct RelayApplicationCreateRequest {
     pub call_status_callback_url: Option<String>,
 }
 
-/// `RelayApplicationCreateStatusCode422` — generated read-side wire type ('fabric' spec components/schemas 'RelayApplicationCreateStatusCode422').
+/// `RelayApplicationCreateStatusCode422` — generated read-side wire type ('fabric' REST API, schema 'RelayApplicationCreateStatusCode422').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -3482,7 +3478,7 @@ pub struct RelayApplicationCreateStatusCode422 {
     pub errors: Option<serde_json::Value>,
 }
 
-/// `RelayApplicationListResponse` — generated read-side wire type ('fabric' spec components/schemas 'RelayApplicationListResponse').
+/// `RelayApplicationListResponse` — generated read-side wire type ('fabric' REST API, schema 'RelayApplicationListResponse').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -3494,7 +3490,7 @@ pub struct RelayApplicationListResponse {
     pub links: Option<serde_json::Value>,
 }
 
-/// `RelayApplicationResponse` — generated read-side wire type ('fabric' spec components/schemas 'RelayApplicationResponse').
+/// `RelayApplicationResponse` — generated read-side wire type ('fabric' REST API, schema 'RelayApplicationResponse').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -3516,7 +3512,7 @@ pub struct RelayApplicationResponse {
     pub relay_application: Option<serde_json::Value>,
 }
 
-/// `RelayApplicationUpdateRequest` — generated read-side wire type ('fabric' spec components/schemas 'RelayApplicationUpdateRequest').
+/// `RelayApplicationUpdateRequest` — generated read-side wire type ('fabric' REST API, schema 'RelayApplicationUpdateRequest').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -3530,7 +3526,7 @@ pub struct RelayApplicationUpdateRequest {
     pub call_status_callback_url: Option<String>,
 }
 
-/// `RelayApplicationUpdateStatusCode422` — generated read-side wire type ('fabric' spec components/schemas 'RelayApplicationUpdateStatusCode422').
+/// `RelayApplicationUpdateStatusCode422` — generated read-side wire type ('fabric' REST API, schema 'RelayApplicationUpdateStatusCode422').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -3540,7 +3536,7 @@ pub struct RelayApplicationUpdateStatusCode422 {
     pub errors: Option<serde_json::Value>,
 }
 
-/// `Request` — generated read-side wire type ('fabric' spec components/schemas 'Request').
+/// `Request` — generated read-side wire type ('fabric' REST API, schema 'Request').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -3550,7 +3546,7 @@ pub struct Request {
     pub request: Option<serde_json::Value>,
 }
 
-/// `ResourceAddressListResponse` — generated read-side wire type ('fabric' spec components/schemas 'ResourceAddressListResponse').
+/// `ResourceAddressListResponse` — generated read-side wire type ('fabric' REST API, schema 'ResourceAddressListResponse').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -3562,7 +3558,7 @@ pub struct ResourceAddressListResponse {
     pub links: Option<serde_json::Value>,
 }
 
-/// `ResourceAddressPaginationResponse` — generated read-side wire type ('fabric' spec components/schemas 'ResourceAddressPaginationResponse').
+/// `ResourceAddressPaginationResponse` — generated read-side wire type ('fabric' REST API, schema 'ResourceAddressPaginationResponse').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -3578,7 +3574,7 @@ pub struct ResourceAddressPaginationResponse {
     pub prev: Option<String>,
 }
 
-/// `ResourceListResponse` — generated read-side wire type ('fabric' spec components/schemas 'ResourceListResponse').
+/// `ResourceListResponse` — generated read-side wire type ('fabric' REST API, schema 'ResourceListResponse').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -3590,7 +3586,7 @@ pub struct ResourceListResponse {
     pub links: Option<serde_json::Value>,
 }
 
-/// `ResourcePaginationResponse` — generated read-side wire type ('fabric' spec components/schemas 'ResourcePaginationResponse').
+/// `ResourcePaginationResponse` — generated read-side wire type ('fabric' REST API, schema 'ResourcePaginationResponse').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -3606,7 +3602,7 @@ pub struct ResourcePaginationResponse {
     pub prev: Option<String>,
 }
 
-/// `ResourceResponseAI` — generated read-side wire type ('fabric' spec components/schemas 'ResourceResponseAI').
+/// `ResourceResponseAI` — generated read-side wire type ('fabric' REST API, schema 'ResourceResponseAI').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -3628,7 +3624,7 @@ pub struct ResourceResponseAI {
     pub ai_agent: Option<serde_json::Value>,
 }
 
-/// `ResourceResponseCXMLApplication` — generated read-side wire type ('fabric' spec components/schemas 'ResourceResponseCXMLApplication').
+/// `ResourceResponseCXMLApplication` — generated read-side wire type ('fabric' REST API, schema 'ResourceResponseCXMLApplication').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -3650,7 +3646,7 @@ pub struct ResourceResponseCXMLApplication {
     pub cxml_application: Option<serde_json::Value>,
 }
 
-/// `ResourceResponseCXMLScript` — generated read-side wire type ('fabric' spec components/schemas 'ResourceResponseCXMLScript').
+/// `ResourceResponseCXMLScript` — generated read-side wire type ('fabric' REST API, schema 'ResourceResponseCXMLScript').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -3672,7 +3668,7 @@ pub struct ResourceResponseCXMLScript {
     pub cxml_script: Option<serde_json::Value>,
 }
 
-/// `ResourceResponseCXMLWebhook` — generated read-side wire type ('fabric' spec components/schemas 'ResourceResponseCXMLWebhook').
+/// `ResourceResponseCXMLWebhook` — generated read-side wire type ('fabric' REST API, schema 'ResourceResponseCXMLWebhook').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -3694,7 +3690,7 @@ pub struct ResourceResponseCXMLWebhook {
     pub cxml_webhook: Option<serde_json::Value>,
 }
 
-/// `ResourceResponseCallFlow` — generated read-side wire type ('fabric' spec components/schemas 'ResourceResponseCallFlow').
+/// `ResourceResponseCallFlow` — generated read-side wire type ('fabric' REST API, schema 'ResourceResponseCallFlow').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -3716,7 +3712,7 @@ pub struct ResourceResponseCallFlow {
     pub call_flow: Option<serde_json::Value>,
 }
 
-/// `ResourceResponseConferenceRoom` — generated read-side wire type ('fabric' spec components/schemas 'ResourceResponseConferenceRoom').
+/// `ResourceResponseConferenceRoom` — generated read-side wire type ('fabric' REST API, schema 'ResourceResponseConferenceRoom').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -3738,7 +3734,7 @@ pub struct ResourceResponseConferenceRoom {
     pub conference_room: Option<serde_json::Value>,
 }
 
-/// `ResourceResponseDialogFlowAgent` — generated read-side wire type ('fabric' spec components/schemas 'ResourceResponseDialogFlowAgent').
+/// `ResourceResponseDialogFlowAgent` — generated read-side wire type ('fabric' REST API, schema 'ResourceResponseDialogFlowAgent').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -3760,7 +3756,7 @@ pub struct ResourceResponseDialogFlowAgent {
     pub dialogflow_agent: Option<serde_json::Value>,
 }
 
-/// `ResourceResponseFSConnector` — generated read-side wire type ('fabric' spec components/schemas 'ResourceResponseFSConnector').
+/// `ResourceResponseFSConnector` — generated read-side wire type ('fabric' REST API, schema 'ResourceResponseFSConnector').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -3782,7 +3778,7 @@ pub struct ResourceResponseFSConnector {
     pub freeswitch_connector: Option<serde_json::Value>,
 }
 
-/// `ResourceResponseRelayApp` — generated read-side wire type ('fabric' spec components/schemas 'ResourceResponseRelayApp').
+/// `ResourceResponseRelayApp` — generated read-side wire type ('fabric' REST API, schema 'ResourceResponseRelayApp').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -3804,7 +3800,7 @@ pub struct ResourceResponseRelayApp {
     pub relay_application: Option<serde_json::Value>,
 }
 
-/// `ResourceResponseSWMLScript` — generated read-side wire type ('fabric' spec components/schemas 'ResourceResponseSWMLScript').
+/// `ResourceResponseSWMLScript` — generated read-side wire type ('fabric' REST API, schema 'ResourceResponseSWMLScript').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -3826,7 +3822,7 @@ pub struct ResourceResponseSWMLScript {
     pub swml_script: Option<serde_json::Value>,
 }
 
-/// `ResourceResponseSWMLWebhook` — generated read-side wire type ('fabric' spec components/schemas 'ResourceResponseSWMLWebhook').
+/// `ResourceResponseSWMLWebhook` — generated read-side wire type ('fabric' REST API, schema 'ResourceResponseSWMLWebhook').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -3848,7 +3844,7 @@ pub struct ResourceResponseSWMLWebhook {
     pub swml_webhook: Option<serde_json::Value>,
 }
 
-/// `ResourceResponseSipEndpoint` — generated read-side wire type ('fabric' spec components/schemas 'ResourceResponseSipEndpoint').
+/// `ResourceResponseSipEndpoint` — generated read-side wire type ('fabric' REST API, schema 'ResourceResponseSipEndpoint').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -3870,7 +3866,7 @@ pub struct ResourceResponseSipEndpoint {
     pub sip_endpoint: Option<serde_json::Value>,
 }
 
-/// `ResourceResponseSipGateway` — generated read-side wire type ('fabric' spec components/schemas 'ResourceResponseSipGateway').
+/// `ResourceResponseSipGateway` — generated read-side wire type ('fabric' REST API, schema 'ResourceResponseSipGateway').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -3892,7 +3888,7 @@ pub struct ResourceResponseSipGateway {
     pub sip_gateway: Option<serde_json::Value>,
 }
 
-/// `ResourceResponseSubscriber` — generated read-side wire type ('fabric' spec components/schemas 'ResourceResponseSubscriber').
+/// `ResourceResponseSubscriber` — generated read-side wire type ('fabric' REST API, schema 'ResourceResponseSubscriber').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -3914,7 +3910,7 @@ pub struct ResourceResponseSubscriber {
     pub subscriber: Option<serde_json::Value>,
 }
 
-/// `ResourceSipEndpointAssignRequest` — generated read-side wire type ('fabric' spec components/schemas 'ResourceSipEndpointAssignRequest').
+/// `ResourceSipEndpointAssignRequest` — generated read-side wire type ('fabric' REST API, schema 'ResourceSipEndpointAssignRequest').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -3924,7 +3920,7 @@ pub struct ResourceSipEndpointAssignRequest {
     pub sip_endpoint_id: Option<serde_json::Value>,
 }
 
-/// `ResourceSipEndpointCreateStatusCode422` — generated read-side wire type ('fabric' spec components/schemas 'ResourceSipEndpointCreateStatusCode422').
+/// `ResourceSipEndpointCreateStatusCode422` — generated read-side wire type ('fabric' REST API, schema 'ResourceSipEndpointCreateStatusCode422').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -3934,7 +3930,7 @@ pub struct ResourceSipEndpointCreateStatusCode422 {
     pub errors: Option<serde_json::Value>,
 }
 
-/// `ResourceSipEndpointResponse` — generated read-side wire type ('fabric' spec components/schemas 'ResourceSipEndpointResponse').
+/// `ResourceSipEndpointResponse` — generated read-side wire type ('fabric' REST API, schema 'ResourceSipEndpointResponse').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -3954,7 +3950,7 @@ pub struct ResourceSipEndpointResponse {
     pub channels: Option<serde_json::Value>,
 }
 
-/// `ResourceSipEndpointUpdateStatusCode422` — generated read-side wire type ('fabric' spec components/schemas 'ResourceSipEndpointUpdateStatusCode422').
+/// `ResourceSipEndpointUpdateStatusCode422` — generated read-side wire type ('fabric' REST API, schema 'ResourceSipEndpointUpdateStatusCode422').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -3964,7 +3960,7 @@ pub struct ResourceSipEndpointUpdateStatusCode422 {
     pub errors: Option<serde_json::Value>,
 }
 
-/// `ResourceSubSipEndpointCreateStatusCode422` — generated read-side wire type ('fabric' spec components/schemas 'ResourceSubSipEndpointCreateStatusCode422').
+/// `ResourceSubSipEndpointCreateStatusCode422` — generated read-side wire type ('fabric' REST API, schema 'ResourceSubSipEndpointCreateStatusCode422').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -3974,7 +3970,7 @@ pub struct ResourceSubSipEndpointCreateStatusCode422 {
     pub errors: Option<serde_json::Value>,
 }
 
-/// `Return` — generated read-side wire type ('fabric' spec components/schemas 'Return').
+/// `Return` — generated read-side wire type ('fabric' REST API, schema 'Return').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -3984,7 +3980,7 @@ pub struct Return {
     pub r#return: Option<serde_json::Value>,
 }
 
-/// `SIPRefer` — generated read-side wire type ('fabric' spec components/schemas 'SIPRefer').
+/// `SIPRefer` — generated read-side wire type ('fabric' REST API, schema 'SIPRefer').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -3994,7 +3990,7 @@ pub struct SIPRefer {
     pub sip_refer: Option<serde_json::Value>,
 }
 
-/// `SMSWithBody` — generated read-side wire type ('fabric' spec components/schemas 'SMSWithBody').
+/// `SMSWithBody` — generated read-side wire type ('fabric' REST API, schema 'SMSWithBody').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -4012,7 +4008,7 @@ pub struct SMSWithBody {
     pub body: Option<String>,
 }
 
-/// `SMSWithMedia` — generated read-side wire type ('fabric' spec components/schemas 'SMSWithMedia').
+/// `SMSWithMedia` — generated read-side wire type ('fabric' REST API, schema 'SMSWithMedia').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -4032,7 +4028,7 @@ pub struct SMSWithMedia {
     pub body: Option<String>,
 }
 
-/// `SWAIG` — generated read-side wire type ('fabric' spec components/schemas 'SWAIG').
+/// `SWAIG` — generated read-side wire type ('fabric' REST API, schema 'SWAIG').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -4050,7 +4046,7 @@ pub struct SWAIG {
     pub internal_fillers: Option<serde_json::Value>,
 }
 
-/// `SWAIGDefaults` — generated read-side wire type ('fabric' spec components/schemas 'SWAIGDefaults').
+/// `SWAIGDefaults` — generated read-side wire type ('fabric' REST API, schema 'SWAIGDefaults').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -4060,7 +4056,7 @@ pub struct SWAIGDefaults {
     pub web_hook_url: Option<String>,
 }
 
-/// `SWAIGIncludes` — generated read-side wire type ('fabric' spec components/schemas 'SWAIGIncludes').
+/// `SWAIGIncludes` — generated read-side wire type ('fabric' REST API, schema 'SWAIGIncludes').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -4074,7 +4070,7 @@ pub struct SWAIGIncludes {
     pub meta_data: Option<serde_json::Value>,
 }
 
-/// `SWAIGInternalFiller` — generated read-side wire type ('fabric' spec components/schemas 'SWAIGInternalFiller').
+/// `SWAIGInternalFiller` — generated read-side wire type ('fabric' REST API, schema 'SWAIGInternalFiller').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -4100,7 +4096,7 @@ pub struct SWAIGInternalFiller {
     pub get_ideal_strategy: Option<serde_json::Value>,
 }
 
-/// `SWAIGInternalFillerUpdate` — generated read-side wire type ('fabric' spec components/schemas 'SWAIGInternalFillerUpdate').
+/// `SWAIGInternalFillerUpdate` — generated read-side wire type ('fabric' REST API, schema 'SWAIGInternalFillerUpdate').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -4126,7 +4122,7 @@ pub struct SWAIGInternalFillerUpdate {
     pub get_ideal_strategy: Option<serde_json::Value>,
 }
 
-/// `SWAIGUpdate` — generated read-side wire type ('fabric' spec components/schemas 'SWAIGUpdate').
+/// `SWAIGUpdate` — generated read-side wire type ('fabric' REST API, schema 'SWAIGUpdate').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -4144,7 +4140,7 @@ pub struct SWAIGUpdate {
     pub internal_fillers: Option<serde_json::Value>,
 }
 
-/// `SWMLAction` — generated read-side wire type ('fabric' spec components/schemas 'SWMLAction').
+/// `SWMLAction` — generated read-side wire type ('fabric' REST API, schema 'SWMLAction').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -4154,7 +4150,7 @@ pub struct SWMLAction {
     pub swml: Option<serde_json::Value>,
 }
 
-/// `SWMLObject` — generated read-side wire type ('fabric' spec components/schemas 'SWMLObject').
+/// `SWMLObject` — generated read-side wire type ('fabric' REST API, schema 'SWMLObject').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -4166,7 +4162,7 @@ pub struct SWMLObject {
     pub sections: Option<serde_json::Value>,
 }
 
-/// `SWMLScriptAddressListResponse` — generated read-side wire type ('fabric' spec components/schemas 'SWMLScriptAddressListResponse').
+/// `SWMLScriptAddressListResponse` — generated read-side wire type ('fabric' REST API, schema 'SWMLScriptAddressListResponse').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -4178,7 +4174,7 @@ pub struct SWMLScriptAddressListResponse {
     pub links: Option<serde_json::Value>,
 }
 
-/// `SWMLScriptAddressPaginationResponse` — generated read-side wire type ('fabric' spec components/schemas 'SWMLScriptAddressPaginationResponse').
+/// `SWMLScriptAddressPaginationResponse` — generated read-side wire type ('fabric' REST API, schema 'SWMLScriptAddressPaginationResponse').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -4194,7 +4190,7 @@ pub struct SWMLScriptAddressPaginationResponse {
     pub prev: Option<String>,
 }
 
-/// `SWMLWebhook` — generated read-side wire type ('fabric' spec components/schemas 'SWMLWebhook').
+/// `SWMLWebhook` — generated read-side wire type ('fabric' REST API, schema 'SWMLWebhook').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -4220,7 +4216,7 @@ pub struct SWMLWebhook {
     pub status_callback_method: Option<serde_json::Value>,
 }
 
-/// `SWMLWebhookAddressListResponse` — generated read-side wire type ('fabric' spec components/schemas 'SWMLWebhookAddressListResponse').
+/// `SWMLWebhookAddressListResponse` — generated read-side wire type ('fabric' REST API, schema 'SWMLWebhookAddressListResponse').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -4232,7 +4228,7 @@ pub struct SWMLWebhookAddressListResponse {
     pub links: Option<serde_json::Value>,
 }
 
-/// `SWMLWebhookAddressPaginationResponse` — generated read-side wire type ('fabric' spec components/schemas 'SWMLWebhookAddressPaginationResponse').
+/// `SWMLWebhookAddressPaginationResponse` — generated read-side wire type ('fabric' REST API, schema 'SWMLWebhookAddressPaginationResponse').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -4248,7 +4244,7 @@ pub struct SWMLWebhookAddressPaginationResponse {
     pub prev: Option<String>,
 }
 
-/// `SWMLWebhookCreateRequest` — generated read-side wire type ('fabric' spec components/schemas 'SWMLWebhookCreateRequest').
+/// `SWMLWebhookCreateRequest` — generated read-side wire type ('fabric' REST API, schema 'SWMLWebhookCreateRequest').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -4272,7 +4268,7 @@ pub struct SWMLWebhookCreateRequest {
     pub status_callback_method: Option<serde_json::Value>,
 }
 
-/// `SWMLWebhookListResponse` — generated read-side wire type ('fabric' spec components/schemas 'SWMLWebhookListResponse').
+/// `SWMLWebhookListResponse` — generated read-side wire type ('fabric' REST API, schema 'SWMLWebhookListResponse').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -4284,7 +4280,7 @@ pub struct SWMLWebhookListResponse {
     pub links: Option<serde_json::Value>,
 }
 
-/// `SWMLWebhookPaginationResponse` — generated read-side wire type ('fabric' spec components/schemas 'SWMLWebhookPaginationResponse').
+/// `SWMLWebhookPaginationResponse` — generated read-side wire type ('fabric' REST API, schema 'SWMLWebhookPaginationResponse').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -4300,7 +4296,7 @@ pub struct SWMLWebhookPaginationResponse {
     pub prev: Option<String>,
 }
 
-/// `SWMLWebhookResponse` — generated read-side wire type ('fabric' spec components/schemas 'SWMLWebhookResponse').
+/// `SWMLWebhookResponse` — generated read-side wire type ('fabric' REST API, schema 'SWMLWebhookResponse').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -4322,7 +4318,7 @@ pub struct SWMLWebhookResponse {
     pub swml_webhook: Option<serde_json::Value>,
 }
 
-/// `SWMLWebhookUpdateRequest` — generated read-side wire type ('fabric' spec components/schemas 'SWMLWebhookUpdateRequest').
+/// `SWMLWebhookUpdateRequest` — generated read-side wire type ('fabric' REST API, schema 'SWMLWebhookUpdateRequest').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -4346,7 +4342,7 @@ pub struct SWMLWebhookUpdateRequest {
     pub status_callback_method: Option<serde_json::Value>,
 }
 
-/// `SayAction` — generated read-side wire type ('fabric' spec components/schemas 'SayAction').
+/// `SayAction` — generated read-side wire type ('fabric' REST API, schema 'SayAction').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -4356,7 +4352,7 @@ pub struct SayAction {
     pub say: Option<String>,
 }
 
-/// `Section` — generated read-side wire type ('fabric' spec components/schemas 'Section').
+/// `Section` — generated read-side wire type ('fabric' REST API, schema 'Section').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -4366,7 +4362,7 @@ pub struct Section {
     pub main: Option<serde_json::Value>,
 }
 
-/// `SendDigits` — generated read-side wire type ('fabric' spec components/schemas 'SendDigits').
+/// `SendDigits` — generated read-side wire type ('fabric' REST API, schema 'SendDigits').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -4376,7 +4372,7 @@ pub struct SendDigits {
     pub send_digits: Option<serde_json::Value>,
 }
 
-/// `SendFax` — generated read-side wire type ('fabric' spec components/schemas 'SendFax').
+/// `SendFax` — generated read-side wire type ('fabric' REST API, schema 'SendFax').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -4386,7 +4382,7 @@ pub struct SendFax {
     pub send_fax: Option<serde_json::Value>,
 }
 
-/// `SendSMS` — generated read-side wire type ('fabric' spec components/schemas 'SendSMS').
+/// `SendSMS` — generated read-side wire type ('fabric' REST API, schema 'SendSMS').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -4396,7 +4392,7 @@ pub struct SendSMS {
     pub send_sms: Option<serde_json::Value>,
 }
 
-/// `Set` — generated read-side wire type ('fabric' spec components/schemas 'Set').
+/// `Set` — generated read-side wire type ('fabric' REST API, schema 'Set').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -4406,7 +4402,7 @@ pub struct Set {
     pub set: Option<serde_json::Value>,
 }
 
-/// `SetGlobalDataAction` — generated read-side wire type ('fabric' spec components/schemas 'SetGlobalDataAction').
+/// `SetGlobalDataAction` — generated read-side wire type ('fabric' REST API, schema 'SetGlobalDataAction').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -4416,7 +4412,7 @@ pub struct SetGlobalDataAction {
     pub set_global_data: Option<serde_json::Value>,
 }
 
-/// `SetMetaDataAction` — generated read-side wire type ('fabric' spec components/schemas 'SetMetaDataAction').
+/// `SetMetaDataAction` — generated read-side wire type ('fabric' REST API, schema 'SetMetaDataAction').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -4426,7 +4422,7 @@ pub struct SetMetaDataAction {
     pub set_meta_data: Option<serde_json::Value>,
 }
 
-/// `SipEndpoint` — generated read-side wire type ('fabric' spec components/schemas 'SipEndpoint').
+/// `SipEndpoint` — generated read-side wire type ('fabric' REST API, schema 'SipEndpoint').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -4452,7 +4448,7 @@ pub struct SipEndpoint {
     pub calling_handler_resource_id: Option<serde_json::Value>,
 }
 
-/// `SipEndpointAddressListResponse` — generated read-side wire type ('fabric' spec components/schemas 'SipEndpointAddressListResponse').
+/// `SipEndpointAddressListResponse` — generated read-side wire type ('fabric' REST API, schema 'SipEndpointAddressListResponse').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -4464,7 +4460,7 @@ pub struct SipEndpointAddressListResponse {
     pub links: Option<serde_json::Value>,
 }
 
-/// `SipEndpointAddressPaginationResponse` — generated read-side wire type ('fabric' spec components/schemas 'SipEndpointAddressPaginationResponse').
+/// `SipEndpointAddressPaginationResponse` — generated read-side wire type ('fabric' REST API, schema 'SipEndpointAddressPaginationResponse').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -4480,7 +4476,7 @@ pub struct SipEndpointAddressPaginationResponse {
     pub prev: Option<String>,
 }
 
-/// `SipEndpointCreateRequest` — generated read-side wire type ('fabric' spec components/schemas 'SipEndpointCreateRequest').
+/// `SipEndpointCreateRequest` — generated read-side wire type ('fabric' REST API, schema 'SipEndpointCreateRequest').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -4506,7 +4502,7 @@ pub struct SipEndpointCreateRequest {
     pub calling_handler_resource_id: Option<serde_json::Value>,
 }
 
-/// `SipEndpointCreateStatusCode422` — generated read-side wire type ('fabric' spec components/schemas 'SipEndpointCreateStatusCode422').
+/// `SipEndpointCreateStatusCode422` — generated read-side wire type ('fabric' REST API, schema 'SipEndpointCreateStatusCode422').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -4516,7 +4512,7 @@ pub struct SipEndpointCreateStatusCode422 {
     pub errors: Option<serde_json::Value>,
 }
 
-/// `SipEndpointListResponse` — generated read-side wire type ('fabric' spec components/schemas 'SipEndpointListResponse').
+/// `SipEndpointListResponse` — generated read-side wire type ('fabric' REST API, schema 'SipEndpointListResponse').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -4528,7 +4524,7 @@ pub struct SipEndpointListResponse {
     pub links: Option<serde_json::Value>,
 }
 
-/// `SipEndpointPaginationResponse` — generated read-side wire type ('fabric' spec components/schemas 'SipEndpointPaginationResponse').
+/// `SipEndpointPaginationResponse` — generated read-side wire type ('fabric' REST API, schema 'SipEndpointPaginationResponse').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -4544,7 +4540,7 @@ pub struct SipEndpointPaginationResponse {
     pub prev: Option<String>,
 }
 
-/// `SipEndpointResponse` — generated read-side wire type ('fabric' spec components/schemas 'SipEndpointResponse').
+/// `SipEndpointResponse` — generated read-side wire type ('fabric' REST API, schema 'SipEndpointResponse').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -4566,7 +4562,7 @@ pub struct SipEndpointResponse {
     pub sip_endpoint: Option<serde_json::Value>,
 }
 
-/// `SipEndpointUpdateRequest` — generated read-side wire type ('fabric' spec components/schemas 'SipEndpointUpdateRequest').
+/// `SipEndpointUpdateRequest` — generated read-side wire type ('fabric' REST API, schema 'SipEndpointUpdateRequest').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -4590,7 +4586,7 @@ pub struct SipEndpointUpdateRequest {
     pub calling_handler_resource_id: Option<serde_json::Value>,
 }
 
-/// `SipEndpointUpdateStatusCode422` — generated read-side wire type ('fabric' spec components/schemas 'SipEndpointUpdateStatusCode422').
+/// `SipEndpointUpdateStatusCode422` — generated read-side wire type ('fabric' REST API, schema 'SipEndpointUpdateStatusCode422').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -4600,7 +4596,7 @@ pub struct SipEndpointUpdateStatusCode422 {
     pub errors: Option<serde_json::Value>,
 }
 
-/// `SipGateway` — generated read-side wire type ('fabric' spec components/schemas 'SipGateway').
+/// `SipGateway` — generated read-side wire type ('fabric' REST API, schema 'SipGateway').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -4620,7 +4616,7 @@ pub struct SipGateway {
     pub encryption: Option<serde_json::Value>,
 }
 
-/// `SipGatewayAddressListResponse` — generated read-side wire type ('fabric' spec components/schemas 'SipGatewayAddressListResponse').
+/// `SipGatewayAddressListResponse` — generated read-side wire type ('fabric' REST API, schema 'SipGatewayAddressListResponse').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -4632,7 +4628,7 @@ pub struct SipGatewayAddressListResponse {
     pub links: Option<serde_json::Value>,
 }
 
-/// `SipGatewayAddressPaginationResponse` — generated read-side wire type ('fabric' spec components/schemas 'SipGatewayAddressPaginationResponse').
+/// `SipGatewayAddressPaginationResponse` — generated read-side wire type ('fabric' REST API, schema 'SipGatewayAddressPaginationResponse').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -4648,7 +4644,7 @@ pub struct SipGatewayAddressPaginationResponse {
     pub prev: Option<String>,
 }
 
-/// `SipGatewayCreateStatusCode422` — generated read-side wire type ('fabric' spec components/schemas 'SipGatewayCreateStatusCode422').
+/// `SipGatewayCreateStatusCode422` — generated read-side wire type ('fabric' REST API, schema 'SipGatewayCreateStatusCode422').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -4658,7 +4654,7 @@ pub struct SipGatewayCreateStatusCode422 {
     pub errors: Option<serde_json::Value>,
 }
 
-/// `SipGatewayListResponse` — generated read-side wire type ('fabric' spec components/schemas 'SipGatewayListResponse').
+/// `SipGatewayListResponse` — generated read-side wire type ('fabric' REST API, schema 'SipGatewayListResponse').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -4670,7 +4666,7 @@ pub struct SipGatewayListResponse {
     pub links: Option<serde_json::Value>,
 }
 
-/// `SipGatewayPaginationResponse` — generated read-side wire type ('fabric' spec components/schemas 'SipGatewayPaginationResponse').
+/// `SipGatewayPaginationResponse` — generated read-side wire type ('fabric' REST API, schema 'SipGatewayPaginationResponse').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -4686,7 +4682,7 @@ pub struct SipGatewayPaginationResponse {
     pub prev: Option<String>,
 }
 
-/// `SipGatewayRequest` — generated read-side wire type ('fabric' spec components/schemas 'SipGatewayRequest').
+/// `SipGatewayRequest` — generated read-side wire type ('fabric' REST API, schema 'SipGatewayRequest').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -4704,7 +4700,7 @@ pub struct SipGatewayRequest {
     pub codecs: Option<serde_json::Value>,
 }
 
-/// `SipGatewayRequestUpdate` — generated read-side wire type ('fabric' spec components/schemas 'SipGatewayRequestUpdate').
+/// `SipGatewayRequestUpdate` — generated read-side wire type ('fabric' REST API, schema 'SipGatewayRequestUpdate').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -4722,7 +4718,7 @@ pub struct SipGatewayRequestUpdate {
     pub codecs: Option<serde_json::Value>,
 }
 
-/// `SipGatewayResponse` — generated read-side wire type ('fabric' spec components/schemas 'SipGatewayResponse').
+/// `SipGatewayResponse` — generated read-side wire type ('fabric' REST API, schema 'SipGatewayResponse').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -4744,7 +4740,7 @@ pub struct SipGatewayResponse {
     pub sip_gateway: Option<serde_json::Value>,
 }
 
-/// `Sleep` — generated read-side wire type ('fabric' spec components/schemas 'Sleep').
+/// `Sleep` — generated read-side wire type ('fabric' REST API, schema 'Sleep').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -4754,7 +4750,7 @@ pub struct Sleep {
     pub sleep: Option<serde_json::Value>,
 }
 
-/// `StartAction` — generated read-side wire type ('fabric' spec components/schemas 'StartAction').
+/// `StartAction` — generated read-side wire type ('fabric' REST API, schema 'StartAction').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -4764,7 +4760,7 @@ pub struct StartAction {
     pub start: Option<serde_json::Value>,
 }
 
-/// `StartUpHookSWAIGFunction` — generated read-side wire type ('fabric' spec components/schemas 'StartUpHookSWAIGFunction').
+/// `StartUpHookSWAIGFunction` — generated read-side wire type ('fabric' REST API, schema 'StartUpHookSWAIGFunction').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -4802,7 +4798,7 @@ pub struct StartUpHookSWAIGFunction {
     pub function: Option<serde_json::Value>,
 }
 
-/// `StopAction` — generated read-side wire type ('fabric' spec components/schemas 'StopAction').
+/// `StopAction` — generated read-side wire type ('fabric' REST API, schema 'StopAction').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -4812,7 +4808,7 @@ pub struct StopAction {
     pub stop: Option<serde_json::Value>,
 }
 
-/// `StopDenoise` — generated read-side wire type ('fabric' spec components/schemas 'StopDenoise').
+/// `StopDenoise` — generated read-side wire type ('fabric' REST API, schema 'StopDenoise').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -4822,7 +4818,7 @@ pub struct StopDenoise {
     pub stop_denoise: Option<serde_json::Value>,
 }
 
-/// `StopPlaybackBGAction` — generated read-side wire type ('fabric' spec components/schemas 'StopPlaybackBGAction').
+/// `StopPlaybackBGAction` — generated read-side wire type ('fabric' REST API, schema 'StopPlaybackBGAction').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -4832,7 +4828,7 @@ pub struct StopPlaybackBGAction {
     pub stop_playback_bg: Option<serde_json::Value>,
 }
 
-/// `StopRecordCall` — generated read-side wire type ('fabric' spec components/schemas 'StopRecordCall').
+/// `StopRecordCall` — generated read-side wire type ('fabric' REST API, schema 'StopRecordCall').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -4842,7 +4838,7 @@ pub struct StopRecordCall {
     pub stop_record_call: Option<serde_json::Value>,
 }
 
-/// `StopTap` — generated read-side wire type ('fabric' spec components/schemas 'StopTap').
+/// `StopTap` — generated read-side wire type ('fabric' REST API, schema 'StopTap').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -4852,7 +4848,7 @@ pub struct StopTap {
     pub stop_tap: Option<serde_json::Value>,
 }
 
-/// `StringProperty` — generated read-side wire type ('fabric' spec components/schemas 'StringProperty').
+/// `StringProperty` — generated read-side wire type ('fabric' REST API, schema 'StringProperty').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -4874,7 +4870,7 @@ pub struct StringProperty {
     pub format: Option<serde_json::Value>,
 }
 
-/// `Subscriber` — generated read-side wire type ('fabric' spec components/schemas 'Subscriber').
+/// `Subscriber` — generated read-side wire type ('fabric' REST API, schema 'Subscriber').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -4902,7 +4898,7 @@ pub struct Subscriber {
     pub company_name: Option<String>,
 }
 
-/// `SubscriberAddressPaginationResponse` — generated read-side wire type ('fabric' spec components/schemas 'SubscriberAddressPaginationResponse').
+/// `SubscriberAddressPaginationResponse` — generated read-side wire type ('fabric' REST API, schema 'SubscriberAddressPaginationResponse').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -4918,7 +4914,7 @@ pub struct SubscriberAddressPaginationResponse {
     pub prev: Option<String>,
 }
 
-/// `SubscriberAddressesResponse` — generated read-side wire type ('fabric' spec components/schemas 'SubscriberAddressesResponse').
+/// `SubscriberAddressesResponse` — generated read-side wire type ('fabric' REST API, schema 'SubscriberAddressesResponse').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -4930,7 +4926,7 @@ pub struct SubscriberAddressesResponse {
     pub links: Option<serde_json::Value>,
 }
 
-/// `SubscriberCreateStatusCode422` — generated read-side wire type ('fabric' spec components/schemas 'SubscriberCreateStatusCode422').
+/// `SubscriberCreateStatusCode422` — generated read-side wire type ('fabric' REST API, schema 'SubscriberCreateStatusCode422').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -4940,7 +4936,7 @@ pub struct SubscriberCreateStatusCode422 {
     pub errors: Option<serde_json::Value>,
 }
 
-/// `SubscriberGuestTokenCreateRequest` — generated read-side wire type ('fabric' spec components/schemas 'SubscriberGuestTokenCreateRequest').
+/// `SubscriberGuestTokenCreateRequest` — generated read-side wire type ('fabric' REST API, schema 'SubscriberGuestTokenCreateRequest').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -4952,7 +4948,7 @@ pub struct SubscriberGuestTokenCreateRequest {
     pub expire_at: Option<i64>,
 }
 
-/// `SubscriberGuestTokenCreateResponse` — generated read-side wire type ('fabric' spec components/schemas 'SubscriberGuestTokenCreateResponse').
+/// `SubscriberGuestTokenCreateResponse` — generated read-side wire type ('fabric' REST API, schema 'SubscriberGuestTokenCreateResponse').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -4964,7 +4960,7 @@ pub struct SubscriberGuestTokenCreateResponse {
     pub refresh_token: Option<serde_json::Value>,
 }
 
-/// `SubscriberInviteTokenCreateRequest` — generated read-side wire type ('fabric' spec components/schemas 'SubscriberInviteTokenCreateRequest').
+/// `SubscriberInviteTokenCreateRequest` — generated read-side wire type ('fabric' REST API, schema 'SubscriberInviteTokenCreateRequest').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -4976,7 +4972,7 @@ pub struct SubscriberInviteTokenCreateRequest {
     pub expires_at: Option<i64>,
 }
 
-/// `SubscriberInviteTokenCreateResponse` — generated read-side wire type ('fabric' spec components/schemas 'SubscriberInviteTokenCreateResponse').
+/// `SubscriberInviteTokenCreateResponse` — generated read-side wire type ('fabric' REST API, schema 'SubscriberInviteTokenCreateResponse').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -4986,7 +4982,7 @@ pub struct SubscriberInviteTokenCreateResponse {
     pub token: Option<serde_json::Value>,
 }
 
-/// `SubscriberListResponse` — generated read-side wire type ('fabric' spec components/schemas 'SubscriberListResponse').
+/// `SubscriberListResponse` — generated read-side wire type ('fabric' REST API, schema 'SubscriberListResponse').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -4998,7 +4994,7 @@ pub struct SubscriberListResponse {
     pub links: Option<serde_json::Value>,
 }
 
-/// `SubscriberPaginationResponse` — generated read-side wire type ('fabric' spec components/schemas 'SubscriberPaginationResponse').
+/// `SubscriberPaginationResponse` — generated read-side wire type ('fabric' REST API, schema 'SubscriberPaginationResponse').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -5014,7 +5010,7 @@ pub struct SubscriberPaginationResponse {
     pub prev: Option<String>,
 }
 
-/// `SubscriberRefreshTokenRequest` — generated read-side wire type ('fabric' spec components/schemas 'SubscriberRefreshTokenRequest').
+/// `SubscriberRefreshTokenRequest` — generated read-side wire type ('fabric' REST API, schema 'SubscriberRefreshTokenRequest').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -5024,7 +5020,7 @@ pub struct SubscriberRefreshTokenRequest {
     pub refresh_token: Option<serde_json::Value>,
 }
 
-/// `SubscriberRefreshTokenResponse` — generated read-side wire type ('fabric' spec components/schemas 'SubscriberRefreshTokenResponse').
+/// `SubscriberRefreshTokenResponse` — generated read-side wire type ('fabric' REST API, schema 'SubscriberRefreshTokenResponse').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -5036,7 +5032,7 @@ pub struct SubscriberRefreshTokenResponse {
     pub refresh_token: Option<serde_json::Value>,
 }
 
-/// `SubscriberRequest` — generated read-side wire type ('fabric' spec components/schemas 'SubscriberRequest').
+/// `SubscriberRequest` — generated read-side wire type ('fabric' REST API, schema 'SubscriberRequest').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -5064,7 +5060,7 @@ pub struct SubscriberRequest {
     pub company_name: Option<String>,
 }
 
-/// `SubscriberResponse` — generated read-side wire type ('fabric' spec components/schemas 'SubscriberResponse').
+/// `SubscriberResponse` — generated read-side wire type ('fabric' REST API, schema 'SubscriberResponse').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -5086,7 +5082,7 @@ pub struct SubscriberResponse {
     pub subscriber: Option<serde_json::Value>,
 }
 
-/// `SubscriberSIPEndpoint` — generated read-side wire type ('fabric' spec components/schemas 'SubscriberSIPEndpoint').
+/// `SubscriberSIPEndpoint` — generated read-side wire type ('fabric' REST API, schema 'SubscriberSIPEndpoint').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -5108,7 +5104,7 @@ pub struct SubscriberSIPEndpoint {
     pub encryption: Option<serde_json::Value>,
 }
 
-/// `SubscriberSipEndpointListResponse` — generated read-side wire type ('fabric' spec components/schemas 'SubscriberSipEndpointListResponse').
+/// `SubscriberSipEndpointListResponse` — generated read-side wire type ('fabric' REST API, schema 'SubscriberSipEndpointListResponse').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -5120,7 +5116,7 @@ pub struct SubscriberSipEndpointListResponse {
     pub links: Option<serde_json::Value>,
 }
 
-/// `SubscriberSipEndpointPaginationResponse` — generated read-side wire type ('fabric' spec components/schemas 'SubscriberSipEndpointPaginationResponse').
+/// `SubscriberSipEndpointPaginationResponse` — generated read-side wire type ('fabric' REST API, schema 'SubscriberSipEndpointPaginationResponse').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -5136,7 +5132,7 @@ pub struct SubscriberSipEndpointPaginationResponse {
     pub prev: Option<String>,
 }
 
-/// `SubscriberSipEndpointRequest` — generated read-side wire type ('fabric' spec components/schemas 'SubscriberSipEndpointRequest').
+/// `SubscriberSipEndpointRequest` — generated read-side wire type ('fabric' REST API, schema 'SubscriberSipEndpointRequest').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -5158,7 +5154,7 @@ pub struct SubscriberSipEndpointRequest {
     pub encryption: Option<serde_json::Value>,
 }
 
-/// `SubscriberSipEndpointRequestUpdate` — generated read-side wire type ('fabric' spec components/schemas 'SubscriberSipEndpointRequestUpdate').
+/// `SubscriberSipEndpointRequestUpdate` — generated read-side wire type ('fabric' REST API, schema 'SubscriberSipEndpointRequestUpdate').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -5180,7 +5176,7 @@ pub struct SubscriberSipEndpointRequestUpdate {
     pub encryption: Option<serde_json::Value>,
 }
 
-/// `SubscriberTokenRequest` — generated read-side wire type ('fabric' spec components/schemas 'SubscriberTokenRequest').
+/// `SubscriberTokenRequest` — generated read-side wire type ('fabric' REST API, schema 'SubscriberTokenRequest').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -5212,7 +5208,7 @@ pub struct SubscriberTokenRequest {
     pub company_name: Option<String>,
 }
 
-/// `SubscriberTokenResponse` — generated read-side wire type ('fabric' spec components/schemas 'SubscriberTokenResponse').
+/// `SubscriberTokenResponse` — generated read-side wire type ('fabric' REST API, schema 'SubscriberTokenResponse').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -5226,7 +5222,7 @@ pub struct SubscriberTokenResponse {
     pub refresh_token: Option<serde_json::Value>,
 }
 
-/// `SubscriberTokenStatusCode422` — generated read-side wire type ('fabric' spec components/schemas 'SubscriberTokenStatusCode422').
+/// `SubscriberTokenStatusCode422` — generated read-side wire type ('fabric' REST API, schema 'SubscriberTokenStatusCode422').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -5236,7 +5232,7 @@ pub struct SubscriberTokenStatusCode422 {
     pub errors: Option<serde_json::Value>,
 }
 
-/// `SubscriberUpdateStatusCode422` — generated read-side wire type ('fabric' spec components/schemas 'SubscriberUpdateStatusCode422').
+/// `SubscriberUpdateStatusCode422` — generated read-side wire type ('fabric' REST API, schema 'SubscriberUpdateStatusCode422').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -5246,7 +5242,7 @@ pub struct SubscriberUpdateStatusCode422 {
     pub errors: Option<serde_json::Value>,
 }
 
-/// `SummarizeAction` — generated read-side wire type ('fabric' spec components/schemas 'SummarizeAction').
+/// `SummarizeAction` — generated read-side wire type ('fabric' REST API, schema 'SummarizeAction').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -5256,7 +5252,7 @@ pub struct SummarizeAction {
     pub summarize: Option<serde_json::Value>,
 }
 
-/// `SummarizeConversationSWAIGFunction` — generated read-side wire type ('fabric' spec components/schemas 'SummarizeConversationSWAIGFunction').
+/// `SummarizeConversationSWAIGFunction` — generated read-side wire type ('fabric' REST API, schema 'SummarizeConversationSWAIGFunction').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -5294,7 +5290,7 @@ pub struct SummarizeConversationSWAIGFunction {
     pub function: Option<serde_json::Value>,
 }
 
-/// `Switch` — generated read-side wire type ('fabric' spec components/schemas 'Switch').
+/// `Switch` — generated read-side wire type ('fabric' REST API, schema 'Switch').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -5304,7 +5300,7 @@ pub struct Switch {
     pub switch: Option<serde_json::Value>,
 }
 
-/// `SwmlScript` — generated read-side wire type ('fabric' spec components/schemas 'SwmlScript').
+/// `SwmlScript` — generated read-side wire type ('fabric' REST API, schema 'SwmlScript').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -5324,7 +5320,7 @@ pub struct SwmlScript {
     pub status_callback_method: Option<serde_json::Value>,
 }
 
-/// `SwmlScriptCreateRequest` — generated read-side wire type ('fabric' spec components/schemas 'SwmlScriptCreateRequest').
+/// `SwmlScriptCreateRequest` — generated read-side wire type ('fabric' REST API, schema 'SwmlScriptCreateRequest').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -5338,7 +5334,7 @@ pub struct SwmlScriptCreateRequest {
     pub status_callback_url: Option<String>,
 }
 
-/// `SwmlScriptCreateStatusCode422` — generated read-side wire type ('fabric' spec components/schemas 'SwmlScriptCreateStatusCode422').
+/// `SwmlScriptCreateStatusCode422` — generated read-side wire type ('fabric' REST API, schema 'SwmlScriptCreateStatusCode422').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -5348,7 +5344,7 @@ pub struct SwmlScriptCreateStatusCode422 {
     pub errors: Option<serde_json::Value>,
 }
 
-/// `SwmlScriptListResponse` — generated read-side wire type ('fabric' spec components/schemas 'SwmlScriptListResponse').
+/// `SwmlScriptListResponse` — generated read-side wire type ('fabric' REST API, schema 'SwmlScriptListResponse').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -5360,7 +5356,7 @@ pub struct SwmlScriptListResponse {
     pub links: Option<serde_json::Value>,
 }
 
-/// `SwmlScriptPaginationresponse` — generated read-side wire type ('fabric' spec components/schemas 'SwmlScriptPaginationresponse').
+/// `SwmlScriptPaginationresponse` — generated read-side wire type ('fabric' REST API, schema 'SwmlScriptPaginationresponse').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -5376,7 +5372,7 @@ pub struct SwmlScriptPaginationresponse {
     pub prev: Option<String>,
 }
 
-/// `SwmlScriptResponse` — generated read-side wire type ('fabric' spec components/schemas 'SwmlScriptResponse').
+/// `SwmlScriptResponse` — generated read-side wire type ('fabric' REST API, schema 'SwmlScriptResponse').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -5398,7 +5394,7 @@ pub struct SwmlScriptResponse {
     pub swml_script: Option<serde_json::Value>,
 }
 
-/// `SwmlScriptUpdateRequest` — generated read-side wire type ('fabric' spec components/schemas 'SwmlScriptUpdateRequest').
+/// `SwmlScriptUpdateRequest` — generated read-side wire type ('fabric' REST API, schema 'SwmlScriptUpdateRequest').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -5412,7 +5408,7 @@ pub struct SwmlScriptUpdateRequest {
     pub status_callback_url: Option<String>,
 }
 
-/// `SwmlScriptUpdateStatusCode422` — generated read-side wire type ('fabric' spec components/schemas 'SwmlScriptUpdateStatusCode422').
+/// `SwmlScriptUpdateStatusCode422` — generated read-side wire type ('fabric' REST API, schema 'SwmlScriptUpdateStatusCode422').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -5422,7 +5418,7 @@ pub struct SwmlScriptUpdateStatusCode422 {
     pub errors: Option<serde_json::Value>,
 }
 
-/// `SwmlWebhookCreateStatusCode422` — generated read-side wire type ('fabric' spec components/schemas 'SwmlWebhookCreateStatusCode422').
+/// `SwmlWebhookCreateStatusCode422` — generated read-side wire type ('fabric' REST API, schema 'SwmlWebhookCreateStatusCode422').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -5432,7 +5428,7 @@ pub struct SwmlWebhookCreateStatusCode422 {
     pub errors: Option<serde_json::Value>,
 }
 
-/// `SwmlWebhookUpdateStatusCode422` — generated read-side wire type ('fabric' spec components/schemas 'SwmlWebhookUpdateStatusCode422').
+/// `SwmlWebhookUpdateStatusCode422` — generated read-side wire type ('fabric' REST API, schema 'SwmlWebhookUpdateStatusCode422').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -5442,7 +5438,7 @@ pub struct SwmlWebhookUpdateStatusCode422 {
     pub errors: Option<serde_json::Value>,
 }
 
-/// `Tap` — generated read-side wire type ('fabric' spec components/schemas 'Tap').
+/// `Tap` — generated read-side wire type ('fabric' REST API, schema 'Tap').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -5452,7 +5448,7 @@ pub struct Tap {
     pub tap: Option<serde_json::Value>,
 }
 
-/// `ToggleFunctionsAction` — generated read-side wire type ('fabric' spec components/schemas 'ToggleFunctionsAction').
+/// `ToggleFunctionsAction` — generated read-side wire type ('fabric' REST API, schema 'ToggleFunctionsAction').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -5462,7 +5458,7 @@ pub struct ToggleFunctionsAction {
     pub toggle_functions: Option<serde_json::Value>,
 }
 
-/// `TranscribeStartAction` — generated read-side wire type ('fabric' spec components/schemas 'TranscribeStartAction').
+/// `TranscribeStartAction` — generated read-side wire type ('fabric' REST API, schema 'TranscribeStartAction').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -5472,7 +5468,7 @@ pub struct TranscribeStartAction {
     pub start: Option<serde_json::Value>,
 }
 
-/// `TranscribeSummarizeAction` — generated read-side wire type ('fabric' spec components/schemas 'TranscribeSummarizeAction').
+/// `TranscribeSummarizeAction` — generated read-side wire type ('fabric' REST API, schema 'TranscribeSummarizeAction').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -5482,7 +5478,7 @@ pub struct TranscribeSummarizeAction {
     pub summarize: Option<serde_json::Value>,
 }
 
-/// `Transfer` — generated read-side wire type ('fabric' spec components/schemas 'Transfer').
+/// `Transfer` — generated read-side wire type ('fabric' REST API, schema 'Transfer').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -5492,7 +5488,7 @@ pub struct Transfer {
     pub transfer: Option<serde_json::Value>,
 }
 
-/// `Types_StatusCodes_RestApiErrorItem` — generated read-side wire type ('fabric' spec components/schemas 'Types.StatusCodes.RestApiErrorItem').
+/// `Types_StatusCodes_RestApiErrorItem` — generated read-side wire type ('fabric' REST API, schema 'Types.StatusCodes.RestApiErrorItem').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -5510,7 +5506,7 @@ pub struct Types_StatusCodes_RestApiErrorItem {
     pub url: Option<String>,
 }
 
-/// `Types_StatusCodes_StatusCode401` — generated read-side wire type ('fabric' spec components/schemas 'Types.StatusCodes.StatusCode401').
+/// `Types_StatusCodes_StatusCode401` — generated read-side wire type ('fabric' REST API, schema 'Types.StatusCodes.StatusCode401').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -5520,7 +5516,7 @@ pub struct Types_StatusCodes_StatusCode401 {
     pub error: Option<serde_json::Value>,
 }
 
-/// `Types_StatusCodes_StatusCode403` — generated read-side wire type ('fabric' spec components/schemas 'Types.StatusCodes.StatusCode403').
+/// `Types_StatusCodes_StatusCode403` — generated read-side wire type ('fabric' REST API, schema 'Types.StatusCodes.StatusCode403').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -5530,7 +5526,7 @@ pub struct Types_StatusCodes_StatusCode403 {
     pub error: Option<serde_json::Value>,
 }
 
-/// `Types_StatusCodes_StatusCode404` — generated read-side wire type ('fabric' spec components/schemas 'Types.StatusCodes.StatusCode404').
+/// `Types_StatusCodes_StatusCode404` — generated read-side wire type ('fabric' REST API, schema 'Types.StatusCodes.StatusCode404').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -5540,7 +5536,7 @@ pub struct Types_StatusCodes_StatusCode404 {
     pub error: Option<serde_json::Value>,
 }
 
-/// `Types_StatusCodes_StatusCode422` — generated read-side wire type ('fabric' spec components/schemas 'Types.StatusCodes.StatusCode422').
+/// `Types_StatusCodes_StatusCode422` — generated read-side wire type ('fabric' REST API, schema 'Types.StatusCodes.StatusCode422').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -5550,7 +5546,7 @@ pub struct Types_StatusCodes_StatusCode422 {
     pub errors: Option<serde_json::Value>,
 }
 
-/// `Types_StatusCodes_StatusCode500` — generated read-side wire type ('fabric' spec components/schemas 'Types.StatusCodes.StatusCode500').
+/// `Types_StatusCodes_StatusCode500` — generated read-side wire type ('fabric' REST API, schema 'Types.StatusCodes.StatusCode500').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -5560,7 +5556,7 @@ pub struct Types_StatusCodes_StatusCode500 {
     pub error: Option<serde_json::Value>,
 }
 
-/// `Unset` — generated read-side wire type ('fabric' spec components/schemas 'Unset').
+/// `Unset` — generated read-side wire type ('fabric' REST API, schema 'Unset').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -5570,7 +5566,7 @@ pub struct Unset {
     pub unset: Option<serde_json::Value>,
 }
 
-/// `UnsetGlobalDataAction` — generated read-side wire type ('fabric' spec components/schemas 'UnsetGlobalDataAction').
+/// `UnsetGlobalDataAction` — generated read-side wire type ('fabric' REST API, schema 'UnsetGlobalDataAction').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -5580,7 +5576,7 @@ pub struct UnsetGlobalDataAction {
     pub unset_global_data: Option<serde_json::Value>,
 }
 
-/// `UnsetMetaDataAction` — generated read-side wire type ('fabric' spec components/schemas 'UnsetMetaDataAction').
+/// `UnsetMetaDataAction` — generated read-side wire type ('fabric' REST API, schema 'UnsetMetaDataAction').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -5590,7 +5586,7 @@ pub struct UnsetMetaDataAction {
     pub unset_meta_data: Option<serde_json::Value>,
 }
 
-/// `UserEvent` — generated read-side wire type ('fabric' spec components/schemas 'UserEvent').
+/// `UserEvent` — generated read-side wire type ('fabric' REST API, schema 'UserEvent').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -5600,7 +5596,7 @@ pub struct UserEvent {
     pub user_event: Option<serde_json::Value>,
 }
 
-/// `UserInputAction` — generated read-side wire type ('fabric' spec components/schemas 'UserInputAction').
+/// `UserInputAction` — generated read-side wire type ('fabric' REST API, schema 'UserInputAction').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -5610,7 +5606,7 @@ pub struct UserInputAction {
     pub user_input: Option<String>,
 }
 
-/// `UserSWAIGFunction` — generated read-side wire type ('fabric' spec components/schemas 'UserSWAIGFunction').
+/// `UserSWAIGFunction` — generated read-side wire type ('fabric' REST API, schema 'UserSWAIGFunction').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -5648,7 +5644,7 @@ pub struct UserSWAIGFunction {
     pub function: Option<String>,
 }
 
-/// `VideoChannel` — generated read-side wire type ('fabric' spec components/schemas 'VideoChannel').
+/// `VideoChannel` — generated read-side wire type ('fabric' REST API, schema 'VideoChannel').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -5658,7 +5654,7 @@ pub struct VideoChannel {
     pub video: Option<String>,
 }
 
-/// `Webhook` — generated read-side wire type ('fabric' spec components/schemas 'Webhook').
+/// `Webhook` — generated read-side wire type ('fabric' REST API, schema 'Webhook').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.

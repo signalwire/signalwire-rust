@@ -64,8 +64,7 @@ pub struct AgentOptions {
     /// When `None`, the agent falls back to the
     /// `SIGNALWIRE_SIGNING_KEY` environment variable. When neither is
     /// set, the agent logs a prominent warning at startup and accepts
-    /// unsigned requests — see Python parity (`webhook_validator.py`,
-    /// reference at `signalwire-python/signalwire/signalwire/core/security/`).
+    /// unsigned requests — see the webhook validator.
     pub signing_key: Option<String>,
 }
 
@@ -211,11 +210,9 @@ pub struct AgentBase {
     // ── Params / data ───────────────────────────────────────────────────
     params: Map<String, Value>,
     global_data: Map<String, Value>,
-    /// SIP usernames routed to this agent. Python parity
-    /// (`AgentBase._sip_usernames`): a case-folded, deduplicated set —
+    /// SIP usernames routed to this agent: a case-folded, deduplicated set —
     /// `register_sip_username` lowercases each name before inserting. A
-    /// `BTreeSet` keeps `sip_usernames()` sorted (Python reads
-    /// `sorted(self._sip_usernames)`).
+    /// `BTreeSet` keeps `sip_usernames()` sorted.
     sip_usernames: std::collections::BTreeSet<String>,
 
     // ── Native functions / fillers / debug ───────────────────────────────
@@ -464,23 +461,16 @@ impl AgentBase {
     }
 
     /// Mint a per-call SWAIG-function token via the agent's `SessionManager`.
-    ///
-    /// Python parity: `state_mixin.StateMixin._create_tool_token` —
-    /// delegates to `SessionManager::create_token` and returns `String::new()`
-    /// on failure (Python catches all exceptions and returns "").
     pub fn create_tool_token(&self, tool_name: &str, call_id: &str) -> String {
         self.session_manager.create_token(tool_name, call_id)
     }
 
     /// Validate a per-call SWAIG-function token. Returns `false` when the
     /// function is not registered or when the `SessionManager` rejects the
-    /// token.
-    ///
-    /// Python parity: `state_mixin.StateMixin.validate_tool_token` —
-    /// rejects unknown function names up-front. Rust's
+    /// token. Rust's
     /// `SessionManager::validate_token` returns `bool` (no panics on bad
     /// input — see `security/session_manager.rs`), so no try/catch is
-    /// required for parity.
+    /// required.
     pub fn validate_tool_token(&self, function_name: &str, token: &str, call_id: &str) -> bool {
         if !self.service.has_function(function_name) {
             return false;
@@ -610,10 +600,7 @@ impl AgentBase {
     }
 
     /// Read-only snapshot of the agent's POM as a typed
-    /// [`PromptObjectModel`].
-    ///
-    /// Python parity: `agent.pom` instance attribute (`agent_base.py`
-    /// line 209). Returns `None` when `use_pom` is `false` (mirroring
+    /// [`PromptObjectModel`]. Returns `None` when `use_pom` is `false` (mirroring
     /// Python's `self.pom = None`); otherwise returns a freshly built
     /// [`PromptObjectModel`] populated from the agent's stored
     /// section list.
@@ -777,10 +764,7 @@ impl AgentBase {
         self
     }
 
-    /// Add a structured pattern hint. Python parity:
-    /// `add_pattern_hint(hint, pattern, replace, ignore_case)` appends a
-    /// `{hint, pattern, replace, ignore_case}` object to the AI `hints` list
-    /// (`ai_config_mixin`). Rust's builder idiom seeds the entry from `pattern`
+    /// Add a structured pattern hint. Rust's builder idiom seeds the entry from `pattern`
     /// (used as both the initial `hint` and `pattern`, `replace` defaults to
     /// the pattern, `ignore_case` false); refine with `set_pattern_hint_hint`
     /// / `set_pattern_hint_replace` / `set_pattern_hint_ignore_case`, which
@@ -797,8 +781,7 @@ impl AgentBase {
     }
 
     /// Set the `hint` (the text to match) on the most-recently-added pattern
-    /// hint. No-op if none has been added. Python parity: the `hint` field of
-    /// the pattern-hint object.
+    /// hint. No-op if none has been added.
     pub fn set_pattern_hint_hint(&mut self, hint: &str) -> &mut Self {
         if let Some(obj) = self.pattern_hints.last_mut().and_then(Value::as_object_mut) {
             obj.insert("hint".to_string(), json!(hint));
@@ -807,8 +790,7 @@ impl AgentBase {
     }
 
     /// Set the `replace` (replacement text) on the most-recently-added
-    /// pattern hint. No-op if none has been added. Python parity: the
-    /// `replace` field of the pattern-hint object.
+    /// pattern hint. No-op if none has been added.
     pub fn set_pattern_hint_replace(&mut self, replace: &str) -> &mut Self {
         if let Some(obj) = self.pattern_hints.last_mut().and_then(Value::as_object_mut) {
             obj.insert("replace".to_string(), json!(replace));
@@ -817,8 +799,7 @@ impl AgentBase {
     }
 
     /// Set the `ignore_case` flag on the most-recently-added pattern hint.
-    /// No-op if none has been added. Python parity: the `ignore_case` field
-    /// of the pattern-hint object.
+    /// No-op if none has been added.
     pub fn set_pattern_hint_ignore_case(&mut self, ignore_case: bool) -> &mut Self {
         if let Some(obj) = self.pattern_hints.last_mut().and_then(Value::as_object_mut) {
             obj.insert("ignore_case".to_string(), json!(ignore_case));
@@ -826,8 +807,7 @@ impl AgentBase {
         self
     }
 
-    /// Add a language configuration. Python parity: `add_language(name, code,
-    /// voice, speech_fillers, function_fillers, engine, model, params)`. Rust's
+    /// Add a language configuration. Rust's
     /// builder idiom takes the core three args here and attaches the optional
     /// `engine` / `model` / `speech_fillers` / `function_fillers` / `params`
     /// via the fluent `set_language_*` setters (or the combined
@@ -858,8 +838,7 @@ impl AgentBase {
     }
 
     /// Set the TTS `engine` on the most-recently-added language. No-op if none
-    /// has been added. Python parity: the `engine` field carried into the
-    /// SWML `ai.languages` entry.
+    /// has been added.
     pub fn set_language_engine(&mut self, engine: &str) -> &mut Self {
         if let Some(obj) = self.languages.last_mut().and_then(Value::as_object_mut) {
             obj.insert("engine".to_string(), json!(engine));
@@ -868,8 +847,7 @@ impl AgentBase {
     }
 
     /// Set the TTS `model` on the most-recently-added language. No-op if none
-    /// has been added. Python parity: the `model` field carried into the SWML
-    /// `ai.languages` entry.
+    /// has been added.
     pub fn set_language_model(&mut self, model: &str) -> &mut Self {
         if let Some(obj) = self.languages.last_mut().and_then(Value::as_object_mut) {
             obj.insert("model".to_string(), json!(model));
@@ -877,8 +855,8 @@ impl AgentBase {
         self
     }
 
-    /// Attach filler phrases to the most-recently-added language. Python
-    /// parity (`add_language` fillers handling): if both `speech_fillers` and
+    /// Attach filler phrases to the most-recently-added language: if both
+    /// `speech_fillers` and
     /// `function_fillers` are given they are emitted as separate keys;
     /// if only one is given it goes to the deprecated combined `fillers` key.
     /// No-op if no language has been added.
@@ -907,7 +885,7 @@ impl AgentBase {
     /// engine-specific tuning (voice stability/similarity, model knobs,
     /// etc.) can be attached after the language entry was created.
     ///
-    /// Behavior, matching Python:
+    /// Behavior:
     ///   - If `params` is a non-empty JSON object, store it under the
     ///     `params` key on the matching language entry (replacing any
     ///     prior value).
@@ -916,7 +894,6 @@ impl AgentBase {
     ///   - If no language with the given code exists, this is a no-op.
     ///   - Returns `&mut Self` for chaining.
     ///
-    /// Python parity: the per-language params are emitted as the language
     /// object's `params` key in SWML and use `snake_case` wire shape.
     pub fn set_language_params(&mut self, code: &str, params: Value) -> &mut Self {
         for language in &mut self.languages {
@@ -964,7 +941,7 @@ impl AgentBase {
     /// runs in code-switching mode and the agent answers in whatever language
     /// the caller actually spoke. Mutually exclusive with [`set_languages`] —
     /// if both are set the server uses `multilingual` and ignores `languages`.
-    /// Parity with Python's `AIConfigMixin.set_multilingual`.
+    ///
     pub fn set_multilingual(&mut self, config: Value) -> &mut Self {
         if config.is_object() {
             self.multilingual = Some(config);
@@ -1025,9 +1002,7 @@ impl AgentBase {
         self
     }
 
-    /// The accumulated global-data map, as a JSON object. Python parity:
-    /// reading `AgentBase._global_data` (the merged result of
-    /// `set_global_data` / `update_global_data`).
+    /// The accumulated global-data map, as a JSON object.
     #[must_use]
     pub fn get_global_data(&self) -> Value {
         Value::Object(self.global_data.clone())
@@ -1444,15 +1419,14 @@ impl AgentBase {
         self
     }
 
-    /// The registered SIP usernames, lowercased and sorted. Python parity:
-    /// `sorted(self._sip_usernames)`.
+    /// The registered SIP usernames, lowercased and sorted.
     #[must_use]
     pub fn sip_usernames(&self) -> Vec<String> {
         self.sip_usernames.iter().cloned().collect()
     }
 
     /// Automatically register common SIP usernames derived from this agent's
-    /// name and route. Python parity: `AgentBase.auto_map_sip_usernames`.
+    /// name and route.
     pub fn auto_map_sip_usernames(&mut self) -> &mut Self {
         let clean = |s: &str| -> String {
             s.to_lowercase()
@@ -1486,15 +1460,14 @@ impl AgentBase {
     //  Naming / URL helpers (Python AgentBase parity)
     // ══════════════════════════════════════════════════════════════════════
 
-    /// Get the agent name. Python parity: `AgentBase.get_name`.
+    /// Get the agent name.
     #[must_use]
     pub fn get_name(&self) -> String {
         self.service.name().to_string()
     }
 
     /// Get the full URL for this agent's endpoint (host, port, route), with
-    /// optional embedded basic-auth credentials. Python parity:
-    /// `AgentBase.get_full_url(include_auth=False)`.
+    /// optional embedded basic-auth credentials.
     ///
     /// Prefers the manual proxy-URL override when set; otherwise composes from
     /// the service host/port/route.
@@ -1522,14 +1495,13 @@ impl AgentBase {
         base
     }
 
-    /// Override the default SWAIG `web_hook_url`. Python parity:
-    /// `AgentBase.set_web_hook_url`.
+    /// Override the default SWAIG `web_hook_url`.
     pub fn set_web_hook_url(&mut self, url: &str) -> &mut Self {
         self.web_hook_url_override = Some(url.to_string());
         self
     }
 
-    /// Configure the `answer` verb. Python parity: `AgentBase.add_answer_verb`.
+    /// Configure the `answer` verb.
     pub fn add_answer_verb(&mut self, config: Option<Value>) -> &mut Self {
         self.answer_config = match config {
             Some(Value::Object(m)) => m,
@@ -1543,7 +1515,6 @@ impl AgentBase {
     // ══════════════════════════════════════════════════════════════════════
 
     /// Add an external MCP server for tool discovery and invocation.
-    /// Python parity: `AIConfigMixin.add_mcp_server`.
     pub fn add_mcp_server(
         &mut self,
         url: &str,
@@ -1570,8 +1541,7 @@ impl AgentBase {
         self
     }
 
-    /// Expose this agent's tools as an MCP server endpoint. Python parity:
-    /// `AIConfigMixin.enable_mcp_server`.
+    /// Expose this agent's tools as an MCP server endpoint.
     pub fn enable_mcp_server(&mut self) -> &mut Self {
         self.mcp_server_enabled = true;
         self
@@ -1608,7 +1578,7 @@ impl AgentBase {
         self.service.route().to_string()
     }
 
-    /// Enable debug routes. Python parity: `WebMixin.enable_debug_routes`.
+    /// Enable debug routes.
     pub fn enable_debug_routes(&mut self) -> &mut Self {
         self.debug_routes_enabled = true;
         self
@@ -1634,12 +1604,11 @@ impl AgentBase {
 
     /// Set up graceful shutdown signal handling (Python
     /// `WebMixin.setup_graceful_shutdown`). The Rust `run` blocks
-    /// synchronously; this is the parity entry point (a no-op placeholder
+    /// synchronously; this is the entry point (a no-op placeholder
     /// until an async server backend is wired).
     pub fn setup_graceful_shutdown(&self) {}
 
-    /// Register a routing callback for `path`. Python parity:
-    /// `WebMixin.register_routing_callback`.
+    /// Register a routing callback for `path`.
     pub fn register_routing_callback<F>(&mut self, callback: F, path: &str) -> &mut Self
     where
         F: Fn(&Value, &HashMap<String, String>) -> Option<String> + Send + Sync + 'static,
@@ -1654,7 +1623,7 @@ impl AgentBase {
 
     /// Handle a request in a serverless environment. Renders the SWML document
     /// for the given (optional) request headers and returns it as a JSON
-    /// string. Python parity: `ServerlessMixin.handle_serverless_request`.
+    /// string.
     #[must_use]
     pub fn handle_serverless_request(&self, headers: Option<&HashMap<String, String>>) -> String {
         let empty = HashMap::new();
@@ -1663,7 +1632,7 @@ impl AgentBase {
     }
 
     /// Get the [`ContextBuilder`] for this agent (alias for
-    /// [`AgentBase::define_contexts`]). Python parity: `PromptMixin.contexts`.
+    /// [`AgentBase::define_contexts`]).
     pub fn contexts(&mut self) -> &mut ContextBuilder {
         self.define_contexts()
     }
@@ -1671,7 +1640,7 @@ impl AgentBase {
     /// Define a SWAIG tool. The Rust idiom for Python's `@AgentBase.tool(...)`
     /// class-method decorator: Rust has no runtime method decorators, so `tool`
     /// registers a handler directly (same effect as the decorated function
-    /// being registered). Python parity: `ToolMixin.tool`.
+    /// being registered).
     pub fn tool(
         &mut self,
         name: &str,

@@ -70,7 +70,7 @@ pub struct WebService {
 }
 
 impl WebService {
-    /// Initialize a web service. Python parity: `WebService.__init__`.
+    /// Initialize a web service.
     #[must_use]
     pub fn new(options: WebServiceOptions) -> Self {
         let blocked = options
@@ -89,8 +89,7 @@ impl WebService {
         }
     }
 
-    /// Add a directory to serve, mounting it at `route`. Python parity:
-    /// `WebService.add_directory`.
+    /// Add a directory to serve, mounting it at `route`.
     ///
     /// # Errors
     ///
@@ -109,8 +108,7 @@ impl WebService {
         Ok(())
     }
 
-    /// Remove a served directory by `route`. Python parity:
-    /// `WebService.remove_directory`.
+    /// Remove a served directory by `route`.
     pub fn remove_directory(&mut self, route: &str) {
         let route = normalize_route(route);
         self.directories.remove(&route);
@@ -118,7 +116,7 @@ impl WebService {
 
     /// Start the service (Python `WebService.start`). Optionally overrides the
     /// bind host/port. The Rust HTTP backend is synchronous; this marks the
-    /// service running and is the parity lifecycle entry point.
+    /// service running and is the lifecycle entry point.
     pub fn start(&mut self, _host: Option<&str>, port: Option<u16>) {
         if let Some(p) = port {
             self.port = p;

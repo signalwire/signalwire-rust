@@ -10,7 +10,7 @@
 //! here, with the fully-typed [`ParamsBuilder`] — and this module derives the
 //! same schema tuple from that declaration.
 //!
-//! This is the exact functional parity Python's `infer_schema` provides (the
+//! This is the same schema inference (the
 //! `(parameters, required, description, is_typed, has_raw_data)` tuple), reached
 //! through the typed-builder the port already ships rather than runtime
 //! reflection.

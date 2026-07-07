@@ -44,8 +44,8 @@ static HOSTNAME_REJECT_RE: LazyLock<Regex> =
 /// with their original casing. An empty input yields an empty map.
 ///
 /// `clippy::implicit_hasher`: the concrete `HashMap<String, String>` mirrors
-/// Python's `dict[str, str]` header map for parity; generalizing over
-/// `BuildHasher` would distort the parity signature the audit maps to Python's
+/// Python's `dict[str, str]` header map; generalizing over
+/// `BuildHasher` would distort the signature
 /// plain map (same rationale as `RestClient`'s `**kwargs` map — see
 /// `PORT_PHILOSOPHY_RUST.md`, the `implicit_hasher` row).
 #[must_use]

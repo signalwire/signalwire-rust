@@ -203,7 +203,7 @@ impl<'a> SwmlBuilder<'a> {
         self
     }
 
-    /// Validate a verb config against the default AI handler (parity helper).
+    /// Validate a verb config against the default AI handler (helper).
     #[must_use]
     pub fn validate_ai(config: &Value) -> (bool, Vec<String>) {
         AiVerbHandler::new().validate_config(config)

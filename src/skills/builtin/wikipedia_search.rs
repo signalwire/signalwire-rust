@@ -107,7 +107,7 @@ impl SkillBase for WikipediaSearch {
     }
 
     /// Python `REQUIRED_PACKAGES = ["requests"]`. Rust links its HTTP client
-    /// (`ureq`) at build time, so this is purely declarative surface parity.
+    /// (`ureq`) at build time, so this is purely declarative surface.
     fn required_packages(&self) -> Vec<String> {
         vec!["requests".to_string()]
     }

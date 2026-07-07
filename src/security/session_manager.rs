@@ -43,11 +43,10 @@ impl SessionManager {
 
     /// Create a session manager with an explicit signing secret.
     ///
-    /// Python parity: `SessionManager(token_expiry_secs, secret_key)` — the
-    /// `secret_key` string's UTF-8 bytes become the HMAC key (Python signs with
-    /// `self.secret_key.encode()`). Rust's `new` generates a random secret; this
-    /// constructor is the escape hatch for callers who need a fixed, shared
-    /// secret (e.g. validating a token minted elsewhere with the same key).
+    /// The `secret_key` string's UTF-8 bytes become the HMAC key. [`new`](Self::new)
+    /// generates a random secret; this constructor is the escape hatch for callers
+    /// who need a fixed, shared secret (e.g. validating a token minted elsewhere
+    /// with the same key).
     #[must_use]
     pub fn with_secret(token_expiry_secs: u64, secret_key: &str) -> Self {
         SessionManager {
@@ -139,15 +138,14 @@ impl SessionManager {
         true
     }
 
-    /// Generate a secure self-contained token. Python parity:
-    /// `generate_token` (the primary name; `create_token` is the Rust name).
+    /// Generate a secure self-contained token.
     #[must_use]
     pub fn generate_token(&self, function_name: &str, call_id: &str) -> String {
         self.create_token(function_name, call_id)
     }
 
     /// Alias for [`SessionManager::generate_token`], kept for backward
-    /// compatibility. Python parity: `create_tool_token`.
+    /// compatibility.
     #[must_use]
     pub fn create_tool_token(&self, function_name: &str, call_id: &str) -> String {
         self.generate_token(function_name, call_id)
@@ -161,16 +159,14 @@ impl SessionManager {
         self.validate_token(function_name, call_id, token)
     }
 
-    /// Legacy session activation — stateless, always succeeds. Python parity:
-    /// `activate_session`.
+    /// Legacy session activation — stateless, always succeeds.
     #[allow(clippy::unused_self)]
     #[must_use]
     pub fn activate_session(&self, _call_id: &str) -> bool {
         true
     }
 
-    /// Legacy session teardown — stateless, always succeeds. Python parity:
-    /// `end_session`.
+    /// Legacy session teardown — stateless, always succeeds.
     #[allow(clippy::unused_self)]
     #[must_use]
     pub fn end_session(&self, _call_id: &str) -> bool {
@@ -178,15 +174,13 @@ impl SessionManager {
     }
 
     /// Legacy metadata read — stateless, always returns empty metadata. Python
-    /// parity: `get_session_metadata`.
     #[allow(clippy::unused_self)]
     #[must_use]
     pub fn get_session_metadata(&self, _call_id: &str) -> serde_json::Value {
         serde_json::json!({})
     }
 
-    /// Legacy metadata write — stateless, always succeeds. Python parity:
-    /// `set_session_metadata`.
+    /// Legacy metadata write — stateless, always succeeds.
     #[allow(clippy::unused_self)]
     #[must_use]
     pub fn set_session_metadata(
@@ -200,7 +194,7 @@ impl SessionManager {
 
     /// Decode a token and extract its components for debugging, WITHOUT
     /// validating it. Requires debug mode (see
-    /// [`SessionManager::set_debug_mode`]). Python parity: `debug_token`.
+    /// [`SessionManager::set_debug_mode`]).
     #[must_use]
     pub fn debug_token(&self, token: &str) -> serde_json::Value {
         use serde_json::json;
@@ -524,7 +518,7 @@ mod tests {
 
     /// (1) A freshly minted token, base64url-decoded, has exactly 5 dot-fields
     /// with a NON-EMPTY 16-hex-char nonce, and the fields are in the
-    /// python-oracle order (`call_id`, function, expiry, nonce, signature).
+    /// canonical order (`call_id`, function, expiry, nonce, signature).
     #[test]
     fn test_contract7_decoded_token_has_five_fields_and_nonce() {
         let sm = SessionManager::with_defaults();
@@ -572,7 +566,7 @@ mod tests {
         assert_ne!(t1, t2);
     }
 
-    /// (3) A token constructed in the python-oracle 5-field dot format (built
+    /// (3) A token constructed in the 5-field dot format (built
     /// from the port's own signing of the canonical `:`-joined message)
     /// validates in-port — cross-port interop: any producer emitting the
     /// canonical form is accepted.

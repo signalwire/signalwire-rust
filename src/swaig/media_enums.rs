@@ -19,7 +19,7 @@
 //! The consuming methods take `format: impl Into<MediaArg<RecordFormat>>` (and
 //! likewise for `direction`/`codec`), so the **same parameter** accepts both
 //! the typed enum *and* a raw wire string ([`MediaArg`] wraps the two). The raw
-//! `&str` path stays available for Python parity / forward-compat; an out-of-set
+//! `&str` path stays available for forward-compat; an out-of-set
 //! raw value is still rejected in the method body with the reference's exact
 //! `ValueError` text, and the emitted SWML is byte-identical either way:
 //!
@@ -31,7 +31,7 @@
 //! // typed + autocompleted — identical wire shape to the bare strings below
 //! fr.record_call("rec1", false, RecordFormat::Mp3, RecordDirection::Both,
 //!                "", false, 44.0, None, None, None, "").unwrap();
-//! // bare strings still work (Python parity)
+//! // bare strings still work (forward-compat)
 //! fr.record_call("rec2", false, "mp3", "both", "", false, 44.0, None, None, None, "").unwrap();
 //! ```
 //!
@@ -154,7 +154,7 @@ impl AsRef<str> for RecordFormat {
 
 /// Idiomatic `"wav".parse::<RecordFormat>()`. Accepts exactly the wire strings
 /// (`wav`/`mp3`/`mp4`) the reference validates; anything else is a typed
-/// [`ParseMediaEnumError`] (the parity-equivalent of Python's `ValueError`).
+/// [`ParseMediaEnumError`] on an out-of-set value.
 impl FromStr for RecordFormat {
     type Err = ParseMediaEnumError;
 
@@ -451,7 +451,7 @@ impl From<Codec> for &'static str {
 /// let mut fr = FunctionResult::new();
 /// // typed + autocompleted — fails at the call site on a typo
 /// fr.record_call("r", false, RecordFormat::Mp3, "both", "", false, 44.0, None, None, None, "").unwrap();
-/// // raw &str still compiles (Python parity / forward-compat) and emits the
+/// // raw &str still compiles (forward-compat) and emits the
 /// // byte-identical SWML
 /// fr.record_call("r", false, "mp3", "both", "", false, 44.0, None, None, None, "").unwrap();
 /// ```
@@ -480,7 +480,7 @@ impl<E: AsRef<str>> MediaArg<E> {
     /// The wire string this argument resolves to. For [`Typed`](MediaArg::Typed)
     /// it is the enum's canonical `as_str()`; for [`Raw`](MediaArg::Raw) it is
     /// the string verbatim. The method body validates this value against the
-    /// closed set before emitting it (Python-reference parity).
+    /// closed set before emitting it.
     pub fn wire(&self) -> &str {
         match self {
             MediaArg::Typed(e) => e.as_ref(),
