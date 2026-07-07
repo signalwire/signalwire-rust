@@ -867,10 +867,6 @@ pub struct AIParams {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub asr_speaker_affinity: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub audible_debug: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub audible_latency: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub background_file: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub background_file_loops: Option<serde_json::Value>,
@@ -890,8 +886,6 @@ pub struct AIParams {
     pub barge_min_words: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub barge_functions: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub cache_mode: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub conscience: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -914,8 +908,6 @@ pub struct AIParams {
     pub digit_timeout: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub end_of_speech_timeout: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub enable_accounting: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub enable_thinking: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -953,6 +945,7 @@ pub struct AIParams {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub interrupt_prompt: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[deprecated(note = "languages_enabled: deprecated per x-sdk-overlay")]
     pub languages_enabled: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub local_tz: Option<String>,
@@ -1010,8 +1003,6 @@ pub struct AIParams {
     pub turn_detection_timeout: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub tts_number_format: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub verbose_logs: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub video_listening_file: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]

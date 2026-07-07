@@ -684,5 +684,25 @@ signalwire.core.swml_service.SWMLService.verb_registry: Python exposes ``self.ve
 signalwire.skills.registry.SkillRegistry.logger: Python exposes ``self.logger`` as a public attribute on SkillRegistry; Rust uses tracing macros directly.
 signalwire.core.security.webhook_middleware.make_webhook_validation_dependency: impossible: FastAPI dependency-factory (make_webhook_validation_dependency returns a Depends() callable) — a framework-specific DI primitive with no Rust equivalent; TS/PHP cousins also omit it (re-audited L18)
 
+## AIParams fields hidden via x-sdk-overlay.yaml (SDK-surface policy)
+
+The following 5 fields exist on the SPEC schema ``AIParams`` (schema.json ``$defs``
++ calling/fabric ``components/schemas``) but are DROPPED from the generated Rust
+surface by ``porting-sdk/rest-apis/x-sdk-overlay.yaml`` (the single authoritative
+SDK-surface policy overlay). They remain on the wire; the SDK simply does not expose
+them as struct fields. These are struct-field-level drops on a method-less type, not
+Python symbol-level omissions, so they carry no ``diff_port_surface`` symbol line
+(SURFACE-DIFF is clean against the oracle, which drops them identically). Recorded
+here for provenance:
+
+- audible_debug: hidden via x-sdk-overlay.yaml: server-internal AI param, dropped from SDK surface per overlay policy (approved)
+- audible_latency: hidden via x-sdk-overlay.yaml: server-internal AI param, dropped from SDK surface per overlay policy (approved)
+- verbose_logs: hidden via x-sdk-overlay.yaml: server-internal AI param, dropped from SDK surface per overlay policy (approved)
+- enable_accounting: hidden via x-sdk-overlay.yaml: server-internal AI param, dropped from SDK surface per overlay policy (approved)
+- cache_mode: hidden via x-sdk-overlay.yaml: server-internal AI param, dropped from SDK surface per overlay policy (approved)
+
+(``languages_enabled`` is NOT dropped — it is kept and marked ``#[deprecated]`` per
+the overlay's ``deprecated`` list, so it is not ledgered here.)
+
 ## Abstract RELAY action mixin bases (§H — flattened, TS/PHP flatten identically)
 

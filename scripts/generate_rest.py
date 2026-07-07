@@ -110,6 +110,57 @@ def repo_root() -> Path:
 
 
 # ---------------------------------------------------------------------------
+# SDK-surface policy overlay (the single source; NOT wire truth).
+# ---------------------------------------------------------------------------
+# rest-apis/x-sdk-overlay.yaml is the ONE authoritative place that says which spec
+# fields the SDKs hide (dropped from the surface) or deprecate (emitted-but-flagged).
+# It is a policy overlay, not markup in the (often vendored) specs, so the same field
+# is governed once and applied wherever it surfaces (schema.json AIParams + the
+# calling/fabric REST projections). Matching is by (field name, containing SPEC schema
+# name — the $defs / components.schemas key), NOT the Rust type name we later emit.
+_overlay_cache: "dict[str, set[tuple[str, str | None]]] | None" = None
+
+
+def _load_overlay(psdk: Path | None = None) -> "dict[str, set[tuple[str, str | None]]]":
+    global _overlay_cache
+    if _overlay_cache is None:
+        base = psdk if psdk is not None else resolve_porting_sdk()
+        path = base / "rest-apis" / "x-sdk-overlay.yaml"
+
+        def rules(key: str, data: dict) -> "set[tuple[str, str | None]]":
+            out: set[tuple[str, str | None]] = set()
+            for entry in data.get(key) or []:
+                if isinstance(entry, dict) and entry.get("field"):
+                    out.add((entry["field"], entry.get("scope")))
+            return out
+
+        data = {}
+        if path.is_file():
+            data = yaml.safe_load(path.read_text()) or {}
+        _overlay_cache = {"hidden": rules("hidden", data), "deprecated": rules("deprecated", data)}
+    return _overlay_cache
+
+
+def _overlay_match(rules: "set[tuple[str, str | None]]", field: str, schema_name: str | None) -> bool:
+    # A rule matches when its field equals `field` AND (it is unscoped OR its scope
+    # equals the containing SPEC schema name). `schema_name` is the schema's name as it
+    # appears in the spec (the $defs / components.schemas key) — NOT the Rust type name
+    # this generator later emits — so the scope value is identical across all ports.
+    for rf, scope in rules:
+        if rf == field and (scope is None or scope == schema_name):
+            return True
+    return False
+
+
+def overlay_hidden(field: str, schema_name: str | None = None) -> bool:
+    return _overlay_match(_load_overlay()["hidden"], field, schema_name)
+
+
+def overlay_deprecated(field: str, schema_name: str | None = None) -> bool:
+    return _overlay_match(_load_overlay()["deprecated"], field, schema_name)
+
+
+# ---------------------------------------------------------------------------
 # Base loading (x-sdk-bases; §2) — validate + flatten to method-sets.
 # ---------------------------------------------------------------------------
 
@@ -1396,13 +1447,18 @@ def _struct_field_ident(wire: str, used: set) -> str:
 
 
 def emit_methodless_struct(rs_name: str, properties: dict, source_desc: str,
-                           gen: str) -> str:
+                           gen: str, schema_name: str | None = None) -> str:
     """Emit one method-less serde struct for an OBJECT schema (shared by the REST
     wire-type emitter and the swml-verbs / relay-protocol / swaig payload
     generators so they never diverge). Every field is ``Option<T>`` with a
     ``#[serde(rename)]`` snake wire key + ``skip_serializing_if``. No ``impl`` —
     the surface records the bare struct name; the signature enumerator drops it
-    (method-less)."""
+    (method-less).
+
+    ``schema_name`` is the field's containing SPEC schema name (the $defs /
+    components.schemas key) — passed to the x-sdk-overlay check so hidden fields are
+    dropped from the SDK surface (still on the wire) and deprecated fields carry a
+    ``#[deprecated]`` marker. It is the SPEC name, NOT ``rs_name`` (the emitted type)."""
     lines: list[str] = []
     lines.append(f"/// `{rs_name}` — generated read-side wire type ({source_desc}).")
     lines.append("///")
@@ -1412,6 +1468,11 @@ def emit_methodless_struct(rs_name: str, properties: dict, source_desc: str,
     lines.append(f"pub struct {rs_name} {{")
     used: set = set()
     for wire_key, psc in properties.items():
+        # SDK-surface policy comes from the single overlay (rest-apis/x-sdk-overlay.yaml),
+        # matched by (wire_key, SPEC schema name) — NOT the emitted Rust type name.
+        if overlay_hidden(wire_key, schema_name):
+            # hidden: drop from the SDK surface entirely (still on the wire).
+            continue
         ty = _wire_owned_type(psc if isinstance(psc, dict) else {})
         ident = _struct_field_ident(wire_key, used)
         # serde's default field name is the ident text (minus a raw ``r#`` prefix).
@@ -1422,6 +1483,9 @@ def emit_methodless_struct(rs_name: str, properties: dict, source_desc: str,
         if serde_ident != wire_key:
             attrs.insert(0, f"rename = {rs_str(wire_key)}")
         lines.append(f"    #[serde({', '.join(attrs)})]")
+        if overlay_deprecated(wire_key, schema_name):
+            # deprecated: still emitted (back-compat), flagged for tooling + docs.
+            lines.append(f'    #[deprecated(note = "{wire_key}: deprecated per x-sdk-overlay")]')
         lines.append(f"    pub {ident}: Option<{ty}>,")
     lines.append("}")
     return "\n".join(lines)
@@ -1502,7 +1566,7 @@ def build_type_module(psdk: Path, spec_dir: str, ns_key: str) -> str:
             blocks.append(emit_methodless_struct(
                 rs_name, node.get("properties") or {},
                 f"{spec_dir!r} REST API, schema {raw_name!r}",
-                "generate_rest.py"))
+                "generate_rest.py", schema_name=raw_name))
     desc = f"Generated REST wire types for the {ns_key!r} namespace (components/schemas)."
     src = TYPES_HEADER.format(gen="generate_rest.py", desc=desc) + "\n"
     for b in blocks:
@@ -1529,14 +1593,19 @@ def emit_types(psdk: Path, outs: dict) -> None:
 # each generator via GenPayloadSidecar.add + flushed to the JSON alongside the .rs.
 # ---------------------------------------------------------------------------
 
-def gen_payload_accessors(properties: dict) -> list[str]:
+def gen_payload_accessors(properties: dict, schema_name: str | None = None) -> list[str]:
     """The accessor member names for a read-side payload struct: the wire field
     identifier per property (deduped, keyword→r#kw stripped to a bare method name).
     Matches the reference's recorded accessor names (wire field verbatim where a
-    valid ident; the reference records ``SWAIG`` as ``SWAIG``)."""
+    valid ident; the reference records ``SWAIG`` as ``SWAIG``).
+
+    Overlay-hidden fields are dropped (their struct field is not emitted, so no
+    accessor is synthesized), matched by (wire_key, SPEC schema name)."""
     out: list[str] = []
     used: set = set()
     for wire_key in properties:
+        if overlay_hidden(wire_key, schema_name):
+            continue
         # Accessor NAME = wire key folded to a valid ident (NOT r#-escaped: an
         # accessor is a synthesized symbol name in the sidecar, and the oracle
         # records the wire field name verbatim, e.g. ``SWAIG``). Fold only
