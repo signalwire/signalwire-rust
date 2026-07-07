@@ -169,6 +169,15 @@ spec_parity_gate() {
         --gaps "$PORTING_SDK_DIR/SPEC_IMPLEMENTATION_GAPS.md"
 }
 
+# ARTIFACT-DENY (Day-one) — authoritative --listing mode. Feed the REAL published
+# package file listing (`cargo package --list`) to artifact_deny.py rather than the
+# git-ls-files proxy, which over-reports files tracked in-repo but excluded from the
+# published crate. --allow-dirty so an uncommitted tree (this very run) still lists.
+dayone_artifact_deny() {
+    cargo package --list --allow-dirty 2>/dev/null \
+        | python3 "$PORTING_SDK_DIR/scripts/artifact_deny.py" --port rust --listing -
+}
+
 # ---- register gates ----------------------------------------------------------
 sched_init "$@"
 
@@ -291,6 +300,19 @@ sched_gate SWAIG-CLI desc="swaig-test shared mini-contract (verbs/serverless-rej
         --require-url-model \
         --default-action-argv='--url|http://user:pass@127.0.0.1:1/' \
         --no-serverless-argv='--url|http://user:pass@127.0.0.1:1/|--simulate-serverless|lambda|--list-tools'
+
+sched_gate DOC-LANG-PURITY res=dayone desc="no python-verbatim docs in a non-python port" \
+    -- python3 "$PORTING_SDK_DIR/scripts/doc_lang_purity.py" --port rust --repo .
+sched_gate DOC-LINKS res=dayone desc="every relative markdown link resolves to a tracked file" \
+    -- python3 "$PORTING_SDK_DIR/scripts/doc_links.py" --port rust --repo .
+sched_gate ROOT-HYGIENE res=dayone desc="no audit/scratch clutter tracked at repo root (allowlist ROOT_HYGIENE_ALLOW.md)" \
+    -- python3 "$PORTING_SDK_DIR/scripts/root_hygiene.py" --port rust --repo .
+sched_gate IGNORE-LEDGER-VERIFY res=dayone desc="no laundered false-absence entries in DOC_AUDIT_IGNORE.md" \
+    -- python3 "$PORTING_SDK_DIR/scripts/ignore_ledger_verify.py" --port rust --repo .
+sched_gate META-CONSISTENT res=dayone desc="package metadata consistency" \
+    -- python3 "$PORTING_SDK_DIR/scripts/meta_consistent.py" --port rust --repo .
+sched_gate ARTIFACT-DENY res=dayone desc="no porting artifacts in the PUBLISHED package (authoritative listing)" \
+    --fn dayone_artifact_deny
 
 sched_run
 rc=$?
