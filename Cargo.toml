@@ -11,6 +11,35 @@ license = "MIT"
 repository = "https://github.com/signalwire/signalwire-rust"
 keywords = ["signalwire", "ai", "agents", "swml", "voip"]
 categories = ["api-bindings", "web-programming"]
+# Publish hygiene: the crates.io tarball ships the library, NOT the cross-port
+# porting-audit pipeline. These paths are load-bearing IN-REPO (porting-sdk's
+# shared audit scripts + scripts/run-ci.sh read them at the repo root) but must
+# never enter a published package. Verified clean via:
+#   cargo package --list | artifact_deny.py --port rust --listing -
+exclude = [
+    "PORT_OMISSIONS.md",
+    "PORT_ADDITIONS.md",
+    "PORT_SIGNATURE_OMISSIONS.md",
+    "PORT_TEST_OMISSIONS.md",
+    "CHECKLIST.md",
+    "PROGRESS.md",
+    "REST_COVERAGE_GAPS.md",
+    "DOC_AUDIT_IGNORE.md",
+    "INTENTIONAL_NON_IMPLEMENTATION.md",
+    "INTENTIONAL_THIN_TESTS.md",
+    "ROOT_HYGIENE_ALLOW.md",
+    "port_signatures.json",
+    "port_surface.json",
+    "audit_coverage.json",
+    "audit_coverage_baseline.json",
+    "examples/emit_corpus.rs",
+    "examples/emit_skills.rs",
+    "examples/relay_audit_harness.rs",
+    "examples/rest_audit_harness.rs",
+    "examples/skills_audit_harness.rs",
+    "scripts/",
+    "eng/",
+]
 
 # Package is published as `signalwire-sdk` because the `signalwire` crate
 # name was already claimed by an unofficial wrapper. The lib name is kept

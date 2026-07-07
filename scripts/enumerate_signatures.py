@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -40,7 +41,9 @@ HERE = Path(__file__).resolve().parent
 PORT_ROOT = HERE.parent
 PSDK = (PORT_ROOT.parent / "porting-sdk").resolve()
 if not PSDK.is_dir():
-    PSDK = Path("/usr/local/home/devuser/src/porting-sdk")
+    env_psdk = os.environ.get("PORTING_SDK")
+    if env_psdk:
+        PSDK = Path(env_psdk).resolve()
 
 sys.path.insert(0, str(HERE))
 from enumerate_surface import (  # type: ignore

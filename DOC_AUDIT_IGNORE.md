@@ -19,7 +19,6 @@ as_bytes: stdlib str::as_bytes / String::as_bytes
 as_object: serde_json::Value::as_object
 as_object_mut: serde_json::Value::as_object_mut
 as_reader: tiny_http::Request::as_reader
-as_ref: stdlib AsRef::as_ref
 as_u16: stdlib integer cast (e.g. status code)
 as_u64: serde_json::Value::as_u64
 body_mut: tiny_http::Request::body_mut
@@ -110,25 +109,13 @@ fences in docs and resolve to PORT_OMISSIONS.md entries (the long-term
 fix is to rewrite each block to Rust; until then these names are
 non-claims of Rust API).
 
-add_agent: Python AgentServer.add_agent — Rust uses AgentServer::register
-add_answer_verb: Python AgentBase.add_answer_verb — Rust merges into AgentBase via the answer verb on render_swml
-add_enter_filler: Python Context.add_enter_filler — Rust uses Context fillers via direct field access
-add_hangup_verb: Python AgentBase.add_hangup_verb — Rust adds the hangup verb via add_post_ai_verb
-add_mcp_server: Python AgentBase.add_mcp_server — Rust skill-level MCP integration (mcp_gateway skill)
-add_mcp_server_with_resources: Python AgentBase.add_mcp_server_with_resources — Rust skill-level MCP integration
-add_native_functions: Python AgentBase.add_native_functions — Rust uses set_native_functions
-available_phone_numbers: Python REST sub-namespace; Rust ships available phone-numbers via the phone_numbers resource
 buy: Python REST buy method on phone_numbers — Rust ships purchase / buy via the phone_numbers methods
 call: Python REST call helper / context-method; Rust REST resources expose explicit method names
 calls: Python REST sub-namespace; Rust ships under rest::Calling
 contexts: Python AgentBase.contexts attribute — Rust uses define_contexts() / context_builder()
-define_datamap_tool: Python AgentBase.define_datamap_tool — Rust uses datamap module + define_tool
 documents: Python REST sub-namespace; Rust ships under rest::Datasphere
-enable_mcp_server: Python AgentBase.enable_mcp_server — Rust skill-level MCP integration
 endpoints: Python SIP endpoints helper; Rust uses fabric::sip_endpoints
-expression_with_nomatch: Python DataMap helper — Rust DataMap exposes expression() with similar shape
 get_app: Python AgentServer.get_app (FastAPI app accessor) — Rust uses tiny_http directly, no equivalent
-incoming_phone_numbers: Python REST sub-namespace; Rust ships phone_numbers
 members: Python prefab attribute referenced in docs python blocks
 messages: Python REST sub-namespace / messaging helper; Rust ships the generated message REST namespace + Client::send_message
 messaging: Python RelayClient messaging accessor; Rust ships Client::send_message and Message
@@ -141,24 +128,13 @@ play_tts: Python Call.play_tts — Rust uses Call::play with a TTS body
 play_url: Python Call.play_url — Rust uses Call::play with a URL body
 prompt: Python AgentBase.prompt attribute — Rust uses set_prompt_text / get_prompt
 register_tools: Python SkillBase.register_tools — Rust uses SkillBase::setup
-reset_document: Python SWMLService.reset_document — Rust uses Service::reset_document (under different module path)
 rooms: Python video.rooms sub-namespace; Rust ships rest::video::rooms
 send_mms: Python Client.send_mms — Rust uses Client::send_message with media
 send_message: Python Client.send_message — Rust ships Client::send_message
-set_isolated: Python Context.set_isolated — Rust uses Context fields directly
-set_params_value: Python helper — Rust uses set_param / set_params
-set_proxy_url: Python AgentBase.set_proxy_url — Rust uses manual_set_proxy_url
-set_record_call: Python AgentBase.set_record_call — Rust uses AgentOptions.record_call
-set_record_format: Python AgentBase.set_record_format — Rust uses the record_format field directly
-set_record_stereo: Python AgentBase.set_record_stereo — Rust uses the record_stereo field directly
-set_summary_callback: Python AgentBase.set_summary_callback — Rust uses on_summary
 setup: Python skill setup hook — Rust uses SkillBase::setup
 sip: Python SIP namespace — Rust ships rest::fabric::sip_endpoints / sip_profiles
 tokens: Python REST tokens sub-namespace; Rust ships rest::fabric::tokens
 wait: Python action / message wait method — Rust uses Action::wait / Message::on_completed
-webhook_expression: Python DataMap webhook_expression — Rust ships DataMap expression methods
-webhook_with_form: Python DataMap webhook_with_form — Rust ships DataMap webhook with body type
-webhook_with_options: Python DataMap webhook_with_options — Rust ships DataMap webhook with options struct
 
 ## porting-sdk emission-tooling references (cross-language, by design)
 
