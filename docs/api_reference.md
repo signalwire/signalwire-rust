@@ -6,6 +6,7 @@ The primary type for building AI voice agents.
 
 ### Construction
 
+<!-- snippet: no-compile signature notation, not an expression — shows the shape of `AgentBase::new` (a `name: Type -> Ret` form that is not valid standalone Rust) -->
 ```rust
 AgentBase::new(options: AgentOptions) -> Self
 ```

@@ -1,148 +1,205 @@
 # Client Reference
 
-## RelayClient
-
-The main entry point for RELAY real-time communication.
-
-### Builder
-
+<!-- snippet-setup -->
 ```rust
-let client = RelayClient::builder()
-    .project("project-id")
-    .token("api-token")
-    .space("example.signalwire.com")
-    .contexts(vec!["default".into()])
-    .build()?;
+use signalwire::relay::{Call, Client, Event, Message};
+use signalwire::relay::state_enums::{CallState, MessageState};
+use serde_json::json;
+use std::sync::Arc;
+use std::time::Duration;
+
+let client: Arc<Client> = Arc::new(Client::new("project-id", "api-token", "example.signalwire.com"));
+let call: Arc<Call> = Arc::new(Call::new(&json!({"call_id": "c-1", "context": "default"})));
 ```
 
-### Builder Methods
+## Client
 
-| Method | Type | Description |
-|--------|------|-------------|
-| `project` | `&str` | SignalWire project ID |
-| `token` | `&str` | API token |
-| `space` | `&str` | Space hostname |
-| `contexts` | `Vec<String>` | Inbound call/message contexts |
+`signalwire::relay::Client` is the entry point for RELAY real-time
+communication. It is a **synchronous** client: it runs its WebSocket/Blade
+(JSON-RPC 2.0) event loop on a background reader thread and invokes your handler
+closures on that thread. There is no `async`/`await` and no external runtime to
+stand up.
+
+### Construction
+
+```rust
+// Explicit credentials.
+let client = Arc::new(Client::new(
+    "project-id",
+    "api-token",
+    "example.signalwire.com",
+));
+```
+
+`Client::from_env()` reads the three credentials from the environment and
+returns `Result<Client, RelayError>`:
+
+```rust
+// Reads SIGNALWIRE_PROJECT_ID / SIGNALWIRE_API_TOKEN / SIGNALWIRE_SPACE.
+let client = Arc::new(Client::from_env().unwrap());
+```
+
+Wrap the client in `Arc` — the connection lifecycle methods
+(`connect`/`reconnect`) take `self: &Arc<Self>` so the reader thread can hold a
+strong reference.
 
 ### Environment Variables
 
-If not provided explicitly, the builder reads:
+`Client::from_env()` reads:
 
 - `SIGNALWIRE_PROJECT_ID`
 - `SIGNALWIRE_API_TOKEN`
 - `SIGNALWIRE_SPACE`
 
+### Connection Lifecycle
+
+| Method | Signature | Description |
+|--------|-----------|-------------|
+| `connect` | `(self: &Arc<Self>) -> Result<(), RelayError>` | Open the WebSocket and run the `signalwire.connect` handshake |
+| `disconnect` | `(&self)` | Close the connection and stop the reader thread |
+| `reconnect` | `(self: &Arc<Self>) -> Result<(), RelayError>` | Reconnect with the current backoff delay |
+| `run` | `(&self)` | Block the calling thread until the reader thread stops |
+| `is_connected` | `(&self) -> bool` | Whether the socket is up |
+| `is_running` | `(&self) -> bool` | Whether the reader loop is active |
+
+```rust
+client.connect().unwrap();
+client.receive(&["default".to_string()]);
+client.run(); // blocks until disconnect / connection loss
+```
+
+### Contexts
+
+| Method | Signature | Description |
+|--------|-----------|-------------|
+| `receive` | `(&self, contexts: &[String])` | Subscribe to inbound call/message contexts |
+| `unreceive` | `(&self, contexts: &[String])` | Unsubscribe from contexts |
+
+```rust
+client.receive(&["sales".to_string(), "support".to_string()]);
+```
+
 ### Event Registration
 
-| Method | Signature | Description |
-|--------|-----------|-------------|
-| `on_call` | `(Fn(Call) -> Future)` | Inbound call handler |
-| `on_message` | `(Fn(Message) -> Future)` | Inbound message handler |
-| `on_connect` | `(Fn() -> Future)` | Connection established |
-| `on_disconnect` | `(Fn() -> Future)` | Connection lost |
-| `on_reconnect` | `(Fn(u32) -> Future)` | Reconnection attempt |
+Handlers are **synchronous** closures. They run on the relay reader thread; do
+not `.await` inside them (there is no async context).
 
-### Execution
-
-| Method | Signature | Description |
-|--------|-----------|-------------|
-| `run` | `async (&self) -> Result<()>` | Block and process events |
-| `disconnect` | `async (&self) -> Result<()>` | Gracefully disconnect |
-
-### Subsystems
-
-| Method | Returns | Description |
-|--------|---------|-------------|
-| `calling()` | `CallingClient` | Call control methods |
-| `messaging()` | `MessagingClient` | Messaging methods |
-
----
-
-## CallingClient
-
-### Outbound Calls
+| Method | Closure signature | Description |
+|--------|-------------------|-------------|
+| `on_call` | `Fn(Arc<Call>, &Event) + Send + Sync + 'static` | Inbound call handler |
+| `on_message` | `Fn(&Event, &Value) + Send + Sync + 'static` | Inbound message handler |
+| `on_event` | `Fn(&Event, &Value) + Send + Sync + 'static` | Generic catch-all event handler |
 
 ```rust
-let call = client.calling().dial(to, from).await?;
+client.on_call(|call, _event| {
+    let _ = call.answer();
+    let _ = call.hangup();
+});
 ```
 
-### Call Methods
+### Outbound Operations
 
-See [call-methods.md](call-methods.md) for the complete list of 57+ methods.
+The client exposes outbound calling and messaging directly (there are no
+`calling()` / `messaging()` sub-namespaces — the operations are methods on
+`Client`).
 
----
-
-## MessagingClient
-
-### Send SMS
-
-```rust
-client.messaging().send(from, to, body).await?;
-```
-
-### Send MMS
+| Method | Signature | Description |
+|--------|-----------|-------------|
+| `dial` | `(self: &Arc<Self>, devices: Value, tag: Option<&str>, max_duration: Option<u32>, dial_timeout: Duration) -> Result<Arc<Call>, RelayError>` | Place an outbound call, block until answered |
+| `send_message` | `(&self, to_number: &str, from_number: &str, body: Option<&str>, media: Option<&[String]>, tags: Option<&[String]>, context: Option<&str>) -> Result<Arc<Message>, RelayError>` | Send an SMS/MMS |
+| `execute` | `(&self, method: &str, params: Value) -> Result<Value, RelayError>` | Send an arbitrary JSON-RPC request and block for its result |
 
 ```rust
-client.messaging().send_mms(from, to, body, media_urls).await?;
+let call = client.dial(
+    json!([[{"type": "phone", "params": {"to_number": "+15551234567", "from_number": "+15559876543"}}]]),
+    None,
+    None,
+    Duration::from_secs(30),
+).unwrap();
 ```
 
 ---
 
 ## Call
 
-Represents a live phone call.
+`signalwire::relay::Call` represents a live phone call. It is handed to your
+`on_call` handler as `Arc<Call>` and returned by `Client::dial`. Every calling
+method is synchronous.
 
-### Properties
+### Fields and State
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `call_id` | `String` | Unique identifier |
-| `from()` | `&str` | Caller number |
-| `to()` | `&str` | Called number |
-| `state()` | `CallState` | Current state |
-| `direction()` | `&str` | `inbound` or `outbound` |
+| Item | Type | Description |
+|------|------|-------------|
+| `call_id` | `Option<String>` | Unique identifier (public field) |
+| `context` | `Option<String>` | Context the call arrived on (public field) |
+| `tag` | `Option<String>` | Correlation tag (public field) |
+| `current_state()` | `-> String` | Current state as a string |
+| `call_state()` | `-> CallState` | Current state as a typed enum |
+| `repr()` | `-> String` | `Call(call_id=..., state=...)` debug string |
+
+```rust
+println!("{}", call.repr());
+if call.call_state() == CallState::Answered {
+    // ...
+}
+```
 
 ### Key Methods
 
+Simple control verbs return the raw JSON-RPC params (`serde_json::Value`) that
+were transmitted:
+
 | Method | Returns | Description |
 |--------|---------|-------------|
-| `answer()` | `Result<()>` | Answer the call |
-| `hangup()` | `Result<()>` | End the call |
-| `play(items)` | `Result<PlayAction>` | Play audio/TTS |
-| `play_tts(text)` | `Result<PlayAction>` | Play TTS |
-| `play_url(url)` | `Result<PlayAction>` | Play audio URL |
-| `record(params)` | `Result<RecordAction>` | Record audio |
-| `prompt(play, collect)` | `Result<PromptAction>` | Collect input |
-| `connect(params)` | `Result<ConnectAction>` | Connect/transfer |
-| `detect(params)` | `Result<DetectAction>` | Detect machine/fax |
-| `tap(params)` | `Result<TapAction>` | Media streaming |
-| `send_digits(digits)` | `Result<()>` | Send DTMF |
+| `answer()` | `Value` | Answer the call |
+| `hangup()` | `Value` | End the call |
+| `connect(params)` | `Value` | Connect / transfer |
+| `send_digits(params)` | `Value` | Send DTMF |
+
+Long-running media verbs return an `Arc<Action>` you poll or wait on:
+
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `play(params)` | `Arc<Action>` | Play a mixed audio/TTS playlist |
+| `play_tts(text, opts)` | `Arc<Action>` | Play text-to-speech |
+| `play_audio(url, opts)` | `Arc<Action>` | Play an audio URL |
+| `record(params)` | `Arc<Action>` | Record audio |
+| `prompt_tts(text, collect, opts)` | `Arc<Action>` | Play a prompt and collect input |
+| `detect(params)` | `Arc<Action>` | Detect machine / fax |
+| `tap(params)` | `Arc<Action>` | Media streaming |
+
+```rust
+let action = call.play_tts("Hello, world!", json!({}));
+let _ = action.wait(Some(Duration::from_secs(30)));
+```
 
 ---
 
 ## Action Objects
 
-Long-running operations return typed action objects.
+Long-running operations return `Arc<Action>`.
 
 ### Common Methods
 
 | Method | Returns | Description |
 |--------|---------|-------------|
-| `wait()` | `Result<ActionResult>` | Wait for completion |
-| `stop()` | `Result<()>` | Cancel the operation |
+| `wait(timeout)` | `Option<Value>` | Block until completion (or timeout) and return the result |
+| `is_done()` | `bool` | Whether the operation has finished |
+| `state()` | `Option<String>` | Current action state |
+| `result()` | `Option<Value>` | The final result, if any |
+| `stop()` | `()` | Cancel the operation |
 
-### PlayAction Additional Methods
-
-| Method | Description |
-|--------|-------------|
-| `pause()` | Pause playback |
-| `resume()` | Resume playback |
-| `volume(db)` | Adjust volume |
+```rust
+let action = call.play_tts("Long message...", json!({}));
+if !action.is_done() {
+    let _ = action.wait(Some(Duration::from_secs(10)));
+}
+```
 
 ---
 
 ## Connection Behaviour
 
-- Auto-reconnect with exponential backoff (1s, 2s, 4s, 8s, ... up to 60s)
-- Subscriptions are restored automatically on reconnect
-- In-progress calls are not affected by brief disconnections
+- Auto-reconnect with exponential backoff (starts at 1s, doubles per attempt).
+- Contexts subscribed via `receive` are re-sent on the reconnect handshake.
+- The reader thread owns all socket I/O; `run()` simply blocks until it stops.

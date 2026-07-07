@@ -2,79 +2,75 @@
 
 ## Overview
 
-The calling namespace provides HTTP-based call management. Use it to initiate outbound calls, update active calls, and query call history.
+The REST calling namespace is an HTTP **command-dispatch** surface: each
+operation is a method on `client.calling()` that takes a typed request builder
+and returns `Result<Value, SignalWireRestError>`. The client is **synchronous** —
+there is no `.await`. In-call commands take the `call_id` as their first
+argument.
+
+<!-- snippet-setup -->
+```rust
+use signalwire::rest::RestClient;
+use signalwire::rest::namespaces::generated::calling_resources_generated::CallingDialRequest;
+use signalwire::rest::namespaces::generated::calling_resources_generated::CallingEndRequest;
+use signalwire::rest::namespaces::generated::calling_resources_generated::CallingPlayRequest;
+use serde_json::json;
+
+let client = RestClient::new("project-id", "api-token", "example.signalwire.com").unwrap();
+```
 
 ## Initiating a Call
 
-```rust
-let response = client.calling().dial(json!({
-    "from": "+15559876543",
-    "to": "+15551234567",
-    "url": "https://example.com/call-handler",
-    "status_callback": "https://example.com/call-status",
-})).await?;
-
-println!("Call SID: {}", response["sid"]);
-```
-
-## Updating an Active Call
+`dial` takes a `CallingDialRequest`. `from` and `to` are required; optional
+fields are set via chained builder methods:
 
 ```rust
-// Redirect to a different URL
-client.calling().update("call-sid", json!({
-    "url": "https://example.com/new-handler",
-})).await?;
+let response = client.calling().dial(
+    CallingDialRequest::new("+15559876543", "+15551234567")
+        .url("https://example.com/call-handler")
+        .status_url("https://example.com/call-status"),
+).unwrap();
 
-// Hang up the call
-client.calling().update("call-sid", json!({
-    "status": "completed",
-})).await?;
+println!("Response: {}", response["sid"]);
 ```
 
-## Listing Calls
+## Ending a Call
+
+In-call commands take the `call_id` first, then a request builder:
 
 ```rust
-let calls = client.calling().list(&[
-    ("status", "in-progress"),
-    ("limit", "10"),
-]).await?;
-
-for call in calls.as_array().unwrap_or(&vec![]) {
-    println!("{}: {} -> {} ({})",
-        call["sid"], call["from"], call["to"], call["status"]);
-}
+let _ = client.calling().end("call-id", CallingEndRequest::new()).unwrap();
 ```
 
-## Getting Call Details
+## Playing Media
+
+`play` takes a `CallingPlayRequest::new(play)` where `play` is the media array
+value:
 
 ```rust
-let call = client.calling().get("call-sid").await?;
-println!("Duration: {}s", call["duration"]);
-println!("Status: {}", call["status"]);
+let _ = client.calling().play(
+    "call-id",
+    CallingPlayRequest::new(json!([
+        {"type": "tts", "params": {"text": "Please hold."}}
+    ])),
+).unwrap();
 ```
 
-## Call Recordings
+## Outbound Dial Parameters
 
-```rust
-let recordings = client.calling().recordings("call-sid").await?;
-for rec in recordings.as_array().unwrap_or(&vec![]) {
-    println!("Recording: {} ({}s)", rec["sid"], rec["duration"]);
-}
-```
+`CallingDialRequest` fields:
 
-## Call Parameters
-
-### Outbound Call Parameters
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `from` | `string` | Caller ID (your SignalWire number) |
-| `to` | `string` | Destination number |
-| `url` | `string` | SWML/TwiML handler URL |
-| `status_callback` | `string` | Status webhook URL |
-| `timeout` | `integer` | Ring timeout in seconds |
-| `record` | `boolean` | Record the call |
-| `machine_detection` | `string` | AMD mode |
+| Field / builder | Type | Description |
+|-----------------|------|-------------|
+| `new(from, to)` | `String, String` | Caller ID and destination (required) |
+| `caller_id(..)` | `String` | Override caller ID |
+| `url(..)` | `String` | SWML/cXML handler URL |
+| `url_method(..)` | `String` | HTTP method for the handler URL |
+| `status_url(..)` | `String` | Status webhook URL |
+| `status_events(..)` | `Value` | Which status events to POST |
+| `fallback_url(..)` | `String` | Fallback handler URL |
+| `codecs(..)` | `Value` | Codec preferences |
+| `swml(..)` | `Value` | Inline SWML document |
 
 ### Call Status Values
 

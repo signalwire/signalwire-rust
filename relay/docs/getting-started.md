@@ -69,6 +69,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 Contexts route inbound calls to your application. Configure your phone number's
 context in the SignalWire dashboard.
 
+<!-- snippet-setup -->
+```rust
+use signalwire::relay::Client;
+use std::sync::Arc;
+
+let client = Arc::new(Client::new("p", "t", "example.signalwire.com"));
+```
+
 ```rust
 // Listen on multiple contexts
 client.receive(&["sales".to_string(), "support".to_string()]);
@@ -90,7 +98,7 @@ let call = client.dial_blocking(
     None,                       // tag (auto-generated when None)
     None,                       // max_duration (seconds)
     Duration::from_secs(30),    // dial timeout
-)?;
+).unwrap();
 
 let action = call.play(serde_json::json!({
     "play": [{"type": "tts", "params": {"text": "This is an automated message."}}]

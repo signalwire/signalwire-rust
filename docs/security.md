@@ -14,6 +14,16 @@ By default, the SDK auto-generates a random username and password at startup. Ev
 
 ### Auto-Generated Credentials
 
+<!-- snippet-setup -->
+```rust
+use signalwire::agent::{AgentBase, AgentOptions};
+use signalwire::swaig::FunctionResult;
+use signalwire::security::SessionManager;
+use serde_json::json;
+
+let mut agent = AgentBase::new(AgentOptions::new("security-guide"));
+```
+
 ```rust
 let agent = AgentBase::new(AgentOptions::new("my-agent"));
 let (user, pass) = agent.get_basic_auth_credentials();

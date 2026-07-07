@@ -19,6 +19,13 @@ Steps are sequential stages within a context. Each step has prompt text (or POM 
 `agent.define_contexts()` returns a `&mut ContextBuilder`. Add contexts with
 `add_context(name)`, which returns a `&mut Context`:
 
+<!-- snippet-setup -->
+```rust
+use signalwire::agent::{AgentBase, AgentOptions};
+
+let mut agent = AgentBase::new(AgentOptions::new("contexts-guide"));
+```
+
 ```rust
 let ctx_builder = agent.define_contexts();
 
@@ -39,6 +46,8 @@ sales.set_enter_fillers(serde_json::json!([
 `set_functions` takes a JSON `Value` (e.g. an array of tool names):
 
 ```rust
+let sales = agent.define_contexts().add_context("sales");
+
 let step1 = sales.add_step("greeting");
 step1.set_text("Greet the customer and ask what product they are interested in.");
 step1.set_valid_steps(vec!["qualification"]);
@@ -68,15 +77,21 @@ If `set_valid_steps()` is not called, the AI cannot advance from that step. The 
 Gather info mode presents questions one at a time with zero tool-call entries in conversation history. Answers are stored in `global_data`.
 
 ```rust
+let symptoms_ctx = agent.define_contexts().add_context("symptoms");
+
 let step = symptoms_ctx.add_step("demographics");
 step.set_text("Collect the patient's basic information.");
-// set_gather_info(completion_key, completion_prompt)
-step.set_gather_info("patient_demographics", "Please provide the following information.");
+// set_gather_info(output_key, completion_action, prompt) — each an Option<&str>
+step.set_gather_info(
+    Some("patient_demographics"),
+    None,
+    Some("Please provide the following information."),
+);
 
-// add_gather_question(key_name, question_text, type, confirm)
-step.add_gather_question("full_name", "What is your full name?", "string", false);
-step.add_gather_question("phone", "What is your phone number?", "string", true);
-step.add_gather_question("email", "What is your email address?", "string", false);
+// add_gather_question(key_name, question_text, type, confirm, prompt, functions)
+step.add_gather_question("full_name", "What is your full name?", "string", false, None, None);
+step.add_gather_question("phone", "What is your phone number?", "string", true, None, None);
+step.add_gather_question("email", "What is your email address?", "string", false, None, None);
 
 step.set_valid_steps(vec!["symptoms"]);
 ```

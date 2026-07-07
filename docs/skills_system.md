@@ -4,9 +4,16 @@
 
 Skills are modular, reusable capabilities that can be added to any agent with a single method call. Each skill registers one or more SWAIG tools, adds prompt sections, and optionally configures hints.
 
+<!-- snippet-setup -->
 ```rust
+use signalwire::agent::{AgentBase, AgentOptions};
 use serde_json::json;
+use std::env;
 
+let mut agent = AgentBase::new(AgentOptions::new("skills-guide"));
+```
+
+```rust
 // add_skill(name, params) — params is always a Value; use json!({}) for defaults
 agent.add_skill("datetime", json!({}));
 agent.add_skill("math", json!({}));
@@ -88,6 +95,8 @@ skill.get_hints()                   // merged into the agent's speech hints
 You can add the same skill type multiple times with different configs:
 
 ```rust
+let api_key = "your-api-ninjas-key";
+
 agent.add_skill("joke", json!({
     "api_key": api_key,
     "tool_name": "get_regular_joke",

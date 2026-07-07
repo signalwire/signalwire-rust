@@ -6,10 +6,16 @@ SWAIG (SignalWire AI Gateway) functions are tools the AI model can invoke during
 
 ## Defining Tools
 
+<!-- snippet-setup -->
 ```rust
+use signalwire::agent::{AgentBase, AgentOptions};
 use signalwire::swaig::FunctionResult;
 use serde_json::json;
 
+let mut agent = AgentBase::new(AgentOptions::new("swaig-ref"));
+```
+
+```rust
 agent.define_tool(
     "get_weather",                           // name
     "Get the current weather for a city",    // description
@@ -44,7 +50,7 @@ Every handler returns a `FunctionResult`. At minimum it contains a response stri
 ### Basic Response
 
 ```rust
-FunctionResult::with_response("The order has shipped.")
+let _result = FunctionResult::with_response("The order has shipped.");
 ```
 
 ### With Actions

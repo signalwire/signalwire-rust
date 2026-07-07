@@ -146,6 +146,7 @@ signalwire-rust/
 
 The Python SDK uses class inheritance (AgentBase extends SWMLService, skills extend SkillBase). In Rust, use traits:
 
+<!-- snippet: no-compile illustrative trait sketch — references SkillError/AgentBase/HashMap without imports; conceptual, not a standalone compilation unit -->
 ```rust
 pub trait SkillBase: Send + Sync {
     fn name(&self) -> &str;
@@ -157,21 +158,26 @@ pub trait SkillBase: Send + Sync {
 
 ### Builder Pattern for AgentBase
 
-Replace Python's constructor-with-subclassing pattern with a typed builder:
+Replace Python's constructor-with-subclassing pattern with `AgentOptions` +
+`AgentBase::new`, then configure with chained `&mut self` methods. LLM
+parameters are set from a `serde_json::Value` (there is no `LlmParams` struct):
 
 ```rust
-let agent = AgentBase::builder("my-agent", "/agent")
+use signalwire::agent::{AgentBase, AgentOptions};
+use serde_json::json;
+
+let mut agent = AgentBase::new(AgentOptions::new("my-agent"));
+agent
     .add_language("English", "en-US", "rime.spore")
-    .prompt_add_section("Role", "You are a helpful assistant.")
-    .define_tool("get_time", "Get the current time", handler_fn)
-    .set_prompt_llm_params(LlmParams { temperature: Some(0.7), ..Default::default() })
-    .build();
+    .prompt_add_section("Role", "You are a helpful assistant.", vec![])
+    .set_prompt_llm_params(json!({"temperature": 0.7}));
 ```
 
 ### Arc<dyn Fn> for Tool Handlers
 
 Tool handlers must be thread-safe closures stored behind `Arc`:
 
+<!-- snippet: no-compile illustrative type alias — Arc/HashMap/Value/FunctionResult shown without imports; conceptual signature, not a compilation unit -->
 ```rust
 type ToolHandler = Arc<dyn Fn(HashMap<String, Value>, HashMap<String, Value>) -> FunctionResult + Send + Sync>;
 ```
@@ -186,6 +192,7 @@ Dynamic configuration clones the entire agent, applies a callback, renders SWML 
 
 Use `Result<T, E>` instead of exceptions. Define SDK-specific error enums:
 
+<!-- snippet: no-compile illustrative pattern — uses the external `thiserror` derive crate, not linked by the snippet checker -->
 ```rust
 #[derive(Debug, thiserror::Error)]
 pub enum SignalWireError {
@@ -212,6 +219,7 @@ All shared mutable state (global data, tool registry, RELAY correlation maps) mu
 
 Every struct that crosses a JSON boundary derives `Serialize` and `Deserialize`:
 
+<!-- snippet: no-compile illustrative pattern — Serialize/Deserialize/Value shown without the serde imports; conceptual struct sketch -->
 ```rust
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SwmlDocument {
@@ -224,6 +232,7 @@ Use `#[serde(skip_serializing_if = "Option::is_none")]` to match the Python SDK'
 
 ### HMAC Token Security
 
+<!-- snippet: no-compile illustrative pattern — uses the external hmac/sha2/subtle crates, not linked by the snippet checker -->
 ```rust
 use hmac::{Hmac, Mac};
 use sha2::Sha256;
@@ -234,21 +243,19 @@ type HmacSha256 = Hmac<Sha256>;
 
 Tokens encode `function_name:call_id:expiry`, are HMAC-signed, then base64-encoded. Validation uses constant-time comparison.
 
-### Async for RELAY and REST
+### Synchronous RELAY and REST clients
 
-RELAY and REST clients use `async`/`await` with `tokio`:
+Both the RELAY client (`signalwire::relay::Client`) and the REST client
+(`signalwire::rest::RestClient`) present a **synchronous** API. The RELAY
+`Client` runs its WebSocket/Blade event loop on a background reader thread and
+invokes handler closures on that thread; its methods (`connect`, `dial`,
+`send_message`, `run`) block and return `Result<_, RelayError>`. The REST
+client's methods make blocking HTTP calls and return
+`Result<Value, SignalWireRestError>`. Neither exposes `async`/`await` to callers,
+and there is no `RelayClient` type — the RELAY entry point is `Client`.
 
-```rust
-impl RelayClient {
-    pub async fn run(&self) -> Result<(), SignalWireError> { ... }
-}
-
-impl RestClient {
-    pub async fn get(&self, path: &str) -> Result<Value, SignalWireError> { ... }
-}
-```
-
-AgentBase itself is synchronous (serves HTTP via a sync framework or spawns a runtime internally).
+AgentBase is likewise synchronous (serves HTTP via a sync framework or spawns a
+runtime internally).
 
 ## File Locations
 

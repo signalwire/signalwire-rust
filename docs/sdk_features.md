@@ -16,6 +16,13 @@ The SignalWire Rust SDK provides three major capabilities in a single crate:
 
 Structured prompt composition using titled sections, bullets, and subsections instead of raw text strings.
 
+<!-- snippet-setup -->
+```rust
+use signalwire::agent::{AgentBase, AgentOptions};
+
+let mut agent = AgentBase::new(AgentOptions::new("sdk-features"));
+```
+
 ```rust
 agent.prompt_add_section("Role", "You are a sales agent.", vec![]);
 agent.prompt_add_section("Rules", "", vec!["Be helpful", "Be concise"]);

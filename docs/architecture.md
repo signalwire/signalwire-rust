@@ -69,6 +69,7 @@ Call ends → on_summary callback (if post-prompt configured)
 
 `AgentBase` composes a `Service` (HTTP server), a `SessionManager`, and an optional `ContextBuilder`. In Rust, this is expressed as struct fields rather than class inheritance:
 
+<!-- snippet: no-compile illustrative struct sketch — the real `AgentBase` has more fields (elided with `// ...`); Service/SessionManager/ContextBuilder shown without imports -->
 ```rust
 pub struct AgentBase {
     service: Service,
@@ -80,11 +81,22 @@ pub struct AgentBase {
 
 Builder methods return `&mut Self` for chaining:
 
+<!-- snippet-setup -->
+```rust
+use signalwire::agent::{AgentBase, AgentOptions};
+use signalwire::swaig::FunctionResult;
+use signalwire::swml::service::FunctionHandler;
+use serde_json::json;
+
+let mut agent = AgentBase::new(AgentOptions::new("arch-guide"));
+let handler: FunctionHandler = Box::new(|_args, _raw| FunctionResult::with_response("ok"));
+```
+
 ```rust
 agent
     .prompt_add_section("Role", "You are helpful.", vec![])
-    .define_tool("get_time", "Get current time", json!({}), handler, false)
     .add_language("English", "en-US", "rime.spore");
+agent.define_tool("get_time", "Get current time", json!({}), handler, false);
 ```
 
 ## Module Boundaries

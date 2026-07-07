@@ -50,6 +50,14 @@ opts.use_pom = true;
 
 ### AI Parameters
 
+<!-- snippet-setup -->
+```rust
+use signalwire::agent::{AgentBase, AgentOptions};
+use serde_json::json;
+
+let mut agent = AgentBase::new(AgentOptions::new("config-guide"));
+```
+
 ```rust
 agent.set_params(json!({
     "ai_model": "gpt-4.1-nano",
@@ -110,6 +118,9 @@ When hosting multiple agents, use `AgentServer`:
 
 ```rust
 use signalwire::AgentServer;
+
+let agent_a = AgentBase::new(AgentOptions::new("agent-a"));
+let agent_b = AgentBase::new(AgentOptions::new("agent-b"));
 
 let mut server = AgentServer::new(Some("0.0.0.0"), Some(3000));
 server.register(agent_a, Some("/agent-a")).unwrap();

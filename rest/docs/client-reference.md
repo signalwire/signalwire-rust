@@ -2,16 +2,29 @@
 
 ## RestClient
 
-The main entry point for REST API operations.
+The main entry point for REST API operations. The client is **synchronous** —
+every method makes a blocking HTTP call and returns
+`Result<Value, SignalWireRestError>` directly. There is no `async`/`await`.
+
+<!-- snippet-setup -->
+```rust
+use signalwire::rest::RestClient;
+use serde_json::json;
+use std::collections::HashMap;
+
+let client = RestClient::new("project-id", "api-token", "example.signalwire.com").unwrap();
+```
 
 ### Construction
 
+Both constructors return `Result<RestClient, String>`:
+
 ```rust
 // From environment variables
-let client = RestClient::from_env()?;
+let from_env = RestClient::from_env();
 
 // Explicit configuration
-let client = RestClient::new(project_id, api_token, space)?;
+let explicit = RestClient::new("project-id", "api-token", "example.signalwire.com");
 ```
 
 ### Environment Variables
@@ -24,68 +37,60 @@ let client = RestClient::new(project_id, api_token, space)?;
 
 ### Namespace Accessors
 
-| Method | Returns | Description |
-|--------|---------|-------------|
-| `fabric()` | `FabricClient` | Fabric AI platform APIs |
-| `calling()` | `CallingClient` | Call management |
-| `messaging()` | `MessagingClient` | SMS/MMS |
-| `phone_numbers()` | `PhoneNumbersClient` | Number management |
-| `sip()` | `SipClient` | SIP operations |
-| `video()` | `VideoClient` | Video rooms |
-| `datasphere()` | `DatasphereClient` | Document search |
-| `queues()` | `QueuesClient` | Call queues |
-| `recordings()` | `RecordingsClient` | Recording management |
-| `fax()` | `FaxClient` | Fax operations |
-| `conferences()` | `ConferencesClient` | Conferences |
-| `transcriptions()` | `TranscriptionsClient` | Transcription operations |
-| `applications()` | `ApplicationsClient` | Application management |
-| `usage()` | `UsageClient` | Usage data |
+The client exposes each REST namespace as a method:
 
-### Common Method Patterns
+| Method | Description |
+|--------|-------------|
+| `fabric()` | Fabric AI platform APIs |
+| `calling()` | Call command dispatch |
+| `phone_numbers()` | Number management |
+| `addresses()` | Fabric addresses |
+| `video()` | Video rooms |
+| `datasphere()` | Document search |
+| `queues()` | Call queues |
+| `recordings()` | Recording management |
+| `number_groups()` | Number groups |
+| `verified_callers()` | Verified caller IDs |
+| `sip_profile()` | SIP profile |
+| `lookup()` | Number lookup |
+| `short_codes()` | Short codes |
+| `imported_numbers()` | Imported numbers |
+| `mfa()` | Multi-factor auth |
+| `registry()` | Registry |
+| `logs()` | Logs |
+| `project()` | Project settings |
+| `pubsub()` | Pub/Sub |
+| `chat()` | Chat |
 
-All namespaces follow consistent patterns:
+### Common CRUD Method Patterns
+
+CRUD resources follow consistent signatures. `list`/`search` take a
+`&HashMap<String, String>` of query params; `create`/`update` take a
+`&serde_json::Value` body:
 
 ```rust
-// List resources (query parameters as key-value tuples)
-client.namespace().list(&[("key", "value")]).await?;
+// List resources
+let listed = client.fabric().ai_agents().list(&HashMap::new()).unwrap();
 
 // Get a single resource
-client.namespace().get("resource-id").await?;
+let one = client.fabric().ai_agents().get("resource-id").unwrap();
 
-// Create a resource (JSON body)
-client.namespace().create(json!({...})).await?;
+// Create a resource
+let created = client.fabric().ai_agents().create(&json!({"name": "Bot"})).unwrap();
 
 // Update a resource
-client.namespace().update("resource-id", json!({...})).await?;
+let updated = client.fabric().ai_agents().update("resource-id", &json!({"name": "Bot 2"})).unwrap();
 
 // Delete a resource
-client.namespace().delete("resource-id").await?;
-
-// Search (query parameters)
-client.namespace().search(&[("key", "value")]).await?;
+client.fabric().ai_agents().delete("resource-id").unwrap();
 ```
 
 ### Return Type
 
-All methods return `Result<Value, Box<dyn std::error::Error>>` where `Value` is `serde_json::Value`.
-
-### Connection Pooling
-
-The client uses `reqwest::Client` internally with connection pooling. Creating multiple `RestClient` instances is safe but unnecessary -- a single client can handle concurrent requests.
-
-### Timeouts
-
-Default request timeout is 30 seconds. Configure via the builder:
-
-```rust
-let client = RestClient::builder()
-    .project(project_id)
-    .token(api_token)
-    .space(space)
-    .timeout(std::time::Duration::from_secs(60))
-    .build()?;
-```
+All methods return `Result<Value, SignalWireRestError>` where `Value` is
+`serde_json::Value`. There are no wrapper types — you get the raw JSON.
 
 ### Authentication
 
-The client uses HTTP Basic auth with `project_id:api_token`. Authentication is added to every request automatically.
+The client uses HTTP Basic auth with `project_id:api_token`, added to every
+request automatically.
