@@ -1,6 +1,6 @@
 {
   "version": "1",
-  "generated_from": "signalwire-rust @ 1e2cf246b968b6a07bd6206d14eb435e1cc00d7c",
+  "generated_from": "signalwire-rust @ 64c2300ac05ab1c0ed8d71089d0400f7e586acda",
   "modules": {
     "signalwire": {
       "classes": {
@@ -1142,6 +1142,7 @@
           "resolve",
           "result",
           "sent_commands",
+          "set_client",
           "set_notify_sender",
           "state",
           "stop",
@@ -1203,6 +1204,7 @@
           "resolve_all_actions",
           "send_digits",
           "send_fax",
+          "set_client",
           "stream",
           "tap",
           "transcribe",

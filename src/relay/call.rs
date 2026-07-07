@@ -1,9 +1,10 @@
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, Weak};
 
 use serde_json::Value;
 
 use super::action::Action;
+use super::client::Client;
 use super::constants;
 use super::event::Event;
 use crate::logging::Logger;
@@ -42,6 +43,15 @@ pub struct Call {
 
     // ── commands sent (for testing without a real client) ─────────────
     pub sent_commands: Mutex<Vec<(String, Value)>>,
+
+    // ── owning client, for transmitting frames to the wire ────────────
+    // A `Weak` back-reference (the Client owns the Call via `Arc`, so a
+    // strong ref here would leak). When present, every `calling.*` frame a
+    // verb builds is transmitted through `Client::send_request` — the same
+    // client-send boundary the cross-port relay differ observes. When absent
+    // (a bare `Call::new` with no client), frames are only recorded in
+    // `sent_commands`. This mirrors Python's `Call._client.execute`.
+    client: Mutex<Option<Weak<Client>>>,
 
     logger: Logger,
 }
@@ -90,8 +100,30 @@ impl Call {
             actions: Mutex::new(HashMap::new()),
             on_event_callbacks: Mutex::new(Vec::new()),
             sent_commands: Mutex::new(Vec::new()),
+            client: Mutex::new(None),
             logger: Logger::new("relay.call"),
         }
+    }
+
+    /// Attach the owning [`Client`] so this Call's verbs transmit their
+    /// frames to the wire (via [`Client::send_request`]) instead of only
+    /// recording them in `sent_commands`. Stored as a `Weak` — the Client
+    /// owns the Call, so a strong ref would form a reference cycle. Called by
+    /// the Client immediately after it constructs a Call. Mirrors Python,
+    /// where a Call always carries `self._client`.
+    ///
+    /// # Panics
+    /// Panics if the internal mutex is poisoned (another thread panicked while
+    /// holding the lock). This does not occur under normal operation.
+    pub fn set_client(&self, client: &Arc<Client>) {
+        *self.client.lock().unwrap() = Some(Arc::downgrade(client));
+        // Actions already created (none yet at attach time) would need the
+        // same wiring; new actions inherit it via `start_action`.
+    }
+
+    /// The live owning [`Client`], if one is attached and still alive.
+    fn client(&self) -> Option<Arc<Client>> {
+        self.client.lock().unwrap().as_ref().and_then(Weak::upgrade)
     }
 
     /// Current call state.
@@ -782,6 +814,13 @@ impl Call {
     }
 
     /// Send a simple (non-action) RPC call.
+    ///
+    /// Builds the `calling.<x>` frame's params (`node_id` + `call_id` + the
+    /// verb's extra params) and, when a [`Client`] is attached, TRANSMITS it
+    /// to the wire via [`Client::send_request`] — the client-send boundary.
+    /// The params are always also recorded in `sent_commands` for local
+    /// inspection/tests. Mirrors Python's `Call._execute`, which calls
+    /// `self._client.execute(method, params)`.
     fn execute(&self, method: &str, extra: Value) -> Value {
         let mut base = self.base_params();
         if let (Some(base_map), Some(extra_map)) = (base.as_object_mut(), extra.as_object()) {
@@ -793,6 +832,10 @@ impl Call {
             .lock()
             .unwrap()
             .push((method.to_string(), base.clone()));
+        // Transmit to the wire through the owning client, if attached.
+        if let Some(client) = self.client() {
+            client.send_request(method, base.clone());
+        }
         base
     }
 
@@ -808,6 +851,11 @@ impl Call {
             node_id,
             stop_method,
         ));
+        // Wire the same client into the Action so its control-op sub-commands
+        // (stop/pause/resume/volume) transmit to the wire too.
+        if let Some(client) = self.client() {
+            action.set_client(&client);
+        }
 
         self.actions
             .lock()
@@ -826,7 +874,12 @@ impl Call {
         self.sent_commands
             .lock()
             .unwrap()
-            .push((method.to_string(), base));
+            .push((method.to_string(), base.clone()));
+        // Transmit the action's start frame to the wire, if a client is
+        // attached (mirrors Python's `_start_action` -> `_execute`).
+        if let Some(client) = self.client() {
+            client.send_request(method, base);
+        }
 
         action
     }

@@ -265,6 +265,45 @@ impl Service {
     /// the emitted `argument` is standard JSON Schema and byte-matches the
     /// reference. A property without the flag (or `"required": false`) is
     /// optional and left untouched.
+    /// Structure a tool's `parameters` into the `{type, properties,
+    /// [required]}` JSON-Schema object the SWML AI verb expects, mirroring
+    /// Python's `SwaigFunction._ensure_parameter_structure`:
+    ///
+    /// - a COMPLETE schema (already carrying both `type` and `properties`)
+    ///   PASSES THROUGH unchanged — it must NOT be re-wrapped under
+    ///   `properties` (that double-wrap was the bug: a complete schema became
+    ///   `{type:object, properties:{type:object, properties:{…}}}`);
+    /// - a bare `properties`-shaped map (per-property entries, with a boolean
+    ///   `required` flag on individual properties) is wrapped as
+    ///   `{type:object, properties:<map>, required?:[…]}` via
+    ///   [`normalize_parameters`];
+    /// - anything else (empty / non-object) yields the empty
+    ///   `{type:object, properties:{}}`.
+    fn ensure_parameter_structure(parameters: Value) -> serde_json::Map<String, Value> {
+        // Complete schema — pass through (Python swaig_function.py:124-125).
+        if let Value::Object(obj) = &parameters
+            && obj.contains_key("type")
+            && obj.contains_key("properties")
+        {
+            return obj.clone();
+        }
+        // Bare properties map — wrap it (Python swaig_function.py:127-133).
+        let (properties, required) = Self::normalize_parameters(parameters);
+        let mut argument = serde_json::Map::new();
+        argument.insert("type".to_string(), serde_json::json!("object"));
+        argument.insert("properties".to_string(), Value::Object(properties));
+        // Emit the top-level JSON-Schema `required` array (the form the model +
+        // validator expect) ONLY when non-empty — matching the Python reference,
+        // which omits the key for an empty required list (swaig_function.py:128).
+        if !required.is_empty() {
+            argument.insert(
+                "required".to_string(),
+                Value::Array(required.into_iter().map(Value::String).collect()),
+            );
+        }
+        argument
+    }
+
     fn normalize_parameters(parameters: Value) -> (serde_json::Map<String, Value>, Vec<String>) {
         let mut required: Vec<String> = Vec::new();
         let Value::Object(props) = parameters else {
@@ -303,19 +342,7 @@ impl Service {
         handler: FunctionHandler,
         secure: bool,
     ) -> &mut Self {
-        let (properties, required) = Self::normalize_parameters(parameters);
-        let mut argument = serde_json::Map::new();
-        argument.insert("type".to_string(), serde_json::json!("object"));
-        argument.insert("properties".to_string(), Value::Object(properties));
-        // Emit the top-level JSON-Schema `required` array (the form the model +
-        // validator expect) ONLY when non-empty — matching the Python reference,
-        // which omits the key for an empty required list (swaig_function.py:128).
-        if !required.is_empty() {
-            argument.insert(
-                "required".to_string(),
-                Value::Array(required.into_iter().map(Value::String).collect()),
-            );
-        }
+        let argument = Self::ensure_parameter_structure(parameters);
 
         let mut definition = serde_json::Map::new();
         definition.insert("function".to_string(), serde_json::json!(name));

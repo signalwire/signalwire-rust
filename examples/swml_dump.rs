@@ -20,6 +20,7 @@
 use std::collections::{BTreeMap, HashMap};
 
 use serde_json::{Value, json};
+use signalwire::swaig::FunctionResult;
 use signalwire::{AgentBase, AgentOptions};
 
 /// A demo agent ("demo" at "/demo") with POM enabled (the default) so
@@ -48,6 +49,30 @@ fn extract(doc: &Value, path: &str) -> Value {
         node = node.get(part).cloned().unwrap_or(Value::Null);
     }
     node
+}
+
+/// From a rendered `ai.SWAIG.functions` array, pick the entry whose
+/// `function` equals `name` and return its parameters schema (mirrors the
+/// oracle's `swaig_fn`/`field: "parameters"` filter in
+/// `diff_port_swml.build_oracle`).
+///
+/// This port natively serializes the SWAIG parameter schema under the key
+/// `argument` (the `purpose`/`argument` wire-idiom documented in
+/// porting-sdk/CONFORMANCE_AUDIT.md §3.1 — Java/PHP/Rust/.NET), while the
+/// Python oracle + spec use `parameters`. The observed artifact is the SCHEMA
+/// VALUE, not the key it hangs under; per `PORTING_GUIDE` (a consumer accepts
+/// `parameters|argument` interchangeably) we read `parameters` first and fall
+/// back to `argument`, so the byte-compared value is the flat schema either
+/// way.
+fn swaig_fn_parameters(functions: &Value, name: &str) -> Value {
+    functions
+        .as_array()
+        .and_then(|arr| {
+            arr.iter()
+                .find(|f| f.get("function").and_then(Value::as_str) == Some(name))
+        })
+        .and_then(|f| f.get("parameters").or_else(|| f.get("argument")).cloned())
+        .unwrap_or(Value::Null)
 }
 
 /// Reduce a map fragment to the listed keys (mirrors the oracle's `pick`).
@@ -141,6 +166,31 @@ fn main() {
         out.insert(
             "swml_add_pronunciation",
             extract(&render(&a), "ai.pronounce"),
+        );
+    }
+
+    // swml_define_tool_complete_schema: define_tool with a COMPLETE
+    // {type, properties, required} schema must PASS THROUGH to
+    // ai.SWAIG.functions[lookup].parameters as that schema FLAT (not
+    // double-wrapped). Mirrors Python's `_ensure_parameter_structure`, which
+    // returns the schema unchanged when it already has type+properties.
+    {
+        let mut a = new_agent();
+        a.define_tool(
+            "lookup",
+            "Look up a thing",
+            json!({
+                "type": "object",
+                "properties": {"q": {"type": "string"}},
+                "required": ["q"],
+            }),
+            Box::new(|_args, _raw| FunctionResult::with_response("ok")),
+            false,
+        );
+        let functions = extract(&render(&a), "ai.SWAIG.functions");
+        out.insert(
+            "swml_define_tool_complete_schema",
+            swaig_fn_parameters(&functions, "lookup"),
         );
     }
 

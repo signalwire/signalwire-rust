@@ -18282,6 +18282,20 @@
               ],
               "returns": "list<tuple<string,dict<string,class:signalwire.value.Value>>>"
             },
+            "set_client": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                },
+                {
+                  "name": "client",
+                  "type": "class:signalwire.client.RelayClient",
+                  "required": true
+                }
+              ],
+              "returns": "void"
+            },
             "set_notify_sender": {
               "params": [
                 {
@@ -19047,6 +19061,20 @@
                 }
               ],
               "returns": "class:signalwire.relay.call.Action"
+            },
+            "set_client": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                },
+                {
+                  "name": "client",
+                  "type": "class:signalwire.client.RelayClient",
+                  "required": true
+                }
+              ],
+              "returns": "void"
             },
             "stream": {
               "params": [

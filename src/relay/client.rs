@@ -731,7 +731,7 @@ impl Client {
     /// Panics if an internal mutex is poisoned (i.e. another thread
     /// panicked while holding the lock). This does not occur under
     /// normal operation.
-    pub fn handle_message(&self, raw: &str) {
+    pub fn handle_message(self: &Arc<Self>, raw: &str) {
         self.logger.debug(&format!("<< {raw}"));
 
         let data: Value = if let Ok(d) = serde_json::from_str(raw) {
@@ -785,7 +785,7 @@ impl Client {
     /// Panics if an internal mutex is poisoned (i.e. another thread
     /// panicked while holding the lock). This does not occur under
     /// normal operation.
-    pub fn handle_event(&self, outer_params: &Value) {
+    pub fn handle_event(self: &Arc<Self>, outer_params: &Value) {
         let event_type = outer_params
             .get("event_type")
             .and_then(|v| v.as_str())
@@ -848,6 +848,7 @@ impl Client {
                 let mut calls = self.calls.lock().unwrap();
                 if !calls.contains_key(call_id) {
                     let call = Arc::new(Call::new(&params));
+                    call.set_client(self);
                     calls.insert(call_id.to_string(), call);
                 }
             }
@@ -1347,13 +1348,14 @@ impl Client {
     //  Private helpers
     // ══════════════════════════════════════════════════════════════════
 
-    fn handle_inbound_call(&self, event: &Event, params: &Value) {
+    fn handle_inbound_call(self: &Arc<Self>, event: &Event, params: &Value) {
         let Some(call_id) = params.get("call_id").and_then(|v| v.as_str()) else {
             self.logger.warn("Inbound call event missing call_id");
             return;
         };
 
         let call = Arc::new(Call::new(params));
+        call.set_client(self);
         self.calls
             .lock()
             .unwrap()
@@ -1366,7 +1368,7 @@ impl Client {
         }
     }
 
-    fn handle_dial_event(&self, _event: &Event, params: &Value) {
+    fn handle_dial_event(self: &Arc<Self>, _event: &Event, params: &Value) {
         let tag = match params.get("tag").and_then(|v| v.as_str()) {
             Some(t) => t.to_string(),
             None => return,
@@ -1410,6 +1412,7 @@ impl Client {
                 existing.clone()
             } else {
                 let call = Arc::new(Call::new(&ctor_params));
+                call.set_client(self);
                 calls.insert(cid.to_string(), call.clone());
                 call
             }
@@ -1732,7 +1735,7 @@ mod tests {
 
     #[test]
     fn test_handle_message_response_resolve() {
-        let c = make_client();
+        let c = Arc::new(make_client());
         let result = Arc::new(Mutex::new(None));
         let result2 = result.clone();
 
@@ -1759,7 +1762,7 @@ mod tests {
 
     #[test]
     fn test_handle_message_response_reject() {
-        let c = make_client();
+        let c = Arc::new(make_client());
         let error = Arc::new(Mutex::new(None));
         let error2 = error.clone();
 
@@ -1786,7 +1789,7 @@ mod tests {
 
     #[test]
     fn test_handle_ping() {
-        let c = make_client();
+        let c = Arc::new(make_client());
         let msg = json!({
             "jsonrpc": "2.0",
             "id": "ping-1",
@@ -1802,7 +1805,7 @@ mod tests {
 
     #[test]
     fn test_handle_disconnect() {
-        let c = make_client();
+        let c = Arc::new(make_client());
         // Manually flip the in-memory connected flag (this test verifies
         // the dispatcher's response to a `signalwire.disconnect` frame —
         // not the transport).
@@ -1821,7 +1824,7 @@ mod tests {
 
     #[test]
     fn test_handle_inbound_call() {
-        let c = make_client();
+        let c = Arc::new(make_client());
         let received = Arc::new(Mutex::new(false));
         let received2 = received.clone();
         c.on_call(move |_call, _ev| {
@@ -1843,7 +1846,7 @@ mod tests {
 
     #[test]
     fn test_handle_call_state_event() {
-        let c = make_client();
+        let c = Arc::new(make_client());
 
         // Create a call first
         c.handle_event(&json!({
@@ -1863,7 +1866,7 @@ mod tests {
 
     #[test]
     fn test_handle_call_ended_removes_call() {
-        let c = make_client();
+        let c = Arc::new(make_client());
 
         c.handle_event(&json!({
             "event_type": "calling.call.receive",
@@ -1880,7 +1883,7 @@ mod tests {
 
     #[test]
     fn test_handle_message_state() {
-        let c = make_client();
+        let c = Arc::new(make_client());
         let msg = Arc::new(Message::new(&json!({"message_id": "msg-1"})));
         c.track_message("msg-1", msg.clone());
 
@@ -1896,7 +1899,7 @@ mod tests {
 
     #[test]
     fn test_handle_message_terminal_removes() {
-        let c = make_client();
+        let c = Arc::new(make_client());
         let msg = Arc::new(Message::new(&json!({"message_id": "msg-1"})));
         c.track_message("msg-1", msg.clone());
 
@@ -1911,7 +1914,7 @@ mod tests {
 
     #[test]
     fn test_handle_inbound_message() {
-        let c = make_client();
+        let c = Arc::new(make_client());
         let received = Arc::new(Mutex::new(false));
         let received2 = received.clone();
         c.on_message(move |_ev, _params| {
@@ -1928,7 +1931,7 @@ mod tests {
 
     #[test]
     fn test_handle_dial_event() {
-        let c = make_client();
+        let c = Arc::new(make_client());
         let resolved_call = Arc::new(Mutex::new(None));
         let resolved2 = resolved_call.clone();
 
@@ -1955,7 +1958,7 @@ mod tests {
 
     #[test]
     fn test_handle_authorization_state() {
-        let c = make_client();
+        let c = Arc::new(make_client());
         c.handle_event(&json!({
             "event_type": "signalwire.authorization.state",
             "params": {"authorization_state": "authorized"},
@@ -1999,7 +2002,7 @@ mod tests {
 
     #[test]
     fn test_on_event_handler() {
-        let c = make_client();
+        let c = Arc::new(make_client());
         let received = Arc::new(Mutex::new(false));
         let received2 = received.clone();
         c.on_event(move |_ev, _params| {
@@ -2017,14 +2020,14 @@ mod tests {
 
     #[test]
     fn test_handle_unparseable_message() {
-        let c = make_client();
+        let c = Arc::new(make_client());
         // Should not panic
         c.handle_message("not-json{{{");
     }
 
     #[test]
     fn test_handle_event_signalwire_event_method() {
-        let c = make_client();
+        let c = Arc::new(make_client());
         let received = Arc::new(Mutex::new(false));
         let received2 = received.clone();
         c.on_call(move |_call, _ev| {

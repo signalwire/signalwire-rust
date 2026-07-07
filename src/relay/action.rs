@@ -1,8 +1,9 @@
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, Weak};
 
 use serde_json::Value;
 
+use super::client::Client;
 use super::event::Event;
 
 /// Callback type for completion notifications.
@@ -34,6 +35,11 @@ pub struct Action {
     stop_method: String,
     /// Commands recorded during tests (method, params).
     pub(crate) sent_commands: Mutex<Vec<(String, HashMap<String, Value>)>>,
+    /// Owning client, for transmitting sub-command frames to the wire. A
+    /// `Weak` back-reference (the Call/Client owns the Action). When present,
+    /// [`Action::execute_subcommand`] transmits via [`Client::send_request`];
+    /// when absent, sub-commands are only recorded in `sent_commands`.
+    client: Mutex<Option<Weak<Client>>>,
 }
 
 impl Action {
@@ -61,7 +67,24 @@ impl Action {
             notify_tx: Mutex::new(None),
             stop_method: stop_method.to_string(),
             sent_commands: Mutex::new(Vec::new()),
+            client: Mutex::new(None),
         }
+    }
+
+    /// Attach the owning [`Client`] so this Action's sub-command frames
+    /// (stop/pause/resume/volume) transmit to the wire. Stored as a `Weak` to
+    /// avoid a reference cycle. Called by [`Call::start_action`].
+    ///
+    /// # Panics
+    /// Panics if the internal mutex is poisoned (another thread panicked while
+    /// holding the lock). This does not occur under normal operation.
+    pub fn set_client(&self, client: &Arc<Client>) {
+        *self.client.lock().unwrap() = Some(Arc::downgrade(client));
+    }
+
+    /// The live owning [`Client`], if attached and still alive.
+    fn client(&self) -> Option<Arc<Client>> {
+        self.client.lock().unwrap().as_ref().and_then(Weak::upgrade)
     }
 
     // ------------------------------------------------------------------
@@ -310,7 +333,14 @@ impl Action {
         self.sent_commands
             .lock()
             .unwrap()
-            .push((method.to_string(), params));
+            .push((method.to_string(), params.clone()));
+        // Transmit the sub-command frame to the wire through the owning
+        // client, if attached (mirrors Python's `Action._execute` ->
+        // `call._execute` -> `client.execute`).
+        if let Some(client) = self.client() {
+            let obj: serde_json::Map<String, Value> = params.into_iter().collect();
+            client.send_request(method, Value::Object(obj));
+        }
     }
 
     // ------------------------------------------------------------------
