@@ -164,19 +164,11 @@ fn test_answer_in_handler_journals_calling_answer() {
     let client = relay_mocktest::connected_client(&["default"]);
     let answered: Arc<Mutex<bool>> = Arc::new(Mutex::new(false));
     let ans2 = answered.clone();
-    let client2 = client.clone();
     client.on_call(move |call, _ev| {
-        // Send the answer frame manually since Call::answer just records
-        // an in-memory command. We send through the Client transport so
-        // the mock journals it.
-        let id = call.call_id.clone().unwrap_or_default();
-        let frame = json!({
-            "jsonrpc": "2.0",
-            "id": format!("ans-{}", id),
-            "method": "calling.answer",
-            "params": {"call_id": id, "node_id": call.node_id.clone().unwrap_or_default()},
-        });
-        client2.send(&frame);
+        // Call::answer transmits the calling.answer frame through the
+        // attached Client itself (the e024a18 transmit fix) — exactly
+        // once; the mock journals the SDK's own frame.
+        let _ = call.answer();
         *ans2.lock().unwrap() = true;
     });
     relay_mocktest::inbound_call(json!({
@@ -187,7 +179,11 @@ fn test_answer_in_handler_journals_calling_answer() {
     // Allow the journal to record.
     std::thread::sleep(std::time::Duration::from_millis(150));
     let answers = relay_mocktest::journal_recv(Some("calling.answer"));
-    assert!(!answers.is_empty(), "no calling.answer frame in journal");
+    assert_eq!(
+        answers.len(),
+        1,
+        "the SDK must transmit exactly one calling.answer frame (double-send)"
+    );
     assert_eq!(
         answers
             .last()
@@ -206,16 +202,8 @@ fn test_answer_then_state_event_advances_call_state() {
     let client = relay_mocktest::connected_client(&["default"]);
     let captured: Arc<Mutex<Option<Arc<signalwire::relay::Call>>>> = Arc::new(Mutex::new(None));
     let cap2 = captured.clone();
-    let client2 = client.clone();
     client.on_call(move |call, _ev| {
-        let id = call.call_id.clone().unwrap_or_default();
-        let frame = json!({
-            "jsonrpc": "2.0",
-            "id": format!("ans-{}", id),
-            "method": "calling.answer",
-            "params": {"call_id": id, "node_id": call.node_id.clone().unwrap_or_default()},
-        });
-        client2.send(&frame);
+        let _ = call.answer();
         *cap2.lock().unwrap() = Some(call);
     });
     relay_mocktest::inbound_call(json!({
@@ -271,17 +259,10 @@ fn test_multiple_inbound_calls_no_state_bleed() {
     let calls: Arc<Mutex<std::collections::HashMap<String, Arc<signalwire::relay::Call>>>> =
         Arc::new(Mutex::new(std::collections::HashMap::new()));
     let calls2 = calls.clone();
-    let client2 = client.clone();
     client.on_call(move |call, _ev| {
         let id = call.call_id.clone().unwrap_or_default();
-        // Send answer through the wire.
-        let frame = json!({
-            "jsonrpc": "2.0",
-            "id": format!("ans-{}", id),
-            "method": "calling.answer",
-            "params": {"call_id": id, "node_id": call.node_id.clone().unwrap_or_default()},
-        });
-        client2.send(&frame);
+        // Answer through the SDK — Call::answer transmits on the wire.
+        let _ = call.answer();
         calls2.lock().unwrap().insert(id, call);
     });
     relay_mocktest::inbound_call(json!({
@@ -390,16 +371,8 @@ fn test_scenario_play_full_inbound_flow() {
     let client = relay_mocktest::connected_client(&["default"]);
     let captured: Arc<Mutex<Option<Arc<signalwire::relay::Call>>>> = Arc::new(Mutex::new(None));
     let cap2 = captured.clone();
-    let client2 = client.clone();
     client.on_call(move |call, _ev| {
-        let id = call.call_id.clone().unwrap_or_default();
-        let frame = json!({
-            "jsonrpc": "2.0",
-            "id": format!("ans-{}", id),
-            "method": "calling.answer",
-            "params": {"call_id": id, "node_id": call.node_id.clone().unwrap_or_default()},
-        });
-        client2.send(&frame);
+        let _ = call.answer();
         *cap2.lock().unwrap() = Some(call);
     });
 
