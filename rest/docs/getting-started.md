@@ -78,7 +78,7 @@ let client = RestClient::new("p", "t", "example.signalwire.com").unwrap();
 
 ```rust
 let mut params = HashMap::new();
-params.insert("area_code".to_string(), "512".to_string());
+params.insert("areacode".to_string(), "512".to_string());
 params.insert("limit".to_string(), "5".to_string());
 
 let result = client.phone_numbers().search(&params).unwrap();

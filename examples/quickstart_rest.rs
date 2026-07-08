@@ -28,7 +28,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .url("https://example.com/call-handler"),
     )?;
 
-    let query = HashMap::from([("area_code".to_string(), "512".to_string())]);
+    let query = HashMap::from([("areacode".to_string(), "512".to_string())]);
     let results = client.phone_numbers().search(&query)?;
     println!("{results:#?}");
 

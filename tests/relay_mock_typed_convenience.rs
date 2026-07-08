@@ -6,14 +6,15 @@
 //
 // Each wrapper is a thin typed convenience over the generic Call.play /
 // Call.detect / Call.play_and_collect actions: it builds the EXACT RELAY
-// media/params shape with serde_json and delegates. The Rust Call records
-// every command it builds into `sent_commands` (it does not transmit on its
-// own), so the test drives the REAL built frame: it invokes the wrapper,
-// pulls the exact params the wrapper assembled, sends that frame over the
-// wire through a connected client, and asserts the shared mock_relay server
-// journaled the identical media shape. No transport mock — the assertion is
-// against the real mock journal, paired with a behavioral assertion on the
-// shape the wrapper produced.
+// media/params shape with serde_json and delegates. The Call TRANSMITS the
+// built frame itself through the attached Client (the e024a18 transmit fix),
+// recording a copy in `sent_commands` for local inspection. The test invokes
+// the wrapper, pulls the exact params the wrapper assembled, and asserts the
+// shared mock_relay server journaled that identical media shape EXACTLY ONCE
+// — the SDK's own transmission is the frame under test; nothing is hand-sent
+// (a hand re-send would put the same command on the wire twice). No transport
+// mock — the assertion is against the real mock journal, paired with a
+// behavioral assertion on the shape the wrapper produced.
 
 #[path = "common/mod.rs"]
 mod common;
@@ -41,16 +42,7 @@ fn answered_inbound_call(
 ) -> Arc<signalwire::relay::Call> {
     let captured: Arc<Mutex<Option<Arc<signalwire::relay::Call>>>> = Arc::new(Mutex::new(None));
     let cap2 = captured.clone();
-    let client2 = client.clone();
     client.on_call(move |call, _ev| {
-        let id = call.call_id.clone().unwrap_or_default();
-        let frame = json!({
-            "jsonrpc": "2.0",
-            "id": format!("ans-{}", id),
-            "method": "calling.answer",
-            "params": {"call_id": id, "node_id": call.node_id.clone().unwrap_or_default()},
-        });
-        client2.send(&frame);
         *cap2.lock().unwrap() = Some(call);
     });
     relay_mocktest::inbound_call(json!({
@@ -75,35 +67,31 @@ fn built_params(call: &Arc<signalwire::relay::Call>, expect_method: &str) -> Val
     cmds[0].1.clone()
 }
 
-/// Send the wrapper's built params over the wire (so the shared mock
-/// journals them), preserving the exact media shape the wrapper assembled.
-fn send_built(client: &Arc<signalwire::relay::Client>, method: &str, params: &Value) -> String {
-    let id = format!("rpc-{method}");
-    let frame = json!({
-        "jsonrpc": "2.0",
-        "id": id.clone(),
-        "method": method,
-        "params": params.clone(),
-    });
-    client.send(&frame);
-    id
-}
-
-/// Journal the wrapper's built frame and return the inner params the mock
-/// recorded. Bridges the behavioral build with a real wire assertion.
-fn journal_built(
-    client: &Arc<signalwire::relay::Client>,
-    call: &Arc<signalwire::relay::Call>,
-    method: &str,
-) -> Value {
+/// Return the inner params the mock journaled for the wrapper's own
+/// transmission of `method`, asserting the SDK put the command on the wire
+/// EXACTLY ONCE (a duplicate would be the double-send bug class) and that
+/// the wire frame matches the params the wrapper recorded locally.
+fn journal_built(call: &Arc<signalwire::relay::Call>, method: &str) -> Value {
     let params = built_params(call, method);
-    send_built(client, method, &params);
+    assert!(
+        wait_until(2000, || !relay_mocktest::journal_recv(Some(method))
+            .is_empty()),
+        "no {method} frame reached the mock journal"
+    );
+    // Allow any stray duplicate to land before counting.
     std::thread::sleep(std::time::Duration::from_millis(150));
-    let entry = relay_mocktest::journal_recv(Some(method))
-        .into_iter()
-        .next()
-        .unwrap_or_else(|| panic!("expected one {method} frame in mock journal"));
-    entry.inner_params().clone()
+    let entries = relay_mocktest::journal_recv(Some(method));
+    assert_eq!(
+        entries.len(),
+        1,
+        "the SDK must transmit exactly one {method} frame (double-send)"
+    );
+    let inner = entries[0].inner_params().clone();
+    assert_eq!(
+        inner, params,
+        "journaled {method} frame must match the wrapper-built command"
+    );
+    inner
 }
 
 // ---------------------------------------------------------------------------
@@ -122,7 +110,7 @@ fn test_play_tts_builds_and_journals_tts_media() {
     );
     assert!(!action.is_done());
 
-    let p = journal_built(&client, &call, "calling.play");
+    let p = journal_built(&call, "calling.play");
     let media = p.get("play").and_then(Value::as_array).expect("play array");
     assert_eq!(media.len(), 1);
     assert_eq!(media[0].get("type").and_then(Value::as_str), Some("tts"));
@@ -145,7 +133,7 @@ fn test_play_tts_omits_unset_optionals() {
 
     call.play_tts("Just text", json!({}));
 
-    let p = journal_built(&client, &call, "calling.play");
+    let p = journal_built(&call, "calling.play");
     let mp = p.get("play").and_then(Value::as_array).unwrap()[0]
         .get("params")
         .unwrap();
@@ -170,7 +158,7 @@ fn test_play_audio_builds_and_journals_audio_media() {
 
     call.play_audio("https://cdn.example/clip.mp3", json!({"volume": 3.0}));
 
-    let p = journal_built(&client, &call, "calling.play");
+    let p = journal_built(&call, "calling.play");
     let media = p.get("play").and_then(Value::as_array).unwrap();
     assert_eq!(media[0].get("type").and_then(Value::as_str), Some("audio"));
     assert_eq!(
@@ -196,7 +184,7 @@ fn test_play_silence_builds_and_journals_silence_media() {
 
     call.play_silence(4.5);
 
-    let p = journal_built(&client, &call, "calling.play");
+    let p = journal_built(&call, "calling.play");
     let media = p.get("play").and_then(Value::as_array).unwrap();
     assert_eq!(
         media[0].get("type").and_then(Value::as_str),
@@ -224,7 +212,7 @@ fn test_play_ringtone_builds_and_journals_ringtone_media() {
 
     call.play_ringtone("us", json!({"duration": 8.0, "volume": -1.0}));
 
-    let p = journal_built(&client, &call, "calling.play");
+    let p = journal_built(&call, "calling.play");
     let media = p.get("play").and_then(Value::as_array).unwrap();
     assert_eq!(
         media[0].get("type").and_then(Value::as_str),
@@ -249,7 +237,7 @@ fn test_detect_digit_builds_and_journals_digit_detect() {
 
     call.detect_digit(json!({"digits": "123", "timeout": 12.0}));
 
-    let p = journal_built(&client, &call, "calling.detect");
+    let p = journal_built(&call, "calling.detect");
     let detect = p.get("detect").expect("detect object");
     assert_eq!(detect.get("type").and_then(Value::as_str), Some("digit"));
     assert_eq!(
@@ -272,7 +260,7 @@ fn test_detect_digit_empty_params_when_unset() {
 
     call.detect_digit(json!({}));
 
-    let p = journal_built(&client, &call, "calling.detect");
+    let p = journal_built(&call, "calling.detect");
     let detect = p.get("detect").unwrap();
     assert_eq!(detect.get("type").and_then(Value::as_str), Some("digit"));
     assert!(
@@ -303,7 +291,7 @@ fn test_detect_answering_machine_builds_only_provided_keys() {
         "timeout": 30.0,
     }));
 
-    let p = journal_built(&client, &call, "calling.detect");
+    let p = journal_built(&call, "calling.detect");
     let detect = p.get("detect").unwrap();
     assert_eq!(detect.get("type").and_then(Value::as_str), Some("machine"));
     let dp = detect.get("params").and_then(Value::as_object).unwrap();
@@ -338,7 +326,7 @@ fn test_detect_fax_builds_and_journals_fax_detect() {
 
     call.detect_fax(json!({"tone": "CED", "timeout": 20.0}));
 
-    let p = journal_built(&client, &call, "calling.detect");
+    let p = journal_built(&call, "calling.detect");
     let detect = p.get("detect").unwrap();
     assert_eq!(detect.get("type").and_then(Value::as_str), Some("fax"));
     assert_eq!(
@@ -368,7 +356,7 @@ fn test_prompt_tts_builds_tts_media_plus_collect() {
         json!({"voice": "spore", "volume": 0.5}),
     );
 
-    let p = journal_built(&client, &call, "calling.play_and_collect");
+    let p = journal_built(&call, "calling.play_and_collect");
     let media = p.get("play").and_then(Value::as_array).unwrap();
     assert_eq!(media[0].get("type").and_then(Value::as_str), Some("tts"));
     let mp = media[0].get("params").unwrap();
@@ -405,7 +393,7 @@ fn test_prompt_audio_builds_audio_media_plus_collect() {
         json!({"volume": -4.0}),
     );
 
-    let p = journal_built(&client, &call, "calling.play_and_collect");
+    let p = journal_built(&call, "calling.play_and_collect");
     let media = p.get("play").and_then(Value::as_array).unwrap();
     assert_eq!(media[0].get("type").and_then(Value::as_str), Some("audio"));
     assert_eq!(

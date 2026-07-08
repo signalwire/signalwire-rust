@@ -21,7 +21,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Searching for numbers with area code {area_code} ...");
 
     let params = HashMap::from([
-        ("area_code".to_string(), area_code.clone()),
+        ("areacode".to_string(), area_code.clone()),
         ("limit".to_string(), "10".to_string()),
     ]);
     let results = client.phone_numbers().search(&params)?;

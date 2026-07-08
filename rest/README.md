@@ -31,7 +31,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Search for phone numbers
     let mut params = HashMap::new();
-    params.insert("area_code".to_string(), "512".to_string());
+    params.insert("areacode".to_string(), "512".to_string());
     let results = client.phone_numbers().search(&params)?;
     println!("{results:#?}");
 
