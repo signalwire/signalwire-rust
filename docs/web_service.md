@@ -36,6 +36,15 @@ are available (an agent mounted at `/sales` would serve `/sales`, `/sales/swaig`
 
 ## Server Configuration
 
+<!-- snippet-setup -->
+```rust
+use signalwire::agent::{AgentBase, AgentOptions};
+use signalwire::AgentServer;
+
+let mut agent = AgentBase::new(AgentOptions::new("web-agent"));
+let mut server = AgentServer::new(Some("0.0.0.0"), Some(3000));
+```
+
 ### Host and Port
 
 ```rust
@@ -57,12 +66,13 @@ agent.run();
 host/port, and `register(agent, route)` returns a `Result`:
 
 ```rust
-use signalwire::AgentServer;
+let sales_agent = AgentBase::new(AgentOptions::new("sales"));
+let support_agent = AgentBase::new(AgentOptions::new("support"));
 
-let mut server = AgentServer::new(Some("0.0.0.0"), Some(3000));
-server.register(sales_agent, Some("/sales")).unwrap();
-server.register(support_agent, Some("/support")).unwrap();
-server.run(None, None);
+let mut multi = AgentServer::new(Some("0.0.0.0"), Some(3000));
+multi.register(sales_agent, Some("/sales")).unwrap();
+multi.register(support_agent, Some("/support")).unwrap();
+multi.run(None, None);
 ```
 
 Each agent keeps its own route prefix, authentication, and SWAIG endpoints.

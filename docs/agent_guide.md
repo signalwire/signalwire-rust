@@ -32,6 +32,15 @@ fn main() {
 
 The Prompt Object Model structures prompts as titled sections:
 
+<!-- snippet-setup -->
+```rust
+use signalwire::agent::{AgentBase, AgentOptions};
+use signalwire::swaig::FunctionResult;
+use serde_json::json;
+
+let mut agent = AgentBase::new(AgentOptions::new("guide-agent"));
+```
+
 ```rust
 // Top-level section with body text
 agent.prompt_add_section("Role", "You are a sales assistant.", vec![]);
@@ -89,9 +98,6 @@ A vague description is the #1 cause of "the model has the right tool but doesn't
 **Tool count matters too.** LLM tool selection accuracy degrades noticeably past ~7-8 simultaneously-active tools per call. If you have many tools, partition them across steps using `step.set_functions(...)` so only the relevant subset is active at any moment. See `contexts_guide.md` for the per-step whitelist mechanism.
 
 ```rust
-use signalwire::swaig::FunctionResult;
-use serde_json::json;
-
 agent.define_tool(
     "check_order",
     "Look up an order by ID",
@@ -211,6 +217,9 @@ with `register(agent, route)`; `run` also takes optional host/port overrides:
 
 ```rust
 use signalwire::AgentServer;
+
+let sales_agent = AgentBase::new(AgentOptions::new("sales"));
+let support_agent = AgentBase::new(AgentOptions::new("support"));
 
 let mut server = AgentServer::new(Some("0.0.0.0"), Some(3000));
 server.register(sales_agent, Some("/sales")).unwrap();

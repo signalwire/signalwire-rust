@@ -16,6 +16,13 @@ The SignalWire Rust SDK provides three major capabilities in a single crate:
 
 Structured prompt composition using titled sections, bullets, and subsections instead of raw text strings.
 
+<!-- snippet-setup -->
+```rust
+use signalwire::agent::{AgentBase, AgentOptions};
+
+let mut agent = AgentBase::new(AgentOptions::new("sdk-features"));
+```
+
 ```rust
 agent.prompt_add_section("Role", "You are a sales agent.", vec![]);
 agent.prompt_add_section("Rules", "", vec!["Be helpful", "Be concise"]);
@@ -100,8 +107,8 @@ Test agents locally with `swaig-test`: list tools, dump SWML, execute functions.
 
 ## REST Features
 
-- 21 namespaced API surfaces
+- Namespaced API surfaces
 - Fabric (13 resource types), Calling (37 commands), Video, Datasphere
-- Compat (Twilio-compatible), Phone Numbers, SIP, Queues, Recordings
+- Phone Numbers, SIP, Queues, Recordings
 - Connection pooling via reqwest
 - Raw `serde_json::Value` returns

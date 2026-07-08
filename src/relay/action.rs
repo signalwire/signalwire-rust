@@ -1,8 +1,9 @@
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, Weak};
 
 use serde_json::Value;
 
+use super::client::Client;
 use super::event::Event;
 
 /// Callback type for completion notifications.
@@ -34,6 +35,11 @@ pub struct Action {
     stop_method: String,
     /// Commands recorded during tests (method, params).
     pub(crate) sent_commands: Mutex<Vec<(String, HashMap<String, Value>)>>,
+    /// Owning client, for transmitting sub-command frames to the wire. A
+    /// `Weak` back-reference (the Call/Client owns the Action). When present,
+    /// [`Action::execute_subcommand`] transmits via [`Client::send_request`];
+    /// when absent, sub-commands are only recorded in `sent_commands`.
+    client: Mutex<Option<Weak<Client>>>,
 }
 
 impl Action {
@@ -61,7 +67,24 @@ impl Action {
             notify_tx: Mutex::new(None),
             stop_method: stop_method.to_string(),
             sent_commands: Mutex::new(Vec::new()),
+            client: Mutex::new(None),
         }
+    }
+
+    /// Attach the owning [`Client`] so this Action's sub-command frames
+    /// (stop/pause/resume/volume) transmit to the wire. Stored as a `Weak` to
+    /// avoid a reference cycle. Called by [`Call::start_action`].
+    ///
+    /// # Panics
+    /// Panics if the internal mutex is poisoned (another thread panicked while
+    /// holding the lock). This does not occur under normal operation.
+    pub fn set_client(&self, client: &Arc<Client>) {
+        *self.client.lock().unwrap() = Some(Arc::downgrade(client));
+    }
+
+    /// The live owning [`Client`], if attached and still alive.
+    fn client(&self) -> Option<Arc<Client>> {
+        self.client.lock().unwrap().as_ref().and_then(Weak::upgrade)
     }
 
     // ------------------------------------------------------------------
@@ -119,6 +142,19 @@ impl Action {
         &self.stop_method
     }
 
+    /// The sub-command frames this action has emitted, as
+    /// `(method, params)` pairs (e.g. `("calling.play.stop", {control_id,
+    /// call_id, node_id})`). Recorded in-memory by
+    /// [`Action::execute_subcommand`]; read for wire-frame inspection/tests.
+    ///
+    /// # Panics
+    /// Panics if an internal mutex is poisoned (another thread panicked while
+    /// holding the lock). This does not occur under normal operation.
+    #[must_use]
+    pub fn sent_commands(&self) -> Vec<(String, HashMap<String, Value>)> {
+        self.sent_commands.lock().unwrap().clone()
+    }
+
     // ------------------------------------------------------------------
     // Async wait support
     // ------------------------------------------------------------------
@@ -131,6 +167,55 @@ impl Action {
     /// while holding the lock). This does not occur under normal operation.
     pub fn set_notify_sender(&self, tx: OneshotSender) {
         *self.notify_tx.lock().unwrap() = Some(tx);
+    }
+
+    /// Block until the action reaches a terminal state, then return its
+    /// resolved result (the terminal payload).
+    ///
+    /// Mirrors Python's `Action.wait`. Python's coroutine awaits a Future
+    /// that resolves to the terminal `RelayEvent`; the Rust `Call` is a
+    /// synchronous command surface, so `wait` blocks the calling thread on
+    /// the same completion signal `resolve` fires and yields the resolved
+    /// `result()` (the terminal event payload the server delivered) instead
+    /// of an awaitable. Pass `Some(timeout)` to bound the wait; `None`
+    /// blocks indefinitely.
+    ///
+    /// Returns `Some(result)` once resolved (matching `result()` at that
+    /// point), or `None` if `timeout` elapsed first. If the action is
+    /// already done, returns immediately. `is_done()` disambiguates a
+    /// `None` caused by a timeout from an action that resolved with an
+    /// empty result.
+    ///
+    /// # Panics
+    /// Panics if an internal mutex is poisoned (i.e. another thread panicked
+    /// while holding the lock). This does not occur under normal operation.
+    #[must_use]
+    pub fn wait(&self, timeout: Option<std::time::Duration>) -> Option<Value> {
+        // Fast path: already resolved.
+        if self.is_done() {
+            return self.result();
+        }
+
+        let (tx, rx) = std::sync::mpsc::sync_channel::<()>(1);
+        self.set_notify_sender(tx);
+
+        // Re-check after installing the sender to close the race where the
+        // action resolved between the fast-path check and the install (in
+        // which case `resolve` already took the previous `None` sender).
+        if self.is_done() {
+            return self.result();
+        }
+
+        let recvd = match timeout {
+            Some(dur) => rx.recv_timeout(dur).is_ok(),
+            None => rx.recv().is_ok(),
+        };
+
+        if recvd || self.is_done() {
+            self.result()
+        } else {
+            None
+        }
     }
 
     // ------------------------------------------------------------------
@@ -248,7 +333,14 @@ impl Action {
         self.sent_commands
             .lock()
             .unwrap()
-            .push((method.to_string(), params));
+            .push((method.to_string(), params.clone()));
+        // Transmit the sub-command frame to the wire through the owning
+        // client, if attached (mirrors Python's `Action._execute` ->
+        // `call._execute` -> `client.execute`).
+        if let Some(client) = self.client() {
+            let obj: serde_json::Map<String, Value> = params.into_iter().collect();
+            client.send_request(method, Value::Object(obj));
+        }
     }
 
     // ------------------------------------------------------------------
@@ -311,8 +403,15 @@ macro_rules! action_subclass {
 action_subclass!(PlayAction, "calling.play.stop");
 
 impl PlayAction {
-    pub fn pause(&self) {
-        self.execute_subcommand("calling.play.pause", HashMap::new());
+    /// Pause the running play. Mirrors Python's
+    /// `PausableAction.pause(behavior: str | None = None)`: when `behavior`
+    /// is `Some`, it rides in the `behavior` param; when `None` it is omitted.
+    pub fn pause(&self, behavior: Option<&str>) {
+        let mut extra = HashMap::new();
+        if let Some(b) = behavior {
+            extra.insert("behavior".to_string(), Value::String(b.to_string()));
+        }
+        self.execute_subcommand("calling.play.pause", extra);
     }
 
     pub fn resume(&self) {
@@ -331,8 +430,14 @@ impl PlayAction {
 action_subclass!(RecordAction, "calling.record.stop");
 
 impl RecordAction {
-    pub fn pause(&self) {
-        self.execute_subcommand("calling.record.pause", HashMap::new());
+    /// Pause the running record. Mirrors Python's
+    /// `PausableAction.pause(behavior: str | None = None)`.
+    pub fn pause(&self, behavior: Option<&str>) {
+        let mut extra = HashMap::new();
+        if let Some(b) = behavior {
+            extra.insert("behavior".to_string(), Value::String(b.to_string()));
+        }
+        self.execute_subcommand("calling.record.pause", extra);
     }
 
     pub fn resume(&self) {
@@ -372,7 +477,7 @@ impl CollectAction {
                 control_id,
                 call_id,
                 node_id,
-                "calling.collect.stop",
+                "calling.play_and_collect.stop",
             )),
         }
     }
@@ -381,6 +486,32 @@ impl CollectAction {
         &self.inner
     }
 
+    /// Pause the running `play_and_collect`. Mirrors Python's
+    /// `PausableAction.pause(behavior: str | None = None)` under the
+    /// `play_and_collect` command prefix.
+    pub fn pause(&self, behavior: Option<&str>) {
+        let mut extra = HashMap::new();
+        if let Some(b) = behavior {
+            extra.insert("behavior".to_string(), Value::String(b.to_string()));
+        }
+        self.execute_subcommand("calling.play_and_collect.pause", extra);
+    }
+
+    /// Resume the paused `play_and_collect` (`play_and_collect.resume`).
+    pub fn resume(&self) {
+        self.execute_subcommand("calling.play_and_collect.resume", HashMap::new());
+    }
+
+    /// Adjust play volume during `play_and_collect` (`play_and_collect.volume`).
+    pub fn volume(&self, db: f64) {
+        let mut extra = HashMap::new();
+        extra.insert("volume".to_string(), serde_json::json!(db));
+        self.execute_subcommand("calling.play_and_collect.volume", extra);
+    }
+
+    /// Start the initial-input timer on an active collect. The timer command
+    /// keeps the bare `collect` prefix even for `play_and_collect` (mirrors the
+    /// Python reference + `relay_apis.c` `collect.start_input_timers`).
     pub fn start_input_timers(&self) {
         self.execute_subcommand("calling.collect.start_input_timers", HashMap::new());
     }
@@ -399,6 +530,53 @@ impl CollectAction {
 }
 
 impl std::ops::Deref for CollectAction {
+    type Target = Action;
+    fn deref(&self) -> &Action {
+        &self.inner
+    }
+}
+
+// -- StandaloneCollectAction (calling.collect without a play phase) -----
+//
+// Mirrors Python's `StandaloneCollectAction`. The distinction from
+// `CollectAction`: Python's `CollectAction` is the play_and_collect handle
+// (its stop/pause/volume use the `play_and_collect` command prefix), while
+// `StandaloneCollectAction` is the bare `calling.collect` handle whose
+// control surface is the `collect` prefix (`calling.collect.stop` /
+// `calling.collect.start_input_timers`). Kept as a separate type so the
+// two collect flavours emit their correct, distinct stop wire methods.
+
+pub struct StandaloneCollectAction {
+    pub inner: Arc<Action>,
+}
+
+impl StandaloneCollectAction {
+    pub fn new(control_id: &str, call_id: &str, node_id: &str) -> Self {
+        StandaloneCollectAction {
+            inner: Arc::new(Action::with_stop_method(
+                control_id,
+                call_id,
+                node_id,
+                "calling.collect.stop",
+            )),
+        }
+    }
+
+    pub fn action(&self) -> &Action {
+        &self.inner
+    }
+
+    /// Start the initial-input timer on an active standalone collect.
+    pub fn start_input_timers(&self) {
+        self.execute_subcommand("calling.collect.start_input_timers", HashMap::new());
+    }
+
+    pub fn collect_result(&self) -> Option<Value> {
+        self.payload().get("result").cloned()
+    }
+}
+
+impl std::ops::Deref for StandaloneCollectAction {
     type Target = Action;
     fn deref(&self) -> &Action {
         &self.inner
@@ -599,15 +777,50 @@ mod tests {
     #[test]
     fn test_play_action_pause_resume_volume() {
         let pa = PlayAction::new("ctrl", "call", "node");
-        pa.pause();
+        pa.pause(None);
         pa.resume();
         pa.volume(-3.5);
         let cmds = pa.sent_commands.lock().unwrap();
         assert_eq!(cmds.len(), 3);
         assert_eq!(cmds[0].0, "calling.play.pause");
+        // pause() with no behavior omits the behavior param.
+        assert!(!cmds[0].1.contains_key("behavior"));
         assert_eq!(cmds[1].0, "calling.play.resume");
         assert_eq!(cmds[2].0, "calling.play.volume");
         assert_eq!(cmds[2].1["volume"], json!(-3.5));
+    }
+
+    #[test]
+    fn test_play_action_pause_with_behavior() {
+        let pa = PlayAction::new("ctrl", "call", "node");
+        pa.pause(Some("hold"));
+        let cmds = pa.sent_commands.lock().unwrap();
+        assert_eq!(cmds[0].0, "calling.play.pause");
+        assert_eq!(cmds[0].1["behavior"], json!("hold"));
+    }
+
+    // The concrete play action exposes the full stop/pause/resume/volume
+    // control surface (the reference projects StoppableAction/PausableAction/
+    // VolumeAction onto PlayAction). `stop` reaches it via Deref to Action.
+    #[test]
+    fn test_play_action_control_surface() {
+        let pa = PlayAction::new("ctrl", "call", "node");
+        assert_eq!(pa.stop_method(), "calling.play.stop");
+        pa.stop();
+        pa.pause(None);
+        pa.resume();
+        pa.volume(0.0);
+        let cmds = pa.sent_commands.lock().unwrap();
+        let methods: Vec<&str> = cmds.iter().map(|(m, _)| m.as_str()).collect();
+        assert_eq!(
+            methods,
+            vec![
+                "calling.play.stop",
+                "calling.play.pause",
+                "calling.play.resume",
+                "calling.play.volume",
+            ]
+        );
     }
 
     // -- RecordAction tests --
@@ -630,11 +843,27 @@ mod tests {
     #[test]
     fn test_record_action_pause_resume() {
         let ra = RecordAction::new("ctrl", "call", "node");
-        ra.pause();
+        ra.pause(None);
         ra.resume();
         let cmds = ra.sent_commands.lock().unwrap();
         assert_eq!(cmds[0].0, "calling.record.pause");
         assert_eq!(cmds[1].0, "calling.record.resume");
+    }
+
+    // RecordAction exposes stop/pause/resume but NOT volume (the reference
+    // records RecordAction under PausableAction, not VolumeAction).
+    #[test]
+    fn test_record_action_control_surface() {
+        let ra = RecordAction::new("ctrl", "call", "node");
+        assert_eq!(ra.stop_method(), "calling.record.stop");
+        ra.stop();
+        ra.pause(Some("skip")); // behavior rides in the param
+        ra.resume();
+        let cmds = ra.sent_commands.lock().unwrap();
+        assert_eq!(cmds[0].0, "calling.record.stop");
+        assert_eq!(cmds[1].0, "calling.record.pause");
+        assert_eq!(cmds[1].1["behavior"], json!("skip"));
+        assert_eq!(cmds[2].0, "calling.record.resume");
     }
 
     // -- CollectAction tests --
@@ -667,6 +896,34 @@ mod tests {
         let ev = Event::new("calling.call.collect", params, 1.0);
         ca.handle_event(&ev);
         assert_eq!(ca.collect_result().unwrap()["digits"], "1234");
+    }
+
+    // CollectAction is the play_and_collect handle: stop/pause/resume/volume
+    // use the `play_and_collect` prefix (matching the Python reference's
+    // `_command_prefix = "play_and_collect"` + `relay_apis.c`), while the
+    // input-timer command keeps the bare `collect` prefix.
+    #[test]
+    fn test_collect_action_control_surface() {
+        let ca = CollectAction::new("ctrl", "call", "node");
+        assert_eq!(ca.stop_method(), "calling.play_and_collect.stop");
+        ca.stop();
+        ca.pause(None);
+        ca.resume();
+        ca.volume(-6.0);
+        ca.start_input_timers();
+        let cmds = ca.sent_commands.lock().unwrap();
+        let methods: Vec<&str> = cmds.iter().map(|(m, _)| m.as_str()).collect();
+        assert_eq!(
+            methods,
+            vec![
+                "calling.play_and_collect.stop",
+                "calling.play_and_collect.pause",
+                "calling.play_and_collect.resume",
+                "calling.play_and_collect.volume",
+                "calling.collect.start_input_timers",
+            ]
+        );
+        assert_eq!(cmds[3].1["volume"], json!(-6.0));
     }
 
     // -- DetectAction tests --
@@ -737,5 +994,71 @@ mod tests {
         assert!(!pa.is_done());
         pa.resolve(None);
         assert!(pa.is_done());
+    }
+
+    // -- Action::wait tests --
+
+    #[test]
+    fn test_wait_returns_immediately_when_already_done() {
+        let a = Action::new("ctrl", "call", "node");
+        a.resolve(Some(json!({"ok": true})));
+        // Even with a zero timeout, the fast path returns the result.
+        let got = a.wait(Some(std::time::Duration::from_millis(0)));
+        assert_eq!(got, Some(json!({"ok": true})));
+    }
+
+    #[test]
+    fn test_wait_times_out_when_pending() {
+        let a = Action::new("ctrl", "call", "node");
+        let got = a.wait(Some(std::time::Duration::from_millis(20)));
+        assert_eq!(got, None);
+        assert!(!a.is_done());
+    }
+
+    #[test]
+    fn test_wait_unblocks_on_resolve() {
+        let a = Arc::new(Action::new("ctrl", "call", "node"));
+        let a2 = a.clone();
+        let handle = std::thread::spawn(move || a2.wait(None));
+        // Give the waiter time to install its notify sender, then resolve.
+        std::thread::sleep(std::time::Duration::from_millis(30));
+        a.resolve(Some(json!({"state": "finished"})));
+        let got = handle.join().unwrap();
+        assert_eq!(got, Some(json!({"state": "finished"})));
+    }
+
+    // -- StandaloneCollectAction tests --
+
+    #[test]
+    fn test_standalone_collect_stop_method() {
+        let sca = StandaloneCollectAction::new("ctrl", "call", "node");
+        assert_eq!(sca.stop_method(), "calling.collect.stop");
+    }
+
+    #[test]
+    fn test_standalone_collect_start_input_timers() {
+        let sca = StandaloneCollectAction::new("ctrl", "call", "node");
+        sca.start_input_timers();
+        let cmds = sca.sent_commands.lock().unwrap();
+        assert_eq!(cmds[0].0, "calling.collect.start_input_timers");
+        assert_eq!(cmds[0].1["control_id"], "ctrl");
+    }
+
+    #[test]
+    fn test_standalone_collect_stop_emits_collect_stop() {
+        let sca = StandaloneCollectAction::new("ctrl", "call", "node");
+        sca.stop();
+        let cmds = sca.sent_commands.lock().unwrap();
+        assert_eq!(cmds[0].0, "calling.collect.stop");
+    }
+
+    #[test]
+    fn test_standalone_collect_result() {
+        let sca = StandaloneCollectAction::new("ctrl", "call", "node");
+        let mut params = HashMap::new();
+        params.insert("result".to_string(), json!({"digits": "42"}));
+        let ev = Event::new("calling.call.collect", params, 1.0);
+        sca.handle_event(&ev);
+        assert_eq!(sca.collect_result().unwrap()["digits"], "42");
     }
 }

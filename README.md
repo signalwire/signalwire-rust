@@ -45,6 +45,7 @@ cargo add signalwire-sdk
 
 Each agent is a self-contained microservice that generates [SWML](docs/swml_service_guide.md) (SignalWire Markup Language) and handles [SWAIG](docs/swaig_reference.md) (SignalWire AI Gateway) tool calls. The SignalWire platform runs the entire AI pipeline (STT, LLM, TTS) -- your agent just defines the behavior.
 
+<!-- include: examples/quickstart_agent.rs#agent -->
 ```rust
 use serde_json::json;
 use signalwire::agent::{AgentBase, AgentOptions};
@@ -124,6 +125,7 @@ See [examples/README.md](examples/README.md) for the full list organized by cate
 
 Real-time call control and messaging over WebSocket. The RELAY client connects to SignalWire via the Blade protocol and gives you imperative control over live phone calls and SMS/MMS. The client runs its event loop on a background thread, so the handler closures are synchronous.
 
+<!-- include: examples/quickstart_relay.rs#client -->
 ```rust
 use signalwire::relay::Client;
 use std::sync::Arc;
@@ -168,9 +170,12 @@ See the **[RELAY documentation](relay/README.md)** for the full guide, API refer
 
 Blocking (synchronous) REST client for managing SignalWire resources and controlling calls over HTTP. No WebSocket and no async runtime required.
 
+<!-- include: examples/quickstart_rest.rs#client -->
 ```rust
 use serde_json::json;
 use signalwire::rest::RestClient;
+use signalwire::rest::namespaces::generated::calling_resources_generated::CallingDialRequest;
+use std::collections::HashMap;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Reads SIGNALWIRE_PROJECT_ID / SIGNALWIRE_API_TOKEN / SIGNALWIRE_SPACE.
@@ -181,20 +186,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "prompt": {"text": "You are helpful."}
     }))?;
 
-    client.calling().dial(json!({
-        "from": "+15559876543",
-        "to": "+15551234567",
-        "url": "https://example.com/call-handler"
-    }))?;
+    client.calling().dial(
+        CallingDialRequest::new("+15559876543", "+15551234567")
+            .url("https://example.com/call-handler"),
+    )?;
 
-    let results = client.phone_numbers().search(&json!({ "area_code": "512" }))?;
+    let query = HashMap::from([("area_code".to_string(), "512".to_string())]);
+    let results = client.phone_numbers().search(&query)?;
     println!("{results:#?}");
 
     Ok(())
 }
 ```
 
-- 21 namespaced API surfaces: Fabric, Calling, Video, Datasphere, Compat (Twilio-compatible), Phone Numbers, SIP, Queues, Recordings, and more
+- Namespaced API surfaces: Fabric, Calling, Video, Datasphere, Phone Numbers, SIP, Queues, Recordings, and more
 - Backed by `ureq` (blocking HTTP) with a reusable `ureq::Agent` for connection pooling
 - `serde_json::Value` returns -- raw JSON, no wrapper objects; errors surface as `SignalWireRestError`
 
@@ -245,7 +250,7 @@ Guides are also available in the [`docs/`](docs/) directory:
 
 - [Skills System](docs/skills_system.md) -- built-in skills and the modular framework
 - [Third-Party Skills](docs/third_party_skills.md) -- creating and publishing custom skills
-- [MCP Gateway](docs/mcp_gateway_reference.md) -- Model Context Protocol integration
+- [MCP Integration](docs/mcp_integration.md) -- Model Context Protocol integration (add external MCP servers, expose tools as an MCP server)
 
 ### Deployment
 
@@ -276,20 +281,32 @@ Guides are also available in the [`docs/`](docs/) directory:
 | `SIGNALWIRE_LOG_LEVEL` | All | Logging level (`debug`, `info`, `warn`, `error`) |
 | `SIGNALWIRE_LOG_MODE` | All | Set to `off` to suppress all logging |
 
-## Testing
+## Testing, Linting, Formatting
+
+Format, lint, and test go through three canonical scripts under `scripts/`. They
+self-bootstrap the Rust toolchain (adding `rustfmt`/`clippy` if missing) and
+resolve the repo from their own path, so they run identically from **any** working
+directory. `scripts/run-ci.sh`'s FMT/LINT/TEST gates call these same scripts — no
+drift between a local run and CI.
 
 ```bash
-# Run the test suite
-cargo test
+# Run the test suite (optional filter passes through to cargo)
+bash scripts/run-tests.sh
+bash scripts/run-tests.sh test_connect_returns_protocol_string
 
+# Lint (cargo clippy --all-targets, -D warnings); --fix applies clippy autofixes
+bash scripts/run-lint.sh
+
+# Format in place; --check for verify-only (the CI FMT gate)
+bash scripts/run-format.sh
+bash scripts/run-format.sh --check
+```
+
+Direct cargo invocations still work when you want them:
+
+```bash
 # Run with verbose output
 cargo test -- --nocapture
-
-# Run tests for a specific module
-cargo test logging
-cargo test agent
-cargo test relay
-cargo test rest
 
 # Coverage (requires cargo-tarpaulin)
 cargo tarpaulin --out html

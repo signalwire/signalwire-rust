@@ -1,6 +1,7 @@
 use serde_json::{Value, json};
 
 use crate::agent::{AgentBase, AgentOptions};
+use crate::prefabs::PrefabSummaryCallback;
 use crate::swaig::FunctionResult;
 
 /// A pre-built receptionist agent that routes callers to departments.
@@ -165,6 +166,15 @@ impl ReceptionistAgent {
     pub fn greeting(&self) -> &str {
         &self.greeting
     }
+
+    /// Register a callback that processes the conversation summary.
+    ///
+    /// Delegates to [`AgentBase::on_summary`], matching the Python
+    /// `ReceptionistAgent.on_summary` override point (a no-op subclasses replace).
+    pub fn on_summary(&mut self, callback: PrefabSummaryCallback) -> &mut Self {
+        self.agent.on_summary(callback);
+        self
+    }
 }
 
 #[cfg(test)]
@@ -211,5 +221,36 @@ mod tests {
     fn test_receptionist_default_name() {
         let agent = ReceptionistAgent::new("", sample_departments(), None, None);
         assert_eq!(agent.agent().service().name(), "receptionist");
+    }
+
+    #[test]
+    fn test_receptionist_on_summary_fires() {
+        use std::sync::{Arc, Mutex};
+
+        let mut agent = ReceptionistAgent::new("test", sample_departments(), None, None);
+        let captured = Arc::new(Mutex::new(String::new()));
+        let captured_clone = Arc::clone(&captured);
+        agent.on_summary(Box::new(move |summary, _data, _headers| {
+            *captured_clone.lock().unwrap() = summary.to_string();
+        }));
+
+        let (user, pass) = agent.agent().service().basic_auth_credentials();
+        let auth = {
+            use base64::Engine;
+            use base64::engine::general_purpose::STANDARD as BASE64;
+            format!("Basic {}", BASE64.encode(format!("{user}:{pass}")))
+        };
+        let mut headers = std::collections::HashMap::new();
+        headers.insert("Authorization".to_string(), auth);
+
+        let body = json!({"summary": "Routed to Sales"});
+        let (status, _, _) = agent.agent_mut().handle_request(
+            "POST",
+            "/receptionist/post_prompt",
+            &headers,
+            &body.to_string(),
+        );
+        assert_eq!(status, 200);
+        assert_eq!(*captured.lock().unwrap(), "Routed to Sales");
     }
 }

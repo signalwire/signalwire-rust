@@ -7,10 +7,8 @@
 //! markdown / XML / JSON / YAML rendering plus structural helpers
 //! (`add_section`, `find_section`, `add_pom_as_subsection`).
 //!
-//! All renderers match Python byte-for-byte — the cross-port
-//! parity contract is asserted in
-//! `signalwire-python/tests/unit/pom/test_pom_render_parity.py` and
-//! mirrored in this crate's inline tests.
+//! The renderers produce a stable, well-specified output asserted
+//! byte-for-byte by this crate's inline tests.
 
 use serde_json::Value;
 
@@ -242,14 +240,14 @@ impl PromptObjectModel {
     /// (b) doesn't expose a switch to disable that. The POM
     /// document shape is fully constrained — list of dicts with
     /// known string/list-of-string/list-of-dict values — so a
-    /// targeted emitter is straightforward and guarantees parity.
+    /// targeted emitter is straightforward and guarantees correct output.
     ///
     /// # Errors
     ///
     /// The fallible `Result` signature mirrors Python's `to_yaml`. The
     /// hand-rolled emitter walks a fully-constrained document shape and
     /// always succeeds, so no `Err` is currently produced; the
-    /// signature is retained for cross-port surface parity and to allow
+    /// signature is retained for API stability and to allow
     /// future emit failures to surface without an API break.
     pub fn to_yaml(&self) -> Result<String, String> {
         if self.sections.is_empty() {

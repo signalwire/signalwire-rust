@@ -15,6 +15,7 @@ For a genuine thin `#[test]` that must stay, prefer the **in-code marker** over
 a `file:line` entry here (markers ride with the code through reflow; line
 numbers drift):
 
+<!-- snippet: no-compile illustrative `#[test]` shape referencing a placeholder `Thing::new()`; an item-only test fragment with no `fn main`, not a standalone compilation unit -->
 ```rust
 #[test]
 fn smoke_constructor() {  // no-cheat: smoke test — exercises the build path only

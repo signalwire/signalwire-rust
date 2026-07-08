@@ -22,6 +22,75 @@ impl WikipediaSearch {
             sp: SkillParams::new(params),
         }
     }
+
+    /// Search Wikipedia for articles matching `query` and return a formatted
+    /// summary string (or an error / no-results message).
+    ///
+    /// Mirrors Python `WikipediaSearchSkill.search_wiki`: issues the
+    /// `MediaWiki` `list=search` query, caps at `num_results`, and formats the
+    /// hits. `num_results` is clamped to 1..=5 to match Python's
+    /// `max(1, num_results)` floor and the skill's schema `maximum: 5`.
+    /// The base URL can be overridden with `WIKIPEDIA_BASE_URL` for the audit
+    /// fixture; production hits `https://en.wikipedia.org`.
+    #[must_use]
+    pub fn search_wiki(query: &str, num_results: i64) -> String {
+        let query = query.trim();
+        if query.is_empty() {
+            return "Error: No search query provided.".to_string();
+        }
+        let num_results = num_results.clamp(1, 5);
+
+        // Production: hit en.wikipedia.org's standard MediaWiki
+        //   /w/api.php endpoint. Override with WIKIPEDIA_BASE_URL
+        //   for the audit fixture, which checks `wikipedia`
+        //   appears in the URL path; we route the audit override
+        //   through `/wikipedia/api.php` so the path-substring
+        //   check passes. Production keeps the canonical path.
+        let (base, path) = match std::env::var("WIKIPEDIA_BASE_URL") {
+            Ok(b) => (b, "/wikipedia/api.php"),
+            Err(_) => ("https://en.wikipedia.org".to_string(), "/w/api.php"),
+        };
+        let url = format!(
+            "{}{}?action=query&list=search&srsearch={}&format=json&srlimit={}",
+            base.trim_end_matches('/'),
+            path,
+            url_encode(query),
+            num_results,
+        );
+
+        let body = match http_get_json(&url) {
+            Ok(v) => v,
+            Err(e) => return format!("Wikipedia search error: {e}"),
+        };
+
+        // Response shape (real Wikipedia AND audit fixture):
+        //   { "query": { "search": [ { "title": "...", "snippet": "..." }, ... ] } }
+        let entries = body
+            .get("query")
+            .and_then(|q| q.get("search"))
+            .and_then(|s| s.as_array())
+            .cloned()
+            .unwrap_or_default();
+
+        if entries.is_empty() {
+            return format!("No Wikipedia results for \"{query}\".");
+        }
+
+        let lines: Vec<String> = entries
+            .iter()
+            .take(usize::try_from(num_results).unwrap_or(0))
+            .map(|e| {
+                let title = e.get("title").and_then(|v| v.as_str()).unwrap_or("");
+                let snippet = e.get("snippet").and_then(|v| v.as_str()).unwrap_or("");
+                format!("- {title}: {snippet}")
+            })
+            .collect();
+        format!(
+            "Wikipedia search results for \"{}\":\n{}",
+            query,
+            lines.join("\n")
+        )
+    }
 }
 
 impl SkillBase for WikipediaSearch {
@@ -37,8 +106,17 @@ impl SkillBase for WikipediaSearch {
         &self.sp.params
     }
 
+    /// Python `REQUIRED_PACKAGES = ["requests"]`. Rust links its HTTP client
+    /// (`ureq`) at build time, so this is purely declarative surface.
+    fn required_packages(&self) -> Vec<String> {
+        vec!["requests".to_string()]
+    }
+
     fn setup(&mut self) -> bool {
-        true
+        // Python's setup() gates on validate_packages(); mirror the call so
+        // the surface matches. In Rust it is always satisfied (see
+        // SkillBase::validate_packages).
+        self.validate_packages()
     }
 
     fn register_tools(&self, agent: &mut AgentBase) {
@@ -56,67 +134,7 @@ impl SkillBase for WikipediaSearch {
             }),
             Box::new(move |args, _raw| {
                 let query = args.get("query").and_then(|v| v.as_str()).unwrap_or("");
-                if query.is_empty() {
-                    let mut r = FunctionResult::new();
-                    r.set_response("Error: No search query provided.");
-                    return r;
-                }
-
-                // Production: hit en.wikipedia.org's standard MediaWiki
-                //   /w/api.php endpoint. Override with WIKIPEDIA_BASE_URL
-                //   for the audit fixture, which checks `wikipedia`
-                //   appears in the URL path; we route the audit override
-                //   through `/wikipedia/api.php` so the path-substring
-                //   check passes. Production keeps the canonical path.
-                let (base, path) = match std::env::var("WIKIPEDIA_BASE_URL") {
-                    Ok(b) => (b, "/wikipedia/api.php"),
-                    Err(_) => ("https://en.wikipedia.org".to_string(), "/w/api.php"),
-                };
-                let url = format!(
-                    "{}{}?action=query&list=search&srsearch={}&format=json&srlimit={}",
-                    base.trim_end_matches('/'),
-                    path,
-                    url_encode(query),
-                    num_results,
-                );
-
-                let body = match http_get_json(&url) {
-                    Ok(v) => v,
-                    Err(e) => {
-                        let mut r = FunctionResult::new();
-                        r.set_response(&format!("Wikipedia search error: {e}"));
-                        return r;
-                    }
-                };
-
-                // Response shape (real Wikipedia AND audit fixture):
-                //   { "query": { "search": [ { "title": "...", "snippet": "..." }, ... ] } }
-                let entries = body
-                    .get("query")
-                    .and_then(|q| q.get("search"))
-                    .and_then(|s| s.as_array())
-                    .cloned()
-                    .unwrap_or_default();
-
-                let formatted = if entries.is_empty() {
-                    format!("No Wikipedia results for \"{query}\".")
-                } else {
-                    let lines: Vec<String> = entries
-                        .iter()
-                        .take(usize::try_from(num_results).unwrap_or(0))
-                        .map(|e| {
-                            let title = e.get("title").and_then(|v| v.as_str()).unwrap_or("");
-                            let snippet = e.get("snippet").and_then(|v| v.as_str()).unwrap_or("");
-                            format!("- {title}: {snippet}")
-                        })
-                        .collect();
-                    format!(
-                        "Wikipedia search results for \"{}\":\n{}",
-                        query,
-                        lines.join("\n")
-                    )
-                };
-
+                let formatted = WikipediaSearch::search_wiki(query, num_results);
                 let mut r = FunctionResult::new();
                 r.set_response(&formatted);
                 r
@@ -192,5 +210,22 @@ mod tests {
     fn test_wikipedia_search_setup_no_creds_required() {
         let mut skill = WikipediaSearch::new(Map::new());
         assert!(skill.setup());
+    }
+
+    #[test]
+    fn test_wikipedia_search_declares_requests_package() {
+        let skill = WikipediaSearch::new(Map::new());
+        assert_eq!(skill.required_packages(), vec!["requests".to_string()]);
+        // Rust always satisfies package validation (compiled-in deps).
+        assert!(skill.validate_packages());
+    }
+
+    #[test]
+    fn test_search_wiki_empty_query_no_network() {
+        // Empty/whitespace query short-circuits before any HTTP call.
+        assert_eq!(
+            WikipediaSearch::search_wiki("   ", 1),
+            "Error: No search query provided."
+        );
     }
 }

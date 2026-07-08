@@ -22,6 +22,17 @@ signalwire.core.agent_base.AgentBase.add_hints: These methods exist in Python's 
 signalwire.core.agent_base.AgentBase.add_internal_filler: These methods exist in Python's AgentBase too (often via a mixin). The Rust port hangs them directly off AgentBase, so the per-symbol enumerator emits them under signalwire.core.agent_base.AgentBase rather than under the originating mixin (signalwire.core.mixins.*). Python has the same surface.
 signalwire.core.agent_base.AgentBase.add_internal_filler_for: These methods exist in Python's AgentBase too (often via a mixin). The Rust port hangs them directly off AgentBase, so the per-symbol enumerator emits them under signalwire.core.agent_base.AgentBase rather than under the originating mixin (signalwire.core.mixins.*). Python has the same surface.
 signalwire.core.agent_base.AgentBase.add_language: These methods exist in Python's AgentBase too (often via a mixin). The Rust port hangs them directly off AgentBase, so the per-symbol enumerator emits them under signalwire.core.agent_base.AgentBase rather than under the originating mixin (signalwire.core.mixins.*). Python has the same surface.
+signalwire.core.agent_base.AgentBase.add_mcp_server: These methods exist in Python's AgentBase too (via a mixin — here AIConfigMixin.add_mcp_server). The Rust port hangs them directly off AgentBase, so the per-symbol enumerator emits them under signalwire.core.agent_base.AgentBase in addition to projecting onto the originating mixin. Python has the same surface.
+signalwire.core.agent_base.AgentBase.enable_mcp_server: These methods exist in Python's AgentBase too (via a mixin — here AIConfigMixin.enable_mcp_server). The Rust port hangs them directly off AgentBase, so the per-symbol enumerator emits them under signalwire.core.agent_base.AgentBase in addition to projecting onto the originating mixin. Python has the same surface.
+signalwire.core.agent_base.AgentBase.contexts: These methods exist in Python's AgentBase too (via a mixin — here PromptMixin.contexts). The Rust port hangs them directly off AgentBase, so the per-symbol enumerator emits them under signalwire.core.agent_base.AgentBase in addition to projecting onto the originating mixin. Python has the same surface.
+signalwire.core.agent_base.AgentBase.tool: These methods exist in Python's AgentBase too (via a mixin — here ToolMixin.tool). The Rust port hangs them directly off AgentBase, so the per-symbol enumerator emits them under signalwire.core.agent_base.AgentBase in addition to projecting onto the originating mixin. Python has the same surface.
+signalwire.core.agent_base.AgentBase.as_router: These methods exist in Python's AgentBase too (via a mixin — here WebMixin.as_router). The Rust port hangs them directly off AgentBase, so the per-symbol enumerator emits them under signalwire.core.agent_base.AgentBase in addition to projecting onto the originating mixin. Python has the same surface.
+signalwire.core.agent_base.AgentBase.get_app: These methods exist in Python's AgentBase too (via a mixin — here WebMixin.get_app). The Rust port hangs them directly off AgentBase, so the per-symbol enumerator emits them under signalwire.core.agent_base.AgentBase in addition to projecting onto the originating mixin. Python has the same surface.
+signalwire.core.agent_base.AgentBase.enable_debug_routes: These methods exist in Python's AgentBase too (via a mixin — here WebMixin.enable_debug_routes). The Rust port hangs them directly off AgentBase, so the per-symbol enumerator emits them under signalwire.core.agent_base.AgentBase in addition to projecting onto the originating mixin. Python has the same surface.
+signalwire.core.agent_base.AgentBase.serve: These methods exist in Python's AgentBase too (via a mixin — here WebMixin.serve). The Rust port hangs them directly off AgentBase, so the per-symbol enumerator emits them under signalwire.core.agent_base.AgentBase in addition to projecting onto the originating mixin. Python has the same surface.
+signalwire.core.agent_base.AgentBase.setup_graceful_shutdown: These methods exist in Python's AgentBase too (via a mixin — here WebMixin.setup_graceful_shutdown). The Rust port hangs them directly off AgentBase, so the per-symbol enumerator emits them under signalwire.core.agent_base.AgentBase in addition to projecting onto the originating mixin. Python has the same surface.
+signalwire.core.agent_base.AgentBase.register_routing_callback: These methods exist in Python's AgentBase too (via a mixin — here WebMixin.register_routing_callback). The Rust port hangs them directly off AgentBase, so the per-symbol enumerator emits them under signalwire.core.agent_base.AgentBase in addition to projecting onto the originating mixin. Python has the same surface.
+signalwire.core.agent_base.AgentBase.handle_serverless_request: These methods exist in Python's AgentBase too (via a mixin — here ServerlessMixin.handle_serverless_request). The Rust port hangs them directly off AgentBase, so the per-symbol enumerator emits them under signalwire.core.agent_base.AgentBase in addition to projecting onto the originating mixin. Python has the same surface.
 signalwire.core.agent_base.AgentBase.add_pattern_hint: These methods exist in Python's AgentBase too (often via a mixin). The Rust port hangs them directly off AgentBase, so the per-symbol enumerator emits them under signalwire.core.agent_base.AgentBase rather than under the originating mixin (signalwire.core.mixins.*). Python has the same surface.
 signalwire.core.agent_base.AgentBase.add_pronunciation: These methods exist in Python's AgentBase too (often via a mixin). The Rust port hangs them directly off AgentBase, so the per-symbol enumerator emits them under signalwire.core.agent_base.AgentBase rather than under the originating mixin (signalwire.core.mixins.*). Python has the same surface.
 signalwire.core.agent_base.AgentBase.add_skill: These methods exist in Python's AgentBase too (often via a mixin). The Rust port hangs them directly off AgentBase, so the per-symbol enumerator emits them under signalwire.core.agent_base.AgentBase rather than under the originating mixin (signalwire.core.mixins.*). Python has the same surface.
@@ -109,6 +120,7 @@ signalwire.relay.call.Action.on_completed: Rust models all Action variants (Play
 signalwire.relay.call.Action.payload: Rust models all Action variants (PlayAction, RecordAction, …) on top of a single Action struct that exposes shared accessors (call_id, control_id, state, …). Python uses an action-class-per-type hierarchy; the same data is exposed via attribute access on each action.
 signalwire.relay.call.Action.resolve: Rust models all Action variants (PlayAction, RecordAction, …) on top of a single Action struct that exposes shared accessors (call_id, control_id, state, …). Python uses an action-class-per-type hierarchy; the same data is exposed via attribute access on each action.
 signalwire.relay.call.Action.result: Rust models all Action variants (PlayAction, RecordAction, …) on top of a single Action struct that exposes shared accessors (call_id, control_id, state, …). Python uses an action-class-per-type hierarchy; the same data is exposed via attribute access on each action.
+signalwire.relay.call.Action.set_client: Port-only wiring setter. Python's Action reaches the wire through `self.call._execute` (it holds a Call reference passed at construction). Rust's Action is built from plain IDs (control_id/call_id/node_id) and is attached to the owning `Client` by `Call::start_action` via this setter, so its control-op sub-commands (stop/pause/resume/volume) transmit through `Client::send_request`. No Python counterpart — Python injects the client transitively at construction; Rust wires it explicitly to avoid an Arc reference cycle.
 signalwire.relay.call.Action.set_notify_sender: Rust models all Action variants (PlayAction, RecordAction, …) on top of a single Action struct that exposes shared accessors (call_id, control_id, state, …). Python uses an action-class-per-type hierarchy; the same data is exposed via attribute access on each action.
 signalwire.relay.call.Action.state: Rust models all Action variants (PlayAction, RecordAction, …) on top of a single Action struct that exposes shared accessors (call_id, control_id, state, …). Python uses an action-class-per-type hierarchy; the same data is exposed via attribute access on each action.
 signalwire.relay.call.Action.stop: Rust models all Action variants (PlayAction, RecordAction, …) on top of a single Action struct that exposes shared accessors (call_id, control_id, state, …). Python uses an action-class-per-type hierarchy; the same data is exposed via attribute access on each action.
@@ -138,14 +150,16 @@ signalwire.relay.call.Call.echo_call: current_state mirrors Python's `state` att
 signalwire.relay.call.Call.pass: current_state mirrors Python's `state` attribute under a method name. dispatch_event is the public event-router (private in Python). echo_call / refer_call / pass replace Python's reserved-word-clashing Call.echo / Call.refer / Call.pass_. resolve_all_actions is a Rust convenience for terminal cleanup.
 signalwire.relay.call.Call.refer_call: current_state mirrors Python's `state` attribute under a method name. dispatch_event is the public event-router (private in Python). echo_call / refer_call / pass replace Python's reserved-word-clashing Call.echo / Call.refer / Call.pass_. resolve_all_actions is a Rust convenience for terminal cleanup.
 signalwire.relay.call.Call.resolve_all_actions: current_state mirrors Python's `state` attribute under a method name. dispatch_event is the public event-router (private in Python). echo_call / refer_call / pass replace Python's reserved-word-clashing Call.echo / Call.refer / Call.pass_. resolve_all_actions is a Rust convenience for terminal cleanup.
+signalwire.relay.call.Call.set_client: Port-only wiring setter with no Python counterpart. Python's `Call.__init__` receives the `RelayClient` as a constructor argument and every verb transmits via `self._client.execute`. Rust's Client OWNS its Calls (`Mutex<HashMap<String, Arc<Call>>>`), so it constructs the Call first (from a server event payload) and then attaches itself through this setter; the Call stores a `Weak<Client>` to avoid an Arc reference cycle. Once attached, `Call::execute` / `start_action` transmit the built frame through `Client::send_request` — the client-send boundary. This is the fix for the RELAY non-transmission bug (a Call whose verbs only recorded into `sent_commands` and never reached the wire).
 
 ### Rust CrudResource constructor / accessors
 
-Rust CrudResource is a base struct with explicit accessors. Python's _base.CrudResource is internal.
+Rust CrudResource is a base struct with explicit accessors. Python's _base.CrudResource is internal. Consolidated to a SINGLE CrudResource (the former generated-layer duplicate was merged in): the constructor now bakes in the update HTTP verb (`PUT`/`PATCH`) and the base's collection+item URL composer `path` is exposed, matching the BaseResource/ReadResource path helpers.
 
 signalwire.rest._base.CrudResource.__init__: Rust CrudResource is a base struct with explicit accessors. Python's _base.CrudResource is internal.
 signalwire.rest._base.CrudResource.base_path: Rust CrudResource is a base struct with explicit accessors. Python's _base.CrudResource is internal.
 signalwire.rest._base.CrudResource.client: Rust CrudResource is a base struct with explicit accessors. Python's _base.CrudResource is internal.
+signalwire.rest._base.CrudResource.path: Rust CrudResource exposes the base's collection+item URL composer `path(parts)`; Python composes item paths inline per method. Rust base-helper idiom, same shape as the BaseResource/ReadResource path helpers. Surfaced when the port consolidated to a single CrudResource.
 
 ### Rust Document builder type
 
@@ -357,7 +371,6 @@ signalwire.rest.client.RestClient.addresses: Rust ships every REST namespace as 
 signalwire.rest.client.RestClient.base_url: Rust ships every REST namespace as a method on RestClient (calling, fabric, phone_numbers, …) — these methods are required by users to access the namespaces. Python users access namespaces via attribute access on RestClient. The data and behaviour are equivalent.
 signalwire.rest.client.RestClient.calling: Rust ships every REST namespace as a method on RestClient (calling, fabric, phone_numbers, …) — these methods are required by users to access the namespaces. Python users access namespaces via attribute access on RestClient. The data and behaviour are equivalent.
 signalwire.rest.client.RestClient.chat: Rust ships every REST namespace as a method on RestClient (calling, fabric, phone_numbers, …) — these methods are required by users to access the namespaces. Python users access namespaces via attribute access on RestClient. The data and behaviour are equivalent.
-signalwire.rest.client.RestClient.compat: Rust ships every REST namespace as a method on RestClient (calling, fabric, phone_numbers, …) — these methods are required by users to access the namespaces. Python users access namespaces via attribute access on RestClient. The data and behaviour are equivalent.
 signalwire.rest.client.RestClient.datasphere: Rust ships every REST namespace as a method on RestClient (calling, fabric, phone_numbers, …) — these methods are required by users to access the namespaces. Python users access namespaces via attribute access on RestClient. The data and behaviour are equivalent.
 signalwire.rest.client.RestClient.fabric: Rust ships every REST namespace as a method on RestClient (calling, fabric, phone_numbers, …) — these methods are required by users to access the namespaces. Python users access namespaces via attribute access on RestClient. The data and behaviour are equivalent.
 signalwire.rest.client.RestClient.from_env: Rust ships every REST namespace as a method on RestClient (calling, fabric, phone_numbers, …) — these methods are required by users to access the namespaces. Python users access namespaces via attribute access on RestClient. The data and behaviour are equivalent.
@@ -476,6 +489,7 @@ signalwire.swaig.params_builder.ParamsBuilder.number: rust-builder-idiom: add a 
 signalwire.swaig.params_builder.ParamsBuilder.object: rust-builder-idiom: add a nested `object` property whose shape is another ParamsBuilder, emitting `{"type":"object","properties":{…}}` (plus nested required) — byte-identical to the hand-written nested schema.
 signalwire.swaig.params_builder.ParamsBuilder.property: rust-builder-idiom: add a fully-customised property built via PropertyBuilder (escape hatch for default/format/per-property required); inserts its rendered object verbatim.
 signalwire.swaig.params_builder.ParamsBuilder.required: rust-builder-idiom: declare the top-level required-parameter list (JSON-Schema sibling of `properties`, == Python's `required=[…]` arg); surfaces in build_schema()'s `"required":[…]`.
+signalwire.swaig.params_builder.ParamsBuilder.required_names: rust-builder-idiom: read back the declared top-level required-parameter names (the list `required(…)` set); consumed by `type_inference::infer_schema` to fill the `required` element of its schema tuple. No Python equivalent (Python reads required-ness off the reflected handler signature, not a builder).
 signalwire.swaig.params_builder.ParamsBuilder.string: rust-builder-idiom: add a `string` property with description — byte-identical to the hand-written `{"type":"string","description":…}`.
 signalwire.swaig.params_builder.PropertyBuilder: rust-builder-idiom: per-property typed builder for options the one-line ParamsBuilder helpers don't cover (default/format/per-property required/nesting); renders the same `{"type":…,"description":…,…}` object as hand-written.
 signalwire.swaig.params_builder.PropertyBuilder.__init__: rust-builder-idiom: `PropertyBuilder::new(kind, description)` — start a property of the given ParamKind with an LLM-facing description (enumerator maps `new` → `__init__`).
@@ -632,6 +646,8 @@ Rust ships a typed Adapter / RuntimeEnvironment pair for serverless mode detecti
 signalwire.serverless.adapter.Adapter: Rust ships a typed Adapter / RuntimeEnvironment pair for serverless mode detection and event handling. Python uses a flatter signalwire/serverless module.
 signalwire.serverless.adapter.Adapter.detect: Rust ships a typed Adapter / RuntimeEnvironment pair for serverless mode detection and event handling. Python uses a flatter signalwire/serverless module.
 signalwire.serverless.adapter.Adapter.handle_azure: Rust ships a typed Adapter / RuntimeEnvironment pair for serverless mode detection and event handling. Python uses a flatter signalwire/serverless module.
+signalwire.serverless.adapter.Adapter.handle_cgi: Rust ships a typed Adapter / RuntimeEnvironment pair for serverless mode detection and event handling. Python uses a flatter signalwire/serverless module. This is the per-platform CGI dispatcher (Python's handle_serverless_request mode=="cgi" branch) exposed as a named method alongside handle_lambda/handle_azure/handle_gcf.
+signalwire.serverless.adapter.Adapter.handle_gcf: Rust ships a typed Adapter / RuntimeEnvironment pair for serverless mode detection and event handling. Python uses a flatter signalwire/serverless module. This is the per-platform Google Cloud Function dispatcher (Python's handle_serverless_request mode=="google_cloud_function" branch) exposed as a named method alongside handle_lambda/handle_azure/handle_cgi.
 signalwire.serverless.adapter.Adapter.handle_lambda: Rust ships a typed Adapter / RuntimeEnvironment pair for serverless mode detection and event handling. Python uses a flatter signalwire/serverless module.
 signalwire.serverless.adapter.Adapter.serve_detect: Rust ships a typed Adapter / RuntimeEnvironment pair for serverless mode detection and event handling. Python uses a flatter signalwire/serverless module.
 signalwire.serverless.adapter.Adapter.status_text: Rust ships a typed Adapter / RuntimeEnvironment pair for serverless mode detection and event handling. Python uses a flatter signalwire/serverless module.
@@ -702,8 +718,7 @@ signalwire.utils.schema_utils.SchemaUtils.full_validation_available: @property i
 
 ### REST namespaces — explicit CRUD where Python uses inheritance
 
-The Python SDK derives CompatCalls / CompatMessages / CompatFaxes /
-CompatApplications / CompatLamlBins / CompatQueues / DatasphereDocuments /
+The Python SDK derives DatasphereDocuments /
 NumberGroupsResource / QueuesResource from CrudResource and uses class
 inheritance to hand off list / create / get / update / delete. Rust has
 no class inheritance; the port emits each method explicitly on every
@@ -711,37 +726,6 @@ struct so the user-facing surface matches one-to-one. This is the same
 "flatten-the-MRO" pattern the diff already excuses for the Agent / Skill
 side.
 
-signalwire.rest.namespaces.compat.CompatApplications.__init__: Rust port emits explicit CRUD where Python inherits via CrudResource; Python users have the same surface via inheritance.
-signalwire.rest.namespaces.compat.CompatApplications.create: Rust port emits explicit CRUD where Python inherits via CrudResource; Python users have the same surface via inheritance.
-signalwire.rest.namespaces.compat.CompatApplications.delete: Rust port emits explicit CRUD where Python inherits via CrudResource; Python users have the same surface via inheritance.
-signalwire.rest.namespaces.compat.CompatApplications.get: Rust port emits explicit CRUD where Python inherits via CrudResource; Python users have the same surface via inheritance.
-signalwire.rest.namespaces.compat.CompatApplications.list: Rust port emits explicit CRUD where Python inherits via CrudResource; Python users have the same surface via inheritance.
-signalwire.rest.namespaces.compat.CompatCalls.__init__: Rust port emits an explicit constructor; Python's BaseResource.__init__ is inherited.
-signalwire.rest.namespaces.compat.CompatConferences.__init__: Rust port emits an explicit constructor; Python's BaseResource.__init__ is inherited.
-signalwire.rest.namespaces.compat.CompatFaxes.__init__: Rust port emits an explicit constructor; Python's BaseResource.__init__ is inherited.
-signalwire.rest.namespaces.compat.CompatFaxes.create: Rust port emits explicit CRUD where Python inherits via CrudResource; Python users have the same surface via inheritance.
-signalwire.rest.namespaces.compat.CompatFaxes.delete: Rust port emits explicit CRUD where Python inherits via CrudResource; Python users have the same surface via inheritance.
-signalwire.rest.namespaces.compat.CompatFaxes.get: Rust port emits explicit CRUD where Python inherits via CrudResource; Python users have the same surface via inheritance.
-signalwire.rest.namespaces.compat.CompatFaxes.list: Rust port emits explicit CRUD where Python inherits via CrudResource; Python users have the same surface via inheritance.
-signalwire.rest.namespaces.compat.CompatLamlBins.__init__: Rust port emits an explicit constructor; Python's BaseResource.__init__ is inherited.
-signalwire.rest.namespaces.compat.CompatLamlBins.create: Rust port emits explicit CRUD where Python inherits via CrudResource; Python users have the same surface via inheritance.
-signalwire.rest.namespaces.compat.CompatLamlBins.delete: Rust port emits explicit CRUD where Python inherits via CrudResource; Python users have the same surface via inheritance.
-signalwire.rest.namespaces.compat.CompatLamlBins.get: Rust port emits explicit CRUD where Python inherits via CrudResource; Python users have the same surface via inheritance.
-signalwire.rest.namespaces.compat.CompatLamlBins.list: Rust port emits explicit CRUD where Python inherits via CrudResource; Python users have the same surface via inheritance.
-signalwire.rest.namespaces.compat.CompatMessages.__init__: Rust port emits an explicit constructor; Python's BaseResource.__init__ is inherited.
-signalwire.rest.namespaces.compat.CompatMessages.create: Rust port emits explicit CRUD where Python inherits via CrudResource; Python users have the same surface via inheritance.
-signalwire.rest.namespaces.compat.CompatMessages.delete: Rust port emits explicit CRUD where Python inherits via CrudResource; Python users have the same surface via inheritance.
-signalwire.rest.namespaces.compat.CompatMessages.get: Rust port emits explicit CRUD where Python inherits via CrudResource; Python users have the same surface via inheritance.
-signalwire.rest.namespaces.compat.CompatMessages.list: Rust port emits explicit CRUD where Python inherits via CrudResource; Python users have the same surface via inheritance.
-signalwire.rest.namespaces.compat.CompatNamespace.client: Rust borrow-accessor used by sub-resources; Python attribute access via __dict__ provides the same capability.
-signalwire.rest.namespaces.compat.CompatQueues.__init__: Rust port emits an explicit constructor; Python's BaseResource.__init__ is inherited.
-signalwire.rest.namespaces.compat.CompatQueues.create: Rust port emits explicit CRUD where Python inherits via CrudResource; Python users have the same surface via inheritance.
-signalwire.rest.namespaces.compat.CompatQueues.delete: Rust port emits explicit CRUD where Python inherits via CrudResource; Python users have the same surface via inheritance.
-signalwire.rest.namespaces.compat.CompatQueues.get: Rust port emits explicit CRUD where Python inherits via CrudResource; Python users have the same surface via inheritance.
-signalwire.rest.namespaces.compat.CompatQueues.list: Rust port emits explicit CRUD where Python inherits via CrudResource; Python users have the same surface via inheritance.
-signalwire.rest.namespaces.compat.CompatRecordings.__init__: Rust port emits an explicit constructor; Python's BaseResource.__init__ is inherited.
-signalwire.rest.namespaces.compat.CompatTokens.__init__: Rust port emits an explicit constructor; Python's BaseResource.__init__ is inherited.
-signalwire.rest.namespaces.compat.CompatTranscriptions.__init__: Rust port emits an explicit constructor; Python's BaseResource.__init__ is inherited.
 signalwire.rest.namespaces.datasphere.DatasphereDocuments.create: Rust port emits explicit CRUD where Python inherits via CrudResource.
 signalwire.rest.namespaces.datasphere.DatasphereDocuments.delete: Rust port emits explicit CRUD where Python inherits via CrudResource.
 signalwire.rest.namespaces.datasphere.DatasphereDocuments.get: Rust port emits explicit CRUD where Python inherits via CrudResource.
@@ -779,6 +763,11 @@ signalwire.core.swml_service.SWMLService.get_basic_auth_credentials_with_source:
 
 signalwire.relay.call.DetectAction.action: Rust Action subclasses expose an ``action()`` accessor that returns the underlying Action struct (the inner state shared across all action variants). Python uses inheritance, so this accessor does not exist as a method.
 signalwire.relay.call.PlayAction.action: Rust Action subclasses expose an ``action()`` accessor that returns the underlying Action struct (the inner state shared across all action variants). Python uses inheritance, so this accessor does not exist as a method.
+signalwire.relay.call.AIAction.action: Rust Action subclasses expose an ``action()`` accessor that returns the underlying Action struct (the inner state shared across all action variants). Python uses inheritance, so this accessor does not exist as a method.
+signalwire.relay.call.PayAction.action: Rust Action subclasses expose an ``action()`` accessor that returns the underlying Action struct (the inner state shared across all action variants). Python uses inheritance, so this accessor does not exist as a method.
+signalwire.relay.call.StreamAction.action: Rust Action subclasses expose an ``action()`` accessor that returns the underlying Action struct (the inner state shared across all action variants). Python uses inheritance, so this accessor does not exist as a method.
+signalwire.relay.call.TapAction.action: Rust Action subclasses expose an ``action()`` accessor that returns the underlying Action struct (the inner state shared across all action variants). Python uses inheritance, so this accessor does not exist as a method.
+signalwire.relay.call.TranscribeAction.action: Rust Action subclasses expose an ``action()`` accessor that returns the underlying Action struct (the inner state shared across all action variants). Python uses inheritance, so this accessor does not exist as a method.
 signalwire.relay.call.RecordAction.action: Rust Action subclasses expose an ``action()`` accessor that returns the underlying Action struct (the inner state shared across all action variants). Python uses inheritance, so this accessor does not exist as a method.
 
 ### Rust RelayClient blocking variants
@@ -832,42 +821,12 @@ signalwire.rest._pagination.PaginatedIterator.path: idiomatic_getter: Rust acces
 
 ### REST namespace field accessors (base_path / client / project_id / sub-resource getters)
 
-namespace_field_accessor: Rust REST namespaces are structs whose fields are exposed via accessor functions (`pub fn base_path(&self) -> &str`, `pub fn client(&self) -> &Client`, `pub fn calls(&self) -> &CompatCalls`, etc.). Python keeps the equivalent state as private attributes accessed via `__dict__` / `self.calls`; Rust ships explicit getters so the surface is one-to-one with the C-style API the rest of the language expects.
+namespace_field_accessor: Rust REST namespaces are structs whose fields are exposed via accessor functions (`pub fn base_path(&self) -> &str`, `pub fn client(&self) -> &Client`, `pub fn subscribers(&self) -> &Subscribers`, etc.). Python keeps the equivalent state as private attributes accessed via `__dict__` / `self.subscribers`; Rust ships explicit getters so the surface is one-to-one with the C-style API the rest of the language expects.
 
 signalwire.rest.namespaces.calling.CallingNamespace.base_path: namespace_field_accessor: Rust accessor for the namespace's base path; Python uses a private class attribute.
 signalwire.rest.namespaces.calling.CallingNamespace.client: namespace_field_accessor: Rust accessor for the parent client reference; Python uses a private attribute.
 signalwire.rest.namespaces.calling.CallingNamespace.project_id: namespace_field_accessor: Rust accessor for the project_id field; Python uses an instance attribute.
 signalwire.rest.namespaces.chat.ChatResource.base_path: namespace_field_accessor: Rust accessor for the resource's base path; Python uses a class-level attribute.
-signalwire.rest.namespaces.compat.CompatAccounts.base_path: namespace_field_accessor: Rust accessor for the resource's base path; Python uses a class-level attribute.
-signalwire.rest.namespaces.compat.CompatApplications.base_path: namespace_field_accessor: Rust accessor for the resource's base path; Python uses a class-level attribute.
-signalwire.rest.namespaces.compat.CompatCalls.base_path: namespace_field_accessor: Rust accessor for the resource's base path; Python uses a class-level attribute.
-signalwire.rest.namespaces.compat.CompatCalls.create: Rust port emits explicit CRUD where Python inherits via CrudResource.
-signalwire.rest.namespaces.compat.CompatCalls.delete: Rust port emits explicit CRUD where Python inherits via CrudResource.
-signalwire.rest.namespaces.compat.CompatCalls.get: Rust port emits explicit CRUD where Python inherits via CrudResource.
-signalwire.rest.namespaces.compat.CompatCalls.list: Rust port emits explicit CRUD where Python inherits via CrudResource.
-signalwire.rest.namespaces.compat.CompatConferences.base_path: namespace_field_accessor: Rust accessor for the resource's base path; Python uses a class-level attribute.
-signalwire.rest.namespaces.compat.CompatFaxes.base_path: namespace_field_accessor: Rust accessor for the resource's base path; Python uses a class-level attribute.
-signalwire.rest.namespaces.compat.CompatLamlBins.base_path: namespace_field_accessor: Rust accessor for the resource's base path; Python uses a class-level attribute.
-signalwire.rest.namespaces.compat.CompatMessages.base_path: namespace_field_accessor: Rust accessor for the resource's base path; Python uses a class-level attribute.
-signalwire.rest.namespaces.compat.CompatNamespace.account_sid: namespace_field_accessor: Rust accessor for the account_sid field; Python uses an instance attribute.
-signalwire.rest.namespaces.compat.CompatNamespace.accounts: namespace_field_accessor: Rust sub-resource getter for the namespace; Python uses attribute access on the namespace instance.
-signalwire.rest.namespaces.compat.CompatNamespace.applications: namespace_field_accessor: Rust sub-resource getter for the namespace; Python uses attribute access on the namespace instance.
-signalwire.rest.namespaces.compat.CompatNamespace.calls: namespace_field_accessor: Rust sub-resource getter for the namespace; Python uses attribute access on the namespace instance.
-signalwire.rest.namespaces.compat.CompatNamespace.conferences: namespace_field_accessor: Rust sub-resource getter for the namespace; Python uses attribute access on the namespace instance.
-signalwire.rest.namespaces.compat.CompatNamespace.faxes: namespace_field_accessor: Rust sub-resource getter for the namespace; Python uses attribute access on the namespace instance.
-signalwire.rest.namespaces.compat.CompatNamespace.laml_bins: namespace_field_accessor: Rust sub-resource getter for the namespace; Python uses attribute access on the namespace instance.
-signalwire.rest.namespaces.compat.CompatNamespace.messages: namespace_field_accessor: Rust sub-resource getter for the namespace; Python uses attribute access on the namespace instance.
-signalwire.rest.namespaces.compat.CompatNamespace.phone_numbers: namespace_field_accessor: Rust sub-resource getter for the namespace; Python uses attribute access on the namespace instance.
-signalwire.rest.namespaces.compat.CompatNamespace.queues: namespace_field_accessor: Rust sub-resource getter for the namespace; Python uses attribute access on the namespace instance.
-signalwire.rest.namespaces.compat.CompatNamespace.recordings: namespace_field_accessor: Rust sub-resource getter for the namespace; Python uses attribute access on the namespace instance.
-signalwire.rest.namespaces.compat.CompatNamespace.tokens: namespace_field_accessor: Rust sub-resource getter for the namespace; Python uses attribute access on the namespace instance.
-signalwire.rest.namespaces.compat.CompatNamespace.transcriptions: namespace_field_accessor: Rust sub-resource getter for the namespace; Python uses attribute access on the namespace instance.
-signalwire.rest.namespaces.compat.CompatPhoneNumbers.available_base: namespace_field_accessor: Rust accessor for the available-numbers sub-path; Python keeps the equivalent as a class-level attribute.
-signalwire.rest.namespaces.compat.CompatPhoneNumbers.base_path: namespace_field_accessor: Rust accessor for the resource's base path; Python uses a class-level attribute.
-signalwire.rest.namespaces.compat.CompatQueues.base_path: namespace_field_accessor: Rust accessor for the resource's base path; Python uses a class-level attribute.
-signalwire.rest.namespaces.compat.CompatRecordings.base_path: namespace_field_accessor: Rust accessor for the resource's base path; Python uses a class-level attribute.
-signalwire.rest.namespaces.compat.CompatTokens.base_path: namespace_field_accessor: Rust accessor for the resource's base path; Python uses a class-level attribute.
-signalwire.rest.namespaces.compat.CompatTranscriptions.base_path: namespace_field_accessor: Rust accessor for the resource's base path; Python uses a class-level attribute.
 signalwire.rest.namespaces.datasphere.DatasphereDocuments.base_path: namespace_field_accessor: Rust accessor for the resource's base path; Python uses a class-level attribute.
 signalwire.rest.namespaces.datasphere.DatasphereNamespace.documents: namespace_field_accessor: Rust sub-resource getter for the namespace; Python uses attribute access on the namespace instance.
 signalwire.rest.namespaces.fabric.FabricAddresses.base_path: namespace_field_accessor: Rust accessor for the resource's base path; Python uses a class-level attribute.
@@ -936,7 +895,7 @@ signalwire.rest.namespaces.video.VideoNamespace.streams: namespace_field_accesso
 
 ### Rust REST resource constructors and explicit CRUD (flatten-the-MRO)
 
-Rust port emits explicit `__init__` constructors and CRUD methods on each resource struct since Rust has no class inheritance — same flatten-the-MRO pattern documented above for CompatApplications / CompatFaxes / etc. These resources extend the existing list with newly-added Fabric / Logs / Registry / Video resources whose entries weren't in the file yet.
+Rust port emits explicit `__init__` constructors and CRUD methods on each resource struct since Rust has no class inheritance — same flatten-the-MRO pattern documented above for DatasphereDocuments / NumberGroupsResource / etc. These resources extend the existing list with newly-added Fabric / Logs / Registry / Video resources whose entries weren't in the file yet.
 
 signalwire.rest.namespaces.fabric.CallFlowsResource.__init__: Rust port emits an explicit constructor; Python's BaseResource.__init__ is inherited.
 signalwire.rest.namespaces.fabric.CallFlowsResource.base_path: namespace_field_accessor: Rust accessor for the resource's base path; Python uses a class-level attribute.
@@ -1084,6 +1043,17 @@ signalwire.swml.service.ServiceOptions.host: rust-builder-method — fluent sett
 signalwire.swml.service.ServiceOptions.port: rust-builder-method — fluent setter for the bind port; Python passes `port=` to `SWMLService.__init__`.
 signalwire.swml.service.ServiceOptions.basic_auth: rust-builder-method — fluent setter for Basic-Auth credentials; Python passes `basic_auth=(user,pass)` to `SWMLService.__init__`.
 
+### Fluent setters for the structured pattern-hint / language idiom (Contract 8)
+
+Behavioral Contract 8 requires `add_pattern_hint` to attach a STRUCTURED hint (`{hint, pattern, replace, ignore_case}`) and `add_language` to carry `engine` / `model` / fillers into the rendered SWML `ai.languages` entry. Python takes all of these as inline keyword arguments to a single `add_pattern_hint(hint, pattern, replace, ignore_case)` / `add_language(name, code, voice, speech_fillers, function_fillers, engine, model, params)` call. The Rust port keeps the core-args signature (`add_pattern_hint(pattern)` / `add_language(name, code, voice)`, per PORT_SIGNATURE_OMISSIONS.md's builder-idiom entries) and refines the just-added entry via these fluent setters — the builder half of that idiom. They mutate the most-recently-added pattern hint / language and have no Python method counterpart (Python packs the fields into the one call).
+
+signalwire.core.agent_base.AgentBase.set_pattern_hint_hint: rust-builder-method — set the `hint` (match text) on the most-recently-added structured pattern hint; Python passes `hint=` to `add_pattern_hint`.
+signalwire.core.agent_base.AgentBase.set_pattern_hint_replace: rust-builder-method — set the `replace` (replacement text) on the most-recently-added structured pattern hint; Python passes `replace=` to `add_pattern_hint`.
+signalwire.core.agent_base.AgentBase.set_pattern_hint_ignore_case: rust-builder-method — set the `ignore_case` flag on the most-recently-added structured pattern hint; Python passes `ignore_case=` to `add_pattern_hint`.
+signalwire.core.agent_base.AgentBase.set_language_engine: rust-builder-method — set the TTS `engine` on the most-recently-added language; Python passes `engine=` to `add_language`.
+signalwire.core.agent_base.AgentBase.set_language_model: rust-builder-method — set the TTS `model` on the most-recently-added language; Python passes `model=` to `add_language`.
+signalwire.core.agent_base.AgentBase.set_language_fillers: rust-builder-method — attach `speech_fillers` / `function_fillers` (or the deprecated combined `fillers`) to the most-recently-added language; Python passes `speech_fillers=` / `function_fillers=` to `add_language`.
+
 ### Pre-existing relay/server transport helpers (Layer-B only; not gated by run-ci)
 
 These two Rust-only transport entry points predate this pass but were never documented because run-ci only gates Layer A (signatures), not Layer B (surface). Documented here so the surface diff is clean. Both are internal transport plumbing with no Python equivalent.
@@ -1134,3 +1104,42 @@ signalwire.rest.http_client.HttpTransport: Rust-only trait abstracting the block
 signalwire.rest.http_client.HttpTransport.execute: method of the Rust-only HttpTransport trait.
 signalwire.serverless.adapter.RequestHandler: Rust-only trait abstracting a serverless request handler; Python uses duck-typed callables.
 signalwire.serverless.adapter.RequestHandler.handle_request: method of the Rust-only RequestHandler trait.
+
+signalwire.skills.claude_skills.skill.ClaudeSkillsSkill.get_prompt_sections: port-only: Rust's claude_skills skill overrides get_prompt_sections; the Python reference's ClaudeSkillsSkill does not declare it (relies on the SkillBase default)
+signalwire.skills.custom_skills.skill.CustomSkillsSkill.register_tools: port-only: method of the Rust-only custom_skills skill (Python has no custom_skills module)
+signalwire.skills.custom_skills.skill.CustomSkillsSkill.setup: port-only: method of the Rust-only custom_skills skill (Python has no custom_skills module)
+signalwire.skills.info_gatherer.skill.InfoGathererSkill.get_prompt_sections: port-only: Rust's info_gatherer skill overrides get_prompt_sections; the Python reference's InfoGathererSkill does not declare it (relies on the SkillBase default)
+signalwire.core.agent_base.AgentBase.set_multilingual: These methods exist in Python's AgentBase too (via the AIConfigMixin). The Rust port hangs set_multilingual directly off AgentBase (and projects it onto AIConfigMixin), so the per-symbol enumerator also emits it under signalwire.core.agent_base.AgentBase. Python has the same surface.
+
+### Layer-D dump accessors (read-only observers for the cross-port behavioral differs)
+
+These are read-only accessors the Layer-D per-surface dump programs (examples/{wire,swml,state,http,wire_relay}_dump.rs) use to observe state the Python oracle reads via its own accessors / private attributes. Each surfaces functionality Python already has; the Python *surface enumerator* simply doesn't record it (a private attribute, a dataclass field, or a constructor kwarg), so the port's idiomatic accessor shows up here.
+
+signalwire.core.agent_base.AgentBase.get_global_data: Rust accessor for the accumulated global-data map; Python reads the equivalent `AgentBase._global_data` private attribute directly.
+signalwire.core.agent_base.AgentBase.sip_usernames: Rust accessor for the registered SIP-username set (lowercased, sorted); Python reads `sorted(AgentBase._sip_usernames)` off the private set.
+signalwire.core.security.session_manager.SessionManager.with_secret: Rust named constructor exposing an explicit signing secret; Python takes the equivalent via the `secret_key` kwarg of `SessionManager.__init__` (which the Rust `new` intentionally omits — see PORT_SIGNATURE_OMISSIONS.md — so the escape hatch is a separate constructor).
+signalwire.core.swml_handler.VerbHandlerRegistry.handler_names: Rust accessor for the sorted verb-handler names; Python reads `sorted(VerbHandlerRegistry._handlers.keys())` off the private dict.
+signalwire.core.swml_service.SWMLService.routing_callback_paths: Rust accessor for the sorted normalized routing-callback paths; Python reads `sorted(SWMLService._routing_callbacks.keys())` off the private dict.
+signalwire.relay.call.Action.sent_commands: Rust read accessor for the in-memory sub-command frames an Action has emitted (wire-frame introspection); Python inspects the equivalent via its recording test stub.
+signalwire.relay.event.RelayEvent.class_name: Rust accessor returning the typed-event class name a payload dispatches to (mirrors Python `type(parse_event(payload)).__name__` over the EVENT_CLASS_MAP dispatch table).
+signalwire.relay.event.RelayEvent.call_id: Rust accessor for the `call_id` event field; Python exposes it as the `RelayEvent.call_id` dataclass field (not recorded by the surface enumerator, which skips dataclass fields).
+signalwire.relay.event.RelayEvent.call_state: Rust accessor for the `call_state` event field; Python `CallStateEvent.call_state` dataclass field.
+signalwire.relay.event.RelayEvent.direction: Rust accessor for the `direction` event field; Python `CallStateEvent.direction` dataclass field.
+signalwire.relay.event.CallStateEvent.call_id: Rust accessor for the `call_id` field; Python `CallStateEvent.call_id` dataclass field.
+signalwire.relay.event.CallStateEvent.call_state: Rust accessor for the `call_state` field; Python `CallStateEvent.call_state` dataclass field.
+signalwire.relay.event.CallStateEvent.direction: Rust accessor for the `direction` field; Python `CallStateEvent.direction` dataclass field.
+signalwire.relay.event.QueueEvent.control_id: Rust accessor for the `control_id` field; Python `QueueEvent.control_id` dataclass field.
+signalwire.relay.event.QueueEvent.status: Rust accessor for the `status` field; Python `QueueEvent.status` dataclass field.
+signalwire.relay.event.QueueEvent.queue_id: Rust accessor for the `queue_id` field (renamed from wire `id`); Python `QueueEvent.queue_id` dataclass field.
+signalwire.relay.event.QueueEvent.queue_name: Rust accessor for the `queue_name` field (renamed from wire `name`); Python `QueueEvent.queue_name` dataclass field.
+signalwire.relay.event.QueueEvent.position: Rust accessor for the `position` field; Python `QueueEvent.position` dataclass field.
+signalwire.relay.event.QueueEvent.size: Rust accessor for the `size` field; Python `QueueEvent.size` dataclass field.
+signalwire.relay.event.RecordEvent.control_id: Rust accessor for the `control_id` field; Python `RecordEvent.control_id` dataclass field.
+signalwire.relay.event.RecordEvent.state: Rust accessor for the `state` field; Python `RecordEvent.state` dataclass field.
+signalwire.relay.event.RecordEvent.url: Rust accessor for the `url` field (nested `record.url` fallback); Python `RecordEvent.url` dataclass field.
+signalwire.relay.event.RecordEvent.duration: Rust accessor for the `duration` field (nested `record.duration` fallback); Python `RecordEvent.duration` dataclass field.
+signalwire.relay.event.RecordEvent.size: Rust accessor for the `size` field (nested `record.size` fallback); Python `RecordEvent.size` dataclass field.
+signalwire.relay.event.CollectEvent.control_id: Rust accessor for the `control_id` field; Python `CollectEvent.control_id` dataclass field.
+signalwire.relay.event.CollectEvent.state: Rust accessor for the `state` field; Python `CollectEvent.state` dataclass field.
+signalwire.relay.event.CollectEvent.result: Rust accessor for the `result` object; Python `CollectEvent.result` dataclass field.
+signalwire.relay.event.CollectEvent.is_final: Rust accessor for the tri-state `final` flag (named `is_final` to avoid the Rust `final` reserved-word clash); Python `CollectEvent.final` dataclass field.

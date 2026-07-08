@@ -34,7 +34,7 @@
 //! port's own [`constants`](super::constants) (`DIAL_STATE_*`). The typed
 //! accessors (`Call::call_state` / `Message::message_state`) are exposed
 //! *alongside* the existing string accessors (`Call::current_state` /
-//! `Message::state`) for parity.
+//! `Message::state`).
 
 use std::fmt;
 use std::str::FromStr;

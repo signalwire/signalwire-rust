@@ -61,15 +61,23 @@ jobs:
       - name: Install Rust nightly (rustdoc-json for SIGNATURES gate)
         uses: dtolnay/rust-toolchain@nightly
 
-      - name: Cache cargo registry + target
-        uses: actions/cache@v5
+      # Split restore/save (not the combined actions/cache) so the target/ build
+      # cache SAVES even when the gate job fails. The combined action's post-save
+      # is SKIPPED on a failed prior step, and every rust run is currently red on
+      # the pre-existing spec-coupling — so the target/ cache never updated and
+      # stayed frozen on a stale green build, recompiling the drift each run. The
+      # save step below runs with if: always(). Registry/git keyed on Cargo.lock;
+      # target/ needs the run_id suffix so each run persists an updated build.
+      - name: Restore cargo registry + target
+        uses: actions/cache/restore@v4
         with:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
             signalwire-rust/target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('signalwire-rust/Cargo.lock') }}
+          key: ${{ runner.os }}-cargo-${{ hashFiles('signalwire-rust/Cargo.lock') }}-${{ github.run_id }}
           restore-keys: |
+            ${{ runner.os }}-cargo-${{ hashFiles('signalwire-rust/Cargo.lock') }}-
             ${{ runner.os }}-cargo-
 
       - name: Set up Python (porting-sdk audit scripts)
@@ -97,3 +105,16 @@ jobs:
         env:
           PORTING_SDK: ${{ github.workspace }}/porting-sdk
         run: bash scripts/run-ci.sh
+
+      # Save the cargo registry/git + target/ build cache even if the gate failed
+      # (the build still ran + populated target/). Unique run_id key so every run
+      # persists an updated cache; the restore prefix above picks up the most recent.
+      - name: Save cargo registry + target
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            signalwire-rust/target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('signalwire-rust/Cargo.lock') }}-${{ github.run_id }}

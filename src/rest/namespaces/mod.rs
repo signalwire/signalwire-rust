@@ -1,20 +1,6 @@
 //! REST API namespace modules.
+//!
+//! The REST resource surface is GENERATED from the canonical specs markup into the
+//! `generated` submodule (see `scripts/generate_rest.py`).
 
-pub mod calling;
-pub mod chat;
-pub mod compat;
-pub mod datasphere;
-pub mod fabric;
-pub mod logs;
-pub mod lookup;
-pub mod mfa;
-pub mod number_groups;
-pub mod phone_numbers;
-pub mod project;
-pub mod pubsub;
-pub mod queues;
-pub mod registry;
-pub mod simple_resources;
-pub mod sip_profile;
-pub mod verified_callers;
-pub mod video;
+pub mod generated;

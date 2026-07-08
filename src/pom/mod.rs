@@ -7,9 +7,8 @@
 //! The two public types are [`PromptObjectModel`] (the root container)
 //! and [`Section`] (one node in the tree). Build a model with
 //! `add_section` / `add_subsection`, then render via `render_markdown`,
-//! `render_xml`, `to_json`, or `to_yaml`. All renderers match Python
-//! byte-for-byte — the cross-port parity contract lives in
-//! `signalwire-python/tests/unit/pom/test_pom_render_parity.py`.
+//! `render_xml`, `to_json`, or `to_yaml`. The renderers produce a stable,
+//! well-specified output that is covered byte-for-byte by the crate's tests.
 
 // The `pom` implementation module mirrors the Python file layout
 // (`signalwire/pom/pom.py`) for 1:1 traceability. It is private and the public
@@ -19,18 +18,17 @@
 // for a private module whose types are re-exported, so allow it here.)
 #[allow(clippy::module_inception)]
 mod pom;
+pub mod pom_builder;
 pub mod section;
 
 pub use pom::PromptObjectModel;
+pub use pom_builder::PomBuilder;
 pub use section::Section;
 
 #[cfg(test)]
 mod tests {
-    //! Inline parity tests — mirror
-    //! `signalwire-python/tests/unit/pom/test_pom_render_parity.py`
-    //! one-for-one. The expected strings are byte-for-byte identical
-    //! to Python's output (verified by running the Python tests
-    //! before porting).
+    //! Inline render tests. The expected strings are pinned byte-for-byte to
+    //! the documented POM output.
 
     use super::*;
 

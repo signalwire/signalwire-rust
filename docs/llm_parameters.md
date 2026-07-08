@@ -9,6 +9,14 @@ LLM parameters control how the AI model generates responses. The SDK provides tw
 
 ## Setting Parameters
 
+<!-- snippet-setup -->
+```rust
+use signalwire::agent::{AgentBase, AgentOptions};
+use serde_json::json;
+
+let mut agent = AgentBase::new(AgentOptions::new("llm-params"));
+```
+
 ```rust
 // Main conversation
 agent.set_prompt_llm_params(json!({

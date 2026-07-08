@@ -16,6 +16,7 @@ method, and `Adapter` translates platform event JSON to and from that call.
 
 ### Building the Agent
 
+<!-- snippet: no-compile helper-function definition (item-only `fn create_agent`); the snippet checker compiles each fragment as a binary, so a fragment with no `fn main` cannot stand alone. Referenced by the adapter fragments below. -->
 ```rust
 use signalwire::agent::{AgentBase, AgentOptions};
 use signalwire::swaig::FunctionResult;
@@ -53,6 +54,7 @@ fn create_agent() -> AgentBase {
 `Adapter::handle_lambda(&agent, &event)` parses an API Gateway event and returns an API
 Gateway response object:
 
+<!-- snippet: no-compile item-only `fn lambda_entry` (no `fn main`) and calls the `create_agent` helper defined in the item-only block above; both are cross-fragment/item-level, which the per-fragment binary compile cannot stand up alone -->
 ```rust
 use signalwire::serverless::Adapter;
 use serde_json::Value;
@@ -76,6 +78,7 @@ SWML_BASIC_AUTH_PASSWORD=mypassword
 
 `Adapter::handle_azure(&agent, &request)` does the same for the Azure request shape:
 
+<!-- snippet: no-compile item-only `fn azure_entry` (no `fn main`) and calls the cross-fragment `create_agent` helper; not a standalone compilation unit under the per-fragment binary compile -->
 ```rust
 use signalwire::serverless::Adapter;
 use serde_json::Value;
@@ -92,8 +95,17 @@ For environments without a dedicated adapter method, call `handle_request` direc
 the method, path, headers, and body extracted from the incoming request, then build the
 platform response from the returned `(status, headers, body)` tuple:
 
+<!-- snippet-setup -->
 ```rust
-let agent = create_agent();
+use signalwire::agent::{AgentBase, AgentOptions};
+use std::collections::HashMap;
+
+let agent = AgentBase::new(AgentOptions::new("gcf-agent"));
+let request_headers: HashMap<String, String> = HashMap::new();
+let request_body = String::new();
+```
+
+```rust
 let (status, headers, body) =
     agent.handle_request("POST", "/", &request_headers, &request_body);
 ```

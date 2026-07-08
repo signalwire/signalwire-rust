@@ -16,42 +16,39 @@ This is the SignalWire AI Agents Rust SDK -- a Rust port of the Python SignalWir
 cargo build
 ```
 
-### Testing
+### Testing, Linting, Formatting — the canonical scripts
+
+Format, lint, and test go through three canonical scripts under `scripts/`.
+**Do NOT call `cargo fmt` / `cargo clippy` / `cargo test` directly** — use these
+instead. They self-bootstrap the Rust toolchain (adding rustfmt/clippy if missing)
+and resolve the repo from their own path, so they run identically from ANY working
+directory. `run-ci.sh`'s FMT/LINT/TEST gates call these same scripts, so there is
+no drift between a local invocation and CI.
 
 ```bash
-# Run all tests
-cargo test
+# Format the tree in place (apply). --check = verify-only (the CI FMT gate).
+bash scripts/run-format.sh
+bash scripts/run-format.sh --check
 
-# Run with verbose output
+# Lint (cargo clippy --all-targets, -D warnings). --fix applies clippy autofixes.
+bash scripts/run-lint.sh
+bash scripts/run-lint.sh --fix
+
+# Run the test suite (cargo test --tests). Optional filter passes through to cargo.
+bash scripts/run-tests.sh
+bash scripts/run-tests.sh test_connect_returns_protocol_string
+```
+
+Other cargo test invocations (module subsets, verbose, coverage) still work when
+you want them directly:
+
+```bash
+# Verbose output
 cargo test -- --nocapture
-
-# Run tests for a specific module
-cargo test logging
-cargo test swml
-cargo test agent
-cargo test swaig
-cargo test relay
-cargo test rest
-
-# Run a single test by name
-cargo test test_logger_creation
 
 # Coverage (requires cargo-tarpaulin)
 cargo install cargo-tarpaulin
 cargo tarpaulin --out html
-```
-
-### Linting and Formatting
-
-```bash
-# Lint with Clippy
-cargo clippy -- -D warnings
-
-# Format code
-cargo fmt
-
-# Check formatting without applying
-cargo fmt -- --check
 ```
 
 ### Running Examples
@@ -149,6 +146,7 @@ signalwire-rust/
 
 The Python SDK uses class inheritance (AgentBase extends SWMLService, skills extend SkillBase). In Rust, use traits:
 
+<!-- snippet: no-compile illustrative trait sketch — references SkillError/AgentBase/HashMap without imports; conceptual, not a standalone compilation unit -->
 ```rust
 pub trait SkillBase: Send + Sync {
     fn name(&self) -> &str;
@@ -160,21 +158,26 @@ pub trait SkillBase: Send + Sync {
 
 ### Builder Pattern for AgentBase
 
-Replace Python's constructor-with-subclassing pattern with a typed builder:
+Replace Python's constructor-with-subclassing pattern with `AgentOptions` +
+`AgentBase::new`, then configure with chained `&mut self` methods. LLM
+parameters are set from a `serde_json::Value` (there is no `LlmParams` struct):
 
 ```rust
-let agent = AgentBase::builder("my-agent", "/agent")
+use signalwire::agent::{AgentBase, AgentOptions};
+use serde_json::json;
+
+let mut agent = AgentBase::new(AgentOptions::new("my-agent"));
+agent
     .add_language("English", "en-US", "rime.spore")
-    .prompt_add_section("Role", "You are a helpful assistant.")
-    .define_tool("get_time", "Get the current time", handler_fn)
-    .set_prompt_llm_params(LlmParams { temperature: Some(0.7), ..Default::default() })
-    .build();
+    .prompt_add_section("Role", "You are a helpful assistant.", vec![])
+    .set_prompt_llm_params(json!({"temperature": 0.7}));
 ```
 
 ### Arc<dyn Fn> for Tool Handlers
 
 Tool handlers must be thread-safe closures stored behind `Arc`:
 
+<!-- snippet: no-compile illustrative type alias — Arc/HashMap/Value/FunctionResult shown without imports; conceptual signature, not a compilation unit -->
 ```rust
 type ToolHandler = Arc<dyn Fn(HashMap<String, Value>, HashMap<String, Value>) -> FunctionResult + Send + Sync>;
 ```
@@ -189,6 +192,7 @@ Dynamic configuration clones the entire agent, applies a callback, renders SWML 
 
 Use `Result<T, E>` instead of exceptions. Define SDK-specific error enums:
 
+<!-- snippet: no-compile illustrative pattern — uses the external `thiserror` derive crate, not linked by the snippet checker -->
 ```rust
 #[derive(Debug, thiserror::Error)]
 pub enum SignalWireError {
@@ -215,6 +219,7 @@ All shared mutable state (global data, tool registry, RELAY correlation maps) mu
 
 Every struct that crosses a JSON boundary derives `Serialize` and `Deserialize`:
 
+<!-- snippet: no-compile illustrative pattern — Serialize/Deserialize/Value shown without the serde imports; conceptual struct sketch -->
 ```rust
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SwmlDocument {
@@ -227,6 +232,7 @@ Use `#[serde(skip_serializing_if = "Option::is_none")]` to match the Python SDK'
 
 ### HMAC Token Security
 
+<!-- snippet: no-compile illustrative pattern — uses the external hmac/sha2/subtle crates, not linked by the snippet checker -->
 ```rust
 use hmac::{Hmac, Mac};
 use sha2::Sha256;
@@ -237,21 +243,19 @@ type HmacSha256 = Hmac<Sha256>;
 
 Tokens encode `function_name:call_id:expiry`, are HMAC-signed, then base64-encoded. Validation uses constant-time comparison.
 
-### Async for RELAY and REST
+### Synchronous RELAY and REST clients
 
-RELAY and REST clients use `async`/`await` with `tokio`:
+Both the RELAY client (`signalwire::relay::Client`) and the REST client
+(`signalwire::rest::RestClient`) present a **synchronous** API. The RELAY
+`Client` runs its WebSocket/Blade event loop on a background reader thread and
+invokes handler closures on that thread; its methods (`connect`, `dial`,
+`send_message`, `run`) block and return `Result<_, RelayError>`. The REST
+client's methods make blocking HTTP calls and return
+`Result<Value, SignalWireRestError>`. Neither exposes `async`/`await` to callers,
+and there is no `RelayClient` type — the RELAY entry point is `Client`.
 
-```rust
-impl RelayClient {
-    pub async fn run(&self) -> Result<(), SignalWireError> { ... }
-}
-
-impl RestClient {
-    pub async fn get(&self, path: &str) -> Result<Value, SignalWireError> { ... }
-}
-```
-
-AgentBase itself is synchronous (serves HTTP via a sync framework or spawns a runtime internally).
+AgentBase is likewise synchronous (serves HTTP via a sync framework or spawns a
+runtime internally).
 
 ## File Locations
 

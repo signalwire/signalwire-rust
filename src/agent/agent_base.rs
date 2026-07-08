@@ -64,8 +64,7 @@ pub struct AgentOptions {
     /// When `None`, the agent falls back to the
     /// `SIGNALWIRE_SIGNING_KEY` environment variable. When neither is
     /// set, the agent logs a prominent warning at startup and accepts
-    /// unsigned requests — see Python parity (`webhook_validator.py`,
-    /// reference at `signalwire-python/signalwire/signalwire/core/security/`).
+    /// unsigned requests — see the webhook validator.
     pub signing_key: Option<String>,
 }
 
@@ -193,15 +192,28 @@ pub struct AgentBase {
 
     // ── Hints ───────────────────────────────────────────────────────────
     hints: Vec<String>,
-    pattern_hints: Vec<String>,
+    /// Structured pattern hints. Each entry mirrors Python's
+    /// `{hint, pattern, replace, ignore_case}` object (`ai_config_mixin`
+    /// `add_pattern_hint`). Built via `add_pattern_hint(pattern)` + the
+    /// fluent `set_pattern_hint_*` setters (Rust builder idiom for Python's
+    /// all-args-inline call).
+    pattern_hints: Vec<Value>,
 
     // ── Languages / pronunciations ──────────────────────────────────────
     languages: Vec<Value>,
     pronunciations: Vec<Value>,
+    /// ASR-driven multilingual (Mode B) config, emitted as a top-level
+    /// `multilingual` object on the AI verb. Mutually exclusive with
+    /// `languages` (the server prefers `multilingual` when both are set).
+    multilingual: Option<Value>,
 
     // ── Params / data ───────────────────────────────────────────────────
     params: Map<String, Value>,
     global_data: Map<String, Value>,
+    /// SIP usernames routed to this agent: a case-folded, deduplicated set —
+    /// `register_sip_username` lowercases each name before inserting. A
+    /// `BTreeSet` keeps `sip_usernames()` sorted.
+    sip_usernames: std::collections::BTreeSet<String>,
 
     // ── Native functions / fillers / debug ───────────────────────────────
     native_functions: Vec<String>,
@@ -250,6 +262,20 @@ pub struct AgentBase {
     /// signature validation is disabled and a startup warning was
     /// emitted. See `AgentOptions::signing_key`.
     signing_key: Option<String>,
+
+    // ── MCP (Model Context Protocol) ────────────────────────────────────
+    /// External MCP servers registered via [`AgentBase::add_mcp_server`].
+    mcp_servers: Vec<Value>,
+    /// Whether this agent exposes its tools as an MCP endpoint
+    /// ([`AgentBase::enable_mcp_server`]).
+    mcp_server_enabled: bool,
+
+    // ── Web-hook URL override / debug routes ────────────────────────────
+    /// Override for the default SWAIG `web_hook_url`
+    /// ([`AgentBase::set_web_hook_url`]).
+    web_hook_url_override: Option<String>,
+    /// Whether debug routes are enabled ([`AgentBase::enable_debug_routes`]).
+    debug_routes_enabled: bool,
 }
 
 impl Clone for AgentBase {
@@ -281,8 +307,10 @@ impl Clone for AgentBase {
             pattern_hints: self.pattern_hints.clone(),
             languages: self.languages.clone(),
             pronunciations: self.pronunciations.clone(),
+            multilingual: self.multilingual.clone(),
             params: self.params.clone(),
             global_data: self.global_data.clone(),
+            sip_usernames: self.sip_usernames.clone(),
             native_functions: self.native_functions.clone(),
             internal_fillers: self.internal_fillers.clone(),
             internal_fillers_map: self.internal_fillers_map.clone(),
@@ -305,6 +333,10 @@ impl Clone for AgentBase {
             skills: self.skills.clone(),
             manual_proxy_url: self.manual_proxy_url.clone(),
             signing_key: self.signing_key.clone(),
+            mcp_servers: self.mcp_servers.clone(),
+            mcp_server_enabled: self.mcp_server_enabled,
+            web_hook_url_override: self.web_hook_url_override.clone(),
+            debug_routes_enabled: self.debug_routes_enabled,
         }
     }
 }
@@ -368,8 +400,10 @@ impl AgentBase {
             pattern_hints: Vec::new(),
             languages: Vec::new(),
             pronunciations: Vec::new(),
+            multilingual: None,
             params: Map::new(),
             global_data: Map::new(),
+            sip_usernames: std::collections::BTreeSet::new(),
             native_functions: Vec::new(),
             internal_fillers: Vec::new(),
             internal_fillers_map: HashMap::new(),
@@ -392,6 +426,10 @@ impl AgentBase {
             skills: Vec::new(),
             manual_proxy_url: None,
             signing_key,
+            mcp_servers: Vec::new(),
+            mcp_server_enabled: false,
+            web_hook_url_override: None,
+            debug_routes_enabled: false,
         }
     }
 
@@ -423,23 +461,16 @@ impl AgentBase {
     }
 
     /// Mint a per-call SWAIG-function token via the agent's `SessionManager`.
-    ///
-    /// Python parity: `state_mixin.StateMixin._create_tool_token` —
-    /// delegates to `SessionManager::create_token` and returns `String::new()`
-    /// on failure (Python catches all exceptions and returns "").
     pub fn create_tool_token(&self, tool_name: &str, call_id: &str) -> String {
         self.session_manager.create_token(tool_name, call_id)
     }
 
     /// Validate a per-call SWAIG-function token. Returns `false` when the
     /// function is not registered or when the `SessionManager` rejects the
-    /// token.
-    ///
-    /// Python parity: `state_mixin.StateMixin.validate_tool_token` —
-    /// rejects unknown function names up-front. Rust's
+    /// token. Rust's
     /// `SessionManager::validate_token` returns `bool` (no panics on bad
     /// input — see `security/session_manager.rs`), so no try/catch is
-    /// required for parity.
+    /// required.
     pub fn validate_tool_token(&self, function_name: &str, token: &str, call_id: &str) -> bool {
         if !self.service.has_function(function_name) {
             return false;
@@ -467,7 +498,11 @@ impl AgentBase {
         self.use_pom = true;
         let mut section = Map::new();
         section.insert("title".to_string(), json!(title));
-        section.insert("body".to_string(), json!(body));
+        // POM parity (Python `Section.to_dict`): an empty body is OMITTED, not
+        // emitted as `"body": ""`. A section may carry bullets with no body.
+        if !body.is_empty() {
+            section.insert("body".to_string(), json!(body));
+        }
         if !bullets.is_empty() {
             section.insert("bullets".to_string(), json!(bullets));
         }
@@ -565,10 +600,7 @@ impl AgentBase {
     }
 
     /// Read-only snapshot of the agent's POM as a typed
-    /// [`PromptObjectModel`].
-    ///
-    /// Python parity: `agent.pom` instance attribute (`agent_base.py`
-    /// line 209). Returns `None` when `use_pom` is `false` (mirroring
+    /// [`PromptObjectModel`]. Returns `None` when `use_pom` is `false` (mirroring
     /// Python's `self.pom = None`); otherwise returns a freshly built
     /// [`PromptObjectModel`] populated from the agent's stored
     /// section list.
@@ -732,14 +764,119 @@ impl AgentBase {
         self
     }
 
+    /// Add a structured pattern hint. Rust's builder idiom seeds the entry from `pattern`
+    /// (used as both the initial `hint` and `pattern`, `replace` defaults to
+    /// the pattern, `ignore_case` false); refine with `set_pattern_hint_hint`
+    /// / `set_pattern_hint_replace` / `set_pattern_hint_ignore_case`, which
+    /// mutate the most-recently-added pattern hint. The rendered SWML carries
+    /// the full structured object, not a bare string.
     pub fn add_pattern_hint(&mut self, pattern: &str) -> &mut Self {
-        self.pattern_hints.push(pattern.to_string());
+        self.pattern_hints.push(json!({
+            "hint": pattern,
+            "pattern": pattern,
+            "replace": pattern,
+            "ignore_case": false,
+        }));
         self
     }
 
+    /// Set the `hint` (the text to match) on the most-recently-added pattern
+    /// hint. No-op if none has been added.
+    pub fn set_pattern_hint_hint(&mut self, hint: &str) -> &mut Self {
+        if let Some(obj) = self.pattern_hints.last_mut().and_then(Value::as_object_mut) {
+            obj.insert("hint".to_string(), json!(hint));
+        }
+        self
+    }
+
+    /// Set the `replace` (replacement text) on the most-recently-added
+    /// pattern hint. No-op if none has been added.
+    pub fn set_pattern_hint_replace(&mut self, replace: &str) -> &mut Self {
+        if let Some(obj) = self.pattern_hints.last_mut().and_then(Value::as_object_mut) {
+            obj.insert("replace".to_string(), json!(replace));
+        }
+        self
+    }
+
+    /// Set the `ignore_case` flag on the most-recently-added pattern hint.
+    /// No-op if none has been added.
+    pub fn set_pattern_hint_ignore_case(&mut self, ignore_case: bool) -> &mut Self {
+        if let Some(obj) = self.pattern_hints.last_mut().and_then(Value::as_object_mut) {
+            obj.insert("ignore_case".to_string(), json!(ignore_case));
+        }
+        self
+    }
+
+    /// Add a language configuration. Rust's
+    /// builder idiom takes the core three args here and attaches the optional
+    /// `engine` / `model` / `speech_fillers` / `function_fillers` / `params`
+    /// via the fluent `set_language_*` setters (or the combined
+    /// `engine.voice:model` string form Python also parses). All of these
+    /// survive into the rendered SWML `ai.languages` entry.
     pub fn add_language(&mut self, name: &str, code: &str, voice: &str) -> &mut Self {
-        self.languages
-            .push(json!({"name": name, "code": code, "voice": voice}));
+        let mut language = serde_json::Map::new();
+        language.insert("name".to_string(), json!(name));
+        language.insert("code".to_string(), json!(code));
+
+        // Parse the combined "engine.voice:model" string form (Python parity).
+        if voice.contains('.') && voice.contains(':') {
+            if let Some((engine_voice, model_part)) = voice.split_once(':')
+                && let Some((engine_part, voice_part)) = engine_voice.split_once('.')
+            {
+                language.insert("voice".to_string(), json!(voice_part));
+                language.insert("engine".to_string(), json!(engine_part));
+                language.insert("model".to_string(), json!(model_part));
+            } else {
+                language.insert("voice".to_string(), json!(voice));
+            }
+        } else {
+            language.insert("voice".to_string(), json!(voice));
+        }
+
+        self.languages.push(Value::Object(language));
+        self
+    }
+
+    /// Set the TTS `engine` on the most-recently-added language. No-op if none
+    /// has been added.
+    pub fn set_language_engine(&mut self, engine: &str) -> &mut Self {
+        if let Some(obj) = self.languages.last_mut().and_then(Value::as_object_mut) {
+            obj.insert("engine".to_string(), json!(engine));
+        }
+        self
+    }
+
+    /// Set the TTS `model` on the most-recently-added language. No-op if none
+    /// has been added.
+    pub fn set_language_model(&mut self, model: &str) -> &mut Self {
+        if let Some(obj) = self.languages.last_mut().and_then(Value::as_object_mut) {
+            obj.insert("model".to_string(), json!(model));
+        }
+        self
+    }
+
+    /// Attach filler phrases to the most-recently-added language: if both
+    /// `speech_fillers` and
+    /// `function_fillers` are given they are emitted as separate keys;
+    /// if only one is given it goes to the deprecated combined `fillers` key.
+    /// No-op if no language has been added.
+    pub fn set_language_fillers(
+        &mut self,
+        speech_fillers: Option<Vec<&str>>,
+        function_fillers: Option<Vec<&str>>,
+    ) -> &mut Self {
+        if let Some(obj) = self.languages.last_mut().and_then(Value::as_object_mut) {
+            match (speech_fillers, function_fillers) {
+                (Some(speech), Some(func)) => {
+                    obj.insert("speech_fillers".to_string(), json!(speech));
+                    obj.insert("function_fillers".to_string(), json!(func));
+                }
+                (Some(fillers), None) | (None, Some(fillers)) => {
+                    obj.insert("fillers".to_string(), json!(fillers));
+                }
+                (None, None) => {}
+            }
+        }
         self
     }
 
@@ -748,7 +885,7 @@ impl AgentBase {
     /// engine-specific tuning (voice stability/similarity, model knobs,
     /// etc.) can be attached after the language entry was created.
     ///
-    /// Behavior, matching Python:
+    /// Behavior:
     ///   - If `params` is a non-empty JSON object, store it under the
     ///     `params` key on the matching language entry (replacing any
     ///     prior value).
@@ -757,7 +894,6 @@ impl AgentBase {
     ///   - If no language with the given code exists, this is a no-op.
     ///   - Returns `&mut Self` for chaining.
     ///
-    /// Python parity: the per-language params are emitted as the language
     /// object's `params` key in SWML and use `snake_case` wire shape.
     pub fn set_language_params(&mut self, code: &str, params: Value) -> &mut Self {
         for language in &mut self.languages {
@@ -799,12 +935,30 @@ impl AgentBase {
         self
     }
 
-    pub fn add_pronunciation(&mut self, replace: &str, with: &str, ignore: &str) -> &mut Self {
+    /// Configure ASR-driven multilingual mode (Mode B).
+    ///
+    /// Emits a top-level `multilingual` object on the AI verb: the recognizer
+    /// runs in code-switching mode and the agent answers in whatever language
+    /// the caller actually spoke. Mutually exclusive with [`set_languages`] —
+    /// if both are set the server uses `multilingual` and ignores `languages`.
+    ///
+    pub fn set_multilingual(&mut self, config: Value) -> &mut Self {
+        if config.is_object() {
+            self.multilingual = Some(config);
+        }
+        self
+    }
+
+    /// Add a pronunciation rule. Mirrors Python
+    /// `add_pronunciation(replace, with_text, ignore_case=False)`: the SWML
+    /// wire keys are `replace`, `with`, and `ignore_case` (a bool, emitted
+    /// only when true — matches signalwire-agents schema.json `Pronounce`).
+    pub fn add_pronunciation(&mut self, replace: &str, with: &str, ignore_case: bool) -> &mut Self {
         let mut entry = Map::new();
         entry.insert("replace".to_string(), json!(replace));
         entry.insert("with".to_string(), json!(with));
-        if !ignore.is_empty() {
-            entry.insert("ignore".to_string(), json!(ignore));
+        if ignore_case {
+            entry.insert("ignore_case".to_string(), json!(true));
         }
         self.pronunciations.push(Value::Object(entry));
         self
@@ -846,6 +1000,12 @@ impl AgentBase {
             }
         }
         self
+    }
+
+    /// The accumulated global-data map, as a JSON object.
+    #[must_use]
+    pub fn get_global_data(&self) -> Value {
+        Value::Object(self.global_data.clone())
     }
 
     pub fn set_native_functions(&mut self, functions: Vec<&str>) -> &mut Self {
@@ -996,15 +1156,25 @@ impl AgentBase {
     }
 
     pub fn set_prompt_llm_params(&mut self, params: Value) -> &mut Self {
+        // MERGE, not replace — mirrors Python's
+        // `self._prompt_llm_params.update(params)` (ai_config_mixin.py:669).
+        // Repeated calls with distinct keys accumulate; a repeated key
+        // overwrites its previous value.
         if let Value::Object(map) = params {
-            self.prompt_llm_params = map;
+            for (k, v) in map {
+                self.prompt_llm_params.insert(k, v);
+            }
         }
         self
     }
 
     pub fn set_post_prompt_llm_params(&mut self, params: Value) -> &mut Self {
+        // MERGE, not replace — mirrors Python's
+        // `self._post_prompt_llm_params.update(params)` (ai_config_mixin.py:703).
         if let Value::Object(map) = params {
-            self.post_prompt_llm_params = map;
+            for (k, v) in map {
+                self.post_prompt_llm_params.insert(k, v);
+            }
         }
         self
     }
@@ -1238,10 +1408,249 @@ impl AgentBase {
     }
 
     pub fn register_sip_username(&mut self, username: &str, route: &str) -> &mut Self {
+        // Python parity (`AgentBase.register_sip_username`): accumulate the name
+        // into a case-folded, deduplicated set. Registering "Bob"/"BOB"/"bob"
+        // collapses to a single "bob" entry; `sip_usernames()` reads it sorted.
+        self.sip_usernames.insert(username.to_lowercase());
         self.set_param("sip_username", json!(username));
         if !route.is_empty() {
             self.set_param("sip_route", json!(route));
         }
+        self
+    }
+
+    /// The registered SIP usernames, lowercased and sorted.
+    #[must_use]
+    pub fn sip_usernames(&self) -> Vec<String> {
+        self.sip_usernames.iter().cloned().collect()
+    }
+
+    /// Automatically register common SIP usernames derived from this agent's
+    /// name and route.
+    pub fn auto_map_sip_usernames(&mut self) -> &mut Self {
+        let clean = |s: &str| -> String {
+            s.to_lowercase()
+                .chars()
+                .filter(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || *c == '_')
+                .collect()
+        };
+        let name = self.service.name().to_string();
+        let route = self.service.route().to_string();
+        let clean_name = clean(&name);
+        if !clean_name.is_empty() {
+            self.register_sip_username(&clean_name, "");
+        }
+        let clean_route = clean(&route);
+        if !clean_route.is_empty() && clean_route != clean_name {
+            self.register_sip_username(&clean_route, "");
+        }
+        if clean_name.len() > 3 {
+            let no_vowels: String = clean_name
+                .chars()
+                .filter(|c| !"aeiou".contains(*c))
+                .collect();
+            if no_vowels != clean_name && no_vowels.len() > 2 {
+                self.register_sip_username(&no_vowels, "");
+            }
+        }
+        self
+    }
+
+    // ══════════════════════════════════════════════════════════════════════
+    //  Naming / URL helpers (Python AgentBase parity)
+    // ══════════════════════════════════════════════════════════════════════
+
+    /// Get the agent name.
+    #[must_use]
+    pub fn get_name(&self) -> String {
+        self.service.name().to_string()
+    }
+
+    /// Get the full URL for this agent's endpoint (host, port, route), with
+    /// optional embedded basic-auth credentials.
+    ///
+    /// Prefers the manual proxy-URL override when set; otherwise composes from
+    /// the service host/port/route.
+    #[must_use]
+    pub fn get_full_url(&self, include_auth: bool) -> String {
+        let base = if let Some(proxy) = &self.manual_proxy_url {
+            proxy.trim_end_matches('/').to_string()
+        } else {
+            let host = self.service.host();
+            let host = if host == "0.0.0.0" { "localhost" } else { host };
+            let route = self.service.route();
+            format!("http://{host}:{}{route}", self.service.port())
+        };
+        if include_auth {
+            let (user, pass) = self.service.get_basic_auth_credentials();
+            if !user.is_empty() && !pass.is_empty() {
+                if let Some(rest) = base.strip_prefix("http://") {
+                    return format!("http://{user}:{pass}@{rest}");
+                }
+                if let Some(rest) = base.strip_prefix("https://") {
+                    return format!("https://{user}:{pass}@{rest}");
+                }
+            }
+        }
+        base
+    }
+
+    /// Override the default SWAIG `web_hook_url`.
+    pub fn set_web_hook_url(&mut self, url: &str) -> &mut Self {
+        self.web_hook_url_override = Some(url.to_string());
+        self
+    }
+
+    /// Configure the `answer` verb.
+    pub fn add_answer_verb(&mut self, config: Option<Value>) -> &mut Self {
+        self.answer_config = match config {
+            Some(Value::Object(m)) => m,
+            _ => Map::new(),
+        };
+        self
+    }
+
+    // ══════════════════════════════════════════════════════════════════════
+    //  MCP (Model Context Protocol) — Python AIConfigMixin parity
+    // ══════════════════════════════════════════════════════════════════════
+
+    /// Add an external MCP server for tool discovery and invocation.
+    pub fn add_mcp_server(
+        &mut self,
+        url: &str,
+        headers: Option<Map<String, Value>>,
+        resources: bool,
+        resource_vars: Option<Map<String, Value>>,
+    ) -> &mut Self {
+        let mut server = Map::new();
+        server.insert("url".to_string(), json!(url));
+        if let Some(h) = headers
+            && !h.is_empty()
+        {
+            server.insert("headers".to_string(), Value::Object(h));
+        }
+        if resources {
+            server.insert("resources".to_string(), json!(true));
+        }
+        if let Some(rv) = resource_vars
+            && !rv.is_empty()
+        {
+            server.insert("resource_vars".to_string(), Value::Object(rv));
+        }
+        self.mcp_servers.push(Value::Object(server));
+        self
+    }
+
+    /// Expose this agent's tools as an MCP server endpoint.
+    pub fn enable_mcp_server(&mut self) -> &mut Self {
+        self.mcp_server_enabled = true;
+        self
+    }
+
+    /// The registered external MCP servers.
+    #[must_use]
+    pub fn mcp_servers(&self) -> &[Value] {
+        &self.mcp_servers
+    }
+
+    // ══════════════════════════════════════════════════════════════════════
+    //  Web surface — Python WebMixin parity
+    // ══════════════════════════════════════════════════════════════════════
+
+    /// Return a mountable [`axum::Router`] serving this agent's HTTP routes.
+    ///
+    /// Rust equivalent of Python's `WebMixin.as_router` (a FastAPI
+    /// `APIRouter`): the "embed my routes in a host app" unit. The returned
+    /// router can be [`axum::Router::nest`]ed into a caller's own axum/hyper
+    /// application or served directly. Gated behind the default
+    /// `tower-middleware` feature (which provides `axum`).
+    #[cfg(feature = "tower-middleware")]
+    pub fn as_router(&self) -> axum::Router {
+        self.service.as_router()
+    }
+
+    /// Return the app mount identifier (Rust idiom for Python's `get_app`,
+    /// which returns a FastAPI application object). The Rust port has no
+    /// single baked-in web-application object, so `get_app` yields the mount
+    /// route string; use [`AgentBase::as_router`] for the mountable handler.
+    #[must_use]
+    pub fn get_app(&self) -> String {
+        self.service.route().to_string()
+    }
+
+    /// Enable debug routes.
+    pub fn enable_debug_routes(&mut self) -> &mut Self {
+        self.debug_routes_enabled = true;
+        self
+    }
+
+    /// Whether debug routes are enabled.
+    #[must_use]
+    pub fn debug_routes_enabled(&self) -> bool {
+        self.debug_routes_enabled
+    }
+
+    /// Start a web server for this agent (Python `WebMixin.serve`). Delegates
+    /// to [`AgentBase::run`], optionally overriding host/port first.
+    pub fn serve(&mut self, host: Option<&str>, port: Option<u16>) {
+        if let Some(h) = host {
+            self.service.set_host(h);
+        }
+        if let Some(p) = port {
+            self.service.set_port(p);
+        }
+        self.run();
+    }
+
+    /// Set up graceful shutdown signal handling (Python
+    /// `WebMixin.setup_graceful_shutdown`). The Rust `run` blocks
+    /// synchronously; this is the entry point (a no-op placeholder
+    /// until an async server backend is wired).
+    pub fn setup_graceful_shutdown(&self) {}
+
+    /// Register a routing callback for `path`.
+    pub fn register_routing_callback<F>(&mut self, callback: F, path: &str) -> &mut Self
+    where
+        F: Fn(&Value, &HashMap<String, String>) -> Option<String> + Send + Sync + 'static,
+    {
+        self.service.register_routing_callback(callback, path);
+        self
+    }
+
+    // ══════════════════════════════════════════════════════════════════════
+    //  Serverless — Python ServerlessMixin parity
+    // ══════════════════════════════════════════════════════════════════════
+
+    /// Handle a request in a serverless environment. Renders the SWML document
+    /// for the given (optional) request headers and returns it as a JSON
+    /// string.
+    #[must_use]
+    pub fn handle_serverless_request(&self, headers: Option<&HashMap<String, String>>) -> String {
+        let empty = HashMap::new();
+        let headers = headers.unwrap_or(&empty);
+        self.render_swml(headers).to_string()
+    }
+
+    /// Get the [`ContextBuilder`] for this agent (alias for
+    /// [`AgentBase::define_contexts`]).
+    pub fn contexts(&mut self) -> &mut ContextBuilder {
+        self.define_contexts()
+    }
+
+    /// Define a SWAIG tool. The Rust idiom for Python's `@AgentBase.tool(...)`
+    /// class-method decorator: Rust has no runtime method decorators, so `tool`
+    /// registers a handler directly (same effect as the decorated function
+    /// being registered).
+    pub fn tool(
+        &mut self,
+        name: &str,
+        description: &str,
+        parameters: Value,
+        handler: FunctionHandler,
+        secure: bool,
+    ) -> &mut Self {
+        self.service
+            .define_tool(name, description, parameters, handler, secure);
         self
     }
 
@@ -1379,7 +1788,7 @@ impl AgentBase {
         // ── Hints ───────────────────────────────────────────────────────
         let mut all_hints: Vec<Value> = self.hints.iter().map(|h| json!(h)).collect();
         for ph in &self.pattern_hints {
-            all_hints.push(json!(ph));
+            all_hints.push(ph.clone());
         }
         if !all_hints.is_empty() {
             ai.insert("hints".to_string(), Value::Array(all_hints));
@@ -1391,6 +1800,11 @@ impl AgentBase {
                 "languages".to_string(),
                 Value::Array(self.languages.clone()),
             );
+        }
+
+        // ── Multilingual (Mode B) — top-level `multilingual` on the AI verb.
+        if let Some(ml) = &self.multilingual {
+            ai.insert("multilingual".to_string(), ml.clone());
         }
 
         // ── Pronunciations ──────────────────────────────────────────────
@@ -1463,15 +1877,18 @@ impl AgentBase {
             return json_response(404, &json!({"error": "Not found"}));
         };
 
-        // Auth
+        // Auth — framework-free contract (Python `_handle_request_core`): a
+        // 401 is `(401, {"WWW-Authenticate": "Basic"}, {"error":
+        // "Unauthorized"})` — JSON body, bare `WWW-Authenticate: Basic` header,
+        // no Content-Type/security headers (the HTTP adapter re-adds them).
         if !self.check_auth(headers) {
             let mut resp_headers = HashMap::new();
-            resp_headers.insert("Content-Type".to_string(), "text/plain".to_string());
-            resp_headers.insert(
-                "WWW-Authenticate".to_string(),
-                "Basic realm=\"SignalWire Agent\"".to_string(),
+            resp_headers.insert("WWW-Authenticate".to_string(), "Basic".to_string());
+            return (
+                401,
+                resp_headers,
+                json!({"error": "Unauthorized"}).to_string(),
             );
-            return (401, resp_headers, "Unauthorized".to_string());
         }
 
         // Webhook signature validation. Mounted on POSTs to the
@@ -2088,12 +2505,134 @@ mod tests {
         assert_eq!(agent.languages[0]["name"], "English");
     }
 
+    // ── Behavioral Contract 8: AI/LLM structured add_pattern_hint / add_language ──
+    //
+    // Python (ai_config mixin): `add_pattern_hint` attaches a STRUCTURED hint
+    // ({hint, pattern, replace, ignore_case}), not a bare string; `add_language`
+    // carries engine + model + fillers (list) into the rendered SWML
+    // `ai.languages` entry. A degraded body (bare-string hint / no
+    // engine/model/fillers) would drop these — this test asserts every field
+    // survives into the rendered document. FAILS against the old bare-string
+    // `pattern_hints: Vec<String>` + 3-field-only `add_language` body.
+    #[test]
+    fn test_contract8_structured_pattern_hint_and_language_fillers_survive_render() {
+        let mut agent = AgentBase::new(default_options());
+
+        // Structured pattern hint WITH a replacement + hint text + ignore_case.
+        agent
+            .add_pattern_hint("AI")
+            .set_pattern_hint_hint("AI")
+            .set_pattern_hint_replace("Artificial Intelligence")
+            .set_pattern_hint_ignore_case(true);
+
+        // Language WITH engine + model + fillers.
+        agent
+            .add_language("English", "en-US", "josh")
+            .set_language_engine("elevenlabs")
+            .set_language_model("eleven_turbo_v2_5")
+            .set_language_fillers(
+                Some(vec!["um", "let me think"]),
+                Some(vec!["one moment", "checking"]),
+            );
+
+        let ai = agent.build_ai_verb(&HashMap::new());
+
+        // ── Structured pattern hint ──────────────────────────────────────
+        let hints = ai["hints"].as_array().expect("ai.hints must be present");
+        let structured = hints
+            .iter()
+            .find(|h| h.is_object())
+            .expect("pattern hint must render as a STRUCTURED object, not a bare string");
+        assert_eq!(structured["hint"], "AI");
+        assert_eq!(structured["pattern"], "AI");
+        assert_eq!(
+            structured["replace"], "Artificial Intelligence",
+            "replacement must survive into the rendered hint"
+        );
+        assert_eq!(structured["ignore_case"], true);
+
+        // ── Language engine + model + fillers ────────────────────────────
+        let langs = ai["languages"]
+            .as_array()
+            .expect("ai.languages must be present");
+        let lang = &langs[0];
+        assert_eq!(lang["name"], "English");
+        assert_eq!(lang["code"], "en-US");
+        assert_eq!(lang["voice"], "josh");
+        assert_eq!(
+            lang["engine"], "elevenlabs",
+            "engine must survive into the rendered language"
+        );
+        assert_eq!(
+            lang["model"], "eleven_turbo_v2_5",
+            "model must survive into the rendered language"
+        );
+        assert_eq!(
+            lang["speech_fillers"],
+            json!(["um", "let me think"]),
+            "speech_fillers must survive"
+        );
+        assert_eq!(
+            lang["function_fillers"],
+            json!(["one moment", "checking"]),
+            "function_fillers must survive"
+        );
+    }
+
+    // The combined "engine.voice:model" voice string is parsed into separate
+    // engine / voice / model keys (Python parity).
+    #[test]
+    fn test_contract8_combined_voice_string_parsed() {
+        let mut agent = AgentBase::new(default_options());
+        agent.add_language("English", "en-US", "elevenlabs.josh:eleven_turbo_v2_5");
+        let lang = &agent.languages[0];
+        assert_eq!(lang["engine"], "elevenlabs");
+        assert_eq!(lang["voice"], "josh");
+        assert_eq!(lang["model"], "eleven_turbo_v2_5");
+    }
+
+    // Single filler kind uses the deprecated combined `fillers` key.
+    #[test]
+    fn test_contract8_single_filler_kind_uses_combined_key() {
+        let mut agent = AgentBase::new(default_options());
+        agent
+            .add_language("English", "en-US", "josh")
+            .set_language_fillers(Some(vec!["um"]), None);
+        let lang = &agent.languages[0];
+        assert_eq!(lang["fillers"], json!(["um"]));
+        assert!(lang.get("speech_fillers").is_none());
+    }
+
     #[test]
     fn test_set_languages() {
         let mut agent = AgentBase::new(default_options());
         agent.add_language("English", "en-US", "Polly.Salli");
         agent.set_languages(vec![]);
         assert!(agent.languages.is_empty());
+    }
+
+    #[test]
+    fn test_set_multilingual_emits_ai_verb_object() {
+        let mut agent = AgentBase::new(default_options());
+        agent.set_multilingual(serde_json::json!({
+            "languages": ["en", "es"],
+            "start_language": "en",
+        }));
+        let swml = agent.render_swml(&HashMap::new());
+        // Locate the AI verb's `multilingual` object in the rendered document.
+        let doc = swml.to_string();
+        assert!(
+            doc.contains("multilingual"),
+            "AI verb should carry multilingual"
+        );
+        assert!(doc.contains("start_language"));
+    }
+
+    #[test]
+    fn test_set_multilingual_ignores_non_object() {
+        let mut agent = AgentBase::new(default_options());
+        agent.set_multilingual(serde_json::json!("not-an-object"));
+        assert!(agent.multilingual.is_none());
     }
 
     // -------------------------------------------------------------------
@@ -2226,23 +2765,30 @@ mod tests {
 
     #[test]
     fn test_add_pronunciation() {
+        // Wire keys: replace, with; `ignore_case` (bool) omitted when false.
         let mut agent = AgentBase::new(default_options());
-        agent.add_pronunciation("SignalWire", "signal wire", "");
+        agent.add_pronunciation("SignalWire", "signal wire", false);
         assert_eq!(agent.pronunciations[0]["replace"], "SignalWire");
+        assert_eq!(agent.pronunciations[0]["with"], "signal wire");
+        assert!(agent.pronunciations[0].get("ignore_case").is_none());
+        // The old (wrong) `ignore` string key must never be emitted.
         assert!(agent.pronunciations[0].get("ignore").is_none());
     }
 
     #[test]
-    fn test_add_pronunciation_with_ignore() {
+    fn test_add_pronunciation_with_ignore_case() {
+        // ignore_case=true emits the bool wire key `ignore_case: true`
+        // (matches signalwire-agents schema.json + Python add_pronunciation).
         let mut agent = AgentBase::new(default_options());
-        agent.add_pronunciation("AI", "A.I.", "context");
-        assert_eq!(agent.pronunciations[0]["ignore"], "context");
+        agent.add_pronunciation("AI", "A.I.", true);
+        assert_eq!(agent.pronunciations[0]["ignore_case"], json!(true));
+        assert!(agent.pronunciations[0].get("ignore").is_none());
     }
 
     #[test]
     fn test_set_pronunciations() {
         let mut agent = AgentBase::new(default_options());
-        agent.add_pronunciation("a", "b", "");
+        agent.add_pronunciation("a", "b", false);
         agent.set_pronunciations(vec![]);
         assert!(agent.pronunciations.is_empty());
     }
@@ -2410,6 +2956,45 @@ mod tests {
         let mut agent = AgentBase::new(default_options());
         agent.set_post_prompt_llm_params(json!({"top_p": 0.9}));
         assert_eq!(agent.post_prompt_llm_params["top_p"], 0.9);
+    }
+
+    // Tier-2 behavioral contract #2: set_prompt_llm_params / set_post_prompt_llm_params
+    // MERGE (not replace). Two calls with distinct keys must both survive into the
+    // rendered AI verb — a replace-stub would drop the first key. (Python:
+    // ai_config_mixin.py:669,703 `.update(params)`.)
+    #[test]
+    fn test_set_prompt_llm_params_merges_across_calls() {
+        let mut agent = AgentBase::new(default_options());
+        agent.set_prompt_llm_params(json!({"temperature": 0.5}));
+        agent.set_prompt_llm_params(json!({"top_p": 0.9}));
+        // Both retained on the struct...
+        assert_eq!(agent.prompt_llm_params["temperature"], 0.5);
+        assert_eq!(agent.prompt_llm_params["top_p"], 0.9);
+        // ...and both rendered into the AI verb's prompt block.
+        let ai = agent.build_ai_verb(&HashMap::new());
+        let prompt = &ai["prompt"];
+        assert_eq!(
+            prompt["temperature"], 0.5,
+            "temperature must not be dropped by the 2nd call"
+        );
+        assert_eq!(prompt["top_p"], 0.9);
+    }
+
+    #[test]
+    fn test_set_post_prompt_llm_params_merges_across_calls() {
+        let mut agent = AgentBase::new(default_options());
+        agent.set_post_prompt("Summarize the call.");
+        agent.set_post_prompt_llm_params(json!({"temperature": 0.3}));
+        agent.set_post_prompt_llm_params(json!({"top_p": 0.8}));
+        assert_eq!(agent.post_prompt_llm_params["temperature"], 0.3);
+        assert_eq!(agent.post_prompt_llm_params["top_p"], 0.8);
+        let ai = agent.build_ai_verb(&HashMap::new());
+        let pp = &ai["post_prompt"];
+        assert_eq!(
+            pp["temperature"], 0.3,
+            "temperature must not be dropped by the 2nd call"
+        );
+        assert_eq!(pp["top_p"], 0.8);
     }
 
     // ── Verbs ────────────────────────────────────────────────────────────
@@ -2696,7 +3281,7 @@ mod tests {
     #[test]
     fn test_build_ai_verb_pronunciations() {
         let mut agent = AgentBase::new(default_options());
-        agent.add_pronunciation("AI", "A.I.", "");
+        agent.add_pronunciation("AI", "A.I.", false);
         let ai = agent.build_ai_verb(&HashMap::new());
         assert_eq!(ai["pronounce"][0]["replace"], "AI");
     }

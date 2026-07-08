@@ -4,30 +4,52 @@
 # Same script invoked locally (`bash scripts/run-ci.sh`) AND by the
 # GitHub Actions workflow. No drift between local and CI behavior.
 #
-# Gates (in order, fail-fast):
-#   1. cargo test --tests                        — language test runner (parallel)
-#   2. signature regen (rustdoc + adapter)      — python adapter
-#   3. drift gate                               — porting-sdk diff_port_signatures.py
-#   4. surface-fresh gate                       — porting-sdk check_surface_freshness.py
-#   5. no-cheat gate                            — porting-sdk audit_no_cheat_tests.py
-#   6. emission gate                            — porting-sdk diff_port_emission.py
-#   7. fmt gate                                 — rustfmt (local: auto-fix; CI: --check)
-#   8. lint gate                                — cargo clippy (Cargo.toml [lints] deny)
-#   9. doc-audit gate                           — porting-sdk audit_docs.py
-#  10. surface-diff gate                        — porting-sdk diff_port_surface.py
+# FMT / LINT / TEST entry points are the canonical scripts (callable standalone
+# from any CWD, self-bootstrapping the toolchain):
+#   scripts/run-format.sh   (rust: cargo fmt; --check for CI verify-only)
+#   scripts/run-lint.sh     (rust: cargo clippy --all-targets; --fix for autofix)
+#   scripts/run-tests.sh    (rust: cargo test --tests; optional name filter)
+# All three + this run-ci source the shared scripts/_env.sh bootstrap.
 #
-# Gates 7-10 were previously CI-only or unenforced (FMT not gated anywhere;
-# clippy [lints] table unenforced; separate doc-audit.yml / surface-audit.yml
-# workflows); folding them in restores the "run-ci.sh is canonical, CI just
-# invokes it — no drift local vs CI" design. FMT + LINT are the Rust-internal
-# source-quality pair (governed by PORT_PHILOSOPHY_RUST.md, not the parity
-# gates); DOC-AUDIT + SURFACE-DIFF are cross-port parity checks.
+# GATE SCHEDULING (porting-sdk/scripts/gate_scheduler.sh — CI_PERF S1 + S2):
+#   Gates run CONCURRENTLY up to a cap (SW_CI_JOBS, default nproc), scheduled by
+#   their DATA dependencies:
+#     * S2 concurrent wave: the pure-Python side-effect-free gates (all GEN-FRESH*,
+#       DRIFT, NO-CHEAT, EMISSION, SKILL-CONTRACT, SWAIG-COVERAGE, SURFACE-DIFF,
+#       DOC-AUDIT, SWAIG-CLI) overlap — they share no mutable state.
+#     * S1 fail-fast: heavy gates (TEST, LINT, FMT, REST-COVERAGE, SPEC-PARITY,
+#       SIGNATURES via rustdoc) are deferred behind the cheap wave, so a trivial
+#       cheap-gate failure surfaces in seconds; --fail-fast aborts before TEST.
+#   HARD ordering is data-dependency ONLY:
+#     * DRIFT reads port_signatures.json that SIGNATURES writes → deps=SIGNATURES.
+#     * SURFACE-FRESH regenerates port_surface.json in place (and restores it);
+#       SURFACE-DIFF + DOC-AUDIT read it → all three share res=surface.
+#   Per-gate PASS/FAIL + the FAILED_GATES tally preserved exactly; each gate's output
+#   captured + replayed atomically.
+#
+# Flags:
+#   --fail-fast   stop launching new gates at the first failure (local dev loop).
 
 set -u
 set -o pipefail
 
 PORT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 PORT_NAME="signalwire-rust"
+
+# sccache: availability-gated compiler cache (pure speedup, no-op when absent).
+# The canonical run-{tests,format,lint}.sh gates source scripts/_env.sh and get
+# this automatically; run-ci ALSO invokes cargo directly for several gates
+# (REST-COVERAGE, route-registry, emit_corpus/emit_skills, swaig-test), so wire
+# the same gate here in run-ci's own process. We do NOT `source _env.sh` (it sets
+# `set -e`, and run-ci deliberately runs every gate to collect failures). Mirror
+# only the availability gate — see scripts/_env.sh for the declaration/rationale.
+if [ -z "${RUSTC_WRAPPER:-}" ] && command -v sccache >/dev/null 2>&1; then
+    export RUSTC_WRAPPER=sccache
+    if [ -z "${SCCACHE_DIR:-}" ]; then
+        export SCCACHE_DIR="$PORT_ROOT/.sw-tmp/sccache"
+    fi
+    mkdir -p "$SCCACHE_DIR" 2>/dev/null || true
+fi
 
 resolve_porting_sdk() {
     if [ -n "${PORTING_SDK:-}" ] && [ -d "$PORTING_SDK/scripts" ]; then
@@ -47,114 +69,58 @@ PORTING_SDK_DIR="$(resolve_porting_sdk)" || {
     exit 2
 }
 
-FAILED_GATES=""
-
-run_gate() {
-    local name="$1"; shift
-    local description="$1"; shift
-    local logfile
-    logfile="$(mktemp)"
-    "$@" >"$logfile" 2>&1
-    local rc=$?
-    if [ "$rc" -eq 0 ]; then
-        echo "[$name] $description ... PASS"
-        rm -f "$logfile"
-        return 0
-    fi
-    echo "[$name] $description ... FAIL: exit $rc"
-    sed 's/^/    /' "$logfile" | tail -40
-    rm -f "$logfile"
-    FAILED_GATES="$FAILED_GATES $name"
-    return $rc
-}
+# shellcheck source=/dev/null
+source "$PORTING_SDK_DIR/scripts/gate_scheduler.sh"
 
 cd "$PORT_ROOT"
 
 echo "==> running CI gates for $PORT_NAME (porting-sdk at $PORTING_SDK_DIR)"
 
-# Gate 1: cargo test (PARALLEL — cargo's default). The mock-backed suites are
-# session-isolated (relay: per-connection handshake `sessionid`; rest: per-test
-# random project => unique Authorization header), so the shared mock servers are
-# safe under concurrency without `--test-threads=1`. The few env-coupled unit
-# tests serialize among themselves with a file-local lock. No cross-test serial
-# crutch, no cross-binary flock.
-run_gate "TEST" "cargo test --tests (parallel)" \
-    cargo test --tests
+pick_free_port() {
+    python3 -c 'import socket; s=socket.socket(); s.bind(("127.0.0.1",0)); print(s.getsockname()[1]); s.close()'
+}
 
-# Gate 2: signature regen — adapter shells out to rustdoc nightly internally.
-run_gate "SIGNATURES" "regenerate port_signatures.json (rustdoc + adapter)" \
-    python3 scripts/enumerate_signatures.py
-
-# Gate 3: drift gate
-run_gate "DRIFT" "diff_port_signatures vs python reference" \
-    python3 "$PORTING_SDK_DIR/scripts/diff_port_signatures.py" \
-        --reference "$PORTING_SDK_DIR/python_signatures.json" \
-        --port-signatures "$PORT_ROOT/port_signatures.json" \
-        --surface-omissions "$PORT_ROOT/PORT_OMISSIONS.md" \
-        --surface-additions "$PORT_ROOT/PORT_ADDITIONS.md" \
-        --omissions "$PORT_ROOT/PORT_SIGNATURE_OMISSIONS.md"
-
-# Gate 4: surface-fresh — close the Layer-B-not-gated hole. The DRIFT gate
-# (Gate 3) only polices Layer A (port_signatures.json); port_surface.json can
-# silently rot when a public symbol is added but the surface isn't regenerated.
-# Regenerate the surface IN PLACE via the rust enumerator (regex over src/**.rs;
-# no rustdoc needed, so it's independent of the SIGNATURES gate's cache), then
-# compare the committed copy against the regen MODULO the volatile `generated_from`
-# git-sha. We snapshot HEAD's committed surface first and ALWAYS restore the file
-# afterward (the regen rewrites it in place, only bumping the sha line).
+# SURFACE-FRESH — close the Layer-B-not-gated hole. Regenerate the surface IN PLACE
+# via the rust enumerator (regex over src/**.rs; no rustdoc, so independent of the
+# SIGNATURES gate's cache), compare against the committed copy MODULO the volatile
+# generated_from git-sha, then always restore the file.
 surface_fresh_gate() {
-    git show HEAD:port_surface.json > /tmp/committed_surface.json 2>/dev/null \
-        || cp "$PORT_ROOT/port_surface.json" /tmp/committed_surface.json
-    # enumerate_surface.py writes port_surface.json directly (default --output).
+    # Scratch under the repo-local, gitignored .sw-tmp/ (never machine-wide /tmp,
+    # which invites cross-run pollution + leftover files).
+    mkdir -p "$PORT_ROOT/.sw-tmp"
+    local committed="$PORT_ROOT/.sw-tmp/committed_surface.json"
+    git show HEAD:port_surface.json > "$committed" 2>/dev/null \
+        || cp "$PORT_ROOT/port_surface.json" "$committed"
     python3 scripts/enumerate_surface.py || { git checkout -- port_surface.json; return 1; }
     python3 "$PORTING_SDK_DIR/scripts/check_surface_freshness.py" \
-        --committed /tmp/committed_surface.json \
+        --committed "$committed" \
         --fresh "$PORT_ROOT/port_surface.json"
     local rc=$?
     git checkout -- port_surface.json
     return $rc
 }
-run_gate "SURFACE-FRESH" "check_surface_freshness vs committed port_surface.json" \
-    surface_fresh_gate
 
-# Gate 5: no-cheat
-run_gate "NO-CHEAT" "audit_no_cheat_tests" \
-    python3 "$PORTING_SDK_DIR/scripts/audit_no_cheat_tests.py" --root "$PORT_ROOT"
-
-# Gate 5b: REST-COVERAGE — every canonical REST route the SDK implements must be
-# exercised with BOTH a success (2xx) AND an error (4xx/5xx) response on the
-# correct on-the-wire path (parity). Measured by replaying the mock journal of the
-# REST coverage suites through porting-sdk's rest_coverage checker. Accepted gaps —
-# routes with no SDK method, malformed canonical routes, mock-router collisions —
-# are allowlisted: the shared baseline (porting-sdk/REST_COVERAGE_BASELINE.md) +
-# this port's REST_COVERAGE_GAPS.md. A stale entry (route now covered) fails the
-# gate. Self-contained: spins its own mock, runs the coverage suites serially
-# (--test-threads=1) so all traffic lands in one journal, then checks it. Same
-# shape as python's/java's/typescript's/go's gate.
-# Pick a free TCP port on 127.0.0.1: ask the OS for an ephemeral port (bind :0),
-# read it back, release it. Never reuse a hardcoded port — concurrent runs (and
-# leftover mocks) otherwise collide on a fixed port and the gate hangs forever
-# waiting on a health check it can't satisfy.
-pick_free_port() {
-    python3 -c 'import socket; s=socket.socket(); s.bind(("127.0.0.1",0)); print(s.getsockname()[1]); s.close()'
-}
+# REST-COVERAGE — every implemented REST route covered success+error. Self-
+# contained: spins its own mock, runs the generated wire-test suites serially, then
+# checks the journal.
 rest_coverage_gate() {
     local port
     port="$(pick_free_port)" || { echo "could not allocate a free port" >&2; return 1; }
     local mock_pkg_parent="$PORTING_SDK_DIR/test_harness/mock_signalwire"
     export PYTHONPATH="$mock_pkg_parent${PYTHONPATH:+:$PYTHONPATH}"
+    # Mock log under the repo-local, gitignored .sw-tmp/ (never machine-wide /tmp).
+    mkdir -p "$PORT_ROOT/.sw-tmp"
+    local mock_log="$PORT_ROOT/.sw-tmp/rest_cov_mock_rust.$$.log"
     python3 -m mock_signalwire --host 127.0.0.1 --port "$port" --log-level error \
-        >/tmp/rest_cov_mock_rust.$$.log 2>&1 &
+        >"$mock_log" 2>&1 &
     local mock_pid=$!
     # shellcheck disable=SC2064
     trap "kill $mock_pid 2>/dev/null" RETURN
-    # Wait for readiness; if the mock process dies (e.g. the OS-picked port was
-    # grabbed in the race window), fail LOUD with the cause — never hang.
     local i ready=0
     for i in $(seq 1 60); do
         if ! kill -0 "$mock_pid" 2>/dev/null; then
             echo "mock_signalwire died on port $port — log:" >&2
-            cat "/tmp/rest_cov_mock_rust.$$.log" >&2
+            cat "$mock_log" >&2
             return 1
         fi
         if python3 -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:$port/__mock__/health',timeout=1)" 2>/dev/null; then
@@ -169,11 +135,18 @@ rest_coverage_gate() {
     fi
     python3 -c "import urllib.request; urllib.request.urlopen(urllib.request.Request('http://127.0.0.1:$port/__mock__/journal/reset',method='POST'),timeout=5).read()"
     MOCK_SIGNALWIRE_PORT="$port" cargo test \
-        --test rest_compat_coverage \
-        --test rest_fabric_coverage \
-        --test rest_misc_coverage \
-        --test rest_relay_coverage \
-        --test rest_video_coverage \
+        --test rest_generated_calling \
+        --test rest_generated_chat \
+        --test rest_generated_datasphere \
+        --test rest_generated_fabric \
+        --test rest_generated_fax \
+        --test rest_generated_logs \
+        --test rest_generated_message \
+        --test rest_generated_project \
+        --test rest_generated_pubsub \
+        --test rest_generated_relay_rest \
+        --test rest_generated_video \
+        --test rest_generated_voice \
         -- --test-threads=1 || return 1
     python3 -m mock_signalwire.rest_coverage \
         --mock-url "http://127.0.0.1:$port" \
@@ -182,21 +155,9 @@ rest_coverage_gate() {
         --allowlist "$PORT_ROOT/REST_COVERAGE_GAPS.md" \
         --gap-baseline "$PORTING_SDK_DIR/REST_COVERAGE_GAP_BASELINE.md"
 }
-run_gate "REST-COVERAGE" "every implemented REST route covered success+error (parity + allowlist)" \
-    rest_coverage_gate
 
-# Gate 5c: SPEC-PARITY — the REST surface must match the canonical spec in BOTH
-# directions. REST-COVERAGE (5b) proves every route the SDK *implements* is
-# exercised; this proves the set the SDK implements EQUALS the canonical spec
-# (modulo checked-in gaps): no canonical route left unimplemented (A−B), no
-# implemented route that matches no canonical route (B−A, i.e. invented surface).
-# Set B is produced deterministically by the route-registry binary, which builds
-# a stub-backed RestClient, invokes every namespace method, and reads back the
-# routes the SDK actually dispatched (no hand-authored route list, no reflection
-# — Rust has none). diff_spec_implementation.py matches that against the spec.
-# Accepted not-implemented gaps live in the shared SPEC_IMPLEMENTATION_GAPS.md;
-# a stale gap (now implemented) or unsanctioned divergence fails the gate. Same
-# shape as go's/java's gate.
+# SPEC-PARITY — implemented REST routes == canonical spec (both directions). Set B
+# is produced deterministically by the route-registry binary.
 spec_parity_gate() {
     local reg
     reg="$(mktemp -t rust_route_registry.XXXXXX.json)"
@@ -207,115 +168,186 @@ spec_parity_gate() {
         --registry-json "$reg" \
         --gaps "$PORTING_SDK_DIR/SPEC_IMPLEMENTATION_GAPS.md"
 }
-run_gate "SPEC-PARITY" "implemented REST routes == canonical spec (modulo gaps); deterministic Set B" \
-    spec_parity_gate
 
-# Gate 6: emission — byte-compare the SWAIG FunctionResult serialisation against
-# Python's to_dict() over the shared 81-entry corpus. The drift gate (Gate 3)
-# polices the SURFACE; this one polices the EMISSION (action shape/keys/values +
-# the to_dict() envelope), the bug class the §6 sweep proved is otherwise drift-0
-# and invisible to CI. Pure serialisation — no mock servers, no network; needs
-# only signalwire-python adjacent (already required) + the emit_corpus example.
-# The dump program is examples/emit_corpus.rs (cargo run --example emit_corpus).
-run_gate "EMISSION" "diff_port_emission vs python to_dict() oracle" \
-    python3 "$PORTING_SDK_DIR/scripts/diff_port_emission.py" \
+# ROUTE-COLLISION (expansion) — no duplicate CRUD base + no split route classes.
+# Needs the port's route-registry (same deterministic Set B the SPEC-PARITY gate
+# builds via the route-registry binary). Enforcing (no --report-only); the port's
+# ROUTE_COLLISION_ALLOW.md, when present, is honored by the gate.
+route_collision_gate() {
+    local reg
+    reg="$(mktemp -t rust_route_collision.XXXXXX.json)"
+    # shellcheck disable=SC2064
+    trap "rm -f '$reg'" RETURN
+    cargo run --quiet --bin route-registry >"$reg" || return 1
+    python3 "$PORTING_SDK_DIR/scripts/route_collision.py" \
+        --port rust --repo . --registry-json "$reg"
+}
+
+# ARTIFACT-DENY (Day-one) — authoritative --listing mode. Feed the REAL published
+# package file listing (`cargo package --list`) to artifact_deny.py rather than the
+# git-ls-files proxy, which over-reports files tracked in-repo but excluded from the
+# published crate. --allow-dirty so an uncommitted tree (this very run) still lists.
+dayone_artifact_deny() {
+    cargo package --list --allow-dirty 2>/dev/null \
+        | python3 "$PORTING_SDK_DIR/scripts/artifact_deny.py" --port rust --listing -
+}
+
+# ---- register gates ----------------------------------------------------------
+sched_init "$@"
+
+sched_gate TEST defer=1 desc="cargo test --tests (parallel) via scripts/run-tests.sh" \
+    -- bash "$PORT_ROOT/scripts/run-tests.sh"
+
+sched_gate GEN-FRESH desc="generated REST layer matches the canonical specs (generate_rest.py --check)" \
+    -- python3 scripts/generate_rest.py --check
+
+sched_gate GEN-FRESH-SWML desc="generated SWML-verbs config tree matches schema.json (\$defs)" \
+    -- python3 scripts/generate_swml_verbs.py --check
+
+sched_gate GEN-FRESH-RELAY desc="generated RELAY-protocol tree matches relay-protocol/*.json" \
+    -- python3 scripts/generate_relay_protocol.py --check
+
+sched_gate GEN-FRESH-SWAIG desc="generated SWAIG payload tree matches swaig-specs/" \
+    -- python3 scripts/generate_swaig_payloads.py --check
+
+sched_gate GEN-FRESH-TESTS desc="generated REST wire-test suite matches the route-registry × spec oracle (generate_rest_tests.py --check)" \
+    -- python3 scripts/generate_rest_tests.py --check
+
+sched_gate SWAIG-COVERAGE desc="every engine SWAIG action emittable (modulo allowlist)" \
+    -- python3 "$PORTING_SDK_DIR/scripts/swaig_coverage.py" --check \
+        --emission "$PORT_ROOT/src/swaig/function_result.rs"
+
+# SIGNATURES shells out to rustdoc (heavy) but DRIFT deps on it, so it is NOT
+# deferred — deferring a writer that a cheap gate reads would stall the wave.
+sched_gate SIGNATURES desc="regenerate port_signatures.json (rustdoc + adapter)" \
+    -- python3 scripts/enumerate_signatures.py
+
+sched_gate DRIFT deps=SIGNATURES desc="diff_port_signatures vs python reference" \
+    -- python3 "$PORTING_SDK_DIR/scripts/diff_port_signatures.py" \
+        --reference "$PORTING_SDK_DIR/python_signatures.json" \
+        --port-signatures "$PORT_ROOT/port_signatures.json" \
+        --surface-omissions "$PORT_ROOT/PORT_OMISSIONS.md" \
+        --surface-additions "$PORT_ROOT/PORT_ADDITIONS.md" \
+        --omissions "$PORT_ROOT/PORT_SIGNATURE_OMISSIONS.md"
+
+sched_gate SURFACE-FRESH res=surface desc="check_surface_freshness vs committed port_surface.json" \
+    --fn surface_fresh_gate
+
+sched_gate NO-CHEAT desc="audit_no_cheat_tests" \
+    -- python3 "$PORTING_SDK_DIR/scripts/audit_no_cheat_tests.py" --root "$PORT_ROOT"
+
+sched_gate REST-COVERAGE defer=1 desc="every implemented REST route covered success+error (parity + allowlist)" \
+    --fn rest_coverage_gate
+
+sched_gate SPEC-PARITY defer=1 desc="implemented REST routes == canonical spec (modulo gaps); deterministic Set B" \
+    --fn spec_parity_gate
+
+sched_gate EMISSION desc="diff_port_emission vs python to_dict() oracle" \
+    -- python3 "$PORTING_SDK_DIR/scripts/diff_port_emission.py" \
         --dump-cmd 'cargo run --quiet --example emit_corpus' \
         --port-repo "$PORT_ROOT"
 
-# Gate 6b: skill-contract — the sibling of EMISSION for built-in SKILLS. EMISSION
-# byte-compares FunctionResult serialisation; this compares each skill's SWAIG
-# tool contract (name/parameters/required/enum from register_tools()) against
-# the Python reference. Catches a class drift/surface/emission can't see: a wrong
-# `required`, a renamed/retyped param, an extra/missing tool. The dump program is
-# examples/emit_skills.rs (cargo run --example emit_skills); dynamic skills are
-# excluded + logged by the shared corpus. Same prereqs as EMISSION.
-run_gate "SKILL-CONTRACT" "diff_skill_contracts vs python reference" \
-    python3 "$PORTING_SDK_DIR/scripts/diff_skill_contracts.py" \
+# BEHAVIORAL-* (Layer D) — 5 wire-shape differs vs the python oracle. Each runs a
+# tiny `<surface>_dump` example that emits ONLY JSON on stdout and structurally
+# compares it against signalwire-python's behavior for the same corpus. The python
+# oracle is auto-resolved by the differ exactly as EMISSION does (no --python-sdk
+# flag; --python-sdk defaults to the adjacent/installed signalwire package, which is
+# the sibling checkout in CI). The 5 dump examples are prebuilt ONCE below so cargo
+# emits no build noise onto the dump's stdout mid-gate.
+cargo build --quiet \
+    --example wire_dump --example swml_dump --example state_dump \
+    --example http_dump --example wire_relay_dump 2>/dev/null || true
+
+sched_gate BEHAVIORAL-WIRE desc="diff_port_wire vs python oracle (Layer D)" \
+    -- python3 "$PORTING_SDK_DIR/scripts/diff_port_wire.py" \
+        --port rust \
+        --dump-cmd 'cargo run -q --example wire_dump 2>/dev/null'
+
+sched_gate BEHAVIORAL-SWML desc="diff_port_swml vs python oracle (Layer D)" \
+    -- python3 "$PORTING_SDK_DIR/scripts/diff_port_swml.py" \
+        --port rust \
+        --dump-cmd 'cargo run -q --example swml_dump 2>/dev/null'
+
+sched_gate BEHAVIORAL-STATE desc="diff_port_state vs python oracle (Layer D)" \
+    -- python3 "$PORTING_SDK_DIR/scripts/diff_port_state.py" \
+        --port rust \
+        --dump-cmd 'cargo run -q --example state_dump 2>/dev/null'
+
+sched_gate BEHAVIORAL-HTTP desc="diff_port_http vs python oracle (Layer D)" \
+    -- python3 "$PORTING_SDK_DIR/scripts/diff_port_http.py" \
+        --port rust \
+        --dump-cmd 'cargo run -q --example http_dump 2>/dev/null'
+
+sched_gate BEHAVIORAL-WIRE-RELAY desc="diff_port_wire_relay vs python oracle (Layer D)" \
+    -- python3 "$PORTING_SDK_DIR/scripts/diff_port_wire_relay.py" \
+        --port rust \
+        --dump-cmd 'cargo run -q --example wire_relay_dump 2>/dev/null'
+
+sched_gate SKILL-CONTRACT desc="diff_skill_contracts vs python reference" \
+    -- python3 "$PORTING_SDK_DIR/scripts/diff_skill_contracts.py" \
         --dump-cmd 'cargo run --quiet --example emit_skills' \
         --port-repo "$PORT_ROOT"
 
-# Gate 7: FMT — the language format gate (rust: rustfmt). Canonical gate name is
-# language-neutral (FMT); each port runs its own formatter under it. Governed by
-# rustfmt.toml (style_edition 2024). Source-style only — proven surface/emission-
-# neutral (a reformat leaves port_signatures.json byte-identical); a Rust-internal
-# idiom gate, not parity.
-#
-# CI-AWARE behaviour (so the gate "just fixes it" locally but still guards CI):
-#   * LOCAL ($CI unset)  → `cargo fmt --all` in FIX mode: silently reformats your
-#     working tree. No error, no manual step — you never have to run cargo fmt by
-#     hand. If it had to rewrite anything, we still PASS (the files are now clean)
-#     but print a note so you know to stage them.
-#   * CI ($CI=true)      → `cargo fmt --all -- --check`: read-only safety net that
-#     FAILS if unformatted code reached CI (a committer who didn't run run-ci.sh).
-# Pinned to +stable: the SIGNATURES gate installs nightly (rustdoc-json) which can
-# become the default toolchain and may lack rustfmt/clippy; +stable is robust.
-fmt_gate() {
-    if [ -n "${CI:-}" ]; then
-        cargo +stable fmt --all -- --check
-    else
-        cargo +stable fmt --all
-        local rc=$?
-        if [ "$rc" -eq 0 ]; then
-            # fmt rewrites in place and exits 0 whether or not it changed files;
-            # surface any reformatting so the dev knows to `git add` it.
-            if ! git diff --quiet 2>/dev/null; then
-                echo "    (FMT auto-applied formatting to your working tree — review & stage)"
-            fi
-        fi
-        return $rc
-    fi
-}
-run_gate "FMT" "rustfmt (local: auto-fix; CI: --check)" fmt_gate
+sched_gate FMT defer=1 desc="rustfmt via scripts/run-format.sh (local: auto-fix; CI: --check)" \
+    -- bash "$PORT_ROOT/scripts/run-format.sh" ${CI:+--check}
 
-# Gate 8: LINT — the language lint gate (rust: clippy). The canonical gate name
-# is language-neutral (LINT); each port runs its own linter under it. Here that
-# is clippy: Cargo.toml [lints.clippy] denies `all` + `pedantic` (with the
-# documented per-lint allows), so any new finding is an `error`. `-D warnings`
-# also promotes rustc warnings. `--all-targets` covers lib + bins + tests +
-# examples (the same scope the burn-down cleared).
-run_gate "LINT" "cargo clippy --all-targets (lint gate)" \
-    cargo +stable clippy --all-targets --all-features -- -D warnings
+sched_gate LINT defer=1 desc="cargo clippy --all-targets via scripts/run-lint.sh" \
+    -- bash "$PORT_ROOT/scripts/run-lint.sh"
 
-# Gate 9: doc-audit — every method/class referenced in docs/ + examples/ fenced
-# code blocks must resolve to a real symbol in port_surface.json (catches
-# phantom-API doc promises). Mirrors .github/workflows/doc-audit.yml exactly.
-# Uses the COMMITTED port_surface.json — Gate 4 already proved it's fresh.
-run_gate "DOC-AUDIT" "audit_docs vs port_surface.json" \
-    python3 "$PORTING_SDK_DIR/scripts/audit_docs.py" \
+sched_gate DOC-AUDIT res=surface desc="audit_docs vs port_surface.json" \
+    -- python3 "$PORTING_SDK_DIR/scripts/audit_docs.py" \
         --root "$PORT_ROOT" \
         --surface "$PORT_ROOT/port_surface.json" \
         --ignore "$PORT_ROOT/DOC_AUDIT_IGNORE.md"
 
-# Gate 10: surface-diff — diff the port surface against the Python reference
-# (omissions/additions accounted for in PORT_OMISSIONS.md / PORT_ADDITIONS.md).
-# Gate 4 only checks the committed surface is FRESH (matches a regen); this
-# checks it MATCHES PYTHON. Mirrors .github/workflows/surface-audit.yml.
-run_gate "SURFACE-DIFF" "diff_port_surface vs python_surface.json" \
-    python3 "$PORTING_SDK_DIR/scripts/diff_port_surface.py" \
+sched_gate SURFACE-DIFF res=surface desc="diff_port_surface vs python_surface.json" \
+    -- python3 "$PORTING_SDK_DIR/scripts/diff_port_surface.py" \
         --reference "$PORTING_SDK_DIR/python_surface.json" \
         --port-surface "$PORT_ROOT/port_surface.json" \
         --omissions "$PORT_ROOT/PORT_OMISSIONS.md" \
         --additions "$PORT_ROOT/PORT_ADDITIONS.md"
 
-# SWAIG-CLI — lightweight shared swaig-test mini-contract (NOT python parity;
-# python's in-process simulator surface is reference-only). Black-box: invokes
-# `cargo run --bin swaig-test --help` + golden invocations and asserts the shared
-# verbs are documented and no-action errors (the cross-port majority default).
-# Rust has no --simulate-serverless, so the no-serverless clause asserts the flag
-# is rejected as an unknown option (no half-accept). --quiet keeps cargo's build
-# chatter out of the captured help text.
-run_gate "SWAIG-CLI" "swaig-test shared mini-contract (verbs/serverless-reject/default-action)" \
-    python3 "$PORTING_SDK_DIR/scripts/audit_swaig_cli_contract.py" \
+sched_gate SWAIG-CLI desc="swaig-test shared mini-contract (verbs/serverless-reject/default-action)" \
+    -- python3 "$PORTING_SDK_DIR/scripts/audit_swaig_cli_contract.py" \
         --port rust \
         --cmd "cargo run --quiet --bin swaig-test --" \
         --require-url-model \
         --default-action-argv='--url|http://user:pass@127.0.0.1:1/' \
         --no-serverless-argv='--url|http://user:pass@127.0.0.1:1/|--simulate-serverless|lambda|--list-tools'
 
-if [ -z "$FAILED_GATES" ]; then
+sched_gate DOC-LANG-PURITY res=dayone desc="no python-verbatim docs in a non-python port" \
+    -- python3 "$PORTING_SDK_DIR/scripts/doc_lang_purity.py" --port rust --repo .
+sched_gate DOC-LINKS res=dayone desc="every relative markdown link resolves to a tracked file" \
+    -- python3 "$PORTING_SDK_DIR/scripts/doc_links.py" --port rust --repo .
+
+sched_gate README-INCLUDE res=dayone desc="doc code blocks are byte-identical to their gate-compiled fixture regions" \
+    -- python3 "$PORTING_SDK_DIR/scripts/readme_include.py" --port rust --repo .
+sched_gate ROOT-HYGIENE res=dayone desc="no audit/scratch clutter tracked at repo root (allowlist ROOT_HYGIENE_ALLOW.md)" \
+    -- python3 "$PORTING_SDK_DIR/scripts/root_hygiene.py" --port rust --repo .
+sched_gate IGNORE-LEDGER-VERIFY res=dayone desc="no laundered false-absence entries in DOC_AUDIT_IGNORE.md" \
+    -- python3 "$PORTING_SDK_DIR/scripts/ignore_ledger_verify.py" --port rust --repo .
+sched_gate META-CONSISTENT res=dayone desc="package metadata consistency" \
+    -- python3 "$PORTING_SDK_DIR/scripts/meta_consistent.py" --port rust --repo .
+sched_gate ARTIFACT-DENY res=dayone desc="no porting artifacts in the PUBLISHED package (authoritative listing)" \
+    --fn dayone_artifact_deny
+
+# ---- expansion gates (backlog burned to zero; now enforcing) -----------------
+sched_gate GEN-TYPE-DEGENERACY desc="generated typed I/O is not degenerate (modulo GEN_TYPE_DEGENERACY_ALLOW.md)" \
+    -- python3 "$PORTING_SDK_DIR/scripts/gen_type_degeneracy.py" --port rust --repo .
+sched_gate PUBLIC-JARGON desc="no porting/internal jargon leaked into public docs/identifiers" \
+    -- python3 "$PORTING_SDK_DIR/scripts/public_jargon.py" --port rust --repo .
+sched_gate ROUTE-COLLISION desc="no duplicate CRUD base / split route classes (route-registry × modulo ROUTE_COLLISION_ALLOW.md)" \
+    --fn route_collision_gate
+sched_gate GEN-IDIOM desc="generated code is not lint-excluded (idiom parity with hand-written)" \
+    -- python3 "$PORTING_SDK_DIR/scripts/gen_idiom.py" --port rust --repo .
+sched_gate RELEASE-FRESH desc="publish path is gated (gates-before-publish); release freshness" \
+    -- python3 "$PORTING_SDK_DIR/scripts/release_fresh.py" --port rust --repo .
+
+sched_run
+rc=$?
+if [ "$rc" -eq 0 ]; then
     echo "==> CI PASS"
-    exit 0
 else
     echo "==> CI FAIL (gates:$FAILED_GATES )"
-    exit 1
 fi
+exit "$rc"

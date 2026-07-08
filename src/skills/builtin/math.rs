@@ -110,6 +110,21 @@ impl SkillBase for Math {
             ],
         })]
     }
+
+    fn get_hints(&self) -> Vec<String> {
+        vec![
+            "calculate".to_string(),
+            "math".to_string(),
+            "arithmetic".to_string(),
+        ]
+    }
+
+    fn get_parameter_schema(&self) -> Value {
+        // The math skill takes no configuration parameters beyond the shared
+        // SkillBase controls (swaig_fields / skip_prompt / tool_name), which the
+        // SkillBase default schema documents.
+        crate::skills::skill_base::default_parameter_schema()
+    }
 }
 
 /// Minimal safe arithmetic evaluator supporting +, -, *, /, %, ^.

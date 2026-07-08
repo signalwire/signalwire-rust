@@ -18,9 +18,9 @@ fn render_list(values: &[&str]) -> String {
 /// string** (`{"unset_global_data": "plan"}`) and a `list` emits a **list**
 /// (`{"unset_global_data": ["plan", "chips"]}`). A bare `Vec<&str>` parameter
 /// cannot express the single-key bare-string form (it always wraps in a list),
-/// which is a real emission divergence. This enum restores parity: both call
-/// styles compile (`impl Into<KeysArg>`), and [`into_value`](KeysArg::into_value)
-/// yields the exact Python wire shape per arm.
+/// which is a real emission divergence. This enum accepts both call
+/// styles (`impl Into<KeysArg>`), and [`into_value`](KeysArg::into_value)
+/// yields the exact wire shape per arm.
 ///
 /// ```
 /// use signalwire::swaig::FunctionResult;

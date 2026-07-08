@@ -111,6 +111,7 @@ impl FromStr for Level {
 ///
 /// - `SIGNALWIRE_LOG_LEVEL` — sets the minimum level (debug/info/warn/error)
 /// - `SIGNALWIRE_LOG_MODE=off` — suppresses all output
+#[derive(Clone)]
 pub struct Logger {
     pub name: String,
     pub level: Level,

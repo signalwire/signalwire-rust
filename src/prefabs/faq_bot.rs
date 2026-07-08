@@ -1,6 +1,9 @@
-use serde_json::{Value, json};
+use std::fmt::Write as _;
+
+use serde_json::{Map, Value, json};
 
 use crate::agent::{AgentBase, AgentOptions};
+use crate::prefabs::PrefabSummaryCallback;
 use crate::swaig::FunctionResult;
 
 /// A pre-built FAQ bot agent that provides answers from a knowledge base.
@@ -177,6 +180,93 @@ impl FAQBotAgent {
     pub fn suggest_related(&self) -> bool {
         self.suggest_related
     }
+
+    /// Search for FAQs matching a specific query and/or category.
+    ///
+    /// Ported from Python `FAQBotAgent.search_faqs`. Scores each FAQ by
+    /// substring/prefix match on the `query` (exact match 100, substring 50, a
+    /// prefix bonus of 25) plus 30 for a matching `category`, then returns the
+    /// top three matching questions. `raw_data` is accepted for
+    /// handler-signature compatibility but unused.
+    pub fn search_faqs(
+        &self,
+        args: &Map<String, Value>,
+        _raw_data: &Map<String, Value>,
+    ) -> FunctionResult {
+        let query = args
+            .get("query")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_lowercase();
+        let category = args
+            .get("category")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_lowercase();
+
+        // (score, question) accumulator for positive-scoring FAQs.
+        let mut results: Vec<(i64, String)> = Vec::new();
+
+        for faq in &self.faqs {
+            let question = faq.get("question").and_then(|v| v.as_str()).unwrap_or("");
+            let question_lower = question.to_lowercase();
+            let categories: Vec<String> = faq
+                .get("categories")
+                .and_then(|v| v.as_array())
+                .map(|arr| {
+                    arr.iter()
+                        .filter_map(|c| c.as_str().map(str::to_lowercase))
+                        .collect()
+                })
+                .unwrap_or_default();
+
+            let mut match_score = 0i64;
+
+            // Match on query.
+            if !query.is_empty() && question_lower.contains(&query) {
+                if query == question_lower {
+                    match_score += 100;
+                } else {
+                    match_score += 50;
+                }
+                if question_lower.starts_with(&query) {
+                    match_score += 25;
+                }
+            }
+
+            // Match on category.
+            if !category.is_empty() && categories.iter().any(|c| c == &category) {
+                match_score += 30;
+            }
+
+            if match_score > 0 {
+                results.push((match_score, question.to_string()));
+            }
+        }
+
+        // Sort by score descending, then take the top three.
+        results.sort_by_key(|(score, _)| std::cmp::Reverse(*score));
+        let top: Vec<&(i64, String)> = results.iter().take(3).collect();
+
+        if top.is_empty() {
+            return FunctionResult::with_response("No matching FAQs found.");
+        }
+
+        let mut result_text = String::from("Here are the most relevant FAQs:\n\n");
+        for (i, (_, question)) in top.iter().enumerate() {
+            let _ = writeln!(result_text, "{}. {question}", i + 1);
+        }
+        FunctionResult::with_response(&result_text)
+    }
+
+    /// Register a callback that processes the interaction summary.
+    ///
+    /// Delegates to [`AgentBase::on_summary`], matching the Python
+    /// `FAQBotAgent.on_summary` override point (which logs the summary).
+    pub fn on_summary(&mut self, callback: PrefabSummaryCallback) -> &mut Self {
+        self.agent.on_summary(callback);
+        self
+    }
 }
 
 #[cfg(test)]
@@ -224,5 +314,75 @@ mod tests {
         assert!(result.is_some());
         let json_str = result.unwrap().to_json();
         assert!(json_str.contains("No FAQ found"));
+    }
+
+    fn categorized_faqs() -> Vec<Value> {
+        vec![
+            json!({"question": "What are your hours?", "answer": "9-5", "categories": ["general"]}),
+            json!({"question": "How do I get a refund?", "answer": "Within 30 days", "categories": ["billing"]}),
+            json!({"question": "Where are you located?", "answer": "123 Main", "categories": ["general"]}),
+        ]
+    }
+
+    #[test]
+    fn test_search_faqs_query_match() {
+        let agent = FAQBotAgent::new("test", categorized_faqs(), true, None, None);
+        let raw = Map::new();
+        let mut args = Map::new();
+        args.insert("query".to_string(), json!("hours"));
+        let json_str = agent.search_faqs(&args, &raw).to_json();
+        assert!(json_str.contains("most relevant FAQs"));
+        assert!(json_str.contains("What are your hours?"));
+    }
+
+    #[test]
+    fn test_search_faqs_category_match() {
+        let agent = FAQBotAgent::new("test", categorized_faqs(), true, None, None);
+        let raw = Map::new();
+        let mut args = Map::new();
+        args.insert("category".to_string(), json!("billing"));
+        let json_str = agent.search_faqs(&args, &raw).to_json();
+        assert!(json_str.contains("How do I get a refund?"));
+    }
+
+    #[test]
+    fn test_search_faqs_no_match() {
+        let agent = FAQBotAgent::new("test", categorized_faqs(), true, None, None);
+        let raw = Map::new();
+        let mut args = Map::new();
+        args.insert("query".to_string(), json!("nonexistent topic"));
+        let json_str = agent.search_faqs(&args, &raw).to_json();
+        assert!(json_str.contains("No matching FAQs found"));
+    }
+
+    #[test]
+    fn test_faq_bot_on_summary_fires() {
+        use std::sync::{Arc, Mutex};
+
+        let mut agent = FAQBotAgent::new("test", sample_faqs(), true, None, None);
+        let captured = Arc::new(Mutex::new(String::new()));
+        let captured_clone = Arc::clone(&captured);
+        agent.on_summary(Box::new(move |summary, _data, _headers| {
+            *captured_clone.lock().unwrap() = summary.to_string();
+        }));
+
+        let (user, pass) = agent.agent().service().basic_auth_credentials();
+        let auth = {
+            use base64::Engine;
+            use base64::engine::general_purpose::STANDARD as BASE64;
+            format!("Basic {}", BASE64.encode(format!("{user}:{pass}")))
+        };
+        let mut headers = std::collections::HashMap::new();
+        headers.insert("Authorization".to_string(), auth);
+
+        let body = json!({"summary": "FAQ answered"});
+        let (status, _, _) = agent.agent_mut().handle_request(
+            "POST",
+            "/faq/post_prompt",
+            &headers,
+            &body.to_string(),
+        );
+        assert_eq!(status, 200);
+        assert_eq!(*captured.lock().unwrap(), "FAQ answered");
     }
 }

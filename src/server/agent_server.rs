@@ -52,6 +52,8 @@ pub struct AgentServer {
     port: u16,
     agents: HashMap<String, AgentBase>,
     sip_routing_enabled: bool,
+    /// The path SIP requests are routed on (Python default `/sip`).
+    sip_route: String,
     sip_username_mapping: HashMap<String, String>,
     static_routes: HashMap<String, PathBuf>,
     /// Path → callback. Each entry is consulted before normal route
@@ -76,6 +78,7 @@ impl AgentServer {
             port,
             agents: HashMap::new(),
             sip_routing_enabled: false,
+            sip_route: "/sip".to_string(),
             sip_username_mapping: HashMap::new(),
             static_routes: HashMap::new(),
             global_routing_callbacks: HashMap::new(),
@@ -146,11 +149,20 @@ impl AgentServer {
     }
 
     /// Map a SIP username to a route.
+    ///
+    /// The username is stored lowercased, so SIP username
+    /// lookup at dispatch time is case-insensitive.
     pub fn register_sip_username(&mut self, username: &str, route: &str) -> &mut Self {
         let route = self.normalize_route(route);
         self.sip_username_mapping
-            .insert(username.to_string(), route);
+            .insert(username.to_lowercase(), route);
         self
+    }
+
+    /// Look up the route mapped to a SIP username (case-insensitive).
+    /// Mirrors Python `_lookup_sip_route`.
+    fn lookup_sip_route(&self, username: &str) -> Option<&String> {
+        self.sip_username_mapping.get(&username.to_lowercase())
     }
 
     /// Check if SIP routing is enabled.
@@ -195,7 +207,7 @@ impl AgentServer {
     /// `AgentServer.serve_static_files(directory, route="/")`. Behaves
     /// identically to [`AgentServer::serve_static`] (which kept the
     /// shorter Rust-idiomatic name) — both are kept so existing code
-    /// keeps working and the Python-name parity is preserved for the
+    /// keeps working and the original name is preserved for the
     /// surface diff.
     ///
     /// # Errors
@@ -333,14 +345,39 @@ impl AgentServer {
             return result;
         }
 
-        // Run any global routing callbacks registered for this path.
-        // The longest matching path wins (so a callback at "/api/v2"
-        // takes precedence over one at "/api").
         let parsed_body: Option<Value> = if body.is_empty() {
             None
         } else {
             serde_json::from_str::<Value>(body).ok()
         };
+
+        // SIP routing: when enabled and the request targets the SIP route,
+        // extract the SIP username from the body and route to the mapped
+        // agent. Mirrors Python's server_sip_routing_callback
+        // (extract_sip_username → _lookup_sip_route → target route). Without
+        // this the sip_username_mapping is stored but never consulted.
+        if self.sip_routing_enabled
+            && (path == self.sip_route || path.starts_with(&format!("{}/", self.sip_route)))
+            && let Some(ref parsed) = parsed_body
+            && let Some(username) = crate::swml::service::Service::extract_sip_username(parsed)
+        {
+            self.logger
+                .info(&format!("Extracted SIP username: {username}"));
+            if let Some(target_route) = self.lookup_sip_route(&username).cloned() {
+                self.logger
+                    .info(&format!("Routing SIP request to {target_route}"));
+                if let Some(agent) = self.agents.get(&target_route) {
+                    return agent.handle_request(method, &target_route, headers, body);
+                }
+            } else {
+                self.logger
+                    .warn(&format!("No route found for SIP username: {username}"));
+            }
+        }
+
+        // Run any global routing callbacks registered for this path.
+        // The longest matching path wins (so a callback at "/api/v2"
+        // takes precedence over one at "/api").
         if let Some(redirected_route) =
             self.dispatch_global_routing_callbacks(&path, headers, &parsed_body)
         {
@@ -715,6 +752,86 @@ mod tests {
         server.register_sip_username("alice", "/alice-agent");
         let mapping = server.sip_username_mapping();
         assert_eq!(mapping.get("alice").unwrap(), "/alice-agent");
+    }
+
+    // Tier-2 behavioral contract #6: SIP routing DISPATCH over the served
+    // path. Register a SIP username + routing; POST a SIP-shaped body to the
+    // served `/sip` endpoint; assert the routing fires, the username is
+    // extracted from the body, and the request is routed to the mapped
+    // agent. A stored-but-unconsulted mapping would 404 (no `/sip` route)
+    // or never reach the mapped agent.
+    #[test]
+    fn test_sip_served_dispatch_routes_to_mapped_agent() {
+        use base64::Engine;
+
+        let mut server = AgentServer::new(None, Some(3000));
+        server
+            .register(make_agent("alice", "/alice-agent"), None)
+            .unwrap();
+        server
+            .register(make_agent("bob", "/bob-agent"), None)
+            .unwrap();
+        server.setup_sip_routing();
+        server.register_sip_username("alice", "/alice-agent");
+        server.register_sip_username("bob", "/bob-agent");
+
+        // Authorized request so the mapped agent returns its SWML (200)
+        // rather than an auth challenge — proving the request reached the
+        // RIGHT agent, not just any agent.
+        let mut headers = HashMap::new();
+        let auth = base64::engine::general_purpose::STANDARD.encode("user:pass");
+        headers.insert("Authorization".to_string(), format!("Basic {auth}"));
+
+        // SIP-shaped body whose `call.to` names alice.
+        let body = r#"{"call": {"to": "sip:alice@example.com"}}"#;
+        let (status, _h, resp_body) = server.handle_request("POST", "/sip", &headers, body);
+
+        assert_eq!(
+            status, 200,
+            "SIP request should dispatch to alice's agent (200 SWML)"
+        );
+        // The rendered SWML comes from alice's agent (named "alice").
+        assert!(
+            resp_body.contains("alice"),
+            "response should come from the alice agent, got: {resp_body}"
+        );
+    }
+
+    #[test]
+    fn test_sip_served_dispatch_unknown_username_falls_through() {
+        let mut server = AgentServer::new(None, Some(3000));
+        server
+            .register(make_agent("alice", "/alice-agent"), None)
+            .unwrap();
+        server.setup_sip_routing();
+        server.register_sip_username("alice", "/alice-agent");
+
+        // No agent registered at "/sip", and the username "carol" is unmapped
+        // → falls through to normal dispatch → 404.
+        let body = r#"{"call": {"to": "sip:carol@example.com"}}"#;
+        let (status, _h, _b) = server.handle_request("POST", "/sip", &HashMap::new(), body);
+        assert_eq!(status, 404);
+    }
+
+    #[test]
+    fn test_sip_served_dispatch_case_insensitive_username() {
+        use base64::Engine;
+
+        let mut server = AgentServer::new(None, Some(3000));
+        server
+            .register(make_agent("alice", "/alice-agent"), None)
+            .unwrap();
+        server.setup_sip_routing();
+        // Registered lowercase; the inbound URI is mixed-case.
+        server.register_sip_username("Alice", "/alice-agent");
+
+        let mut headers = HashMap::new();
+        let auth = base64::engine::general_purpose::STANDARD.encode("user:pass");
+        headers.insert("Authorization".to_string(), format!("Basic {auth}"));
+
+        let body = r#"{"call": {"to": "sip:ALICE@example.com"}}"#;
+        let (status, _h, _b) = server.handle_request("POST", "/sip", &headers, body);
+        assert_eq!(status, 200);
     }
 
     #[test]

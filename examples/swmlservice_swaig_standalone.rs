@@ -52,8 +52,8 @@ fn main() {
 
     // 1. Build a minimal SWML document. Any verbs are fine — the SWAIG
     //    HTTP surface is independent of what the document contains.
-    service.add_verb("answer", "main", json!({}));
-    service.add_verb("hangup", "main", json!({}));
+    service.add_verb_to_section("main", "answer", json!({}));
+    service.add_verb_to_section("main", "hangup", json!({}));
 
     // 2. Register a SWAIG function. `define_tool` lives on `Service`,
     //    not just `AgentBase`. The handler receives parsed arguments

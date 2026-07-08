@@ -1,33 +1,38 @@
 # REST Client
 
-Async REST client for managing SignalWire resources over HTTP. No WebSocket required.
+Synchronous REST client for managing SignalWire resources over HTTP. No WebSocket required.
 
 ## Quick Start
 
+The client is **synchronous** — every method makes a blocking HTTP call and
+returns `Result<Value, SignalWireRestError>` directly. `create`/`update` take a
+`&serde_json::Value` body; `list`/`search` take a `&HashMap<String, String>` of
+query params. In-call `calling()` commands take a typed request builder.
+
 ```rust
 use signalwire::rest::RestClient;
+use signalwire::rest::namespaces::generated::calling_resources_generated::CallingDialRequest;
+use std::collections::HashMap;
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     let client = RestClient::from_env()?;
 
     // Create a Fabric AI agent
-    client.fabric().ai_agents().create(serde_json::json!({
+    client.fabric().ai_agents().create(&serde_json::json!({
         "name": "Support Bot",
         "prompt": {"text": "You are helpful."}
-    })).await?;
+    }))?;
 
     // Make a phone call
-    client.calling().dial(serde_json::json!({
-        "from": "+15559876543",
-        "to": "+15551234567",
-        "url": "https://example.com/call-handler"
-    })).await?;
+    client.calling().dial(
+        CallingDialRequest::new("+15559876543", "+15551234567")
+            .url("https://example.com/call-handler"),
+    )?;
 
     // Search for phone numbers
-    let results = client.phone_numbers().search(
-        &[("area_code", "512")]
-    ).await?;
+    let mut params = HashMap::new();
+    params.insert("area_code".to_string(), "512".to_string());
+    let results = client.phone_numbers().search(&params)?;
     println!("{results:#?}");
 
     Ok(())
@@ -36,10 +41,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 ## Features
 
-- **21 namespaced API surfaces** -- complete coverage of SignalWire HTTP APIs
+- **Namespaced API surfaces** -- coverage of SignalWire HTTP APIs (Fabric, calling, phone numbers, video, datasphere, and more)
 - **Connection pooling** -- via `reqwest::Client`
 - **Raw JSON returns** -- `serde_json::Value` with no wrapper objects
-- **Async/await** -- built on tokio
+- **Synchronous** -- blocking calls, no runtime to set up
 
 ## Environment Variables
 
@@ -52,11 +57,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 ## Documentation
 
 - [Getting Started](docs/getting-started.md) -- setup and first API call
-- [Namespaces](docs/namespaces.md) -- all 21 API namespaces
+- [Namespaces](docs/namespaces.md) -- all API namespaces
 - [Calling](docs/calling.md) -- voice call management
 - [Fabric](docs/fabric.md) -- AI agents, addresses, subscribers
-- [Compat](docs/compat.md) -- Twilio-compatible APIs
-- [Client Reference](docs/client-reference.md) -- RestClient API
+- [Client Reference](docs/client-reference.md) -- RestClient API (synchronous)
 
 ## Examples
 

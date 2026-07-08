@@ -23,31 +23,44 @@ let service = Service::new(ServiceOptions {
 
 ## Building SWML Documents
 
-Add verbs with `service.add_verb(verb, section, config)`. The second argument is the
-section name (use `"main"` for the primary flow). Verbs with no config take `json!({})`:
+Add a verb to the primary flow with `service.add_verb(verb, config)`, or target a
+named section with `service.add_verb_to_section(section, verb, config)`. Verbs with
+no config take `json!({})`:
+
+<!-- snippet-setup -->
+```rust
+use serde_json::json;
+
+let mut service = signalwire::swml::service::Service::new(
+    signalwire::swml::service::ServiceOptions::new("guide-service"),
+);
+let agent = signalwire::agent::AgentBase::new(
+    signalwire::agent::AgentOptions::new("guide-agent"),
+);
+```
 
 ### Answer and Play
 
 ```rust
-service.add_verb("answer", "main", json!({}));
-service.add_verb("play", "main", json!({
+service.add_verb_to_section("main", "answer", json!({}));
+service.add_verb_to_section("main", "play", json!({
     "url": "say:Hello, you have reached our voicemail. Please leave a message."
 }));
-service.add_verb("sleep", "main", json!(1000));
-service.add_verb("record", "main", json!({
+service.add_verb_to_section("main", "sleep", json!(1000));
+service.add_verb_to_section("main", "record", json!({
     "stereo": true,
     "format": "wav",
     "direction": "speak",
     "terminators": "#"
 }));
-service.add_verb("hangup", "main", json!({}));
+service.add_verb_to_section("main", "hangup", json!({}));
 ```
 
 ### IVR Menu
 
 ```rust
-service.add_verb("answer", "main", json!({}));
-service.add_verb("prompt", "main", json!({
+service.add_verb_to_section("main", "answer", json!({}));
+service.add_verb_to_section("main", "prompt", json!({
     "play": "say:Press 1 for sales, 2 for support.",
     "max_digits": 1,
     "terminators": "#"
@@ -57,7 +70,7 @@ service.add_verb("prompt", "main", json!({
 ### Call Transfer
 
 ```rust
-service.add_verb("connect", "main", json!({
+service.add_verb_to_section("main", "connect", json!({
     "to": "+15551234567",
     "from": "+15559876543"
 }));

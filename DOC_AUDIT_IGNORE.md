@@ -19,7 +19,6 @@ as_bytes: stdlib str::as_bytes / String::as_bytes
 as_object: serde_json::Value::as_object
 as_object_mut: serde_json::Value::as_object_mut
 as_reader: tiny_http::Request::as_reader
-as_ref: stdlib AsRef::as_ref
 as_u16: stdlib integer cast (e.g. status code)
 as_u64: serde_json::Value::as_u64
 body_mut: tiny_http::Request::body_mut
@@ -87,6 +86,19 @@ respond: tiny_http::Request::respond
 status: ureq response accessor
 peekable: stdlib Iterator::peekable
 peek: stdlib Iterator::peek
+copied: stdlib Iterator::copied / Option::copied
+finalize: hmac Mac::finalize (crypto)
+find_map: stdlib Iterator::find_map
+fold: stdlib Iterator::fold
+into_bytes: hmac CtOutput::into_bytes / stdlib String::into_bytes
+into_iter: stdlib IntoIterator::into_iter
+is_ascii_hexdigit: stdlib char::is_ascii_hexdigit
+is_ascii_uppercase: stdlib char::is_ascii_uppercase
+last: stdlib Iterator::last / slice::last
+last_mut: stdlib slice::last_mut
+map_or: stdlib Option::map_or / Result::map_or
+repeat: stdlib str::repeat
+rev: stdlib Iterator::rev
 
 ## Python-SDK names referenced in legacy Python code blocks
 
@@ -97,55 +109,25 @@ fences in docs and resolve to PORT_OMISSIONS.md entries (the long-term
 fix is to rewrite each block to Rust; until then these names are
 non-claims of Rust API).
 
-add_agent: Python AgentServer.add_agent — Rust uses AgentServer::register
-add_answer_verb: Python AgentBase.add_answer_verb — Rust merges into AgentBase via the answer verb on render_swml
-add_enter_filler: Python Context.add_enter_filler — Rust uses Context fillers via direct field access
-add_hangup_verb: Python AgentBase.add_hangup_verb — Rust adds the hangup verb via add_post_ai_verb
-add_mcp_server: Python AgentBase.add_mcp_server — Rust skill-level MCP integration (mcp_gateway skill)
-add_mcp_server_with_resources: Python AgentBase.add_mcp_server_with_resources — Rust skill-level MCP integration
-add_native_functions: Python AgentBase.add_native_functions — Rust uses set_native_functions
-available_phone_numbers: Python REST sub-namespace; Rust ships available phone-numbers via the phone_numbers resource
 buy: Python REST buy method on phone_numbers — Rust ships purchase / buy via the phone_numbers methods
 call: Python REST call helper / context-method; Rust REST resources expose explicit method names
 calls: Python REST sub-namespace; Rust ships under rest::Calling
 contexts: Python AgentBase.contexts attribute — Rust uses define_contexts() / context_builder()
-define_datamap_tool: Python AgentBase.define_datamap_tool — Rust uses datamap module + define_tool
 documents: Python REST sub-namespace; Rust ships under rest::Datasphere
-enable_mcp_server: Python AgentBase.enable_mcp_server — Rust skill-level MCP integration
 endpoints: Python SIP endpoints helper; Rust uses fabric::sip_endpoints
-expression_with_nomatch: Python DataMap helper — Rust DataMap exposes expression() with similar shape
 get_app: Python AgentServer.get_app (FastAPI app accessor) — Rust uses tiny_http directly, no equivalent
-incoming_phone_numbers: Python REST sub-namespace; Rust ships phone_numbers
 members: Python prefab attribute referenced in docs python blocks
-messages: Python REST sub-namespace / messaging helper; Rust ships rest::compat::messages
+messages: Python REST sub-namespace / messaging helper; Rust ships the generated message REST namespace + Client::send_message
 messaging: Python RelayClient messaging accessor; Rust ships Client::send_message and Message
-on_connect: Python Client.on_connect callback — Rust ships on_event for the unified callback
-on_disconnect: Python Client.on_disconnect callback — Rust uses on_event for unified disconnect dispatch
-on_message_state: Python Message.on_message_state — Rust uses on_completed
-on_reconnect: Python Client.on_reconnect — Rust handles reconnection internally with bump_reconnect_delay
-on_state_change: Python Call.on_state_change — Rust uses on_event
 play_tts: Python Call.play_tts — Rust uses Call::play with a TTS body
-play_url: Python Call.play_url — Rust uses Call::play with a URL body
 prompt: Python AgentBase.prompt attribute — Rust uses set_prompt_text / get_prompt
 register_tools: Python SkillBase.register_tools — Rust uses SkillBase::setup
-reset_document: Python SWMLService.reset_document — Rust uses Service::reset_document (under different module path)
 rooms: Python video.rooms sub-namespace; Rust ships rest::video::rooms
-send_mms: Python Client.send_mms — Rust uses Client::send_message with media
 send_message: Python Client.send_message — Rust ships Client::send_message
-set_isolated: Python Context.set_isolated — Rust uses Context fields directly
-set_params_value: Python helper — Rust uses set_param / set_params
-set_proxy_url: Python AgentBase.set_proxy_url — Rust uses manual_set_proxy_url
-set_record_call: Python AgentBase.set_record_call — Rust uses AgentOptions.record_call
-set_record_format: Python AgentBase.set_record_format — Rust uses the record_format field directly
-set_record_stereo: Python AgentBase.set_record_stereo — Rust uses the record_stereo field directly
-set_summary_callback: Python AgentBase.set_summary_callback — Rust uses on_summary
 setup: Python skill setup hook — Rust uses SkillBase::setup
 sip: Python SIP namespace — Rust ships rest::fabric::sip_endpoints / sip_profiles
 tokens: Python REST tokens sub-namespace; Rust ships rest::fabric::tokens
 wait: Python action / message wait method — Rust uses Action::wait / Message::on_completed
-webhook_expression: Python DataMap webhook_expression — Rust ships DataMap expression methods
-webhook_with_form: Python DataMap webhook_with_form — Rust ships DataMap webhook with body type
-webhook_with_options: Python DataMap webhook_with_options — Rust ships DataMap webhook with options struct
 
 ## porting-sdk emission-tooling references (cross-language, by design)
 
@@ -160,3 +142,95 @@ corpus_ids: porting-sdk emission_corpus.corpus_ids() — the Python corpus id-se
 
 is_some: Rust std Option::is_some — appears in a third_party_skills.md example expression, not a port symbol
 repr: real method Call::repr / Message::repr (src/relay/call.rs) — enumerate_surface deliberately folds repr→__repr__ in port_surface for parity with Python's __repr__, so the real Rust spelling used in relay/docs doesn't resolve by name; documenting the fold, not a phantom
+
+message: real accessor SignalWireRestError::message (src/rest/error.rs), used in examples/rest_audit_harness.rs error formatting — enumerate_surface drops it from the SWAIGFunction/error surface (the reference SignalWireRestError enumerates only __init__), so the real Rust spelling used in the example doesn't resolve by name; documenting the fold, not a phantom
+
+ai_agents: real generated Fabric client-tree accessor client.fabric().ai_agents() (src/rest/namespaces/generated/client_tree_generated.rs) returning the AiAgents resource — the surface records the AiAgents CLASS but not the snake accessor method, so the doc call spelling doesn't resolve by name (same fold as `tokens`); documenting the accessor, not a phantom
+subscribers: real generated Fabric client-tree accessor client.fabric().subscribers() (client_tree_generated.rs) returning the Subscribers resource — surface records the Subscribers CLASS not the snake accessor; same fold as `tokens`
+sip_endpoints: real generated Fabric client-tree accessor client.fabric().sip_endpoints() (client_tree_generated.rs) returning the SipEndpoints resource — surface records the SipEndpoints CLASS not the snake accessor; same fold as `tokens`
+event_type: real Rust-idiom accessor RelayEvent::event_type() (src/relay/event.rs) used in examples/relay_audit_harness.rs — a port convenience accessor on the relay event enum (Python passes event_type as a dict field, not a method), not enumerated per-variant in the surface
+
+## Generated client-tree namespace accessors (surface records the CLASS, not the snake accessor method)
+
+Same surface-enumeration fold-gap already ledgered above for `tokens` /
+`ai_agents` / `subscribers` / `sip_endpoints`: each of these is a real
+`pub fn <name>(&self) -> <Resource>` accessor on a namespace struct in
+`src/rest/namespaces/generated/client_tree_generated.rs`, documented in the
+`rest/docs/namespaces.md` accessor table (and examples). The surface
+enumerator records the returned Resource CLASS but folds away the snake
+accessor method, so the doc call spelling doesn't resolve by name.
+Documenting the accessors, not phantoms.
+
+resources: real generated Fabric client-tree accessor client.fabric().resources() (client_tree_generated.rs:85) returning GenericResources — surface records the GenericResources CLASS not the snake accessor; same fold as `tokens`
+call_flows: real generated Fabric client-tree accessor client.fabric().call_flows() (client_tree_generated.rs:97) returning CallFlows — surface records the CallFlows CLASS not the snake accessor; same fold as `tokens`
+conference_rooms: real generated Fabric client-tree accessor client.fabric().conference_rooms() (client_tree_generated.rs:103) returning ConferenceRooms — surface records the ConferenceRooms CLASS not the snake accessor; same fold as `tokens`
+cxml_applications: real generated Fabric client-tree accessor client.fabric().cxml_applications() (client_tree_generated.rs:109) returning CxmlApplications — surface records the CxmlApplications CLASS not the snake accessor; same fold as `tokens`
+cxml_scripts: real generated Fabric client-tree accessor client.fabric().cxml_scripts() (client_tree_generated.rs:115) returning CxmlScripts — surface records the CxmlScripts CLASS not the snake accessor; same fold as `tokens`
+cxml_webhooks: real generated Fabric client-tree accessor client.fabric().cxml_webhooks() (client_tree_generated.rs:121) returning CxmlWebhooks — surface records the CxmlWebhooks CLASS not the snake accessor; same fold as `tokens`
+freeswitch_connectors: real generated Fabric client-tree accessor client.fabric().freeswitch_connectors() (client_tree_generated.rs:127) returning FreeswitchConnectors — surface records the FreeswitchConnectors CLASS not the snake accessor; same fold as `tokens`
+relay_applications: real generated Fabric client-tree accessor client.fabric().relay_applications() (client_tree_generated.rs:133) returning RelayApplications — surface records the RelayApplications CLASS not the snake accessor; same fold as `tokens`
+sip_gateways: real generated Fabric client-tree accessor client.fabric().sip_gateways() (client_tree_generated.rs:145) returning SipGateways — surface records the SipGateways CLASS not the snake accessor; same fold as `tokens`
+swml_scripts: real generated Fabric client-tree accessor client.fabric().swml_scripts() (client_tree_generated.rs:157) returning SwmlScripts — surface records the SwmlScripts CLASS not the snake accessor; same fold as `tokens`
+swml_webhooks: real generated Fabric client-tree accessor client.fabric().swml_webhooks() (client_tree_generated.rs:163) returning SwmlWebhooks — surface records the SwmlWebhooks CLASS not the snake accessor; same fold as `tokens`
+conference_tokens: real generated Video client-tree accessor client.video().conference_tokens() (client_tree_generated.rs:187) returning VideoConferenceTokens — surface records the VideoConferenceTokens CLASS not the snake accessor; same fold as `tokens`
+conferences: real generated client-tree accessor client.video().conferences() / client.logs().conferences() (client_tree_generated.rs:193) returning VideoConferences — surface records the VideoConferences CLASS not the snake accessor; same fold as `tokens`
+room_recordings: real generated Video client-tree accessor client.video().room_recordings() (client_tree_generated.rs:199) returning VideoRoomRecordings — surface records the VideoRoomRecordings CLASS not the snake accessor; same fold as `tokens`
+room_sessions: real generated Video client-tree accessor client.video().room_sessions() (client_tree_generated.rs:205) returning VideoRoomSessions — surface records the VideoRoomSessions CLASS not the snake accessor; same fold as `tokens`
+room_tokens: real generated Video client-tree accessor client.video().room_tokens() (client_tree_generated.rs:211) returning VideoRoomTokens — surface records the VideoRoomTokens CLASS not the snake accessor; same fold as `tokens`
+streams: real generated Video client-tree accessor client.video().streams() (client_tree_generated.rs:223) returning VideoStreams — surface records the VideoStreams CLASS not the snake accessor; same fold as `tokens`
+voice: real generated Logs client-tree accessor client.logs().voice() (client_tree_generated.rs:271) returning VoiceLogs — surface records the VoiceLogs CLASS not the snake accessor; same fold as `tokens`
+fax: real generated Logs client-tree accessor client.logs().fax() (client_tree_generated.rs:277) returning FaxLogs — surface records the FaxLogs CLASS not the snake accessor; same fold as `tokens`
+
+## Generated REST request-builder param setters (surface records the request STRUCT, not its per-param fluent setters)
+
+The typed request builders emitted into src/rest/namespaces/generated/*_resources_generated.rs
+expose one fluent `pub fn <param>(mut self, ...) -> Self` per optional param.
+The surface enumerator records the request STRUCT (e.g. CreateSubscriberTokenRequest)
+but folds away the individual param setters, so a doc that calls a setter by name
+doesn't resolve. Same fold class as the client-tree accessors above. Documenting the
+real setters, not phantoms.
+
+expire_at: real generated request-builder setter FabricTokensCreateSubscriberTokenRequest::expire_at (fabric_resources_generated.rs:240) used in rest/docs/fabric.md — surface records the request STRUCT not the per-param setter; same fold as the accessors above
+status_url: real generated request-builder setter on the calling create-call request (calling_resources_generated.rs:559) used in rest/docs/calling.md + rest/examples/rest_make_call.rs — surface records the request STRUCT not the per-param setter; same fold as the accessors above
+
+## Rust standard library / core methods (batch 2 — newly surfaced by the widened DOC-AUDIT inline/table scan)
+
+Additional stdlib / core method + associated-function names appearing in
+code blocks throughout docs/ and examples/, caught by the widened audit that
+now scans inline-code spans and table cells. Same category as the stdlib
+section at the top of this file.
+
+args: stdlib std::env::args
+as_ref: stdlib AsRef::as_ref / Option::as_ref
+current_dir: stdlib std::env::current_dir
+exit: stdlib std::process::exit
+from_millis: stdlib std::time::Duration::from_millis
+from_secs: stdlib std::time::Duration::from_secs
+from_slice: serde_json::from_slice
+from_utf8: stdlib String::from_utf8
+from_utf8_lossy: stdlib String::from_utf8_lossy
+new: builder/constructor associated fn (AgentBase::new / AgentOptions::new / Duration::new / etc.) — the generic `new` associated-function name is not recorded as a surface method
+set_var: stdlib std::env::set_var
+spawn: stdlib std::thread::spawn
+to_string_pretty: serde_json::to_string_pretty
+try_from: stdlib TryFrom::try_from (e.g. usize::try_from)
+var: stdlib std::env::var
+with_capacity: stdlib String::with_capacity / Vec::with_capacity
+
+## External-crate methods + serde variants (newly surfaced by the widened DOC-AUDIT)
+
+Names from third-party crates used in examples/docs, not Rust port surface.
+
+Bool: serde_json::Value::Bool enum variant (pattern-matched in examples/rest_audit_harness.rs)
+config_builder: ureq::Agent::config_builder
+from_bytes: tiny_http::Header::from_bytes
+from_string: tiny_http::Response::from_string
+new_from_slice: hmac Mac::new_from_slice (crypto)
+
+## Doc-local helper / entry-point function definitions (not port surface)
+
+These names are `fn` definitions inside the doc/example fragment itself, not
+references to a port API.
+
+create_agent: doc-local helper fn defined in docs/cloud_functions_guide.md (item-only fragment `fn create_agent()`), not a port symbol
+main: doc-local `fn main` entry point in getting-started fragments (rest/docs + relay/docs), not a port symbol

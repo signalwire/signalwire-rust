@@ -23,7 +23,6 @@
 mod common;
 
 use common::tls_support;
-use serde_json::json;
 use signalwire::rest::RestClient;
 
 #[test]
@@ -51,7 +50,10 @@ fn tls_rest_client_https_get() {
     let body = client
         .fabric()
         .addresses()
-        .list(&json!({ "page_size": 5 }))
+        .list(&std::collections::HashMap::from([(
+            "page_size".to_string(),
+            "5".to_string(),
+        )]))
         .expect("fabric addresses.list over https:// should succeed");
     let obj = body
         .as_object()
@@ -84,7 +86,10 @@ fn tls_rest_client_https_get() {
     }
     let untrusted = RestClient::with_base_url("test_proj", "test_tok", &base_url)
         .expect("RestClient::with_base_url (untrusted)");
-    let result = untrusted.fabric().addresses().list(&json!({}));
+    let result = untrusted
+        .fabric()
+        .addresses()
+        .list(&std::collections::HashMap::new());
     assert!(
         result.is_err(),
         "HTTPS GET with only webpki roots unexpectedly succeeded against the self-signed CA"

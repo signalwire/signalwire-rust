@@ -35,8 +35,8 @@ type WsStream = WebSocket<MaybeTlsStream<TcpStream>>;
 /// The crate enables tungstenite's `rustls-tls-webpki-roots` feature, so
 /// `wss://` connections verify against the bundled Mozilla root set out of the
 /// box. rustls deliberately does NOT consult `SSL_CERT_FILE` or the OS trust
-/// store, so to trust a private / self-signed CA (e.g. the porting-sdk test CA
-/// for the WSS capability test, or a corporate proxy CA in production) the
+/// store, so to trust a private / self-signed CA (e.g. a self-signed CA in a
+/// test environment, or a corporate proxy CA in production) the
 /// caller sets `SIGNALWIRE_RELAY_CA_FILE` to a PEM bundle. When set, we build a
 /// dedicated `rustls::ClientConfig` whose root store is *exactly* that CA and
 /// hand it to tungstenite as a custom `Connector` — real verification against a
@@ -731,7 +731,7 @@ impl Client {
     /// Panics if an internal mutex is poisoned (i.e. another thread
     /// panicked while holding the lock). This does not occur under
     /// normal operation.
-    pub fn handle_message(&self, raw: &str) {
+    pub fn handle_message(self: &Arc<Self>, raw: &str) {
         self.logger.debug(&format!("<< {raw}"));
 
         let data: Value = if let Ok(d) = serde_json::from_str(raw) {
@@ -785,7 +785,7 @@ impl Client {
     /// Panics if an internal mutex is poisoned (i.e. another thread
     /// panicked while holding the lock). This does not occur under
     /// normal operation.
-    pub fn handle_event(&self, outer_params: &Value) {
+    pub fn handle_event(self: &Arc<Self>, outer_params: &Value) {
         let event_type = outer_params
             .get("event_type")
             .and_then(|v| v.as_str())
@@ -848,6 +848,7 @@ impl Client {
                 let mut calls = self.calls.lock().unwrap();
                 if !calls.contains_key(call_id) {
                     let call = Arc::new(Call::new(&params));
+                    call.set_client(self);
                     calls.insert(call_id.to_string(), call);
                 }
             }
@@ -1270,16 +1271,91 @@ impl Client {
     }
 
     // ══════════════════════════════════════════════════════════════════
+    //  Python-parity method names
+    //
+    //  These mirror the exact names on the Python `RelayClient`
+    //  (`execute` / `dial` / `run` / `send_message`). The Rust client is a
+    //  blocking API whose implementations carry a `_blocking` suffix; these
+    //  parity-named wrappers delegate to them so both the Rust-idiom name
+    //  and the Python name resolve to the same behaviour.
+    // ══════════════════════════════════════════════════════════════════
+
+    /// Send an arbitrary JSON-RPC request and block for its result
+    /// (mirrors Python `RelayClient.execute`). Delegates to
+    /// [`execute_blocking`].
+    ///
+    /// # Errors
+    /// Propagates [`execute_blocking`]'s errors: `RelayError::Rpc` if the
+    /// server returns a JSON-RPC error, or `RelayError::Timeout` if no
+    /// response arrives within the deadline.
+    pub fn execute(&self, method: &str, params: Value) -> Result<Value, RelayError> {
+        self.execute_blocking(method, params)
+    }
+
+    /// Initiate an outbound call and block until it is answered or the
+    /// dial deadline elapses (mirrors Python `RelayClient.dial`). Delegates
+    /// to [`dial_blocking`].
+    ///
+    /// # Errors
+    /// Propagates [`dial_blocking`]'s errors: `RelayError::DialFailed` on a
+    /// failed dial or answer timeout.
+    pub fn dial(
+        self: &Arc<Self>,
+        devices: Value,
+        tag: Option<&str>,
+        max_duration: Option<u32>,
+        dial_timeout: Duration,
+    ) -> Result<Arc<Call>, RelayError> {
+        self.dial_blocking(devices, tag, max_duration, dial_timeout)
+    }
+
+    /// Send an outbound SMS/MMS message (mirrors Python
+    /// `RelayClient.send_message`). Delegates to [`send_message_blocking`].
+    ///
+    /// # Errors
+    /// Propagates [`send_message_blocking`]'s errors: `RelayError::
+    /// InvalidArgument` if neither body nor media is supplied, or the
+    /// `messaging.send` `RelayError::Rpc` / `RelayError::Timeout`.
+    #[allow(clippy::too_many_arguments)]
+    pub fn send_message(
+        &self,
+        to_number: &str,
+        from_number: &str,
+        body: Option<&str>,
+        media: Option<&[String]>,
+        tags: Option<&[String]>,
+        context: Option<&str>,
+    ) -> Result<Arc<Message>, RelayError> {
+        self.send_message_blocking(to_number, from_number, body, media, tags, context)
+    }
+
+    /// Blocking entry point — run the client's event loop until the
+    /// connection is torn down (mirrors Python `RelayClient.run`).
+    ///
+    /// The reader thread (spawned by [`connect`]) owns all socket I/O and
+    /// dispatches events. `run` blocks the calling thread until that reader
+    /// thread stops running (i.e. `is_running()` becomes false, e.g. after
+    /// [`disconnect`] or a lost connection), so a caller can `connect()`
+    /// then `run()` to stay alive for the session. Returns immediately if
+    /// the client is not currently running.
+    pub fn run(&self) {
+        while self.is_running() {
+            thread::sleep(Duration::from_millis(50));
+        }
+    }
+
+    // ══════════════════════════════════════════════════════════════════
     //  Private helpers
     // ══════════════════════════════════════════════════════════════════
 
-    fn handle_inbound_call(&self, event: &Event, params: &Value) {
+    fn handle_inbound_call(self: &Arc<Self>, event: &Event, params: &Value) {
         let Some(call_id) = params.get("call_id").and_then(|v| v.as_str()) else {
             self.logger.warn("Inbound call event missing call_id");
             return;
         };
 
         let call = Arc::new(Call::new(params));
+        call.set_client(self);
         self.calls
             .lock()
             .unwrap()
@@ -1292,7 +1368,7 @@ impl Client {
         }
     }
 
-    fn handle_dial_event(&self, _event: &Event, params: &Value) {
+    fn handle_dial_event(self: &Arc<Self>, _event: &Event, params: &Value) {
         let tag = match params.get("tag").and_then(|v| v.as_str()) {
             Some(t) => t.to_string(),
             None => return,
@@ -1336,6 +1412,7 @@ impl Client {
                 existing.clone()
             } else {
                 let call = Arc::new(Call::new(&ctor_params));
+                call.set_client(self);
                 calls.insert(cid.to_string(), call.clone());
                 call
             }
@@ -1658,7 +1735,7 @@ mod tests {
 
     #[test]
     fn test_handle_message_response_resolve() {
-        let c = make_client();
+        let c = Arc::new(make_client());
         let result = Arc::new(Mutex::new(None));
         let result2 = result.clone();
 
@@ -1685,7 +1762,7 @@ mod tests {
 
     #[test]
     fn test_handle_message_response_reject() {
-        let c = make_client();
+        let c = Arc::new(make_client());
         let error = Arc::new(Mutex::new(None));
         let error2 = error.clone();
 
@@ -1712,7 +1789,7 @@ mod tests {
 
     #[test]
     fn test_handle_ping() {
-        let c = make_client();
+        let c = Arc::new(make_client());
         let msg = json!({
             "jsonrpc": "2.0",
             "id": "ping-1",
@@ -1728,7 +1805,7 @@ mod tests {
 
     #[test]
     fn test_handle_disconnect() {
-        let c = make_client();
+        let c = Arc::new(make_client());
         // Manually flip the in-memory connected flag (this test verifies
         // the dispatcher's response to a `signalwire.disconnect` frame —
         // not the transport).
@@ -1747,7 +1824,7 @@ mod tests {
 
     #[test]
     fn test_handle_inbound_call() {
-        let c = make_client();
+        let c = Arc::new(make_client());
         let received = Arc::new(Mutex::new(false));
         let received2 = received.clone();
         c.on_call(move |_call, _ev| {
@@ -1769,7 +1846,7 @@ mod tests {
 
     #[test]
     fn test_handle_call_state_event() {
-        let c = make_client();
+        let c = Arc::new(make_client());
 
         // Create a call first
         c.handle_event(&json!({
@@ -1777,10 +1854,10 @@ mod tests {
             "params": {"call_id": "call-1", "node_id": "node-1"},
         }));
 
-        // Send state event
+        // Send state event (real wire key is `call_state`).
         c.handle_event(&json!({
             "event_type": "calling.call.state",
-            "params": {"call_id": "call-1", "state": "ringing"},
+            "params": {"call_id": "call-1", "call_state": "ringing"},
         }));
 
         let call = c.get_call("call-1").unwrap();
@@ -1789,7 +1866,7 @@ mod tests {
 
     #[test]
     fn test_handle_call_ended_removes_call() {
-        let c = make_client();
+        let c = Arc::new(make_client());
 
         c.handle_event(&json!({
             "event_type": "calling.call.receive",
@@ -1798,7 +1875,7 @@ mod tests {
 
         c.handle_event(&json!({
             "event_type": "calling.call.state",
-            "params": {"call_id": "call-1", "state": "ended"},
+            "params": {"call_id": "call-1", "call_state": "ended"},
         }));
 
         assert!(c.get_call("call-1").is_none());
@@ -1806,7 +1883,7 @@ mod tests {
 
     #[test]
     fn test_handle_message_state() {
-        let c = make_client();
+        let c = Arc::new(make_client());
         let msg = Arc::new(Message::new(&json!({"message_id": "msg-1"})));
         c.track_message("msg-1", msg.clone());
 
@@ -1822,7 +1899,7 @@ mod tests {
 
     #[test]
     fn test_handle_message_terminal_removes() {
-        let c = make_client();
+        let c = Arc::new(make_client());
         let msg = Arc::new(Message::new(&json!({"message_id": "msg-1"})));
         c.track_message("msg-1", msg.clone());
 
@@ -1837,7 +1914,7 @@ mod tests {
 
     #[test]
     fn test_handle_inbound_message() {
-        let c = make_client();
+        let c = Arc::new(make_client());
         let received = Arc::new(Mutex::new(false));
         let received2 = received.clone();
         c.on_message(move |_ev, _params| {
@@ -1854,7 +1931,7 @@ mod tests {
 
     #[test]
     fn test_handle_dial_event() {
-        let c = make_client();
+        let c = Arc::new(make_client());
         let resolved_call = Arc::new(Mutex::new(None));
         let resolved2 = resolved_call.clone();
 
@@ -1862,10 +1939,10 @@ mod tests {
             *resolved2.lock().unwrap() = Some(call);
         });
 
-        // First create call via state event with tag
+        // First create call via state event with tag (wire key: call_state)
         c.handle_event(&json!({
             "event_type": "calling.call.state",
-            "params": {"call_id": "call-dial-1", "tag": "tag-dial-1", "state": "created"},
+            "params": {"call_id": "call-dial-1", "tag": "tag-dial-1", "call_state": "created"},
         }));
 
         // Then the dial event resolves it
@@ -1881,7 +1958,7 @@ mod tests {
 
     #[test]
     fn test_handle_authorization_state() {
-        let c = make_client();
+        let c = Arc::new(make_client());
         c.handle_event(&json!({
             "event_type": "signalwire.authorization.state",
             "params": {"authorization_state": "authorized"},
@@ -1925,7 +2002,7 @@ mod tests {
 
     #[test]
     fn test_on_event_handler() {
-        let c = make_client();
+        let c = Arc::new(make_client());
         let received = Arc::new(Mutex::new(false));
         let received2 = received.clone();
         c.on_event(move |_ev, _params| {
@@ -1943,14 +2020,14 @@ mod tests {
 
     #[test]
     fn test_handle_unparseable_message() {
-        let c = make_client();
+        let c = Arc::new(make_client());
         // Should not panic
         c.handle_message("not-json{{{");
     }
 
     #[test]
     fn test_handle_event_signalwire_event_method() {
-        let c = make_client();
+        let c = Arc::new(make_client());
         let received = Arc::new(Mutex::new(false));
         let received2 = received.clone();
         c.on_call(move |_call, _ev| {
@@ -1972,5 +2049,40 @@ mod tests {
         // Should have sent an ack
         let msgs = c.sent_messages.lock().unwrap();
         assert!(msgs.iter().any(|m| m["id"] == "evt-1"));
+    }
+
+    // -- Python-parity method wrappers --
+
+    #[test]
+    fn test_run_returns_immediately_when_not_running() {
+        // `run` blocks only while the reader loop is running; with no
+        // connection it must return promptly rather than hang.
+        let c = make_client();
+        assert!(!c.is_running());
+        let start = std::time::Instant::now();
+        c.run();
+        assert!(start.elapsed() < Duration::from_secs(1));
+    }
+
+    #[test]
+    fn test_run_unblocks_on_disconnect() {
+        let c = Arc::new(make_client());
+        *c.running.lock().unwrap() = true;
+        let c2 = c.clone();
+        let handle = std::thread::spawn(move || c2.run());
+        std::thread::sleep(Duration::from_millis(60));
+        // Flip the running flag (as disconnect would) and confirm run exits.
+        *c.running.lock().unwrap() = false;
+        handle.join().unwrap();
+    }
+
+    #[test]
+    fn test_send_message_parity_validates_args() {
+        // `send_message` delegates to `send_message_blocking`; the
+        // arg-validation path (neither body nor media) returns
+        // InvalidArgument without touching a socket.
+        let c = make_client();
+        let result = c.send_message("+15551112222", "+15553334444", None, None, None, None);
+        assert!(matches!(result, Err(RelayError::InvalidArgument { .. })));
     }
 }

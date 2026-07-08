@@ -1,15 +1,20 @@
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, Weak};
 
 use serde_json::Value;
 
 use super::action::Action;
+use super::client::Client;
 use super::constants;
 use super::event::Event;
 use crate::logging::Logger;
 
 /// Callback type for call-level event listeners.
 pub type CallEventCallback = Arc<dyn Fn(&Event, &Call) + Send + Sync>;
+
+/// Predicate for [`Call::wait_for`] — returns `true` for an event that
+/// satisfies the caller's filter.
+pub type EventPredicate = Arc<dyn Fn(&Event) -> bool + Send + Sync>;
 
 /// Represents a RELAY voice call.
 ///
@@ -39,6 +44,15 @@ pub struct Call {
     // ── commands sent (for testing without a real client) ─────────────
     pub sent_commands: Mutex<Vec<(String, Value)>>,
 
+    // ── owning client, for transmitting frames to the wire ────────────
+    // A `Weak` back-reference (the Client owns the Call via `Arc`, so a
+    // strong ref here would leak). When present, every `calling.*` frame a
+    // verb builds is transmitted through `Client::send_request` — the same
+    // client-send boundary the cross-port relay differ observes. When absent
+    // (a bare `Call::new` with no client), frames are only recorded in
+    // `sent_commands`. This mirrors Python's `Call._client.execute`.
+    client: Mutex<Option<Weak<Client>>>,
+
     logger: Logger,
 }
 
@@ -60,7 +74,7 @@ impl Call {
                 .map(std::string::ToString::to_string),
             state: Mutex::new(
                 params
-                    .get("state")
+                    .get("call_state")
                     .and_then(|v| v.as_str())
                     .unwrap_or("created")
                     .to_string(),
@@ -86,8 +100,30 @@ impl Call {
             actions: Mutex::new(HashMap::new()),
             on_event_callbacks: Mutex::new(Vec::new()),
             sent_commands: Mutex::new(Vec::new()),
+            client: Mutex::new(None),
             logger: Logger::new("relay.call"),
         }
+    }
+
+    /// Attach the owning [`Client`] so this Call's verbs transmit their
+    /// frames to the wire (via [`Client::send_request`]) instead of only
+    /// recording them in `sent_commands`. Stored as a `Weak` — the Client
+    /// owns the Call, so a strong ref would form a reference cycle. Called by
+    /// the Client immediately after it constructs a Call. Mirrors Python,
+    /// where a Call always carries `self._client`.
+    ///
+    /// # Panics
+    /// Panics if the internal mutex is poisoned (another thread panicked while
+    /// holding the lock). This does not occur under normal operation.
+    pub fn set_client(&self, client: &Arc<Client>) {
+        *self.client.lock().unwrap() = Some(Arc::downgrade(client));
+        // Actions already created (none yet at attach time) would need the
+        // same wiring; new actions inherit it via `start_action`.
+    }
+
+    /// The live owning [`Client`], if one is attached and still alive.
+    fn client(&self) -> Option<Arc<Client>> {
+        self.client.lock().unwrap().as_ref().and_then(Weak::upgrade)
     }
 
     /// Current call state.
@@ -144,7 +180,7 @@ impl Call {
 
         // ── call-level state events ──────────────────────────────────
         if event_type == "calling.call.state" {
-            if let Some(s) = params.get("state").and_then(|v| v.as_str()) {
+            if let Some(s) = params.get("call_state").and_then(|v| v.as_str()) {
                 *self.state.lock().unwrap() = s.to_string();
             }
             if let Some(r) = params.get("end_reason").and_then(|v| v.as_str()) {
@@ -335,6 +371,44 @@ impl Call {
         self.execute("calling.refer", params)
     }
 
+    // ------------------------------------------------------------------
+    // Python-parity command names
+    //
+    // These mirror the exact method names on the Python `Call`
+    // (`echo` / `pass_` / `refer`), which collide with Rust reserved or
+    // conventional names. They emit the identical wire RPC as their
+    // `*_call` / `pass` counterparts above; the two coexist so both the
+    // Rust-idiom name and the Python-parity name resolve.
+    //   - `pass_` matches Python's own reserved-word escape (Python's
+    //     method is literally `pass_`), so no rename-table entry is
+    //     needed — the escaped name is identical on both sides.
+    // ------------------------------------------------------------------
+
+    /// Echo audio back to the caller (mirrors Python `Call.echo`).
+    /// Emits `calling.echo`. Optional `timeout` / `status_url` may be
+    /// supplied via `params`; pass `Value::Null` or an empty object for none.
+    pub fn echo(&self, params: Value) -> Value {
+        let extra = if params.is_object() {
+            params
+        } else {
+            Value::Object(serde_json::Map::new())
+        };
+        self.execute("calling.echo", extra)
+    }
+
+    /// Decline control of an inbound call, returning it to routing
+    /// (mirrors Python `Call.pass_`). Emits `calling.pass`.
+    pub fn pass_(&self) -> Value {
+        self.execute("calling.pass", Value::Object(serde_json::Map::new()))
+    }
+
+    /// Transfer a SIP call to an external SIP endpoint via REFER
+    /// (mirrors Python `Call.refer`). Emits `calling.refer` with the
+    /// supplied `device` (+ optional `status_url`) params.
+    pub fn refer(&self, params: Value) -> Value {
+        self.execute("calling.refer", params)
+    }
+
     pub fn send_digits(&self, params: Value) -> Value {
         self.execute("calling.send_digits", params)
     }
@@ -356,7 +430,11 @@ impl Call {
     }
 
     pub fn play_and_collect(&self, params: Value) -> Arc<Action> {
-        self.start_action("calling.play_and_collect", "calling.collect.stop", params)
+        self.start_action(
+            "calling.play_and_collect",
+            "calling.play_and_collect.stop",
+            params,
+        )
     }
 
     pub fn detect(&self, params: Value) -> Arc<Action> {
@@ -605,21 +683,124 @@ impl Call {
     }
 
     // ------------------------------------------------------------------
-    // State-wait convenience (wait_for_answered / wait_for_ringing /
-    // wait_for_ending) is intentionally NOT implemented.
+    // Event-bus waits (mirror Python Call.wait_for / wait_for_* family)
     //
-    // Python's wait_for_* helpers are built on a generic async
-    // `Call.wait_for(event_type, predicate)` event-bus primitive that
-    // suspends a coroutine until a matching `calling.call.state` event
-    // arrives. The Rust Call deliberately has no such async wait
-    // primitive (see PORT_OMISSIONS.md for `Call.wait_for` /
-    // `Call.wait_for_ended`): it is a synchronous command surface, and
-    // state observation is done through `Call::on` callbacks
-    // (register_event_callback) which fire as state events are
-    // dispatched. With no `wait_for` to short-circuit against, the three
-    // state waiters have nothing to delegate to, so they are documented
-    // as surface omissions in PORT_OMISSIONS.md rather than stubbed.
+    // Python's Call exposes an async `wait_for(event_type, predicate)`
+    // primitive that suspends a coroutine until a matching event arrives,
+    // plus typed state waiters built on it. The Rust Call is a synchronous
+    // command surface, so these block the calling thread instead of
+    // returning an awaitable: `wait_for` registers a one-shot listener via
+    // `on` and blocks on a channel until a matching event is dispatched (or
+    // the optional timeout elapses).
     // ------------------------------------------------------------------
+
+    /// Block until an event of `event_type` matching `predicate` is
+    /// dispatched to this call, then return it. `predicate = None` matches
+    /// any event of that type. `timeout = None` blocks indefinitely.
+    ///
+    /// Mirrors Python `Call.wait_for`. Returns `Some(event)` on a match, or
+    /// `None` if `timeout` elapsed before a matching event arrived.
+    ///
+    /// # Panics
+    /// Panics if an internal mutex is poisoned (i.e. another thread panicked
+    /// while holding the lock). This does not occur under normal operation.
+    #[must_use]
+    pub fn wait_for(
+        &self,
+        event_type: &str,
+        predicate: Option<EventPredicate>,
+        timeout: Option<std::time::Duration>,
+    ) -> Option<Event> {
+        let (tx, rx) = std::sync::mpsc::sync_channel::<Event>(1);
+        let want = event_type.to_string();
+        // One-shot guarded sender: only the first matching event is sent;
+        // later matches (the listener stays registered) become no-ops.
+        let sender = Mutex::new(Some(tx));
+        self.on(move |event: &Event, _call: &Call| {
+            if event.event_type() != want {
+                return;
+            }
+            if let Some(pred) = &predicate
+                && !pred(event)
+            {
+                return;
+            }
+            if let Some(tx) = sender.lock().unwrap().take() {
+                let _ = tx.try_send(event.clone());
+            }
+        });
+
+        match timeout {
+            Some(dur) => rx.recv_timeout(dur).ok(),
+            None => rx.recv().ok(),
+        }
+    }
+
+    /// Rank of a call state in the created→ended progression, or `-1` if
+    /// unknown. Used by the typed state waiters to short-circuit when the
+    /// call is already at or past the target (matching Python).
+    fn state_rank(state: &str) -> i32 {
+        match state {
+            constants::CALL_STATE_CREATED => 0,
+            constants::CALL_STATE_RINGING => 1,
+            constants::CALL_STATE_ANSWERED => 2,
+            constants::CALL_STATE_ENDING => 3,
+            constants::CALL_STATE_ENDED => 4,
+            _ => -1,
+        }
+    }
+
+    /// Read the state out of a `calling.call.state` event, accepting either
+    /// the real-wire `call_state` key or the internal `state` key.
+    fn event_call_state(event: &Event) -> Option<String> {
+        event
+            .params()
+            .get("call_state")
+            .or_else(|| event.params().get("state"))
+            .and_then(|v| v.as_str())
+            .map(std::string::ToString::to_string)
+    }
+
+    /// Wait until the call reaches `target` (or a later state). Returns
+    /// immediately with a synthesized event if already at/past `target`.
+    fn wait_for_state(&self, target: &str, timeout: Option<std::time::Duration>) -> Option<Event> {
+        if Self::state_rank(&self.current_state()) >= Self::state_rank(target) {
+            let mut params = HashMap::new();
+            params.insert(
+                "call_state".to_string(),
+                Value::String(self.current_state()),
+            );
+            return Some(Event::new("calling.call.state", params, 0.0));
+        }
+        let target = target.to_string();
+        let pred: EventPredicate =
+            Arc::new(move |e: &Event| Self::event_call_state(e).as_deref() == Some(&target));
+        self.wait_for("calling.call.state", Some(pred), timeout)
+    }
+
+    /// Wait until the call is answered (immediate if already at/past it).
+    #[must_use]
+    pub fn wait_for_answered(&self, timeout: Option<std::time::Duration>) -> Option<Event> {
+        self.wait_for_state(constants::CALL_STATE_ANSWERED, timeout)
+    }
+
+    /// Wait until the call is ringing (immediate if already at/past it).
+    #[must_use]
+    pub fn wait_for_ringing(&self, timeout: Option<std::time::Duration>) -> Option<Event> {
+        self.wait_for_state(constants::CALL_STATE_RINGING, timeout)
+    }
+
+    /// Wait until the call is ending (immediate if already at/past it).
+    #[must_use]
+    pub fn wait_for_ending(&self, timeout: Option<std::time::Duration>) -> Option<Event> {
+        self.wait_for_state(constants::CALL_STATE_ENDING, timeout)
+    }
+
+    /// Wait until the call reaches the ended state (immediate if already ended).
+    #[must_use]
+    pub fn wait_for_ended(&self, timeout: Option<std::time::Duration>) -> Option<Event> {
+        self.wait_for_state(constants::CALL_STATE_ENDED, timeout)
+    }
 
     // ------------------------------------------------------------------
     // Private helpers
@@ -633,6 +814,13 @@ impl Call {
     }
 
     /// Send a simple (non-action) RPC call.
+    ///
+    /// Builds the `calling.<x>` frame's params (`node_id` + `call_id` + the
+    /// verb's extra params) and, when a [`Client`] is attached, TRANSMITS it
+    /// to the wire via [`Client::send_request`] — the client-send boundary.
+    /// The params are always also recorded in `sent_commands` for local
+    /// inspection/tests. Mirrors Python's `Call._execute`, which calls
+    /// `self._client.execute(method, params)`.
     fn execute(&self, method: &str, extra: Value) -> Value {
         let mut base = self.base_params();
         if let (Some(base_map), Some(extra_map)) = (base.as_object_mut(), extra.as_object()) {
@@ -644,6 +832,10 @@ impl Call {
             .lock()
             .unwrap()
             .push((method.to_string(), base.clone()));
+        // Transmit to the wire through the owning client, if attached.
+        if let Some(client) = self.client() {
+            client.send_request(method, base.clone());
+        }
         base
     }
 
@@ -659,6 +851,11 @@ impl Call {
             node_id,
             stop_method,
         ));
+        // Wire the same client into the Action so its control-op sub-commands
+        // (stop/pause/resume/volume) transmit to the wire too.
+        if let Some(client) = self.client() {
+            action.set_client(&client);
+        }
 
         self.actions
             .lock()
@@ -677,7 +874,12 @@ impl Call {
         self.sent_commands
             .lock()
             .unwrap()
-            .push((method.to_string(), base));
+            .push((method.to_string(), base.clone()));
+        // Transmit the action's start frame to the wire, if a client is
+        // attached (mirrors Python's `_start_action` -> `_execute`).
+        if let Some(client) = self.client() {
+            client.send_request(method, base);
+        }
 
         action
     }
@@ -750,7 +952,7 @@ mod tests {
     #[test]
     fn test_dispatch_state_event() {
         let call = make_call();
-        let ev = make_event("calling.call.state", json!({"state": "ringing"}));
+        let ev = make_event("calling.call.state", json!({"call_state": "ringing"}));
         call.dispatch_event(&ev);
         assert_eq!(call.current_state(), "ringing");
     }
@@ -761,7 +963,7 @@ mod tests {
         let action = call.play(json!({}));
         assert!(!action.is_done());
 
-        let ev = make_event("calling.call.state", json!({"state": "ended"}));
+        let ev = make_event("calling.call.state", json!({"call_state": "ended"}));
         call.dispatch_event(&ev);
         assert!(action.is_done());
         assert!(call.actions.lock().unwrap().is_empty());
@@ -827,7 +1029,7 @@ mod tests {
             *count2.lock().unwrap() += 1;
         });
 
-        let ev = make_event("calling.call.state", json!({"state": "ringing"}));
+        let ev = make_event("calling.call.state", json!({"call_state": "ringing"}));
         call.dispatch_event(&ev);
         assert_eq!(*count.lock().unwrap(), 1);
     }
@@ -968,7 +1170,7 @@ mod tests {
     fn test_play_and_collect_creates_action() {
         let call = make_call();
         let action = call.play_and_collect(json!({}));
-        assert_eq!(action.stop_method(), "calling.collect.stop");
+        assert_eq!(action.stop_method(), "calling.play_and_collect.stop");
     }
 
     // -- Typed convenience wrapper tests (built media/params shapes) --
@@ -1116,7 +1318,7 @@ mod tests {
             json!({"digits": {"max": 1}}),
             json!({"voice": "spore", "volume": 0.5}),
         );
-        assert_eq!(action.stop_method(), "calling.collect.stop");
+        assert_eq!(action.stop_method(), "calling.play_and_collect.stop");
         let p = one_built(&call, "calling.play_and_collect");
         assert_eq!(p["play"][0]["type"], "tts");
         assert_eq!(p["play"][0]["params"]["text"], "Pick one");
@@ -1173,5 +1375,115 @@ mod tests {
         let a = generate_uuid();
         let b = generate_uuid();
         assert_ne!(a, b);
+    }
+
+    // -- Python-parity command names (echo / pass_ / refer) --
+
+    #[test]
+    fn test_echo_emits_calling_echo() {
+        let call = make_call();
+        call.echo(Value::Null);
+        let cmds = call.sent_commands.lock().unwrap();
+        assert_eq!(cmds[0].0, "calling.echo");
+        assert_eq!(cmds[0].1["call_id"], "call-1");
+        assert_eq!(cmds[0].1["node_id"], "node-1");
+    }
+
+    #[test]
+    fn test_echo_forwards_params() {
+        let call = make_call();
+        call.echo(json!({"timeout": 30, "status_url": "https://x"}));
+        let cmds = call.sent_commands.lock().unwrap();
+        assert_eq!(cmds[0].0, "calling.echo");
+        assert_eq!(cmds[0].1["timeout"], 30);
+        assert_eq!(cmds[0].1["status_url"], "https://x");
+    }
+
+    #[test]
+    fn test_pass_emits_calling_pass() {
+        let call = make_call();
+        call.pass_();
+        let cmds = call.sent_commands.lock().unwrap();
+        assert_eq!(cmds[0].0, "calling.pass");
+        assert_eq!(cmds[0].1["call_id"], "call-1");
+    }
+
+    #[test]
+    fn test_refer_emits_calling_refer_with_device() {
+        let call = make_call();
+        call.refer(json!({"device": {"type": "sip", "params": {"to": "sip:x"}}}));
+        let cmds = call.sent_commands.lock().unwrap();
+        assert_eq!(cmds[0].0, "calling.refer");
+        assert_eq!(cmds[0].1["device"]["type"], "sip");
+    }
+
+    // -- wait_for family --
+
+    #[test]
+    fn test_wait_for_state_immediate_when_already_past() {
+        // Call already answered; waiting for ringing (an earlier state)
+        // returns immediately with a synthesized current-state event.
+        let call = Call::new(&json!({
+            "call_id": "call-1",
+            "node_id": "node-1",
+            "call_state": "answered",
+        }));
+        let ev = call
+            .wait_for_ringing(Some(std::time::Duration::from_millis(0)))
+            .unwrap();
+        assert_eq!(ev.event_type(), "calling.call.state");
+        assert_eq!(Call::event_call_state(&ev).as_deref(), Some("answered"));
+    }
+
+    #[test]
+    fn test_wait_for_state_waits_when_not_yet_reached() {
+        // From created, ringing is NOT yet reached, so it must wait (and
+        // here time out) rather than return immediately.
+        let call = make_call(); // state = created
+        let got = call.wait_for_ringing(Some(std::time::Duration::from_millis(20)));
+        assert!(got.is_none());
+    }
+
+    #[test]
+    fn test_wait_for_times_out_when_no_event() {
+        let call = make_call();
+        let got = call.wait_for_answered(Some(std::time::Duration::from_millis(20)));
+        assert!(got.is_none());
+    }
+
+    #[test]
+    fn test_wait_for_unblocks_on_dispatched_event() {
+        let call = Arc::new(make_call());
+        let c2 = call.clone();
+        let handle = std::thread::spawn(move || {
+            c2.wait_for_answered(Some(std::time::Duration::from_secs(2)))
+        });
+        std::thread::sleep(std::time::Duration::from_millis(30));
+        // Real-wire key is call_state.
+        let ev = make_event("calling.call.state", json!({"call_state": "answered"}));
+        call.dispatch_event(&ev);
+        let got = handle.join().unwrap().unwrap();
+        assert_eq!(Call::event_call_state(&got).as_deref(), Some("answered"));
+    }
+
+    #[test]
+    fn test_wait_for_generic_with_predicate() {
+        let call = Arc::new(make_call());
+        let c2 = call.clone();
+        let pred: EventPredicate =
+            Arc::new(|e: &Event| e.params().get("foo").and_then(|v| v.as_str()) == Some("bar"));
+        let handle = std::thread::spawn(move || {
+            c2.wait_for(
+                "calling.call.custom",
+                Some(pred),
+                Some(std::time::Duration::from_secs(2)),
+            )
+        });
+        std::thread::sleep(std::time::Duration::from_millis(30));
+        // Non-matching event first, then the matching one.
+        call.dispatch_event(&make_event("calling.call.custom", json!({"foo": "nope"})));
+        call.dispatch_event(&make_event("calling.call.custom", json!({"foo": "bar"})));
+        let got = handle.join().unwrap().unwrap();
+        assert_eq!(got.params().get("foo").unwrap(), "bar");
     }
 }

@@ -14,6 +14,7 @@
 mod common;
 
 use serde_json::{Value, json};
+use signalwire::rest::namespaces::generated::calling_resources_generated as calling_gen;
 
 const CALLS_PATH: &str = "/api/calling/calls";
 
@@ -35,7 +36,7 @@ fn test_calling_update() {
     let c = common::mocktest::client();
     let body = c
         .calling()
-        .update(json!({"id": "call-1", "state": "hold"}))
+        .update(calling_gen::CallingUpdateRequest::new("call-1").extra("state", json!("hold")))
         .expect("calling.update");
     assert!(body.is_object());
     assert!(body.as_object().unwrap().contains_key("id"));
@@ -68,11 +69,11 @@ fn test_calling_dial_forwards_codecs_array() {
     let c = common::mocktest::client();
     let body = c
         .calling()
-        .dial(json!({
-            "url": "https://example.com/swml",
-            "to": "+15551234567",
-            "codecs": ["OPUS", "G729", "VP8", "PCMA"],
-        }))
+        .dial(
+            calling_gen::CallingDialRequest::new("", "+15551234567")
+                .url("https://example.com/swml")
+                .codecs(json!(["OPUS", "G729", "VP8", "PCMA"])),
+        )
         .expect("calling.dial");
     assert!(body.is_object());
     assert!(body.as_object().unwrap().contains_key("id"));
@@ -110,11 +111,11 @@ fn test_calling_dial_forwards_codecs_string() {
     let c = common::mocktest::client();
     let body = c
         .calling()
-        .dial(json!({
-            "url": "https://example.com/swml",
-            "to": "+15551234567",
-            "codecs": "OPUS,G729,VP8,PCMA",
-        }))
+        .dial(
+            calling_gen::CallingDialRequest::new("", "+15551234567")
+                .url("https://example.com/swml")
+                .codecs(json!("OPUS,G729,VP8,PCMA")),
+        )
         .expect("calling.dial");
     assert!(body.is_object());
 
@@ -139,7 +140,9 @@ fn test_calling_transfer() {
         .calling()
         .transfer(
             "call-123",
-            json!({"destination": "+15551234567", "from_number": "+15559876543"}),
+            calling_gen::CallingTransferRequest::new(
+                json!({"destination": "+15551234567", "from_number": "+15559876543"}),
+            ),
         )
         .expect("calling.transfer");
     assert!(body.is_object());
@@ -154,13 +157,18 @@ fn test_calling_transfer() {
         Some("calling.transfer")
     );
     assert_eq!(body_obj.get("id").and_then(Value::as_str), Some("call-123"));
-    let params = params_from_body(body_obj);
+    // New generated API wraps the transfer payload under the required `dest`
+    // param; the destination/from_number values are preserved inside it.
+    let dest = params_from_body(body_obj)
+        .get("dest")
+        .and_then(Value::as_object)
+        .expect("dest sub-object");
     assert_eq!(
-        params.get("destination").and_then(Value::as_str),
+        dest.get("destination").and_then(Value::as_str),
         Some("+15551234567")
     );
     assert_eq!(
-        params.get("from_number").and_then(Value::as_str),
+        dest.get("from_number").and_then(Value::as_str),
         Some("+15559876543")
     );
 }
@@ -171,7 +179,10 @@ fn test_calling_disconnect() {
     let c = common::mocktest::client();
     let body = c
         .calling()
-        .disconnect("call-456", json!({"reason": "busy"}))
+        .disconnect(
+            "call-456",
+            calling_gen::CallingDisconnectRequest::new().extra("reason", json!("busy")),
+        )
         .expect("calling.disconnect");
     assert!(body.is_object());
     assert!(body.as_object().unwrap().contains_key("id"));
@@ -203,7 +214,10 @@ fn test_calling_play_pause() {
     let c = common::mocktest::client();
     let body = c
         .calling()
-        .play_pause("call-1", json!({"control_id": "ctrl-1"}))
+        .play_pause(
+            "call-1",
+            calling_gen::CallingPlayPauseRequest::new("ctrl-1"),
+        )
         .expect("play_pause");
     assert!(body.is_object());
     assert!(body.as_object().unwrap().contains_key("id"));
@@ -231,7 +245,10 @@ fn test_calling_play_resume() {
     let c = common::mocktest::client();
     let body = c
         .calling()
-        .play_resume("call-1", json!({"control_id": "ctrl-1"}))
+        .play_resume(
+            "call-1",
+            calling_gen::CallingPlayResumeRequest::new("ctrl-1"),
+        )
         .expect("play_resume");
     assert!(body.is_object());
     assert!(body.as_object().unwrap().contains_key("id"));
@@ -257,7 +274,7 @@ fn test_calling_play_stop() {
     let c = common::mocktest::client();
     let body = c
         .calling()
-        .play_stop("call-1", json!({"control_id": "ctrl-1"}))
+        .play_stop("call-1", calling_gen::CallingPlayStopRequest::new("ctrl-1"))
         .expect("play_stop");
     assert!(body.is_object());
     assert!(body.as_object().unwrap().contains_key("id"));
@@ -277,7 +294,10 @@ fn test_calling_play_volume() {
     let c = common::mocktest::client();
     let body = c
         .calling()
-        .play_volume("call-1", json!({"control_id": "ctrl-1", "volume": 2.5}))
+        .play_volume(
+            "call-1",
+            calling_gen::CallingPlayVolumeRequest::new("ctrl-1", 2.5),
+        )
         .expect("play_volume");
     assert!(body.is_object());
     assert!(body.as_object().unwrap().contains_key("id"));
@@ -307,7 +327,10 @@ fn test_calling_record() {
     let c = common::mocktest::client();
     let body = c
         .calling()
-        .record("call-1", json!({"record": {"format": "mp3"}}))
+        .record(
+            "call-1",
+            calling_gen::CallingRecordRequest::new().extra("record", json!({"format": "mp3"})),
+        )
         .expect("record");
     assert!(body.is_object());
     assert!(body.as_object().unwrap().contains_key("id"));
@@ -336,7 +359,10 @@ fn test_calling_record_pause() {
     let c = common::mocktest::client();
     let body = c
         .calling()
-        .record_pause("call-1", json!({"control_id": "rec-1"}))
+        .record_pause(
+            "call-1",
+            calling_gen::CallingRecordPauseRequest::new("rec-1"),
+        )
         .expect("record_pause");
     assert!(body.is_object());
     assert!(body.as_object().unwrap().contains_key("id"));
@@ -362,7 +388,10 @@ fn test_calling_record_resume() {
     let c = common::mocktest::client();
     let body = c
         .calling()
-        .record_resume("call-1", json!({"control_id": "rec-1"}))
+        .record_resume(
+            "call-1",
+            calling_gen::CallingRecordResumeRequest::new("rec-1"),
+        )
         .expect("record_resume");
     assert!(body.is_object());
     assert!(body.as_object().unwrap().contains_key("id"));
@@ -394,7 +423,12 @@ fn test_calling_collect() {
         .calling()
         .collect(
             "call-1",
-            json!({"initial_timeout": 5, "digits": {"max": 4}}),
+            // The recorded wire value for initial_timeout is the integer 5; the
+            // generated setter is f64, so pass it through `.extra` to keep the
+            // JSON number an integer (matching the `as_i64` assertion below).
+            calling_gen::CallingCollectRequest::new()
+                .extra("initial_timeout", json!(5))
+                .digits(json!({"max": 4})),
         )
         .expect("collect");
     assert!(body.is_object());
@@ -421,7 +455,10 @@ fn test_calling_collect_stop() {
     let c = common::mocktest::client();
     let body = c
         .calling()
-        .collect_stop("call-1", json!({"control_id": "col-1"}))
+        .collect_stop(
+            "call-1",
+            calling_gen::CallingCollectStopRequest::new("col-1"),
+        )
         .expect("collect_stop");
     assert!(body.is_object());
     assert!(body.as_object().unwrap().contains_key("id"));
@@ -447,7 +484,10 @@ fn test_calling_collect_start_input_timers() {
     let c = common::mocktest::client();
     let body = c
         .calling()
-        .collect_start_input_timers("call-1", json!({"control_id": "col-1"}))
+        .collect_start_input_timers(
+            "call-1",
+            calling_gen::CallingCollectStartInputTimersRequest::new("col-1"),
+        )
         .expect("collect_start_input_timers");
     assert!(body.is_object());
     assert!(body.as_object().unwrap().contains_key("id"));
@@ -479,7 +519,7 @@ fn test_calling_detect() {
         .calling()
         .detect(
             "call-1",
-            json!({"detect": {"type": "machine", "params": {}}}),
+            calling_gen::CallingDetectRequest::new(json!({"type": "machine", "params": {}})),
         )
         .expect("detect");
     assert!(body.is_object());
@@ -505,7 +545,10 @@ fn test_calling_detect_stop() {
     let c = common::mocktest::client();
     let body = c
         .calling()
-        .detect_stop("call-1", json!({"control_id": "det-1"}))
+        .detect_stop(
+            "call-1",
+            calling_gen::CallingDetectStopRequest::new("det-1"),
+        )
         .expect("detect_stop");
     assert!(body.is_object());
     assert!(body.as_object().unwrap().contains_key("id"));
@@ -537,7 +580,7 @@ fn test_calling_tap() {
         .calling()
         .tap(
             "call-1",
-            json!({"tap": {"type": "audio"}, "device": {"type": "rtp"}}),
+            calling_gen::CallingTapRequest::new(json!({"type": "audio"}), json!({"type": "rtp"})),
         )
         .expect("tap");
     assert!(body.is_object());
@@ -563,7 +606,7 @@ fn test_calling_tap_stop() {
     let c = common::mocktest::client();
     let body = c
         .calling()
-        .tap_stop("call-1", json!({"control_id": "tap-1"}))
+        .tap_stop("call-1", calling_gen::CallingTapStopRequest::new("tap-1"))
         .expect("tap_stop");
     assert!(body.is_object());
     assert!(body.as_object().unwrap().contains_key("id"));
@@ -593,7 +636,10 @@ fn test_calling_stream() {
     let c = common::mocktest::client();
     let body = c
         .calling()
-        .stream("call-1", json!({"url": "wss://example.com/audio"}))
+        .stream(
+            "call-1",
+            calling_gen::CallingStreamRequest::new("wss://example.com/audio"),
+        )
         .expect("stream");
     assert!(body.is_object());
     assert!(body.as_object().unwrap().contains_key("id"));
@@ -619,7 +665,10 @@ fn test_calling_stream_stop() {
     let c = common::mocktest::client();
     let body = c
         .calling()
-        .stream_stop("call-1", json!({"control_id": "stream-1"}))
+        .stream_stop(
+            "call-1",
+            calling_gen::CallingStreamStopRequest::new("stream-1"),
+        )
         .expect("stream_stop");
     assert!(body.is_object());
     assert!(body.as_object().unwrap().contains_key("id"));
@@ -647,7 +696,10 @@ fn test_calling_stream_stop() {
 fn test_calling_denoise() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let body = c.calling().denoise("call-1", json!({})).expect("denoise");
+    let body = c
+        .calling()
+        .denoise("call-1", calling_gen::CallingDenoiseRequest::new())
+        .expect("denoise");
     assert!(body.is_object());
     assert!(body.as_object().unwrap().contains_key("id"));
 
@@ -666,7 +718,7 @@ fn test_calling_denoise_stop() {
     let c = common::mocktest::client();
     let body = c
         .calling()
-        .denoise_stop("call-1", json!({"control_id": "dn-1"}))
+        .denoise_stop("call-1", calling_gen::CallingDenoiseStopRequest::new())
         .expect("denoise_stop");
     assert!(body.is_object());
     assert!(body.as_object().unwrap().contains_key("id"));
@@ -678,11 +730,16 @@ fn test_calling_denoise_stop() {
         Some("calling.denoise.stop")
     );
     assert_eq!(body_obj.get("id").and_then(Value::as_str), Some("call-1"));
-    assert_eq!(
-        params_from_body(body_obj)
-            .get("control_id")
-            .and_then(Value::as_str),
-        Some("dn-1")
+    // denoise_stop takes NO command params (spec CallDenoiseStopRequest.params is
+    // empty; the Python oracle's denoise_stop is `(call_id, *, extras)` with an
+    // empty `params: {}` — see calling_resources_generated.py:662). The prior
+    // assertion of `params.control_id == "dn-1"` was a hand-test defect: Python's
+    // own test_denoise_stop asserts only command + id and sends no control_id
+    // (#33). control_id is required only on the *pause/resume/stop/volume* media
+    // commands (play_stop/record_pause/…), never on denoise_stop.
+    assert!(
+        params_from_body(body_obj).get("control_id").is_none(),
+        "denoise_stop must not send a control_id (parity with the Python oracle)"
     );
 }
 
@@ -698,7 +755,9 @@ fn test_calling_transcribe() {
         .calling()
         .transcribe(
             "call-1",
-            json!({"language": "en-US", "transcribe": {"engine": "google"}}),
+            calling_gen::CallingTranscribeRequest::new()
+                .extra("language", json!("en-US"))
+                .extra("transcribe", json!({"engine": "google"})),
         )
         .expect("transcribe");
     assert!(body.is_object());
@@ -725,7 +784,10 @@ fn test_calling_transcribe_stop() {
     let c = common::mocktest::client();
     let body = c
         .calling()
-        .transcribe_stop("call-1", json!({"control_id": "tr-1"}))
+        .transcribe_stop(
+            "call-1",
+            calling_gen::CallingTranscribeStopRequest::new("tr-1"),
+        )
         .expect("transcribe_stop");
     assert!(body.is_object());
     assert!(body.as_object().unwrap().contains_key("id"));
@@ -753,7 +815,10 @@ fn test_calling_transcribe_stop() {
 fn test_calling_ai_hold() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let body = c.calling().ai_hold("call-1", json!({})).expect("ai_hold");
+    let body = c
+        .calling()
+        .ai_hold("call-1", calling_gen::CallingAiHoldRequest::new())
+        .expect("ai_hold");
     assert!(body.is_object());
     assert!(body.as_object().unwrap().contains_key("id"));
 
@@ -772,7 +837,7 @@ fn test_calling_ai_unhold() {
     let c = common::mocktest::client();
     let body = c
         .calling()
-        .ai_unhold("call-1", json!({}))
+        .ai_unhold("call-1", calling_gen::CallingAiUnholdRequest::new())
         .expect("ai_unhold");
     assert!(body.is_object());
     assert!(body.as_object().unwrap().contains_key("id"));
@@ -790,7 +855,12 @@ fn test_calling_ai_unhold() {
 fn test_calling_ai_stop() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let body = c.calling().ai_stop("call-1", json!({})).expect("ai_stop");
+    // ai_stop now requires a control_id in the generated request; the original
+    // test sent an empty body and asserts only command + id, so pass "".
+    let body = c
+        .calling()
+        .ai_stop("call-1", calling_gen::CallingAiStopRequest::new(""))
+        .expect("ai_stop");
     assert!(body.is_object());
     assert!(body.as_object().unwrap().contains_key("id"));
 
@@ -813,7 +883,10 @@ fn test_calling_live_transcribe() {
     let c = common::mocktest::client();
     let body = c
         .calling()
-        .live_transcribe("call-1", json!({"language": "en-US"}))
+        .live_transcribe(
+            "call-1",
+            calling_gen::CallingLiveTranscribeRequest::new(json!({"language": "en-US"})),
+        )
         .expect("live_transcribe");
     assert!(body.is_object());
     assert!(body.as_object().unwrap().contains_key("id"));
@@ -825,10 +898,13 @@ fn test_calling_live_transcribe() {
         Some("calling.live_transcribe")
     );
     assert_eq!(body_obj.get("id").and_then(Value::as_str), Some("call-1"));
+    // New generated API wraps the payload under the required `action` param.
+    let action = params_from_body(body_obj)
+        .get("action")
+        .and_then(Value::as_object)
+        .expect("action sub-object");
     assert_eq!(
-        params_from_body(body_obj)
-            .get("language")
-            .and_then(Value::as_str),
+        action.get("language").and_then(Value::as_str),
         Some("en-US")
     );
 }
@@ -841,7 +917,9 @@ fn test_calling_live_translate() {
         .calling()
         .live_translate(
             "call-1",
-            json!({"source_language": "en", "target_language": "es"}),
+            calling_gen::CallingLiveTranslateRequest::new(
+                json!({"source_language": "en", "target_language": "es"}),
+            ),
         )
         .expect("live_translate");
     assert!(body.is_object());
@@ -854,13 +932,17 @@ fn test_calling_live_translate() {
         Some("calling.live_translate")
     );
     assert_eq!(body_obj.get("id").and_then(Value::as_str), Some("call-1"));
-    let params = params_from_body(body_obj);
+    // New generated API wraps the payload under the required `action` param.
+    let action = params_from_body(body_obj)
+        .get("action")
+        .and_then(Value::as_object)
+        .expect("action sub-object");
     assert_eq!(
-        params.get("source_language").and_then(Value::as_str),
+        action.get("source_language").and_then(Value::as_str),
         Some("en")
     );
     assert_eq!(
-        params.get("target_language").and_then(Value::as_str),
+        action.get("target_language").and_then(Value::as_str),
         Some("es")
     );
 }
@@ -875,7 +957,7 @@ fn test_calling_send_fax_stop() {
     let c = common::mocktest::client();
     let body = c
         .calling()
-        .send_fax_stop("call-1", json!({}))
+        .send_fax_stop("call-1", calling_gen::CallingSendFaxStopRequest::new(""))
         .expect("send_fax_stop");
     assert!(body.is_object());
     assert!(body.as_object().unwrap().contains_key("id"));
@@ -895,7 +977,7 @@ fn test_calling_receive_fax_stop() {
     let c = common::mocktest::client();
     let body = c
         .calling()
-        .receive_fax_stop("call-1", json!({}))
+        .receive_fax_stop("call-1", calling_gen::CallingReceiveFaxStopRequest::new(""))
         .expect("receive_fax_stop");
     assert!(body.is_object());
     assert!(body.as_object().unwrap().contains_key("id"));
@@ -919,7 +1001,10 @@ fn test_calling_refer() {
     let c = common::mocktest::client();
     let body = c
         .calling()
-        .refer("call-1", json!({"to": "sip:other@example.com"}))
+        .refer(
+            "call-1",
+            calling_gen::CallingReferRequest::new(json!({"to": "sip:other@example.com"})),
+        )
         .expect("refer");
     assert!(body.is_object());
     assert!(body.as_object().unwrap().contains_key("id"));
@@ -931,8 +1016,13 @@ fn test_calling_refer() {
         Some("calling.refer")
     );
     assert_eq!(body_obj.get("id").and_then(Value::as_str), Some("call-1"));
+    // New generated API wraps the payload under the required `device` param.
+    let device = params_from_body(body_obj)
+        .get("device")
+        .and_then(Value::as_object)
+        .expect("device sub-object");
     assert_eq!(
-        params_from_body(body_obj).get("to").and_then(Value::as_str),
+        device.get("to").and_then(Value::as_str),
         Some("sip:other@example.com")
     );
 }
@@ -945,7 +1035,9 @@ fn test_calling_user_event() {
         .calling()
         .user_event(
             "call-1",
-            json!({"event_name": "my-event", "payload": {"foo": "bar"}}),
+            calling_gen::CallingUserEventRequest::new(
+                json!({"event_name": "my-event", "payload": {"foo": "bar"}}),
+            ),
         )
         .expect("user_event");
     assert!(body.is_object());
@@ -958,12 +1050,16 @@ fn test_calling_user_event() {
         Some("calling.user_event")
     );
     assert_eq!(body_obj.get("id").and_then(Value::as_str), Some("call-1"));
-    let params = params_from_body(body_obj);
+    // New generated API wraps the payload under the required `event` param.
+    let event = params_from_body(body_obj)
+        .get("event")
+        .and_then(Value::as_object)
+        .expect("event sub-object");
     assert_eq!(
-        params.get("event_name").and_then(Value::as_str),
+        event.get("event_name").and_then(Value::as_str),
         Some("my-event")
     );
-    let payload = params
+    let payload = event
         .get("payload")
         .and_then(Value::as_object)
         .expect("payload object");

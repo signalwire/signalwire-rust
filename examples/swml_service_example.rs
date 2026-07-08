@@ -18,19 +18,19 @@ fn main() {
 
     // Build a complex SWML document
     service.document_mut().reset();
-    service.add_verb("answer", "main", json!({}));
+    service.add_verb_to_section("main", "answer", json!({}));
 
     // Welcome message
-    service.add_verb(
-        "play",
+    service.add_verb_to_section(
         "main",
+        "play",
         json!({
             "url": "say:Welcome to the SWML service demo."
         }),
     );
 
     // Collect DTMF input
-    service.add_verb("prompt", "main", json!({
+    service.add_verb_to_section("main", "prompt", json!({
         "play": "say:Press 1 to hear music. Press 2 to record a message. Press 3 to be transferred.",
         "max_digits": 1,
         "terminators": "#",
@@ -38,9 +38,9 @@ fn main() {
     }));
 
     // Set a variable
-    service.add_verb(
-        "set",
+    service.add_verb_to_section(
         "main",
+        "set",
         json!({
             "call_status": "active",
             "menu_selection": "pending"
@@ -48,15 +48,15 @@ fn main() {
     );
 
     // Conditional routing would happen on the platform side via switch verb
-    service.add_verb(
-        "play",
+    service.add_verb_to_section(
         "main",
+        "play",
         json!({
             "url": "say:Thank you for using the SWML service demo."
         }),
     );
 
-    service.add_verb("hangup", "main", json!({}));
+    service.add_verb_to_section("main", "hangup", json!({}));
 
     // Render and display
     let doc = service.render_pretty();

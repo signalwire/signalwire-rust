@@ -499,6 +499,28 @@ pub fn begin() -> TestGuard {
 // Server lifecycle
 // ---------------------------------------------------------------------------
 
+/// Bind an ephemeral loopback port, read the OS-assigned number, and release
+/// it — the standard "pick a free port" dance. The port is momentarily free
+/// after the listener drops; the mock re-binds it immediately after. Two
+/// independent calls yield two independent free ports (WS + HTTP).
+///
+/// Returns `None` only if the OS refuses an ephemeral bind (never in practice),
+/// in which case the caller falls back to the fixed slot default.
+fn pick_free_port() -> Option<u16> {
+    std::net::TcpListener::bind("127.0.0.1:0")
+        .ok()
+        .and_then(|l| l.local_addr().ok())
+        .map(|a| a.port())
+}
+
+/// Resolve the WS port. `MOCK_RELAY_PORT` (the load-bearing escape hatch) wins
+/// so a gate can pre-spawn ONE shared mock and point every test binary at it.
+/// When unset, pick a FREE ephemeral port per test binary — never the fixed
+/// `DEFAULT_WS_PORT`. Under `cargo test --tests`, each mock-backed suite is a
+/// SEPARATE process running in parallel; a hardcoded port would have every
+/// binary race to bind the same 8781, the losers' mock dying on bind and their
+/// tests failing with "Unable to connect". Free-port-per-binary removes the
+/// collision (CLAUDE.md: always pick a free mock port, never a hardcoded one).
 fn resolve_ws_port() -> u16 {
     if let Ok(raw) = std::env::var("MOCK_RELAY_PORT")
         && let Ok(p) = raw.parse::<u16>()
@@ -506,18 +528,22 @@ fn resolve_ws_port() -> u16 {
     {
         return p;
     }
-    DEFAULT_WS_PORT
+    pick_free_port().unwrap_or(DEFAULT_WS_PORT)
 }
 
-fn resolve_http_port(ws_port: u16) -> u16 {
+/// Resolve the HTTP control-plane port. `MOCK_RELAY_HTTP_PORT` wins (the escape
+/// hatch — RELAY needs WS + HTTP as two INDEPENDENT ports, so the shared-mock
+/// gate exports both). When unset, pick a SECOND independent free ephemeral
+/// port — NOT `ws_port + 1000`, which could itself already be taken by another
+/// binary's WS mock and reintroduce the very collision we're removing.
+fn resolve_http_port(_ws_port: u16) -> u16 {
     if let Ok(raw) = std::env::var("MOCK_RELAY_HTTP_PORT")
         && let Ok(p) = raw.parse::<u16>()
         && p != 0
     {
         return p;
     }
-    // Default convention: WS_PORT + 1000.
-    ws_port.saturating_add(1000)
+    pick_free_port().unwrap_or(DEFAULT_HTTP_PORT)
 }
 
 fn ensure_server() -> Result<HarnessHandle, String> {

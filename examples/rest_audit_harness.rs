@@ -16,11 +16,8 @@
 //! error.
 //!
 //! Operations supported by this harness:
-//!   - `calling.list_calls`           GET  /api/laml/2010-04-01/Accounts/{proj}/Calls.json
-//!   - `messaging.send`               POST /api/laml/2010-04-01/Accounts/{proj}/Messages.json
 //!   - `phone_numbers.list`           GET  `/api/relay/rest/phone_numbers`
 //!   - `fabric.subscribers.list`      GET  /api/fabric/resources/subscribers
-//!   - `compatibility.calls.list`     GET  /api/laml/2010-04-01/Accounts/{proj}/Calls.json
 
 use serde_json::Value;
 use signalwire::rest::RestClient;
@@ -58,42 +55,6 @@ fn main() {
 
 fn dispatch(client: &RestClient, op: &str, args: &Value) -> Result<Value, String> {
     match op {
-        "calling.list_calls" => {
-            // The compat namespace handles Twilio-style LAML /Accounts/{proj}/Calls.
-            // The audit's expected_path_substring is `/api/laml/2010-04-01/Accounts`.
-            let path = format!(
-                "/api/laml/2010-04-01/Accounts/{}/Calls.json",
-                client.project_id()
-            );
-            let params = args_to_string_map(args);
-            client
-                .http()
-                .get(&path, &params)
-                .map_err(|e| format!("{}: {}", op, e.message()))
-        }
-        "compatibility.calls.list" => {
-            let path = format!(
-                "/api/laml/2010-04-01/Accounts/{}/Calls.json",
-                client.project_id()
-            );
-            let params = args_to_string_map(args);
-            client
-                .http()
-                .get(&path, &params)
-                .map_err(|e| format!("{}: {}", op, e.message()))
-        }
-        "messaging.send" => {
-            // POST /Accounts/{proj}/Messages.json — audit expects path
-            // substring `Messages`.
-            let path = format!(
-                "/api/laml/2010-04-01/Accounts/{}/Messages.json",
-                client.project_id()
-            );
-            client
-                .http()
-                .post(&path, args)
-                .map_err(|e| format!("{}: {}", op, e.message()))
-        }
         "phone_numbers.list" => {
             let params = args_to_string_map(args);
             client
@@ -102,13 +63,13 @@ fn dispatch(client: &RestClient, op: &str, args: &Value) -> Result<Value, String
                 .map_err(|e| format!("{}: {}", op, e.message()))
         }
         "fabric.subscribers.list" => {
-            // fabric namespaces' list() take &Value (richer params); pass the raw
-            // args Value directly. (crud-based namespaces like phone_numbers take a
-            // &HashMap<String,String>, hence args_to_string_map there.)
+            // The generated Fabric resources take a &HashMap<String,String> query
+            // map (like every generated list()), so convert the args Value.
+            let params = args_to_string_map(args);
             client
                 .fabric()
                 .subscribers()
-                .list(args)
+                .list(&params)
                 .map_err(|e| format!("{}: {}", op, e.message()))
         }
         other => Err(format!(

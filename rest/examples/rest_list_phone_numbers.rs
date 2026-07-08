@@ -3,24 +3,26 @@
 //
 //! List all phone numbers in your SignalWire project.
 //!
-//! Environment: SIGNALWIRE_PROJECT_ID, SIGNALWIRE_API_TOKEN, SIGNALWIRE_SPACE
+//! The REST client is synchronous — methods make blocking HTTP calls and
+//! return `Result<Value, SignalWireRestError>`. `list` takes a
+//! `&HashMap<String, String>` of query params.
+//!
+//! Environment: `SIGNALWIRE_PROJECT_ID`, `SIGNALWIRE_API_TOKEN`, `SIGNALWIRE_SPACE`
 
 use signalwire::rest::RestClient;
+use std::collections::HashMap;
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     let client = RestClient::from_env()?;
 
-    let numbers = client.phone_numbers().list(&[]).await?;
+    let numbers = client.phone_numbers().list(&HashMap::new())?;
 
     if let Some(arr) = numbers.as_array() {
         println!("Phone numbers ({}):", arr.len());
         for n in arr {
             println!(
                 "  {} - {} ({})",
-                n["phone_number"],
-                n["friendly_name"],
-                n["capabilities"]
+                n["phone_number"], n["name"], n["capabilities"]
             );
         }
     } else {

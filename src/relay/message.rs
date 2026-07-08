@@ -221,6 +221,40 @@ impl Message {
         self.result.lock().unwrap().clone()
     }
 
+    /// Block until the message reaches a terminal state (delivered,
+    /// undelivered, failed, …), then return its resolved result.
+    ///
+    /// Mirrors Python's `Message.wait`. Python's coroutine awaits a Future
+    /// that resolves to the terminal `RelayEvent`; the Rust `Message` is a
+    /// synchronous tracking handle, so `wait` blocks the calling thread
+    /// until `dispatch_event` observes a terminal state (which resolves the
+    /// message) and yields the resolved `result()`. Pass `Some(timeout)` to
+    /// bound the wait; `None` blocks indefinitely.
+    ///
+    /// Returns `Some(result)` once resolved, or `None` if `timeout`
+    /// elapsed first (use `is_done()` to disambiguate a timeout from a
+    /// message resolved with an empty result). Unlike `on_completed`,
+    /// `wait` does not consume or replace a registered completion callback.
+    ///
+    /// # Panics
+    /// Panics if an internal mutex is poisoned (i.e. another thread panicked
+    /// while holding the lock). This does not occur under normal operation.
+    #[must_use]
+    pub fn wait(&self, timeout: Option<std::time::Duration>) -> Option<Value> {
+        let deadline = timeout.map(|d| std::time::Instant::now() + d);
+        loop {
+            if self.is_done() {
+                return self.result();
+            }
+            if let Some(dl) = deadline
+                && std::time::Instant::now() >= dl
+            {
+                return None;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(5));
+        }
+    }
+
     // ------------------------------------------------------------------
     // Event dispatch
     // ------------------------------------------------------------------
@@ -491,5 +525,36 @@ mod tests {
         let ev = super::super::event::Event::new("messaging.state", params, 1.0);
         m.dispatch_event(&ev);
         assert_eq!(*count.lock().unwrap(), 1);
+    }
+
+    #[test]
+    fn test_wait_returns_immediately_when_done() {
+        let m = Message::new(&json!({}));
+        m.resolve(Some(json!("delivered")));
+        let got = m.wait(Some(std::time::Duration::from_millis(0)));
+        assert_eq!(got, Some(json!("delivered")));
+    }
+
+    #[test]
+    fn test_wait_times_out_when_pending() {
+        let m = Message::new(&json!({}));
+        let got = m.wait(Some(std::time::Duration::from_millis(20)));
+        assert_eq!(got, None);
+        assert!(!m.is_done());
+    }
+
+    #[test]
+    fn test_wait_unblocks_on_terminal_state() {
+        let m = Arc::new(Message::new(&json!({"state": "queued"})));
+        let m2 = m.clone();
+        let handle = std::thread::spawn(move || m2.wait(Some(std::time::Duration::from_secs(2))));
+        std::thread::sleep(std::time::Duration::from_millis(30));
+        let mut params = HashMap::new();
+        params.insert("state".to_string(), json!("delivered"));
+        let ev = super::super::event::Event::new("messaging.state", params, 1.0);
+        m.dispatch_event(&ev);
+        let got = handle.join().unwrap();
+        assert!(got.is_some());
+        assert!(m.is_done());
     }
 }

@@ -2,14 +2,27 @@
 
 ## Overview
 
-Fabric is SignalWire's AI and communication platform. The REST client provides access to 13 Fabric resource types.
+Fabric is SignalWire's AI and communication platform. The REST client provides
+access to the Fabric resource types. The REST client is **synchronous** — every
+method returns `Result<Value, SignalWireRestError>` directly; there is no
+`.await`. `create`/`update` take a `&serde_json::Value` body; `list`/`search`
+take a `&HashMap<String, String>` of query params.
+
+<!-- snippet-setup -->
+```rust
+use signalwire::rest::RestClient;
+use serde_json::json;
+use std::collections::HashMap;
+
+let client = RestClient::new("project-id", "api-token", "example.signalwire.com").unwrap();
+```
 
 ## AI Agents
 
 ### Create an Agent
 
 ```rust
-let agent = client.fabric().ai_agents().create(json!({
+let agent = client.fabric().ai_agents().create(&json!({
     "name": "Support Bot",
     "prompt": {
         "text": "You are a helpful support agent."
@@ -19,7 +32,7 @@ let agent = client.fabric().ai_agents().create(json!({
         "code": "en-US",
         "voice": "inworld.Mark"
     }]
-})).await?;
+})).unwrap();
 
 println!("Agent ID: {}", agent["id"]);
 ```
@@ -27,7 +40,7 @@ println!("Agent ID: {}", agent["id"]);
 ### List Agents
 
 ```rust
-let agents = client.fabric().ai_agents().list(&[]).await?;
+let agents = client.fabric().ai_agents().list(&HashMap::new()).unwrap();
 for a in agents.as_array().unwrap_or(&vec![]) {
     println!("{}: {}", a["id"], a["name"]);
 }
@@ -36,67 +49,63 @@ for a in agents.as_array().unwrap_or(&vec![]) {
 ### Update an Agent
 
 ```rust
-client.fabric().ai_agents().update("agent-id", json!({
+client.fabric().ai_agents().update("agent-id", &json!({
     "prompt": {"text": "Updated prompt."}
-})).await?;
+})).unwrap();
 ```
 
 ### Delete an Agent
 
 ```rust
-client.fabric().ai_agents().delete("agent-id").await?;
+client.fabric().ai_agents().delete("agent-id").unwrap();
 ```
 
 ## Addresses
 
-Addresses map phone numbers, SIP URIs, and agent endpoints to resources.
+Top-level fabric addresses are read-only (`list` / `get`):
 
 ```rust
-// Create an address
-let addr = client.fabric().addresses().create(json!({
-    "name": "Support Line",
-    "type": "phone",
-    "phone_number": "+15551234567",
-    "resource_id": "agent-id"
-})).await?;
-
-// List addresses
-let addrs = client.fabric().addresses().list(&[]).await?;
+let addrs = client.fabric().addresses().list(&HashMap::new()).unwrap();
+for a in addrs.as_array().unwrap_or(&vec![]) {
+    println!("{}", a["id"]);
+}
 ```
 
 ## Subscribers
 
 ```rust
 // Create a subscriber
-let sub = client.fabric().subscribers().create(json!({
+let sub = client.fabric().subscribers().create(&json!({
     "email": "user@example.com",
     "first_name": "Alice",
     "last_name": "Smith"
-})).await?;
+})).unwrap();
 
 // List subscribers
-let subs = client.fabric().subscribers().list(&[]).await?;
+let subs = client.fabric().subscribers().list(&HashMap::new()).unwrap();
 ```
 
 ## SIP Endpoints
 
 ```rust
-let endpoint = client.fabric().sip_endpoints().create(json!({
+let endpoint = client.fabric().sip_endpoints().create(&json!({
     "username": "alice",
     "password": "secure-password",
     "caller_id": "+15551234567"
-})).await?;
+})).unwrap();
 ```
 
 ## Tokens
 
-Generate authentication tokens for client-side applications:
+Fabric tokens use dedicated request-builder methods (there is no generic
+`create`). Generate a subscriber token from the subscriber's reference:
 
 ```rust
-let token = client.fabric().tokens().create(json!({
-    "subscriber_id": "sub-id",
-    "expires_in": 3600,
-})).await?;
+use signalwire::rest::namespaces::generated::fabric_resources_generated::FabricTokensCreateSubscriberTokenRequest;
+
+let token = client.fabric().tokens().create_subscriber_token(
+    FabricTokensCreateSubscriberTokenRequest::new("subscriber-reference").expire_at(3600),
+).unwrap();
 
 println!("Token: {}", token["token"]);
 ```

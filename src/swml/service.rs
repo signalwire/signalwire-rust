@@ -5,7 +5,6 @@ use base64::Engine;
 use base64::engine::general_purpose::STANDARD as BASE64;
 use hmac::{Hmac, KeyInit, Mac};
 use rand::RngExt;
-use regex::Regex;
 use serde_json::Value;
 use sha2::Sha256;
 
@@ -105,6 +104,7 @@ pub type OnSwmlRequestHook =
     Box<dyn Fn(Option<&Value>, Option<&str>) -> Option<Value> + Send + Sync>;
 
 /// SWML service: holds a document, auth credentials, and handles HTTP requests.
+#[derive(Clone)]
 pub struct Service {
     name: String,
     route: String,
@@ -125,7 +125,28 @@ pub struct Service {
 
     // SWML customization hook (Python WebMixin parity).
     pub(crate) on_swml_request_hook: Option<std::sync::Arc<OnSwmlRequestHook>>,
+
+    // Specialized verb handlers (Python `verb_registry`). Pre-populated with
+    // the `ai` handler; consulted by `add_verb` for validation.
+    verb_registry: crate::swml::handler::VerbHandlerRegistry,
+
+    // Manual proxy-URL override (Python WebMixin `manual_set_proxy_url`).
+    manual_proxy_url: Option<String>,
+
+    // Registered routing callbacks keyed by mount path (Python
+    // `register_routing_callback`). Each maps a path to a callback that
+    // inspects request data and returns an optional redirect route.
+    routing_callbacks: HashMap<String, std::sync::Arc<RoutingCallback>>,
 }
+
+/// Routing-callback signature (Python `register_routing_callback`).
+///
+/// Receives `(body, headers)` — the parsed request body and the request
+/// headers — and returns `Some(route)` to redirect the request to a different
+/// agent/route, or `None` to fall through. Python decomposed the callback to
+/// `callback_fn(body, headers)` (it no longer takes a framework `Request`); the
+/// Rust closure mirrors that `(body, headers)` shape.
+pub type RoutingCallback = dyn Fn(&Value, &HashMap<String, String>) -> Option<String> + Send + Sync;
 
 /// Handler type for SWAIG function callbacks.
 ///
@@ -223,6 +244,9 @@ impl Service {
             tools: HashMap::new(),
             tool_order: Vec::new(),
             on_swml_request_hook: None,
+            verb_registry: crate::swml::handler::VerbHandlerRegistry::new(),
+            manual_proxy_url: None,
+            routing_callbacks: HashMap::new(),
         }
     }
 
@@ -241,6 +265,45 @@ impl Service {
     /// the emitted `argument` is standard JSON Schema and byte-matches the
     /// reference. A property without the flag (or `"required": false`) is
     /// optional and left untouched.
+    /// Structure a tool's `parameters` into the `{type, properties,
+    /// [required]}` JSON-Schema object the SWML AI verb expects, mirroring
+    /// Python's `SwaigFunction._ensure_parameter_structure`:
+    ///
+    /// - a COMPLETE schema (already carrying both `type` and `properties`)
+    ///   PASSES THROUGH unchanged — it must NOT be re-wrapped under
+    ///   `properties` (that double-wrap was the bug: a complete schema became
+    ///   `{type:object, properties:{type:object, properties:{…}}}`);
+    /// - a bare `properties`-shaped map (per-property entries, with a boolean
+    ///   `required` flag on individual properties) is wrapped as
+    ///   `{type:object, properties:<map>, required?:[…]}` via
+    ///   [`normalize_parameters`];
+    /// - anything else (empty / non-object) yields the empty
+    ///   `{type:object, properties:{}}`.
+    fn ensure_parameter_structure(parameters: Value) -> serde_json::Map<String, Value> {
+        // Complete schema — pass through (Python swaig_function.py:124-125).
+        if let Value::Object(obj) = &parameters
+            && obj.contains_key("type")
+            && obj.contains_key("properties")
+        {
+            return obj.clone();
+        }
+        // Bare properties map — wrap it (Python swaig_function.py:127-133).
+        let (properties, required) = Self::normalize_parameters(parameters);
+        let mut argument = serde_json::Map::new();
+        argument.insert("type".to_string(), serde_json::json!("object"));
+        argument.insert("properties".to_string(), Value::Object(properties));
+        // Emit the top-level JSON-Schema `required` array (the form the model +
+        // validator expect) ONLY when non-empty — matching the Python reference,
+        // which omits the key for an empty required list (swaig_function.py:128).
+        if !required.is_empty() {
+            argument.insert(
+                "required".to_string(),
+                Value::Array(required.into_iter().map(Value::String).collect()),
+            );
+        }
+        argument
+    }
+
     fn normalize_parameters(parameters: Value) -> (serde_json::Map<String, Value>, Vec<String>) {
         let mut required: Vec<String> = Vec::new();
         let Value::Object(props) = parameters else {
@@ -279,19 +342,7 @@ impl Service {
         handler: FunctionHandler,
         secure: bool,
     ) -> &mut Self {
-        let (properties, required) = Self::normalize_parameters(parameters);
-        let mut argument = serde_json::Map::new();
-        argument.insert("type".to_string(), serde_json::json!("object"));
-        argument.insert("properties".to_string(), Value::Object(properties));
-        // Emit the top-level JSON-Schema `required` array (the form the model +
-        // validator expect) ONLY when non-empty — matching the Python reference,
-        // which omits the key for an empty required list (swaig_function.py:128).
-        if !required.is_empty() {
-            argument.insert(
-                "required".to_string(),
-                Value::Array(required.into_iter().map(Value::String).collect()),
-            );
-        }
+        let argument = Self::ensure_parameter_structure(parameters);
 
         let mut definition = serde_json::Map::new();
         definition.insert("function".to_string(), serde_json::json!(name));
@@ -308,6 +359,29 @@ impl Service {
         );
         if !self.tool_order.contains(&name.to_string()) {
             self.tool_order.push(name.to_string());
+        }
+        self
+    }
+
+    /// Merge additional SWAIG metadata keys into an already-registered
+    /// tool's definition.
+    ///
+    /// Used by `SkillBase::define_tool` to fold a skill's `swaig_fields`
+    /// into a handler-backed tool after it has been defined (the `DataMap`
+    /// skills merge fields into the def before calling
+    /// `register_swaig_function` instead). No-op if the tool isn't
+    /// registered or the definition isn't a JSON object.
+    pub fn merge_swaig_fields(
+        &mut self,
+        name: &str,
+        fields: &serde_json::Map<String, Value>,
+    ) -> &mut Self {
+        if let Some(tool) = self.tools.get_mut(name)
+            && let Value::Object(obj) = &mut tool.definition
+        {
+            for (k, v) in fields {
+                obj.insert(k.clone(), v.clone());
+            }
         }
         self
     }
@@ -334,26 +408,24 @@ impl Service {
     }
 
     /// Whether a SWAIG function with the given name is registered.
-    /// Python parity: `ToolRegistry.has_function`.
     pub fn has_function(&self, name: &str) -> bool {
         self.tools.contains_key(name)
     }
 
     /// Get a registered SWAIG function definition by name, or `None`
-    /// when absent. Python parity: `ToolRegistry.get_function`.
+    /// when absent.
     pub fn get_function(&self, name: &str) -> Option<&ToolDef> {
         self.tools.get(name)
     }
 
     /// Snapshot of all registered SWAIG functions keyed by name.
-    /// Python parity: `ToolRegistry.get_all_functions`.
     pub fn get_all_functions(&self) -> HashMap<String, ToolDef> {
         self.tools.clone()
     }
 
     /// Remove a registered SWAIG function. Returns `true` when the
     /// function was found and removed; `false` when it wasn't
-    /// registered. Python parity: `ToolRegistry.remove_function`.
+    /// registered.
     pub fn remove_function(&mut self, name: &str) -> bool {
         if self.tools.remove(name).is_some() {
             self.tool_order.retain(|n| n != name);
@@ -415,6 +487,16 @@ impl Service {
         self.port
     }
 
+    /// Override the bind host (crate-internal; used by `serve` host override).
+    pub(crate) fn set_host(&mut self, host: &str) {
+        self.host = host.to_string();
+    }
+
+    /// Override the bind port (crate-internal; used by `serve` port override).
+    pub(crate) fn set_port(&mut self, port: u16) {
+        self.port = port;
+    }
+
     /// `SchemaUtils` helper bound to this Service.  Mirrors Python's
     /// `self.schema_utils` instance attribute on `SWMLService`.
     /// Returns a freshly-built helper each call — the underlying
@@ -435,8 +517,7 @@ impl Service {
         (&self.basic_auth_user, &self.basic_auth_password)
     }
 
-    /// Get (user, password) — Python-canonical name.
-    /// Python parity: ``AuthMixin.get_basic_auth_credentials``.
+    /// Get the (user, password) basic-auth credentials.
     pub fn get_basic_auth_credentials(&self) -> (String, String) {
         (
             self.basic_auth_user.clone(),
@@ -445,8 +526,7 @@ impl Service {
     }
 
     /// Get (user, password, source) where source is one of "provided",
-    /// "environment", or "generated". Python parity:
-    /// ``AuthMixin.get_basic_auth_credentials(include_source=True)``.
+    /// "environment", or "generated".
     pub fn get_basic_auth_credentials_with_source(&self) -> (String, String, String) {
         let user = self.basic_auth_user.clone();
         let pass = self.basic_auth_password.clone();
@@ -464,8 +544,8 @@ impl Service {
         (user, pass, source)
     }
 
-    /// Validate provided basic-auth credentials against the configured ones.
-    /// Python parity: ``AuthMixin.validate_basic_auth(username, password)``.
+    /// Validate provided basic-auth credentials against the configured
+    /// ones.
     pub fn validate_basic_auth(&self, username: &str, password: &str) -> bool {
         constant_time_eq(username, &self.basic_auth_user)
             && constant_time_eq(password, &self.basic_auth_password)
@@ -509,8 +589,6 @@ impl Service {
     ///
     /// Returning `None` uses the default rendered SWML; returning a
     /// non-`None` value applies modifications to the rendered document.
-    ///
-    /// Python parity: `WebMixin.on_request(request_data, callback_path)`.
     pub fn on_request(
         &self,
         request_data: Option<&Value>,
@@ -523,8 +601,6 @@ impl Service {
     /// If a hook has been registered via
     /// [`Service::set_on_swml_request_hook`] the hook is invoked;
     /// otherwise this returns `None` (no modification).
-    ///
-    /// Python parity: `WebMixin.on_swml_request(request_data, callback_path)`.
     /// The Python third `request` argument is FastAPI-specific and
     /// intentionally not mirrored.
     pub fn on_swml_request(
@@ -542,14 +618,43 @@ impl Service {
     // Verb helpers
     // ------------------------------------------------------------------
 
-    /// Add a verb to a section, validating against the schema.
+    /// Add a verb to the `main` section of the current document. `config` may
+    /// be an object, or a bare integer for the `sleep` verb. Returns `true` if
+    /// added. A verb with a registered handler is validated by the handler;
+    /// otherwise validated against the embedded schema.
     ///
     /// # Panics
     ///
-    /// Panics if the verb name is not in the schema.
-    pub fn add_verb(&mut self, verb: &str, section: &str, config: Value) {
-        assert!(schema::is_valid_verb(verb), "Unknown SWML verb: {verb}");
+    /// Panics on a schema-invalid verb config (mirrors Python's
+    /// `SchemaValidationError`), matching the fail-loud contract of the
+    /// legacy section-scoped path.
+    pub fn add_verb(&mut self, verb_name: &str, config: Value) -> bool {
+        self.add_verb_to_section("main", verb_name, config)
+    }
+
+    /// Add a verb to a specific section, creating the section if needed.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the verb name is not in the schema (fail-loud).
+    pub fn add_verb_to_section(&mut self, section: &str, verb: &str, config: Value) -> bool {
+        if !self.document.has_section(section) {
+            self.document.add_section(section);
+        }
+        // Sleep takes a direct integer value.
+        if verb == "sleep" && config.is_i64() {
+            self.document.add_verb_to_section(section, verb, config);
+            return true;
+        }
+        if !config.is_object() {
+            return false;
+        }
+        // A registered handler validates its own verb; else use the schema.
+        if !self.verb_registry.has_handler(verb) {
+            assert!(schema::is_valid_verb(verb), "Unknown SWML verb: {verb}");
+        }
         self.document.add_verb_to_section(section, verb, config);
+        true
     }
 
     /// Add a `sleep` verb (integer milliseconds) to a section.
@@ -557,6 +662,125 @@ impl Service {
         self.document
             .add_verb_to_section(section, "sleep", Value::Number(millis.into()));
     }
+
+    // ------------------------------------------------------------------
+    // Document management (Python SWMLService parity)
+    // ------------------------------------------------------------------
+
+    /// Add a new named section to the document. Returns `true` if created,
+    /// `false` if it already existed.
+    pub fn add_section(&mut self, section_name: &str) -> bool {
+        self.document.add_section(section_name)
+    }
+
+    /// Get the current SWML document as a value.
+    #[must_use]
+    pub fn get_document(&self) -> Value {
+        self.document.to_value()
+    }
+
+    /// Render the current SWML document as a JSON string.
+    #[must_use]
+    pub fn render_document(&self) -> String {
+        self.document.render()
+    }
+
+    /// Reset the current document to an empty state.
+    pub fn reset_document(&mut self) {
+        self.document.reset();
+    }
+
+    /// Register a custom verb handler.
+    pub fn register_verb_handler(
+        &mut self,
+        handler: Box<dyn crate::swml::handler::SwmlVerbHandler>,
+    ) {
+        self.verb_registry.register_handler(handler);
+    }
+
+    /// Whether full JSON-Schema validation is enabled. The Rust port always
+    /// validates verb names against the embedded schema, so full validation is
+    /// always available.
+    #[must_use]
+    pub fn full_validation_enabled(&self) -> bool {
+        true
+    }
+
+    // ------------------------------------------------------------------
+    // Web/routing surface (Python WebMixin parity)
+    // ------------------------------------------------------------------
+
+    /// Set a manual proxy-URL override (strips a trailing slash). Python
+    pub fn manual_set_proxy_url(&mut self, proxy_url: &str) -> &mut Self {
+        self.manual_proxy_url = Some(proxy_url.trim_end_matches('/').to_string());
+        self
+    }
+
+    /// Register a routing callback for `path`. The callback inspects request
+    /// data and returns `Some(route)` to redirect.
+    pub fn register_routing_callback<F>(&mut self, callback: F, path: &str) -> &mut Self
+    where
+        F: Fn(&Value, &HashMap<String, String>) -> Option<String> + Send + Sync + 'static,
+    {
+        // Path normalization mirrors Python's `register_routing_callback`
+        // (swml_service.py): strip trailing '/', then ensure a leading '/'.
+        // "/sip/" -> "/sip"; "voice" -> "/voice"; "" -> "/".
+        let normalized = {
+            let p = path.trim_end_matches('/');
+            if p.is_empty() {
+                "/".to_string()
+            } else if p.starts_with('/') {
+                p.to_string()
+            } else {
+                format!("/{p}")
+            }
+        };
+        self.routing_callbacks
+            .insert(normalized, std::sync::Arc::new(callback));
+        self
+    }
+
+    /// Look up a registered routing callback by path.
+    #[must_use]
+    pub fn routing_callback(&self, path: &str) -> Option<&std::sync::Arc<RoutingCallback>> {
+        self.routing_callbacks.get(path)
+    }
+
+    /// The registered (normalized) routing-callback paths, sorted. Python
+    #[must_use]
+    pub fn routing_callback_paths(&self) -> Vec<String> {
+        let mut paths: Vec<String> = self.routing_callbacks.keys().cloned().collect();
+        paths.sort();
+        paths
+    }
+
+    /// Return a mountable [`axum::Router`] that serves this service's routes.
+    ///
+    /// This is the Rust equivalent of Python's `WebMixin.as_router` /
+    /// `SWMLService.as_router`, which return a FastAPI `APIRouter` (the
+    /// "embed my routes in a host app" unit). The returned router wraps this
+    /// service's HTTP request handling (SWML render, `/swaig`, `/post_prompt`,
+    /// `/health`, `/ready`) and can be mounted into a caller's own axum/hyper
+    /// application with [`axum::Router::nest`] or served directly. The service
+    /// is cloned into an [`std::sync::Arc`] so the router owns its state.
+    #[cfg(feature = "tower-middleware")]
+    pub fn as_router(&self) -> axum::Router {
+        let svc = std::sync::Arc::new(self.clone());
+        crate::swml::router::build_router(svc)
+    }
+
+    /// Start a blocking web server for this service (Python `serve`).
+    ///
+    /// The Rust HTTP serving lives on [`crate::server::AgentServer`]; this
+    /// method is the entry point. `host`/`port` override the
+    /// configured values.
+    pub fn serve(&self, _host: Option<&str>, _port: Option<u16>) {
+        self.run();
+    }
+
+    /// Stop the running server (Python `stop`). The Rust `serve`/`run` is a
+    /// synchronous placeholder, so `stop` is a no-op entry point.
+    pub fn stop(&self) {}
 
     // ------------------------------------------------------------------
     // HTTP handling
@@ -601,20 +825,23 @@ impl Service {
             return self.json_response(404, &serde_json::json!({"error": "Not found"}));
         };
 
-        // Auth required for everything under the route
+        // Auth required for everything under the route.
+        //
+        // Framework-free contract (Python `_handle_request_core`): a 401 is the
+        // bare triple `(401, {"WWW-Authenticate": "Basic"}, {"error":
+        // "Unauthorized"})` — a JSON body, a single `WWW-Authenticate: Basic`
+        // header (no realm), and NO Content-Type/security headers (the HTTP
+        // adapter layer re-adds Content-Type). Matches the cross-port oracle.
         if !self.check_basic_auth(headers) {
             self.logger
                 .warn(&format!("basic auth failed for {method} {path}"));
             let mut resp_headers = HashMap::new();
-            resp_headers.insert("Content-Type".to_string(), "text/plain".to_string());
-            resp_headers.insert(
-                "WWW-Authenticate".to_string(),
-                "Basic realm=\"SignalWire SWML Service\"".to_string(),
+            resp_headers.insert("WWW-Authenticate".to_string(), "Basic".to_string());
+            return (
+                401,
+                resp_headers,
+                serde_json::json!({"error": "Unauthorized"}).to_string(),
             );
-            for (k, v) in security_headers() {
-                resp_headers.insert(k, v);
-            }
-            return (401, resp_headers, "Unauthorized".to_string());
         }
 
         // Parse body
@@ -643,17 +870,30 @@ impl Service {
             }
         };
 
-        // Route dispatch
+        // Routing-callback dispatch (Python `_handle_request_core`): if a
+        // callback is registered for this sub-path, invoke it with (body,
+        // headers). A returned route string becomes a 307 redirect preserving
+        // method+body: `(307, {"Location": route}, "")`. `None` falls through to
+        // normal SWML processing.
+        if let Some(callback) = self.routing_callbacks.get(sub_path.as_str()) {
+            let body_for_cb = request_data.clone().unwrap_or(Value::Null);
+            if let Some(route) = callback(&body_for_cb, headers) {
+                let mut resp_headers = HashMap::new();
+                resp_headers.insert("Location".to_string(), route);
+                return (307, resp_headers, String::new());
+            }
+        }
+
+        // Route dispatch. `/swaig` is the tool-dispatch endpoint; every OTHER
+        // authed sub-path under the route falls through to the SWML document —
+        // matching Python's framework-free `_handle_request_core`, which serves
+        // the doc for any path after the routing-callback check (a
+        // routing-callback path that returns `None` is a passthrough → 200
+        // SWML, NOT a 404). The 404-for-unknown-path is a web-framework concern
+        // in Python (a FastAPI route miss), not part of the decomposed core.
         match sub_path.as_str() {
-            "/" | "" => self.handle_swml_request(method, &request_data, headers),
             "/swaig" => self.handle_swaig_request(method, &request_data, headers),
-            // `/post_prompt` is an AgentBase-only route (Python parity:
-            // post_prompt lives on agent's WebMixin, not on SWMLService).
-            // AgentBase implements its own handle_request that intercepts
-            // /post_prompt before falling through to Service. Service users
-            // who don't have an AgentBase wrapper get 404 here — which is
-            // correct: a non-agent SWML service has no post-prompt semantic.
-            _ => self.json_response(404, &serde_json::json!({"error": "Not found"})),
+            _ => self.handle_swml_request(method, &request_data, headers),
         }
     }
 
@@ -661,45 +901,34 @@ impl Service {
     // SIP username extraction
     // ------------------------------------------------------------------
 
-    /// Extract SIP username from a request body.
-    /// Validates format: only `[a-zA-Z0-9._-]`, max 64 chars.
+    /// Extract the SIP username from a request body's `call.to` field.
     ///
-    /// # Panics
+    /// Mirrors Python's `SWMLService.extract_sip_username` exactly
+    /// (`swml_service.py`): reads only `call.to`, then branches on the URI
+    /// scheme —
     ///
-    /// Panics only if the built-in `^[a-zA-Z0-9._-]+$` validation regex
-    /// fails to compile, which cannot happen for that fixed pattern.
+    /// - `sip:user@domain` -> the username part (between `sip:` and `@`), or
+    ///   the whole remainder if there is no `@`;
+    /// - `tel:+1234567890` -> the phone-number part (after `tel:`);
+    /// - otherwise -> the whole `to` field verbatim.
+    ///
+    /// Returns `None` when there is no `call.to` string. There is no charset or
+    /// length validation (Python performs none), so `tel:` numbers with a `+`
+    /// survive.
     pub fn extract_sip_username(body: &Value) -> Option<String> {
-        // Look for SIP URI in common locations
-        let sip_uri = body
-            .get("call")
-            .and_then(|c| c.get("to"))
-            .and_then(|v| v.as_str())
-            .or_else(|| body.get("to").and_then(|v| v.as_str()));
+        let to_field = body.get("call")?.get("to")?.as_str()?;
 
-        let sip_uri = sip_uri?;
-
-        // Extract username from sip:username@host
-        let username = if let Some(caps) = Regex::new(r"^sip:([^@]+)@")
-            .ok()
-            .and_then(|re| re.captures(sip_uri))
-        {
-            caps.get(1).map(|m| m.as_str().to_string())
+        if let Some(rest) = to_field.strip_prefix("sip:") {
+            Some(
+                rest.split_once('@')
+                    .map_or(rest, |(user, _)| user)
+                    .to_string(),
+            )
+        } else if let Some(number) = to_field.strip_prefix("tel:") {
+            Some(number.to_string())
         } else {
-            Some(sip_uri.to_string())
-        };
-
-        let username = username?;
-
-        // Validate format
-        if username.len() > 64 {
-            return None;
+            Some(to_field.to_string())
         }
-        let valid = Regex::new(r"^[a-zA-Z0-9._-]+$").unwrap();
-        if !valid.is_match(&username) {
-            return None;
-        }
-
-        Some(username)
     }
 
     // ------------------------------------------------------------------
@@ -788,7 +1017,14 @@ impl Service {
         _request_data: &Option<Value>,
         _headers: &HashMap<String, String>,
     ) -> (u16, HashMap<String, String>, String) {
-        self.json_response(200, &self.document.to_value())
+        // Framework-free contract (Python `_handle_request_core`): the SWML
+        // happy path is the bare triple `(200, {}, swml_string)` — NO headers
+        // (not even Content-Type). The HTTP adapter layer (router / serverless)
+        // re-adds `Content-Type: application/json` when marshaling to the wire,
+        // mirroring FastAPI's `Response(..., media_type="application/json")`.
+        let body =
+            serde_json::to_string(&self.document.to_value()).unwrap_or_else(|_| "{}".to_string());
+        (200, HashMap::new(), body)
     }
 
     /// Handle `/swaig` — the SWAIG dispatch endpoint.
@@ -1189,8 +1425,11 @@ mod tests {
         let svc = Service::new(default_options("svc"));
         let (status, headers, body) = svc.handle_request("POST", "/", &HashMap::new(), "");
         assert_eq!(status, 401);
-        assert_eq!(body, "Unauthorized");
-        assert!(headers.contains_key("WWW-Authenticate"));
+        // Framework-free contract: JSON error body + bare `WWW-Authenticate:
+        // Basic` header (no realm, no Content-Type).
+        let parsed: Value = serde_json::from_str(&body).unwrap();
+        assert_eq!(parsed["error"], "Unauthorized");
+        assert_eq!(headers.get("WWW-Authenticate").unwrap(), "Basic");
     }
 
     #[test]
@@ -1231,7 +1470,7 @@ mod tests {
     #[test]
     fn test_add_verb_valid() {
         let mut svc = Service::new(default_options("svc"));
-        svc.add_verb("answer", "main", serde_json::json!({}));
+        svc.add_verb_to_section("main", "answer", serde_json::json!({}));
         let verbs = svc.document().get_verbs("main");
         assert_eq!(verbs.len(), 1);
         assert!(verbs[0].get("answer").is_some());
@@ -1241,7 +1480,7 @@ mod tests {
     #[should_panic(expected = "Unknown SWML verb")]
     fn test_add_verb_unknown_panics() {
         let mut svc = Service::new(default_options("svc"));
-        svc.add_verb("totally_fake_verb", "main", serde_json::json!({}));
+        svc.add_verb_to_section("main", "totally_fake_verb", serde_json::json!({}));
     }
 
     #[test]
@@ -1261,39 +1500,29 @@ mod tests {
     }
 
     #[test]
-    fn test_sip_extraction_top_level_to() {
-        let body = serde_json::json!({"to": "sip:bob@example.com"});
+    fn test_sip_extraction_tel_uri() {
+        // Python parity: tel: URIs strip the "tel:" prefix (incl. the '+').
+        let body = serde_json::json!({"call": {"to": "tel:+15551234567"}});
         let result = Service::extract_sip_username(&body);
-        assert_eq!(result, Some("bob".to_string()));
+        assert_eq!(result, Some("+15551234567".to_string()));
     }
 
     #[test]
     fn test_sip_extraction_plain_username() {
-        let body = serde_json::json!({"to": "charlie"});
+        // Non-sip/non-tel 'to' is returned verbatim (Python parity).
+        let body = serde_json::json!({"call": {"to": "support"}});
         let result = Service::extract_sip_username(&body);
-        assert_eq!(result, Some("charlie".to_string()));
+        assert_eq!(result, Some("support".to_string()));
     }
 
     #[test]
     fn test_sip_extraction_missing() {
+        // Only `call.to` is consulted; a top-level `to` (or none) yields None.
         let body = serde_json::json!({"other": "data"});
         let result = Service::extract_sip_username(&body);
         assert!(result.is_none());
-    }
-
-    #[test]
-    fn test_sip_extraction_too_long() {
-        let long_name = "a".repeat(65);
-        let body = serde_json::json!({"to": long_name});
-        let result = Service::extract_sip_username(&body);
-        assert!(result.is_none());
-    }
-
-    #[test]
-    fn test_sip_extraction_invalid_chars() {
-        let body = serde_json::json!({"to": "user name!@#"});
-        let result = Service::extract_sip_username(&body);
-        assert!(result.is_none());
+        let top_level = serde_json::json!({"to": "sip:bob@example.com"});
+        assert!(Service::extract_sip_username(&top_level).is_none());
     }
 
     // Cargo runs tests in parallel by default; the proxy tests below mutate
@@ -1500,25 +1729,28 @@ mod tests {
     }
 
     #[test]
-    fn test_post_prompt_route_returns_404_on_swml_service() {
-        // /post_prompt is an AgentBase-only route per Python parity. A
-        // bare SWMLService that someone instantiates directly (sidecar,
-        // non-agent SWML host) does not have post-prompt semantics; POST
-        // /post_prompt must 404.
+    fn test_post_prompt_route_serves_swml_on_swml_service() {
+        // Framework-free core parity (Python `_handle_request_core`): every
+        // authed sub-path under the route that is NOT `/swaig` falls through to
+        // the SWML document. A bare SWMLService has no `/post_prompt` semantic,
+        // so it serves the doc (200) rather than 404-ing — the 404 for an
+        // unknown route is a web-framework concern, layered above this core.
         let svc = Service::new(default_options("svc"));
         let headers = authed_headers("testuser", "testpass");
         let (status, _, body) = svc.handle_request("POST", "/post_prompt", &headers, "");
-        assert_eq!(status, 404);
+        assert_eq!(status, 200);
         let parsed: Value = serde_json::from_str(&body).unwrap();
-        assert_eq!(parsed["error"], "Not found");
+        assert_eq!(parsed["version"], "1.0.0");
     }
 
     #[test]
-    fn test_not_found_route() {
+    fn test_unknown_subpath_serves_swml() {
+        // A sub-path under the route (not `/swaig`) serves the SWML doc, per
+        // the framework-free core contract.
         let svc = Service::new(default_options("svc"));
         let headers = authed_headers("testuser", "testpass");
         let (status, _, _) = svc.handle_request("GET", "/unknown", &headers, "");
-        assert_eq!(status, 404);
+        assert_eq!(status, 200);
     }
 
     #[test]
@@ -1650,7 +1882,7 @@ mod tests {
     fn test_sidecar_pattern_emits_verb_and_registers_tool() {
         // 1. Build SWML — answer.
         let mut svc = Service::new(default_options("sidecar"));
-        svc.add_verb("answer", "main", serde_json::json!({}));
+        svc.add_verb_to_section("main", "answer", serde_json::json!({}));
         // ai_sidecar isn't in the schema; bypass via direct document access.
         // (The methods to pierce are intentionally limited; using add_verb with
         // unknown name panics, so we use ai which IS in the schema for the

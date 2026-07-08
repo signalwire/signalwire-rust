@@ -339,6 +339,24 @@ fn urlencode(s: &str) -> String {
 // Server lifecycle
 // ---------------------------------------------------------------------------
 
+/// Bind an ephemeral loopback port, read the OS-assigned number, and release
+/// it — the standard "pick a free port" dance. The mock re-binds it immediately
+/// after in [`spawn_server`].
+fn pick_free_port() -> Option<u16> {
+    std::net::TcpListener::bind("127.0.0.1:0")
+        .ok()
+        .and_then(|l| l.local_addr().ok())
+        .map(|a| a.port())
+}
+
+/// Resolve the mock port. `MOCK_SIGNALWIRE_PORT` (the load-bearing escape hatch)
+/// wins so a gate can pre-spawn ONE shared mock and point every test binary at
+/// it. When unset, pick a FREE ephemeral port per test binary — never the fixed
+/// `DEFAULT_PORT`. Under `cargo test --tests`, each mock-backed suite is a
+/// SEPARATE process running in parallel; a hardcoded port has every binary race
+/// to bind the same 8771, the losers' mock dying on bind and their tests
+/// failing. Free-port-per-binary removes the collision (CLAUDE.md: always pick a
+/// free mock port, never a hardcoded one).
 fn resolve_port() -> u16 {
     if let Ok(raw) = std::env::var("MOCK_SIGNALWIRE_PORT")
         && let Ok(p) = raw.parse::<u16>()
@@ -346,7 +364,7 @@ fn resolve_port() -> u16 {
     {
         return p;
     }
-    DEFAULT_PORT
+    pick_free_port().unwrap_or(DEFAULT_PORT)
 }
 
 fn ensure_server() -> Result<HarnessHandle, String> {

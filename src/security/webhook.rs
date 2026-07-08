@@ -1,6 +1,6 @@
 //! Webhook signature validation for SignalWire-signed HTTP requests.
 //!
-//! Implements both schemes from `porting-sdk/webhooks.md`:
+//! Implements both webhook-signature schemes:
 //!
 //! - **Scheme A** — RELAY/SWML/JSON: `lowercase_hex(HMAC-SHA1(key, url + raw_body))`
 //! - **Scheme B** — Compat/cXML form: `base64(HMAC-SHA1(key, url + sortedFormParams))`

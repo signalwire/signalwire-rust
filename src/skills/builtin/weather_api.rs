@@ -33,7 +33,10 @@ impl SkillBase for WeatherApi {
         self.sp.get_str("api_key").is_some()
     }
 
-    fn register_tools(&self, agent: &mut AgentBase) {
+    /// Build the DataMap-backed weather tool.
+    ///
+    /// Mirrors Python `WeatherApiSkill.get_tools()`.
+    fn get_tools(&self) -> Vec<Value> {
         let tool_name = self.get_tool_name("get_weather");
         // API key resolution: explicit param > WEATHER_API_KEY env > "".
         let api_key = self
@@ -81,7 +84,7 @@ impl SkillBase for WeatherApi {
             api_key
         );
 
-        let mut func_def = json!({
+        vec![json!({
             "function": tool_name,
             "purpose": "Get current weather information for any location",
             "argument": {
@@ -108,16 +111,19 @@ impl SkillBase for WeatherApi {
                     },
                 }],
             },
-        });
+        })]
+    }
 
+    fn register_tools(&self, agent: &mut AgentBase) {
         let swaig_fields = self.get_swaig_fields();
-        if let Value::Object(ref mut obj) = func_def {
-            for (k, v) in swaig_fields {
-                obj.insert(k, v);
+        for mut func_def in self.get_tools() {
+            if let Value::Object(ref mut obj) = func_def {
+                for (k, v) in &swaig_fields {
+                    obj.insert(k.clone(), v.clone());
+                }
             }
+            agent.register_swaig_function(func_def);
         }
-
-        agent.register_swaig_function(func_def);
     }
 }
 
@@ -129,6 +135,27 @@ mod tests {
     fn test_weather_api_metadata() {
         let skill = WeatherApi::new(Map::new());
         assert_eq!(skill.name(), "weather_api");
+    }
+
+    #[test]
+    fn test_weather_api_get_tools() {
+        let mut params = Map::new();
+        params.insert("api_key".to_string(), json!("wkey"));
+        params.insert("temperature_unit".to_string(), json!("celsius"));
+        let skill = WeatherApi::new(params);
+        let tools = skill.get_tools();
+        assert_eq!(tools.len(), 1);
+        let t = &tools[0];
+        assert_eq!(t["function"], json!("get_weather"));
+        assert!(t["argument"]["properties"]["location"].is_object());
+        // Celsius unit selected -> response references temp_c.
+        let resp = t["data_map"]["webhooks"][0]["output"]["response"]
+            .as_str()
+            .unwrap();
+        assert!(resp.contains("temp_c"));
+        // API key embedded in the query URL.
+        let url = t["data_map"]["webhooks"][0]["url"].as_str().unwrap();
+        assert!(url.contains("key=wkey"));
     }
 
     #[test]

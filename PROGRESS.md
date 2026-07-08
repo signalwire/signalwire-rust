@@ -174,7 +174,6 @@ The purpose of tests, examples, and docs is to **prove** complete implementation
   - [x] PhoneNumbers
   - [x] Datasphere
   - [x] Video
-  - [x] Compat (Twilio LAML)
   - [x] Addresses, Queues, Recordings
   - [x] NumberGroups, VerifiedCallers, SipProfile
   - [x] Lookup, ShortCodes, ImportedNumbers
@@ -225,7 +224,6 @@ Port every one of these. Each must contain code examples in the target language,
 - [x] swml_service_guide.md
 - [x] web_service.md
 - [x] cloud_functions_guide.md
-- [x] mcp_gateway_reference.md
 - [x] mcp_integration.md
 
 Skip: search_*.md (4 files), bedrock_agent.md, livekit_comparison.md, pipecat_comparison.md
@@ -247,12 +245,10 @@ Skip: search_*.md (4 files), bedrock_agent.md, livekit_comparison.md, pipecat_co
 - [x] rest/docs/namespaces.md
 - [x] rest/docs/calling.md
 - [x] rest/docs/fabric.md
-- [x] rest/docs/compat.md
 - [x] rest/docs/client-reference.md
 - [x] rest/examples/rest_10dlc_registration.* (proves: registry namespace)
 - [x] rest/examples/rest_calling_ivr_and_ai.* (proves: calling namespace)
 - [x] rest/examples/rest_calling_play_and_record.* (proves: calling play/record)
-- [x] rest/examples/rest_compat_laml.* (proves: compat namespace)
 - [x] rest/examples/rest_datasphere_search.* (proves: datasphere namespace)
 - [x] rest/examples/rest_fabric_conferences_and_routing.* (proves: fabric sub-resources)
 - [x] rest/examples/rest_fabric_subscribers_and_sip.* (proves: fabric SIP)

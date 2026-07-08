@@ -1,31 +1,28 @@
 # RELAY Client
 
-Real-time call control and messaging over WebSocket. The RELAY client connects to SignalWire via the Blade protocol and gives you async, imperative control over live phone calls and SMS/MMS.
+Real-time call control and messaging over WebSocket. The RELAY client connects to SignalWire via the Blade protocol and gives you imperative control over live phone calls and SMS/MMS. The client is **synchronous**: it runs its event loop on a background reader thread and invokes your handler closures on that thread — there is no `async`/`await`.
 
 ## Quick Start
 
 ```rust
-use signalwire::relay::RelayClient;
-use std::env;
+use signalwire::relay::Client;
+use std::sync::Arc;
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let client = RelayClient::builder()
-        .project(&env::var("SIGNALWIRE_PROJECT_ID")?)
-        .token(&env::var("SIGNALWIRE_API_TOKEN")?)
-        .space(&env::var("SIGNALWIRE_SPACE")?)
-        .contexts(vec!["default".into()])
-        .build()?;
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Reads SIGNALWIRE_PROJECT_ID / SIGNALWIRE_API_TOKEN / SIGNALWIRE_SPACE.
+    let client = Arc::new(Client::from_env()?);
 
-    client.on_call(|call| async move {
-        call.answer().await?;
-        call.play_tts("Welcome to SignalWire!").await?.wait().await?;
-        call.hangup().await?;
-        Ok(())
+    client.on_call(|call, _event| {
+        let _ = call.answer();
+        let action = call.play_tts("Welcome to SignalWire!", serde_json::json!({}));
+        let _ = action.is_done();
+        let _ = call.hangup();
     });
 
     println!("Waiting for inbound calls ...");
-    client.run().await?;
+    client.connect()?;
+    client.receive(&["default".to_string()]);
+    client.run(); // blocks until the connection is torn down
     Ok(())
 }
 ```
@@ -34,9 +31,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 - **57+ calling methods** -- play, record, collect, detect, tap, stream, conference, AI, and more
 - **SMS/MMS messaging** -- send and receive with delivery tracking
-- **Action objects** -- `wait()`, `stop()`, `pause()`, `resume()` on long-running operations
-- **Auto-reconnect** -- exponential backoff with configurable retries
-- **Async/await** -- built on tokio for efficient concurrent handling
+- **Action objects** -- `wait()`, `is_done()`, `stop()` on long-running operations
+- **Auto-reconnect** -- exponential backoff with subscription restore
+- **Synchronous API** -- handler closures run on the background reader thread; no runtime to set up
 
 ## Environment Variables
 
@@ -53,7 +50,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 - [Call Methods](docs/call-methods.md) -- complete call control reference
 - [Events](docs/events.md) -- event handling and callbacks
 - [Messaging](docs/messaging.md) -- SMS/MMS send and receive
-- [Client Reference](docs/client-reference.md) -- RelayClient API
+- [Client Reference](docs/client-reference.md) -- Client API
 
 ## Examples
 

@@ -6,8 +6,6 @@
 #[path = "common/mod.rs"]
 mod common;
 
-use serde_json::json;
-
 // ---------------------------------------------------------------------------
 // Message Logs — /api/messaging/logs
 // ---------------------------------------------------------------------------
@@ -16,7 +14,11 @@ use serde_json::json;
 fn test_logs_messages_list_returns_dict() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let body = c.logs().messages().list(&json!({})).expect("messages.list");
+    let body = c
+        .logs()
+        .messages()
+        .list(&std::collections::HashMap::<String, String>::new())
+        .expect("messages.list");
     assert!(body.is_object());
 
     let entry = common::mocktest::journal_last();
@@ -54,7 +56,11 @@ fn test_logs_messages_get_uses_id_in_path() {
 fn test_logs_voice_list_returns_dict() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let body = c.logs().voice().list(&json!({})).expect("voice.list");
+    let body = c
+        .logs()
+        .voice()
+        .list(&std::collections::HashMap::<String, String>::new())
+        .expect("voice.list");
     assert!(body.is_object());
 
     let entry = common::mocktest::journal_last();
@@ -86,7 +92,11 @@ fn test_logs_voice_get_uses_id_in_path() {
 fn test_logs_fax_list_returns_dict() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let body = c.logs().fax().list(&json!({})).expect("fax.list");
+    let body = c
+        .logs()
+        .fax()
+        .list(&std::collections::HashMap::<String, String>::new())
+        .expect("fax.list");
     assert!(body.is_object());
 
     let entry = common::mocktest::journal_last();
@@ -118,7 +128,7 @@ fn test_logs_conferences_list_returns_dict() {
     let body = c
         .logs()
         .conferences()
-        .list(&json!({}))
+        .list(&std::collections::HashMap::<String, String>::new())
         .expect("conferences.list");
     assert!(body.is_object());
 

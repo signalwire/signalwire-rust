@@ -3,34 +3,40 @@
 //
 //! Create a SIP endpoint via the REST API.
 //!
-//! Environment: SIGNALWIRE_PROJECT_ID, SIGNALWIRE_API_TOKEN, SIGNALWIRE_SPACE
+//! SIP endpoints live under the Fabric namespace
+//! (`client.fabric().sip_endpoints()`). The REST client is synchronous:
+//! `create` takes a `&serde_json::Value`, `list` a `&HashMap<String, String>`,
+//! and both return `Result<Value, SignalWireRestError>`.
+//!
+//! Environment: `SIGNALWIRE_PROJECT_ID`, `SIGNALWIRE_API_TOKEN`, `SIGNALWIRE_SPACE`
 
+use serde_json::json;
 use signalwire::rest::RestClient;
+use std::collections::HashMap;
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     let client = RestClient::from_env()?;
 
     println!("Creating SIP endpoint ...");
 
-    let endpoint = client.sip().endpoints().create(serde_json::json!({
+    let endpoint = client.fabric().sip_endpoints().create(&json!({
         "username": "alice",
         "password": "secure-password-123",
         "caller_id": "+15551234567",
-        "friendly_name": "Alice's Desk Phone",
-    })).await?;
+        "name": "Alice's Desk Phone"
+    }))?;
 
     println!("Endpoint created:");
-    println!("  SID: {}", endpoint["sid"]);
+    println!("  ID: {}", endpoint["id"]);
     println!("  Username: {}", endpoint["username"]);
-    println!("  Friendly name: {}", endpoint["friendly_name"]);
+    println!("  Name: {}", endpoint["name"]);
 
-    // List all endpoints
-    let endpoints = client.sip().endpoints().list(&[]).await?;
+    // List all endpoints.
+    let endpoints = client.fabric().sip_endpoints().list(&HashMap::new())?;
     if let Some(arr) = endpoints.as_array() {
         println!("\nAll SIP endpoints ({}):", arr.len());
         for ep in arr {
-            println!("  {} - {}", ep["username"], ep["friendly_name"]);
+            println!("  {} - {}", ep["username"], ep["name"]);
         }
     }
 

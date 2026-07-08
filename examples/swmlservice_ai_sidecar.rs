@@ -56,7 +56,7 @@ fn main() {
     //    route the verb through `document_mut().add_verb_to_section`,
     //    which accepts any verb dict. (Same approach as
     //    `test_sidecar_pattern_emits_verb_and_registers_tool`.)
-    service.add_verb("answer", "main", json!({}));
+    service.add_verb_to_section("main", "answer", json!({}));
     service.document_mut().add_verb_to_section(
         "main",
         "ai_sidecar",
@@ -81,7 +81,7 @@ fn main() {
             }
         }),
     );
-    service.add_verb("hangup", "main", json!({}));
+    service.add_verb_to_section("main", "hangup", json!({}));
 
     // 2. Register tools the sidecar's LLM can call. Same `define_tool`
     //    you'd use on `AgentBase` — it lives on `Service`. Dispatch

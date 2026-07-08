@@ -201,6 +201,38 @@ impl DataMap {
         self
     }
 
+    /// Process an array from the webhook response using the foreach mechanism.
+    ///
+    /// `foreach_config` is an object with keys `input_key`, `output_key`,
+    /// `append` (all required) and an optional `max`. Attaches to the most
+    /// recent webhook.
+    ///
+    /// # Panics
+    ///
+    /// Panics (mirroring Python's `ValueError`) if no webhook has been added,
+    /// if `foreach_config` is not an object, or if a required key is missing.
+    pub fn foreach(&mut self, foreach_config: Value) -> &mut Self {
+        assert!(
+            !self.webhooks.is_empty(),
+            "Must add webhook before setting foreach"
+        );
+        let Value::Object(cfg) = &foreach_config else {
+            panic!("foreach_config must be a dictionary");
+        };
+        let missing: Vec<&str> = ["input_key", "output_key", "append"]
+            .into_iter()
+            .filter(|k| !cfg.contains_key(*k))
+            .collect();
+        assert!(
+            missing.is_empty(),
+            "foreach config missing required keys: {missing:?}"
+        );
+        if let Some(Value::Object(map)) = self.webhooks.last_mut() {
+            map.insert("foreach".to_string(), foreach_config);
+        }
+        self
+    }
+
     /// Set global fallback output.
     pub fn fallback_output(&mut self, result: Value) -> &mut Self {
         self.global_output = Some(Self::resolve_output(result));

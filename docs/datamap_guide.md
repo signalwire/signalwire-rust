@@ -16,11 +16,17 @@ DataMap tools execute entirely on SignalWire's servers. Instead of a webhook URL
 methods, then serialise with `to_swaig_function()` and register on the agent via
 `register_swaig_function`:
 
+<!-- snippet-setup -->
 ```rust
+use signalwire::agent::{AgentBase, AgentOptions};
 use signalwire::datamap::DataMap;
 use signalwire::swaig::FunctionResult;
 use serde_json::json;
 
+let mut agent = AgentBase::new(AgentOptions::new("datamap-guide"));
+```
+
+```rust
 let mut weather = DataMap::new("get_weather");
 weather
     .description("Get the current weather for a city")

@@ -12,8 +12,10 @@ servers to SWAIG so their tools become callable during a voice conversation.
 Add the `mcp_gateway` skill, pointing it at a running gateway:
 
 ```rust
+use signalwire::agent::{AgentBase, AgentOptions};
 use serde_json::json;
 
+let mut agent = AgentBase::new(AgentOptions::new("mcp-guide"));
 agent.add_skill("mcp_gateway", json!({
     "gateway_url": "http://localhost:8080",
     "auth_user": "admin",
@@ -78,4 +80,6 @@ fn main() {
 }
 ```
 
-See [mcp_gateway_reference.md](mcp_gateway_reference.md) for gateway setup details.
+The MCP gateway *server* (which bridges multiple MCP services behind one endpoint) is
+provided separately by the Python SDK; run it there and point your agent's MCP server
+configuration at it.

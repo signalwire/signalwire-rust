@@ -2,117 +2,175 @@
 
 ## Overview
 
-The REST client provides 21 namespaced API surfaces. Each namespace groups related operations.
+The synchronous REST client (`signalwire::rest::RestClient`) exposes 20
+top-level namespace accessors on the client. Each accessor returns a namespace
+container or a resource whose methods make blocking HTTP calls and return
+`Result<Value, SignalWireRestError>`.
 
-## Namespace Reference
+Two shapes appear below:
 
-### Fabric (AI and Communication Platform)
+- **CRUD resources** expose `list(&HashMap<String,String>)`, `get(&str)`,
+  `create(&Value)`, `update(&str, &Value)`, `delete(&str)` (plus resource-
+  specific extras). `create` takes an untyped `&Value` body — there is no
+  `buy` / `upload` / `release` convenience verb.
+- **Command-dispatch resources** (`calling()`, `mfa()`) expose named action
+  methods that take a typed request builder, not CRUD verbs.
 
-| Namespace | Access | Description |
-|-----------|--------|-------------|
-| `fabric().ai_agents()` | AI agent management | Create, update, delete, list AI agents |
-| `fabric().addresses()` | Address management | SIP, phone, and agent addresses |
-| `fabric().subscribers()` | Subscriber management | User and device subscriptions |
-| `fabric().sip_endpoints()` | SIP endpoints | Manage SIP registrations |
-| `fabric().phone_numbers()` | Number management | Assign numbers to resources |
-| `fabric().conversations()` | Conversations | Multi-party messaging |
-| `fabric().devices()` | Devices | Device registrations |
-| `fabric().tokens()` | Tokens | Auth token generation |
-| `fabric().policies()` | Policies | Access policies |
-| `fabric().calls()` | Calls | Call history and management |
-| `fabric().logs()` | Logs | Activity logs |
-| `fabric().features()` | Features | Feature flags |
-| `fabric().webhooks()` | Webhooks | Event webhooks |
+All method names below are the real ones in `src/rest/`. Verify against
+`src/rest/client.rs` (top-level accessors) and
+`src/rest/namespaces/generated/client_tree_generated.rs` (namespace tree).
 
-### Calling
+## Top-level namespaces
+
+| Accessor | Kind | Notes |
+|----------|------|-------|
+| `fabric()` | namespace | AI + communication platform (see below) |
+| `calling()` | command-dispatch | Live call control (`dial`, `update`, `end`, …) |
+| `video()` | namespace | Rooms, recordings, sessions, tokens, streams |
+| `datasphere()` | namespace | `documents()` |
+| `phone_numbers()` | CRUD (+ search, set_*) | Owned numbers |
+| `addresses()` | CRUD | Fabric addresses (`create` takes a typed request) |
+| `queues()` | CRUD (+ member ops) | Call queues |
+| `recordings()` | list / get / delete | Account recordings |
+| `number_groups()` | CRUD | Number groups |
+| `verified_callers()` | CRUD (+ verification) | Verified caller IDs |
+| `sip_profile()` | resource | Account SIP profile |
+| `lookup()` | command | `phone_number(…)` |
+| `short_codes()` | CRUD | Short codes |
+| `imported_numbers()` | CRUD | Imported numbers |
+| `mfa()` | command-dispatch | `sms`, `call`, `verify` |
+| `registry()` | namespace | `brands`, `campaigns`, `numbers`, `orders` |
+| `logs()` | namespace | Read-only logs (see below) |
+| `project()` | namespace | `tokens()` |
+| `pubsub()` | command | `create_token(…)` |
+| `chat()` | command | `create_token(…)` |
+
+## Fabric (`fabric()`)
+
+| Accessor | Description |
+|----------|-------------|
+| `fabric().addresses()` | Fabric address management |
+| `fabric().resources()` | Generic fabric resources |
+| `fabric().ai_agents()` | AI agent management |
+| `fabric().call_flows()` | Call-flow resources |
+| `fabric().conference_rooms()` | Conference rooms |
+| `fabric().cxml_applications()` | cXML applications |
+| `fabric().cxml_scripts()` | cXML scripts |
+| `fabric().cxml_webhooks()` | cXML webhooks |
+| `fabric().freeswitch_connectors()` | FreeSWITCH connectors |
+| `fabric().relay_applications()` | RELAY applications |
+| `fabric().sip_endpoints()` | SIP endpoints (CRUD + `list_addresses`) |
+| `fabric().sip_gateways()` | SIP gateways |
+| `fabric().subscribers()` | Subscriber management |
+| `fabric().swml_scripts()` | SWML scripts |
+| `fabric().swml_webhooks()` | SWML webhooks |
+| `fabric().tokens()` | Fabric tokens |
+
+> There is no client-level `sip()` namespace. SIP endpoints live under
+> `fabric().sip_endpoints()`.
+
+## Calling (`calling()`) — command dispatch
+
+The calling namespace is a live call-control command surface, not a CRUD
+resource. It has no `list` / `get` / `recordings` accessors.
 
 | Method | Description |
 |--------|-------------|
-| `calling().dial(params)` | Initiate outbound call |
-| `calling().update(call_sid, params)` | Modify active call |
-| `calling().list(params)` | List calls |
-| `calling().get(call_sid)` | Get call details |
-| `calling().recordings(call_sid)` | List call recordings |
+| `calling().dial(CallingDialRequest)` | Initiate an outbound call |
+| `calling().update(CallingUpdateRequest)` | Modify an active call |
+| `calling().end(…)` | End a call |
+| `calling().play(…)` / `play_pause` / `play_resume` / `play_stop` / `play_volume` | Playback control |
+| `calling().record(…)` / `record_pause` / `record_resume` / `record_stop` | Recording control |
+| `calling().collect(…)` / `detect(…)` / `tap(…)` / `stream(…)` | Media operations |
+| `calling().transcribe(…)` / `denoise(…)` / `refer(…)` / `transfer(…)` | Additional live actions |
+| `calling().ai_hold(…)` / `ai_unhold(…)` / `ai_message(…)` / `ai_stop(…)` | AI call control |
 
-### Messaging
+(Full list in `calling_resources_generated.rs`.)
+
+## Messaging (logs only)
+
+There is no `messaging()` namespace and no REST send-message method. The
+message surface is **read-only logs** under `logs()`:
 
 | Method | Description |
 |--------|-------------|
-| `messaging().send(params)` | Send SMS/MMS |
-| `messaging().list(params)` | List messages |
-| `messaging().get(message_sid)` | Get message details |
+| `logs().messages().list(params)` | List message logs |
+| `logs().messages().get(id)` | Get a message log entry |
 
-### Phone Numbers
+To *send* an SMS/MMS, use the RELAY client: `signalwire::relay::Client::send_message`.
+
+## Phone Numbers (`phone_numbers()`)
 
 | Method | Description |
 |--------|-------------|
 | `phone_numbers().list(params)` | List owned numbers |
 | `phone_numbers().search(params)` | Search available numbers |
-| `phone_numbers().buy(params)` | Purchase a number |
-| `phone_numbers().update(sid, params)` | Update number config |
-| `phone_numbers().release(sid)` | Release a number |
+| `phone_numbers().get(id)` | Get number details |
+| `phone_numbers().create(&Value)` | Purchase a number (no `buy` verb) |
+| `phone_numbers().update(id, &Value)` | Update number config |
+| `phone_numbers().delete(id)` | Release a number (no `release` verb) |
+| `phone_numbers().set_swml_webhook(…)` / `set_cxml_webhook(…)` / `set_cxml_application(…)` / `set_ai_agent(…)` / `set_call_flow(…)` / `set_relay_application(…)` / `set_relay_topic(…)` | Assign a handler to the number |
 
-### SIP
+## Video (`video()`)
 
-| Method | Description |
-|--------|-------------|
-| `sip().endpoints().list(params)` | List SIP endpoints |
-| `sip().endpoints().create(params)` | Create SIP endpoint |
-| `sip().endpoints().update(sid, params)` | Update endpoint |
-| `sip().endpoints().delete(sid)` | Delete endpoint |
-| `sip().domains().list(params)` | List SIP domains |
+| Accessor | Description |
+|----------|-------------|
+| `video().rooms()` | CRUD (+ `list_streams`, `create_stream`) |
+| `video().room_recordings()` | Recordings: `list`, `get`, `delete`, `list_events` (no `create`/`update`) |
+| `video().room_sessions()` | Room sessions |
+| `video().room_tokens()` | Room tokens |
+| `video().conferences()` | Video conferences |
+| `video().conference_tokens()` | Conference tokens |
+| `video().streams()` | Streams |
 
-### Video
+> Recordings are `video().room_recordings()`, not `video().recordings()`.
 
-| Method | Description |
-|--------|-------------|
-| `video().rooms().list(params)` | List video rooms |
-| `video().rooms().create(params)` | Create video room |
-| `video().rooms().get(room_id)` | Get room details |
-| `video().rooms().delete(room_id)` | Delete room |
-| `video().recordings().list(params)` | List recordings |
-
-### Datasphere
+## Datasphere (`datasphere()`)
 
 | Method | Description |
 |--------|-------------|
-| `datasphere().documents().search(params)` | Search documents |
-| `datasphere().documents().upload(params)` | Upload document |
 | `datasphere().documents().list(params)` | List documents |
-| `datasphere().documents().delete(id)` | Delete document |
+| `datasphere().documents().get(id)` | Get a document |
+| `datasphere().documents().create(&Value)` | Add a document (no `upload` verb) |
+| `datasphere().documents().update(id, &Value)` | Update a document |
+| `datasphere().documents().delete(id)` | Delete a document |
+| `datasphere().documents().search(DatasphereDocumentsSearchRequest)` | Semantic search |
+| `datasphere().documents().list_chunks(…)` / `get_chunk(…)` / `delete_chunk(…)` | Chunk operations |
 
-### Queues
+## Queues (`queues()`)
 
 | Method | Description |
 |--------|-------------|
 | `queues().list(params)` | List queues |
-| `queues().create(params)` | Create queue |
-| `queues().get(sid)` | Get queue details |
-| `queues().members(sid)` | List queue members |
+| `queues().get(id)` | Get queue details |
+| `queues().create(&Value)` | Create a queue |
+| `queues().update(id, &Value)` | Update a queue |
+| `queues().delete(id)` | Delete a queue |
+| `queues().list_members(id, &HashMap<String,String>)` | List queue members (no `members` verb) |
+| `queues().get_member(…)` / `get_next_member(…)` | Individual member lookup |
 
-### Recordings
+## Recordings (`recordings()`)
 
 | Method | Description |
 |--------|-------------|
 | `recordings().list(params)` | List recordings |
-| `recordings().get(sid)` | Get recording details |
-| `recordings().delete(sid)` | Delete recording |
+| `recordings().get(id)` | Get recording details |
+| `recordings().delete(id)` | Delete a recording |
 
-### Compat (Twilio-Compatible)
+## Logs (`logs()`) — read-only
+
+| Accessor | Description |
+|----------|-------------|
+| `logs().messages()` | Message logs (`list`, `get`) |
+| `logs().voice()` | Voice logs |
+| `logs().conferences()` | Conference logs |
+| `logs().fax()` | Fax logs |
+
+## MFA (`mfa()`) — command dispatch
 
 | Method | Description |
 |--------|-------------|
-| `compat().calls().create(params)` | Create call |
-| `compat().calls().list(params)` | List calls |
-| `compat().messages().create(params)` | Send message |
-| `compat().messages().list(params)` | List messages |
-
-### Additional Namespaces
-
-| Namespace | Description |
-|-----------|-------------|
-| `fax()` | Fax operations |
-| `conferences()` | Conference management |
-| `transcriptions()` | Transcription operations |
-| `applications()` | Application management |
-| `usage()` | Usage and billing data |
+| `mfa().sms(MfaSmsRequest)` | Send an SMS MFA challenge |
+| `mfa().call(MfaCallRequest)` | Send a voice MFA challenge |
+| `mfa().verify(…)` | Verify a submitted code |
+</content>

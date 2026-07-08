@@ -12,6 +12,7 @@ A skill stores its config in `SkillParams`, registers tools in `register_tools`,
 exposes prompt sections and hints via `get_prompt_sections` / `get_hints`. There is no
 `apply()` method — the manager calls `setup()` then `register_tools(&mut agent)`.
 
+<!-- snippet: no-compile full `WeatherSkill` definition (item-only struct + trait impl, no `fn main`); the snippet checker compiles each fragment as a binary. This type is referenced by the registration/usage fragments below. -->
 ```rust
 use signalwire::agent::AgentBase;
 use signalwire::skills::skill_base::{SkillBase, SkillParams};
@@ -87,6 +88,7 @@ impl SkillBase for WeatherSkill {
 `SkillRegistry::register_skill(name, factory)` takes a factory of type
 `Box<dyn Fn(Map<String, Value>) -> Box<dyn SkillBase>>`:
 
+<!-- snippet: no-compile references `WeatherSkill`, defined in the item-only fragment above; each fragment compiles independently, so the type is not in scope here -->
 ```rust
 use signalwire::skills::SkillRegistry;
 
@@ -99,6 +101,14 @@ SkillRegistry::register_skill(
 
 ### 3. Use the Skill
 
+<!-- snippet-setup -->
+```rust
+use signalwire::agent::{AgentBase, AgentOptions};
+use serde_json::json;
+
+let mut agent = AgentBase::new(AgentOptions::new("skills-user"));
+```
+
 ```rust
 agent.add_skill("weather", json!({"api_key": "your-key"}));
 ```
@@ -107,6 +117,7 @@ agent.add_skill("weather", json!({"api_key": "your-key"}));
 
 Skills can use DataMap for serverless execution:
 
+<!-- snippet: no-compile item-only `impl SkillBase for JokeSkill` — a bare trait-impl fragment for a `JokeSkill` type not defined here; illustrative of the register_tools body only -->
 ```rust
 impl SkillBase for JokeSkill {
     fn register_tools(&self, agent: &mut AgentBase) {
@@ -144,6 +155,7 @@ impl SkillBase for JokeSkill {
 
 Package your skill as a crate and instruct users to register it at startup:
 
+<!-- snippet: no-compile references `WeatherSkill` (defined in an earlier fragment) and a hypothetical external `my_weather_skill` crate; illustrative of the publishing wiring, not a standalone unit -->
 ```rust
 // In the skill crate
 pub fn register() {
