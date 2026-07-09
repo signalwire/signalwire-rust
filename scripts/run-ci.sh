@@ -350,6 +350,12 @@ sched_gate PACKAGE-SMOKE defer=1 desc="published crate builds, installs, and imp
     -- python3 "$PORTING_SDK_DIR/scripts/package_smoke.py" --port rust --repo .
 
 # ---- §G anti-laundering ledger -----------------------------------------------
+# NOTE: report-only pending a porting-sdk gate fix — under the concurrent
+# scheduler, suppression_ledger.py rglob-scans `.sw-tmp/` (repo-local gitignored
+# scratch), where a sibling gate (SNIPPET-COMPILE) transiently writes snippet
+# `.rs` files carrying `#![allow(...)]`, producing phantom offenders. The ledger
+# is green standalone (all 49 real allows covered by SUPPRESSION_LEDGER.md); flip
+# to blocking once the gate's SKIP_DIR_PARTS excludes `.sw-tmp`/`.tmp`.
 sched_gate SUPPRESSION-LEDGER res=dayone desc="no un-ledgered broad analyzer suppressions (#![allow] modulo SUPPRESSION_LEDGER.md)" \
     -- python3 "$PORTING_SDK_DIR/scripts/suppression_ledger.py" --port rust --repo . --report-only
 
