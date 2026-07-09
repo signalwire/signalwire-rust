@@ -148,10 +148,7 @@ impl ConfigLoader {
         let mut cur = config;
         for key in key_path.split('.') {
             match cur {
-                Value::Object(map) => match map.get(key) {
-                    Some(v) => cur = v,
-                    None => return None,
-                },
+                Value::Object(map) => cur = map.get(key)?,
                 _ => return None,
             }
         }
