@@ -551,7 +551,7 @@ fn resolve_http_port(_ws_port: u16) -> u16 {
 /// binds, so the OS is free to re-hand the just-released number. RELAY needs WS
 /// and HTTP on two independent ports, and a collision makes `mock_relay` fail to
 /// bind its second server → "did not become ready within 30s" (seen with
-/// ws_port == http_port). Hold BOTH listeners simultaneously so the OS must
+/// `ws_port` == `http_port`). Hold BOTH listeners simultaneously so the OS must
 /// assign two different ports, then release them for the mock to re-bind.
 fn pick_two_free_ports() -> Option<(u16, u16)> {
     let a = std::net::TcpListener::bind("127.0.0.1:0").ok()?;
