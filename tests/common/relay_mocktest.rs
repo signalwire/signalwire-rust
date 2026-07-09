@@ -546,9 +546,36 @@ fn resolve_http_port(_ws_port: u16) -> u16 {
     pick_free_port().unwrap_or(DEFAULT_HTTP_PORT)
 }
 
+/// Pick two DISTINCT free ephemeral ports at once. Calling `pick_free_port()`
+/// twice can return the SAME port: each call drops its listener before the next
+/// binds, so the OS is free to re-hand the just-released number. RELAY needs WS
+/// and HTTP on two independent ports, and a collision makes `mock_relay` fail to
+/// bind its second server → "did not become ready within 30s" (seen with
+/// ws_port == http_port). Hold BOTH listeners simultaneously so the OS must
+/// assign two different ports, then release them for the mock to re-bind.
+fn pick_two_free_ports() -> Option<(u16, u16)> {
+    let a = std::net::TcpListener::bind("127.0.0.1:0").ok()?;
+    let b = std::net::TcpListener::bind("127.0.0.1:0").ok()?;
+    let pa = a.local_addr().ok()?.port();
+    let pb = b.local_addr().ok()?.port();
+    // Both listeners are still alive here, so pa != pb is guaranteed; they drop
+    // at end of scope, freeing both ports for the mock.
+    Some((pa, pb))
+}
+
 fn ensure_server() -> Result<HarnessHandle, String> {
-    let ws_port = resolve_ws_port();
-    let http_port = resolve_http_port(ws_port);
+    // If both env overrides are unset, pick the WS+HTTP pair together so they
+    // can never collide. If either is set (shared-mock gate), honor the
+    // per-port resolvers (the escape hatch is load-bearing).
+    let (ws_port, http_port) = if std::env::var_os("MOCK_RELAY_PORT").is_none()
+        && std::env::var_os("MOCK_RELAY_HTTP_PORT").is_none()
+        && let Some(pair) = pick_two_free_ports()
+    {
+        pair
+    } else {
+        let ws = resolve_ws_port();
+        (ws, resolve_http_port(ws))
+    };
     let ws_url = format!("ws://127.0.0.1:{ws_port}");
     let http_url = format!("http://127.0.0.1:{http_port}");
     let relay_host = format!("127.0.0.1:{ws_port}");
