@@ -486,10 +486,7 @@ fn discover_porting_sdk_package(name: &str) -> Option<String> {
     let crate_root = env!("CARGO_MANIFEST_DIR");
     let mut dir: PathBuf = PathBuf::from(crate_root);
     loop {
-        let parent = match dir.parent() {
-            Some(p) => p.to_path_buf(),
-            None => return None,
-        };
+        let parent = dir.parent()?.to_path_buf();
         let candidate = parent.join("porting-sdk").join("test_harness").join(name);
         let init = candidate.join(name).join("__init__.py");
         if init.is_file() {
