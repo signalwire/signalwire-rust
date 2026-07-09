@@ -343,6 +343,35 @@ sched_gate GEN-IDIOM desc="generated code is not lint-excluded (idiom parity wit
 sched_gate RELEASE-FRESH desc="publish path is gated (gates-before-publish); release freshness" \
     -- python3 "$PORTING_SDK_DIR/scripts/release_fresh.py" --port rust --repo .
 
+# ---- §D1 packaging -----------------------------------------------------------
+# PACKAGE-SMOKE builds+installs+imports the real published artifact (cargo build
+# + install + a smoke that constructs RestClient). ~heavy → defer.
+sched_gate PACKAGE-SMOKE defer=1 desc="published crate builds, installs, and imports (real artifact smoke)" \
+    -- python3 "$PORTING_SDK_DIR/scripts/package_smoke.py" --port rust --repo .
+
+# ---- §G anti-laundering ledger -----------------------------------------------
+sched_gate SUPPRESSION-LEDGER res=dayone desc="no un-ledgered broad analyzer suppressions (#![allow] modulo SUPPRESSION_LEDGER.md)" \
+    -- python3 "$PORTING_SDK_DIR/scripts/suppression_ledger.py" --port rust --repo . --report-only
+
+# ---- §C1 doc/example execution gates -----------------------------------------
+# SNIPPET-COMPILE (~29s, typecheck WITH the real crate) is cheap → blocking.
+# DOC-CLI line-detects swaig-test invocations (no built binary to probe) → cheap,
+# blocking. EXAMPLES-RUN + SNIPPET-RUN self-skip for a compiled port (no cargo
+# run target / non-dynamic) — SNIPPET-COMPILE covers them — but are wired the
+# same as python (defer=1) so the gate graduates automatically if a run target
+# is added.
+sched_gate SNIPPET-COMPILE desc="documented code snippets compile against the real crate" \
+    -- python3 "$PORTING_SDK_DIR/scripts/snippet_compile.py" --port rust --repo .
+
+sched_gate DOC-CLI desc="documented swaig-test invocations parse against the real CLI" \
+    -- python3 "$PORTING_SDK_DIR/scripts/doc_cli.py" --port rust --repo .
+
+sched_gate SNIPPET-RUN defer=1 desc="dynamic-port doc snippets run to a zero exit against the mock (compiled port: self-skips)" \
+    -- python3 "$PORTING_SDK_DIR/scripts/snippet_run.py" --port rust --repo . --report-only
+
+sched_gate EXAMPLES-RUN defer=1 desc="shipped examples load/start against the mock (compiled port: self-skips)" \
+    -- python3 "$PORTING_SDK_DIR/scripts/examples_run.py" --port rust --repo .
+
 sched_run
 rc=$?
 if [ "$rc" -eq 0 ]; then
