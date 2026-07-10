@@ -360,14 +360,17 @@ sched_gate SUPPRESSION-LEDGER res=dayone desc="no un-ledgered broad analyzer sup
 # run target / non-dynamic) — SNIPPET-COMPILE covers them — but are wired the
 # same as python (defer=1) so the gate graduates automatically if a run target
 # is added.
-sched_gate SNIPPET-COMPILE tier=nightly desc="documented code snippets compile against the real crate" \    -- python3 "$PORTING_SDK_DIR/scripts/snippet_compile.py" --port rust --repo .
+sched_gate SNIPPET-COMPILE tier=nightly desc="documented code snippets compile against the real crate" \
+    -- python3 "$PORTING_SDK_DIR/scripts/snippet_compile.py" --port rust --repo .
 
 sched_gate DOC-CLI desc="documented swaig-test invocations parse against the real CLI" \
     -- python3 "$PORTING_SDK_DIR/scripts/doc_cli.py" --port rust --repo .
 
-sched_gate SNIPPET-RUN tier=nightly defer=1 desc="dynamic-port doc snippets run to a zero exit against the mock (compiled port: self-skips)" \    -- python3 "$PORTING_SDK_DIR/scripts/snippet_run.py" --port rust --repo . --report-only
+sched_gate SNIPPET-RUN tier=nightly defer=1 desc="dynamic-port doc snippets run to a zero exit against the mock (compiled port: self-skips)" \
+    -- python3 "$PORTING_SDK_DIR/scripts/snippet_run.py" --port rust --repo . --report-only
 
-sched_gate EXAMPLES-RUN tier=nightly defer=1 desc="shipped examples load/start against the mock (compiled port: self-skips)" \    -- python3 "$PORTING_SDK_DIR/scripts/examples_run.py" --port rust --repo .
+sched_gate EXAMPLES-RUN tier=nightly defer=1 desc="shipped examples load/start against the mock (compiled port: self-skips)" \
+    -- python3 "$PORTING_SDK_DIR/scripts/examples_run.py" --port rust --repo .
 
 sched_run
 rc=$?
