@@ -2736,6 +2736,20 @@
               ],
               "returns": "any"
             },
+            "set_history": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                },
+                {
+                  "name": "history",
+                  "type": "string",
+                  "required": true
+                }
+              ],
+              "returns": "any"
+            },
             "set_initial_step": {
               "params": [
                 {
@@ -3204,6 +3218,20 @@
                 {
                   "name": "prompt",
                   "type": "optional<string>",
+                  "required": true
+                }
+              ],
+              "returns": "any"
+            },
+            "set_history": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                },
+                {
+                  "name": "history",
+                  "type": "string",
                   "required": true
                 }
               ],
@@ -10059,24 +10087,6 @@
               ],
               "returns": "any"
             },
-            "audible_debug": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
-            "audible_latency": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
             "background_file": {
               "params": [
                 {
@@ -10123,15 +10133,6 @@
               "returns": "any"
             },
             "barge_min_words": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
-            "cache_mode": {
               "params": [
                 {
                   "name": "self",
@@ -10240,15 +10241,6 @@
               "returns": "any"
             },
             "eleven_labs_stability": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
-            "enable_accounting": {
               "params": [
                 {
                   "name": "self",
@@ -10726,15 +10718,6 @@
               "returns": "any"
             },
             "vad_config": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "any"
-            },
-            "verbose_logs": {
               "params": [
                 {
                   "name": "self",

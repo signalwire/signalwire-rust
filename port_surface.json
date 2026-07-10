@@ -1,6 +1,6 @@
 {
   "version": "1",
-  "generated_from": "signalwire-rust @ 13216d00bbe061b70c3b82fc0ef23333d2488049",
+  "generated_from": "signalwire-rust @ babe624263533e189295cae76dfb0f0ebac976e3",
   "modules": {
     "signalwire": {
       "classes": {
@@ -279,6 +279,7 @@
           "set_enter_fillers",
           "set_exit_fillers",
           "set_full_reset",
+          "set_history",
           "set_initial_step",
           "set_isolated",
           "set_post_prompt",
@@ -315,6 +316,7 @@
           "set_end",
           "set_functions",
           "set_gather_info",
+          "set_history",
           "set_reset_consolidate",
           "set_reset_full_reset",
           "set_reset_system_prompt",

@@ -15,6 +15,16 @@ use serde_json::{Map, Value, json};
 /// user tool because the native one wins.
 pub const RESERVED_NATIVE_TOOL_NAMES: &[&str] = &["next_step", "change_context", "gather_submit"];
 
+/// Valid values for a step's or context's `history` visibility mode.
+///
+///   - `keep`    — nothing is cleared; every prior step's instructions *and*
+///     dialogue stay in the model's context.
+///   - `default` — prior step instructions are hidden; the dialogue is kept.
+///   - `hide`    — prior instructions hidden **and** the prior dialogue pulled
+///     out of the model's context. The only way back in is an explicit
+///     `${step_history.*}` reference in the new prompt.
+pub const HISTORY_MODES: &[&str] = &["keep", "default", "hide"];
+
 // ── GatherQuestion ──────────────────────────────────────────────────────────
 
 /// A single question within a `gather_info` block.
@@ -202,6 +212,7 @@ pub struct Step {
     end: bool,
     skip_user_turn: bool,
     skip_to_next_step: bool,
+    history: Option<String>,
 
     // Reset object for context switching from steps.
     reset_system_prompt: Option<String>,
@@ -224,6 +235,7 @@ impl Step {
             end: false,
             skip_user_turn: false,
             skip_to_next_step: false,
+            history: None,
             reset_system_prompt: None,
             reset_user_prompt: None,
             reset_consolidate: false,
@@ -380,6 +392,32 @@ impl Step {
         self
     }
 
+    /// Control what the model still sees when this step is entered.
+    ///
+    /// The mode governs everything before this step (including the turn that
+    /// triggered the transition); it does not affect this step's own turns.
+    /// Nothing is deleted — the call log keeps every message.
+    ///
+    /// - `keep` — clear nothing; every prior step's instructions and dialogue
+    ///   stay visible.
+    /// - `default` — hide the prior step *instructions*, keep the dialogue.
+    /// - `hide` — hide the prior instructions *and* pull the prior dialogue out
+    ///   of the model's context (pair with a `${step_history.*}` reference to
+    ///   choose what comes back).
+    ///
+    /// # Panics
+    ///
+    /// Panics if `history` is not one of [`HISTORY_MODES`]
+    /// (`keep` / `default` / `hide`) — mirrors Python's `ValueError`.
+    pub fn set_history(&mut self, history: &str) -> &mut Self {
+        assert!(
+            HISTORY_MODES.contains(&history),
+            "history must be one of {HISTORY_MODES:?}, got {history:?}"
+        );
+        self.history = Some(history.to_string());
+        self
+    }
+
     /// Set the system prompt applied when this step navigates to a context
     /// (part of the step's `reset` object).
     pub fn set_reset_system_prompt(&mut self, system_prompt: &str) -> &mut Self {
@@ -516,6 +554,9 @@ impl Step {
         if self.skip_to_next_step {
             map.insert("skip_to_next_step".to_string(), json!(true));
         }
+        if let Some(ref h) = self.history {
+            map.insert("history".to_string(), json!(h));
+        }
 
         // Reset object — emitted only if any reset field is set (Python parity).
         let mut reset = Map::new();
@@ -573,6 +614,7 @@ pub struct Context {
 
     enter_fillers: Option<Value>,
     exit_fillers: Option<Value>,
+    history: Option<String>,
 }
 
 impl Context {
@@ -595,6 +637,7 @@ impl Context {
             prompt_sections: Vec::new(),
             enter_fillers: None,
             exit_fillers: None,
+            history: None,
         }
     }
 
@@ -720,6 +763,23 @@ impl Context {
     /// Set the user prompt to inject when entering this context.
     pub fn set_user_prompt(&mut self, user_prompt: &str) -> &mut Self {
         self.user_prompt = Some(user_prompt.to_string());
+        self
+    }
+
+    /// Set the default `history` visibility mode for every step in this
+    /// context. A step's own [`Step::set_history`] overrides this. See
+    /// [`Step::set_history`] for what each mode does.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `history` is not one of [`HISTORY_MODES`]
+    /// (`keep` / `default` / `hide`) — mirrors Python's `ValueError`.
+    pub fn set_history(&mut self, history: &str) -> &mut Self {
+        assert!(
+            HISTORY_MODES.contains(&history),
+            "history must be one of {HISTORY_MODES:?}, got {history:?}"
+        );
+        self.history = Some(history.to_string());
         self
     }
 
@@ -944,6 +1004,9 @@ impl Context {
         }
         if let Some(ref xf) = self.exit_fillers {
             map.insert("exit_fillers".to_string(), xf.clone());
+        }
+        if let Some(ref h) = self.history {
+            map.insert("history".to_string(), json!(h));
         }
 
         Value::Object(map)
@@ -1784,6 +1847,57 @@ mod tests {
         assert_eq!(steps[0]["name"], "s1");
         assert_eq!(steps[1]["name"], "s2");
         assert_eq!(steps[2]["name"], "s3");
+    }
+
+    // ── set_history tests (Python parity) ────────────────────────────────
+
+    #[test]
+    fn test_step_history_all_modes_emit_key() {
+        for mode in ["keep", "default", "hide"] {
+            let mut step = Step::new("s");
+            step.set_text("t");
+            step.set_history(mode);
+            assert_eq!(step.to_value()["history"], mode);
+        }
+    }
+
+    #[test]
+    fn test_step_history_omitted_when_unset() {
+        let mut step = Step::new("s");
+        step.set_text("t");
+        assert!(step.to_value().get("history").is_none());
+    }
+
+    #[test]
+    #[should_panic(expected = "history must be one of")]
+    fn test_step_history_invalid_mode_panics() {
+        let mut step = Step::new("s");
+        step.set_text("t");
+        step.set_history("bogus");
+    }
+
+    #[test]
+    fn test_context_history_all_modes_emit_key() {
+        for mode in ["keep", "default", "hide"] {
+            let mut ctx = Context::new("default");
+            ctx.set_history(mode);
+            ctx.add_step("s1").set_text("Hi");
+            assert_eq!(ctx.to_value()["history"], mode);
+        }
+    }
+
+    #[test]
+    fn test_context_history_omitted_when_unset() {
+        let mut ctx = Context::new("default");
+        ctx.add_step("s1").set_text("Hi");
+        assert!(ctx.to_value().get("history").is_none());
+    }
+
+    #[test]
+    #[should_panic(expected = "history must be one of")]
+    fn test_context_history_invalid_mode_panics() {
+        let mut ctx = Context::new("default");
+        ctx.set_history("bogus");
     }
 
     // ── ContextBuilder tests ─────────────────────────────────────────────
