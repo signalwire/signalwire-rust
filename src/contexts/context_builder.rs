@@ -36,6 +36,9 @@ pub struct GatherQuestion {
     confirm: bool,
     prompt: Option<String>,
     functions: Option<Vec<String>>,
+    // Tri-state: `None` inherits the gather's `isolated` default; `Some(false)`
+    // is emitted so it can override an isolated gather.
+    isolated: Option<bool>,
 }
 
 impl GatherQuestion {
@@ -46,6 +49,7 @@ impl GatherQuestion {
         confirm: bool,
         prompt: Option<&str>,
         functions: Option<Vec<String>>,
+        isolated: Option<bool>,
     ) -> Self {
         GatherQuestion {
             key: key.to_string(),
@@ -54,6 +58,7 @@ impl GatherQuestion {
             confirm,
             prompt: prompt.map(std::string::ToString::to_string),
             functions,
+            isolated,
         }
     }
 
@@ -81,6 +86,10 @@ impl GatherQuestion {
         {
             map.insert("functions".to_string(), json!(f));
         }
+        // Emitted even when `false`, so it can override an isolated gather.
+        if let Some(iso) = self.isolated {
+            map.insert("isolated".to_string(), json!(iso));
+        }
 
         Value::Object(map)
     }
@@ -95,6 +104,9 @@ pub struct GatherInfo {
     output_key: Option<String>,
     completion_action: Option<String>,
     prompt: Option<String>,
+    // Gather-level default for every question. `"isolated": true` is emitted
+    // only when set; a `false` default is omitted at the gather level.
+    isolated: bool,
 }
 
 impl GatherInfo {
@@ -102,15 +114,22 @@ impl GatherInfo {
         output_key: Option<&str>,
         completion_action: Option<&str>,
         prompt: Option<&str>,
+        isolated: bool,
     ) -> Self {
         GatherInfo {
             questions: Vec::new(),
             output_key: output_key.map(std::string::ToString::to_string),
             completion_action: completion_action.map(std::string::ToString::to_string),
             prompt: prompt.map(std::string::ToString::to_string),
+            isolated,
         }
     }
 
+    // 1:1 parameter parity with Python `GatherInfo.add_question` /
+    // `GatherQuestion.__init__` (key, question, type, confirm, prompt,
+    // functions, isolated) — the arg list mirrors the reference wire fields,
+    // not a refactorable Rust-only signature.
+    #[allow(clippy::too_many_arguments)]
     pub fn add_question(
         &mut self,
         key: &str,
@@ -119,6 +138,7 @@ impl GatherInfo {
         confirm: bool,
         prompt: Option<&str>,
         functions: Option<Vec<String>>,
+        isolated: Option<bool>,
     ) -> &mut Self {
         self.questions.push(GatherQuestion::new(
             key,
@@ -127,6 +147,7 @@ impl GatherInfo {
             confirm,
             prompt,
             functions,
+            isolated,
         ));
         self
     }
@@ -157,6 +178,9 @@ impl GatherInfo {
         }
         if let Some(ref ca) = self.completion_action {
             map.insert("completion_action".to_string(), json!(ca));
+        }
+        if self.isolated {
+            map.insert("isolated".to_string(), json!(true));
         }
 
         Value::Object(map)
@@ -447,13 +471,24 @@ impl Step {
     }
 
     /// Initialise `gather_info` for this step.
+    ///
+    /// `isolated` is the gather-level default for every question: when `true`,
+    /// a question is asked with the sibling Q&A hidden from the model so it
+    /// must ask rather than derive the answer (the hidden turns remain in the
+    /// call log). A question's own `isolated` overrides this default.
     pub fn set_gather_info(
         &mut self,
         output_key: Option<&str>,
         completion_action: Option<&str>,
         prompt: Option<&str>,
+        isolated: bool,
     ) -> &mut Self {
-        self.gather_info = Some(GatherInfo::new(output_key, completion_action, prompt));
+        self.gather_info = Some(GatherInfo::new(
+            output_key,
+            completion_action,
+            prompt,
+            isolated,
+        ));
         self
     }
 
@@ -479,6 +514,14 @@ impl Step {
     /// email, geocode a ZIP), list that tool name in this question's
     /// `functions` argument. Functions listed here are active ONLY
     /// for this question.
+    /// `isolated` is the per-question override of the gather's `isolated`
+    /// default: `Some(true)` hides the sibling Q&A while this question is
+    /// asked, `Some(false)` keeps it visible even in an isolated gather, and
+    /// `None` inherits the gather's setting.
+    // 1:1 parameter parity with Python `Step.add_gather_question` (key,
+    // question, type, confirm, prompt, functions, isolated) — the arg list
+    // mirrors the reference, not a refactorable Rust-only signature.
+    #[allow(clippy::too_many_arguments)]
     pub fn add_gather_question(
         &mut self,
         key: &str,
@@ -487,12 +530,21 @@ impl Step {
         confirm: bool,
         prompt: Option<&str>,
         functions: Option<Vec<String>>,
+        isolated: Option<bool>,
     ) -> &mut Self {
         if self.gather_info.is_none() {
-            self.gather_info = Some(GatherInfo::new(None, None, None));
+            self.gather_info = Some(GatherInfo::new(None, None, None, false));
         }
         if let Some(ref mut gi) = self.gather_info {
-            gi.add_question(key, question, question_type, confirm, prompt, functions);
+            gi.add_question(
+                key,
+                question,
+                question_type,
+                confirm,
+                prompt,
+                functions,
+                isolated,
+            );
         }
         self
     }
@@ -1367,7 +1419,15 @@ mod tests {
 
     #[test]
     fn test_gather_question_basic() {
-        let q = GatherQuestion::new("name", "What is your name?", "string", false, None, None);
+        let q = GatherQuestion::new(
+            "name",
+            "What is your name?",
+            "string",
+            false,
+            None,
+            None,
+            None,
+        );
         let val = q.to_value();
         assert_eq!(val["key"], "name");
         assert_eq!(val["question"], "What is your name?");
@@ -1384,6 +1444,7 @@ mod tests {
             true,
             Some("Please enter your age"),
             Some(vec!["validate_age".to_string()]),
+            None,
         );
         let val = q.to_value();
         assert_eq!(val["type"], "number");
@@ -1396,8 +1457,8 @@ mod tests {
 
     #[test]
     fn test_gather_info_basic() {
-        let mut gi = GatherInfo::new(Some("info"), Some("next_step"), None);
-        gi.add_question("name", "Your name?", "string", false, None, None);
+        let mut gi = GatherInfo::new(Some("info"), Some("next_step"), None, false);
+        gi.add_question("name", "Your name?", "string", false, None, None, None);
         let val = gi.to_value();
         assert_eq!(val["output_key"], "info");
         assert_eq!(val["completion_action"], "next_step");
@@ -1505,8 +1566,8 @@ mod tests {
     fn test_step_gather_info() {
         let mut step = Step::new("s");
         step.set_text("text");
-        step.set_gather_info(Some("info"), Some("done"), None);
-        step.add_gather_question("name", "Name?", "string", false, None, None);
+        step.set_gather_info(Some("info"), Some("done"), None, false);
+        step.add_gather_question("name", "Name?", "string", false, None, None, None);
         let val = step.to_value();
         assert!(val["gather_info"]["questions"].is_array());
         assert_eq!(val["gather_info"]["output_key"], "info");
@@ -1516,7 +1577,7 @@ mod tests {
     fn test_step_gather_info_lazy_init() {
         let mut step = Step::new("s");
         step.set_text("text");
-        step.add_gather_question("email", "Email?", "string", false, None, None);
+        step.add_gather_question("email", "Email?", "string", false, None, None, None);
         let val = step.to_value();
         assert_eq!(val["gather_info"]["questions"].as_array().unwrap().len(), 1);
     }
@@ -1900,6 +1961,68 @@ mod tests {
         ctx.set_history("bogus");
     }
 
+    // ── gather isolated tests (Python parity) ────────────────────────────
+
+    #[test]
+    fn test_gather_question_isolated_tristate() {
+        // None → key omitted.
+        let q = GatherQuestion::new("k", "Q?", "string", false, None, None, None);
+        assert!(q.to_value().get("isolated").is_none());
+
+        // Some(true) → emitted true.
+        let q = GatherQuestion::new("k", "Q?", "string", false, None, None, Some(true));
+        assert_eq!(q.to_value()["isolated"], true);
+
+        // Some(false) → emitted (can override an isolated gather).
+        let q = GatherQuestion::new("k", "Q?", "string", false, None, None, Some(false));
+        assert_eq!(q.to_value()["isolated"], false);
+    }
+
+    #[test]
+    fn test_gather_info_isolated_gather_level() {
+        // Default false → omitted at the gather level.
+        let mut gi = GatherInfo::new(Some("info"), None, None, false);
+        gi.add_question("k", "Q?", "string", false, None, None, None);
+        assert!(gi.to_value().get("isolated").is_none());
+
+        // true → "isolated": true emitted.
+        let mut gi = GatherInfo::new(Some("info"), None, None, true);
+        gi.add_question("k", "Q?", "string", false, None, None, None);
+        assert_eq!(gi.to_value()["isolated"], true);
+    }
+
+    #[test]
+    fn test_step_gather_info_isolated_passthrough() {
+        let mut step = Step::new("s");
+        step.set_text("t");
+        step.set_gather_info(Some("info"), None, None, true);
+        step.add_gather_question("k", "Q?", "string", false, None, None, None);
+        assert_eq!(step.to_value()["gather_info"]["isolated"], true);
+    }
+
+    #[test]
+    fn test_step_add_gather_question_isolated_override() {
+        // Per-question isolated overrides the gather default and is on the
+        // wire even as an explicit false, while an inheriting (None) question
+        // emits nothing.
+        let mut step = Step::new("s");
+        step.set_text("t");
+        step.set_gather_info(Some("info"), None, None, true);
+        step.add_gather_question(
+            "override_off",
+            "Q1?",
+            "string",
+            false,
+            None,
+            None,
+            Some(false),
+        );
+        step.add_gather_question("inherit", "Q2?", "string", false, None, None, None);
+        let questions = step.to_value()["gather_info"]["questions"].clone();
+        assert_eq!(questions[0]["isolated"], false);
+        assert!(questions[1].get("isolated").is_none());
+    }
+
     // ── ContextBuilder tests ─────────────────────────────────────────────
 
     #[test]
@@ -2002,7 +2125,7 @@ mod tests {
         let ctx = builder.add_context("default");
         let step = ctx.add_step("s1");
         step.set_text("a");
-        step.set_gather_info(None, None, None);
+        step.set_gather_info(None, None, None, false);
         let result = builder.validate();
         assert!(result.is_err());
         let errors = result.unwrap_err();
@@ -2015,8 +2138,8 @@ mod tests {
         let ctx = builder.add_context("default");
         let step = ctx.add_step("s1");
         step.set_text("a");
-        step.add_gather_question("name", "Name?", "string", false, None, None);
-        step.add_gather_question("name", "Name again?", "string", false, None, None);
+        step.add_gather_question("name", "Name?", "string", false, None, None, None);
+        step.add_gather_question("name", "Name again?", "string", false, None, None, None);
         let result = builder.validate();
         assert!(result.is_err());
         let errors = result.unwrap_err();

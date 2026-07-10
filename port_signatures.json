@@ -2963,6 +2963,11 @@
                   "name": "prompt",
                   "type": "optional<string>",
                   "required": true
+                },
+                {
+                  "name": "isolated",
+                  "type": "bool",
+                  "required": true
                 }
               ],
               "returns": "void"
@@ -3001,6 +3006,11 @@
                 {
                   "name": "functions",
                   "type": "optional<list<string>>",
+                  "required": true
+                },
+                {
+                  "name": "isolated",
+                  "type": "optional<bool>",
                   "required": true
                 }
               ],
@@ -3053,6 +3063,11 @@
                 {
                   "name": "functions",
                   "type": "optional<list<string>>",
+                  "required": true
+                },
+                {
+                  "name": "isolated",
+                  "type": "optional<bool>",
                   "required": true
                 }
               ],
@@ -3139,6 +3154,11 @@
                   "name": "functions",
                   "type": "optional<list<string>>",
                   "required": true
+                },
+                {
+                  "name": "isolated",
+                  "type": "optional<bool>",
+                  "required": true
                 }
               ],
               "returns": "any"
@@ -3218,6 +3238,11 @@
                 {
                   "name": "prompt",
                   "type": "optional<string>",
+                  "required": true
+                },
+                {
+                  "name": "isolated",
+                  "type": "bool",
                   "required": true
                 }
               ],
