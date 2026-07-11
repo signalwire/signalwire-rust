@@ -216,6 +216,18 @@ def build_generated_signatures(sidecar: dict) -> dict:
                 + [_sidecar_param(p) for p in params],
                 "returns": "any",
             }
+        # ``paginate`` is an OWN method the Python oracle records on the read-only
+        # leaf resources (base == ReadResource: FaxLogs / MessageLogs /
+        # VideoRoomSessions / VoiceLogs / FabricAddresses). Rust delegates it to
+        # the ReadResource base (generate_rest.py emits the public delegator), and
+        # the diff's crud_base excuse does NOT cover ``paginate`` (it's not a CRUD
+        # verb), so synthesize the reference-shaped signature here: self-only,
+        # returning PaginatedIterator (mirrors ReadResource.paginate in the oracle).
+        if r.get("base") == "ReadResource":
+            methods["paginate"] = {
+                "params": [{"name": "self", "kind": "self"}],
+                "returns": "class:signalwire.rest._pagination.PaginatedIterator",
+            }
         out.setdefault(mod, {"classes": {}})
         out[mod]["classes"][cls] = {"methods": dict(sorted(methods.items()))}
     for _name, c in sidecar.get("containers", {}).items():

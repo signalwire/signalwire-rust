@@ -1847,7 +1847,8 @@
       "surface_drop": [
         "base_path",
         "get",
-        "list"
+        "list",
+        "paginate"
       ]
     },
     "FabricTokens": {
@@ -2046,7 +2047,8 @@
       "surface_drop": [
         "base_path",
         "get",
-        "list"
+        "list",
+        "paginate"
       ]
     },
     "FreeswitchConnectors": {
@@ -2271,7 +2273,8 @@
       "surface_drop": [
         "base_path",
         "get",
-        "list"
+        "list",
+        "paginate"
       ]
     },
     "Mfa": {
@@ -4050,7 +4053,8 @@
       "surface_drop": [
         "base_path",
         "get",
-        "list"
+        "list",
+        "paginate"
       ]
     },
     "VideoRoomTokens": {
@@ -4341,7 +4345,8 @@
       "surface_drop": [
         "base_path",
         "get",
-        "list"
+        "list",
+        "paginate"
       ]
     }
   },

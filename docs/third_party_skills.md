@@ -9,8 +9,8 @@ Third-party skills extend the built-in skill system with custom capabilities. A 
 ### 1. Implement `SkillBase`
 
 A skill stores its config in `SkillParams`, registers tools in `register_tools`, and
-exposes prompt sections and hints via `get_prompt_sections` / `get_hints`. There is no
-`apply()` method — the manager calls `setup()` then `register_tools(&mut agent)`.
+exposes prompt sections and hints via `get_prompt_sections` / `get_hints`.
+The SDK has no `apply()` method — the manager calls `setup()` then `register_tools(&mut agent)`.
 
 <!-- snippet: no-compile full `WeatherSkill` definition (item-only struct + trait impl, no `fn main`); the snippet checker compiles each fragment as a binary. This type is referenced by the registration/usage fragments below. -->
 ```rust

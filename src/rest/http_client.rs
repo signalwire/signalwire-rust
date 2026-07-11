@@ -434,7 +434,13 @@ impl HttpClient {
             .transport
             .execute(method, &url, &headers, body)
             .map_err(|e| {
-                SignalWireRestError::new(&format!("{method} {path} failed: {e}"), 0, "")
+                SignalWireRestError::new(
+                    &format!("{method} {path} failed: {e}"),
+                    0,
+                    "",
+                    path,
+                    method,
+                )
             })?;
 
         // Non-2xx
@@ -443,6 +449,8 @@ impl HttpClient {
                 &format!("{method} {path} returned {status}"),
                 status,
                 &response_body,
+                path,
+                method,
             ));
         }
 
@@ -456,6 +464,8 @@ impl HttpClient {
                 &format!("{method} {path} returned non-JSON"),
                 status,
                 &response_body,
+                path,
+                method,
             )
         })
     }
@@ -465,6 +475,82 @@ impl HttpClient {
 struct StubTransportWrapper(std::sync::Arc<StubTransport>);
 
 impl HttpTransport for StubTransportWrapper {
+    fn execute(
+        &self,
+        method: &str,
+        url: &str,
+        headers: &HashMap<String, String>,
+        body: Option<&str>,
+    ) -> Result<(u16, String), String> {
+        self.0.execute(method, url, headers, body)
+    }
+}
+
+/// A stub transport that returns a queued sequence of canned responses — one per
+/// request — so multi-page flows (each page a distinct body) can be exercised.
+/// Records every request like [`StubTransport`]. When the queue is exhausted it
+/// keeps returning the last response.
+///
+/// Test-only (`#[cfg(test)]`): used by the pagination cursor-follow tests; it is
+/// not part of the public REST surface.
+#[cfg(test)]
+pub struct SequencedTransport {
+    responses: std::sync::Mutex<std::collections::VecDeque<(u16, String)>>,
+    last: std::sync::Mutex<(u16, String)>,
+    /// Recorded requests: (method, url, body).
+    pub requests: std::sync::Mutex<Vec<(String, String, Option<String>)>>,
+}
+
+#[cfg(test)]
+impl SequencedTransport {
+    #[must_use]
+    pub fn new(responses: Vec<(u16, String)>) -> Self {
+        let last = responses.last().cloned().unwrap_or((200, "{}".to_string()));
+        SequencedTransport {
+            responses: std::sync::Mutex::new(responses.into_iter().collect()),
+            last: std::sync::Mutex::new(last),
+            requests: std::sync::Mutex::new(Vec::new()),
+        }
+    }
+
+    /// Build an `HttpTransport` box that shares this `Arc`'s recorded requests.
+    #[must_use]
+    pub fn wrapper(inner: std::sync::Arc<SequencedTransport>) -> impl HttpTransport {
+        SequencedTransportWrapper(inner)
+    }
+}
+
+#[cfg(test)]
+impl HttpTransport for SequencedTransport {
+    fn execute(
+        &self,
+        method: &str,
+        url: &str,
+        _headers: &HashMap<String, String>,
+        body: Option<&str>,
+    ) -> Result<(u16, String), String> {
+        self.requests.lock().unwrap().push((
+            method.to_string(),
+            url.to_string(),
+            body.map(std::string::ToString::to_string),
+        ));
+        let mut q = self.responses.lock().unwrap();
+        match q.pop_front() {
+            Some(resp) => {
+                *self.last.lock().unwrap() = resp.clone();
+                Ok(resp)
+            }
+            None => Ok(self.last.lock().unwrap().clone()),
+        }
+    }
+}
+
+/// Wrapper so `Arc<SequencedTransport>` implements `HttpTransport`.
+#[cfg(test)]
+struct SequencedTransportWrapper(std::sync::Arc<SequencedTransport>);
+
+#[cfg(test)]
+impl HttpTransport for SequencedTransportWrapper {
     fn execute(
         &self,
         method: &str,

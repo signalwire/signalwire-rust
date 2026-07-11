@@ -1059,7 +1059,7 @@ signalwire.core.agent_base.AgentBase.set_language_fillers: rust-builder-method �
 These two Rust-only transport entry points predate this pass but were never documented because run-ci only gates Layer A (signatures), not Layer B (surface). Documented here so the surface diff is clean. Both are internal transport plumbing with no Python equivalent.
 
 signalwire.relay.client.ws_connect: rust-transport-helper — opens a verified WebSocket (plain `ws://` or rustls `wss://`, optionally trusting a private CA) for the relay client. Python's websocket connect is internal to `RelayClient`.
-signalwire.server.tls.bind_server: rust-transport-helper — `pub(crate)` HTTP/HTTPS listener bind shared by the server entry points (selects TLS via `SWML_SSL_*`). Python uses uvicorn's `ssl_*`.
+signalwire.server.tls.bind_server: rust-transport-helper — `pub(crate)` HTTP/HTTPS listener bind shared by the server entry points (selects TLS via the SSL-related `SWML_` env vars). Python uses uvicorn's `ssl_*`.
 
 ### Rust REST spec-parity helpers (narrow top-level resources + shared util)
 

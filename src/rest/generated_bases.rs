@@ -25,6 +25,7 @@ use serde_json::Value;
 
 use super::error::SignalWireRestError;
 use super::http_client::HttpClient;
+use super::pagination::PaginatedIterator;
 
 /// The single canonical CRUD base. `CrudResource` is defined once in
 /// `crud_resource.rs` (also the public `rest::CrudResource`); the generated
@@ -60,8 +61,12 @@ impl<'a> BaseResource<'a> {
     }
 
     /// The underlying HTTP client (used by generated declared methods).
+    ///
+    /// Returns the client with the base's own `'a` lifetime so callers (e.g.
+    /// [`ReadResource::paginate`]) can hand it to a [`PaginatedIterator`] that
+    /// outlives the `&self` borrow.
     #[must_use]
-    pub fn client(&self) -> &HttpClient {
+    pub fn client(&self) -> &'a HttpClient {
         self.client
     }
 
@@ -114,6 +119,23 @@ impl<'a> ReadResource<'a> {
     /// or an unparseable response body.
     pub fn list(&self, params: &HashMap<String, String>) -> Result<Value, SignalWireRestError> {
         self.base.client().get(self.base.base_path(), params)
+    }
+
+    /// Iterate every item across all pages of this resource's list endpoint.
+    ///
+    /// Returns a lazy [`PaginatedIterator`] that follows the response's
+    /// `links.next` cursor and yields each item under the `"data"` key. Mirrors
+    /// the Python reference's `ReadResource.paginate(**params)`; see
+    /// [`CrudResource::paginate`](super::CrudResource::paginate) for the full
+    /// contract.
+    #[must_use]
+    pub fn paginate(&self, params: &HashMap<String, String>) -> PaginatedIterator<'a> {
+        PaginatedIterator::new(
+            self.base.client(),
+            self.base.base_path(),
+            params.clone(),
+            "data",
+        )
     }
 
     /// Retrieve a single resource by id (GET base/{id}).

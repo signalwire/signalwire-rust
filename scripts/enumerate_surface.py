@@ -481,11 +481,15 @@ METHOD_RENAMES: dict[str, dict[str, str]] = {
         "list_all": None,
     },
     # SignalWireRestError: reference records only __init__. Drop the Rust
-    # field-accessor reads (message/status_code/response_body).
+    # field-accessor reads (message/status_code/response_body/url/method — all
+    # mirror the Python exception's instance attributes of the same names, which
+    # the reference surface does not enumerate as members).
     "SignalWireRestError": {
         "message": None,
         "status_code": None,
         "response_body": None,
+        "url": None,
+        "method": None,
     },
     # PaginatedIterator: Rust exposes borrow-checker/field-accessor idiom reads
     # (data_key/http/index/is_done/items/params/path) + the manual-step
@@ -982,12 +986,12 @@ SURFACE_PROJECTIONS: dict[tuple[str, str], list[tuple[str, list[str]]]] = {
         ("SWMLService", ["define_tool", "register_swaig_function", "has_function",
                          "get_function", "get_all_functions", "remove_function"]),
     ],
-    # ReadResource: Python's CrudResource inherits get/list from ReadResource;
-    # the reference records them on ReadResource (own methods), CrudResource
-    # keeps only create/update/delete. Rust's CrudResource carries get/list —
-    # donate them to ReadResource and drop from CrudResource.
+    # ReadResource: Python's CrudResource inherits get/list/paginate from
+    # ReadResource; the reference records them on ReadResource (own methods),
+    # CrudResource keeps only create/update/delete. Rust's CrudResource carries
+    # get/list/paginate — donate them to ReadResource and drop from CrudResource.
     ("signalwire.rest._base", "ReadResource"): [
-        ("CrudResource", ["get", "list"]),
+        ("CrudResource", ["get", "list", "paginate"]),
     ],
     # SkillManager: Rust hosts the reference's SkillManager surface on
     # SkillManager already; project the extra reference names it lacks from the
@@ -1023,7 +1027,7 @@ SURFACE_PROJECTIONS: dict[tuple[str, str], list[tuple[str, list[str]]]] = {
 # the AgentBase mixin methods stay on AgentBase too only where the reference
 # also declares them there (it does not for the mixins → strip them).
 PROJECTION_DONOR_STRIPS: dict[tuple[str, str], set[str]] = {
-    ("signalwire.rest._base", "CrudResource"): {"get", "list"},
+    ("signalwire.rest._base", "CrudResource"): {"get", "list", "paginate"},
 }
 # Reference Python dunders that Rust realizes idiomatically rather than as a
 # literally-named method. `__getattr__` is Python's dynamic attribute hook: on
