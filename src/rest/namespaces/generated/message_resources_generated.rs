@@ -12,6 +12,7 @@ use serde_json::Value;
 use crate::rest::error::SignalWireRestError;
 use crate::rest::generated_bases::ReadResource;
 use crate::rest::http_client::HttpClient;
+use crate::rest::pagination::PaginatedIterator;
 
 /// `MessageLogs` resource for the SignalWire `message` REST API.
 ///
@@ -49,5 +50,12 @@ impl<'a> MessageLogs<'a> {
     /// See the base resource.
     pub fn get(&self, id: &str) -> Result<Value, SignalWireRestError> {
         self.base.get(id)
+    }
+
+    /// `paginate` (delegated to the base): iterate every item across all
+    /// pages, following the response's `links.next` cursor.
+    #[must_use]
+    pub fn paginate(&self, params: &HashMap<String, String>) -> PaginatedIterator<'a> {
+        self.base.paginate(params)
     }
 }

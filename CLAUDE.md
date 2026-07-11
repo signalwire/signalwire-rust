@@ -83,7 +83,7 @@ signalwire-rust/
 │   ├── swaig/              # FunctionResult, tool registry, SWAIG dispatch
 │   ├── datamap/            # DataMap builder for server-side tools
 │   ├── contexts/           # ContextBuilder, Context, Step workflows
-│   ├── skills/             # SkillBase trait, SkillManager, 18 built-in skills
+│   ├── skills/             # SkillBase trait, SkillManager, 17 built-in skills
 │   ├── prefabs/            # Pre-built agents (InfoGatherer, Survey, FAQ, etc.)
 │   ├── server/             # AgentServer for multi-agent hosting
 │   ├── relay/              # RELAY WebSocket client (Blade/JSON-RPC 2.0)
@@ -118,7 +118,7 @@ signalwire-rust/
 
 6. **Contexts & Steps** (`src/contexts/`) -- ContextBuilder, Context, and Step structs for structured multi-step conversation workflows. Validation ensures single contexts are named "default".
 
-7. **Skills** (`src/skills/`) -- `SkillBase` trait, `SkillManager`, `SkillRegistry`. 18 built-in skills (datetime, math, joke, weather_api, web_search, wikipedia_search, google_maps, spider, datasphere, datasphere_serverless, swml_transfer, play_background_file, api_ninjas_trivia, native_vector_search, info_gatherer, claude_skills, mcp_gateway, custom_skills).
+7. **Skills** (`src/skills/`) -- `SkillBase` trait, `SkillManager`, `SkillRegistry`. 17 built-in skills (datetime, math, joke, weather_api, web_search, wikipedia_search, google_maps, spider, datasphere, datasphere_serverless, swml_transfer, play_background_file, api_ninjas_trivia, native_vector_search, info_gatherer, claude_skills, custom_skills).
 
 8. **Prefabs** (`src/prefabs/`) -- Ready-to-use agent archetypes: InfoGathererAgent, SurveyAgent, ReceptionistAgent, FAQBotAgent, ConciergeAgent. Each configurable through builder methods.
 
@@ -126,7 +126,7 @@ signalwire-rust/
 
 10. **RELAY** (`src/relay/`) -- WebSocket client for real-time call control. Blade/JSON-RPC 2.0 protocol, 4 correlation mechanisms (JSON-RPC id, call_id, control_id, tag), auto-reconnect with exponential backoff, 57+ calling methods, SMS/MMS messaging.
 
-11. **REST** (`src/rest/`) -- Async HTTP client with Basic Auth. CrudResource trait for List/Create/Get/Update/Delete. 21 namespaced API surfaces (Fabric, Calling, Video, Datasphere, Compat, PhoneNumbers, SIP, Queues, Recordings, and more). Pagination support.
+11. **REST** (`src/rest/`) -- Async HTTP client with Basic Auth. CrudResource trait for List/Create/Get/Update/Delete. 20 namespaced API surfaces (Fabric, Calling, Video, Datasphere, PhoneNumbers, SIP, Queues, Recordings, and more). Pagination support.
 
 12. **Security** (`src/security/`) -- SessionManager with HMAC-SHA256 token creation and timing-safe validation. Random 32-byte secrets. Auth middleware for basic auth with timing-safe comparison.
 

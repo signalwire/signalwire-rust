@@ -339,10 +339,16 @@ def arg_for(brace: str) -> str:
 # Base mapping (§2).
 # ---------------------------------------------------------------------------
 
+# ``paginate`` is provided ONLY by the pure read base (ReadResource): the Python
+# oracle records ``paginate`` as an OWN method on the read-only leaf resources
+# (FaxLogs / MessageLogs / VideoRoomSessions / VoiceLogs / FabricAddresses) that
+# subclass ReadResource directly, but NOT on the CRUD/Fabric resources (there it
+# is inherited-and-collapsed, excused by the diff's crud_base handling). So keep
+# ``paginate`` out of the CRUD/Fabric provides.
 BASE_PROVIDES = {
     "CrudResource": {"list", "create", "get", "update", "delete"},
     "FabricResource": {"list", "create", "get", "update", "delete", "list_addresses"},
-    "ReadResource": {"list", "get"},
+    "ReadResource": {"list", "get", "paginate"},
     "BaseResource": set(),
 }
 
@@ -551,6 +557,8 @@ def gen_imports(body: str) -> str:
         lines.append(f"use crate::rest::generated_bases::{{{', '.join(bases)}}};")
     if re.search(r"\bHttpClient\b", body):
         lines.append("use crate::rest::http_client::HttpClient;")
+    if re.search(r"\bPaginatedIterator\b", body):
+        lines.append("use crate::rest::pagination::PaginatedIterator;")
     return "\n".join(lines) + ("\n" if lines else "")
 
 
@@ -1071,6 +1079,14 @@ def emit_resource(spec: Spec, anchor: str, markup: dict, structs: dict[str, str]
         lines.append("    /// See the base resource.")
         lines.append("    pub fn get(&self, id: &str) -> Result<Value, SignalWireRestError> {")
         lines.append("        self.base.get(id)")
+        lines.append("    }")
+    if "paginate" in provided:
+        lines.append("")
+        lines.append("    /// `paginate` (delegated to the base): iterate every item across all")
+        lines.append("    /// pages, following the response's `links.next` cursor.")
+        lines.append("    #[must_use]")
+        lines.append("    pub fn paginate(&self, params: &HashMap<String, String>) -> PaginatedIterator<'a> {")
+        lines.append("        self.base.paginate(params)")
         lines.append("    }")
     if "create" in provided:
         lines.append("")

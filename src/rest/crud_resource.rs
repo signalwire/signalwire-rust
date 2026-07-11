@@ -4,6 +4,7 @@ use serde_json::Value;
 
 use super::error::SignalWireRestError;
 use super::http_client::HttpClient;
+use super::pagination::PaginatedIterator;
 
 /// Generic CRUD wrapper around an `HttpClient` and a base API path.
 ///
@@ -60,6 +61,34 @@ impl<'a> CrudResource<'a> {
     /// status, or the response body is not valid JSON.
     pub fn list(&self, params: &HashMap<String, String>) -> Result<Value, SignalWireRestError> {
         self.client.get(&self.base_path, params)
+    }
+
+    /// Iterate every item across all pages of this resource's list endpoint.
+    ///
+    /// [`list`](Self::list) returns a single raw page (the server's first
+    /// response). For endpoints that paginate on the wire (a `links.next`
+    /// cursor in the response body), `paginate` returns a lazy
+    /// [`PaginatedIterator`] that follows those cursors and yields each item
+    /// under the `"data"` key:
+    ///
+    /// ```no_run
+    /// # use std::collections::HashMap;
+    /// # use signalwire::rest::CrudResource;
+    /// # fn demo(resource: &CrudResource<'_>) {
+    /// for item in resource.paginate(&HashMap::new()) {
+    ///     let item = item.expect("page fetch failed");
+    ///     // ... use item ...
+    /// }
+    /// # }
+    /// ```
+    ///
+    /// Mirrors the Python reference's `ReadResource.paginate(**params)`, wiring
+    /// the resource layer to the tested [`PaginatedIterator`] so callers no
+    /// longer hand-build the path + cursor loop. Construction is lazy — no HTTP
+    /// is dispatched until the iterator is first stepped.
+    #[must_use]
+    pub fn paginate(&self, params: &HashMap<String, String>) -> PaginatedIterator<'a> {
+        PaginatedIterator::new(self.client, &self.base_path, params.clone(), "data")
     }
 
     /// Create a new resource (POST basePath).
@@ -252,5 +281,55 @@ mod tests {
         let crud = CrudResource::new(&client, "/api/items", "PUT");
         let err = crud.get("missing").unwrap_err();
         assert_eq!(err.status_code(), 404);
+    }
+
+    #[test]
+    fn test_paginate_is_lazy() {
+        // Constructing the iterator dispatches no HTTP until first stepped.
+        let (client, stub) = make_resource();
+        let crud = CrudResource::new(&client, "/api/items", "PATCH");
+        let _it = crud.paginate(&HashMap::new());
+        assert!(stub.requests.lock().unwrap().is_empty());
+    }
+
+    #[test]
+    fn test_paginate_follows_cursor_two_pages() {
+        // paginate() must walk every page: page 1 carries links.next, page 2 is
+        // terminal. All items across both pages are yielded, in order, and the
+        // second GET follows the cursor from links.next.
+        use crate::rest::http_client::SequencedTransport;
+
+        let responses = vec![
+            (
+                200,
+                r#"{"data":[{"id":"1"},{"id":"2"}],
+                    "links":{"next":"/api/items?cursor=page2"}}"#
+                    .to_string(),
+            ),
+            (
+                200,
+                r#"{"data":[{"id":"3"}],"links":{"next":null}}"#.to_string(),
+            ),
+        ];
+        let transport = std::sync::Arc::new(SequencedTransport::new(responses));
+        let client = crate::rest::http_client::HttpClient::new(
+            "proj",
+            "tok",
+            "https://test.signalwire.com",
+            Box::new(SequencedTransport::wrapper(transport.clone())),
+        );
+
+        let crud = CrudResource::new(&client, "/api/items", "PATCH");
+        let ids: Vec<String> = crud
+            .paginate(&HashMap::new())
+            .map(|item| item.unwrap()["id"].as_str().unwrap().to_string())
+            .collect();
+        assert_eq!(ids, vec!["1", "2", "3"]);
+
+        // Exactly two page requests; the second followed links.next's cursor.
+        let reqs = transport.requests.lock().unwrap();
+        assert_eq!(reqs.len(), 2);
+        assert!(reqs[0].1.contains("/api/items"));
+        assert!(reqs[1].1.contains("cursor=page2"));
     }
 }

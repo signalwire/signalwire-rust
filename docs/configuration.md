@@ -15,6 +15,24 @@ The SDK reads configuration from environment variables at startup.
 | `SWML_SSL_CERT_PATH` | none | Path to SSL certificate PEM file |
 | `SWML_SSL_KEY_PATH` | none | Path to SSL private key PEM file |
 
+### Security Environment Variables
+
+Read by `SecurityConfig` (`src/core/security_config.rs`); all are secure-by-default.
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `SWML_DOMAIN` | none | Public domain used when composing HTTPS URLs |
+| `SWML_SSL_VERIFY_MODE` | `CERT_REQUIRED` | TLS peer-certificate verification mode |
+| `SWML_ALLOWED_HOSTS` | `*` | Comma-separated host allowlist for inbound requests |
+| `SWML_CORS_ORIGINS` | `*` | Comma-separated allowed CORS origins |
+| `SWML_MAX_REQUEST_SIZE` | `10485760` | Maximum inbound request body size, in bytes |
+| `SWML_RATE_LIMIT` | `60` | Requests-per-minute rate limit |
+| `SWML_REQUEST_TIMEOUT` | `30` | Request timeout, in seconds |
+| `SWML_USE_HSTS` | `true` | Emit the `Strict-Transport-Security` header |
+| `SWML_HSTS_MAX_AGE` | `31536000` | `max-age` (seconds) for the HSTS header |
+| `SWML_ALLOW_PRIVATE_URLS` | `false` | Permit fetches to private/loopback URLs (SSRF guard escape hatch) |
+| `SWML_SKIP_SCHEMA_VALIDATION` | `false` | Skip SWML schema validation (unsafe; testing only) |
+
 ### RELAY and REST Environment Variables
 
 | Variable | Description |
@@ -22,6 +40,11 @@ The SDK reads configuration from environment variables at startup.
 | `SIGNALWIRE_PROJECT_ID` | Project identifier |
 | `SIGNALWIRE_API_TOKEN` | API token |
 | `SIGNALWIRE_SPACE` | Space hostname (e.g. `example.signalwire.com`) |
+| `SIGNALWIRE_RELAY_HOST` | Override the RELAY WebSocket host (advanced/testing) |
+| `SIGNALWIRE_RELAY_SCHEME` | Override the RELAY WebSocket scheme (`ws`/`wss`; default `wss`) |
+| `SIGNALWIRE_RELAY_CA_FILE` | Path to a PEM CA bundle for the RELAY WebSocket TLS trust store |
+| `SIGNALWIRE_REST_CA_FILE` | Path to a PEM CA bundle for the REST HTTP client TLS trust store |
+| `SIGNALWIRE_SIGNING_KEY` | Webhook-signature signing key for the agent |
 
 ### Logging Environment Variables
 
