@@ -439,9 +439,9 @@ signalwire.skills.skill_base.value_to_map: Rust ships SkillParams + value_to_map
 
 ### Rust SkillName closed-set enum
 
-rust_enum_idiom: typed closed set of the 18 built-in skill names. add_skill/remove_skill/has_skill keep their &str parameter (parity with Python's bare str + custom skills); SkillName plugs in via as_str()/AsRef<str>/Display so a typo like add_skill("datetiem") that Python only catches at the server fails at the Rust call site instead, with editor autocomplete and exhaustive matching. Wire behaviour is identical (normalizes to the same snake_case string).
+rust_enum_idiom: typed closed set of the 17 built-in skill names. add_skill/remove_skill/has_skill keep their &str parameter (parity with Python's bare str + custom skills); SkillName plugs in via as_str()/AsRef<str>/Display so a typo like add_skill("datetiem") that Python only catches at the server fails at the Rust call site instead, with editor autocomplete and exhaustive matching. Wire behaviour is identical (normalizes to the same snake_case string).
 
-signalwire.skills.skill_name.SkillName: rust_enum_idiom: typed closed set of the 18 built-in skill names; add_skill/remove_skill/has_skill keep their &str param (Python parity + custom skills) and accept this enum via as_str()/AsRef<str>. Wire behaviour identical.
+signalwire.skills.skill_name.SkillName: rust_enum_idiom: typed closed set of the 17 built-in skill names; add_skill/remove_skill/has_skill keep their &str param (Python parity + custom skills) and accept this enum via as_str()/AsRef<str>. Wire behaviour identical.
 signalwire.skills.skill_name.SkillName.as_str: rust_enum_idiom: returns the canonical snake_case wire name (see SkillName) — the exact string add_skill(&str) expects, so the enum and string paths load the identical skill.
 signalwire.skills.skill_name.SkillName.all: rust_enum_idiom: &'static slice of every built-in SkillName for exhaustive iteration (see SkillName).
 signalwire.skills.skill_name.SkillName.from_str: rust_enum_idiom: parse a wire name back to a SkillName, None for custom/third-party names (see SkillName).

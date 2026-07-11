@@ -636,7 +636,10 @@ impl Service {
     ///
     /// # Panics
     ///
-    /// Panics if the verb name is not in the schema (fail-loud).
+    /// Panics if the verb name is not in the schema, or if the verb config
+    /// fails validation — the latter carrying a `SchemaValidationError`,
+    /// mirroring Python `SWMLService.add_verb`'s
+    /// `raise SchemaValidationError(verb_name, errors)`.
     pub fn add_verb_to_section(&mut self, section: &str, verb: &str, config: Value) -> bool {
         if !self.document.has_section(section) {
             self.document.add_section(section);
@@ -649,10 +652,24 @@ impl Service {
         if !config.is_object() {
             return false;
         }
-        // A registered handler validates its own verb; else use the schema.
-        if !self.verb_registry.has_handler(verb) {
+        // Validate the verb config before adding it. Mirrors Python
+        // `SWMLService.add_verb`: a registered handler validates its own verb
+        // via `validate_config`; otherwise the schema-based `validate_verb`
+        // runs. An invalid config fails loud with `SchemaValidationError`
+        // (Python `raise SchemaValidationError(verb_name, errors)`).
+        let (is_valid, errors) = if let Some(handler) = self.verb_registry.get_handler(verb) {
+            handler.validate_config(&config)
+        } else {
+            // Preserve the fail-loud unknown-verb contract (distinct panic
+            // message) before schema-based property validation.
             assert!(schema::is_valid_verb(verb), "Unknown SWML verb: {verb}");
-        }
+            self.schema_utils().validate_verb(verb, &config)
+        };
+        assert!(
+            is_valid,
+            "{}",
+            crate::utils::SchemaValidationError::new(verb.to_string(), errors)
+        );
         self.document.add_verb_to_section(section, verb, config);
         true
     }
@@ -1481,6 +1498,32 @@ mod tests {
     fn test_add_verb_unknown_panics() {
         let mut svc = Service::new(default_options("svc"));
         svc.add_verb_to_section("main", "totally_fake_verb", serde_json::json!({}));
+    }
+
+    // A schema-invalid config (a known verb missing a required property) fails
+    // loud with `SchemaValidationError`, mirroring the Python reference's
+    // `raise SchemaValidationError(verb_name, errors)` in `SWMLService.add_verb`.
+    // `request` requires `url` + `method`; an empty config is invalid.
+    #[test]
+    #[should_panic(expected = "Schema validation failed for 'request'")]
+    fn test_add_verb_invalid_config_raises_schema_validation_error() {
+        let mut svc = Service::new(default_options("svc"));
+        svc.add_verb_to_section("main", "request", serde_json::json!({}));
+    }
+
+    // A valid config for a verb with required properties is accepted.
+    #[test]
+    fn test_add_verb_valid_config_with_required_props() {
+        let mut svc = Service::new(default_options("svc"));
+        let added = svc.add_verb_to_section(
+            "main",
+            "request",
+            serde_json::json!({"url": "https://example.com", "method": "POST"}),
+        );
+        assert!(added);
+        let verbs = svc.document().get_verbs("main");
+        assert_eq!(verbs.len(), 1);
+        assert!(verbs[0].get("request").is_some());
     }
 
     #[test]

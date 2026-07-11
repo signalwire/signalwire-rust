@@ -35,7 +35,7 @@ Define functions the AI can call mid-conversation. Handlers receive arguments an
 
 ### Skills System
 
-One-liner integration of reusable capabilities: `agent.add_skill("datetime", json!({}))`. The SDK ships 18 built-in skills, including datetime, math, joke, weather_api, web_search, wikipedia_search, and mcp_gateway.
+One-liner integration of reusable capabilities: `agent.add_skill("datetime", json!({}))`. The SDK ships 17 built-in skills, including datetime, math, joke, weather_api, web_search, wikipedia_search, and native_vector_search.
 
 ### Contexts and Steps
 
