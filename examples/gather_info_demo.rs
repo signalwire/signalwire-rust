@@ -34,12 +34,14 @@ fn main() {
         Some("patient_demographics"),
         None,
         Some("Please collect the following patient information."),
+        false,
     );
     step1.add_gather_question(
         "full_name",
         "What is your full name?",
         "string",
         false,
+        None,
         None,
         None,
     );
@@ -50,6 +52,7 @@ fn main() {
         false,
         None,
         None,
+        None,
     );
     step1.add_gather_question(
         "phone_number",
@@ -58,12 +61,14 @@ fn main() {
         true,
         None,
         None,
+        None,
     );
     step1.add_gather_question(
         "email",
         "What is your email address?",
         "string",
         false,
+        None,
         None,
         None,
     );
@@ -76,12 +81,14 @@ fn main() {
         Some("patient_symptoms"),
         None,
         Some("Now let's talk about why you're visiting today."),
+        false,
     );
     step2.add_gather_question(
         "reason_for_visit",
         "What is the main reason for your visit today?",
         "string",
         false,
+        None,
         None,
         None,
     );
@@ -92,12 +99,14 @@ fn main() {
         false,
         None,
         None,
+        None,
     );
     step2.add_gather_question(
         "pain_level",
         "On a scale of 1 to 10, how would you rate your discomfort?",
         "string",
         false,
+        None,
         None,
         None,
     );

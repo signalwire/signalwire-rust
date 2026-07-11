@@ -114,6 +114,7 @@ fn main() {
             "I'll need to collect a few details to set up your account. \
              I'll ask one question at a time.",
         ),
+        false,
     );
 
     // Question 1: email — only validate_email + gather_submit callable.
@@ -124,6 +125,7 @@ fn main() {
         true,
         None,
         Some(vec!["validate_email".to_string()]),
+        None,
     );
     // Question 2: zip — only geocode_zip + gather_submit callable.
     onboard.add_gather_question(
@@ -133,6 +135,7 @@ fn main() {
         false,
         None,
         Some(vec!["geocode_zip".to_string()]),
+        None,
     );
     // Question 3: age — only check_age_eligibility + gather_submit
     // callable.
@@ -143,6 +146,7 @@ fn main() {
         false,
         None,
         Some(vec!["check_age_eligibility".to_string()]),
+        None,
     );
     // Question 4: referral_source — no functions → only gather_submit
     // is callable. The model cannot validate, lookup, escalate —
@@ -152,6 +156,7 @@ fn main() {
         "How did you hear about us?",
         "string",
         false,
+        None,
         None,
         None,
     );

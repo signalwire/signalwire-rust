@@ -15,6 +15,16 @@ use serde_json::{Map, Value, json};
 /// user tool because the native one wins.
 pub const RESERVED_NATIVE_TOOL_NAMES: &[&str] = &["next_step", "change_context", "gather_submit"];
 
+/// Valid values for a step's or context's `history` visibility mode.
+///
+///   - `keep`    — nothing is cleared; every prior step's instructions *and*
+///     dialogue stay in the model's context.
+///   - `default` — prior step instructions are hidden; the dialogue is kept.
+///   - `hide`    — prior instructions hidden **and** the prior dialogue pulled
+///     out of the model's context. The only way back in is an explicit
+///     `${step_history.*}` reference in the new prompt.
+pub const HISTORY_MODES: &[&str] = &["keep", "default", "hide"];
+
 // ── GatherQuestion ──────────────────────────────────────────────────────────
 
 /// A single question within a `gather_info` block.
@@ -26,6 +36,9 @@ pub struct GatherQuestion {
     confirm: bool,
     prompt: Option<String>,
     functions: Option<Vec<String>>,
+    // Tri-state: `None` inherits the gather's `isolated` default; `Some(false)`
+    // is emitted so it can override an isolated gather.
+    isolated: Option<bool>,
 }
 
 impl GatherQuestion {
@@ -36,6 +49,7 @@ impl GatherQuestion {
         confirm: bool,
         prompt: Option<&str>,
         functions: Option<Vec<String>>,
+        isolated: Option<bool>,
     ) -> Self {
         GatherQuestion {
             key: key.to_string(),
@@ -44,6 +58,7 @@ impl GatherQuestion {
             confirm,
             prompt: prompt.map(std::string::ToString::to_string),
             functions,
+            isolated,
         }
     }
 
@@ -71,6 +86,10 @@ impl GatherQuestion {
         {
             map.insert("functions".to_string(), json!(f));
         }
+        // Emitted even when `false`, so it can override an isolated gather.
+        if let Some(iso) = self.isolated {
+            map.insert("isolated".to_string(), json!(iso));
+        }
 
         Value::Object(map)
     }
@@ -85,6 +104,9 @@ pub struct GatherInfo {
     output_key: Option<String>,
     completion_action: Option<String>,
     prompt: Option<String>,
+    // Gather-level default for every question. `"isolated": true` is emitted
+    // only when set; a `false` default is omitted at the gather level.
+    isolated: bool,
 }
 
 impl GatherInfo {
@@ -92,15 +114,22 @@ impl GatherInfo {
         output_key: Option<&str>,
         completion_action: Option<&str>,
         prompt: Option<&str>,
+        isolated: bool,
     ) -> Self {
         GatherInfo {
             questions: Vec::new(),
             output_key: output_key.map(std::string::ToString::to_string),
             completion_action: completion_action.map(std::string::ToString::to_string),
             prompt: prompt.map(std::string::ToString::to_string),
+            isolated,
         }
     }
 
+    // 1:1 parameter parity with Python `GatherInfo.add_question` /
+    // `GatherQuestion.__init__` (key, question, type, confirm, prompt,
+    // functions, isolated) — the arg list mirrors the reference wire fields,
+    // not a refactorable Rust-only signature.
+    #[allow(clippy::too_many_arguments)]
     pub fn add_question(
         &mut self,
         key: &str,
@@ -109,6 +138,7 @@ impl GatherInfo {
         confirm: bool,
         prompt: Option<&str>,
         functions: Option<Vec<String>>,
+        isolated: Option<bool>,
     ) -> &mut Self {
         self.questions.push(GatherQuestion::new(
             key,
@@ -117,6 +147,7 @@ impl GatherInfo {
             confirm,
             prompt,
             functions,
+            isolated,
         ));
         self
     }
@@ -147,6 +178,9 @@ impl GatherInfo {
         }
         if let Some(ref ca) = self.completion_action {
             map.insert("completion_action".to_string(), json!(ca));
+        }
+        if self.isolated {
+            map.insert("isolated".to_string(), json!(true));
         }
 
         Value::Object(map)
@@ -202,6 +236,7 @@ pub struct Step {
     end: bool,
     skip_user_turn: bool,
     skip_to_next_step: bool,
+    history: Option<String>,
 
     // Reset object for context switching from steps.
     reset_system_prompt: Option<String>,
@@ -224,6 +259,7 @@ impl Step {
             end: false,
             skip_user_turn: false,
             skip_to_next_step: false,
+            history: None,
             reset_system_prompt: None,
             reset_user_prompt: None,
             reset_consolidate: false,
@@ -380,6 +416,32 @@ impl Step {
         self
     }
 
+    /// Control what the model still sees when this step is entered.
+    ///
+    /// The mode governs everything before this step (including the turn that
+    /// triggered the transition); it does not affect this step's own turns.
+    /// Nothing is deleted — the call log keeps every message.
+    ///
+    /// - `keep` — clear nothing; every prior step's instructions and dialogue
+    ///   stay visible.
+    /// - `default` — hide the prior step *instructions*, keep the dialogue.
+    /// - `hide` — hide the prior instructions *and* pull the prior dialogue out
+    ///   of the model's context (pair with a `${step_history.*}` reference to
+    ///   choose what comes back).
+    ///
+    /// # Panics
+    ///
+    /// Panics if `history` is not one of [`HISTORY_MODES`]
+    /// (`keep` / `default` / `hide`) — mirrors Python's `ValueError`.
+    pub fn set_history(&mut self, history: &str) -> &mut Self {
+        assert!(
+            HISTORY_MODES.contains(&history),
+            "history must be one of {HISTORY_MODES:?}, got {history:?}"
+        );
+        self.history = Some(history.to_string());
+        self
+    }
+
     /// Set the system prompt applied when this step navigates to a context
     /// (part of the step's `reset` object).
     pub fn set_reset_system_prompt(&mut self, system_prompt: &str) -> &mut Self {
@@ -409,13 +471,24 @@ impl Step {
     }
 
     /// Initialise `gather_info` for this step.
+    ///
+    /// `isolated` is the gather-level default for every question: when `true`,
+    /// a question is asked with the sibling Q&A hidden from the model so it
+    /// must ask rather than derive the answer (the hidden turns remain in the
+    /// call log). A question's own `isolated` overrides this default.
     pub fn set_gather_info(
         &mut self,
         output_key: Option<&str>,
         completion_action: Option<&str>,
         prompt: Option<&str>,
+        isolated: bool,
     ) -> &mut Self {
-        self.gather_info = Some(GatherInfo::new(output_key, completion_action, prompt));
+        self.gather_info = Some(GatherInfo::new(
+            output_key,
+            completion_action,
+            prompt,
+            isolated,
+        ));
         self
     }
 
@@ -441,6 +514,14 @@ impl Step {
     /// email, geocode a ZIP), list that tool name in this question's
     /// `functions` argument. Functions listed here are active ONLY
     /// for this question.
+    /// `isolated` is the per-question override of the gather's `isolated`
+    /// default: `Some(true)` hides the sibling Q&A while this question is
+    /// asked, `Some(false)` keeps it visible even in an isolated gather, and
+    /// `None` inherits the gather's setting.
+    // 1:1 parameter parity with Python `Step.add_gather_question` (key,
+    // question, type, confirm, prompt, functions, isolated) — the arg list
+    // mirrors the reference, not a refactorable Rust-only signature.
+    #[allow(clippy::too_many_arguments)]
     pub fn add_gather_question(
         &mut self,
         key: &str,
@@ -449,12 +530,21 @@ impl Step {
         confirm: bool,
         prompt: Option<&str>,
         functions: Option<Vec<String>>,
+        isolated: Option<bool>,
     ) -> &mut Self {
         if self.gather_info.is_none() {
-            self.gather_info = Some(GatherInfo::new(None, None, None));
+            self.gather_info = Some(GatherInfo::new(None, None, None, false));
         }
         if let Some(ref mut gi) = self.gather_info {
-            gi.add_question(key, question, question_type, confirm, prompt, functions);
+            gi.add_question(
+                key,
+                question,
+                question_type,
+                confirm,
+                prompt,
+                functions,
+                isolated,
+            );
         }
         self
     }
@@ -516,6 +606,9 @@ impl Step {
         if self.skip_to_next_step {
             map.insert("skip_to_next_step".to_string(), json!(true));
         }
+        if let Some(ref h) = self.history {
+            map.insert("history".to_string(), json!(h));
+        }
 
         // Reset object — emitted only if any reset field is set (Python parity).
         let mut reset = Map::new();
@@ -573,6 +666,7 @@ pub struct Context {
 
     enter_fillers: Option<Value>,
     exit_fillers: Option<Value>,
+    history: Option<String>,
 }
 
 impl Context {
@@ -595,6 +689,7 @@ impl Context {
             prompt_sections: Vec::new(),
             enter_fillers: None,
             exit_fillers: None,
+            history: None,
         }
     }
 
@@ -720,6 +815,23 @@ impl Context {
     /// Set the user prompt to inject when entering this context.
     pub fn set_user_prompt(&mut self, user_prompt: &str) -> &mut Self {
         self.user_prompt = Some(user_prompt.to_string());
+        self
+    }
+
+    /// Set the default `history` visibility mode for every step in this
+    /// context. A step's own [`Step::set_history`] overrides this. See
+    /// [`Step::set_history`] for what each mode does.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `history` is not one of [`HISTORY_MODES`]
+    /// (`keep` / `default` / `hide`) — mirrors Python's `ValueError`.
+    pub fn set_history(&mut self, history: &str) -> &mut Self {
+        assert!(
+            HISTORY_MODES.contains(&history),
+            "history must be one of {HISTORY_MODES:?}, got {history:?}"
+        );
+        self.history = Some(history.to_string());
         self
     }
 
@@ -944,6 +1056,9 @@ impl Context {
         }
         if let Some(ref xf) = self.exit_fillers {
             map.insert("exit_fillers".to_string(), xf.clone());
+        }
+        if let Some(ref h) = self.history {
+            map.insert("history".to_string(), json!(h));
         }
 
         Value::Object(map)
@@ -1304,7 +1419,15 @@ mod tests {
 
     #[test]
     fn test_gather_question_basic() {
-        let q = GatherQuestion::new("name", "What is your name?", "string", false, None, None);
+        let q = GatherQuestion::new(
+            "name",
+            "What is your name?",
+            "string",
+            false,
+            None,
+            None,
+            None,
+        );
         let val = q.to_value();
         assert_eq!(val["key"], "name");
         assert_eq!(val["question"], "What is your name?");
@@ -1321,6 +1444,7 @@ mod tests {
             true,
             Some("Please enter your age"),
             Some(vec!["validate_age".to_string()]),
+            None,
         );
         let val = q.to_value();
         assert_eq!(val["type"], "number");
@@ -1333,8 +1457,8 @@ mod tests {
 
     #[test]
     fn test_gather_info_basic() {
-        let mut gi = GatherInfo::new(Some("info"), Some("next_step"), None);
-        gi.add_question("name", "Your name?", "string", false, None, None);
+        let mut gi = GatherInfo::new(Some("info"), Some("next_step"), None, false);
+        gi.add_question("name", "Your name?", "string", false, None, None, None);
         let val = gi.to_value();
         assert_eq!(val["output_key"], "info");
         assert_eq!(val["completion_action"], "next_step");
@@ -1442,8 +1566,8 @@ mod tests {
     fn test_step_gather_info() {
         let mut step = Step::new("s");
         step.set_text("text");
-        step.set_gather_info(Some("info"), Some("done"), None);
-        step.add_gather_question("name", "Name?", "string", false, None, None);
+        step.set_gather_info(Some("info"), Some("done"), None, false);
+        step.add_gather_question("name", "Name?", "string", false, None, None, None);
         let val = step.to_value();
         assert!(val["gather_info"]["questions"].is_array());
         assert_eq!(val["gather_info"]["output_key"], "info");
@@ -1453,7 +1577,7 @@ mod tests {
     fn test_step_gather_info_lazy_init() {
         let mut step = Step::new("s");
         step.set_text("text");
-        step.add_gather_question("email", "Email?", "string", false, None, None);
+        step.add_gather_question("email", "Email?", "string", false, None, None, None);
         let val = step.to_value();
         assert_eq!(val["gather_info"]["questions"].as_array().unwrap().len(), 1);
     }
@@ -1786,6 +1910,119 @@ mod tests {
         assert_eq!(steps[2]["name"], "s3");
     }
 
+    // ── set_history tests (Python parity) ────────────────────────────────
+
+    #[test]
+    fn test_step_history_all_modes_emit_key() {
+        for mode in ["keep", "default", "hide"] {
+            let mut step = Step::new("s");
+            step.set_text("t");
+            step.set_history(mode);
+            assert_eq!(step.to_value()["history"], mode);
+        }
+    }
+
+    #[test]
+    fn test_step_history_omitted_when_unset() {
+        let mut step = Step::new("s");
+        step.set_text("t");
+        assert!(step.to_value().get("history").is_none());
+    }
+
+    #[test]
+    #[should_panic(expected = "history must be one of")]
+    fn test_step_history_invalid_mode_panics() {
+        let mut step = Step::new("s");
+        step.set_text("t");
+        step.set_history("bogus");
+    }
+
+    #[test]
+    fn test_context_history_all_modes_emit_key() {
+        for mode in ["keep", "default", "hide"] {
+            let mut ctx = Context::new("default");
+            ctx.set_history(mode);
+            ctx.add_step("s1").set_text("Hi");
+            assert_eq!(ctx.to_value()["history"], mode);
+        }
+    }
+
+    #[test]
+    fn test_context_history_omitted_when_unset() {
+        let mut ctx = Context::new("default");
+        ctx.add_step("s1").set_text("Hi");
+        assert!(ctx.to_value().get("history").is_none());
+    }
+
+    #[test]
+    #[should_panic(expected = "history must be one of")]
+    fn test_context_history_invalid_mode_panics() {
+        let mut ctx = Context::new("default");
+        ctx.set_history("bogus");
+    }
+
+    // ── gather isolated tests (Python parity) ────────────────────────────
+
+    #[test]
+    fn test_gather_question_isolated_tristate() {
+        // None → key omitted.
+        let q = GatherQuestion::new("k", "Q?", "string", false, None, None, None);
+        assert!(q.to_value().get("isolated").is_none());
+
+        // Some(true) → emitted true.
+        let q = GatherQuestion::new("k", "Q?", "string", false, None, None, Some(true));
+        assert_eq!(q.to_value()["isolated"], true);
+
+        // Some(false) → emitted (can override an isolated gather).
+        let q = GatherQuestion::new("k", "Q?", "string", false, None, None, Some(false));
+        assert_eq!(q.to_value()["isolated"], false);
+    }
+
+    #[test]
+    fn test_gather_info_isolated_gather_level() {
+        // Default false → omitted at the gather level.
+        let mut gi = GatherInfo::new(Some("info"), None, None, false);
+        gi.add_question("k", "Q?", "string", false, None, None, None);
+        assert!(gi.to_value().get("isolated").is_none());
+
+        // true → "isolated": true emitted.
+        let mut gi = GatherInfo::new(Some("info"), None, None, true);
+        gi.add_question("k", "Q?", "string", false, None, None, None);
+        assert_eq!(gi.to_value()["isolated"], true);
+    }
+
+    #[test]
+    fn test_step_gather_info_isolated_passthrough() {
+        let mut step = Step::new("s");
+        step.set_text("t");
+        step.set_gather_info(Some("info"), None, None, true);
+        step.add_gather_question("k", "Q?", "string", false, None, None, None);
+        assert_eq!(step.to_value()["gather_info"]["isolated"], true);
+    }
+
+    #[test]
+    fn test_step_add_gather_question_isolated_override() {
+        // Per-question isolated overrides the gather default and is on the
+        // wire even as an explicit false, while an inheriting (None) question
+        // emits nothing.
+        let mut step = Step::new("s");
+        step.set_text("t");
+        step.set_gather_info(Some("info"), None, None, true);
+        step.add_gather_question(
+            "override_off",
+            "Q1?",
+            "string",
+            false,
+            None,
+            None,
+            Some(false),
+        );
+        step.add_gather_question("inherit", "Q2?", "string", false, None, None, None);
+        let questions = step.to_value()["gather_info"]["questions"].clone();
+        assert_eq!(questions[0]["isolated"], false);
+        assert!(questions[1].get("isolated").is_none());
+    }
+
     // ── ContextBuilder tests ─────────────────────────────────────────────
 
     #[test]
@@ -1888,7 +2125,7 @@ mod tests {
         let ctx = builder.add_context("default");
         let step = ctx.add_step("s1");
         step.set_text("a");
-        step.set_gather_info(None, None, None);
+        step.set_gather_info(None, None, None, false);
         let result = builder.validate();
         assert!(result.is_err());
         let errors = result.unwrap_err();
@@ -1901,8 +2138,8 @@ mod tests {
         let ctx = builder.add_context("default");
         let step = ctx.add_step("s1");
         step.set_text("a");
-        step.add_gather_question("name", "Name?", "string", false, None, None);
-        step.add_gather_question("name", "Name again?", "string", false, None, None);
+        step.add_gather_question("name", "Name?", "string", false, None, None, None);
+        step.add_gather_question("name", "Name again?", "string", false, None, None, None);
         let result = builder.validate();
         assert!(result.is_err());
         let errors = result.unwrap_err();
