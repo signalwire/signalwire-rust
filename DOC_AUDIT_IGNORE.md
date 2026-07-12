@@ -20,9 +20,7 @@ as_object: serde_json::Value::as_object
 as_object_mut: serde_json::Value::as_object_mut
 as_reader: tiny_http::Request::as_reader
 as_u16: stdlib integer cast (e.g. status code)
-as_u64: serde_json::Value::as_u64
 body_mut: tiny_http::Request::body_mut
-build: builder-pattern terminal method (used in docs to demonstrate the build step)
 chars: stdlib str::chars
 clone: stdlib Clone::clone
 cloned: stdlib Iterator::cloned
@@ -30,9 +28,7 @@ contains: stdlib str::contains / Vec::contains / HashMap::contains
 contains_key: stdlib HashMap::contains_key
 display: stdlib std::path::Path::display
 first: stdlib slice::first
-foreach: serde_json or DataMap chained-method (covered as DataMap::for_each in the Rust API; the doc spelling matches Python's foreach)
 from: stdlib From::from
-handle: tiny_http handle / runtime task handle helper
 header: tiny_http header lookup
 headers: tiny_http header iterator
 http_status_as_error: ureq::Response::http_status_as_error
@@ -45,7 +41,6 @@ is_some_and: stdlib Option::is_some_and combinator
 iter: stdlib slice::iter / Vec::iter / HashMap::iter
 len: stdlib slice::len / Vec::len / HashMap::len
 load: stdlib AtomicXxx::load
-local: stdlib chrono Local::now / chrono::Local
 lock: stdlib Mutex::lock
 map_err: stdlib Result::map_err
 map_or_else: stdlib Option::map_or_else / Result::map_or_else combinator
@@ -60,11 +55,9 @@ peekable: stdlib Iterator::peekable
 push_str: stdlib String::push_str
 read_to_string: stdlib io::Read::read_to_string
 respond: tiny_http::Request::respond
-status: ureq::Response::status / http::Response::status
 store: stdlib AtomicXxx::store
 strip_prefix: stdlib str::strip_prefix
 take: stdlib Iterator::take
-timeout: ureq::Agent::timeout / std::time::Duration timeout
 timeout_global: ureq::Agent::timeout_global
 to_lowercase: stdlib str::to_lowercase / String::to_lowercase
 to_string: stdlib ToString::to_string
@@ -78,12 +71,9 @@ unwrap_or_else: stdlib Option::unwrap_or_else / Result::unwrap_or_else
 with_header: tiny_http::Response::with_header
 with_status_code: tiny_http::Response::with_status_code
 incoming_requests: tiny_http::Server::incoming_requests
-namespace: configurable namespace label in DataSphere examples
-search: chained method on serde_json::Value::pointer or DataSphere lookup
 load: chrono Local::load
 nth: stdlib Iterator::nth
 respond: tiny_http::Request::respond
-status: ureq response accessor
 peekable: stdlib Iterator::peekable
 peek: stdlib Iterator::peek
 copied: stdlib Iterator::copied / Option::copied
@@ -109,25 +99,10 @@ fences in docs and resolve to PORT_OMISSIONS.md entries (the long-term
 fix is to rewrite each block to Rust; until then these names are
 non-claims of Rust API).
 
-buy: Python REST buy method on phone_numbers — Rust ships purchase / buy via the phone_numbers methods
-call: Python REST call helper / context-method; Rust REST resources expose explicit method names
-calls: Python REST sub-namespace; Rust ships under rest::Calling
-contexts: Python AgentBase.contexts attribute — Rust uses define_contexts() / context_builder()
 documents: Python REST sub-namespace; Rust ships under rest::Datasphere
-endpoints: Python SIP endpoints helper; Rust uses fabric::sip_endpoints
-get_app: Python AgentServer.get_app (FastAPI app accessor) — Rust uses tiny_http directly, no equivalent
-members: Python prefab attribute referenced in docs python blocks
 messages: Python REST sub-namespace / messaging helper; Rust ships the generated message REST namespace + Client::send_message
-messaging: Python RelayClient messaging accessor; Rust ships Client::send_message and Message
-play_tts: Python Call.play_tts — Rust uses Call::play with a TTS body
-prompt: Python AgentBase.prompt attribute — Rust uses set_prompt_text / get_prompt
-register_tools: Python SkillBase.register_tools — Rust uses SkillBase::setup
 rooms: Python video.rooms sub-namespace; Rust ships rest::video::rooms
-send_message: Python Client.send_message — Rust ships Client::send_message
-setup: Python skill setup hook — Rust uses SkillBase::setup
-sip: Python SIP namespace — Rust ships rest::fabric::sip_endpoints / sip_profiles
 tokens: Python REST tokens sub-namespace; Rust ships rest::fabric::tokens
-wait: Python action / message wait method — Rust uses Action::wait / Message::on_completed
 
 ## porting-sdk emission-tooling references (cross-language, by design)
 
