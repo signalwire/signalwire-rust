@@ -324,8 +324,8 @@ sched_gate README-INCLUDE res=dayone desc="doc code blocks are byte-identical to
     -- python3 "$PORTING_SDK_DIR/scripts/readme_include.py" --port rust --repo .
 sched_gate ROOT-HYGIENE res=dayone desc="no audit/scratch clutter tracked at repo root (allowlist ROOT_HYGIENE_ALLOW.md)" \
     -- python3 "$PORTING_SDK_DIR/scripts/root_hygiene.py" --port rust --repo .
-sched_gate IGNORE-LEDGER-VERIFY res=dayone desc="no laundered false-absence entries in DOC_AUDIT_IGNORE.md" \
-    -- python3 "$PORTING_SDK_DIR/scripts/ignore_ledger_verify.py" --port rust --repo .
+sched_gate IGNORE-LEDGER-VERIFY res=dayone desc="no laundered false-absence entries in DOC_AUDIT_IGNORE.md (strict: reason/approver/date required)" \
+    -- python3 "$PORTING_SDK_DIR/scripts/ignore_ledger_verify.py" --port rust --repo . --require-fields
 sched_gate META-CONSISTENT res=dayone desc="package metadata consistency" \
     -- python3 "$PORTING_SDK_DIR/scripts/meta_consistent.py" --port rust --repo .
 sched_gate ARTIFACT-DENY res=dayone desc="no porting artifacts in the PUBLISHED package (authoritative listing)" \
@@ -342,6 +342,13 @@ sched_gate GEN-IDIOM desc="generated code is not lint-excluded (idiom parity wit
     -- python3 "$PORTING_SDK_DIR/scripts/gen_idiom.py" --port rust --repo .
 sched_gate RELEASE-FRESH desc="publish path is gated (gates-before-publish); release freshness" \
     -- python3 "$PORTING_SDK_DIR/scripts/release_fresh.py" --port rust --repo .
+
+# SEMVER-DIFF — the version bump must match the public-API change. Floor is the
+# committed port_signatures.baseline.json (baseline_version 3.0.0); the current
+# generated surface must not regress it (or the version must major-bump). deps on
+# SIGNATURES so it diffs the freshly-regenerated port_signatures.json.
+sched_gate SEMVER-DIFF deps=SIGNATURES desc="version bump matches the public-API surface change vs the committed baseline floor" \
+    -- python3 "$PORTING_SDK_DIR/scripts/semver_diff.py" --port rust --repo "$PORT_ROOT"
 
 # ---- §D1 packaging -----------------------------------------------------------
 # PACKAGE-SMOKE builds+installs+imports the real published artifact (cargo build
@@ -365,6 +372,22 @@ sched_gate SNIPPET-COMPILE tier=nightly desc="documented code snippets compile a
 
 sched_gate DOC-CLI desc="documented swaig-test invocations parse against the real CLI" \
     -- python3 "$PORTING_SDK_DIR/scripts/doc_cli.py" --port rust --repo .
+
+# Wave-3 doc/API-truth gates — deterministic source/doc analysis (no build, no
+# mock, ~1.3s for all six). Per-PR tier: cheap enough to catch doc/API drift at
+# PR time rather than a day later in nightly.
+sched_gate ERROR-ENVELOPE desc="REST error carries the full (status,body,url,method) envelope + raised on >=400" \
+    -- python3 "$PORTING_SDK_DIR/scripts/error_envelope.py" --port rust --repo "$PORT_ROOT"
+sched_gate DEAD-PUBLIC-ERROR desc="exported error types are raised/caught/user-signalled (no dead error surface)" \
+    -- python3 "$PORTING_SDK_DIR/scripts/dead_public_error.py" --port rust --repo "$PORT_ROOT"
+sched_gate PAGINATION-WIRED desc="shipped iterator-protocol paginator is wired into list()" \
+    -- python3 "$PORTING_SDK_DIR/scripts/pagination_wired.py" --port rust --repo "$PORT_ROOT"
+sched_gate DOC-ENV desc="documented SIGNALWIRE_*/SWML_* env vars <=> code-read vars agree" \
+    -- python3 "$PORTING_SDK_DIR/scripts/doc_env.py" --port rust --repo "$PORT_ROOT"
+sched_gate COUNT-CLAIM desc="numeric doc claims (skills/namespaces) match reality" \
+    -- python3 "$PORTING_SDK_DIR/scripts/count_claim.py" --port rust --repo "$PORT_ROOT"
+sched_gate ACCESSOR-TRUTH desc="documented backtick method() refs exist in source" \
+    -- python3 "$PORTING_SDK_DIR/scripts/accessor_truth.py" --port rust --repo "$PORT_ROOT"
 
 sched_gate SNIPPET-RUN tier=nightly defer=1 desc="dynamic-port doc snippets run to a zero exit against the mock (compiled port: self-skips)" \
     -- python3 "$PORTING_SDK_DIR/scripts/snippet_run.py" --port rust --repo . --report-only

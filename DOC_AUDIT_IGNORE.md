@@ -20,9 +20,7 @@ as_object: serde_json::Value::as_object
 as_object_mut: serde_json::Value::as_object_mut
 as_reader: tiny_http::Request::as_reader
 as_u16: stdlib integer cast (e.g. status code)
-as_u64: serde_json::Value::as_u64
 body_mut: tiny_http::Request::body_mut
-build: builder-pattern terminal method (used in docs to demonstrate the build step)
 chars: stdlib str::chars
 clone: stdlib Clone::clone
 cloned: stdlib Iterator::cloned
@@ -30,9 +28,7 @@ contains: stdlib str::contains / Vec::contains / HashMap::contains
 contains_key: stdlib HashMap::contains_key
 display: stdlib std::path::Path::display
 first: stdlib slice::first
-foreach: serde_json or DataMap chained-method (covered as DataMap::for_each in the Rust API; the doc spelling matches Python's foreach)
 from: stdlib From::from
-handle: tiny_http handle / runtime task handle helper
 header: tiny_http header lookup
 headers: tiny_http header iterator
 http_status_as_error: ureq::Response::http_status_as_error
@@ -45,7 +41,6 @@ is_some_and: stdlib Option::is_some_and combinator
 iter: stdlib slice::iter / Vec::iter / HashMap::iter
 len: stdlib slice::len / Vec::len / HashMap::len
 load: stdlib AtomicXxx::load
-local: stdlib chrono Local::now / chrono::Local
 lock: stdlib Mutex::lock
 map_err: stdlib Result::map_err
 map_or_else: stdlib Option::map_or_else / Result::map_or_else combinator
@@ -60,11 +55,9 @@ peekable: stdlib Iterator::peekable
 push_str: stdlib String::push_str
 read_to_string: stdlib io::Read::read_to_string
 respond: tiny_http::Request::respond
-status: ureq::Response::status / http::Response::status
 store: stdlib AtomicXxx::store
 strip_prefix: stdlib str::strip_prefix
 take: stdlib Iterator::take
-timeout: ureq::Agent::timeout / std::time::Duration timeout
 timeout_global: ureq::Agent::timeout_global
 to_lowercase: stdlib str::to_lowercase / String::to_lowercase
 to_string: stdlib ToString::to_string
@@ -78,12 +71,9 @@ unwrap_or_else: stdlib Option::unwrap_or_else / Result::unwrap_or_else
 with_header: tiny_http::Response::with_header
 with_status_code: tiny_http::Response::with_status_code
 incoming_requests: tiny_http::Server::incoming_requests
-namespace: configurable namespace label in DataSphere examples
-search: chained method on serde_json::Value::pointer or DataSphere lookup
 load: chrono Local::load
 nth: stdlib Iterator::nth
 respond: tiny_http::Request::respond
-status: ureq response accessor
 peekable: stdlib Iterator::peekable
 peek: stdlib Iterator::peek
 copied: stdlib Iterator::copied / Option::copied
@@ -100,35 +90,6 @@ map_or: stdlib Option::map_or / Result::map_or
 repeat: stdlib str::repeat
 rev: stdlib Iterator::rev
 
-## Python-SDK names referenced in legacy Python code blocks
-
-Top-level docs/*.md files carry over Python code blocks from the
-upstream signalwire-python SDK while the Rust-native rewrite is in
-progress. These are Python method names that appear inside python
-fences in docs and resolve to PORT_OMISSIONS.md entries (the long-term
-fix is to rewrite each block to Rust; until then these names are
-non-claims of Rust API).
-
-buy: Python REST buy method on phone_numbers — Rust ships purchase / buy via the phone_numbers methods
-call: Python REST call helper / context-method; Rust REST resources expose explicit method names
-calls: Python REST sub-namespace; Rust ships under rest::Calling
-contexts: Python AgentBase.contexts attribute — Rust uses define_contexts() / context_builder()
-documents: Python REST sub-namespace; Rust ships under rest::Datasphere
-endpoints: Python SIP endpoints helper; Rust uses fabric::sip_endpoints
-get_app: Python AgentServer.get_app (FastAPI app accessor) — Rust uses tiny_http directly, no equivalent
-members: Python prefab attribute referenced in docs python blocks
-messages: Python REST sub-namespace / messaging helper; Rust ships the generated message REST namespace + Client::send_message
-messaging: Python RelayClient messaging accessor; Rust ships Client::send_message and Message
-play_tts: Python Call.play_tts — Rust uses Call::play with a TTS body
-prompt: Python AgentBase.prompt attribute — Rust uses set_prompt_text / get_prompt
-register_tools: Python SkillBase.register_tools — Rust uses SkillBase::setup
-rooms: Python video.rooms sub-namespace; Rust ships rest::video::rooms
-send_message: Python Client.send_message — Rust ships Client::send_message
-setup: Python skill setup hook — Rust uses SkillBase::setup
-sip: Python SIP namespace — Rust ships rest::fabric::sip_endpoints / sip_profiles
-tokens: Python REST tokens sub-namespace; Rust ships rest::fabric::tokens
-wait: Python action / message wait method — Rust uses Action::wait / Message::on_completed
-
 ## porting-sdk emission-tooling references (cross-language, by design)
 
 Names from porting-sdk's shared Python emission tooling that the Rust
@@ -138,60 +99,91 @@ truth the example must stay in sync with.
 
 corpus_ids: porting-sdk emission_corpus.corpus_ids() — the Python corpus id-set the Rust examples/emit_corpus.rs dump must match (referenced in its contract docstring, not a Rust symbol)
 
-## README/sub-doc audit (real methods not in surface enumeration, std, or example-local)
+## Rust-idiom dunder / field accessor folds (reference realizes these as a dunder or instance attribute, not an enumerated method)
 
-is_some: Rust std Option::is_some — appears in a third_party_skills.md example expression, not a port symbol
-repr: real method Call::repr / Message::repr (src/relay/call.rs) — enumerate_surface deliberately folds repr→__repr__ in port_surface for parity with Python's __repr__, so the real Rust spelling used in relay/docs doesn't resolve by name; documenting the fold, not a phantom
+These are real Rust `pub fn`s that the surface enumerator folds to line up
+with the Python reference EXACTLY — a Rule-2 idiom reconciliation done in the
+enumerator, not an omission. The fold is proven by SURFACE-DIFF: it compares
+per-class METHOD SETS, and the reference records the owning class WITHOUT a
+member of this name (it realizes the capability as a Python dunder or a plain
+instance attribute), so both sides carry the same method set and compare EQUAL.
+The Rust *spelling* used in a doc/example is what fails to resolve by name.
 
-message: real accessor SignalWireRestError::message (src/rest/error.rs), used in examples/rest_audit_harness.rs error formatting — enumerate_surface drops it from the SWAIGFunction/error surface (the reference SignalWireRestError enumerates only __init__), so the real Rust spelling used in the example doesn't resolve by name; documenting the fold, not a phantom
+is_some: Rust std Option::is_some — appears in a third_party_skills.md example expression, not a port symbol (stdlib accessor)
+repr: real method Call::repr / Message::repr (src/relay/call.rs) — enumerate_surface folds repr→__repr__ so the surface carries the reference's `__repr__` dunder (verified: port_surface records __repr__, not `repr`); the Rust spelling in relay/docs is the same method under its Rust name
+message: real field accessor SignalWireRestError::message (src/rest/error.rs) — the Python reference's SignalWireRestError records only __init__ and exposes `message` as an instance attribute (not an enumerated method); enumerate_surface folds the Rust accessor away so both sides carry `[__init__]` and compare EQUAL. Used in examples/rest_audit_harness.rs error formatting
+event_type: real field accessor RelayEvent::event_type() (src/relay/event.rs) — Python's relay events expose event_type as a payload dict field, not an enumerated method; MODULE_METHOD_DROPS folds the Rust accessor away so signalwire.relay.event classes carry only the reference's `from_payload`. Used in examples/relay_audit_harness.rs
 
-ai_agents: real generated Fabric client-tree accessor client.fabric().ai_agents() (src/rest/namespaces/generated/client_tree_generated.rs) returning the AiAgents resource — the surface records the AiAgents CLASS but not the snake accessor method, so the doc call spelling doesn't resolve by name (same fold as `tokens`); documenting the accessor, not a phantom
-subscribers: real generated Fabric client-tree accessor client.fabric().subscribers() (client_tree_generated.rs) returning the Subscribers resource — surface records the Subscribers CLASS not the snake accessor; same fold as `tokens`
-sip_endpoints: real generated Fabric client-tree accessor client.fabric().sip_endpoints() (client_tree_generated.rs) returning the SipEndpoints resource — surface records the SipEndpoints CLASS not the snake accessor; same fold as `tokens`
-event_type: real Rust-idiom accessor RelayEvent::event_type() (src/relay/event.rs) used in examples/relay_audit_harness.rs — a port convenience accessor on the relay event enum (Python passes event_type as a dict field, not a method), not enumerated per-variant in the surface
+## Generated client-tree namespace sub-resource accessors (Rust pub-fn idiom for Python instance-attribute sub-resources)
 
-## Generated client-tree namespace accessors (surface records the CLASS, not the snake accessor method)
-
-Same surface-enumeration fold-gap already ledgered above for `tokens` /
-`ai_agents` / `subscribers` / `sip_endpoints`: each of these is a real
-`pub fn <name>(&self) -> <Resource>` accessor on a namespace struct in
+Each name below is a real `pub fn <name>(&self) -> <Resource>` accessor on a
+namespace container struct in
 `src/rest/namespaces/generated/client_tree_generated.rs`, documented in the
-`rest/docs/namespaces.md` accessor table (and examples). The surface
-enumerator records the returned Resource CLASS but folds away the snake
-accessor method, so the doc call spelling doesn't resolve by name.
-Documenting the accessors, not phantoms.
+`rest/docs/namespaces.md` accessor table (and examples). This is a PROVEN
+struct-level idiom fold, not a hidden method:
+  - The Python reference realizes these accessors as EAGER INSTANCE ATTRIBUTES
+    set in the container's `__init__` (verified in signalwire-python:
+    `self.ai_agents = AiAgents(http)` etc. in
+    signalwire/rest/namespaces/_client_tree_generated.py), NOT as methods.
+  - Consequently the reference surface records each container
+    (FabricNamespace / VideoNamespace / LogsNamespace / RegistryNamespace /
+    ProjectNamespace / DatasphereNamespace) with the method set `[__init__]`
+    only (verified in python_surface.json).
+  - The Rust enumerator's REST sidecar marks these containers `*accessors*`,
+    dropping every non-`__init__` accessor, so the Rust surface records the
+    SAME `[__init__]`-only container.
+  - SURFACE-DIFF compares per-class method sets → the container classes match
+    EQUAL. The returned Resource CLASS itself is fully surfaced and compared;
+    only the snake accessor SPELLING (which is not a method on either side)
+    fails to resolve by name in a doc call-chain. Recording it as a surface
+    method would INVENT surface the reference lacks (an unexcused extra).
 
-resources: real generated Fabric client-tree accessor client.fabric().resources() (client_tree_generated.rs:85) returning GenericResources — surface records the GenericResources CLASS not the snake accessor; same fold as `tokens`
-call_flows: real generated Fabric client-tree accessor client.fabric().call_flows() (client_tree_generated.rs:97) returning CallFlows — surface records the CallFlows CLASS not the snake accessor; same fold as `tokens`
-conference_rooms: real generated Fabric client-tree accessor client.fabric().conference_rooms() (client_tree_generated.rs:103) returning ConferenceRooms — surface records the ConferenceRooms CLASS not the snake accessor; same fold as `tokens`
-cxml_applications: real generated Fabric client-tree accessor client.fabric().cxml_applications() (client_tree_generated.rs:109) returning CxmlApplications — surface records the CxmlApplications CLASS not the snake accessor; same fold as `tokens`
-cxml_scripts: real generated Fabric client-tree accessor client.fabric().cxml_scripts() (client_tree_generated.rs:115) returning CxmlScripts — surface records the CxmlScripts CLASS not the snake accessor; same fold as `tokens`
-cxml_webhooks: real generated Fabric client-tree accessor client.fabric().cxml_webhooks() (client_tree_generated.rs:121) returning CxmlWebhooks — surface records the CxmlWebhooks CLASS not the snake accessor; same fold as `tokens`
-freeswitch_connectors: real generated Fabric client-tree accessor client.fabric().freeswitch_connectors() (client_tree_generated.rs:127) returning FreeswitchConnectors — surface records the FreeswitchConnectors CLASS not the snake accessor; same fold as `tokens`
-relay_applications: real generated Fabric client-tree accessor client.fabric().relay_applications() (client_tree_generated.rs:133) returning RelayApplications — surface records the RelayApplications CLASS not the snake accessor; same fold as `tokens`
-sip_gateways: real generated Fabric client-tree accessor client.fabric().sip_gateways() (client_tree_generated.rs:145) returning SipGateways — surface records the SipGateways CLASS not the snake accessor; same fold as `tokens`
-swml_scripts: real generated Fabric client-tree accessor client.fabric().swml_scripts() (client_tree_generated.rs:157) returning SwmlScripts — surface records the SwmlScripts CLASS not the snake accessor; same fold as `tokens`
-swml_webhooks: real generated Fabric client-tree accessor client.fabric().swml_webhooks() (client_tree_generated.rs:163) returning SwmlWebhooks — surface records the SwmlWebhooks CLASS not the snake accessor; same fold as `tokens`
-conference_tokens: real generated Video client-tree accessor client.video().conference_tokens() (client_tree_generated.rs:187) returning VideoConferenceTokens — surface records the VideoConferenceTokens CLASS not the snake accessor; same fold as `tokens`
-conferences: real generated client-tree accessor client.video().conferences() / client.logs().conferences() (client_tree_generated.rs:193) returning VideoConferences — surface records the VideoConferences CLASS not the snake accessor; same fold as `tokens`
-room_recordings: real generated Video client-tree accessor client.video().room_recordings() (client_tree_generated.rs:199) returning VideoRoomRecordings — surface records the VideoRoomRecordings CLASS not the snake accessor; same fold as `tokens`
-room_sessions: real generated Video client-tree accessor client.video().room_sessions() (client_tree_generated.rs:205) returning VideoRoomSessions — surface records the VideoRoomSessions CLASS not the snake accessor; same fold as `tokens`
-room_tokens: real generated Video client-tree accessor client.video().room_tokens() (client_tree_generated.rs:211) returning VideoRoomTokens — surface records the VideoRoomTokens CLASS not the snake accessor; same fold as `tokens`
-streams: real generated Video client-tree accessor client.video().streams() (client_tree_generated.rs:223) returning VideoStreams — surface records the VideoStreams CLASS not the snake accessor; same fold as `tokens`
-voice: real generated Logs client-tree accessor client.logs().voice() (client_tree_generated.rs:271) returning VoiceLogs — surface records the VoiceLogs CLASS not the snake accessor; same fold as `tokens`
-fax: real generated Logs client-tree accessor client.logs().fax() (client_tree_generated.rs:277) returning FaxLogs — surface records the FaxLogs CLASS not the snake accessor; same fold as `tokens`
+tokens: client.fabric().tokens() / client.project().tokens() (client_tree_generated.rs:169,295) → FabricTokens / ProjectTokens; reference sets it as an __init__ instance attribute, not a method
+documents: client.datasphere().documents() (client_tree_generated.rs:241) → DatasphereDocuments; reference sets it as an __init__ instance attribute, not a method
+messages: client.logs().messages() (client_tree_generated.rs:265) → MessageLogs; reference sets it as an __init__ instance attribute, not a method
+rooms: client.video().rooms() (client_tree_generated.rs:217) → VideoRooms; reference sets it as an __init__ instance attribute, not a method
+ai_agents: client.fabric().ai_agents() (client_tree_generated.rs:91) → AiAgents; reference sets it as an __init__ instance attribute, not a method
+subscribers: client.fabric().subscribers() (client_tree_generated.rs:151) → Subscribers; reference sets it as an __init__ instance attribute, not a method
+sip_endpoints: client.fabric().sip_endpoints() (client_tree_generated.rs:139) → SipEndpoints; reference sets it as an __init__ instance attribute, not a method
+resources: client.fabric().resources() (client_tree_generated.rs:85) → GenericResources; reference sets it as an __init__ instance attribute, not a method
+call_flows: client.fabric().call_flows() (client_tree_generated.rs:97) → CallFlows; reference sets it as an __init__ instance attribute, not a method
+conference_rooms: client.fabric().conference_rooms() (client_tree_generated.rs:103) → ConferenceRooms; reference sets it as an __init__ instance attribute, not a method
+cxml_applications: client.fabric().cxml_applications() (client_tree_generated.rs:109) → CxmlApplications; reference sets it as an __init__ instance attribute, not a method
+cxml_scripts: client.fabric().cxml_scripts() (client_tree_generated.rs:115) → CxmlScripts; reference sets it as an __init__ instance attribute, not a method
+cxml_webhooks: client.fabric().cxml_webhooks() (client_tree_generated.rs:121) → CxmlWebhooks; reference sets it as an __init__ instance attribute, not a method
+freeswitch_connectors: client.fabric().freeswitch_connectors() (client_tree_generated.rs:127) → FreeswitchConnectors; reference sets it as an __init__ instance attribute, not a method
+relay_applications: client.fabric().relay_applications() (client_tree_generated.rs:133) → RelayApplications; reference sets it as an __init__ instance attribute, not a method
+sip_gateways: client.fabric().sip_gateways() (client_tree_generated.rs:145) → SipGateways; reference sets it as an __init__ instance attribute, not a method
+swml_scripts: client.fabric().swml_scripts() (client_tree_generated.rs:157) → SwmlScripts; reference sets it as an __init__ instance attribute, not a method
+swml_webhooks: client.fabric().swml_webhooks() (client_tree_generated.rs:163) → SwmlWebhooks; reference sets it as an __init__ instance attribute, not a method
+conference_tokens: client.video().conference_tokens() (client_tree_generated.rs:187) → VideoConferenceTokens; reference sets it as an __init__ instance attribute, not a method
+conferences: client.video().conferences() / client.logs().conferences() (client_tree_generated.rs:193) → VideoConferences / ConferenceLogs; reference sets it as an __init__ instance attribute, not a method
+room_recordings: client.video().room_recordings() (client_tree_generated.rs:199) → VideoRoomRecordings; reference sets it as an __init__ instance attribute, not a method
+room_sessions: client.video().room_sessions() (client_tree_generated.rs:205) → VideoRoomSessions; reference sets it as an __init__ instance attribute, not a method
+room_tokens: client.video().room_tokens() (client_tree_generated.rs:211) → VideoRoomTokens; reference sets it as an __init__ instance attribute, not a method
+streams: client.video().streams() (client_tree_generated.rs:223) → VideoStreams; reference sets it as an __init__ instance attribute, not a method
+voice: client.logs().voice() (client_tree_generated.rs:271) → VoiceLogs; reference sets it as an __init__ instance attribute, not a method
+fax: client.logs().fax() (client_tree_generated.rs:277) → FaxLogs; reference sets it as an __init__ instance attribute, not a method
 
-## Generated REST request-builder param setters (surface records the request STRUCT, not its per-param fluent setters)
+## Generated REST request-builder param setters (Rust builder idiom for Python create/update kwargs)
 
-The typed request builders emitted into src/rest/namespaces/generated/*_resources_generated.rs
-expose one fluent `pub fn <param>(mut self, ...) -> Self` per optional param.
-The surface enumerator records the request STRUCT (e.g. CreateSubscriberTokenRequest)
-but folds away the individual param setters, so a doc that calls a setter by name
-doesn't resolve. Same fold class as the client-tree accessors above. Documenting the
-real setters, not phantoms.
+Each name below is a real fluent `pub fn <param>(mut self, ...) -> Self` setter
+on a typed request builder in src/rest/namespaces/generated/*_resources_generated.rs.
+This is a PROVEN idiom fold, not a hidden method:
+  - The Python reference expresses these params as KWARGS of the create/update
+    method (verified: e.g. AiAgents records `[__init__, create, update]`; the
+    per-param names live in the `*CreateRequest`/`*UpdateRequest` TYPE, not as
+    members). The reference surface records NO `expire_at` / `status_url`
+    member anywhere.
+  - The Rust builder explodes those same kwargs into one setter per optional
+    param; the surface enumerator records the request STRUCT and folds the
+    per-param setters away, so both sides compare EQUAL at the struct level.
+  - Recording a per-param setter as a surface method would INVENT surface the
+    reference lacks. The Rust setter SPELLING used in a doc is what fails to
+    resolve by name.
 
-expire_at: real generated request-builder setter FabricTokensCreateSubscriberTokenRequest::expire_at (fabric_resources_generated.rs:240) used in rest/docs/fabric.md — surface records the request STRUCT not the per-param setter; same fold as the accessors above
-status_url: real generated request-builder setter on the calling create-call request (calling_resources_generated.rs:559) used in rest/docs/calling.md + rest/examples/rest_make_call.rs — surface records the request STRUCT not the per-param setter; same fold as the accessors above
+expire_at: FabricTokensCreateSubscriberTokenRequest::expire_at (fabric_resources_generated.rs:241) used in rest/docs/fabric.md — a create-call kwarg in the reference, exploded to a builder setter in Rust
+status_url: setter on the calling create-call request (calling_resources_generated.rs:559) used in rest/docs/calling.md + rest/examples/rest_make_call.rs — a create-call kwarg in the reference, exploded to a builder setter in Rust
 
 ## Rust standard library / core methods (batch 2 — newly surfaced by the widened DOC-AUDIT inline/table scan)
 
@@ -217,9 +209,10 @@ try_from: stdlib TryFrom::try_from (e.g. usize::try_from)
 var: stdlib std::env::var
 with_capacity: stdlib String::with_capacity / Vec::with_capacity
 
-## External-crate methods + serde variants (newly surfaced by the widened DOC-AUDIT)
+## External-crate / stdlib methods + serde variants (newly surfaced by the widened DOC-AUDIT)
 
-Names from third-party crates used in examples/docs, not Rust port surface.
+Names from third-party crates and the standard library used in examples/docs,
+not Rust port surface.
 
 Bool: serde_json::Value::Bool enum variant (pattern-matched in examples/rest_audit_harness.rs)
 config_builder: ureq::Agent::config_builder
@@ -227,9 +220,10 @@ from_bytes: tiny_http::Header::from_bytes
 from_string: tiny_http::Response::from_string
 new_from_slice: hmac Mac::new_from_slice (crypto)
 
-## Doc-local helper / entry-point function definitions (not port surface)
+## Doc-local fn definitions — language-level entry-point / helper, not port surface
 
-These names are `fn` definitions inside the doc/example fragment itself, not
+These names are `fn` definitions inside the doc/example fragment itself (a
+language-level `fn main` entry point or a fragment-local helper), not
 references to a port API.
 
 create_agent: doc-local helper fn defined in docs/cloud_functions_guide.md (item-only fragment `fn create_agent()`), not a port symbol

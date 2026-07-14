@@ -226,7 +226,8 @@ impl HttpClient {
             token: token.to_string(),
             base_url: base_url.trim_end_matches('/').to_string(),
             auth_header,
-            user_agent: "signalwire-agents-rust-rest/1.0".to_string(),
+            user_agent: concat!("signalwire-agents-rust-rest/", env!("CARGO_PKG_VERSION"))
+                .to_string(),
             transport,
         }
     }

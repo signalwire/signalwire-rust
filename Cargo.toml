@@ -1,6 +1,6 @@
 [package]
 name = "signalwire-sdk"
-version = "1.1.2"
+version = "3.0.2"
 edition = "2024"
 # let-chains (`if cond && let Some(x) = ...`) are used throughout the crate and
 # only stabilized in Rust 1.88. Edition 2024 alone implies just 1.85, so declare
@@ -29,6 +29,7 @@ exclude = [
     "INTENTIONAL_THIN_TESTS.md",
     "ROOT_HYGIENE_ALLOW.md",
     "port_signatures.json",
+    "port_signatures.baseline.json",
     "port_surface.json",
     "audit_coverage.json",
     "audit_coverage_baseline.json",
@@ -43,6 +44,9 @@ exclude = [
     "relay/examples/",
     "scripts/",
     "eng/",
+    # Replit dev-environment config — in-repo convenience, not part of the crate.
+    ".replit",
+    "replit.nix",
 ]
 
 # Package is published as `signalwire-sdk` because the `signalwire` crate
