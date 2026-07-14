@@ -2811,6 +2811,49 @@
         "base_path"
       ]
     },
+    "Projects": {
+      "base": "CrudResource",
+      "class": "Projects",
+      "methods": {
+        "create": [
+          {
+            "kind": "positional",
+            "name": "data",
+            "required": true,
+            "type": "any"
+          }
+        ],
+        "rotate_signing_key": [
+          {
+            "kind": "positional",
+            "name": "id",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "update": [
+          {
+            "kind": "positional",
+            "name": "id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "kind": "positional",
+            "name": "data",
+            "required": true,
+            "type": "any"
+          }
+        ]
+      },
+      "module": "signalwire.rest.namespaces.projects_resources_generated",
+      "surface_drop": [
+        "base_path",
+        "delete",
+        "get",
+        "list"
+      ]
+    },
     "PubSub": {
       "base": "BaseResource",
       "class": "PubSub",

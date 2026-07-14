@@ -63,17 +63,15 @@ except ImportError:  # pragma: no cover
 # The two namespace SETS are derived by scanning rest-apis/<ns>/openapi.yaml:
 #   * RESOURCE namespaces (the former SPEC_DIRS): a spec dir with at least one
 #     non-excluded, named ``x-sdk-resource`` block — the specs that emit generated
-#     resource modules + client-tree containers. (``projects`` — the staged
-#     /api/projects API — has components.schemas + a servers block but NO
-#     x-sdk-resource, so it is NOT a resource namespace; ``swml-webhooks`` is a
+#     resource modules + client-tree containers. (``projects`` — the /api/projects
+#     project-management API — carries an ``x-sdk-resource`` block and so IS a
+#     resource namespace, emitting the flat ``Projects`` CrudResource; distinct
+#     from the singular ``project`` token namespace. ``swml-webhooks`` is a
 #     types-only webhook-payload spec with no resources.)
 #   * TYPE namespaces (the former TYPE_NS): every RESOURCE namespace PLUS the
 #     types-only specs — a spec with components.schemas but no ``servers`` block
 #     (the webhook-payload specs, e.g. ``swml-webhooks``). BROADER than the
 #     resource set: swml-webhooks has no x-sdk-resource yet still emits DTOs.
-#     ``projects`` HAS a servers block, so it is not types-only either and stays
-#     out of the canonical set (matching the reference, which stages but does not
-#     yet ship it).
 #
 # The membership of both sets is fully discovered. The one fact the scan cannot
 # derive from the spec dir + markup is the curated cross-namespace ORDER (which
@@ -85,7 +83,7 @@ except ImportError:  # pragma: no cover
 # (``relay-rest`` -> ``relay_rest``), derived via snake_of, not tabulated.
 _NS_ORDER = (
     "relay-rest", "fabric", "calling", "video", "datasphere",
-    "logs", "message", "voice", "fax", "project", "chat", "pubsub",
+    "logs", "message", "voice", "fax", "project", "projects", "chat", "pubsub",
     "swml-webhooks",
 )
 

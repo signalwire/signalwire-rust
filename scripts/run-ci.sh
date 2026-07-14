@@ -143,6 +143,7 @@ rest_coverage_gate() {
         --test rest_generated_logs \
         --test rest_generated_message \
         --test rest_generated_project \
+        --test rest_generated_projects \
         --test rest_generated_pubsub \
         --test rest_generated_relay_rest \
         --test rest_generated_video \

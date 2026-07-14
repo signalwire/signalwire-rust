@@ -10,6 +10,7 @@ pub mod fax_types_generated;
 pub mod logs_types_generated;
 pub mod message_types_generated;
 pub mod project_types_generated;
+pub mod projects_types_generated;
 pub mod pubsub_types_generated;
 pub mod relay_rest_types_generated;
 pub mod swml_webhooks_types_generated;
