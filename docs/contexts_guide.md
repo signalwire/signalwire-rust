@@ -81,17 +81,21 @@ let symptoms_ctx = agent.define_contexts().add_context("symptoms");
 
 let step = symptoms_ctx.add_step("demographics");
 step.set_text("Collect the patient's basic information.");
-// set_gather_info(output_key, completion_action, prompt) — each an Option<&str>
+// set_gather_info(output_key, completion_action, prompt, isolated)
+// — the first three are each an Option<&str>; `isolated` is a bool default
+//   applied to every question (true = hide sibling Q&A from the model).
 step.set_gather_info(
     Some("patient_demographics"),
     None,
     Some("Please provide the following information."),
+    false,
 );
 
-// add_gather_question(key_name, question_text, type, confirm, prompt, functions)
-step.add_gather_question("full_name", "What is your full name?", "string", false, None, None);
-step.add_gather_question("phone", "What is your phone number?", "string", true, None, None);
-step.add_gather_question("email", "What is your email address?", "string", false, None, None);
+// add_gather_question(key_name, question_text, type, confirm, prompt, functions, isolated)
+// — `functions` is Option<Vec<String>>, `isolated` is Option<bool> (None inherits the gather default).
+step.add_gather_question("full_name", "What is your full name?", "string", false, None, None, None);
+step.add_gather_question("phone", "What is your phone number?", "string", true, None, None, None);
+step.add_gather_question("email", "What is your email address?", "string", false, None, None, None);
 
 step.set_valid_steps(vec!["symptoms"]);
 ```
