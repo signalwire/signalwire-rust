@@ -111,6 +111,15 @@ jobs:
       - name: Install Rust nightly (rustdoc-json for SIGNATURES gate)
         uses: dtolnay/rust-toolchain@nightly
 
+      # Capture the resolved rustc versions so the cargo cache key is invalidated
+      # when the toolchain updates. Without this, a rustc bump on the runner image
+      # restores a target/ + ~/.cargo/registry built by the OLD rustc, yielding
+      # `error[E0514]: found crate serde_json compiled by an incompatible version
+      # of rustc` on every run until the key changes.
+      - name: Compute rustc fingerprint for the cache key
+        id: rustc_fp
+        run: echo "fp=$(rustc +stable --version | tr ' ' '-')-$(rustc +nightly --version | tr ' ' '-')" >> "$GITHUB_OUTPUT"
+
       # Split restore/save (not the combined actions/cache) so the target/ build
       # cache SAVES even when the gate job fails. The combined action's post-save
       # is SKIPPED on a failed prior step, and every rust run is currently red on
@@ -125,10 +134,10 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             signalwire-rust/target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('signalwire-rust/Cargo.lock') }}-${{ github.run_id }}
+          key: ${{ runner.os }}-cargo-${{ steps.rustc_fp.outputs.fp }}-${{ hashFiles('signalwire-rust/Cargo.lock') }}-${{ github.run_id }}
           restore-keys: |
-            ${{ runner.os }}-cargo-${{ hashFiles('signalwire-rust/Cargo.lock') }}-
-            ${{ runner.os }}-cargo-
+            ${{ runner.os }}-cargo-${{ steps.rustc_fp.outputs.fp }}-${{ hashFiles('signalwire-rust/Cargo.lock') }}-
+            ${{ runner.os }}-cargo-${{ steps.rustc_fp.outputs.fp }}-
 
       - name: Set up Python (porting-sdk audit scripts)
         uses: actions/setup-python@v6
@@ -168,7 +177,7 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             signalwire-rust/target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('signalwire-rust/Cargo.lock') }}-${{ github.run_id }}
+          key: ${{ runner.os }}-cargo-${{ steps.rustc_fp.outputs.fp }}-${{ hashFiles('signalwire-rust/Cargo.lock') }}-${{ github.run_id }}
 
       - name: Record green marker for this input triple
         run: 'echo green > .nightly-green-marker'
