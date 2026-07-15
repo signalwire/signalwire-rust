@@ -69,7 +69,7 @@ jobs:
       # save step below runs with if: always(). Registry/git keyed on Cargo.lock;
       # target/ needs the run_id suffix so each run persists an updated build.
       - name: Restore cargo registry + target
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v6
         with:
           path: |
             ~/.cargo/registry
@@ -128,7 +128,7 @@ jobs:
       # persists an updated cache; the restore prefix above picks up the most recent.
       - name: Save cargo registry + target
         if: always()
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v6
         with:
           path: |
             ~/.cargo/registry

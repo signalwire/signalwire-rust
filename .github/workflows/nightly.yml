@@ -51,7 +51,7 @@ jobs:
           echo "inputs -> port=$port_sha psdk=$psdk_sha python=$py_sha"
       - name: Probe last-green marker
         id: probe
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v6
         with:
           path: .nightly-green-marker
           key: ${{ steps.fp.outputs.cache_key }}
@@ -128,7 +128,7 @@ jobs:
       # save step below runs with if: always(). Registry/git keyed on Cargo.lock;
       # target/ needs the run_id suffix so each run persists an updated build.
       - name: Restore cargo registry + target
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v6
         with:
           path: |
             ~/.cargo/registry
@@ -171,7 +171,7 @@ jobs:
       # persists an updated cache; the restore prefix above picks up the most recent.
       - name: Save cargo registry + target
         if: always()
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v6
         with:
           path: |
             ~/.cargo/registry
@@ -181,7 +181,7 @@ jobs:
 
       - name: Record green marker for this input triple
         run: 'echo green > .nightly-green-marker'
-      - uses: actions/cache/save@v4
+      - uses: actions/cache/save@v6
         with:
           path: .nightly-green-marker
           key: ${{ needs.guard.outputs.cache_key }}
