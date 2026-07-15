@@ -13,6 +13,7 @@ use super::fabric_resources_generated::{
 use super::fax_resources_generated::FaxLogs;
 use super::logs_resources_generated::ConferenceLogs;
 use super::message_resources_generated::MessageLogs;
+use super::messages_resources_generated::Messages;
 use super::project_resources_generated::ProjectTokens;
 use super::projects_resources_generated::Projects;
 use super::pubsub_resources_generated::PubSub;
@@ -382,6 +383,12 @@ impl<'a> GeneratedResourceTree<'a> {
     #[must_use]
     pub fn calling(&self) -> Calling<'a> {
         Calling::new(self.client)
+    }
+
+    /// Access the flat `Messages` resource.
+    #[must_use]
+    pub fn messages(&self) -> Messages<'a> {
+        Messages::new(self.client)
     }
 
     /// Access the flat `Projects` resource.

@@ -10,6 +10,7 @@ pub mod fabric_resources_generated;
 pub mod fax_resources_generated;
 pub mod logs_resources_generated;
 pub mod message_resources_generated;
+pub mod messages_resources_generated;
 pub mod project_resources_generated;
 pub mod projects_resources_generated;
 pub mod pubsub_resources_generated;

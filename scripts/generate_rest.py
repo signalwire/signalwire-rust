@@ -83,7 +83,7 @@ except ImportError:  # pragma: no cover
 # (``relay-rest`` -> ``relay_rest``), derived via snake_of, not tabulated.
 _NS_ORDER = (
     "relay-rest", "fabric", "calling", "video", "datasphere",
-    "logs", "message", "voice", "fax", "project", "projects", "chat", "pubsub",
+    "logs", "message", "messages", "voice", "fax", "project", "projects", "chat", "pubsub",
     "swml-webhooks",
 )
 

@@ -268,6 +268,15 @@ impl RestClient {
         self.tree().logs()
     }
 
+    /// Messages (`/api/messaging/messages` send + redact) — `create` sends an
+    /// outbound SMS/MMS, `update` redacts a previously sent message. Distinct
+    /// from the message *logs* under `logs().messages()`.
+    pub fn messages(
+        &self,
+    ) -> super::namespaces::generated::messages_resources_generated::Messages<'_> {
+        self.tree().messages()
+    }
+
     /// Project namespace (exposes `tokens` sub-resource).
     pub fn project(&self) -> tree::ProjectNamespace<'_> {
         self.tree().project()
