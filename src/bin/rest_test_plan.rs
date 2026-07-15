@@ -53,6 +53,7 @@ use signalwire::rest::namespaces::generated::calling_resources_generated as cg;
 use signalwire::rest::namespaces::generated::chat_resources_generated as chat_gen;
 use signalwire::rest::namespaces::generated::datasphere_resources_generated as datasphere_gen;
 use signalwire::rest::namespaces::generated::fabric_resources_generated as fabric_gen;
+use signalwire::rest::namespaces::generated::messages_resources_generated as messages_gen;
 use signalwire::rest::namespaces::generated::project_resources_generated as project_gen;
 use signalwire::rest::namespaces::generated::pubsub_resources_generated as pubsub_gen;
 use signalwire::rest::namespaces::generated::relay_rest_resources_generated as relay_gen;
@@ -1353,6 +1354,28 @@ fn enumerate(rec: &mut Recorder) {
     rec.record(&["project", "tokens"], "delete", &[A_ID], |c| {
         let _ = c.project().tokens().delete(id);
     });
+
+    // --- messages (flat /api/messaging/messages send + redact) ---
+    rec.record(
+        &["messages"],
+        "create",
+        &["messages_gen::MessagesCreateRequest::new(\"x\", \"x\")"],
+        |c| {
+            let _ = c
+                .messages()
+                .create(messages_gen::MessagesCreateRequest::new("x", "x"));
+        },
+    );
+    rec.record(
+        &["messages"],
+        "update",
+        &[A_ID, "messages_gen::MessagesUpdateRequest::new(\"x\")"],
+        |c| {
+            let _ = c
+                .messages()
+                .update(id, messages_gen::MessagesUpdateRequest::new("x"));
+        },
+    );
 
     // --- projects (flat /api/projects CRUD + rotate_signing_key) ---
     rec.record(&["projects"], "list", &[A_HM], |c| {

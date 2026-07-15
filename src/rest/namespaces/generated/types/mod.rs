@@ -9,6 +9,7 @@ pub mod fabric_types_generated;
 pub mod fax_types_generated;
 pub mod logs_types_generated;
 pub mod message_types_generated;
+pub mod messages_types_generated;
 pub mod project_types_generated;
 pub mod projects_types_generated;
 pub mod pubsub_types_generated;

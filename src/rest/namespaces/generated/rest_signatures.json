@@ -2277,6 +2277,98 @@
         "paginate"
       ]
     },
+    "Messages": {
+      "base": "BaseResource",
+      "class": "Messages",
+      "methods": {
+        "create": [
+          {
+            "kind": "keyword",
+            "name": "to",
+            "required": true,
+            "type": "any"
+          },
+          {
+            "kind": "keyword",
+            "name": "from",
+            "required": true,
+            "type": "any"
+          },
+          {
+            "kind": "keyword",
+            "name": "body",
+            "required": false,
+            "type": "any"
+          },
+          {
+            "kind": "keyword",
+            "name": "media",
+            "required": false,
+            "type": "any"
+          },
+          {
+            "kind": "keyword",
+            "name": "send_as_mms",
+            "required": false,
+            "type": "any"
+          },
+          {
+            "kind": "keyword",
+            "name": "status_callback",
+            "required": false,
+            "type": "any"
+          },
+          {
+            "kind": "keyword",
+            "name": "custom_variables",
+            "required": false,
+            "type": "any"
+          },
+          {
+            "kind": "keyword",
+            "name": "extras",
+            "required": false,
+            "type": "any"
+          },
+          {
+            "kind": "var_keyword",
+            "name": "kwargs",
+            "required": false,
+            "type": "any"
+          }
+        ],
+        "update": [
+          {
+            "kind": "positional",
+            "name": "message_id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "kind": "keyword",
+            "name": "body",
+            "required": true,
+            "type": "any"
+          },
+          {
+            "kind": "keyword",
+            "name": "extras",
+            "required": false,
+            "type": "any"
+          },
+          {
+            "kind": "var_keyword",
+            "name": "kwargs",
+            "required": false,
+            "type": "any"
+          }
+        ]
+      },
+      "module": "signalwire.rest.namespaces.messages_resources_generated",
+      "surface_drop": [
+        "base_path"
+      ]
+    },
     "Mfa": {
       "base": "BaseResource",
       "class": "Mfa",

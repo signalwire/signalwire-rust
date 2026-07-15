@@ -47,6 +47,7 @@ use signalwire::rest::namespaces::generated::calling_resources_generated as cg;
 use signalwire::rest::namespaces::generated::chat_resources_generated as chat_gen;
 use signalwire::rest::namespaces::generated::datasphere_resources_generated as datasphere_gen;
 use signalwire::rest::namespaces::generated::fabric_resources_generated as fabric_gen;
+use signalwire::rest::namespaces::generated::messages_resources_generated as messages_gen;
 use signalwire::rest::namespaces::generated::project_resources_generated as project_gen;
 use signalwire::rest::namespaces::generated::pubsub_resources_generated as pubsub_gen;
 use signalwire::rest::namespaces::generated::relay_rest_resources_generated as relay_gen;
@@ -427,6 +428,11 @@ fn invoke_all(c: &RestClient) {
     let _ = pt.create(project_gen::ProjectTokensCreateRequest::new("x", json!({})));
     let _ = pt.update(id, project_gen::ProjectTokensUpdateRequest::new());
     let _ = pt.delete(id);
+
+    // --- messages (flat /api/messaging/messages send + redact) ---
+    let msg = c.messages();
+    let _ = msg.create(messages_gen::MessagesCreateRequest::new("x", "x"));
+    let _ = msg.update(id, messages_gen::MessagesUpdateRequest::new("x"));
 
     // --- projects (flat /api/projects CRUD + rotate_signing_key) ---
     let pj = c.projects();

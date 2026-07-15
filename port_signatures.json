@@ -21854,6 +21854,15 @@
               ],
               "returns": "class:signalwire.lookup.Lookup"
             },
+            "messages": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "class:signalwire.messages.Messages"
+            },
             "mfa": {
               "params": [
                 {
@@ -25632,6 +25641,124 @@
                 }
               ],
               "returns": "class:signalwire.rest._pagination.PaginatedIterator"
+            }
+          }
+        }
+      }
+    },
+    "signalwire.rest.namespaces.messages_resources_generated": {
+      "classes": {
+        "Messages": {
+          "methods": {
+            "__init__": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                },
+                {
+                  "name": "http",
+                  "type": "any",
+                  "required": true
+                }
+              ],
+              "returns": "void"
+            },
+            "create": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                },
+                {
+                  "name": "to",
+                  "kind": "keyword",
+                  "type": "any",
+                  "required": true
+                },
+                {
+                  "name": "from",
+                  "kind": "keyword",
+                  "type": "any",
+                  "required": true
+                },
+                {
+                  "name": "body",
+                  "kind": "keyword",
+                  "type": "any",
+                  "required": false
+                },
+                {
+                  "name": "media",
+                  "kind": "keyword",
+                  "type": "any",
+                  "required": false
+                },
+                {
+                  "name": "send_as_mms",
+                  "kind": "keyword",
+                  "type": "any",
+                  "required": false
+                },
+                {
+                  "name": "status_callback",
+                  "kind": "keyword",
+                  "type": "any",
+                  "required": false
+                },
+                {
+                  "name": "custom_variables",
+                  "kind": "keyword",
+                  "type": "any",
+                  "required": false
+                },
+                {
+                  "name": "extras",
+                  "kind": "keyword",
+                  "type": "any",
+                  "required": false
+                },
+                {
+                  "name": "kwargs",
+                  "kind": "var_keyword",
+                  "type": "any",
+                  "required": false
+                }
+              ],
+              "returns": "any"
+            },
+            "update": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                },
+                {
+                  "name": "message_id",
+                  "kind": "positional",
+                  "type": "string",
+                  "required": true
+                },
+                {
+                  "name": "body",
+                  "kind": "keyword",
+                  "type": "any",
+                  "required": true
+                },
+                {
+                  "name": "extras",
+                  "kind": "keyword",
+                  "type": "any",
+                  "required": false
+                },
+                {
+                  "name": "kwargs",
+                  "kind": "var_keyword",
+                  "type": "any",
+                  "required": false
+                }
+              ],
+              "returns": "any"
             }
           }
         }

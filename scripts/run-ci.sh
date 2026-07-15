@@ -142,6 +142,7 @@ rest_coverage_gate() {
         --test rest_generated_fax \
         --test rest_generated_logs \
         --test rest_generated_message \
+        --test rest_generated_messages \
         --test rest_generated_project \
         --test rest_generated_projects \
         --test rest_generated_pubsub \

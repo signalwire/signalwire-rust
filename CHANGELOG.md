@@ -1,5 +1,14 @@
 # Changelog
 
+## [3.2.0] - 2026-07-14
+
+- REST: added the `Messages` resource (`client.messages()`) — send and redact
+  messages under `/api/messaging/messages`. `create` sends an outbound SMS/MMS
+  (`POST /api/messaging/messages`) and `update` redacts a previously sent
+  message (`PATCH /api/messaging/messages/{message_id}`). Distinct from the
+  message *logs* under `logs().messages()`. Generated from the canonical
+  `messages` spec with success+error wire coverage for both routes.
+
 ## [3.1.0] - 2026-07-14
 
 - REST: added the `Projects` resource (`client.projects()`) — full CRUD over
