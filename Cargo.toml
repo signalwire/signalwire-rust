@@ -94,6 +94,10 @@ regex = "1"
 log = "0.4"
 env_logger = "0.11"
 chrono = "0.4"
+# IANA timezone database for chrono, so the datetime skill can resolve a
+# requested zone (e.g. America/New_York) and compute the correct local time
+# instead of always answering in UTC.
+chrono-tz = "0.10"
 # `ssl-rustls` enables `tiny_http::Server::https(addr, SslConfig{..})` so the
 # webhook / SWML server can serve real HTTPS (driven by SWML_SSL_ENABLED /
 # SWML_SSL_CERT_PATH / SWML_SSL_KEY_PATH, mirroring Python's uvicorn ssl_*).
