@@ -1354,6 +1354,26 @@ fn enumerate(rec: &mut Recorder) {
         let _ = c.project().tokens().delete(id);
     });
 
+    // --- projects (flat /api/projects CRUD + rotate_signing_key) ---
+    rec.record(&["projects"], "list", &[A_HM], |c| {
+        let _ = c.projects().list(hm);
+    });
+    rec.record(&["projects"], "create", &[A_BODY], |c| {
+        let _ = c.projects().create(p);
+    });
+    rec.record(&["projects"], "get", &[A_ID], |c| {
+        let _ = c.projects().get(id);
+    });
+    rec.record(&["projects"], "update", &[A_ID, A_BODY], |c| {
+        let _ = c.projects().update(id, p);
+    });
+    rec.record(&["projects"], "delete", &[A_ID], |c| {
+        let _ = c.projects().delete(id);
+    });
+    rec.record(&["projects"], "rotate_signing_key", &[A_ID], |c| {
+        let _ = c.projects().rotate_signing_key(id);
+    });
+
     // --- pubsub / chat (token-only) ---
     rec.record(
         &["pubsub"],

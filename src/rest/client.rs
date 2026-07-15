@@ -273,6 +273,14 @@ impl RestClient {
         self.tree().project()
     }
 
+    /// Projects (`/api/projects` CRUD + `rotate_signing_key`) — manage projects
+    /// and subprojects. Distinct from the singular `project` token namespace.
+    pub fn projects(
+        &self,
+    ) -> super::namespaces::generated::projects_resources_generated::Projects<'_> {
+        self.tree().projects()
+    }
+
     /// `PubSub` tokens (`create_token` → POST `/api/pubsub/tokens`).
     pub fn pubsub(&self) -> super::namespaces::generated::pubsub_resources_generated::PubSub<'_> {
         self.tree().pubsub()

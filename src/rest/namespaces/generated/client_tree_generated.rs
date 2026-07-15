@@ -14,6 +14,7 @@ use super::fax_resources_generated::FaxLogs;
 use super::logs_resources_generated::ConferenceLogs;
 use super::message_resources_generated::MessageLogs;
 use super::project_resources_generated::ProjectTokens;
+use super::projects_resources_generated::Projects;
 use super::pubsub_resources_generated::PubSub;
 use super::relay_rest_resources_generated::{
     Addresses, ImportedNumbers, Lookup, Mfa, NumberGroups, PhoneNumbers, Queues, Recordings,
@@ -381,6 +382,12 @@ impl<'a> GeneratedResourceTree<'a> {
     #[must_use]
     pub fn calling(&self) -> Calling<'a> {
         Calling::new(self.client)
+    }
+
+    /// Access the flat `Projects` resource.
+    #[must_use]
+    pub fn projects(&self) -> Projects<'a> {
+        Projects::new(self.client)
     }
 
     /// Access the flat `Chat` resource.

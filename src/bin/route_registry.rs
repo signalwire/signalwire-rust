@@ -428,6 +428,15 @@ fn invoke_all(c: &RestClient) {
     let _ = pt.update(id, project_gen::ProjectTokensUpdateRequest::new());
     let _ = pt.delete(id);
 
+    // --- projects (flat /api/projects CRUD + rotate_signing_key) ---
+    let pj = c.projects();
+    let _ = pj.list(hm);
+    let _ = pj.create(p);
+    let _ = pj.get(id);
+    let _ = pj.update(id, p);
+    let _ = pj.delete(id);
+    let _ = pj.rotate_signing_key(id);
+
     // --- pubsub / chat (token-only) ---
     let _ = c
         .pubsub()

@@ -1,5 +1,14 @@
 # Changelog
 
+## [3.1.0] - 2026-07-14
+
+- REST: added the `Projects` resource (`client.projects()`) — full CRUD over
+  `/api/projects` (list, create, get, update, delete) plus `rotate_signing_key`
+  (`POST /projects/{id}/signing-key/rotate`) for managing projects and
+  subprojects. Distinct from the singular `project` token namespace. Generated
+  from the canonical `projects` spec with success+error wire coverage for all
+  six routes.
+
 ## [3.0.2] - 2026-07-13
 
 - REST: the full REST resource surface is now generated from the canonical
