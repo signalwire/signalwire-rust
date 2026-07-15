@@ -219,6 +219,17 @@ config_builder: ureq::Agent::config_builder
 from_bytes: tiny_http::Header::from_bytes
 from_string: tiny_http::Response::from_string
 new_from_slice: hmac Mac::new_from_slice (crypto)
+as_bool: serde_json::Value::as_bool (read a JSON bool in examples/wait_liveness_dump.rs)
+as_secs_f64: stdlib std::time::Duration::as_secs_f64 (elapsed-ms math in the wait-liveness dump)
+duration_since: stdlib std::time::Instant::duration_since (elapsed-ms math in the wait-liveness dump)
+from_secs_f64: stdlib std::time::Duration::from_secs_f64 (wait() deadline in the wait-liveness dump)
+is_none: stdlib Option::is_none (timeout classification in the wait-liveness dump)
+begin: test-harness free fn relay_mocktest::begin (integration-test harness at tests/common/relay_mocktest.rs, shared by the dump examples via #[path]; not port surface)
+connected_client: test-harness free fn relay_mocktest::connected_client (spawn+connect a client to mock_relay; not port surface)
+inbound_call: test-harness free fn relay_mocktest::inbound_call (drive an inbound-call sequence via the mock control plane; not port surface)
+scope: test-harness free fn relay_mocktest::scope (read the thread-local mock session scope; not port surface)
+set_scope: test-harness free fn relay_mocktest::set_scope (set the thread-local mock session scope on a spawned pusher thread; not port surface)
+sent_messages: RelayClient::sent_messages read accessor — a real port method (see PORT_ADDITIONS.md) the surface enumerator does not emit (Client method fold), referenced in the wire-relay dump example
 
 ## Doc-local fn definitions — language-level entry-point / helper, not port surface
 

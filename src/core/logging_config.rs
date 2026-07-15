@@ -12,6 +12,26 @@
 
 use std::env;
 
+use crate::logging::{Level, ParseLevelError};
+
+/// Parse a `SIGNALWIRE_LOG_LEVEL`-style string into a [`Level`], returning the
+/// typed [`ParseLevelError`] when the value is not one of
+/// `debug`/`info`/`warn`/`error` (case-insensitive).
+///
+/// This is the validating entry point behind [`configure_logging`]: callers
+/// (the CLI, an embedding application) can surface a precise error for a bad
+/// level instead of silently falling back to `info`.
+///
+/// # Errors
+///
+/// Returns [`ParseLevelError`] carrying the offending input when `value` is not
+/// a recognized level.
+pub fn parse_log_level(value: &str) -> Result<Level, ParseLevelError> {
+    // Use the `FromStr` impl (typed error) explicitly: the inherent
+    // `Level::from_str` returns `Option` and would otherwise shadow it.
+    value.parse::<Level>()
+}
+
 /// Detect the SDK's deployment environment based on well-known
 /// environment variables.
 ///
@@ -85,6 +105,23 @@ pub fn configure_logging() {
     if LOGGING_CONFIGURED.swap(true, Ordering::SeqCst) {
         return;
     }
+    // Validate SIGNALWIRE_LOG_LEVEL up front: an unrecognized value would
+    // otherwise be silently swallowed to `info`. Surface the typed
+    // `ParseLevelError` as a warning so the operator learns their setting was
+    // ignored, then proceed with the default.
+    if let Ok(raw) = env::var("SIGNALWIRE_LOG_LEVEL") {
+        match parse_log_level(&raw) {
+            Ok(_level) => {}
+            Err(err) => {
+                let err: ParseLevelError = err;
+                eprintln!(
+                    "[signalwire] warning: {} ({}); falling back to the default log level",
+                    err,
+                    err.input()
+                );
+            }
+        }
+    }
     crate::logging::init();
 }
 
@@ -127,6 +164,19 @@ mod logging_setup_tests {
     #[test]
     fn test_get_logger_returns_named_logger() {
         get_logger("test.module").debug("configured");
+    }
+
+    #[test]
+    fn test_parse_log_level_ok() {
+        assert_eq!(parse_log_level("debug").unwrap(), Level::Debug);
+        assert_eq!(parse_log_level("WARN").unwrap(), Level::Warn);
+    }
+
+    #[test]
+    fn test_parse_log_level_rejects_bad_value() {
+        let err: ParseLevelError = parse_log_level("bogus").unwrap_err();
+        assert_eq!(err.input(), "bogus");
+        assert!(err.to_string().contains("not a valid log level"));
     }
 
     #[test]

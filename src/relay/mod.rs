@@ -3,6 +3,14 @@
 //! Provides constants, event/action primitives, call control, message
 //! tracking, and the async-ready `Client` that ties everything together.
 
+/// Upper bound on the in-memory "sent frames" inspection logs
+/// (`Client::sent_messages`, `Call::sent_commands`, `Action::sent_commands`).
+/// These record what the client *would* transmit for tests / debug
+/// introspection; on a long-running session they must not grow without limit,
+/// so each push drops the oldest entry once this many are retained (ring
+/// buffer, most-recent-N semantics). Internal — not part of the public surface.
+pub(crate) const SENT_LOG_CAP: usize = 1024;
+
 pub mod action;
 pub mod call;
 pub mod client;

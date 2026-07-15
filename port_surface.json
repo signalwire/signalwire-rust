@@ -1,6 +1,6 @@
 {
   "version": "1",
-  "generated_from": "signalwire-rust @ ccaa6ed73f98e78841bdf75f882db4deaf4bdf28",
+  "generated_from": "signalwire-rust @ d4c1734ceabf01e7ec85f1973364454d5bfc7c9e",
   "modules": {
     "signalwire": {
       "classes": {
@@ -12,6 +12,7 @@
         "AgentBase",
         "AgentOptions",
         "AgentServer",
+        "ParseLevelError",
         "RestClient",
         "SWMLService",
         "add_skill_directory",
@@ -425,6 +426,7 @@
         "configure_logging",
         "get_execution_mode",
         "get_logger",
+        "parse_log_level",
         "reset_logging_configuration",
         "strip_control_chars"
       ]
@@ -1206,6 +1208,7 @@
           "resolve_all_actions",
           "send_digits",
           "send_fax",
+          "sent_commands",
           "set_client",
           "stream",
           "tap",
@@ -1323,6 +1326,7 @@
           "send_message",
           "send_message_blocking",
           "send_request",
+          "sent_messages",
           "track_message",
           "unreceive"
         ],

@@ -114,7 +114,7 @@ agent.define_tool("get_time", "Get current time", json!({}), handler, false);
 | `security` | `SessionManager`, basic auth, HMAC token generation |
 | `logging` | Structured logging with `SIGNALWIRE_LOG_LEVEL` |
 | `relay` | `RelayClient`, call/message control, action objects |
-| `rest` | `RestClient`, 20 namespaced API surfaces |
+| `rest` | `RestClient`, namespaced API surfaces (Fabric, Calling, Video, Datasphere, ...) |
 
 ## Thread Safety
 

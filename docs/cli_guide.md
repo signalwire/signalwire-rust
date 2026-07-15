@@ -32,10 +32,10 @@ cargo run --bin swaig-test -- --example simple_agent --list-tools
 
 ### Dump SWML
 
-Render the complete SWML document the agent would return:
+Fetch and print the complete SWML document a running agent returns (URL mode):
 
 ```bash
-cargo run --bin swaig-test -- --example simple_agent --dump-swml
+cargo run --bin swaig-test -- --url http://localhost:3000 --dump-swml
 ```
 
 Output: a JSON SWML document.
@@ -59,10 +59,10 @@ Output: the `FunctionResult` JSON.
 
 | Flag | Description |
 |------|-------------|
-| `--example <NAME>` | Introspect an example agent by name (in-process) |
+| `--example <NAME>` | Introspect an example agent by name, in-process (supports `--list-tools` only) |
 | `--url <URL>` | Target a running SWAIG endpoint |
 | `--list-tools` | List all registered SWAIG tools |
-| `--dump-swml` | Render and print the SWML document |
+| `--dump-swml` | Fetch and print the SWML document (URL mode) |
 | `--exec <name>` | Execute a tool by name (URL mode) |
 | `--param <K=V>` | Parameter for `--exec` (repeatable) |
 | `--help` | Print usage |
@@ -70,10 +70,12 @@ Output: the `FunctionResult` JSON.
 ## Examples
 
 ```bash
-# Introspect example agents by name
+# Introspect example agents by name (in-process; --list-tools only)
 cargo run --bin swaig-test -- --example simple_agent --list-tools
-cargo run --bin swaig-test -- --example simple_agent --dump-swml
-cargo run --bin swaig-test -- --example contexts_demo --dump-swml
+cargo run --bin swaig-test -- --example contexts_demo --list-tools
+
+# Dump the rendered SWML from a running endpoint (URL mode)
+cargo run --bin swaig-test -- --url http://localhost:3000 --dump-swml
 
 # Execute a tool against a running endpoint with arguments
 cargo run --bin swaig-test -- --url http://localhost:3000 \

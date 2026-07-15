@@ -110,5 +110,5 @@ Test agents locally with `swaig-test`: list tools, dump SWML, execute functions.
 - Namespaced API surfaces
 - Fabric (13 resource types), Calling (37 commands), Video, Datasphere
 - Phone Numbers, SIP, Queues, Recordings
-- Connection pooling via reqwest
+- Connection pooling via ureq
 - Raw `serde_json::Value` returns

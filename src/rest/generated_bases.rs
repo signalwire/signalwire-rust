@@ -21,11 +21,43 @@
 
 use std::collections::HashMap;
 
+use percent_encoding::{AsciiSet, CONTROLS};
 use serde_json::Value;
 
 use super::error::SignalWireRestError;
 use super::http_client::HttpClient;
 use super::pagination::PaginatedIterator;
+
+/// Characters escaped when percent-encoding a URL path segment. Starts from the
+/// full control set and adds every character that is NOT an RFC 3986 unreserved
+/// character (`ALPHA / DIGIT / - . _ ~`): the generic/sub delimiters, space, and
+/// the query/fragment introducers. This keeps common ids (`ORD-123`, `a_b.c`)
+/// byte-identical on the wire while escaping anything that could break out of
+/// the segment.
+const PATH_SEGMENT: &AsciiSet = &CONTROLS
+    .add(b' ')
+    .add(b'"')
+    .add(b'#')
+    .add(b'%')
+    .add(b'/')
+    .add(b'<')
+    .add(b'>')
+    .add(b'?')
+    .add(b'`')
+    .add(b'{')
+    .add(b'}')
+    .add(b':')
+    .add(b';')
+    .add(b'=')
+    .add(b'&')
+    .add(b'+')
+    .add(b',')
+    .add(b'@')
+    .add(b'[')
+    .add(b']')
+    .add(b'\\')
+    .add(b'^')
+    .add(b'|');
 
 /// The single canonical CRUD base. `CrudResource` is defined once in
 /// `crud_resource.rs` (also the public `rest::CrudResource`); the generated
@@ -71,12 +103,22 @@ impl<'a> BaseResource<'a> {
     }
 
     /// Build a full path by appending `parts` to the base path.
+    ///
+    /// Each part is percent-encoded as a URL path segment: a resource id
+    /// containing reserved characters (space, `/`, `?`, `#`, unicode, ...) is
+    /// escaped so it can't break out of its segment or corrupt the request line.
+    /// The base path itself is trusted (composed from the spec) and passed
+    /// through verbatim.
     #[must_use]
     pub fn path(&self, parts: &[&str]) -> String {
         if parts.is_empty() {
             return self.base_path.clone();
         }
-        format!("{}/{}", self.base_path, parts.join("/"))
+        let encoded: Vec<String> = parts
+            .iter()
+            .map(|p| percent_encoding::utf8_percent_encode(p, PATH_SEGMENT).to_string())
+            .collect();
+        format!("{}/{}", self.base_path, encoded.join("/"))
     }
 }
 
@@ -243,5 +285,45 @@ impl<'a> FabricResource<'a> {
         self.base
             .client()
             .get(&self.base.path(&[id, "addresses"]), params)
+    }
+}
+
+#[cfg(test)]
+mod path_encoding_tests {
+    use super::*;
+
+    fn stub_client() -> HttpClient {
+        let (client, _stub) = HttpClient::with_stub("p", "t", "https://x.signalwire.com");
+        client
+    }
+
+    /// Path segments (resource ids) with reserved characters are percent-encoded
+    /// so an id cannot break out of its segment or corrupt the request line.
+    /// Regression guard for the raw-`parts.join("/")` bug.
+    #[test]
+    fn path_encodes_reserved_chars_in_segments() {
+        let client = stub_client();
+        let base = BaseResource::new(&client, "/api/fabric/resources");
+        // A slash inside an id must NOT introduce a new path segment; a space,
+        // `?`, `#`, and unicode must be escaped.
+        let p = base.path(&["a/b c?d#e", "sub"]);
+        assert_eq!(p, "/api/fabric/resources/a%2Fb%20c%3Fd%23e/sub");
+    }
+
+    /// RFC 3986 unreserved characters common in ids stay byte-identical so the
+    /// wire path the server expects is unchanged.
+    #[test]
+    fn path_preserves_unreserved_chars() {
+        let client = stub_client();
+        let base = BaseResource::new(&client, "/api/orders");
+        assert_eq!(base.path(&["ORD-123_v.2~x"]), "/api/orders/ORD-123_v.2~x");
+    }
+
+    /// The empty-parts case returns the base path verbatim.
+    #[test]
+    fn path_empty_parts_is_base() {
+        let client = stub_client();
+        let base = BaseResource::new(&client, "/api/orders");
+        assert_eq!(base.path(&[]), "/api/orders");
     }
 }

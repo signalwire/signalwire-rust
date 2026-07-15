@@ -31,7 +31,7 @@ _Build AI voice agents, control live calls over WebSocket, and manage every Sign
 |-----------|-------------|------------|
 | **AI Agents** | Build voice agents that handle calls autonomously -- the platform runs the AI pipeline, your code defines the persona, tools, and call flow | [Agent Guide](#ai-agents) |
 | **RELAY Client** | Control live calls and SMS/MMS in real time over WebSocket -- answer, play, record, collect DTMF, conference, transfer, and more | [RELAY docs](relay/README.md) |
-| **REST Client** | Manage SignalWire resources over HTTP -- phone numbers, SIP endpoints, Fabric AI agents, video rooms, messaging, and 20 API namespaces | [REST docs](rest/README.md) |
+| **REST Client** | Manage SignalWire resources over HTTP -- phone numbers, SIP endpoints, Fabric AI agents, video rooms, messaging, and the full namespaced API surface | [REST docs](rest/README.md) |
 
 ```bash
 cargo add signalwire-sdk
@@ -78,10 +78,10 @@ point at a running SWAIG endpoint:
 ```bash
 # Introspect a SWMLService example in-process (by example name)
 cargo run --bin swaig-test -- --example swmlservice_swaig_standalone --list-tools
-cargo run --bin swaig-test -- --example swmlservice_swaig_standalone --dump-swml
 
 # Exercise a live SWAIG endpoint over HTTP
 cargo run --bin swaig-test -- --url http://user:pass@localhost:3000/ --list-tools
+cargo run --bin swaig-test -- --url http://user:pass@localhost:3000/ --dump-swml
 cargo run --bin swaig-test -- --url http://user:pass@localhost:3000/ --exec get_time
 ```
 
@@ -213,7 +213,7 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-signalwire = { package = "signalwire-sdk", version = "1" }
+signalwire = { package = "signalwire-sdk", version = "3" }
 ```
 
 The crate is published as `signalwire-sdk` (the bare `signalwire` name is held by an unofficial wrapper); the `package =` rename keeps the import path as `use signalwire::...`.

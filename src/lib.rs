@@ -69,6 +69,10 @@ pub mod web;
 // these in at the crate root) we re-export the same set here.
 
 pub use agent::{AgentBase, AgentOptions};
+// The typed error returned by `"level".parse::<logging::Level>()` — re-exported
+// at the crate root so callers can name it (`signalwire::ParseLevelError`)
+// without reaching into the `logging` module.
+pub use logging::ParseLevelError;
 pub use prefabs::{
     BedrockAgent, BedrockOptions, ConciergeAgent, FAQBotAgent, InfoGathererAgent,
     ReceptionistAgent, SurveyAgent,

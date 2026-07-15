@@ -19070,6 +19070,15 @@
               ],
               "returns": "class:signalwire.relay.call.Action"
             },
+            "sent_commands": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "list<tuple<string,class:signalwire.value.Value>>"
+            },
             "set_client": {
               "params": [
                 {
@@ -20397,6 +20406,15 @@
                 }
               ],
               "returns": "string"
+            },
+            "sent_messages": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "list<class:signalwire.value.Value>"
             },
             "track_message": {
               "params": [

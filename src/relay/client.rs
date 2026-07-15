@@ -226,8 +226,10 @@ pub struct Client {
     /// Reader thread observes this to know when to exit.
     closing: Arc<AtomicBool>,
 
-    /// Messages sent through the transport (for testing).
-    pub sent_messages: Mutex<Vec<Value>>,
+    /// Bounded log of frames sent through the transport, for wire-frame
+    /// inspection / tests (read via [`Client::sent_messages`]). Internal field
+    /// so callers cannot mutate it; capped at [`crate::relay::SENT_LOG_CAP`].
+    pub(crate) sent_messages: Mutex<Vec<Value>>,
 
     logger: Logger,
 }
@@ -243,6 +245,10 @@ impl Client {
             session_id: Mutex::new(None),
             protocol: Mutex::new(None),
             authorization_state: Mutex::new(None),
+            // RELAY protocol agent identifier sent on the connect frame. The
+            // `/1.0` mirrors Python's `relay.constants.AGENT_STRING`
+            // ("signalwire-agents-python/1.0") — it is the wire protocol tag, NOT
+            // the crate version, so it must stay `/1.0` for cross-port parity.
             agent: "signalwire-agents-rust/1.0".to_string(),
             pending: Mutex::new(HashMap::new()),
             calls: Mutex::new(HashMap::new()),
@@ -687,6 +693,18 @@ impl Client {
         );
     }
 
+    /// Snapshot of the frames this client has sent through the transport, for
+    /// wire-frame inspection / tests. Bounded to the most recent
+    /// [`crate::relay::SENT_LOG_CAP`] frames.
+    ///
+    /// # Panics
+    /// Panics if the internal mutex is poisoned (another thread panicked while
+    /// holding the lock). This does not occur under normal operation.
+    #[must_use]
+    pub fn sent_messages(&self) -> Vec<Value> {
+        self.sent_messages.lock().unwrap().clone()
+    }
+
     /// Send a raw JSON message through the transport.
     ///
     /// Records the frame in `sent_messages` (used by tests and for debug
@@ -702,7 +720,15 @@ impl Client {
     /// normal operation.
     pub fn send(&self, msg: &Value) {
         self.logger.debug(&format!(">> {msg}"));
-        self.sent_messages.lock().unwrap().push(msg.clone());
+        {
+            // Bounded ring: retain only the most recent SENT_LOG_CAP frames so a
+            // long-running session cannot grow this inspection log without limit.
+            let mut sent = self.sent_messages.lock().unwrap();
+            if sent.len() >= crate::relay::SENT_LOG_CAP {
+                sent.remove(0);
+            }
+            sent.push(msg.clone());
+        }
         if let Some(tx) = self.write_tx.lock().unwrap().as_ref() {
             let raw = msg.to_string();
             if let Err(e) = tx.send(WsMessage::Text(raw.into())) {
@@ -1574,6 +1600,26 @@ mod tests {
 
     fn make_client() -> Client {
         Client::new("test-project", "test-token", "test.signalwire.com")
+    }
+
+    #[test]
+    fn test_sent_messages_is_bounded() {
+        let c = make_client();
+        // Push well past the cap; the log must saturate at SENT_LOG_CAP and keep
+        // the MOST RECENT frames (ring buffer), not grow without limit.
+        for i in 0..(crate::relay::SENT_LOG_CAP + 50) {
+            c.send(&json!({ "method": "signalwire.ping", "seq": i }));
+        }
+        let msgs = c.sent_messages();
+        assert_eq!(msgs.len(), crate::relay::SENT_LOG_CAP, "log must be capped");
+        // Oldest entries were dropped; the final frame is the most recent seq.
+        let last_seq = msgs
+            .last()
+            .unwrap()
+            .get("seq")
+            .and_then(Value::as_u64)
+            .unwrap();
+        assert_eq!(last_seq, (crate::relay::SENT_LOG_CAP + 49) as u64);
     }
 
     #[test]

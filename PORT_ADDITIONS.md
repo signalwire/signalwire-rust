@@ -150,6 +150,7 @@ signalwire.relay.call.Call.echo_call: current_state mirrors Python's `state` att
 signalwire.relay.call.Call.pass: current_state mirrors Python's `state` attribute under a method name. dispatch_event is the public event-router (private in Python). echo_call / refer_call / pass replace Python's reserved-word-clashing Call.echo / Call.refer / Call.pass_. resolve_all_actions is a Rust convenience for terminal cleanup.
 signalwire.relay.call.Call.refer_call: current_state mirrors Python's `state` attribute under a method name. dispatch_event is the public event-router (private in Python). echo_call / refer_call / pass replace Python's reserved-word-clashing Call.echo / Call.refer / Call.pass_. resolve_all_actions is a Rust convenience for terminal cleanup.
 signalwire.relay.call.Call.resolve_all_actions: current_state mirrors Python's `state` attribute under a method name. dispatch_event is the public event-router (private in Python). echo_call / refer_call / pass replace Python's reserved-word-clashing Call.echo / Call.refer / Call.pass_. resolve_all_actions is a Rust convenience for terminal cleanup.
+signalwire.relay.call.Call.sent_commands: Rust read accessor returning a bounded snapshot of the `(method, params)` frames a Call has built (wire-frame introspection / tests); Python inspects the equivalent via its recording test stub. Backing field is `pub(crate)` (not caller-mutable) and capped at `crate::relay::SENT_LOG_CAP` so a long-running call can't leak memory. Mirrors the existing `Action.sent_commands` accessor.
 signalwire.relay.call.Call.set_client: Port-only wiring setter with no Python counterpart. Python's `Call.__init__` receives the `RelayClient` as a constructor argument and every verb transmits via `self._client.execute`. Rust's Client OWNS its Calls (`Mutex<HashMap<String, Arc<Call>>>`), so it constructs the Call first (from a server event payload) and then attaches itself through this setter; the Call stores a `Weak<Client>` to avoid an Arc reference cycle. Once attached, `Call::execute` / `start_action` transmit the built frame through `Client::send_request` — the client-send boundary. This is the fix for the RELAY non-transmission bug (a Call whose verbs only recorded into `sent_commands` and never reached the wire).
 
 ### Rust CrudResource constructor / accessors
@@ -361,6 +362,7 @@ signalwire.relay.client.RelayClient.remove_pending_dial: Rust splits the RelayCl
 signalwire.relay.client.RelayClient.send: Rust splits the RelayClient surface into explicit methods (authenticate, send_request, …) where Python uses dynamic dispatch (RelayClient.execute, send_message). These are the equivalent typed methods.
 signalwire.relay.client.RelayClient.send_ack: Rust splits the RelayClient surface into explicit methods (authenticate, send_request, …) where Python uses dynamic dispatch (RelayClient.execute, send_message). These are the equivalent typed methods.
 signalwire.relay.client.RelayClient.send_request: Rust splits the RelayClient surface into explicit methods (authenticate, send_request, …) where Python uses dynamic dispatch (RelayClient.execute, send_message). These are the equivalent typed methods.
+signalwire.relay.client.RelayClient.sent_messages: Rust read accessor returning a bounded snapshot of the frames the client has sent through the transport (wire-frame introspection / tests); Python inspects the equivalent via its recording test stub. Backing field is `pub(crate)` (not caller-mutable) and capped at `crate::relay::SENT_LOG_CAP` so a long-running session can't leak memory. Mirrors the `Call.sent_commands` / `Action.sent_commands` accessors.
 signalwire.relay.client.RelayClient.track_message: Rust splits the RelayClient surface into explicit methods (authenticate, send_request, …) where Python uses dynamic dispatch (RelayClient.execute, send_message). These are the equivalent typed methods.
 
 ### Rust RestClient namespace accessors and helpers
@@ -397,6 +399,10 @@ signalwire.rest.client.RestClient.verified_callers: Rust ships every REST namesp
 signalwire.rest.client.RestClient.video: Rust ships every REST namespace as a method on RestClient (calling, fabric, phone_numbers, …) — these methods are required by users to access the namespaces. Python users access namespaces via attribute access on RestClient. The data and behaviour are equivalent.
 signalwire.rest.client.RestClient.with_base_url: Rust ships every REST namespace as a method on RestClient (calling, fabric, phone_numbers, …) — these methods are required by users to access the namespaces. Python users access namespaces via attribute access on RestClient. The data and behaviour are equivalent.
 signalwire.rest.client.RestClient.with_http: Rust ships every REST namespace as a method on RestClient (calling, fabric, phone_numbers, …) — these methods are required by users to access the namespaces. Python users access namespaces via attribute access on RestClient. The data and behaviour are equivalent.
+
+### Rust logging_config module helper
+
+signalwire.core.logging_config.parse_log_level: Rust-only public helper that parses a `SIGNALWIRE_LOG_LEVEL` string into the typed `Level` via the `FromStr` impl, returning the typed `ParseLevelError` on an unrecognized value. It is the validating entry point behind `configure_logging` (which now warns instead of silently defaulting on a bad level). Python's `logging_config` reads the level with `getattr(logging, level.upper(), logging.INFO)` — a silent fallback with no typed error, so there is no Python counterpart. Additive; wires the `FromStr for Level` error contract into a real cross-file use.
 
 ### Rust SWMLService methods Python doesn't expose at the same name
 
@@ -784,6 +790,7 @@ signalwire.relay.client.RelayClient.send_message_blocking: Rust ships blocking-I
 
 signalwire.SkillSpec: top-level re-export: Rust exposes SkillSpec at the crate root for ergonomic `signalwire::SkillSpec` access; Python's equivalent is internal to the skill registry. The struct itself is a Rust idiom — Python uses raw class objects passed to `register_skill(...)`.
 signalwire.SkillSpec.__init__: top-level re-export: Rust exposes SkillSpec at the crate root for ergonomic `signalwire::SkillSpec` access; Python's equivalent is internal to the skill registry. The struct itself is a Rust idiom — Python uses raw class objects passed to `register_skill(...)`.
+signalwire.ParseLevelError: top-level re-export of the typed error returned by `"level".parse::<logging::Level>()` (defined in `signalwire::logging`), surfaced at the crate root so callers can name it as `signalwire::ParseLevelError`. Python parses the log level with a silent `getattr(logging, level.upper(), logging.INFO)` fallback and has no equivalent typed error. The Rust `FromStr` trait requires an associated `Err` type, so the error is intrinsic to the idiomatic parse API.
 
 ### AgentBase prompt_mixin / state_mixin lifted methods
 
