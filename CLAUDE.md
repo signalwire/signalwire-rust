@@ -60,7 +60,7 @@ cargo run --example contexts_demo
 
 ## Toolchain
 
-- **Rust edition:** 2024 (rustc 1.85+)
+- **Rust edition:** 2024 (rustc 1.88+; let-chains require 1.88, enforced via `rust-version` in `Cargo.toml`)
 - **Serialization:** `serde` / `serde_json` for all JSON handling
 - **Crypto:** `hmac` + `sha2` for HMAC-SHA256 token signing, `base64` for encoding
 - **Randomness:** `rand` for secure secret generation (basic auth passwords, session secrets)

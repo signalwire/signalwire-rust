@@ -42,7 +42,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 ## Features
 
 - **Namespaced API surfaces** -- coverage of SignalWire HTTP APIs (Fabric, calling, phone numbers, video, datasphere, and more)
-- **Connection pooling** -- via `reqwest::Client`
+- **Connection pooling** -- via `ureq::Agent`
 - **Raw JSON returns** -- `serde_json::Value` with no wrapper objects
 - **Synchronous** -- blocking calls, no runtime to set up
 

@@ -330,10 +330,15 @@ impl Action {
         for (k, v) in extra {
             params.insert(k, v);
         }
-        self.sent_commands
-            .lock()
-            .unwrap()
-            .push((method.to_string(), params.clone()));
+        {
+            // Bounded ring: retain only the most recent SENT_LOG_CAP sub-command
+            // frames so a long-running action can't grow this log without limit.
+            let mut cmds = self.sent_commands.lock().unwrap();
+            if cmds.len() >= crate::relay::SENT_LOG_CAP {
+                cmds.remove(0);
+            }
+            cmds.push((method.to_string(), params.clone()));
+        }
         // Transmit the sub-command frame to the wire through the owning
         // client, if attached (mirrors Python's `Action._execute` ->
         // `call._execute` -> `client.execute`).

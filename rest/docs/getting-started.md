@@ -3,7 +3,7 @@
 ## Prerequisites
 
 - A SignalWire account with a project
-- Rust 1.85+ (edition 2024)
+- Rust 1.88+ (edition 2024; let-chains require 1.88)
 
 ## Environment Setup
 

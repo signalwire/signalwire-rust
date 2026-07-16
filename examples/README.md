@@ -123,6 +123,6 @@ cargo run --example simple_agent
 # With environment variables
 SIGNALWIRE_LOG_LEVEL=debug cargo run --example simple_agent
 
-# Test without running a server
-cargo run --bin swaig-test -- --dump-swml examples/simple_agent.rs
+# Introspect an example's SWAIG tools without running a server (in-process)
+cargo run --bin swaig-test -- --example simple_agent --list-tools
 ```

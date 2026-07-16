@@ -1,7 +1,9 @@
 {
   "baseline_version": "3.0.2",
   "version": "2",
-  "generated_from": "signalwire-rust via cargo rustdoc-json (FORMAT_VERSION 57)",
+  "generated_from": "signalwire-rust @ 24e2ecb (v3.0.2 release floor, commit-anchored) via cargo rustdoc-json (FORMAT_VERSION 57)",
+  "generated_from_tag": "24e2ecbf33cb1292de9403ef91220824b50ee2e6",
+  "tag_sha": "24e2ecbf33cb1292de9403ef91220824b50ee2e6",
   "modules": {
     "signalwire": {
       "functions": {

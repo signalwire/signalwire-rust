@@ -61,7 +61,7 @@ fn answered_inbound_call(
 /// Pull the params of the single command the wrapper recorded (it builds
 /// exactly one `calling.<verb>` command), asserting the verb matches.
 fn built_params(call: &Arc<signalwire::relay::Call>, expect_method: &str) -> Value {
-    let cmds = call.sent_commands.lock().unwrap();
+    let cmds = call.sent_commands();
     assert_eq!(cmds.len(), 1, "wrapper should build exactly one command");
     assert_eq!(cmds[0].0, expect_method, "wrapper built the wrong verb");
     cmds[0].1.clone()

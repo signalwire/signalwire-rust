@@ -417,12 +417,17 @@ impl HttpClient {
         let mut url = format!("{}{}", self.base_url, path);
 
         if !params.is_empty() {
-            let qs: String = params
-                .iter()
-                .map(|(k, v)| format!("{k}={v}"))
-                .collect::<Vec<_>>()
-                .join("&");
-            url = format!("{url}?{qs}");
+            // Percent-encode keys AND values as application/x-www-form-urlencoded
+            // so reserved characters (space, &, =, +, /, unicode) can't corrupt
+            // the query or inject extra parameters. Sort by key for a stable,
+            // reproducible query string (HashMap iteration order is arbitrary).
+            let mut pairs: Vec<(&String, &String)> = params.iter().collect();
+            pairs.sort_by(|a, b| a.0.cmp(b.0));
+            let mut ser = url::form_urlencoded::Serializer::new(String::new());
+            for (k, v) in pairs {
+                ser.append_pair(k, v);
+            }
+            url = format!("{url}?{}", ser.finish());
         }
 
         let mut headers = HashMap::new();
@@ -749,5 +754,36 @@ mod tests {
         stub.set_response(200, "");
         let result = client.get("/api/test", &HashMap::new()).unwrap();
         assert!(result.is_object());
+    }
+
+    /// Reserved characters in query values must be percent-encoded so they
+    /// cannot break the query or inject extra parameters. Regression guard for
+    /// the raw-`format!("{k}={v}")` bug (the percent-encoding fix in `request`).
+    #[test]
+    fn test_query_params_reserved_chars_are_encoded() {
+        let (client, stub) = make_client();
+        stub.set_response(200, "{}");
+        let mut params = HashMap::new();
+        // Values carrying reserved chars: `&`, `=`, `+`, space, `/`, unicode.
+        params.insert("q".to_string(), "a b&c=d+e/f".to_string());
+        params.insert("name".to_string(), "café ☕".to_string());
+        client.get("/api/test", &params).unwrap();
+
+        let reqs = stub.requests.lock().unwrap();
+        let (_method, url, _body) = reqs.last().expect("a request was recorded");
+        // Raw reserved characters must NOT appear unescaped in the query.
+        let query = url.split_once('?').expect("query present").1;
+        assert!(
+            !query.contains("a b&c=d"),
+            "reserved chars leaked unencoded into the query: {url}"
+        );
+        // The `&`/`=`/space/unicode must be percent- or plus-encoded.
+        assert!(query.contains("a+b%26c%3Dd") || query.contains("a%20b%26c%3Dd"));
+        assert!(query.contains("caf%C3%A9"));
+        // Keys are sorted for a stable query string (name before q).
+        assert!(
+            query.find("name=").unwrap() < query.find("q=").unwrap(),
+            "query params should be sorted by key: {query}"
+        );
     }
 }

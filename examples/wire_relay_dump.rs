@@ -79,7 +79,7 @@ fn make_call(client: &Arc<RelayClient>) -> Call {
 /// NOT the Call's in-memory `sent_commands` — so a non-transmitting verb
 /// yields no frame and the differ fails the case.
 fn last_client_frame(client: &Arc<RelayClient>) -> Value {
-    let msgs = client.sent_messages.lock().expect("sent_messages lock");
+    let msgs = client.sent_messages();
     let msg = msgs
         .last()
         .cloned()
@@ -335,7 +335,7 @@ where
     // Poll sent_messages until the target frame appears (or a short deadline).
     for _ in 0..100 {
         {
-            let msgs = client.sent_messages.lock().expect("sent_messages lock");
+            let msgs = client.sent_messages();
             if let Some(msg) = msgs
                 .iter()
                 .rev()

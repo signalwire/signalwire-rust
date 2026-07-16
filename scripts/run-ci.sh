@@ -36,6 +36,13 @@ set -o pipefail
 PORT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 PORT_NAME="signalwire-rust"
 
+# Gate-enforcement plan (Part D): rust's Wave-A widened findings are BLOCKING, not
+# report-only. The shared wave-A gates (count_claim / dead_public_error / audit_docs
+# / status_claim / semver_diff) default to report-only (SW_WAVE_A_REPORT_ONLY unset →
+# report-only); setting it to 0 makes every newly-caught wave-A violation count toward
+# the exit code. rust's wave-A red list has been burned to zero, so this stays green.
+export SW_WAVE_A_REPORT_ONLY=0
+
 # sccache: availability-gated compiler cache (pure speedup, no-op when absent).
 # The canonical run-{tests,format,lint}.sh gates source scripts/_env.sh and get
 # this automatically; run-ci ALSO invokes cargo directly for several gates
@@ -192,6 +199,29 @@ route_collision_gate() {
 dayone_artifact_deny() {
     cargo package --list --allow-dirty 2>/dev/null \
         | python3 "$PORTING_SDK_DIR/scripts/artifact_deny.py" --port rust --listing -
+}
+
+# STRICT-MOCKS (§2.2) — re-run the RELAY integration suite with the mock in STRICT
+# mode (MOCK_RELAY_STRICT=1: mock_relay 400s an unknown field or a duplicate id
+# instead of tolerantly journaling it), so a wire-shape regression the tolerant
+# mock would swallow fails loud. The relay tests self-spawn `python -m mock_relay`,
+# which inherits MOCK_RELAY_STRICT from this env. rust's RELAY suite passes clean
+# under strict today (empty red list). tier=nightly (a second full RELAY pass is
+# heavy) + defer. The mock package is discovered adjacently by the harness.
+strict_mocks_gate() {
+    local mock_relay_parent="$PORTING_SDK_DIR/test_harness/mock_relay"
+    MOCK_RELAY_STRICT=1 PYTHONPATH="$mock_relay_parent${PYTHONPATH:+:$PYTHONPATH}" \
+        cargo test --quiet \
+            --test relay_mock_actions \
+            --test relay_mock_connect \
+            --test relay_mock_event_dispatch \
+            --test relay_mock_inbound_call \
+            --test relay_mock_messaging \
+            --test relay_mock_outbound_call \
+            --test relay_mock_smoke \
+            --test relay_mock_typed_convenience \
+            --test relay_mock_typed_errors \
+            -- --test-threads=1
 }
 
 # ---- register gates ----------------------------------------------------------
@@ -390,6 +420,43 @@ sched_gate COUNT-CLAIM desc="numeric doc claims (skills/namespaces) match realit
     -- python3 "$PORTING_SDK_DIR/scripts/count_claim.py" --port rust --repo "$PORT_ROOT"
 sched_gate ACCESSOR-TRUTH desc="documented backtick method() refs exist in source" \
     -- python3 "$PORTING_SDK_DIR/scripts/accessor_truth.py" --port rust --repo "$PORT_ROOT"
+
+# ---- gate-enforcement quartet (§2.1-2.4) -------------------------------------
+# DOC-WIRE (§2.1) — the wire SHAPE emitted by the documented REST examples must be
+# spec-clean. doc_wire.py spawns the mock in flag mode, exports MOCK_SIGNALWIRE_PORT,
+# runs the doc_wire_dump example (which replays the README / rest/docs / rest/examples
+# REST calls against the mock), then reads the mock's wire_violations journal. Per-PR
+# (a single quick example run). rust's red list is empty (its wire keys already match
+# the spec — `areacode`, not `area_code`; nested play params:{text}).
+sched_gate DOC-WIRE desc="doc-example REST wire shapes emit no unknown-field/dup-id violations against the strict mock" \
+    -- python3 "$PORTING_SDK_DIR/scripts/doc_wire.py" --port rust --repo "$PORT_ROOT" \
+        --runner "cargo run --quiet --example doc_wire_dump"
+
+# STATUS-CLAIM (§2.3) — doc status phrases ("not implemented", "no … adapter",
+# "pending", …) must match shipped reality. Per-PR (cheap, deterministic doc/source
+# scan) so a false status claim is caught at PR time. rust's red list was clean once
+# the rest/README + docs/sdk_features "reqwest" claims were corrected to "ureq".
+sched_gate STATUS-CLAIM res=surface desc="doc status claims (not-implemented/adapter/pending) match shipped reality" \
+    -- python3 "$PORTING_SDK_DIR/scripts/status_claim.py" --port rust --repo "$PORT_ROOT" \
+        --surface "$PORT_ROOT/port_surface.json"
+
+# WAIT-LIVENESS (§2.4) — the RELAY Action::wait() liveness contract: wait() BLOCKS
+# until the deferred completing event arrives, then returns with the finished state
+# (never a no-op that returns at t~=0, never a hang). examples/wait_liveness_dump.rs
+# drives a real mock_relay, arms deferred completing events, drives Action::wait, and
+# emits the liveness classification; the differ compares it to the python golden.
+# Real-time behavioral check → tier=nightly (deferred behind the cheap wave). rust
+# passes all three cases (play / record / nested re-entrant).
+# The python oracle is auto-resolved by the differ (no --python-sdk flag; it
+# defaults to the adjacent/installed signalwire package — the sibling checkout in
+# CI), exactly as the BEHAVIORAL-* / EMISSION gates above do.
+sched_gate WAIT-LIVENESS tier=nightly defer=1 desc="RELAY Action::wait() blocks-until-event liveness matches the python golden" \
+    -- python3 "$PORTING_SDK_DIR/scripts/diff_port_wait_liveness.py" --port rust \
+        --dump-cmd "cargo run --quiet --example wait_liveness_dump"
+
+# STRICT-MOCKS (§2.2) — nightly re-run of the RELAY suite with MOCK_RELAY_STRICT=1.
+sched_gate STRICT-MOCKS tier=nightly defer=1 desc="RELAY suite passes with the mock in 400-on-violation strict mode (MOCK_RELAY_STRICT=1)" \
+    --fn strict_mocks_gate
 
 sched_gate SNIPPET-RUN tier=nightly defer=1 desc="dynamic-port doc snippets run to a zero exit against the mock (compiled port: self-skips)" \
     -- python3 "$PORTING_SDK_DIR/scripts/snippet_run.py" --port rust --repo . --report-only

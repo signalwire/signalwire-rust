@@ -41,8 +41,10 @@ pub struct Call {
     // ── event listeners ───────────────────────────────────────────────
     on_event_callbacks: Mutex<Vec<CallEventCallback>>,
 
-    // ── commands sent (for testing without a real client) ─────────────
-    pub sent_commands: Mutex<Vec<(String, Value)>>,
+    // ── commands sent (for wire-frame inspection / tests) ─────────────
+    // Internal field so callers can't mutate it; read via
+    // `Call::sent_commands`. Bounded at `crate::relay::SENT_LOG_CAP`.
+    pub(crate) sent_commands: Mutex<Vec<(String, Value)>>,
 
     // ── owning client, for transmitting frames to the wire ────────────
     // A `Weak` back-reference (the Client owns the Call via `Arc`, so a
@@ -124,6 +126,30 @@ impl Call {
     /// The live owning [`Client`], if one is attached and still alive.
     fn client(&self) -> Option<Arc<Client>> {
         self.client.lock().unwrap().as_ref().and_then(Weak::upgrade)
+    }
+
+    /// Record a `(method, params)` frame into the bounded `sent_commands` log,
+    /// dropping the oldest entry once [`crate::relay::SENT_LOG_CAP`] frames are
+    /// retained so a long-running call cannot grow the log without limit.
+    /// Private (not `pub`) — internal plumbing, not public surface.
+    fn record_command(&self, method: &str, params: Value) {
+        let mut cmds = self.sent_commands.lock().unwrap();
+        if cmds.len() >= crate::relay::SENT_LOG_CAP {
+            cmds.remove(0);
+        }
+        cmds.push((method.to_string(), params));
+    }
+
+    /// Snapshot of the `(method, params)` frames this call has built, for
+    /// wire-frame inspection / tests. Bounded to the most recent
+    /// [`crate::relay::SENT_LOG_CAP`] frames.
+    ///
+    /// # Panics
+    /// Panics if an internal mutex is poisoned (another thread panicked while
+    /// holding the lock). This does not occur under normal operation.
+    #[must_use]
+    pub fn sent_commands(&self) -> Vec<(String, Value)> {
+        self.sent_commands.lock().unwrap().clone()
     }
 
     /// Current call state.
@@ -828,10 +854,7 @@ impl Call {
                 base_map.insert(k.clone(), v.clone());
             }
         }
-        self.sent_commands
-            .lock()
-            .unwrap()
-            .push((method.to_string(), base.clone()));
+        self.record_command(method, base.clone());
         // Transmit to the wire through the owning client, if attached.
         if let Some(client) = self.client() {
             client.send_request(method, base.clone());
@@ -871,10 +894,7 @@ impl Call {
                 }
             }
         }
-        self.sent_commands
-            .lock()
-            .unwrap()
-            .push((method.to_string(), base.clone()));
+        self.record_command(method, base.clone());
         // Transmit the action's start frame to the wire, if a client is
         // attached (mirrors Python's `_start_action` -> `_execute`).
         if let Some(client) = self.client() {

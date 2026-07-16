@@ -116,6 +116,11 @@ rustls-pki-types = { version = "1", features = ["std"] }
 # client can compute the TLS/plain mode + default port for the custom-CA path.
 http = "1"
 url = "2"
+# Correct percent-encoding of REST URL path segments (resource IDs may contain
+# reserved characters). Already present transitively via `url`; declared direct
+# because the REST client uses it explicitly. Query strings go through
+# `url::form_urlencoded` (application/x-www-form-urlencoded).
+percent-encoding = "2"
 # Optional Tower middleware integration. Enabled by default so users on
 # axum / hyper get a drop-in webhook-validation Layer; opt out via
 # `default-features = false` if you only need the standalone validator.
