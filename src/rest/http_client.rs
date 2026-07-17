@@ -1,10 +1,28 @@
 use std::collections::HashMap;
+use std::fmt;
 
 use base64::Engine;
 use base64::engine::general_purpose::STANDARD as BASE64;
 use serde_json::Value;
 
 use super::error::SignalWireRestError;
+
+/// Wraps an [`HttpTransport::execute`] failure message so it can be preserved as
+/// a [`SignalWireRestError`]'s `source()` (`std::error::Error`) — the underlying
+/// transport failure (connection refused, DNS, reset, TLS) reduces to a `String`
+/// at the `HttpTransport` boundary; this newtype gives that message a real
+/// `std::error::Error` identity so the cause chain survives instead of being
+/// flattened into the error's display message alone.
+#[derive(Debug)]
+struct TransportFailure(String);
+
+impl fmt::Display for TransportFailure {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl std::error::Error for TransportFailure {}
 
 /// Trait for the HTTP transport layer.
 ///
@@ -440,12 +458,16 @@ impl HttpClient {
             .transport
             .execute(method, &url, &headers, body)
             .map_err(|e| {
-                SignalWireRestError::new(
+                // Transport failure (connection refused / DNS / reset / TLS): the
+                // request never reached a response. Wrap it in the typed error
+                // family via `SignalWireRestError::transport` instead of leaking a
+                // bare error, preserving the underlying message as the error's
+                // `source()` (the Rust equivalent of Python's `raise ... from exc`).
+                SignalWireRestError::transport(
                     &format!("{method} {path} failed: {e}"),
-                    0,
-                    "",
                     path,
                     method,
+                    TransportFailure(e),
                 )
             })?;
 
@@ -785,5 +807,34 @@ mod tests {
             query.find("name=").unwrap() < query.find("q=").unwrap(),
             "query params should be sorted by key: {query}"
         );
+    }
+
+    /// A real connection-refused failure (dead port, no mock) through the
+    /// production `UreqTransport` must surface as the typed `SignalWireRestError`
+    /// family — `is_transport() == true`, `status_code() == 0` — NOT a bare
+    /// `ureq`/IO error leaking out. Plan 1.3b regression guard.
+    #[test]
+    fn test_conn_refused_yields_typed_transport_error() {
+        // Bind a loopback port then immediately release it so nothing listens —
+        // a connection attempt there is refused deterministically.
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let dead_port = listener.local_addr().unwrap().port();
+        drop(listener);
+
+        let client = HttpClient::new(
+            "proj-1",
+            "tok-1",
+            &format!("http://127.0.0.1:{dead_port}"),
+            Box::new(UreqTransport::new()),
+        );
+
+        let err = client.get("/api/test", &HashMap::new()).unwrap_err();
+        assert!(
+            err.is_transport(),
+            "conn-refused must be a transport error, got: {err}"
+        );
+        assert_eq!(err.status_code(), 0);
+        // The cause chain survives — this is not just a formatted message.
+        assert!(std::error::Error::source(&err).is_some());
     }
 }

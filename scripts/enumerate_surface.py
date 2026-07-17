@@ -1020,6 +1020,19 @@ SURFACE_PROJECTIONS: dict[tuple[str, str], list[tuple[str, list[str]]]] = {
     ("signalwire.relay.call", "StreamAction"): [("Action", ["stop"])],
     ("signalwire.relay.call", "TranscribeAction"): [("Action", ["stop"])],
     ("signalwire.relay.call", "AIAction"): [("Action", ["stop"])],
+    # SignalWireRestTransportError (rename-not-omission): the Python reference
+    # models a REST transport failure (connection refused / DNS / reset / TLS —
+    # plan 1.3b) as a SUBCLASS SignalWireRestTransportError(SignalWireRestError).
+    # Rust folds it into the SAME SignalWireRestError struct with an
+    # `is_transport()` discriminator (status_code() 0 == the reference's
+    # status_code=None) plus the `SignalWireRestError::transport(...)`
+    # constructor. Project SignalWireRestError's `__init__` onto the reference's
+    # SignalWireRestTransportError class name too, so it compares EQUAL
+    # (SURFACE-DIFF clean) instead of surfacing as a missing-port. Mirrors the Go
+    # port's identical StructTable duplication for this same plan.
+    ("signalwire.rest._base", "SignalWireRestTransportError"): [
+        ("SignalWireRestError", ["__init__"]),
+    ],
 }
 # Donor methods that MUST be removed from the donor class after projection
 # (they are projection-only — the reference does not record them on the donor).

@@ -155,6 +155,12 @@ path = "src/bin/route_registry.rs"
 name = "rest-test-plan"
 path = "src/bin/rest_test_plan.rs"
 
+# ENVELOPE-DUMP — cross-port REST error-envelope differ program (consumed by
+# porting-sdk/scripts/diff_port_envelope.py — see src/bin/envelope_dump.rs).
+[[bin]]
+name = "envelope-dump"
+path = "src/bin/envelope_dump.rs"
+
 # ---------------------------------------------------------------------------
 # Sub-directory examples (rest/examples/, relay/examples/).
 #

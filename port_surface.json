@@ -1,6 +1,6 @@
 {
   "version": "1",
-  "generated_from": "signalwire-rust @ d4c1734ceabf01e7ec85f1973364454d5bfc7c9e",
+  "generated_from": "signalwire-rust @ 2234f945ba8f46ae068cb126906030724eadbb2d",
   "modules": {
     "signalwire": {
       "classes": {
@@ -1688,6 +1688,11 @@
           "paginate"
         ],
         "SignalWireRestError": [
+          "__init__",
+          "is_transport",
+          "transport"
+        ],
+        "SignalWireRestTransportError": [
           "__init__"
         ]
       },
