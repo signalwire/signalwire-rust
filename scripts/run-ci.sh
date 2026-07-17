@@ -358,7 +358,7 @@ sched_gate ROOT-HYGIENE res=dayone desc="no audit/scratch clutter tracked at rep
     -- python3 "$PORTING_SDK_DIR/scripts/root_hygiene.py" --port rust --repo .
 sched_gate IGNORE-LEDGER-VERIFY res=dayone desc="no laundered false-absence entries in DOC_AUDIT_IGNORE.md (strict: reason/approver/date required)" \
     -- python3 "$PORTING_SDK_DIR/scripts/ignore_ledger_verify.py" --port rust --repo . --require-fields
-sched_gate META-CONSISTENT res=dayone desc="package metadata consistency" \
+sched_gate META-CONSISTENT tier=nightly res=dayone desc="package metadata consistency" \
     -- python3 "$PORTING_SDK_DIR/scripts/meta_consistent.py" --port rust --repo .
 sched_gate ARTIFACT-DENY res=dayone desc="no porting artifacts in the PUBLISHED package (authoritative listing)" \
     --fn dayone_artifact_deny
@@ -385,7 +385,7 @@ sched_gate SEMVER-DIFF deps=SIGNATURES desc="version bump matches the public-API
 # ---- §D1 packaging -----------------------------------------------------------
 # PACKAGE-SMOKE builds+installs+imports the real published artifact (cargo build
 # + install + a smoke that constructs RestClient). ~heavy → defer.
-sched_gate PACKAGE-SMOKE defer=1 desc="published crate builds, installs, and imports (real artifact smoke)" \
+sched_gate PACKAGE-SMOKE tier=nightly defer=1 desc="published crate builds, installs, and imports (real artifact smoke)" \
     -- python3 "$PORTING_SDK_DIR/scripts/package_smoke.py" --port rust --repo .
 
 # ---- §G anti-laundering ledger -----------------------------------------------
