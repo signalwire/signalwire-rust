@@ -5,39 +5,34 @@
 // Licensed under the MIT License.
 // See LICENSE file in the project root for full license information.
 
-//! `envelope-dump` is the Rust port's ENVELOPE-DUMP program for the cross-port
-//! REST error-envelope differ (`porting-sdk/scripts/diff_port_envelope.py`).
-//!
-//! It runs the shared error-envelope corpus (`porting-sdk/scripts/envelope_corpus.py`
-//! — the single source of truth, mirrored natively below) through the Rust SDK's
-//! REST [`signalwire::rest::RestClient`] and prints ONE JSON object mapping
-//! corpus-id -> artifact to stdout, where each artifact is the shared
-//! cross-port reduction:
-//!
-//! ```text
-//! { "raised": bool, "error_kind": "typed"|"bare:<Type>"|null,
-//!   "status_code": int|null, "body_error_code": string|null,
-//!   "request_count": int }
-//! ```
-//!
-//! The differ builds the golden oracle by running the same corpus against the
-//! Python reference client, then byte-compares each artifact this program emits
-//! against Python's. See the differ's module docstring for the contract.
-//!
-//! Each case is exercised against an in-process `tiny_http` mock that honors the
-//! case's scenario (status / response body / Retry-After header / delay). A case
-//! flagged `transport: true` instead points the client at a DEAD port (a free
-//! port we bind then immediately release, so nothing is listening) — the
-//! connection-refused path. A correct client raises its TYPED transport error
-//! (the `SignalWireRestError` family with `is_transport() == true`,
-//! `status_code() == 0`), which this program reports as `error_kind: "typed"`
-//! with `status_code: null` and `request_count: 0`.
-//!
-//! Run from the signalwire-rust repo root:
-//!
-//! ```text
-//! cargo run --quiet --bin envelope-dump
-//! ```
+// envelope-dump — cross-port REST error-envelope comparison program.
+//
+// It runs the shared error-envelope corpus (mirrored natively below, kept in
+// lockstep with its canonical source) through the Rust SDK's REST
+// `signalwire::rest::RestClient` and prints ONE JSON object mapping
+// corpus-id -> artifact to stdout, where each artifact is the shared
+// cross-port reduction:
+//
+//     { "raised": bool, "error_kind": "typed"|"bare:<Type>"|null,
+//       "status_code": int|null, "body_error_code": string|null,
+//       "request_count": int }
+//
+// A reference comparison is built by running the same corpus against the
+// Python reference client, then byte-comparing each artifact this program
+// emits against Python's.
+//
+// Each case is exercised against an in-process `tiny_http` mock that honors the
+// case's scenario (status / response body / Retry-After header / delay). A case
+// flagged `transport: true` instead points the client at a DEAD port (a free
+// port we bind then immediately release, so nothing is listening) — the
+// connection-refused path. A correct client raises its TYPED transport error
+// (the `SignalWireRestError` family with `is_transport() == true`,
+// `status_code() == 0`), which this program reports as `error_kind: "typed"`
+// with `status_code: null` and `request_count: 0`.
+//
+// Run from the signalwire-rust repo root:
+//
+//     cargo run --quiet --bin envelope-dump
 
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -60,10 +55,9 @@ struct Scenario {
     delay_ms: u64,
 }
 
-/// One corpus case — the Rust-native mirror of
-/// `porting-sdk/scripts/envelope_corpus.CORPUS`. Keep the id set and armed
-/// scenarios in lockstep with the Python source; the differ compares each
-/// artifact against Python's oracle for the same id.
+/// One corpus case — the Rust-native mirror of the shared error-envelope
+/// corpus. Keep the id set and armed scenarios in lockstep with the Python
+/// source; each artifact is compared against Python's for the same id.
 struct EnvCase {
     id: &'static str,
     scenario: Option<Scenario>,

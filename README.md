@@ -213,7 +213,7 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-signalwire = { package = "signalwire-sdk", version = "3" }
+signalwire = { package = "signalwire-sdk", version = "4" }
 ```
 
 The crate is published as `signalwire-sdk` (the bare `signalwire` name is held by an unofficial wrapper); the `package =` rename keeps the import path as `use signalwire::...`.

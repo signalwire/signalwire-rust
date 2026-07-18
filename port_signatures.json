@@ -18740,7 +18740,7 @@
                   "kind": "self"
                 },
                 {
-                  "name": "params",
+                  "name": "action",
                   "type": "class:signalwire.value.Value",
                   "required": true
                 }
@@ -18754,8 +18754,13 @@
                   "kind": "self"
                 },
                 {
-                  "name": "params",
+                  "name": "action",
                   "type": "class:signalwire.value.Value",
+                  "required": true
+                },
+                {
+                  "name": "status_url",
+                  "type": "optional<string>",
                   "required": true
                 }
               ],

@@ -1,5 +1,20 @@
 # Changelog
 
+## [4.0.0] - 2026-07-18
+
+- **BREAKING**: `Call::live_transcribe`/`Call::live_translate` now take the
+  action value directly (`live_transcribe(action)`, `live_translate(action,
+  status_url)`) instead of a raw `params: Value` blob. The wire schema
+  (`calling.live_transcribe`/`calling.live_translate`) requires a top-level
+  `params.action` key; the previous signature forwarded the caller's `params`
+  argument flat and never wrapped it, so the emitted frame was missing
+  `action` and the call silently did nothing on the wire. Callers must update
+  `call.live_transcribe(json!({"action": "start"}))` to
+  `call.live_transcribe(json!("start"))`, and
+  `call.live_translate(json!({"action": "start"}))` to
+  `call.live_translate(json!("start"), None)` (pass `Some(url)` for the
+  optional `status_url`).
+
 ## [3.2.0] - 2026-07-14
 
 - REST: added the `Messages` resource (`client.messages()`) — send and redact
