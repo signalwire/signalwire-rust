@@ -8,7 +8,7 @@
 #[path = "common/mod.rs"]
 mod common;
 
-use serde_json::{Value, json};
+use serde_json::Value;
 use signalwire::rest::namespaces::generated::fabric_resources_generated as fabric_gen;
 use std::collections::HashMap;
 
@@ -210,8 +210,7 @@ fn test_fabric_tokens_create_invite_token() {
         .fabric()
         .tokens()
         .create_invite_token(
-            fabric_gen::FabricTokensCreateInviteTokenRequest::new("")
-                .extra("email", json!("invitee@example.com")),
+            fabric_gen::FabricTokensCreateInviteTokenRequest::new("addr-1").expires_at(3600),
         )
         .expect("create_invite_token");
     assert!(body.is_object());
@@ -222,9 +221,10 @@ fn test_fabric_tokens_create_invite_token() {
     assert_eq!(entry.path, "/api/fabric/subscriber/invites");
     let sent = entry.body_object().expect("body");
     assert_eq!(
-        sent.get("email").and_then(Value::as_str),
-        Some("invitee@example.com")
+        sent.get("address_id").and_then(Value::as_str),
+        Some("addr-1")
     );
+    assert_eq!(sent.get("expires_at").and_then(Value::as_i64), Some(3600));
 }
 
 #[test]
@@ -234,10 +234,9 @@ fn test_fabric_tokens_create_embed_token() {
     let body = c
         .fabric()
         .tokens()
-        .create_embed_token(
-            fabric_gen::FabricTokensCreateEmbedTokenRequest::new("")
-                .extra("allowed_addresses", json!(["addr-1", "addr-2"])),
-        )
+        .create_embed_token(fabric_gen::FabricTokensCreateEmbedTokenRequest::new(
+            "tok-1",
+        ))
         .expect("create_embed_token");
     assert!(body.is_object());
 
@@ -245,12 +244,7 @@ fn test_fabric_tokens_create_embed_token() {
     assert_eq!(entry.method, "POST");
     assert_eq!(entry.path, "/api/fabric/embeds/tokens");
     let sent = entry.body_object().expect("body");
-    let arr = sent
-        .get("allowed_addresses")
-        .and_then(Value::as_array)
-        .expect("allowed_addresses array");
-    let items: Vec<&str> = arr.iter().filter_map(Value::as_str).collect();
-    assert_eq!(items, vec!["addr-1", "addr-2"]);
+    assert_eq!(sent.get("token").and_then(Value::as_str), Some("tok-1"));
 }
 
 #[test]

@@ -23,3 +23,4 @@ relative path; moving them under `eng/` would break the shared audit pipeline
 - port_surface.json — regenerated + read at root by scripts/run-ci.sh, scripts/enumerate_surface.py, and porting-sdk audit_docs.py/ignore_ledger_verify.py (orchestrator, 2026-07-06)
 - ROOT_HYGIENE_ALLOW.md — this allowlist itself, required at root by porting-sdk root_hygiene.py (orchestrator, 2026-07-06)
 - SUPPRESSION_LEDGER.md — required audit-contract file read at repo root by porting-sdk suppression_ledger.py (`repo / "SUPPRESSION_LEDGER.md"`); ledgers the crate's 49 file-level #![allow] (orchestrator, 2026-07-09)
+- WIRE_VIOLATIONS_ALLOW.md — STRICT-MOCKS signed-exception ledger read by porting-sdk assert_no_wire_violations.py / examples_run.py / snippet_run.py at repo root (mike@signalwire.com, 2026-07-18)
