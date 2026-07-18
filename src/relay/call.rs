@@ -349,11 +349,26 @@ impl Call {
         )
     }
 
-    pub fn live_transcribe(&self, params: Value) -> Value {
+    /// Start or stop live transcription on the call.
+    ///
+    /// The wire schema (`relay-protocol/calling.live_transcribe.params.json`)
+    /// requires `params.action` -- the caller's `action` value must be
+    /// wrapped, not forwarded flat.
+    pub fn live_transcribe(&self, action: Value) -> Value {
+        let params = serde_json::json!({ "action": action });
         self.execute("calling.live_transcribe", params)
     }
 
-    pub fn live_translate(&self, params: Value) -> Value {
+    /// Start or stop live translation on the call.
+    ///
+    /// The wire schema (`relay-protocol/calling.live_translate.params.json`)
+    /// requires `params.action` -- the caller's `action` value must be
+    /// wrapped, not forwarded flat. `status_url` is an optional sibling param.
+    pub fn live_translate(&self, action: Value, status_url: Option<&str>) -> Value {
+        let mut params = serde_json::json!({ "action": action });
+        if let Some(url) = status_url {
+            params["status_url"] = Value::String(url.to_string());
+        }
         self.execute("calling.live_translate", params)
     }
 

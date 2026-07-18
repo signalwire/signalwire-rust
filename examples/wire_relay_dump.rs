@@ -219,6 +219,25 @@ fn capture_verbs(out: &mut BTreeMap<&str, Value>) {
         }));
         out.insert("relay_send_fax", last_client_frame(&client));
     }
+    // relay_live_transcribe — params.action must be wrapped (wire schema
+    // requires it); the differ pins params.action = {"start": {...}}.
+    {
+        let client = recording_client();
+        let call = make_call(&client);
+        call.live_transcribe(json!({"start": {"lang": "en"}}));
+        out.insert("relay_live_transcribe", last_client_frame(&client));
+    }
+    // relay_live_translate — params.action wrapped + optional status_url
+    // sibling param.
+    {
+        let client = recording_client();
+        let call = make_call(&client);
+        call.live_translate(
+            json!({"start": {"from_lang": "en", "to_lang": "es"}}),
+            Some("https://x/cb"),
+        );
+        out.insert("relay_live_translate", last_client_frame(&client));
+    }
 
     // ---- control-ops: Action methods ----
     // Each control-op transmits a sub-command frame through the SAME client;
