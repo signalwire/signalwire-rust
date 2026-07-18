@@ -18740,7 +18740,7 @@
                   "kind": "self"
                 },
                 {
-                  "name": "params",
+                  "name": "action",
                   "type": "class:signalwire.value.Value",
                   "required": true
                 }
@@ -18754,8 +18754,13 @@
                   "kind": "self"
                 },
                 {
-                  "name": "params",
+                  "name": "action",
                   "type": "class:signalwire.value.Value",
+                  "required": true
+                },
+                {
+                  "name": "status_url",
+                  "type": "optional<string>",
                   "required": true
                 }
               ],
@@ -21656,6 +21661,78 @@
           }
         },
         "SignalWireRestError": {
+          "methods": {
+            "__init__": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                },
+                {
+                  "name": "message",
+                  "type": "string",
+                  "required": true
+                },
+                {
+                  "name": "status_code",
+                  "type": "int",
+                  "required": true
+                },
+                {
+                  "name": "response_body",
+                  "type": "string",
+                  "required": true
+                },
+                {
+                  "name": "url",
+                  "type": "string",
+                  "required": true
+                },
+                {
+                  "name": "method",
+                  "type": "string",
+                  "required": true
+                }
+              ],
+              "returns": "void"
+            },
+            "is_transport": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "bool"
+            },
+            "transport": {
+              "params": [
+                {
+                  "name": "message",
+                  "type": "string",
+                  "required": true
+                },
+                {
+                  "name": "url",
+                  "type": "string",
+                  "required": true
+                },
+                {
+                  "name": "method",
+                  "type": "string",
+                  "required": true
+                },
+                {
+                  "name": "cause",
+                  "type": "any",
+                  "required": true
+                }
+              ],
+              "returns": "any"
+            }
+          }
+        },
+        "SignalWireRestTransportError": {
           "methods": {
             "__init__": {
               "params": [

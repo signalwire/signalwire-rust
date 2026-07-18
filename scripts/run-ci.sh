@@ -33,6 +33,10 @@
 set -u
 set -o pipefail
 
+# STRICT-MOCKS 400-mode (plan §2.2c): strict is the default now.
+export MOCK_SIGNALWIRE_STRICT="${MOCK_SIGNALWIRE_STRICT:-1}"
+export MOCK_RELAY_STRICT="${MOCK_RELAY_STRICT:-1}"
+
 PORT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 PORT_NAME="signalwire-rust"
 
@@ -109,7 +113,9 @@ surface_fresh_gate() {
 
 # REST-COVERAGE — every implemented REST route covered success+error. Self-
 # contained: spins its own mock, runs the generated wire-test suites serially, then
-# checks the journal.
+# checks the journal for BOTH coverage AND wire-truth (STRICT-MOCKS §2.2a: any
+# journaled wire_violation reds the gate — respelling-proof, since it reads the
+# mock's own spec-vs-wire judgement).
 rest_coverage_gate() {
     local port
     port="$(pick_free_port)" || { echo "could not allocate a free port" >&2; return 1; }
@@ -162,7 +168,14 @@ rest_coverage_gate() {
         --spec-root "$PORTING_SDK_DIR/rest-apis" \
         --allowlist "$PORTING_SDK_DIR/REST_COVERAGE_BASELINE.md" \
         --allowlist "$PORT_ROOT/REST_COVERAGE_GAPS.md" \
-        --gap-baseline "$PORTING_SDK_DIR/REST_COVERAGE_GAP_BASELINE.md"
+        --gap-baseline "$PORTING_SDK_DIR/REST_COVERAGE_GAP_BASELINE.md" || return 1
+    # STRICT-MOCKS §2.2a — fail the gate on ANY journaled wire_violation. The shared
+    # helper reads the same live mock journal and exits non-zero on any offender
+    # (see porting-sdk/scripts/assert_no_wire_violations.py). WIRE_VIOLATIONS_ALLOW.md
+    # holds ONLY owner-signed spec-gap parks.
+    python3 "$PORTING_SDK_DIR/scripts/assert_no_wire_violations.py" \
+        --rest-mock-url "http://127.0.0.1:$port" \
+        --allowlist "$PORT_ROOT/WIRE_VIOLATIONS_ALLOW.md"
 }
 
 # SPEC-PARITY — implemented REST routes == canonical spec (both directions). Set B
@@ -227,8 +240,12 @@ strict_mocks_gate() {
 # ---- register gates ----------------------------------------------------------
 sched_init "$@"
 
-sched_gate TEST defer=1 desc="cargo test --tests (parallel) via scripts/run-tests.sh" \
-    -- bash "$PORT_ROOT/scripts/run-tests.sh"
+# STRICT-MOCKS §2.2b — run under MOCK_RELAY_STRICT=1 so an unknown RELAY frame
+# field / duplicate command-id is rejected (400) rather than silently accepted.
+# The relay-backed tests self-spawn `python -m mock_relay`, which inherits this
+# env var from run-ci's process. rust's RELAY suite passes clean under strict.
+sched_gate TEST defer=1 desc="cargo test --tests (parallel) via scripts/run-tests.sh (STRICT-MOCKS: MOCK_RELAY_STRICT=1)" \
+    -- env MOCK_RELAY_STRICT=1 bash "$PORT_ROOT/scripts/run-tests.sh"
 
 sched_gate GEN-FRESH desc="generated REST layer matches the canonical specs (generate_rest.py --check)" \
     -- python3 scripts/generate_rest.py --check
@@ -458,11 +475,15 @@ sched_gate WAIT-LIVENESS tier=nightly defer=1 desc="RELAY Action::wait() blocks-
 sched_gate STRICT-MOCKS tier=nightly defer=1 desc="RELAY suite passes with the mock in 400-on-violation strict mode (MOCK_RELAY_STRICT=1)" \
     --fn strict_mocks_gate
 
-sched_gate SNIPPET-RUN tier=nightly defer=1 desc="dynamic-port doc snippets run to a zero exit against the mock (compiled port: self-skips)" \
-    -- python3 "$PORTING_SDK_DIR/scripts/snippet_run.py" --port rust --repo . --report-only
+# STRICT-MOCKS: MOCK_RELAY_STRICT=1 for parity with TEST/STRICT-MOCKS above (both
+# gates self-skip for rust today — compiled port, no cargo run target for
+# examples/snippets — but stay wired so they graduate automatically if a run
+# target is added, exactly like the reference).
+sched_gate SNIPPET-RUN tier=nightly defer=1 desc="dynamic-port doc snippets run to a zero exit against the mock (compiled port: self-skips; STRICT-MOCKS: MOCK_RELAY_STRICT=1)" \
+    -- env MOCK_RELAY_STRICT=1 python3 "$PORTING_SDK_DIR/scripts/snippet_run.py" --port rust --repo . --report-only
 
-sched_gate EXAMPLES-RUN tier=nightly defer=1 desc="shipped examples load/start against the mock (compiled port: self-skips)" \
-    -- python3 "$PORTING_SDK_DIR/scripts/examples_run.py" --port rust --repo .
+sched_gate EXAMPLES-RUN tier=nightly defer=1 desc="shipped examples load/start against the mock (compiled port: self-skips; STRICT-MOCKS: MOCK_RELAY_STRICT=1)" \
+    -- env MOCK_RELAY_STRICT=1 python3 "$PORTING_SDK_DIR/scripts/examples_run.py" --port rust --repo .
 
 sched_run
 rc=$?

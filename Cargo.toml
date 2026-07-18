@@ -1,6 +1,6 @@
 [package]
 name = "signalwire-sdk"
-version = "3.2.0"
+version = "4.0.0"
 edition = "2024"
 # let-chains (`if cond && let Some(x) = ...`) are used throughout the crate and
 # only stabilized in Rust 1.88. Edition 2024 alone implies just 1.85, so declare
@@ -154,6 +154,12 @@ path = "src/bin/route_registry.rs"
 [[bin]]
 name = "rest-test-plan"
 path = "src/bin/rest_test_plan.rs"
+
+# ENVELOPE-DUMP — cross-port REST error-envelope differ program (consumed by
+# porting-sdk/scripts/diff_port_envelope.py — see src/bin/envelope_dump.rs).
+[[bin]]
+name = "envelope-dump"
+path = "src/bin/envelope_dump.rs"
 
 # ---------------------------------------------------------------------------
 # Sub-directory examples (rest/examples/, relay/examples/).

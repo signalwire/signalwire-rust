@@ -235,10 +235,8 @@ fn test_small_imported_numbers_create() {
     let body = c
         .imported_numbers()
         .create(
-            relay_gen::ImportedNumbersCreateRequest::new("+15551234567", "")
-                .extra("sip_username", json!("alice"))
-                .extra("sip_password", json!("secret"))
-                .extra("sip_proxy", json!("sip.example.com")),
+            relay_gen::ImportedNumbersCreateRequest::new("+15551234567", "longcode")
+                .capabilities(json!(["sms", "voice"])),
         )
         .expect("imported_numbers.create");
     assert!(body.is_object());
@@ -253,13 +251,15 @@ fn test_small_imported_numbers_create() {
         Some("+15551234567")
     );
     assert_eq!(
-        sent.get("sip_username").and_then(Value::as_str),
-        Some("alice")
+        sent.get("number_type").and_then(Value::as_str),
+        Some("longcode")
     );
-    assert_eq!(
-        sent.get("sip_proxy").and_then(Value::as_str),
-        Some("sip.example.com")
-    );
+    let caps = sent
+        .get("capabilities")
+        .and_then(Value::as_array)
+        .expect("capabilities array");
+    let cap_items: Vec<&str> = caps.iter().filter_map(Value::as_str).collect();
+    assert_eq!(cap_items, vec!["sms", "voice"]);
 }
 
 // ---------------------------------------------------------------------------
@@ -274,7 +274,7 @@ fn test_small_mfa_call() {
         .mfa()
         .call(
             relay_gen::MfaCallRequest::new("+15551234567")
-                .extra("from_", json!("+15559876543"))
+                .from("+15559876543")
                 .message("Your code is {code}"),
         )
         .expect("mfa.call");
@@ -287,7 +287,7 @@ fn test_small_mfa_call() {
     let sent = entry.body_object().expect("body");
     assert_eq!(sent.get("to").and_then(Value::as_str), Some("+15551234567"));
     assert_eq!(
-        sent.get("from_").and_then(Value::as_str),
+        sent.get("from").and_then(Value::as_str),
         Some("+15559876543")
     );
     assert_eq!(
@@ -308,15 +308,15 @@ fn test_small_sip_profile_update() {
         .sip_profile()
         .update(
             relay_gen::SipProfileUpdateRequest::new()
-                .extra("domain", json!("myco.sip.signalwire.com"))
+                .domain_identifier("myco")
                 .default_codecs(json!(["PCMU", "PCMA"])),
         )
         .expect("sip_profile.update");
     assert!(body.is_object());
     let obj = body.as_object().unwrap();
     assert!(
-        obj.contains_key("domain") || obj.contains_key("default_codecs"),
-        "expected domain or default_codecs, got {:?}",
+        obj.contains_key("domain_identifier") || obj.contains_key("default_codecs"),
+        "expected domain_identifier or default_codecs, got {:?}",
         obj.keys().collect::<Vec<_>>()
     );
 
@@ -325,8 +325,8 @@ fn test_small_sip_profile_update() {
     assert_eq!(entry.path, "/api/relay/rest/sip_profile");
     let sent = entry.body_object().expect("body");
     assert_eq!(
-        sent.get("domain").and_then(Value::as_str),
-        Some("myco.sip.signalwire.com")
+        sent.get("domain_identifier").and_then(Value::as_str),
+        Some("myco")
     );
     let codecs = sent
         .get("default_codecs")

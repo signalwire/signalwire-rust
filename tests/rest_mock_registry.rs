@@ -76,7 +76,7 @@ fn test_registry_brands_create_campaign_posts_to_subpath() {
         .brands()
         .create_campaign(
             "brand-2",
-            &json!({"usecase": "LOW_VOLUME", "description": "MFA"}),
+            &json!({"name": "My Campaign", "sms_use_case": "LOW_VOLUME"}),
         )
         .expect("create_campaign");
     assert!(body.is_object());
@@ -86,10 +86,13 @@ fn test_registry_brands_create_campaign_posts_to_subpath() {
     assert_eq!(entry.path, format!("{REG_BASE}/brands/brand-2/campaigns"));
     let sent = entry.body_object().expect("body");
     assert_eq!(
-        sent.get("usecase").and_then(Value::as_str),
+        sent.get("name").and_then(Value::as_str),
+        Some("My Campaign")
+    );
+    assert_eq!(
+        sent.get("sms_use_case").and_then(Value::as_str),
         Some("LOW_VOLUME")
     );
-    assert_eq!(sent.get("description").and_then(Value::as_str), Some("MFA"));
 }
 
 // ---------------------------------------------------------------------------
@@ -121,7 +124,7 @@ fn test_registry_campaigns_update_uses_put() {
         .campaigns()
         .update(
             "camp-2",
-            relay_gen::RegistryCampaignsUpdateRequest::new().extra("description", json!("Updated")),
+            relay_gen::RegistryCampaignsUpdateRequest::new().name("Updated Campaign"),
         )
         .expect("campaigns.update");
     assert!(body.is_object());
@@ -131,8 +134,8 @@ fn test_registry_campaigns_update_uses_put() {
     assert_eq!(entry.path, format!("{REG_BASE}/campaigns/camp-2"));
     let sent = entry.body_object().expect("body");
     assert_eq!(
-        sent.get("description").and_then(Value::as_str),
-        Some("Updated")
+        sent.get("name").and_then(Value::as_str),
+        Some("Updated Campaign")
     );
 }
 
@@ -163,7 +166,7 @@ fn test_registry_campaigns_create_order_posts_to_subpath() {
         .create_order(
             "camp-4",
             relay_gen::RegistryCampaignsCreateOrderRequest::new()
-                .extra("numbers", json!(["pn-1", "pn-2"])),
+                .phone_numbers(json!(["pn-1", "pn-2"])),
         )
         .expect("create_order");
     assert!(body.is_object());
@@ -173,9 +176,9 @@ fn test_registry_campaigns_create_order_posts_to_subpath() {
     assert_eq!(entry.path, format!("{REG_BASE}/campaigns/camp-4/orders"));
     let sent = entry.body_object().expect("body");
     let arr = sent
-        .get("numbers")
+        .get("phone_numbers")
         .and_then(Value::as_array)
-        .expect("numbers array");
+        .expect("phone_numbers array");
     let items: Vec<&str> = arr.iter().filter_map(Value::as_str).collect();
     assert_eq!(items, vec!["pn-1", "pn-2"]);
 }

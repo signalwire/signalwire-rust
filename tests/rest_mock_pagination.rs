@@ -77,7 +77,7 @@ fn test_pagination_walks_pages_and_terminates() {
                 {"id": "addr-2", "name": "second"},
             ],
             "links": {
-                "next": "http://example.com/api/fabric/addresses?cursor=page2"
+                "next": "http://example.com/api/fabric/addresses?page_token=PA_page2"
             },
         }),
     );
@@ -111,15 +111,15 @@ fn test_pagination_walks_pages_and_terminates() {
         "expected 2 paginated GETs, got {}",
         gets.len()
     );
-    // The second fetch carries the cursor=page2 query.
-    let cursor = gets[1]
+    // The second fetch carries the page_token=PA_page2 query.
+    let page_token = gets[1]
         .query_params
-        .get("cursor")
-        .expect("cursor missing on second fetch");
+        .get("page_token")
+        .expect("page_token missing on second fetch");
     assert_eq!(
-        cursor.as_slice(),
-        &["page2".to_string()],
-        "expected cursor=[page2], got {cursor:?}"
+        page_token.as_slice(),
+        &["PA_page2".to_string()],
+        "expected page_token=[PA_page2], got {page_token:?}"
     );
 }
 

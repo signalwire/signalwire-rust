@@ -303,7 +303,7 @@ mod tests {
             (
                 200,
                 r#"{"data":[{"id":"1"},{"id":"2"}],
-                    "links":{"next":"/api/items?cursor=page2"}}"#
+                    "links":{"next":"/api/items?page_token=PA_page2"}}"#
                     .to_string(),
             ),
             (
@@ -330,6 +330,6 @@ mod tests {
         let reqs = transport.requests.lock().unwrap();
         assert_eq!(reqs.len(), 2);
         assert!(reqs[0].1.contains("/api/items"));
-        assert!(reqs[1].1.contains("cursor=page2"));
+        assert!(reqs[1].1.contains("page_token=PA_page2"));
     }
 }
