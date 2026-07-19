@@ -1,0 +1,58 @@
+name: Live smoke (real server)
+
+# Plan §6.5 — the real-server smoke lane. The ONLY check that exercises the SDK
+# against the LIVE SignalWire platform (auth + a REST list + an SWML render),
+# catching mock↔production drift the spec-sourcing pipeline hasn't closed.
+#
+# OPT-IN + CREDS-GATED: nightly cron (+ manual dispatch). The `tests/live_smoke.rs`
+# tests are `#[ignore]`d, so they never run in the per-PR TEST gate. This job sets
+# SWSDK_LIVE_TESTS=1 and runs them with `--ignored`. It SKIPS cleanly when the
+# platform secret is absent (a fork, or a repo without the secret configured) —
+# a credentialed-skip, never a red — so this workflow is safe on every clone.
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
+on:
+  schedule:
+    # Nightly at 05:15 UTC (before the heavy doc-gate nightly at 06:xx).
+    - cron: '15 5 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  live-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check for platform credentials
+        id: creds
+        # Skip the whole job cleanly when the secret is absent (fork / unconfigured
+        # repo). Secrets can't be referenced in `if:` at the job level, so gate here.
+        env:
+          HAVE_TOKEN: ${{ secrets.SIGNALWIRE_TEST_TOKEN != '' }}
+        run: |
+          if [ "$HAVE_TOKEN" = "true" ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::SIGNALWIRE_TEST_TOKEN not set — live smoke SKIPPED (credentialed-skip, not a failure)."
+          fi
+
+      - name: Checkout signalwire-rust
+        if: steps.creds.outputs.run == 'true'
+        uses: actions/checkout@v7
+
+      - name: Set up Rust (stable)
+        if: steps.creds.outputs.run == 'true'
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Run live smoke (auth + REST list + SWML render)
+        if: steps.creds.outputs.run == 'true'
+        env:
+          SWSDK_LIVE_TESTS: "1"
+          SIGNALWIRE_PROJECT_ID: ${{ secrets.SIGNALWIRE_TEST_PROJECT_ID }}
+          SIGNALWIRE_API_TOKEN: ${{ secrets.SIGNALWIRE_TEST_TOKEN }}
+          SIGNALWIRE_SPACE: ${{ secrets.SIGNALWIRE_TEST_SPACE }}
+        run: cargo test --test live_smoke -- --ignored --nocapture
