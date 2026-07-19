@@ -494,8 +494,14 @@ sched_gate STATUS-CLAIM res=surface desc="doc status claims (not-implemented/ada
 # The python oracle is auto-resolved by the differ (no --python-sdk flag; it
 # defaults to the adjacent/installed signalwire package — the sibling checkout in
 # CI), exactly as the BEHAVIORAL-* / EMISSION gates above do.
+# §2.9: pass --prebuild-cmd so the differ compiles the dump example UNTIMED before
+# it starts the liveness wall-clock deadline — a cold cargo build must NOT be
+# charged against the ~40s deadline (that reded rust's nightly 07-17/18). The
+# prebuild above also warms it, but wiring --prebuild-cmd makes the exclusion
+# gate-local and independent of gate ordering.
 sched_gate WAIT-LIVENESS tier=nightly defer=1 desc="RELAY Action::wait() blocks-until-event liveness matches the python golden" \
     -- python3 "$PORTING_SDK_DIR/scripts/diff_port_wait_liveness.py" --port rust \
+        --prebuild-cmd "cargo build --quiet --example wait_liveness_dump" \
         --dump-cmd "cargo run --quiet --example wait_liveness_dump"
 
 # STRICT-MOCKS (§2.2) — nightly re-run of the RELAY suite with MOCK_RELAY_STRICT=1.
