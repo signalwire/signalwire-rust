@@ -1,3 +1,9 @@
+//! Level-filtered logging for the SDK.
+//!
+//! A [`Logger`] wraps the `log` facade and honors `SIGNALWIRE_LOG_LEVEL` /
+//! `SIGNALWIRE_LOG_MODE` from the environment, applying the SDK's logging
+//! conventions.
+
 use std::env;
 use std::fmt;
 use std::str::FromStr;

@@ -1,3 +1,58 @@
+//! # SignalWire AI Agents SDK
+//!
+//! Build, serve, and drive AI voice/messaging agents on the
+//! [SignalWire](https://signalwire.com) platform. This crate is the Rust port of
+//! the SignalWire AI Agents framework — it retains 100% of the reference
+//! functionality, expressed in Rust idioms (builders, traits, `Result`).
+//!
+//! The library is published as [`signalwire-sdk`](https://crates.io/crates/signalwire-sdk);
+//! the import path is `signalwire`.
+//!
+//! ## What you can build
+//!
+//! - **Agents** ([`agent`]) — an [`agent::AgentBase`] composes prompts, SWAIG
+//!   tools, skills, and AI config, then serves the 5-phase SWML pipeline over
+//!   HTTP.
+//! - **SWML documents** ([`swml`]) — construct SignalWire Markup Language call
+//!   flows programmatically; 38 verb builders generated from the schema.
+//! - **SWAIG tools** ([`swaig`]) — define server-callable tool functions whose
+//!   results are built with the fluent [`swaig::SwaigFunctionResult`].
+//! - **Real-time call control** ([`relay`]) — a synchronous RELAY WebSocket
+//!   client (Blade / JSON-RPC 2.0) for dialing, messaging, and event handling.
+//! - **REST APIs** ([`rest`]) — a synchronous namespaced REST client
+//!   ([`rest::RestClient`]) over Fabric, Calling, Video, Messaging, and more,
+//!   with `links.next` cursor pagination.
+//! - **Skills & prefabs** ([`skills`], [`prefabs`]) — pluggable capabilities and
+//!   ready-made agent archetypes.
+//!
+//! ## Quick start
+//!
+//! ```no_run
+//! use signalwire::agent::{AgentBase, AgentOptions};
+//! use serde_json::json;
+//!
+//! let mut agent = AgentBase::new(AgentOptions::new("my-agent"));
+//! agent
+//!     .add_language("English", "en-US", "rime.spore")
+//!     .prompt_add_section("Role", "You are a helpful assistant.", vec![])
+//!     .set_prompt_llm_params(json!({ "temperature": 0.7 }));
+//! // agent.run(); // serves the SWML/SWAIG endpoints (blocks)
+//! ```
+//!
+//! ## Error handling
+//!
+//! Fallible operations return [`Result`]; each subsystem defines a typed error
+//! (e.g. [`rest::SignalWireRestError`], the RELAY and skill error enums). No
+//! panics on the happy path — construction, parsing, and I/O surface failures as
+//! `Err`.
+//!
+//! ## Design & idioms
+//!
+//! Class inheritance in the reference maps to Rust **traits**; constructor-with-
+//! subclassing maps to **builders** (`Options` + `new` + chained `&mut self`).
+//! Shared mutable state is `Arc`-wrapped; every JSON-crossing type derives serde.
+//! See `PORT_PHILOSOPHY_RUST.md` in the repository for the full rationale.
+
 // `needless_pass_by_value` is allowed crate-wide as a deliberate parity choice.
 // This port's public constructors and builders take owned `Value`, `Vec<_>`,
 // `HashMap<_>`, and `String` params because they mirror Python's by-value
@@ -38,26 +93,59 @@
 // aws-sdk deliberately avoid). Per RULES.md this is a parity-neutral idiom
 // choice governed by PORT_PHILOSOPHY_RUST.md.
 #![allow(clippy::must_use_candidate)]
+// DOC-SURFACE floor (plan §6.3): warn on any undocumented public item so the
+// docs.rs reference renders complete. `warn` (not `deny`) is the shrinking
+// allow-budget: newly-added public surface is nudged to carry a doc comment
+// without a hard build break while the last undocumented modules (the generated
+// RELAY Simple-RPC method block) are still being papered. As those land their
+// docs this ratchets toward `deny`; it must never regress upward.
+#![warn(missing_docs)]
 
+// DOC-SURFACE allow-budget (§6.3). Each `#[allow(missing_docs)]` below exempts a
+// module whose item-level public surface (methods/fields/fns) is not yet fully
+// doc-commented. This is the SHRINKING budget: the crate `//!` landing page and
+// every module's own `//!` header ARE documented (so docs.rs renders), and as a
+// module's items get their doc comments its allow is removed here — the budget
+// only shrinks, never grows. The ledger + counts live in DOC_SURFACE_ALLOW.md.
+// Un-annotated modules (pom, datamap) already meet the floor; adding an
+// undocumented public item to one reds LINT (-D warnings), which is the point.
+#[allow(missing_docs)]
 pub mod core;
+#[allow(missing_docs)]
+pub mod datamap;
+#[allow(missing_docs)]
 pub mod logging;
 pub mod pom;
+#[allow(missing_docs)]
 pub mod swml;
+#[allow(missing_docs)]
 pub mod utils;
 
+#[allow(missing_docs)]
 pub mod agent;
+#[allow(missing_docs)]
 pub mod contexts;
-pub mod datamap;
+#[allow(missing_docs)]
 pub mod security;
+#[allow(missing_docs)]
 pub mod swaig;
 
+#[allow(missing_docs)]
 pub mod prefabs;
+#[allow(missing_docs)]
 pub mod server;
+#[allow(missing_docs)]
 pub mod skills;
 
+// The RELAY "Simple-RPC" block (action/call/client — the 57+ calling verbs) is
+// the largest undocumented cluster; it carries the bulk of the budget.
+#[allow(missing_docs)]
 pub mod relay;
+#[allow(missing_docs)]
 pub mod rest;
+#[allow(missing_docs)]
 pub mod serverless;
+#[allow(missing_docs)]
 pub mod web;
 
 // ─── Top-level re-exports for parity with Python's `signalwire` package

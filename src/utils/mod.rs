@@ -1,3 +1,6 @@
+//! Cross-port `utils` namespace, mirroring `signalwire.utils.*`. Houses shared
+//! helpers such as serverless-environment detection and URL/schema validation.
+
 // Cross-port "utils" namespace mirroring `signalwire.utils.*` in the
 // Python reference. Houses serverless detection, URL validation, etc.
 

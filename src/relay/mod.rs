@@ -19,6 +19,10 @@ pub mod device;
 pub mod error;
 pub mod event;
 pub mod message;
+// Generated RELAY protocol types — exempt from the missing_docs floor (§6.3
+// allow-budget); schema-derived DTOs, annotated at the declaration site so no
+// generated file is edited (GEN-FRESH stays clean).
+#[allow(missing_docs)]
 pub mod protocol_types_generated;
 pub mod state_enums;
 
