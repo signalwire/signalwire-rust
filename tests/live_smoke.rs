@@ -4,15 +4,21 @@
 //!
 //! OFF by default: every test here is `#[ignore]`d, so `cargo test` (local + the
 //! per-PR CI) never runs them. They run only when BOTH:
-//!   * `SWSDK_LIVE_TESTS=1` is set (the opt-in convention), AND
-//!   * real credentials are present (`SIGNALWIRE_PROJECT_ID` /
-//!     `SIGNALWIRE_API_TOKEN` / `SIGNALWIRE_SPACE`).
+//!
+//! * `SWSDK_LIVE_TESTS=1` is set (the opt-in convention), AND
+//! * real credentials are present (`SIGNALWIRE_PROJECT_ID` /
+//!   `SIGNALWIRE_API_TOKEN` / `SIGNALWIRE_SPACE`).
+//!
 //! The dedicated nightly workflow (`.github/workflows/live-smoke.yml`) sets both
 //! and runs `cargo test --test live_smoke -- --ignored`. When creds are absent
 //! each test SKIPS cleanly (returns early with a printed note) rather than
 //! failing — a credentialed-skip, not a red.
 
+use std::collections::HashMap;
+
+use serde_json::json;
 use signalwire::rest::RestClient;
+use signalwire::swml::service::{Service, ServiceOptions};
 
 /// True only when the live lane is explicitly opted into.
 fn live_enabled() -> bool {
@@ -56,7 +62,7 @@ fn live_rest_list() {
     // (creds are present by construction).
     let page = client
         .phone_numbers()
-        .list(&std::collections::HashMap::new())
+        .list(&HashMap::new())
         .expect("live REST phone_numbers.list() must succeed with valid creds");
     // The platform returns a JSON object/array envelope; assert we got JSON back.
     assert!(
@@ -74,8 +80,6 @@ fn live_swml_render() {
         eprintln!("live_smoke: SWSDK_LIVE_TESTS!=1 — skipping");
         return;
     }
-    use serde_json::json;
-    use signalwire::swml::service::{Service, ServiceOptions};
     let mut svc = Service::new(ServiceOptions::new("live-smoke"));
     svc.document_mut()
         .add_verb("answer", json!({ "max_duration": 3600 }));

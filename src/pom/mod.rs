@@ -21,7 +21,7 @@ mod pom;
 pub mod pom_builder;
 pub mod section;
 
-pub use pom::PromptObjectModel;
+pub use pom::{PomParseError, PromptObjectModel};
 pub use pom_builder::PomBuilder;
 pub use section::Section;
 
@@ -283,6 +283,35 @@ mod tests {
         let json_str = pom.to_json().unwrap();
         let restored = PromptObjectModel::from_json(&json_str).unwrap();
         assert_eq!(restored.to_json().unwrap(), json_str);
+    }
+
+    /// D9-rust: the parse constructors return the typed `PomParseError`, and a
+    /// caller can distinguish a syntax failure from a structural one while the
+    /// reference `ValueError` message text is preserved in `Display`.
+    #[test]
+    fn test_from_json_typed_errors() {
+        // Malformed JSON -> InvalidJson.
+        let e = PromptObjectModel::from_json("{ not json").unwrap_err();
+        assert!(matches!(e, PomParseError::InvalidJson(_)), "got {e:?}");
+        assert!(e.to_string().starts_with("invalid JSON:"));
+
+        // Well-formed JSON that violates the POM shape -> InvalidStructure.
+        let e = PromptObjectModel::from_json("{}").unwrap_err();
+        assert_eq!(
+            e,
+            PomParseError::InvalidStructure(
+                "POM document must be an array of sections".to_string()
+            )
+        );
+        // Structure message is passed through verbatim (parity).
+        assert_eq!(e.to_string(), "POM document must be an array of sections");
+    }
+
+    #[test]
+    fn test_from_yaml_typed_error() {
+        let e = PromptObjectModel::from_yaml("\t : : bad").unwrap_err();
+        assert!(matches!(e, PomParseError::InvalidYaml(_)), "got {e:?}");
+        assert!(e.to_string().starts_with("invalid YAML:"));
     }
 
     #[test]

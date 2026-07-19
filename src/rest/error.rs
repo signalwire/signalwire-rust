@@ -150,6 +150,47 @@ impl std::error::Error for SignalWireRestError {
     }
 }
 
+/// Error returned by [`RestClient`](super::RestClient) constructors when a
+/// required credential/URL is missing or empty.
+///
+/// D9-rust: the constructors previously returned `Result<Self, String>` — a
+/// stringly-typed error a caller can only `.to_string()` and log. This is the
+/// typed replacement: a caller can `match` on WHICH field was missing (and, for
+/// [`Self::MissingCredential`], read the env var to set) instead of parsing a
+/// message. Implements [`std::error::Error`] so it composes with `?` and
+/// `Box<dyn Error>`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum RestClientBuilderError {
+    /// A required credential was empty. Carries the field name (`"project_id"` /
+    /// `"token"` / `"space"`) and the environment variable that can supply it.
+    MissingCredential {
+        /// The constructor argument that was empty.
+        field: &'static str,
+        /// The environment variable a caller may set instead.
+        env_var: &'static str,
+    },
+    /// A required non-credential argument (e.g. `base_url`) was empty.
+    MissingField {
+        /// The constructor argument that was empty.
+        field: &'static str,
+    },
+}
+
+impl fmt::Display for RestClientBuilderError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            RestClientBuilderError::MissingCredential { field, env_var } => {
+                write!(f, "{field} is required (pass explicitly or set {env_var})")
+            }
+            RestClientBuilderError::MissingField { field } => {
+                write!(f, "{field} is required")
+            }
+        }
+    }
+}
+
+impl std::error::Error for RestClientBuilderError {}
+
 // ------------------------------------------------------------------
 // Tests
 // ------------------------------------------------------------------

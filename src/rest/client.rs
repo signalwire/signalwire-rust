@@ -1,5 +1,6 @@
 use std::env;
 
+use super::error::RestClientBuilderError;
 use super::http_client::{HttpClient, UreqTransport};
 use super::namespaces::generated::client_tree_generated as tree;
 use super::request_options::RequestOptions;
@@ -20,28 +21,33 @@ pub struct RestClient {
     http: HttpClient,
 }
 
+/// Validate a required credential is non-empty, else the typed missing-credential
+/// error naming the field + the env var that supplies it.
+fn require_credential(
+    field: &'static str,
+    env_var: &'static str,
+    value: &str,
+) -> Result<(), RestClientBuilderError> {
+    if value.is_empty() {
+        Err(RestClientBuilderError::MissingCredential { field, env_var })
+    } else {
+        Ok(())
+    }
+}
+
 impl RestClient {
     /// Create a new REST client with explicit credentials. The base URL
     /// resolves to `https://{space}`. Use [`with_base_url`] to override
     /// (e.g. for fixture-driven tests pointed at `http://127.0.0.1:N`).
     ///
     /// # Errors
-    /// Returns `Err(String)` if any required credential is empty: `project_id`,
-    /// `token`, or `space`. No network request is made here.
-    pub fn new(project_id: &str, token: &str, space: &str) -> Result<Self, String> {
-        if project_id.is_empty() {
-            return Err(
-                "projectId is required (pass explicitly or set SIGNALWIRE_PROJECT_ID)".to_string(),
-            );
-        }
-        if token.is_empty() {
-            return Err(
-                "token is required (pass explicitly or set SIGNALWIRE_API_TOKEN)".to_string(),
-            );
-        }
-        if space.is_empty() {
-            return Err("space is required (pass explicitly or set SIGNALWIRE_SPACE)".to_string());
-        }
+    /// Returns [`RestClientBuilderError::MissingCredential`] if any required
+    /// credential is empty: `project_id`, `token`, or `space`. No network
+    /// request is made here.
+    pub fn new(project_id: &str, token: &str, space: &str) -> Result<Self, RestClientBuilderError> {
+        require_credential("project_id", "SIGNALWIRE_PROJECT_ID", project_id)?;
+        require_credential("token", "SIGNALWIRE_API_TOKEN", token)?;
+        require_credential("space", "SIGNALWIRE_SPACE", space)?;
 
         let base_url = format!("https://{space}");
         let http = HttpClient::new(project_id, token, &base_url, Box::new(UreqTransport::new()));
@@ -61,18 +67,13 @@ impl RestClient {
     /// callers should use [`new`] instead.
     ///
     /// # Errors
-    /// Returns `Err(String)` if any required argument is empty: `project_id`,
-    /// `token`, or `base_url`. No network request is made here.
-    pub fn with_base_url(project_id: &str, token: &str, base_url: &str) -> Result<Self, String> {
-        if project_id.is_empty() {
-            return Err("projectId is required".to_string());
-        }
-        if token.is_empty() {
-            return Err("token is required".to_string());
-        }
-        if base_url.is_empty() {
-            return Err("base_url is required".to_string());
-        }
+    /// Returns [`RestClientBuilderError`] if any required argument is empty:
+    /// `project_id`, `token`, or `base_url`. No network request is made here.
+    pub fn with_base_url(
+        project_id: &str,
+        token: &str,
+        base_url: &str,
+    ) -> Result<Self, RestClientBuilderError> {
         Self::with_base_url_and_options(project_id, token, base_url, None)
     }
 
@@ -84,22 +85,18 @@ impl RestClient {
     /// behavior pointed at a fixture.
     ///
     /// # Errors
-    /// Returns `Err(String)` if any required argument is empty: `project_id`,
-    /// `token`, or `base_url`. No network request is made here.
+    /// Returns [`RestClientBuilderError`] if any required argument is empty:
+    /// `project_id`, `token`, or `base_url`. No network request is made here.
     pub fn with_base_url_and_options(
         project_id: &str,
         token: &str,
         base_url: &str,
         request_options: Option<RequestOptions>,
-    ) -> Result<Self, String> {
-        if project_id.is_empty() {
-            return Err("projectId is required".to_string());
-        }
-        if token.is_empty() {
-            return Err("token is required".to_string());
-        }
+    ) -> Result<Self, RestClientBuilderError> {
+        require_credential("project_id", "SIGNALWIRE_PROJECT_ID", project_id)?;
+        require_credential("token", "SIGNALWIRE_API_TOKEN", token)?;
         if base_url.is_empty() {
-            return Err("base_url is required".to_string());
+            return Err(RestClientBuilderError::MissingField { field: "base_url" });
         }
         let http = HttpClient::with_options(
             project_id,
@@ -120,17 +117,18 @@ impl RestClient {
     /// Create a REST client with a specific HTTP client (for testing).
     ///
     /// # Errors
-    /// Returns `Err(String)` if any of `project_id`, `token`, or `space` is
-    /// empty. No network request is made here.
+    /// Returns [`RestClientBuilderError::MissingCredential`] if any of
+    /// `project_id`, `token`, or `space` is empty. No network request is made
+    /// here.
     pub fn with_http(
         project_id: &str,
         token: &str,
         space: &str,
         http: HttpClient,
-    ) -> Result<Self, String> {
-        if project_id.is_empty() || token.is_empty() || space.is_empty() {
-            return Err("project_id, token, and space are all required".to_string());
-        }
+    ) -> Result<Self, RestClientBuilderError> {
+        require_credential("project_id", "SIGNALWIRE_PROJECT_ID", project_id)?;
+        require_credential("token", "SIGNALWIRE_API_TOKEN", token)?;
+        require_credential("space", "SIGNALWIRE_SPACE", space)?;
         Ok(RestClient {
             project_id: project_id.to_string(),
             token: token.to_string(),
@@ -143,11 +141,11 @@ impl RestClient {
     /// Create from environment variables.
     ///
     /// # Errors
-    /// Returns `Err(String)` if any of `SIGNALWIRE_PROJECT_ID`,
-    /// `SIGNALWIRE_API_TOKEN`, or `SIGNALWIRE_SPACE` is unset or empty (they
-    /// default to the empty string, which fails the same validation as
-    /// [`new`](Self::new)). No network request is made here.
-    pub fn from_env() -> Result<Self, String> {
+    /// Returns [`RestClientBuilderError::MissingCredential`] if any of
+    /// `SIGNALWIRE_PROJECT_ID`, `SIGNALWIRE_API_TOKEN`, or `SIGNALWIRE_SPACE` is
+    /// unset or empty (they default to the empty string, which fails the same
+    /// validation as [`new`](Self::new)). No network request is made here.
+    pub fn from_env() -> Result<Self, RestClientBuilderError> {
         let project_id = env::var("SIGNALWIRE_PROJECT_ID").unwrap_or_default();
         let token = env::var("SIGNALWIRE_API_TOKEN").unwrap_or_default();
         let space = env::var("SIGNALWIRE_SPACE").unwrap_or_default();
@@ -353,26 +351,59 @@ mod tests {
         assert_eq!(client.base_url(), "https://test.signalwire.com");
     }
 
+    /// Assert a constructor Result is the given typed builder error (avoids
+    /// requiring `Debug` on the `Ok` `RestClient`, which it doesn't implement).
+    fn assert_builder_err(
+        r: Result<RestClient, RestClientBuilderError>,
+        want: &RestClientBuilderError,
+    ) {
+        match r {
+            Err(e) => assert_eq!(&e, want),
+            Ok(_) => panic!("expected {want:?}"),
+        }
+    }
+
     #[test]
     fn test_new_missing_project() {
-        match RestClient::new("", "tok", "space") {
-            Err(e) => assert!(e.contains("projectId")),
-            Ok(_) => panic!("expected error"),
-        }
+        assert_builder_err(
+            RestClient::new("", "tok", "space"),
+            &RestClientBuilderError::MissingCredential {
+                field: "project_id",
+                env_var: "SIGNALWIRE_PROJECT_ID",
+            },
+        );
     }
 
     #[test]
     fn test_new_missing_token() {
-        match RestClient::new("proj", "", "space") {
-            Err(e) => assert!(e.contains("token")),
-            Ok(_) => panic!("expected error"),
-        }
+        assert_builder_err(
+            RestClient::new("proj", "", "space"),
+            &RestClientBuilderError::MissingCredential {
+                field: "token",
+                env_var: "SIGNALWIRE_API_TOKEN",
+            },
+        );
     }
 
     #[test]
     fn test_new_missing_space() {
-        match RestClient::new("proj", "tok", "") {
-            Err(e) => assert!(e.contains("space")),
+        assert_builder_err(
+            RestClient::new("proj", "tok", ""),
+            &RestClientBuilderError::MissingCredential {
+                field: "space",
+                env_var: "SIGNALWIRE_SPACE",
+            },
+        );
+    }
+
+    /// The typed error's Display preserves the reference's guidance message.
+    #[test]
+    fn test_builder_error_display() {
+        match RestClient::new("", "tok", "space") {
+            Err(e) => assert_eq!(
+                e.to_string(),
+                "project_id is required (pass explicitly or set SIGNALWIRE_PROJECT_ID)"
+            ),
             Ok(_) => panic!("expected error"),
         }
     }

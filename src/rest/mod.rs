@@ -12,7 +12,7 @@ pub mod request_options;
 
 pub use client::RestClient;
 pub use crud_resource::CrudResource;
-pub use error::SignalWireRestError;
+pub use error::{RestClientBuilderError, SignalWireRestError};
 pub use http_client::HttpClient;
 pub use pagination::PaginatedIterator;
 pub use request_options::{AbortSignal, EffectiveOptions, RequestOptions};

@@ -282,7 +282,7 @@ impl SkillSpec {
 pub fn RestClient(
     args: Vec<String>,
     kwargs: std::collections::HashMap<String, String>,
-) -> Result<rest::RestClient, String> {
+) -> Result<rest::RestClient, rest::RestClientBuilderError> {
     // Resolve credentials in this order:
     //   1. positional args[0..3] = (project, token, space)
     //   2. kwargs["project"|"project_id"], kwargs["token"], kwargs["space"|"host"]
