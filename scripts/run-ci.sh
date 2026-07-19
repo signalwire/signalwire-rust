@@ -332,6 +332,11 @@ sched_gate BEHAVIORAL-WIRE-RELAY desc="diff_port_wire_relay vs python oracle (La
         --port rust \
         --dump-cmd 'cargo run -q --example wire_relay_dump 2>/dev/null'
 
+sched_gate ENVELOPE desc="diff_port_envelope vs python oracle: conn-refused typed error + request-options retry/timeout/idempotency (Layer D, plan 4.2/1.3b)" \
+    -- python3 "$PORTING_SDK_DIR/scripts/diff_port_envelope.py" \
+        --port rust \
+        --dump-cmd 'cargo run -q --bin envelope-dump 2>/dev/null'
+
 sched_gate SKILL-CONTRACT desc="diff_skill_contracts vs python reference" \
     -- python3 "$PORTING_SDK_DIR/scripts/diff_skill_contracts.py" \
         --dump-cmd 'cargo run --quiet --example emit_skills' \
