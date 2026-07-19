@@ -548,6 +548,13 @@ FREE_FN_MODULE_RENAMES: dict[str, str] = {
     # a typed ParamsBuilder rather than reflecting a handler signature (types are
     # compile-time-erased) — the static-port idiom for the same inference.
     "signalwire.agent.type_inference": "signalwire.core.agent.tools.type_inference",
+    # RequestOptions envelope free fns (resolve / status_is_retryable /
+    # default_retry_on_status) — Rust groups them under
+    # ``signalwire::rest::request_options``; the Python reference lives at
+    # ``signalwire.rest._request_options``. resolve + status_is_retryable match
+    # 1:1; default_retry_on_status is the Rust helper for Python's module-level
+    # _DEFAULT_RETRY_ON_STATUS constant (a PORT_ADDITION).
+    "signalwire.rest.request_options": "signalwire.rest._request_options",
 }
 
 

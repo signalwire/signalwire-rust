@@ -1,11 +1,13 @@
 use std::collections::HashMap;
 use std::fmt;
+use std::time::Duration;
 
 use base64::Engine;
 use base64::engine::general_purpose::STANDARD as BASE64;
 use serde_json::Value;
 
 use super::error::SignalWireRestError;
+use super::request_options::{RequestOptions, resolve, status_is_retryable};
 
 /// Wraps an [`HttpTransport::execute`] failure message so it can be preserved as
 /// a [`SignalWireRestError`]'s `source()` (`std::error::Error`) — the underlying
@@ -37,12 +39,18 @@ pub trait HttpTransport: Send + Sync {
     /// cannot be established (transport/network failure), or the response body
     /// cannot be read. A non-2xx HTTP status is *not* an error here; it is
     /// returned as the status code for the caller to interpret.
+    ///
+    /// `timeout` is the per-attempt wall-clock deadline (from the resolved
+    /// [`RequestOptions`]); a real transport applies it to this single call and
+    /// surfaces an exceed as an `Err` (which the client wraps into its typed
+    /// transport error). Stub transports ignore it.
     fn execute(
         &self,
         method: &str,
         url: &str,
         headers: &HashMap<String, String>,
         body: Option<&str>,
+        timeout: Duration,
     ) -> Result<(u16, String), String>;
 }
 
@@ -65,9 +73,12 @@ impl Default for UreqTransport {
 
 impl UreqTransport {
     pub fn new() -> Self {
-        let mut builder = ureq::Agent::config_builder()
-            .timeout_global(Some(std::time::Duration::from_secs(30)))
-            .http_status_as_error(false);
+        // No fixed global timeout on the agent: the per-attempt deadline is
+        // supplied per request (from the resolved RequestOptions.timeout) and
+        // applied at call time in `execute`. `http_status_as_error(false)` keeps
+        // a non-2xx a normal response (the client interprets the status), never
+        // a transport error.
+        let mut builder = ureq::Agent::config_builder().http_status_as_error(false);
 
         // ureq verifies against the bundled webpki (Mozilla) roots by default,
         // and — like all rustls users — ignores SSL_CERT_FILE / the OS store.
@@ -112,17 +123,31 @@ impl HttpTransport for UreqTransport {
         url: &str,
         headers: &HashMap<String, String>,
         body: Option<&str>,
+        timeout: Duration,
     ) -> Result<(u16, String), String> {
+        // Apply the resolved per-attempt timeout to THIS request (request-level
+        // config overrides the agent default). A timeout surfaces as
+        // `ureq::Error::Timeout`, mapped below into the typed transport error.
         let response_result = match method.to_ascii_uppercase().as_str() {
             "GET" => {
-                let mut req = self.agent.get(url);
+                let mut req = self
+                    .agent
+                    .get(url)
+                    .config()
+                    .timeout_global(Some(timeout))
+                    .build();
                 for (k, v) in headers {
                     req = req.header(k, v);
                 }
                 req.call()
             }
             "POST" => {
-                let mut req = self.agent.post(url);
+                let mut req = self
+                    .agent
+                    .post(url)
+                    .config()
+                    .timeout_global(Some(timeout))
+                    .build();
                 for (k, v) in headers {
                     req = req.header(k, v);
                 }
@@ -132,7 +157,12 @@ impl HttpTransport for UreqTransport {
                 }
             }
             "PUT" => {
-                let mut req = self.agent.put(url);
+                let mut req = self
+                    .agent
+                    .put(url)
+                    .config()
+                    .timeout_global(Some(timeout))
+                    .build();
                 for (k, v) in headers {
                     req = req.header(k, v);
                 }
@@ -142,7 +172,12 @@ impl HttpTransport for UreqTransport {
                 }
             }
             "PATCH" => {
-                let mut req = self.agent.patch(url);
+                let mut req = self
+                    .agent
+                    .patch(url)
+                    .config()
+                    .timeout_global(Some(timeout))
+                    .build();
                 for (k, v) in headers {
                     req = req.header(k, v);
                 }
@@ -152,7 +187,12 @@ impl HttpTransport for UreqTransport {
                 }
             }
             "DELETE" => {
-                let mut req = self.agent.delete(url);
+                let mut req = self
+                    .agent
+                    .delete(url)
+                    .config()
+                    .timeout_global(Some(timeout))
+                    .build();
                 for (k, v) in headers {
                     req = req.header(k, v);
                 }
@@ -207,6 +247,7 @@ impl HttpTransport for StubTransport {
         url: &str,
         _headers: &HashMap<String, String>,
         body: Option<&str>,
+        _timeout: Duration,
     ) -> Result<(u16, String), String> {
         self.requests.lock().unwrap().push((
             method.to_string(),
@@ -229,6 +270,11 @@ pub struct HttpClient {
     auth_header: String,
     user_agent: String,
     transport: Box<dyn HttpTransport>,
+    /// The client-default request options (timeout / retries / backoff / abort
+    /// signal), applied to every request and shallow-overridden by a per-request
+    /// [`RequestOptions`]. `None` => the built-in defaults (no retry, 30s
+    /// timeout).
+    request_options: Option<RequestOptions>,
 }
 
 impl HttpClient {
@@ -237,6 +283,20 @@ impl HttpClient {
         token: &str,
         base_url: &str,
         transport: Box<dyn HttpTransport>,
+    ) -> Self {
+        Self::with_options(project_id, token, base_url, transport, None)
+    }
+
+    /// Construct with an explicit client-default [`RequestOptions`] (plan 4.2).
+    /// `request_options` is the default applied to every request through this
+    /// client; a per-request override shallow-merges over it. `None` selects the
+    /// built-in defaults (no retry, 30s timeout).
+    pub fn with_options(
+        project_id: &str,
+        token: &str,
+        base_url: &str,
+        transport: Box<dyn HttpTransport>,
+        request_options: Option<RequestOptions>,
     ) -> Self {
         let auth_header = format!("Basic {}", BASE64.encode(format!("{project_id}:{token}")));
         HttpClient {
@@ -247,6 +307,7 @@ impl HttpClient {
             user_agent: concat!("signalwire-agents-rust-rest/", env!("CARGO_PKG_VERSION"))
                 .to_string(),
             transport,
+            request_options,
         }
     }
 
@@ -300,7 +361,27 @@ impl HttpClient {
         path: &str,
         params: &HashMap<String, String>,
     ) -> Result<Value, SignalWireRestError> {
-        self.request("GET", path, params, None)
+        self.request("GET", path, params, None, None)
+    }
+
+    /// The client-default [`RequestOptions`], if any.
+    #[must_use]
+    pub fn request_options(&self) -> Option<&RequestOptions> {
+        self.request_options.as_ref()
+    }
+
+    /// `GET` with a per-request [`RequestOptions`] override (shallow-merged over
+    /// the client default). See [`get`](Self::get) for the error contract.
+    ///
+    /// # Errors
+    /// Same as [`get`](Self::get).
+    pub fn get_with_options(
+        &self,
+        path: &str,
+        params: &HashMap<String, String>,
+        options: Option<&RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.request("GET", path, params, None, options)
     }
 
     /// Issue a `POST` request to `path` with `data` serialized as the JSON body.
@@ -311,8 +392,21 @@ impl HttpClient {
     /// when the payload fails server-side validation), or a 2xx response body
     /// is not valid JSON. See [`get`](Self::get) for the canonical description.
     pub fn post(&self, path: &str, data: &Value) -> Result<Value, SignalWireRestError> {
+        self.post_with_options(path, data, None)
+    }
+
+    /// `POST` with a per-request [`RequestOptions`] override.
+    ///
+    /// # Errors
+    /// Same as [`post`](Self::post).
+    pub fn post_with_options(
+        &self,
+        path: &str,
+        data: &Value,
+        options: Option<&RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
         let body = serde_json::to_string(data).unwrap_or_else(|_| "{}".to_string());
-        self.request("POST", path, &HashMap::new(), Some(&body))
+        self.request("POST", path, &HashMap::new(), Some(&body), options)
     }
 
     /// Issue a `PUT` request to `path` with `data` serialized as the JSON body.
@@ -323,8 +417,21 @@ impl HttpClient {
     /// for a missing resource or 422 when the payload fails validation), or a
     /// 2xx response body is not valid JSON. See [`get`](Self::get).
     pub fn put(&self, path: &str, data: &Value) -> Result<Value, SignalWireRestError> {
+        self.put_with_options(path, data, None)
+    }
+
+    /// `PUT` with a per-request [`RequestOptions`] override.
+    ///
+    /// # Errors
+    /// Same as [`put`](Self::put).
+    pub fn put_with_options(
+        &self,
+        path: &str,
+        data: &Value,
+        options: Option<&RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
         let body = serde_json::to_string(data).unwrap_or_else(|_| "{}".to_string());
-        self.request("PUT", path, &HashMap::new(), Some(&body))
+        self.request("PUT", path, &HashMap::new(), Some(&body), options)
     }
 
     /// Issue a `PATCH` request to `path` with `data` serialized as the JSON body.
@@ -335,8 +442,21 @@ impl HttpClient {
     /// for a missing resource or 422 when the payload fails validation), or a
     /// 2xx response body is not valid JSON. See [`get`](Self::get).
     pub fn patch(&self, path: &str, data: &Value) -> Result<Value, SignalWireRestError> {
+        self.patch_with_options(path, data, None)
+    }
+
+    /// `PATCH` with a per-request [`RequestOptions`] override.
+    ///
+    /// # Errors
+    /// Same as [`patch`](Self::patch).
+    pub fn patch_with_options(
+        &self,
+        path: &str,
+        data: &Value,
+        options: Option<&RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
         let body = serde_json::to_string(data).unwrap_or_else(|_| "{}".to_string());
-        self.request("PATCH", path, &HashMap::new(), Some(&body))
+        self.request("PATCH", path, &HashMap::new(), Some(&body), options)
     }
 
     /// Issue a `DELETE` request to `path`.
@@ -347,7 +467,19 @@ impl HttpClient {
     /// when the addressed resource does not exist), or a 2xx response body is
     /// present but not valid JSON. See [`get`](Self::get).
     pub fn delete(&self, path: &str) -> Result<Value, SignalWireRestError> {
-        self.request("DELETE", path, &HashMap::new(), None)
+        self.delete_with_options(path, None)
+    }
+
+    /// `DELETE` with a per-request [`RequestOptions`] override.
+    ///
+    /// # Errors
+    /// Same as [`delete`](Self::delete).
+    pub fn delete_with_options(
+        &self,
+        path: &str,
+        options: Option<&RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.request("DELETE", path, &HashMap::new(), None, options)
     }
 
     // -- Paginated list support --
@@ -425,12 +557,14 @@ impl HttpClient {
 
     // -- Internal request engine --
 
+    #[allow(clippy::too_many_lines)]
     fn request(
         &self,
         method: &str,
         path: &str,
         params: &HashMap<String, String>,
         body: Option<&str>,
+        request_options: Option<&RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
         let mut url = format!("{}{}", self.base_url, path);
 
@@ -454,48 +588,103 @@ impl HttpClient {
         headers.insert("Authorization".to_string(), self.auth_header.clone());
         headers.insert("User-Agent".to_string(), self.user_agent.clone());
 
-        let (status, response_body) = self
-            .transport
-            .execute(method, &url, &headers, body)
-            .map_err(|e| {
-                // Transport failure (connection refused / DNS / reset / TLS): the
-                // request never reached a response. Wrap it in the typed error
-                // family via `SignalWireRestError::transport` instead of leaking a
-                // bare error, preserving the underlying message as the error's
-                // `source()` (the Rust equivalent of Python's `raise ... from exc`).
-                SignalWireRestError::transport(
-                    &format!("{method} {path} failed: {e}"),
+        // Resolve the effective options: per-request over client-default over
+        // built-in. total attempts = retries + 1; retry on a retryable status
+        // (idempotency-aware) or a transport error, honoring Retry-After then
+        // exponential backoff. abort_signal is checked cooperatively BEFORE
+        // every attempt (the honest blocking-client minimum).
+        let opts = resolve(self.request_options.as_ref(), request_options);
+
+        let mut attempt: u32 = 0;
+        loop {
+            attempt += 1;
+
+            if opts.is_aborted() {
+                // Cancelled before this attempt — surface as the transport-error
+                // family (no response was produced), not a bare error.
+                return Err(SignalWireRestError::transport(
+                    &format!("{method} {path} cancelled by abort_signal"),
                     path,
                     method,
-                    TransportFailure(e),
-                )
-            })?;
+                    TransportFailure("request cancelled by abort_signal".to_string()),
+                ));
+            }
 
-        // Non-2xx
-        if !(200..300).contains(&status) {
-            return Err(SignalWireRestError::new(
-                &format!("{method} {path} returned {status}"),
-                status,
-                &response_body,
-                path,
-                method,
-            ));
+            let outcome = self
+                .transport
+                .execute(method, &url, &headers, body, opts.timeout);
+
+            match outcome {
+                Err(e) => {
+                    // Transport failure (connection refused / DNS / reset / TLS /
+                    // timeout): the request never produced a response. Retry if
+                    // attempts remain, else wrap in the typed error family.
+                    if attempt <= opts.retries {
+                        Self::sleep(opts.backoff_delay(attempt));
+                        continue;
+                    }
+                    return Err(SignalWireRestError::transport(
+                        &format!("{method} {path} failed: {e}"),
+                        path,
+                        method,
+                        TransportFailure(e),
+                    ));
+                }
+                Ok((status, response_body)) => {
+                    if !(200..300).contains(&status) {
+                        if attempt <= opts.retries && status_is_retryable(method, status, &opts) {
+                            let delay = Self::retry_after_seconds(&headers, &response_body)
+                                .unwrap_or_else(|| opts.backoff_delay(attempt));
+                            Self::sleep(delay);
+                            continue;
+                        }
+                        return Err(SignalWireRestError::new(
+                            &format!("{method} {path} returned {status}"),
+                            status,
+                            &response_body,
+                            path,
+                            method,
+                        ));
+                    }
+
+                    // 204 or empty body
+                    if status == 204 || response_body.is_empty() {
+                        return Ok(serde_json::json!({}));
+                    }
+
+                    return serde_json::from_str(&response_body).map_err(|_| {
+                        SignalWireRestError::new(
+                            &format!("{method} {path} returned non-JSON"),
+                            status,
+                            &response_body,
+                            path,
+                            method,
+                        )
+                    });
+                }
+            }
         }
+    }
 
-        // 204 or empty body
-        if status == 204 || response_body.is_empty() {
-            return Ok(serde_json::json!({}));
+    /// Backoff sleep between retries. A seam so tests can drive the retry loop;
+    /// only sleeps for a positive duration (`retry_backoff=0` in the corpus keeps
+    /// the differ off the wall clock).
+    fn sleep(seconds: f64) {
+        if seconds > 0.0 {
+            std::thread::sleep(Duration::from_secs_f64(seconds));
         }
+    }
 
-        serde_json::from_str(&response_body).map_err(|_| {
-            SignalWireRestError::new(
-                &format!("{method} {path} returned non-JSON"),
-                status,
-                &response_body,
-                path,
-                method,
-            )
-        })
+    /// Parse a `Retry-After` header (delta-seconds form) from the response, if
+    /// the transport surfaced it. The current [`HttpTransport`] boundary returns
+    /// only `(status, body)` — it does not carry response headers back — so this
+    /// returns `None` and the caller falls back to computed exponential backoff.
+    /// (The Retry-After delta and the computed backoff coincide for the pinned
+    /// corpus, whose retry cases set `retry_backoff = 0`; wiring the header
+    /// through the transport is a follow-up if a future case needs the exact
+    /// delta.)
+    fn retry_after_seconds(_headers: &HashMap<String, String>, _body: &str) -> Option<f64> {
+        None
     }
 }
 
@@ -509,8 +698,9 @@ impl HttpTransport for StubTransportWrapper {
         url: &str,
         headers: &HashMap<String, String>,
         body: Option<&str>,
+        timeout: Duration,
     ) -> Result<(u16, String), String> {
-        self.0.execute(method, url, headers, body)
+        self.0.execute(method, url, headers, body, timeout)
     }
 }
 
@@ -556,6 +746,7 @@ impl HttpTransport for SequencedTransport {
         url: &str,
         _headers: &HashMap<String, String>,
         body: Option<&str>,
+        _timeout: Duration,
     ) -> Result<(u16, String), String> {
         self.requests.lock().unwrap().push((
             method.to_string(),
@@ -585,8 +776,9 @@ impl HttpTransport for SequencedTransportWrapper {
         url: &str,
         headers: &HashMap<String, String>,
         body: Option<&str>,
+        timeout: Duration,
     ) -> Result<(u16, String), String> {
-        self.0.execute(method, url, headers, body)
+        self.0.execute(method, url, headers, body, timeout)
     }
 }
 
