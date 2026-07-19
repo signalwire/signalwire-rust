@@ -237,3 +237,9 @@ cargo run --bin swaig-test -- --example simple_agent --list-tools
 cargo run --bin swaig-test -- --example simple_agent --dump-swml
 cargo run --bin swaig-test -- --url http://localhost:3000 --exec get_time --param city=Reno
 ```
+
+`--example … --dump-swml` works by running the example with the `SWML_DUMP=1`
+environment variable set: instead of starting the HTTP server, `AgentBase::run` /
+`Service::run` render the agent's SWML document to stdout and exit. You can use the
+same variable directly on your own binary (`SWML_DUMP=1 cargo run --bin my_agent`)
+to print its SWML without serving.

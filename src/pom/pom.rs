@@ -24,8 +24,8 @@ use crate::pom::section::Section;
 /// D9-rust: these constructors previously returned `Result<Self, String>`. This
 /// typed replacement lets a caller distinguish a *syntax* failure (malformed
 /// JSON/YAML) from a *structural* one (the document parsed but violates the POM
-/// shape), while preserving the exact reference `ValueError` message text via
-/// [`Display`](fmt::Display) for parity.
+/// shape), while keeping the exact error message text a Python caller would see via
+/// [`Display`](fmt::Display).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PomParseError {
     /// The input was not well-formed JSON. Carries the serde parser message.
