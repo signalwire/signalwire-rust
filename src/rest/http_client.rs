@@ -52,6 +52,29 @@ pub trait HttpTransport: Send + Sync {
         body: Option<&str>,
         timeout: Duration,
     ) -> Result<(u16, String), String>;
+
+    /// Like [`execute`](Self::execute) but also returns the RESPONSE headers
+    /// (§6.6 error-observability). The default delegates to `execute` and
+    /// reports no headers, so existing (stub/mock) transports need no change;
+    /// the real [`UreqTransport`] overrides this to capture the response headers
+    /// so the client can surface the platform `request-id` on an error. Returns
+    /// `(status_code, response_headers, body)`.
+    ///
+    /// # Errors
+    /// Same as [`execute`](Self::execute): `Err(String)` when the request cannot
+    /// be performed (unsupported method, transport/network failure, or the body
+    /// cannot be read). A non-2xx status is returned as the status, not an error.
+    fn execute_with_headers(
+        &self,
+        method: &str,
+        url: &str,
+        headers: &HashMap<String, String>,
+        body: Option<&str>,
+        timeout: Duration,
+    ) -> Result<(u16, HashMap<String, String>, String), String> {
+        let (status, body) = self.execute(method, url, headers, body, timeout)?;
+        Ok((status, HashMap::new(), body))
+    }
 }
 
 /// Real HTTP transport backed by ureq.
@@ -116,15 +139,19 @@ fn custom_ca_tls_config() -> Option<ureq::tls::TlsConfig> {
     )
 }
 
-impl HttpTransport for UreqTransport {
-    fn execute(
+impl UreqTransport {
+    /// Perform the request and return `(status, response_headers, body)`. Shared
+    /// by [`execute`](HttpTransport::execute) (which drops the headers) and
+    /// [`execute_with_headers`](HttpTransport::execute_with_headers) (which keeps
+    /// them for §6.6 request-id observability).
+    fn execute_raw(
         &self,
         method: &str,
         url: &str,
         headers: &HashMap<String, String>,
         body: Option<&str>,
         timeout: Duration,
-    ) -> Result<(u16, String), String> {
+    ) -> Result<(u16, HashMap<String, String>, String), String> {
         // Apply the resolved per-attempt timeout to THIS request (request-level
         // config overrides the agent default). A timeout surfaces as
         // `ureq::Error::Timeout`, mapped below into the typed transport error.
@@ -206,11 +233,44 @@ impl HttpTransport for UreqTransport {
         let mut response =
             response_result.map_err(|e| format!("HTTP {method} {url} failed: {e}"))?;
         let status = response.status().as_u16();
+        // Capture response headers (lowercased names) before consuming the body,
+        // so the client can surface the platform request-id on an error (§6.6).
+        let mut resp_headers = HashMap::new();
+        for (name, value) in response.headers() {
+            if let Ok(v) = value.to_str() {
+                resp_headers.insert(name.as_str().to_ascii_lowercase(), v.to_string());
+            }
+        }
         let body_str = response
             .body_mut()
             .read_to_string()
             .map_err(|e| format!("HTTP {method} {url} body read failed: {e}"))?;
-        Ok((status, body_str))
+        Ok((status, resp_headers, body_str))
+    }
+}
+
+impl HttpTransport for UreqTransport {
+    fn execute(
+        &self,
+        method: &str,
+        url: &str,
+        headers: &HashMap<String, String>,
+        body: Option<&str>,
+        timeout: Duration,
+    ) -> Result<(u16, String), String> {
+        let (status, _headers, body) = self.execute_raw(method, url, headers, body, timeout)?;
+        Ok((status, body))
+    }
+
+    fn execute_with_headers(
+        &self,
+        method: &str,
+        url: &str,
+        headers: &HashMap<String, String>,
+        body: Option<&str>,
+        timeout: Duration,
+    ) -> Result<(u16, HashMap<String, String>, String), String> {
+        self.execute_raw(method, url, headers, body, timeout)
     }
 }
 
@@ -619,9 +679,9 @@ impl HttpClient {
                 ));
             }
 
-            let outcome = self
-                .transport
-                .execute(method, &url, &headers, body, opts.timeout);
+            let outcome =
+                self.transport
+                    .execute_with_headers(method, &url, &headers, body, opts.timeout);
 
             match outcome {
                 Err(e) => {
@@ -639,10 +699,12 @@ impl HttpClient {
                         TransportFailure(e),
                     ));
                 }
-                Ok((status, response_body)) => {
+                Ok((status, resp_headers, response_body)) => {
                     if !(200..300).contains(&status) {
                         if attempt <= opts.retries && status_is_retryable(method, status, &opts) {
-                            let delay = Self::retry_after_seconds(&headers, &response_body)
+                            // §6.6: the real RESPONSE headers are now available, so
+                            // Retry-After can honor the server's exact delta.
+                            let delay = Self::retry_after_seconds(&resp_headers, &response_body)
                                 .unwrap_or_else(|| opts.backoff_delay(attempt));
                             Self::sleep(delay);
                             continue;
@@ -653,7 +715,8 @@ impl HttpClient {
                             &response_body,
                             path,
                             method,
-                        ));
+                        )
+                        .with_headers(resp_headers));
                     }
 
                     // 204 or empty body
@@ -669,6 +732,7 @@ impl HttpClient {
                             path,
                             method,
                         )
+                        .with_headers(resp_headers)
                     });
                 }
             }
@@ -692,8 +756,16 @@ impl HttpClient {
     /// corpus, whose retry cases set `retry_backoff = 0`; wiring the header
     /// through the transport is a follow-up if a future case needs the exact
     /// delta.)
-    fn retry_after_seconds(_headers: &HashMap<String, String>, _body: &str) -> Option<f64> {
-        None
+    /// Parse a `Retry-After` response header in delta-seconds form, if present.
+    /// Response header names are lowercased by the transport, so look up
+    /// `retry-after`. Returns `None` when absent or non-numeric (the caller then
+    /// falls back to computed exponential backoff). The HTTP-date form is not
+    /// honored (the platform uses delta-seconds).
+    fn retry_after_seconds(headers: &HashMap<String, String>, _body: &str) -> Option<f64> {
+        headers
+            .get("retry-after")
+            .and_then(|v| v.trim().parse::<f64>().ok())
+            .filter(|s| *s >= 0.0)
     }
 }
 
@@ -817,6 +889,69 @@ mod tests {
 
     fn make_client() -> (HttpClient, std::sync::Arc<StubTransport>) {
         HttpClient::with_stub("proj-1", "tok-1", "https://test.signalwire.com")
+    }
+
+    /// A transport that returns a fixed status + response HEADERS + body, to
+    /// exercise the §6.6 request-id/headers threading (`execute_with_headers`).
+    struct HeaderTransport {
+        status: u16,
+        headers: HashMap<String, String>,
+        body: String,
+    }
+
+    impl HttpTransport for HeaderTransport {
+        fn execute(
+            &self,
+            _m: &str,
+            _u: &str,
+            _h: &HashMap<String, String>,
+            _b: Option<&str>,
+            _t: Duration,
+        ) -> Result<(u16, String), String> {
+            Ok((self.status, self.body.clone()))
+        }
+
+        fn execute_with_headers(
+            &self,
+            _m: &str,
+            _u: &str,
+            _h: &HashMap<String, String>,
+            _b: Option<&str>,
+            _t: Duration,
+        ) -> Result<(u16, HashMap<String, String>, String), String> {
+            Ok((self.status, self.headers.clone(), self.body.clone()))
+        }
+    }
+
+    /// §6.6: an HTTP error carries the response headers, and `request_id()`
+    /// extracts the platform id from `x-request-id`; Display appends it.
+    #[test]
+    fn test_error_captures_response_headers_and_request_id() {
+        let mut headers = HashMap::new();
+        headers.insert("x-request-id".to_string(), "req-abc-123".to_string());
+        headers.insert("content-type".to_string(), "application/json".to_string());
+        let client = HttpClient::new(
+            "proj",
+            "tok",
+            "https://test.signalwire.com",
+            Box::new(HeaderTransport {
+                status: 404,
+                headers,
+                body: r#"{"error":"not found"}"#.to_string(),
+            }),
+        );
+        let err = client.get("/api/missing", &HashMap::new()).unwrap_err();
+        assert_eq!(err.request_id(), Some("req-abc-123"));
+        assert_eq!(
+            err.headers()
+                .and_then(|h| h.get("content-type"))
+                .map(String::as_str),
+            Some("application/json")
+        );
+        assert!(
+            err.to_string().contains("(request-id: req-abc-123)"),
+            "Display must surface the request id: {err}"
+        );
     }
 
     #[test]
