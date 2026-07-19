@@ -67,7 +67,7 @@ use std::time::{Duration, Instant};
 use base64::Engine;
 use base64::engine::general_purpose::STANDARD as BASE64;
 use serde_json::Value;
-use signalwire::rest::RestClient;
+use signalwire::rest::{RequestOptions, RestClient};
 
 /// Throwaway token shared by every test client; only the project varies (so
 /// only the project — and thus the Basic-auth header — is per-test unique).
@@ -177,6 +177,23 @@ pub fn client() -> RestClient {
     // Use with_base_url so the http:// prefix and explicit host:port survive
     // the constructor's https:// resolution.
     RestClient::with_base_url(&project, REST_TOKEN, &h.url).expect("RestClient::with_base_url")
+}
+
+/// Like [`client`], but constructs the [`RestClient`] with a client-default
+/// [`RequestOptions`] (plan 4.2) — the request-options envelope (timeout /
+/// retries / backoff / abort) applied to every request. Scopes this test's
+/// thread to a fresh random project just like [`client`], so the shared mock's
+/// journal + scenarios stay per-test isolated.
+pub fn client_with_options(options: RequestOptions) -> RestClient {
+    let h = harness();
+    let project = format!("test_proj_{}", random_hex12());
+    let auth_header = format!("Basic {}", BASE64.encode(format!("{project}:{REST_TOKEN}")));
+    set_scope(Some(Scope {
+        project: project.clone(),
+        auth_header,
+    }));
+    RestClient::with_base_url_and_options(&project, REST_TOKEN, &h.url, Some(options))
+        .expect("RestClient::with_base_url_and_options")
 }
 
 /// 12 hex chars of process-and-thread-unique randomness for the per-test
@@ -318,6 +335,21 @@ pub fn scenario_set(endpoint_id: &str, status: u16, body: Value) {
     let _ = ureq::post(&url)
         .send_json(&payload)
         .unwrap_or_else(|e| panic!("mocktest: POST scenario: {e}"));
+}
+
+/// Like [`scenario_set`], but the armed override also carries a `delay_ms` so
+/// the mock sleeps before responding — used to drive the per-attempt timeout
+/// path. Scoped to THIS test's auth header exactly as [`scenario_set`].
+pub fn scenario_set_delayed(endpoint_id: &str, status: u16, body: Value, delay_ms: u64) {
+    let h = harness();
+    let q = current_scope().map_or_else(String::new, |s| {
+        format!("?session_id={}", urlencode(&s.auth_header))
+    });
+    let url = format!("{}/__mock__/scenarios/{endpoint_id}{q}", h.url);
+    let payload = serde_json::json!({"status": status, "response": body, "delay_ms": delay_ms});
+    let _ = ureq::post(&url)
+        .send_json(&payload)
+        .unwrap_or_else(|e| panic!("mocktest: POST scenario (delayed): {e}"));
 }
 
 /// Percent-encode a query value (the auth header carries `+` / `/` / `=` from

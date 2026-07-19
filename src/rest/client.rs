@@ -2,6 +2,7 @@ use std::env;
 
 use super::http_client::{HttpClient, UreqTransport};
 use super::namespaces::generated::client_tree_generated as tree;
+use super::request_options::RequestOptions;
 
 /// Top-level SignalWire REST client.
 ///
@@ -72,7 +73,41 @@ impl RestClient {
         if base_url.is_empty() {
             return Err("base_url is required".to_string());
         }
-        let http = HttpClient::new(project_id, token, base_url, Box::new(UreqTransport::new()));
+        Self::with_base_url_and_options(project_id, token, base_url, None)
+    }
+
+    /// Create a REST client with an explicit base URL AND a client-default
+    /// [`RequestOptions`] (plan 4.2) — the request-options envelope applied to
+    /// every request through this client (timeout / retries / backoff / abort
+    /// signal), shallow-overridden by any per-request override. Used by the
+    /// envelope-dump harness and by callers who want default retry/timeout
+    /// behavior pointed at a fixture.
+    ///
+    /// # Errors
+    /// Returns `Err(String)` if any required argument is empty: `project_id`,
+    /// `token`, or `base_url`. No network request is made here.
+    pub fn with_base_url_and_options(
+        project_id: &str,
+        token: &str,
+        base_url: &str,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Self, String> {
+        if project_id.is_empty() {
+            return Err("projectId is required".to_string());
+        }
+        if token.is_empty() {
+            return Err("token is required".to_string());
+        }
+        if base_url.is_empty() {
+            return Err("base_url is required".to_string());
+        }
+        let http = HttpClient::with_options(
+            project_id,
+            token,
+            base_url,
+            Box::new(UreqTransport::new()),
+            request_options,
+        );
         Ok(RestClient {
             project_id: project_id.to_string(),
             token: token.to_string(),

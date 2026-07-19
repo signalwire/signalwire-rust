@@ -8,9 +8,11 @@ pub mod generated_bases;
 pub mod http_client;
 pub mod namespaces;
 pub mod pagination;
+pub mod request_options;
 
 pub use client::RestClient;
 pub use crud_resource::CrudResource;
 pub use error::SignalWireRestError;
 pub use http_client::HttpClient;
 pub use pagination::PaginatedIterator;
+pub use request_options::{AbortSignal, EffectiveOptions, RequestOptions};

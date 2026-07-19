@@ -1,6 +1,6 @@
 {
   "version": "1",
-  "generated_from": "signalwire-rust @ 2234f945ba8f46ae068cb126906030724eadbb2d",
+  "generated_from": "signalwire-rust @ b23ce9c1dc29bcaccbd368fa21a5b0301750df34",
   "modules": {
     "signalwire": {
       "classes": {
@@ -1677,10 +1677,17 @@
         "HttpClient": [
           "__init__",
           "delete",
+          "delete_with_options",
           "get",
+          "get_with_options",
           "patch",
+          "patch_with_options",
           "post",
-          "put"
+          "post_with_options",
+          "put",
+          "put_with_options",
+          "request_options",
+          "with_options"
         ],
         "ReadResource": [
           "get",
@@ -1707,6 +1714,28 @@
         ]
       },
       "functions": []
+    },
+    "signalwire.rest._request_options": {
+      "classes": {
+        "EffectiveOptions": [
+          "backoff_delay",
+          "is_aborted"
+        ],
+        "RequestOptions": [
+          "__init__",
+          "abort_signal",
+          "merge",
+          "retries",
+          "retry_backoff",
+          "retry_on_status",
+          "timeout"
+        ]
+      },
+      "functions": [
+        "default_retry_on_status",
+        "resolve",
+        "status_is_retryable"
+      ]
     },
     "signalwire.rest.client": {
       "classes": {
@@ -1741,6 +1770,7 @@
           "verified_callers",
           "video",
           "with_base_url",
+          "with_base_url_and_options",
           "with_http"
         ]
       },

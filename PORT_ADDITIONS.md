@@ -1154,3 +1154,35 @@ signalwire.relay.event.CollectEvent.result: Rust accessor for the `result` objec
 signalwire.relay.event.CollectEvent.is_final: Rust accessor for the tri-state `final` flag (named `is_final` to avoid the Rust `final` reserved-word clash); Python `CollectEvent.final` dataclass field.
 signalwire.rest._base.SignalWireRestError.transport: rust-error-cause-wrap constructor (plan 1.3b) — Rust folds the reference's SignalWireRestTransportError subclass into the SAME SignalWireRestError struct via an is_transport() discriminator (status_code() 0 == the reference's status_code=None); this associated function is the port's spelling of SignalWireRestTransportError.__init__ (projected there via SURFACE_PROJECTIONS in enumerate_surface.py — see PORT_SIGNATURE_OMISSIONS.md for the extra `cause` arg). Rust-only associated-function name, no reference counterpart under this name.
 signalwire.rest._base.SignalWireRestError.is_transport: rust-idiom discriminator accessor (plan 1.3b) — reads whether this error is the transport-failure variant (status_code() 0, equivalent to the reference's SignalWireRestTransportError / status_code=None) vs an HTTP-status error. Python expresses the same distinction via isinstance(err, SignalWireRestTransportError); Rust folds both into one struct so needs an explicit reader. No reference counterpart under this name.
+
+### RequestOptions envelope (plan 4.2) — idiomatic Rust construction + resolved form
+
+The request-options envelope's VALUE type and its resolve/retry helpers line up
+1:1 with the Python reference (RequestOptions + its `merge`, `resolve`,
+`status_is_retryable` under signalwire.rest._request_options). The symbols below
+are the Rust-idiom construction surface + the resolved-form scaffold: Python
+builds RequestOptions from dataclass FIELDS (timeout / retries / retry_on_status /
+retry_backoff / abort_signal) and resolves into a private `_EffectiveOptions`;
+Rust exposes the same fields via chained builder setters and a public
+EffectiveOptions (there is no `private` cross-module visibility idiom that hides a
+resolved-form type the retry loop in another module must read). Same functional
+surface, Rust spelling.
+
+signalwire.rest._request_options.RequestOptions.__init__: Rust struct constructor (`RequestOptions::new()` → an all-unset options object); Python's dataclass provides the same zero-arg default construction. Enumerator emits it as `__init__`; the reference records only `merge` on the dataclass.
+signalwire.rest._request_options.RequestOptions.timeout: Rust builder setter for the `timeout` field (per-attempt wall-clock seconds); Python `RequestOptions.timeout` dataclass field. Rust idiom sets optional fields via chained setters.
+signalwire.rest._request_options.RequestOptions.retries: Rust builder setter for the `retries` field (retry count; total attempts = retries+1); Python `RequestOptions.retries` dataclass field.
+signalwire.rest._request_options.RequestOptions.retry_on_status: Rust builder setter for the `retry_on_status` field (the retryable-status set); Python `RequestOptions.retry_on_status` dataclass field.
+signalwire.rest._request_options.RequestOptions.retry_backoff: Rust builder setter for the `retry_backoff` field (base backoff seconds); Python `RequestOptions.retry_backoff` dataclass field.
+signalwire.rest._request_options.RequestOptions.abort_signal: Rust builder setter for the `abort_signal` field (the cooperative-cancellation Arc<AtomicBool>); Python `RequestOptions.abort_signal` dataclass field.
+signalwire.rest._request_options.EffectiveOptions: Rust resolved-form type — every RequestOptions field concretized (per-request over client-default over built-in). Python folds this into a PRIVATE `_EffectiveOptions`; Rust's retry loop lives in a different module (rest::http_client) than the type (rest::request_options), so the resolved form is public. Functional scaffold, not new capability.
+signalwire.rest._request_options.EffectiveOptions.is_aborted: reads whether the resolved abort_signal is currently set (checked before each attempt); Python inlines `opts.abort_signal.is_set()`. Rust accessor for the same check.
+signalwire.rest._request_options.EffectiveOptions.backoff_delay: computes the exponential backoff delay for an attempt (`retry_backoff * 2**(attempt-1)`); Python inlines the same expression in the retry loop. Rust helper for the same math.
+signalwire.rest._request_options.default_retry_on_status: returns the built-in retryable-status set {429,500,502,503,504}; Python expresses it as the module-level constant `_DEFAULT_RETRY_ON_STATUS`. Rust helper form of the same default (a Rust `const` cannot hold a BTreeSet, so it is a fn).
+signalwire.rest._base.HttpClient.request_options: reads the client-default RequestOptions stored on the HttpClient; Python reads the private `_request_options` attribute directly. Rust accessor for the same stored default.
+signalwire.rest._base.HttpClient.with_options: HttpClient constructor taking an explicit client-default RequestOptions; Python passes `request_options=` to `HttpClient.__init__`. Rust splits it into a named constructor (the base `new` has no options arg to preserve callers).
+signalwire.rest._base.HttpClient.get_with_options: `GET` with a per-request RequestOptions override (shallow-merged over the client default); Python's `HttpClient.get(..., request_options=)` is the same operation. Rust overloads via a distinct method name (no default/keyword args).
+signalwire.rest._base.HttpClient.post_with_options: `POST` with a per-request RequestOptions override; Python's `HttpClient.post(..., request_options=)`. Rust method-name overload.
+signalwire.rest._base.HttpClient.put_with_options: `PUT` with a per-request RequestOptions override; Python's `HttpClient.put(..., request_options=)`. Rust method-name overload.
+signalwire.rest._base.HttpClient.patch_with_options: `PATCH` with a per-request RequestOptions override; Python's `HttpClient.patch(..., request_options=)`. Rust method-name overload.
+signalwire.rest._base.HttpClient.delete_with_options: `DELETE` with a per-request RequestOptions override; Python's `HttpClient.delete(..., request_options=)`. Rust method-name overload.
+signalwire.rest.client.RestClient.with_base_url_and_options: RestClient constructor taking an explicit base URL AND a client-default RequestOptions; Python passes `request_options=` to `RestClient(...)`. Rust splits it into a named constructor (the base `with_base_url` has no options arg to preserve callers).

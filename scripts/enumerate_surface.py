@@ -101,6 +101,14 @@ CLASS_MODULE_MAP: dict[str, str] = {
     "HttpClient": "signalwire.rest._base",
     "SignalWireRestError": "signalwire.rest._base",
 
+    # RequestOptions envelope (plan 4.2): Rust hosts the value type + resolved
+    # form at src/rest/request_options.rs; Python's canonical module is
+    # signalwire.rest._request_options. RequestOptions + its `merge` line up 1:1
+    # with the reference; EffectiveOptions is the Rust resolved-form scaffold
+    # (a PORT_ADDITION — Python folds it into a private _EffectiveOptions).
+    "RequestOptions": "signalwire.rest._request_options",
+    "EffectiveOptions": "signalwire.rest._request_options",
+
     # pom — Rust's `signalwire::pom::pom` projects to Python's
     # canonical `signalwire.pom.pom` module (matches the Python
     # source layout signalwire-python/signalwire/signalwire/pom/pom.py).
@@ -278,6 +286,13 @@ FREE_FN_MODULE_RENAMES: dict[str, str] = {
     # for the same inference (mirrored in enumerate_signatures.py via the shared
     # import of this table).
     "signalwire.agent.type_inference": "signalwire.core.agent.tools.type_inference",
+    # RequestOptions envelope free fns (resolve / status_is_retryable /
+    # default_retry_on_status): Rust groups them under
+    # signalwire::rest::request_options; Python's canonical module is
+    # signalwire.rest._request_options (resolve + status_is_retryable match 1:1;
+    # default_retry_on_status is the Rust helper form of Python's module-level
+    # _DEFAULT_RETRY_ON_STATUS constant — a PORT_ADDITION).
+    "signalwire.rest.request_options": "signalwire.rest._request_options",
 }
 
 # ---------------------------------------------------------------------------
