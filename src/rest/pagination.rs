@@ -37,6 +37,11 @@ pub struct PaginatedIterator<'a> {
     pending_path: Option<String>,
     /// Next params to send on the upcoming page request, when set.
     pending_params: Option<HashMap<String, String>>,
+
+    /// Cycle guard: the set of `links.next` URLs already followed. A broken
+    /// cursor that keeps handing back the same `next` would loop forever;
+    /// re-seeing a URL terminates iteration.
+    seen_next: std::collections::HashSet<String>,
 }
 
 impl<'a> PaginatedIterator<'a> {
@@ -61,6 +66,7 @@ impl<'a> PaginatedIterator<'a> {
             done: false,
             pending_path: None,
             pending_params: None,
+            seen_next: std::collections::HashSet::new(),
         }
     }
 
@@ -103,18 +109,26 @@ impl<'a> PaginatedIterator<'a> {
     /// never errors. Paging follows the response's `links.next` cursor; an
     /// unreachable next-page URL surfaces as the request error for that page.
     pub fn next_item(&mut self) -> Result<Option<Value>, SignalWireRestError> {
-        // Buffered item available?
-        if self.index < self.items.len() {
-            let item = self.items[self.index].clone();
-            self.index += 1;
-            return Ok(Some(item));
+        // Keep fetching pages until a buffered item is available or the cursor
+        // is exhausted. A page can legitimately return zero items while still
+        // carrying a `links.next` (more pages exist) — mirror python's
+        // `while self._index >= len(self._items): self._fetch_next()` and drive
+        // termination ONLY off the absence of a next link, never off an empty
+        // `data` array (the empty-page-with-next ripple).
+        while self.index >= self.items.len() {
+            if self.done {
+                return Ok(None);
+            }
+            self.fetch_next()?;
         }
 
-        if self.done {
-            return Ok(None);
-        }
+        let item = self.items[self.index].clone();
+        self.index += 1;
+        Ok(Some(item))
+    }
 
-        // Fetch next page.
+    /// Fetch one page: replace the item buffer and resolve the next cursor.
+    fn fetch_next(&mut self) -> Result<(), SignalWireRestError> {
         let (path, params) = self.next_request();
         let response = self.http.get(&path, &params)?;
 
@@ -133,7 +147,8 @@ impl<'a> PaginatedIterator<'a> {
             .map(str::to_string);
 
         match next_url {
-            Some(url) if !url.is_empty() => {
+            // Cycle guard: a repeating cursor terminates instead of looping.
+            Some(url) if !url.is_empty() && self.seen_next.insert(url.clone()) => {
                 let (next_path, next_params) = parse_next_url(&url, self.http.base_url());
                 self.pending_path = Some(next_path);
                 self.pending_params = Some(next_params);
@@ -144,15 +159,7 @@ impl<'a> PaginatedIterator<'a> {
                 self.pending_params = None;
             }
         }
-
-        if self.index < self.items.len() {
-            let item = self.items[self.index].clone();
-            self.index += 1;
-            Ok(Some(item))
-        } else {
-            // Empty page on a terminal response.
-            Ok(None)
-        }
+        Ok(())
     }
 
     fn next_request(&self) -> (String, HashMap<String, String>) {
@@ -203,29 +210,108 @@ fn parse_next_url(url: &str, base_url: &str) -> (String, HashMap<String, String>
     }
 }
 
+/// Parse a query string into (key, value) params, percent-DECODING keys and
+/// values exactly ONCE — mirroring python's `urllib.parse.parse_qs` in
+/// `_pagination.py`. A `links.next` cursor arrives percent-encoded on the wire,
+/// is decoded once here, and is re-encoded exactly once by the HTTP client when
+/// the next page is fetched (net identity). Storing the raw still-encoded value
+/// would double-encode it (`%2F` → `%252F`) and corrupt the cursor.
 fn parse_query_string(qs: &str) -> HashMap<String, String> {
-    let mut out = HashMap::new();
-    for pair in qs.split('&') {
-        if pair.is_empty() {
-            continue;
-        }
-        let mut it = pair.splitn(2, '=');
-        let k = it.next().unwrap_or("");
-        let v = it.next().unwrap_or("");
-        if !k.is_empty() {
-            out.insert(k.to_string(), v.to_string());
-        }
-    }
-    out
+    url::form_urlencoded::parse(qs.as_bytes())
+        .filter(|(k, _)| !k.is_empty())
+        .map(|(k, v)| (k.into_owned(), v.into_owned()))
+        .collect()
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::rest::http_client::StubTransport;
+    use crate::rest::http_client::{SequencedTransport, StubTransport};
 
     fn make() -> (HttpClient, std::sync::Arc<StubTransport>) {
         HttpClient::with_stub("proj", "tok", "https://test.signalwire.com")
+    }
+
+    /// Build an `HttpClient` backed by a `SequencedTransport` yielding the given
+    /// pages in order, plus the shared handle for inspecting request URLs.
+    fn make_sequenced(
+        pages: Vec<(u16, String)>,
+    ) -> (HttpClient, std::sync::Arc<SequencedTransport>) {
+        let seq = std::sync::Arc::new(SequencedTransport::new(pages));
+        let client = HttpClient::new(
+            "proj",
+            "tok",
+            "https://test.signalwire.com",
+            Box::new(SequencedTransport::wrapper(seq.clone())),
+        );
+        (client, seq)
+    }
+
+    /// An empty page carrying a `links.next` must NOT terminate the iterator —
+    /// it must fetch the following page. Regression for the empty-page-with-next
+    /// ripple (`_pagination.py:65-71`).
+    #[test]
+    fn test_empty_page_with_next_is_not_terminal() {
+        let page1 = (
+            200,
+            r#"{"data":[],"links":{"next":"/api/items?page=2"}}"#.to_string(),
+        );
+        let page2 = (
+            200,
+            r#"{"data":[{"id":9}],"links":{"next":""}}"#.to_string(),
+        );
+        let (client, seq) = make_sequenced(vec![page1, page2]);
+        let mut params = HashMap::new();
+        params.insert("page".to_string(), "1".to_string());
+        let it = PaginatedIterator::new(&client, "/api/items", params, "data");
+        let collected: Vec<Value> = it.map(Result::unwrap).collect();
+        assert_eq!(collected.len(), 1, "must page past the empty page");
+        assert_eq!(collected[0]["id"], 9);
+        assert_eq!(seq.requests.lock().unwrap().len(), 2);
+    }
+
+    /// A percent-encoded cursor in `links.next` must be forwarded encoded
+    /// exactly once on the next request (decode-once + encode-once = identity),
+    /// not double-encoded.
+    #[test]
+    fn test_cursor_encoded_value_round_trips_once() {
+        let page1 = (
+            200,
+            r#"{"data":[{"id":1}],"links":{"next":"/api/items?cursor=a%2Fb%2Bc%3Dd"}}"#.to_string(),
+        );
+        let page2 = (
+            200,
+            r#"{"data":[{"id":2}],"links":{"next":""}}"#.to_string(),
+        );
+        let (client, seq) = make_sequenced(vec![page1, page2]);
+        let it = PaginatedIterator::new(&client, "/api/items", HashMap::new(), "data");
+        let collected: Vec<Value> = it.map(Result::unwrap).collect();
+        assert_eq!(collected.len(), 2);
+
+        let reqs = seq.requests.lock().unwrap();
+        let (_m, url2, _b) = &reqs[1];
+        assert!(
+            !url2.contains("%252F") && !url2.contains("%253D") && !url2.contains("%252B"),
+            "cursor double-encoded on next page request: {url2}"
+        );
+    }
+
+    /// A cursor that keeps handing back the same `links.next` must terminate.
+    #[test]
+    fn test_repeating_next_terminates() {
+        let looping = (
+            200,
+            r#"{"data":[{"id":1}],"links":{"next":"/api/items?cursor=STUCK"}}"#.to_string(),
+        );
+        let (client, seq) = make_sequenced(vec![looping]);
+        let it = PaginatedIterator::new(&client, "/api/items", HashMap::new(), "data");
+        let collected: Vec<Value> = it.map(Result::unwrap).collect();
+        assert!(
+            collected.len() <= 2,
+            "cycle guard must stop a repeating cursor, got {}",
+            collected.len()
+        );
+        assert!(seq.requests.lock().unwrap().len() <= 2);
     }
 
     #[test]

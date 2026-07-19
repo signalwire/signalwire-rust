@@ -500,6 +500,10 @@ impl HttpClient {
         let mut all_pages = Vec::new();
         let mut current_path = path.to_string();
         let mut current_params = params.clone();
+        // Cycle guard: a broken cursor that keeps handing back the SAME
+        // `links.next` would loop forever. Track the next-URLs we have already
+        // followed and stop the first time one repeats.
+        let mut seen_next: std::collections::HashSet<String> = std::collections::HashSet::new();
 
         loop {
             let response = self.get(&current_path, &current_params)?;
@@ -521,6 +525,11 @@ impl HttpClient {
 
             match next_url {
                 Some(url) if !url.is_empty() => {
+                    if !seen_next.insert(url.to_string()) {
+                        // Already followed this exact cursor — the server is
+                        // looping; stop rather than spin forever.
+                        break;
+                    }
                     // Parse next URL
                     if url.starts_with("http") {
                         // Absolute URL -- extract path + query
@@ -782,16 +791,19 @@ impl HttpTransport for SequencedTransportWrapper {
     }
 }
 
-/// Parse a query string into a `HashMap`.
+/// Parse a query string into a `HashMap`, percent-DECODING keys and values
+/// exactly ONCE.
+///
+/// This mirrors python's `urllib.parse.parse_qs` in `_pagination.py`: a
+/// `links.next` cursor arrives percent-encoded on the wire, is decoded once
+/// here into its raw value, and is re-encoded exactly once by [`request`] when
+/// the next page is fetched — a net-identity round trip. Storing the raw
+/// (still-encoded) value instead would double-encode it (`%2F` → `%252F`) and
+/// corrupt the cursor, dropping every subsequent page.
 fn parse_query_string(qs: &str) -> HashMap<String, String> {
-    let mut map = HashMap::new();
-    for pair in qs.split('&') {
-        let mut kv = pair.splitn(2, '=');
-        if let (Some(k), Some(v)) = (kv.next(), kv.next()) {
-            map.insert(k.to_string(), v.to_string());
-        }
-    }
-    map
+    url::form_urlencoded::parse(qs.as_bytes())
+        .map(|(k, v)| (k.into_owned(), v.into_owned()))
+        .collect()
 }
 
 // ------------------------------------------------------------------
@@ -940,12 +952,129 @@ mod tests {
         assert_eq!(items.len(), 1);
     }
 
+    /// Build an `HttpClient` backed by a `SequencedTransport` returning the
+    /// given `(status, body)` pages in order. Returns the client and the shared
+    /// transport handle so tests can inspect the recorded request URLs.
+    fn make_sequenced_client(
+        pages: Vec<(u16, String)>,
+    ) -> (HttpClient, std::sync::Arc<SequencedTransport>) {
+        let seq = std::sync::Arc::new(SequencedTransport::new(pages));
+        let client = HttpClient::new(
+            "proj-1",
+            "tok-1",
+            "https://test.signalwire.com",
+            Box::new(SequencedTransport::wrapper(seq.clone())),
+        );
+        (client, seq)
+    }
+
+    /// A `links.next` cursor whose value is already percent-encoded on the wire
+    /// (e.g. an opaque cursor containing `/`, `+`, `=`) must be forwarded on the
+    /// next page request encoded EXACTLY ONCE — the value the server issued. The
+    /// bug: `parse_query_string` stored the raw (still-encoded) value and
+    /// `request()` percent-encoded it AGAIN, double-encoding `%2F` into `%252F`.
+    /// Python decodes once (`parse_qs`) then encodes once (`urlencode`) — net
+    /// identity. This pins that identity for rust's eager `list_all`.
+    #[test]
+    fn test_list_all_cursor_encoded_value_round_trips_once() {
+        // Page 1 hands back an opaque cursor `a/b+c=d` percent-encoded on the wire.
+        let page1 = (
+            200,
+            r#"{"data":[{"id":1}],"links":{"next":"/api/items?cursor=a%2Fb%2Bc%3Dd"}}"#.to_string(),
+        );
+        let page2 = (
+            200,
+            r#"{"data":[{"id":2}],"links":{"next":""}}"#.to_string(),
+        );
+        let (client, seq) = make_sequenced_client(vec![page1, page2]);
+
+        let items = client.list_all("/api/items", &HashMap::new()).unwrap();
+        assert_eq!(items.len(), 2);
+
+        let reqs = seq.requests.lock().unwrap();
+        assert_eq!(reqs.len(), 2, "exactly two page requests");
+        let (_m, url2, _b) = &reqs[1];
+        let query2 = url2.split_once('?').expect("page-2 query present").1;
+        // The server issued `cursor=a%2Fb%2Bc%3Dd` (value `a/b+c=d`). We must
+        // reproduce that exact encoding, NOT double-encode it to `a%252Fb...`.
+        assert!(
+            !query2.contains("%252F") && !query2.contains("%253D") && !query2.contains("%252B"),
+            "cursor value was double-encoded on the next request: {url2}"
+        );
+        // Decoding the round-tripped cursor must yield the original `a/b+c=d`.
+        let params = parse_query_string(query2);
+        assert_eq!(
+            params.get("cursor").map(String::as_str),
+            Some("a/b+c=d"),
+            "round-tripped cursor value must decode back to the server's value: {url2}"
+        );
+    }
+
+    /// `list_all` must keep paging while a `links.next` exists even when a page
+    /// returns zero items — the empty-page-with-next ripple (mirror of python's
+    /// `_pagination.py` fix: termination is driven ONLY by absence of `next`).
+    #[test]
+    fn test_list_all_empty_page_with_next_continues() {
+        let page1 = (
+            200,
+            r#"{"data":[],"links":{"next":"/api/items?page=2"}}"#.to_string(),
+        );
+        let page2 = (
+            200,
+            r#"{"data":[{"id":7}],"links":{"next":""}}"#.to_string(),
+        );
+        let (client, seq) = make_sequenced_client(vec![page1, page2]);
+
+        let items = client.list_all("/api/items", &HashMap::new()).unwrap();
+        assert_eq!(items.len(), 1, "must fetch page 2 despite empty page 1");
+        assert_eq!(items[0]["id"], 7);
+        assert_eq!(seq.requests.lock().unwrap().len(), 2);
+    }
+
+    /// A server that keeps returning the SAME `links.next` (a broken/looping
+    /// cursor) must terminate, not spin forever. `list_all` carries a cycle
+    /// guard keyed on the (path, params) it is about to fetch.
+    #[test]
+    fn test_list_all_repeating_next_terminates() {
+        // Every page hands back the identical next cursor — an infinite loop
+        // without a guard. The SequencedTransport repeats its last response
+        // once the queue drains, so this would never stop.
+        let looping = (
+            200,
+            r#"{"data":[{"id":1}],"links":{"next":"/api/items?cursor=STUCK"}}"#.to_string(),
+        );
+        let (client, seq) = make_sequenced_client(vec![looping]);
+
+        let items = client.list_all("/api/items", &HashMap::new()).unwrap();
+        // The guard stops after re-seeing the same cursor; we must not hang and
+        // must not accumulate unboundedly.
+        assert!(
+            items.len() <= 2,
+            "cycle guard must stop a repeating cursor, got {} items",
+            items.len()
+        );
+        assert!(
+            seq.requests.lock().unwrap().len() <= 2,
+            "cycle guard must bound the number of page requests"
+        );
+    }
+
     #[test]
     fn test_parse_query_string() {
         let qs = "page=2&limit=10";
         let parsed = parse_query_string(qs);
         assert_eq!(parsed["page"], "2");
         assert_eq!(parsed["limit"], "10");
+    }
+
+    /// `parse_query_string` percent-DECODES values once (mirroring python's
+    /// `parse_qs`), so a cursor stored from a `links.next` URL is the decoded
+    /// value; the single re-encode in `request()` reproduces the wire form.
+    #[test]
+    fn test_parse_query_string_decodes_once() {
+        let parsed = parse_query_string("cursor=a%2Fb%2Bc%3Dd&x=%20");
+        assert_eq!(parsed["cursor"], "a/b+c=d");
+        assert_eq!(parsed["x"], " ");
     }
 
     #[test]
