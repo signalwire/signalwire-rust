@@ -1211,6 +1211,19 @@ impl Service {
         std::process::exit(0);
     }
 
+    /// Introspect path: when invoked with `SWML_DUMP=1`, render the SWML
+    /// document as JSON to stdout (between sentinel markers so the swaig-test
+    /// CLI can extract it past any user log noise) and exit. This is how the
+    /// CLI's `--example <NAME> --dump-swml` renders a compiled `SWMLService`
+    /// example's SWML without standing up an HTTP server — the compiled-port
+    /// analogue of python's `swaig-test --dump-swml`.
+    fn print_swml_and_exit(&self) -> ! {
+        println!("__SWML_DUMP_BEGIN__");
+        println!("{}", self.render_pretty());
+        println!("__SWML_DUMP_END__");
+        std::process::exit(0);
+    }
+
     /// # Panics
     ///
     /// Panics if the configured `host:port` cannot be bound (e.g. the port
@@ -1218,6 +1231,9 @@ impl Service {
     pub fn run(&self) {
         if std::env::var("SWAIG_LIST_TOOLS").is_ok() {
             self.print_tool_registry_and_exit();
+        }
+        if std::env::var("SWML_DUMP").is_ok() {
+            self.print_swml_and_exit();
         }
         let addr = format!("{}:{}", self.host, self.port);
         // HTTP, or HTTPS when SWML_SSL_ENABLED + SWML_SSL_CERT_PATH/KEY_PATH are

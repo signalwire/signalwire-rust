@@ -307,6 +307,17 @@ cargo build --quiet \
     --example wire_dump --example swml_dump --example state_dump \
     --example http_dump --example wire_relay_dump 2>/dev/null || true
 
+# WAIT-LIVENESS PREBUILD (plan §2.9) — the liveness differ starts a wall-clock
+# deadline (~40s) the moment it launches its dump-cmd and measures how long
+# `Action::wait()` blocks. If the FIRST `cargo run --example wait_liveness_dump`
+# had to COMPILE the example (cold target), that build time was charged against
+# the liveness deadline and the rust nightly went RED 07-17/18. Build the example
+# HERE (outside any gate's clock) so the gate's `cargo run --quiet` is a near-
+# instant exec and the measurement excludes build time. Same rationale as the
+# BEHAVIORAL-* dump prebuild above. envelope-dump prebuilt for the same reason
+# (ENVELOPE gate runs a dump-cmd).
+cargo build --quiet --example wait_liveness_dump --bin envelope-dump 2>/dev/null || true
+
 sched_gate BEHAVIORAL-WIRE desc="diff_port_wire vs python oracle (Layer D)" \
     -- python3 "$PORTING_SDK_DIR/scripts/diff_port_wire.py" \
         --port rust \
