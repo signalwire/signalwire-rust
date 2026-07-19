@@ -396,6 +396,17 @@ sched_gate META-CONSISTENT tier=nightly res=dayone desc="package metadata consis
 sched_gate ARTIFACT-DENY res=dayone desc="no porting artifacts in the PUBLISHED package (authoritative listing)" \
     --fn dayone_artifact_deny
 
+# WIRED-MODES (plan §1.6 / D7) — merge-coherence guard. WIRED_MODES.md declares the
+# load-bearing ENV/MODE lines this run-ci MUST keep (MOCK_RELAY_STRICT / REST strict
+# default / assert_no_wire_violations). The check greps run-ci for each and fails
+# loud if a merge silently drops one — the guard the strict-mocks × Part-5 merge race
+# proved we need (a dropped strict export makes a gate green-and-vacuous).
+# GATE-INVENTORY NOTE (§2.16): this gate has no per-port allowlist; the manifest IS
+# the checked-in declaration. A retired mode requires editing WIRED_MODES.md in the
+# same change with a reason. Self-tested: removing any declared line reds it (D6).
+sched_gate WIRED-MODES res=dayone desc="load-bearing run-ci modes declared in WIRED_MODES.md are all present (merge-coherence guard)" \
+    -- python3 "$PORTING_SDK_DIR/scripts/check_wired_modes.py" --port rust --repo .
+
 # ---- expansion gates (backlog burned to zero; now enforcing) -----------------
 sched_gate GEN-TYPE-DEGENERACY desc="generated typed I/O is not degenerate (modulo GEN_TYPE_DEGENERACY_ALLOW.md)" \
     -- python3 "$PORTING_SDK_DIR/scripts/gen_type_degeneracy.py" --port rust --repo .
