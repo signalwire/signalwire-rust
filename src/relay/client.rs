@@ -719,7 +719,11 @@ impl Client {
     /// panicked while holding the lock). This does not occur under
     /// normal operation.
     pub fn send(&self, msg: &Value) {
-        self.logger.debug(&format!(">> {msg}"));
+        // SECRET-SCRUB: never log the raw frame — it carries project/token/
+        // jwt_token/authorization_state on the connect + re-auth frames. Route
+        // through scrub_frame_value so the wire shape is visible but the
+        // credential VALUES are masked (mirrors python's `>> {_scrub_frame(...)}`).
+        self.logger.debug(&format!(">> {}", scrub_frame_value(msg)));
         {
             // Bounded ring: retain only the most recent SENT_LOG_CAP frames so a
             // long-running session cannot grow this inspection log without limit.
@@ -758,7 +762,12 @@ impl Client {
     /// panicked while holding the lock). This does not occur under
     /// normal operation.
     pub fn handle_message(self: &Arc<Self>, raw: &str) {
-        self.logger.debug(&format!("<< {raw}"));
+        // SECRET-SCRUB: never log the raw inbound frame — a re-auth
+        // (`signalwire.authorization.state`) frame carries the authorization_state
+        // blob, and a connect echo could carry credentials. Route through
+        // scrub_frame_raw so the values are masked (mirrors python's
+        // `<< {_scrub_frame(raw)}`).
+        self.logger.debug(&format!("<< {}", scrub_frame_raw(raw)));
 
         let data: Value = if let Ok(d) = serde_json::from_str(raw) {
             d
@@ -1567,6 +1576,60 @@ impl Client {
     }
 }
 
+/// Credential / re-auth keys whose VALUES must never reach a log or error
+/// string (enterprise SECRET-SCRUB, `r5/deep_enterprise.md` F3.1/F3.2). Mirrors
+/// the python reference's `_scrub_frame` masked-key set.
+const SENSITIVE_KEYS: [&str; 4] = ["project", "token", "jwt_token", "authorization_state"];
+
+/// The mask substituted for a scrubbed credential value.
+const SCRUB_MASK: &str = "***";
+
+/// Recursively mask the VALUES of any [`SENSITIVE_KEYS`] anywhere in `value`,
+/// leaving structure and non-sensitive fields intact. Used so a debug frame log
+/// can show the wire shape without ever printing a live project id / token /
+/// jwt / re-auth blob.
+fn scrub_value(value: &mut Value) {
+    match value {
+        Value::Object(map) => {
+            for (k, v) in map.iter_mut() {
+                if SENSITIVE_KEYS.contains(&k.as_str()) {
+                    *v = Value::String(SCRUB_MASK.to_string());
+                } else {
+                    scrub_value(v);
+                }
+            }
+        }
+        Value::Array(items) => {
+            for item in items.iter_mut() {
+                scrub_value(item);
+            }
+        }
+        _ => {}
+    }
+}
+
+/// Return a display string for a relay frame (`&Value`) with every credential /
+/// re-auth VALUE masked. The clean, log-safe rendering of an outbound frame.
+fn scrub_frame_value(msg: &Value) -> String {
+    let mut clone = msg.clone();
+    scrub_value(&mut clone);
+    clone.to_string()
+}
+
+/// Return a display string for a raw inbound frame string with every credential
+/// / re-auth VALUE masked. Parses `raw` as JSON and scrubs it; if it does not
+/// parse, returns a redacted placeholder rather than echoing the raw bytes (an
+/// unparseable frame could still carry secrets).
+fn scrub_frame_raw(raw: &str) -> String {
+    match serde_json::from_str::<Value>(raw) {
+        Ok(mut v) => {
+            scrub_value(&mut v);
+            v.to_string()
+        }
+        Err(_) => "<unparseable frame redacted>".to_string(),
+    }
+}
+
 /// Generate a simple UUID v4.
 fn generate_uuid() -> String {
     use rand::RngExt;
@@ -1600,6 +1663,45 @@ mod tests {
 
     fn make_client() -> Client {
         Client::new("test-project", "test-token", "test.signalwire.com")
+    }
+
+    // -- SECRET-SCRUB (RUST-6) --
+
+    #[test]
+    fn test_scrub_frame_value_masks_connect_credentials() {
+        let frame = json!({
+            "jsonrpc": "2.0",
+            "method": "signalwire.connect",
+            "params": {
+                "project": "PJ-LIVE-SECRET",
+                "token": "PT-LIVE-SECRET",
+                "authentication": { "project": "PJ-LIVE-SECRET", "token": "PT-LIVE-SECRET" },
+                "agent": "signalwire-agents-rust/1.0",
+            }
+        });
+        let out = scrub_frame_value(&frame);
+        assert!(!out.contains("PJ-LIVE-SECRET"), "project leaked: {out}");
+        assert!(!out.contains("PT-LIVE-SECRET"), "token leaked: {out}");
+        // Structure/shape survives: method name + masked keys still present.
+        assert!(out.contains("signalwire.connect"));
+        assert!(out.contains("***"));
+    }
+
+    #[test]
+    fn test_scrub_frame_raw_masks_authorization_state() {
+        let raw = r#"{"method":"signalwire.event","params":{"event_type":"signalwire.authorization.state","params":{"authorization_state":"AENC-LIVE-BLOB","jwt_token":"JWT-LIVE"}}}"#;
+        let out = scrub_frame_raw(raw);
+        assert!(!out.contains("AENC-LIVE-BLOB"), "auth_state leaked: {out}");
+        assert!(!out.contains("JWT-LIVE"), "jwt leaked: {out}");
+        assert!(out.contains("signalwire.authorization.state"));
+    }
+
+    #[test]
+    fn test_scrub_frame_raw_redacts_unparseable() {
+        // A non-JSON frame must not be echoed verbatim (could still carry secrets).
+        let out = scrub_frame_raw("token=PT-LIVE-SECRET not-json");
+        assert!(!out.contains("PT-LIVE-SECRET"));
+        assert!(out.contains("redacted"));
     }
 
     #[test]

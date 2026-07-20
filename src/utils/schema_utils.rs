@@ -19,8 +19,22 @@ use std::env;
 use std::fmt::Write as _;
 use std::fs;
 use std::path::Path;
+use std::sync::LazyLock;
 
 use serde_json::{Map, Value};
+
+/// The embedded SWML JSON Schema (~495 KB), parsed exactly ONCE for the whole
+/// process. Previously `load_schema()` re-ran `serde_json::from_str` over the
+/// full embedded blob on EVERY `SchemaUtils::new`, and `SWMLService::add_verb`
+/// builds a fresh `SchemaUtils` per call — so a document with N verbs paid the
+/// full-schema parse N times (r5/deep_perf_baseline: ~24 ms/doc, dominated by
+/// this re-parse; the comment claiming a cache was aspirational). This
+/// `LazyLock` is the real cache: the default-path `load_schema()` clones the
+/// pre-parsed value instead of re-parsing, so `add_verb` never re-parses.
+static DEFAULT_SCHEMA: LazyLock<Value> = LazyLock::new(|| {
+    let raw = include_str!("../swml/schema.json");
+    serde_json::from_str(raw).unwrap_or(Value::Null)
+});
 
 /// `SchemaValidationError` — Rust port of
 /// `signalwire.utils.schema_utils.SchemaValidationError`.
@@ -101,9 +115,10 @@ impl SchemaUtils {
         if let Some(path) = &self.schema_path {
             return load_from_path(path);
         }
-        // Default: embed schema.json bundled with the crate.
-        let raw = include_str!("../swml/schema.json");
-        serde_json::from_str(raw).unwrap_or(Value::Null)
+        // Default: the embedded schema.json, parsed ONCE and cached in
+        // DEFAULT_SCHEMA. Clone the pre-parsed value instead of re-parsing the
+        // ~495 KB blob on every construction (the per-`add_verb` hot path).
+        DEFAULT_SCHEMA.clone()
     }
 
     /// Sorted list of all known verb names.  Mirrors Python's
@@ -459,6 +474,21 @@ mod tests {
         let body = su.generate_method_body("answer");
         assert!(body.contains("self.add_verb('answer'"));
         assert!(body.contains("config = {}"));
+    }
+
+    /// The LazyLock-cached default schema must be identical to a fresh parse of
+    /// the embedded blob (the cache changes NOTHING about the loaded content),
+    /// and repeated construction must keep returning the full verb set (proving
+    /// the cache is reused, not exhausted).
+    #[test]
+    fn cached_default_schema_matches_fresh_parse() {
+        let fresh_parse: Value = serde_json::from_str(include_str!("../swml/schema.json")).unwrap();
+        let su = SchemaUtils::new(None, true);
+        assert_eq!(su.load_schema(), fresh_parse);
+        // Construct again — the cached schema still yields the same verbs.
+        let su2 = SchemaUtils::new(None, true);
+        assert_eq!(su.get_all_verb_names(), su2.get_all_verb_names());
+        assert!(su2.get_all_verb_names().contains(&"ai".to_string()));
     }
 
     #[test]
