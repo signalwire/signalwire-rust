@@ -143,14 +143,18 @@ mod tls {
     }
 }
 
-/// Callback type for inbound call handler.
-pub type OnCallHandler = Box<dyn Fn(Arc<Call>, &Event) + Send + Sync>;
+/// Callback type for inbound call handler. Stored as `Arc` (not `Box`) so the
+/// reader thread can clone it and run it on a dedicated dispatcher thread —
+/// the handler must NOT run inline on the reader thread, or a verb it sends
+/// (answer/play) can never flush and an `Action::wait` inside it deadlocks the
+/// whole client (the reader is the only writer + reader).
+pub type OnCallHandler = Arc<dyn Fn(Arc<Call>, &Event) + Send + Sync>;
 
 /// Callback type for inbound message handler.
-pub type OnMessageHandler = Box<dyn Fn(&Event, &Value) + Send + Sync>;
+pub type OnMessageHandler = Arc<dyn Fn(&Event, &Value) + Send + Sync>;
 
 /// Callback type for generic events.
-pub type OnEventHandler = Box<dyn Fn(&Event, &Value) + Send + Sync>;
+pub type OnEventHandler = Arc<dyn Fn(&Event, &Value) + Send + Sync>;
 
 /// Resolve callback for a pending RPC request.
 type ResolveCallback = Box<dyn FnOnce(Value) + Send>;
@@ -223,6 +227,13 @@ pub struct Client {
     /// `disconnect()` / drop.
     reader_thread: Mutex<Option<thread::JoinHandle<()>>>,
 
+    /// Join handles for the per-inbound-call handler-dispatcher threads. An
+    /// `on_call` handler runs on its own thread (NOT the reader thread) so it can
+    /// send verbs and `Action::wait` without deadlocking the client (RUST-2 /
+    /// NB-1). Finished handles are reaped opportunistically; `disconnect()`
+    /// joins any that remain so no dispatcher thread leaks.
+    handler_threads: Mutex<Vec<thread::JoinHandle<()>>>,
+
     /// Reader thread observes this to know when to exit.
     closing: Arc<AtomicBool>,
 
@@ -261,6 +272,7 @@ impl Client {
             running: Mutex::new(false),
             write_tx: Mutex::new(None),
             reader_thread: Mutex::new(None),
+            handler_threads: Mutex::new(Vec::new()),
             closing: Arc::new(AtomicBool::new(false)),
             sent_messages: Mutex::new(Vec::new()),
             logger: Logger::new("relay.client"),
@@ -584,6 +596,20 @@ impl Client {
         if let Some(handle) = self.reader_thread.lock().unwrap().take() {
             let _ = handle.join();
         }
+
+        // Unblock any on_call-handler thread that is parked in `Action::wait`:
+        // the reader is gone, so no completion event can arrive — resolve every
+        // in-flight action on every tracked call so a waiting handler returns
+        // instead of hanging. Then join the dispatcher threads so none leak.
+        let calls: Vec<Arc<Call>> = self.calls.lock().unwrap().values().cloned().collect();
+        for call in calls {
+            call.resolve_all_actions();
+        }
+        let handlers: Vec<thread::JoinHandle<()>> =
+            self.handler_threads.lock().unwrap().drain(..).collect();
+        for h in handlers {
+            let _ = h.join();
+        }
     }
 
     /// Reconnect with exponential back-off (1s → 30s cap). Sleeps for
@@ -852,7 +878,10 @@ impl Client {
 
         // ── inbound message ──────────────────────────────────────────
         if event_type == "messaging.receive" {
-            if let Some(handler) = self.on_message_handler.lock().unwrap().as_ref() {
+            // Clone the handler out and drop the guard before invoking it
+            // (DX-5: don't hold the registration mutex across the callback).
+            let handler = self.on_message_handler.lock().unwrap().clone();
+            if let Some(handler) = handler {
                 handler(&event, &params);
             }
             return;
@@ -908,8 +937,10 @@ impl Client {
             }
         }
 
-        // Fire generic event handler if nothing else matched.
-        if let Some(handler) = self.on_event_handler.lock().unwrap().as_ref() {
+        // Fire generic event handler if nothing else matched. Clone out and
+        // drop the guard before invoking (DX-5: don't hold the mutex across it).
+        let handler = self.on_event_handler.lock().unwrap().clone();
+        if let Some(handler) = handler {
             handler(&event, outer_params);
         }
     }
@@ -962,7 +993,7 @@ impl Client {
     /// panicked while holding the lock). This does not occur under
     /// normal operation.
     pub fn on_call<F: Fn(Arc<Call>, &Event) + Send + Sync + 'static>(&self, cb: F) {
-        *self.on_call_handler.lock().unwrap() = Some(Box::new(cb));
+        *self.on_call_handler.lock().unwrap() = Some(Arc::new(cb));
     }
 
     /// Register a handler for inbound messages.
@@ -973,7 +1004,7 @@ impl Client {
     /// panicked while holding the lock). This does not occur under
     /// normal operation.
     pub fn on_message<F: Fn(&Event, &Value) + Send + Sync + 'static>(&self, cb: F) {
-        *self.on_message_handler.lock().unwrap() = Some(Box::new(cb));
+        *self.on_message_handler.lock().unwrap() = Some(Arc::new(cb));
     }
 
     /// Register a generic event handler.
@@ -984,7 +1015,7 @@ impl Client {
     /// panicked while holding the lock). This does not occur under
     /// normal operation.
     pub fn on_event<F: Fn(&Event, &Value) + Send + Sync + 'static>(&self, cb: F) {
-        *self.on_event_handler.lock().unwrap() = Some(Box::new(cb));
+        *self.on_event_handler.lock().unwrap() = Some(Arc::new(cb));
     }
 
     /// Get a call by ID.
@@ -1398,9 +1429,42 @@ impl Client {
 
         self.logger.info(&format!("Inbound call {call_id}"));
 
-        if let Some(handler) = self.on_call_handler.lock().unwrap().as_ref() {
-            handler(call, event);
+        // Clone the handler Arc OUT of the mutex and drop the guard BEFORE
+        // invoking it (DX-5: holding on_call_handler locked across the handler
+        // self-deadlocks a handler that re-registers). Then run the handler on
+        // a DEDICATED dispatcher thread, NOT inline on this reader thread
+        // (NB-1 / RUST-2): the reader thread is the ONLY thread that flushes
+        // the outbound write channel and reads inbound completion events, so a
+        // handler that sends a verb (answer/play) and then `Action::wait`s for
+        // its completion would otherwise deadlock — the verb frame never
+        // flushes and the completion event never gets read. Dispatching
+        // off-thread lets the reader keep pumping I/O while the handler blocks.
+        let handler = self.on_call_handler.lock().unwrap().clone();
+        if let Some(handler) = handler {
+            let owned_event = event.clone();
+            let dispatch = thread::Builder::new()
+                .name("relay-on-call".to_string())
+                .spawn(move || {
+                    handler(call, &owned_event);
+                });
+            match dispatch {
+                Ok(join) => self.reap_and_track_handler(join),
+                Err(e) => {
+                    self.logger
+                        .warn(&format!("failed to spawn on_call dispatcher: {e}"));
+                }
+            }
         }
+    }
+
+    /// Store a handler-dispatcher thread's join handle so it can be reaped, and
+    /// opportunistically join any finished handler threads to keep the vector
+    /// from growing without bound. Called after each inbound-call dispatch;
+    /// `disconnect()` joins whatever remains.
+    fn reap_and_track_handler(&self, join: thread::JoinHandle<()>) {
+        let mut handlers = self.handler_threads.lock().unwrap();
+        handlers.retain(|h| !h.is_finished());
+        handlers.push(join);
     }
 
     fn handle_dial_event(self: &Arc<Self>, _event: &Event, params: &Value) {
@@ -1573,6 +1637,54 @@ impl Client {
         // `send()` calls fall back to in-memory buffering rather than
         // pushing into a dead channel.
         *client.write_tx.lock().unwrap() = None;
+
+        // RUST-3 / NB-2 — HONEST connection loss (no zombie, no phantom
+        // auto-reconnect). If the reader is exiting for any reason OTHER than a
+        // caller-driven `disconnect()` (`closing` set), the socket died out from
+        // under us. Previously `running` stayed `true` forever, so
+        // `is_running()` lied, `run()` spun forever, and every subsequently-sent
+        // verb buffered into the void — a zombie client. Now we flip `running`
+        // to `false` (so `is_running()` reports the truth and `run()` returns)
+        // and FAULT every in-flight request + action so a blocked caller gets a
+        // typed error instead of hanging forever. The docs no longer claim an
+        // auto-reconnect the code never performed; a caller who wants to
+        // recover drives `reconnect()` explicitly.
+        if !client.closing.load(Ordering::SeqCst) {
+            client.logger.warn("RELAY connection lost — client stopped (no auto-reconnect); call reconnect() to re-establish");
+            *client.running.lock().unwrap() = false;
+            client.fault_pending("connection lost");
+        }
+    }
+
+    /// Fault every in-flight request and in-flight call action so a blocked
+    /// caller (a `wait`/blocking `execute`) is released with an error rather
+    /// than hanging forever after the socket dies. Called from the reader-exit
+    /// path (RUST-3) and reusable by an explicit `reconnect()`.
+    ///
+    /// # Panics
+    /// Panics if an internal mutex is poisoned (another thread panicked while
+    /// holding the lock). This does not occur under normal operation.
+    fn fault_pending(&self, reason: &str) {
+        // Reject every pending RPC so a blocking waiter unblocks with an error.
+        let pending: Vec<PendingRequest> = self
+            .pending
+            .lock()
+            .unwrap()
+            .drain()
+            .map(|(_, v)| v)
+            .collect();
+        for mut slot in pending {
+            if let Some(reject) = slot.reject.take() {
+                reject(json!({ "message": format!("connection lost: {reason}") }));
+            }
+        }
+        // Resolve every in-flight action on every call so an in-handler
+        // `Action::wait` returns instead of blocking on an event that can no
+        // longer arrive.
+        let calls: Vec<Arc<Call>> = self.calls.lock().unwrap().values().cloned().collect();
+        for call in calls {
+            call.resolve_all_actions();
+        }
     }
 }
 
@@ -1702,6 +1814,41 @@ mod tests {
         let out = scrub_frame_raw("token=PT-LIVE-SECRET not-json");
         assert!(!out.contains("PT-LIVE-SECRET"));
         assert!(out.contains("redacted"));
+    }
+
+    // -- RUST-3 honest connection-loss --
+
+    /// `fault_pending` must release a blocked waiter: a pending request's reject
+    /// callback fires (a blocking `execute` would otherwise hang forever after a
+    /// silent socket drop), and every in-flight action resolves.
+    #[test]
+    fn test_fault_pending_releases_pending_request_and_actions() {
+        let c = make_client();
+        // A pending request whose reject records that it fired.
+        let rejected = Arc::new(Mutex::new(false));
+        let r2 = rejected.clone();
+        c.register_pending(
+            "req-1",
+            |_v| panic!("resolve must not fire on a faulted connection"),
+            move |_e| *r2.lock().unwrap() = true,
+        );
+        // An in-flight call + action.
+        let call = Arc::new(Call::new(&json!({"call_id": "c1", "node_id": "n1"})));
+        let action = call.play(json!({}));
+        c.calls.lock().unwrap().insert("c1".to_string(), call);
+        assert!(!action.is_done());
+
+        c.fault_pending("connection lost");
+
+        assert!(*rejected.lock().unwrap(), "pending request was not faulted");
+        assert!(
+            action.is_done(),
+            "in-flight action was not resolved on loss"
+        );
+        assert!(
+            c.pending.lock().unwrap().is_empty(),
+            "pending map not drained"
+        );
     }
 
     #[test]
@@ -1988,7 +2135,13 @@ mod tests {
             },
         }));
 
-        assert!(*received.lock().unwrap());
+        // RUST-2: the on_call handler runs on its own dispatcher thread (not
+        // inline), so poll for it rather than asserting synchronously.
+        let deadline = std::time::Instant::now() + Duration::from_secs(2);
+        while !*received.lock().unwrap() && std::time::Instant::now() < deadline {
+            thread::sleep(Duration::from_millis(5));
+        }
+        assert!(*received.lock().unwrap(), "on_call handler did not fire");
         assert!(c.calls.lock().unwrap().contains_key("call-1"));
     }
 
@@ -2193,7 +2346,12 @@ mod tests {
         });
         c.handle_message(&msg.to_string());
 
-        assert!(*received.lock().unwrap());
+        // RUST-2: the on_call handler runs on its own dispatcher thread; poll.
+        let deadline = std::time::Instant::now() + Duration::from_secs(2);
+        while !*received.lock().unwrap() && std::time::Instant::now() < deadline {
+            thread::sleep(Duration::from_millis(5));
+        }
+        assert!(*received.lock().unwrap(), "on_call handler did not fire");
         // Should have sent an ack
         let msgs = c.sent_messages.lock().unwrap();
         assert!(msgs.iter().any(|m| m["id"] == "evt-1"));

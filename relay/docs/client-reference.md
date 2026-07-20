@@ -200,6 +200,7 @@ if !action.is_done() {
 
 ## Connection Behaviour
 
-- Auto-reconnect with exponential backoff (starts at 1s, doubles per attempt).
-- Contexts subscribed via `receive` are re-sent on the reconnect handshake.
-- The reader thread owns all socket I/O; `run()` simply blocks until it stops.
+- `reconnect()` applies exponential backoff (starts at 1s, doubles per attempt, capped at 30s). It is **caller-driven** — the client does not reconnect automatically.
+- On connection loss the reader stops and the client becomes honestly not-running: `is_running()` returns `false`, `run()` returns, and any in-flight request/`Action::wait()` is faulted (released with an error) rather than left to hang. A caller who wants to recover calls `reconnect()`.
+- Contexts subscribed via `receive` are re-sent on the `reconnect()` handshake.
+- The reader thread owns all socket I/O; `run()` simply blocks until it stops. An `on_call` handler runs on its own dispatcher thread (not the reader thread), so it may send verbs and `Action::wait()` for their completion without deadlocking the client.

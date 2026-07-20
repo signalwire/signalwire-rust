@@ -32,8 +32,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 - **57+ calling methods** -- play, record, collect, detect, tap, stream, conference, AI, and more
 - **SMS/MMS messaging** -- send and receive with delivery tracking
 - **Action objects** -- `wait()`, `is_done()`, `stop()` on long-running operations
-- **Auto-reconnect** -- exponential backoff with subscription restore
-- **Synchronous API** -- handler closures run on the background reader thread; no runtime to set up
+- **Caller-driven reconnect** -- `reconnect()` applies exponential backoff and re-sends the subscribed contexts on the new handshake. The client does NOT auto-reconnect: on connection loss it stops (`is_running()` returns `false`, pending requests fault), so a caller can detect the drop and decide whether to `reconnect()`.
+- **Synchronous API** -- no async runtime to set up; an `on_call` handler runs on its own dispatcher thread, so it can send verbs and `Action::wait()` for their completion without blocking the client's reader/writer
 
 ## Environment Variables
 

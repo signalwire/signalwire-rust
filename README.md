@@ -160,7 +160,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 - 50+ calling methods (play, record, collect, detect, tap, stream, AI, conferencing, and more)
 - SMS/MMS messaging with delivery tracking
 - `Action` objects with `is_done()`, `state()`, `result()`, `on_completed()`, `stop()`
-- Auto-reconnect with exponential backoff
+- Caller-driven `reconnect()` with exponential backoff (on connection loss the client stops — `is_running()` returns `false` and pending requests fault — rather than reconnecting silently)
 
 See the **[RELAY documentation](relay/README.md)** for the full guide, API reference, and examples.
 

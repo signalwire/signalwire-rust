@@ -27,7 +27,7 @@ use serde_json::{Map, Value};
 /// process. Previously `load_schema()` re-ran `serde_json::from_str` over the
 /// full embedded blob on EVERY `SchemaUtils::new`, and `SWMLService::add_verb`
 /// builds a fresh `SchemaUtils` per call — so a document with N verbs paid the
-/// full-schema parse N times (r5/deep_perf_baseline: ~24 ms/doc, dominated by
+/// full-schema parse N times (`r5/deep_perf_baseline`: ~24 ms/doc, dominated by
 /// this re-parse; the comment claiming a cache was aspirational). This
 /// `LazyLock` is the real cache: the default-path `load_schema()` clones the
 /// pre-parsed value instead of re-parsing, so `add_verb` never re-parses.
