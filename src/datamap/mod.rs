@@ -1,3 +1,9 @@
+//! Server-side API tools via [`DataMap`].
+//!
+//! A [`DataMap`] is a fluent builder for tools that execute REST calls on
+//! SignalWire's servers (webhook config, expression evaluation, variable
+//! expansion) without the agent standing up its own webhook infrastructure.
+
 // The `datamap` implementation module mirrors the Python file layout for 1:1
 // traceability. It is private and `DataMap` is re-exported below, so consumers
 // write `datamap::DataMap`, never `datamap::datamap::DataMap` — the public

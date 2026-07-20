@@ -2191,6 +2191,33 @@ impl AgentBase {
     /// Panics if the configured `host:port` cannot be bound (e.g. the port
     /// is already in use or permission is denied).
     pub fn run(&self) {
+        // Introspect paths (compiled-example CLI support, mirrors Service::run):
+        // SWAIG_LIST_TOOLS=1 dumps the tool registry, SWML_DUMP=1 renders the
+        // agent's SWML — both between sentinel markers, then exit before binding
+        // a port. This is how `swaig-test --example <NAME> --list-tools`/
+        // `--dump-swml` introspect a compiled AgentBase example in-process.
+        if std::env::var("SWAIG_LIST_TOOLS").is_ok() {
+            let signatures: Vec<&Value> = self
+                .tool_order
+                .iter()
+                .filter_map(|name| self.service.tools.get(name).map(|td| &td.definition))
+                .collect();
+            let body = serde_json::json!({ "tools": signatures });
+            println!("__SWAIG_TOOLS_BEGIN__");
+            println!("{}", serde_json::to_string(&body).unwrap_or_default());
+            println!("__SWAIG_TOOLS_END__");
+            std::process::exit(0);
+        }
+        if std::env::var("SWML_DUMP").is_ok() {
+            let swml = self.render_swml(&HashMap::new());
+            println!("__SWML_DUMP_BEGIN__");
+            println!(
+                "{}",
+                serde_json::to_string_pretty(&swml).unwrap_or_else(|_| swml.to_string())
+            );
+            println!("__SWML_DUMP_END__");
+            std::process::exit(0);
+        }
         let addr = format!("{}:{}", self.service.host(), self.service.port());
         let (server, _is_https) = crate::server::tls::bind_server(&addr)
             .unwrap_or_else(|e| panic!("Failed to bind {addr}: {e}"));

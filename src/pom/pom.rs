@@ -10,9 +10,46 @@
 //! The renderers produce a stable, well-specified output asserted
 //! byte-for-byte by this crate's inline tests.
 
+use std::fmt;
+
 use serde_json::Value;
 
 use crate::pom::section::Section;
+
+/// Error returned by the [`PromptObjectModel`] parse constructors
+/// ([`from_json`](PromptObjectModel::from_json) /
+/// [`from_yaml`](PromptObjectModel::from_yaml) /
+/// [`from_value`](PromptObjectModel::from_value)).
+///
+/// D9-rust: these constructors previously returned `Result<Self, String>`. This
+/// typed replacement lets a caller distinguish a *syntax* failure (malformed
+/// JSON/YAML) from a *structural* one (the document parsed but violates the POM
+/// shape), while keeping the exact error message text a Python caller would see via
+/// [`Display`](fmt::Display).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum PomParseError {
+    /// The input was not well-formed JSON. Carries the serde parser message.
+    InvalidJson(String),
+    /// The input was not well-formed YAML. Carries the serde parser message.
+    InvalidYaml(String),
+    /// The document parsed but violates the POM structure (top level not an
+    /// array, a non-object section, a wrong-typed field, a section missing any
+    /// body/bullets/subsections, a subsection missing its title). Carries the
+    /// reference's exact `ValueError` message.
+    InvalidStructure(String),
+}
+
+impl fmt::Display for PomParseError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            PomParseError::InvalidJson(m) => write!(f, "invalid JSON: {m}"),
+            PomParseError::InvalidYaml(m) => write!(f, "invalid YAML: {m}"),
+            PomParseError::InvalidStructure(m) => write!(f, "{m}"),
+        }
+    }
+}
+
+impl std::error::Error for PomParseError {}
 
 /// Root container for a Prompt Object Model document.
 ///
@@ -48,22 +85,22 @@ impl PromptObjectModel {
     /// Parse a JSON string into a [`PromptObjectModel`]. Mirrors
     /// Python's `PromptObjectModel.from_json(json_data)`.
     ///
-    /// Returns `Err(String)` with a descriptive message on parse
+    /// Returns [`PomParseError`] with a descriptive message on parse
     /// errors, matching Python's `ValueError`.
     ///
     /// # Errors
     ///
-    /// Returns `Err(String)` if `json_str` is not well-formed JSON
-    /// (the message is `"invalid JSON: <serde error>"`), or if the
-    /// parsed document fails POM structural validation — see
-    /// [`from_value`], which this delegates to (e.g. the top level is
-    /// not an array, a section is not an object, or a section has no
-    /// body/bullets/subsections).
+    /// Returns [`PomParseError::InvalidJson`] if `json_str` is not well-formed
+    /// JSON (its `Display` is `"invalid JSON: <serde error>"`), or a
+    /// [`PomParseError::InvalidStructure`] if the parsed document fails POM
+    /// structural validation — see [`from_value`], which this delegates to (e.g.
+    /// the top level is not an array, a section is not an object, or a section
+    /// has no body/bullets/subsections).
     ///
     /// [`from_value`]: PromptObjectModel::from_value
-    pub fn from_json(json_str: &str) -> Result<Self, String> {
-        let value: Value =
-            serde_json::from_str(json_str).map_err(|e| format!("invalid JSON: {e}"))?;
+    pub fn from_json(json_str: &str) -> Result<Self, PomParseError> {
+        let value: Value = serde_json::from_str(json_str)
+            .map_err(|e| PomParseError::InvalidJson(e.to_string()))?;
         Self::from_value(&value)
     }
 
@@ -72,15 +109,15 @@ impl PromptObjectModel {
     ///
     /// # Errors
     ///
-    /// Returns `Err(String)` if `yaml_str` is not well-formed YAML
-    /// (the message is `"invalid YAML: <serde error>"`), or if the
-    /// parsed document fails POM structural validation — see
-    /// [`from_value`], which this delegates to.
+    /// Returns [`PomParseError::InvalidYaml`] if `yaml_str` is not well-formed
+    /// YAML (its `Display` is `"invalid YAML: <serde error>"`), or a
+    /// [`PomParseError::InvalidStructure`] if the parsed document fails POM
+    /// structural validation — see [`from_value`], which this delegates to.
     ///
     /// [`from_value`]: PromptObjectModel::from_value
-    pub fn from_yaml(yaml_str: &str) -> Result<Self, String> {
-        let value: Value =
-            serde_norway::from_str(yaml_str).map_err(|e| format!("invalid YAML: {e}"))?;
+    pub fn from_yaml(yaml_str: &str) -> Result<Self, PomParseError> {
+        let value: Value = serde_norway::from_str(yaml_str)
+            .map_err(|e| PomParseError::InvalidYaml(e.to_string()))?;
         Self::from_value(&value)
     }
 
@@ -92,23 +129,26 @@ impl PromptObjectModel {
     ///
     /// # Errors
     ///
-    /// Returns `Err(String)` when the value violates the POM document
-    /// shape. The top level must be an array (else `"POM document must
-    /// be an array of sections"`); each element is validated by
+    /// Returns [`PomParseError::InvalidStructure`] when the value violates the
+    /// POM document shape. The top level must be an array (else `"POM document
+    /// must be an array of sections"`); each element is validated by
     /// `build_section`, which rejects non-object sections (`"Each
     /// section must be an object/dict."`), wrong-typed fields (e.g.
     /// `"'title' must be a string if present."`, `"'subsections' must
     /// be a list if provided."`), a section lacking any of a non-empty
     /// body, non-empty bullets, or subsections, and a subsection
     /// missing its required `title`.
-    pub fn from_value(value: &Value) -> Result<Self, String> {
-        let arr = value
-            .as_array()
-            .ok_or_else(|| "POM document must be an array of sections".to_string())?;
+    pub fn from_value(value: &Value) -> Result<Self, PomParseError> {
+        let arr = value.as_array().ok_or_else(|| {
+            PomParseError::InvalidStructure("POM document must be an array of sections".to_string())
+        })?;
 
         let mut pom = PromptObjectModel::new();
         for (idx, sec_val) in arr.iter().enumerate() {
-            let sec = build_section(sec_val, /*is_subsection=*/ false, idx)?;
+            // build_section still yields the reference's exact ValueError text as
+            // a String; wrap it as a structural parse error (message preserved).
+            let sec = build_section(sec_val, /*is_subsection=*/ false, idx)
+                .map_err(PomParseError::InvalidStructure)?;
             pom.sections.push(sec);
         }
         Ok(pom)

@@ -1,3 +1,9 @@
+//! Session security: HMAC-signed tokens and timing-safe auth.
+//!
+//! [`session_manager::SessionManager`] creates and validates HMAC-SHA256 tokens
+//! (encoding `function:call_id:expiry`) with constant-time comparison;
+//! [`security_utils`] holds the basic-auth and comparison helpers.
+
 pub mod security_utils;
 pub mod session_manager;
 pub mod webhook;

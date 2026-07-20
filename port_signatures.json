@@ -21850,6 +21850,15 @@
               ],
               "returns": "void"
             },
+            "headers": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "optional<dict<string,string>>"
+            },
             "is_transport": {
               "params": [
                 {
@@ -21858,6 +21867,15 @@
                 }
               ],
               "returns": "bool"
+            },
+            "request_id": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "optional<string>"
             },
             "transport": {
               "params": [
@@ -21879,6 +21897,20 @@
                 {
                   "name": "cause",
                   "type": "any",
+                  "required": true
+                }
+              ],
+              "returns": "any"
+            },
+            "with_headers": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                },
+                {
+                  "name": "headers",
+                  "type": "dict<string,string>",
                   "required": true
                 }
               ],

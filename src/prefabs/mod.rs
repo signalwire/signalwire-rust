@@ -1,3 +1,10 @@
+//! Ready-made agent archetypes.
+//!
+//! Configurable prebuilt agents — [`InfoGathererAgent`], [`SurveyAgent`],
+//! [`ReceptionistAgent`], [`FAQBotAgent`], [`ConciergeAgent`], and the
+//! [`BedrockAgent`] — each built through its own builder methods over
+//! [`crate::agent::AgentBase`].
+
 use std::collections::HashMap;
 
 use serde_json::Value;

@@ -1,5 +1,15 @@
+use std::collections::HashMap;
 use std::fmt;
 use std::sync::Arc;
+
+/// Response-header names carrying the platform request id, in preference order,
+/// matched case-insensitively. Mirrors the python reference's list.
+const REQUEST_ID_HEADERS: [&str; 4] = [
+    "x-request-id",
+    "x-signalwire-request-id",
+    "request-id",
+    "x-amzn-requestid",
+];
 
 /// Exception thrown when a SignalWire REST API request fails with a non-2xx
 /// status, OR when the request never reached a response at all (a transport
@@ -22,9 +32,6 @@ use std::sync::Arc;
 pub struct SignalWireRestError {
     message: String,
     status_code: u16,
-    /// The server's response body (HTTP-status errors) or empty (transport
-    /// failures, which never receive a body).
-    response_body: String,
     url: String,
     method: String,
     /// `true` when this error represents a transport-level failure (the request
@@ -37,6 +44,24 @@ pub struct SignalWireRestError {
     /// equivalent of Python's `raise SignalWireRestTransportError(...) from exc`.
     /// `None` for an HTTP-status error.
     source: Option<Arc<dyn std::error::Error + Send + Sync + 'static>>,
+    /// The HTTP-response detail (body + headers), present only for an HTTP-status
+    /// error. Boxed so the response body + header map do not bloat every
+    /// `Result<_, SignalWireRestError>` on the hot path (clippy
+    /// `result_large_err`) — the box is only allocated for a real >= 400
+    /// response; a transport failure (which produced no response) leaves it
+    /// `None`.
+    response: Option<Box<HttpResponseInfo>>,
+}
+
+/// The response-side detail of an HTTP-status [`SignalWireRestError`]: the body
+/// the server returned plus its headers. Boxed inside the error so the common
+/// (transport-failure) case stays small.
+#[derive(Debug, Clone, Default)]
+struct HttpResponseInfo {
+    /// The server's response body.
+    body: String,
+    /// Response headers, lowercased names (§6.6 — carries the platform request id).
+    headers: HashMap<String, String>,
 }
 
 impl SignalWireRestError {
@@ -53,12 +78,33 @@ impl SignalWireRestError {
         SignalWireRestError {
             message: message.to_string(),
             status_code,
-            response_body: response_body.to_string(),
             url: url.to_string(),
             method: method.to_string(),
             is_transport: false,
             source: None,
+            response: Some(Box::new(HttpResponseInfo {
+                body: response_body.to_string(),
+                headers: HashMap::new(),
+            })),
         }
+    }
+
+    /// Attach the response headers (§6.6). Consumes and returns `self` so it
+    /// chains after [`new`](Self::new); the platform request id becomes readable
+    /// via [`request_id`](Self::request_id) and the raw map via
+    /// [`headers`](Self::headers). Header names are expected already-lowercased.
+    #[must_use]
+    pub fn with_headers(mut self, headers: HashMap<String, String>) -> Self {
+        match self.response.as_mut() {
+            Some(r) => r.headers = headers,
+            None => {
+                self.response = Some(Box::new(HttpResponseInfo {
+                    body: String::new(),
+                    headers,
+                }));
+            }
+        }
+        self
     }
 
     /// Construct a **transport-level** error — the request never reached a
@@ -76,11 +122,11 @@ impl SignalWireRestError {
         SignalWireRestError {
             message: message.to_string(),
             status_code: 0,
-            response_body: String::new(),
             url: url.to_string(),
             method: method.to_string(),
             is_transport: true,
             source: Some(Arc::new(cause)),
+            response: None,
         }
     }
 
@@ -106,7 +152,7 @@ impl SignalWireRestError {
     }
 
     pub fn response_body(&self) -> &str {
-        &self.response_body
+        self.response.as_deref().map_or("", |r| r.body.as_str())
     }
 
     /// The request URL/path of the failed request.
@@ -117,6 +163,29 @@ impl SignalWireRestError {
     /// The HTTP method of the failed request.
     pub fn method(&self) -> &str {
         &self.method
+    }
+
+    /// §6.6: the response headers (lowercased names) for an HTTP-status error, or
+    /// `None` for a transport failure / a response that carried no headers.
+    #[must_use]
+    pub fn headers(&self) -> Option<&HashMap<String, String>> {
+        self.response
+            .as_deref()
+            .map(|r| &r.headers)
+            .filter(|h| !h.is_empty())
+    }
+
+    /// §6.6: the platform request id pulled from the response headers
+    /// (`x-request-id` / `x-signalwire-request-id` / `request-id` /
+    /// `x-amzn-requestid`, in that preference order), or `None` if absent or a
+    /// transport failure. Use it to correlate a client-side failure with
+    /// SignalWire's own logs — client-side observability, no wire change.
+    #[must_use]
+    pub fn request_id(&self) -> Option<&str> {
+        let headers = &self.response.as_deref()?.headers;
+        REQUEST_ID_HEADERS
+            .iter()
+            .find_map(|name| headers.get(*name).map(String::as_str))
     }
 }
 
@@ -132,11 +201,18 @@ impl fmt::Display for SignalWireRestError {
             write!(
                 f,
                 "SignalWireRestError: {} (HTTP {}): {}",
-                self.message, self.status_code, self.response_body
+                self.message,
+                self.status_code,
+                self.response_body()
             )?;
         }
         if !self.method.is_empty() || !self.url.is_empty() {
             write!(f, " [{} {}]", self.method, self.url)?;
+        }
+        // §6.6: surface the platform request id in the message (parity with the
+        // python reference's " (request-id: …)" suffix) for at-a-glance logs.
+        if let Some(rid) = self.request_id() {
+            write!(f, " (request-id: {rid})")?;
         }
         Ok(())
     }
@@ -149,6 +225,47 @@ impl std::error::Error for SignalWireRestError {
             .map(|e| e as &(dyn std::error::Error + 'static))
     }
 }
+
+/// Error returned by [`RestClient`](super::RestClient) constructors when a
+/// required credential/URL is missing or empty.
+///
+/// D9-rust: the constructors previously returned `Result<Self, String>` — a
+/// stringly-typed error a caller can only `.to_string()` and log. This is the
+/// typed replacement: a caller can `match` on WHICH field was missing (and, for
+/// [`Self::MissingCredential`], read the env var to set) instead of parsing a
+/// message. Implements [`std::error::Error`] so it composes with `?` and
+/// `Box<dyn Error>`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum RestClientBuilderError {
+    /// A required credential was empty. Carries the field name (`"project_id"` /
+    /// `"token"` / `"space"`) and the environment variable that can supply it.
+    MissingCredential {
+        /// The constructor argument that was empty.
+        field: &'static str,
+        /// The environment variable a caller may set instead.
+        env_var: &'static str,
+    },
+    /// A required non-credential argument (e.g. `base_url`) was empty.
+    MissingField {
+        /// The constructor argument that was empty.
+        field: &'static str,
+    },
+}
+
+impl fmt::Display for RestClientBuilderError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            RestClientBuilderError::MissingCredential { field, env_var } => {
+                write!(f, "{field} is required (pass explicitly or set {env_var})")
+            }
+            RestClientBuilderError::MissingField { field } => {
+                write!(f, "{field} is required")
+            }
+        }
+    }
+}
+
+impl std::error::Error for RestClientBuilderError {}
 
 // ------------------------------------------------------------------
 // Tests
@@ -264,5 +381,25 @@ mod tests {
         let s = format!("{e}");
         assert!(s.contains("transport failure"));
         assert!(!s.contains("HTTP"));
+    }
+
+    /// §6.6: `request_id()` picks the first matching header in preference order.
+    #[test]
+    fn test_request_id_preference_order() {
+        let mut h = HashMap::new();
+        h.insert("request-id".to_string(), "low".to_string());
+        h.insert("x-request-id".to_string(), "high".to_string());
+        let e = SignalWireRestError::new("x", 500, "", "/x", "GET").with_headers(h);
+        // x-request-id wins over request-id.
+        assert_eq!(e.request_id(), Some("high"));
+    }
+
+    /// A transport error carries no headers, so no request id.
+    #[test]
+    fn test_transport_error_no_request_id() {
+        let cause = std::io::Error::new(std::io::ErrorKind::ConnectionRefused, "refused");
+        let e = SignalWireRestError::transport("x", "/x", "GET", cause);
+        assert!(e.request_id().is_none());
+        assert!(e.headers().is_none());
     }
 }

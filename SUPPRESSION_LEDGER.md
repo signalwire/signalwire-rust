@@ -69,7 +69,7 @@ maps, options structs moved into the builder), so a blanket allow at the module
 boundary loses nothing real; taking references would force needless clones at
 the call sites to match the reference's by-value config idiom. Signature-neutral.
 
-- src/lib.rs:11 — flagged fns consume the value by design (config maps / options moved into builders); by-ref would force call-site clones (mike, 2026-07-09)
+- src/lib.rs:66 — flagged fns consume the value by design (config maps / options moved into builders); by-ref would force call-site clones (mike, 2026-07-09)
 - tests/common/mocktest.rs:58 — mock-harness helpers consume their value by design; by-ref would force call-site clones (mike, 2026-07-09)
 - tests/common/relay_mocktest.rs:49 — mock-harness helpers consume their value by design; by-ref would force call-site clones (mike, 2026-07-09)
 - tests/relay_mock_actions.rs:10 — test helpers consume their value by design; by-ref would force call-site clones (mike, 2026-07-09)
@@ -89,7 +89,7 @@ point. The 100-line heuristic is a readability proxy that doesn't fit
 builder/registration or walkthrough code; splitting would fragment a
 parity-locked mapping for no functional gain. Surface-invisible.
 
-- src/lib.rs:24 — parity-locked 1:1 config/registration builders; splitting fragments the reference mapping for no gain (mike, 2026-07-09)
+- src/lib.rs:79 — parity-locked 1:1 config/registration builders; splitting fragments the reference mapping for no gain (mike, 2026-07-09)
 - src/cli/main.rs:4 — CLI dispatch is a single linear command switch; length is inherent (mike, 2026-07-09)
 - examples/call_flow_and_actions_demo.rs:9 — linear demo main; walking the full flow top-to-bottom is the point (mike, 2026-07-09)
 - examples/emit_corpus.rs:37 — corpus-emitter walks every case linearly; length is inherent (mike, 2026-07-09)
@@ -102,7 +102,7 @@ reason). `#[must_use]` is added by hand on the value producers instead; the lint
 can't tell a function called for its return value from one called for a side
 effect. Signature-neutral.
 
-- src/lib.rs:40 — pedantic false-positive-heavy lint; #[must_use] added by hand on value producers instead (mike, 2026-07-09)
+- src/lib.rs:95 — pedantic false-positive-heavy lint; #[must_use] added by hand on value producers instead (mike, 2026-07-09)
 
 ## Test-common harness dead_code (`dead_code`)
 

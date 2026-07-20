@@ -1,0 +1,106 @@
+name: Multi-OS (macOS + Windows)
+
+# Plan §6.4 — the multi-OS CI lane. ubuntu-only CI cannot certify an A-grade
+# cross-platform SDK; this runs the two OS-SENSITIVE suites — TEST and
+# PACKAGE-SMOKE — on macos-latest AND windows-latest so a Darwin/Windows-only
+# regression (path handling, TLS trust store, line endings, socket binding)
+# surfaces. NIGHTLY tier (runner cost) + manual dispatch, with a skip-if-unchanged
+# guard so an untouched tree doesn't burn macOS/Windows minutes.
+#
+# Scope: TEST (cargo test) + PACKAGE-SMOKE (the published-crate build/install/import
+# smoke). The full gate set stays on the ubuntu per-PR lane (test.yml). RELAY/REST
+# tests use the shared Python mocks (adjacent porting-sdk checkout), self-spawned by
+# the harness, so both OSes need Python too.
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
+on:
+  schedule:
+    # Nightly at 07:00 UTC.
+    - cron: '0 7 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  # Skip-if-unchanged: fingerprint this port's HEAD; a scheduled run whose tree
+  # hasn't moved since the last run is a no-op. (workflow_dispatch always runs.)
+  guard:
+    runs-on: ubuntu-latest
+    outputs:
+      run: ${{ steps.decide.outputs.run }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 2
+      - id: decide
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          elif git rev-parse HEAD~1 >/dev/null 2>&1 \
+               && [ -z "$(git diff --name-only HEAD~1 HEAD)" ]; then
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::tree unchanged since last commit — skipping multi-OS run"
+          else
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  os-matrix:
+    needs: guard
+    if: needs.guard.outputs.run == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout signalwire-rust
+        uses: actions/checkout@v7
+        with:
+          path: signalwire-rust
+
+      - name: Checkout porting-sdk (mock harnesses + PACKAGE-SMOKE script)
+        uses: actions/checkout@v7
+        with:
+          repository: signalwire/porting-sdk
+          # PINNED to the gate-enforcement plan branch: the WIRED-MODES gate wired on
+          # this branch calls porting-sdk scripts (check_wired_modes.py) that live on
+          # porting-sdk plan/a-bar-2026-07-18, not yet on main. REVERT this ref to main
+          # when that porting-sdk branch merges.
+          ref: plan/a-bar-2026-07-18
+          path: porting-sdk
+          token: ${{ secrets.PORTING_SDK_TOKEN }}
+
+      - name: Set up Rust (stable)
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Set up Python (shared mocks + PACKAGE-SMOKE)
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.14'
+
+      - name: Install Python test harnesses (mock_relay + mock_signalwire)
+        run: |
+          pip install -e porting-sdk/test_harness/mock_relay
+          pip install -e porting-sdk/test_harness/mock_signalwire
+
+      # TEST — the cargo test suite (OS-sensitive: sockets, TLS, paths). Uses the
+      # canonical run-tests.sh so it matches the ubuntu lane exactly. bash is
+      # available on both macOS and Windows GitHub runners (git-bash).
+      - name: TEST (cargo test)
+        shell: bash
+        working-directory: signalwire-rust
+        env:
+          PORTING_SDK: ${{ github.workspace }}/porting-sdk
+        run: bash scripts/run-tests.sh
+
+      # PACKAGE-SMOKE — build/install/import the real published crate (OS-sensitive:
+      # packaging + linking).
+      - name: PACKAGE-SMOKE (published crate builds + imports)
+        shell: bash
+        working-directory: signalwire-rust
+        env:
+          PORTING_SDK: ${{ github.workspace }}/porting-sdk
+        run: python3 "$PORTING_SDK/scripts/package_smoke.py" --port rust --repo .

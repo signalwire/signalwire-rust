@@ -26,12 +26,16 @@ use serde_json::{Value, json};
 ///                        port.
 ///   --url <URL>          SWAIG endpoint URL. Basic auth can be embedded as
 ///                        user:pass@host.
-///   --dump-swml          Fetch and dump the SWML document (URL mode).
+///   --dump-swml          Dump the SWML document: rendered in-process in
+///                        `--example` mode, or fetched from the endpoint in
+///                        `--url` mode.
 ///   --list-tools         List available SWAIG tools.
 ///   --exec <TOOL>        Execute a specific SWAIG tool by name (URL mode).
 ///   --param <K=V>        Parameter for --exec (repeatable).
 ///   --raw                Print raw JSON responses (no formatting).
 ///   --verbose            Enable verbose output.
+///   --parse-only         Validate argv + flag combination and exit 0 without
+///                        loading an agent or touching the network (tooling).
 ///   --help               Print this help message.
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -49,6 +53,12 @@ fn main() {
     let mut params: Vec<(String, String)> = Vec::new();
     let mut raw = false;
     let mut verbose = false;
+    // --parse-only: validate argv (flags + their combination) and exit 0 WITHOUT
+    // loading any agent, spawning cargo, or touching the network. This is the
+    // exact-parse hook the DOC-CLI gate probes so documented invocations can be
+    // checked for real (not just line-detected). It mirrors the other ports'
+    // --parse-only/--dry-run flag.
+    let mut parse_only = false;
 
     let mut i = 1;
     while i < args.len() {
@@ -100,6 +110,7 @@ fn main() {
             }
             "--raw" => raw = true,
             "--verbose" => verbose = true,
+            "--parse-only" => parse_only = true,
             "--help" => {
                 print_help();
                 process::exit(0);
@@ -112,13 +123,42 @@ fn main() {
         i += 1;
     }
 
-    // Example/file-loader mode.
+    // --parse-only: the argv already parsed (unknown flags would have exited
+    // above). Validate the flag COMBINATION is a runnable mode, then report and
+    // exit 0 without loading an agent or touching the network.
+    if parse_only {
+        match validate_mode(
+            url.as_deref(),
+            example.as_deref(),
+            list_tools,
+            dump_swml,
+            exec_tool.as_deref(),
+        ) {
+            Ok(mode) => {
+                println!("parse-only: OK ({mode})");
+                process::exit(0);
+            }
+            Err(e) => {
+                eprintln!("Error: {e}");
+                process::exit(1);
+            }
+        }
+    }
+
+    // Example/file-loader mode. A compiled example is introspected in-process
+    // via `cargo run --example NAME` with an env flag the SDK's serve() honors:
+    // SWAIG_LIST_TOOLS=1 dumps the tool registry, SWML_DUMP=1 renders the SWML
+    // document — no HTTP server is bound. This is the compiled-port analogue of
+    // python's `swaig-test --example … --list-tools/--dump-swml`.
     if let Some(name) = example {
-        if !list_tools {
-            eprintln!("Error: --example currently only supports --list-tools");
+        if list_tools {
+            do_list_tools_via_introspect(&name, raw, verbose);
+        } else if dump_swml {
+            do_dump_swml_via_introspect(&name, raw, verbose);
+        } else {
+            eprintln!("Error: --example requires --list-tools or --dump-swml");
             process::exit(1);
         }
-        do_list_tools_via_introspect(&name, raw, verbose);
         return;
     }
 
@@ -157,11 +197,50 @@ fn main() {
     }
 }
 
+/// Validate that the parsed flags name a runnable mode, returning a short mode
+/// label on success or a human-readable reason on failure. This is the single
+/// source of truth for "is this argv a valid invocation", shared by the live
+/// dispatch (implicitly) and the `--parse-only` check so they never diverge.
+fn validate_mode(
+    url: Option<&str>,
+    example: Option<&str>,
+    list_tools: bool,
+    dump_swml: bool,
+    exec_tool: Option<&str>,
+) -> Result<&'static str, String> {
+    match (url, example) {
+        (Some(_), Some(_)) => Err("--url and --example are mutually exclusive".to_string()),
+        (None, None) => Err("--url or --example is required".to_string()),
+        (None, Some(_)) => {
+            // Example mode supports --list-tools or --dump-swml only.
+            if list_tools {
+                Ok("example/list-tools")
+            } else if dump_swml {
+                Ok("example/dump-swml")
+            } else {
+                Err("--example requires --list-tools or --dump-swml".to_string())
+            }
+        }
+        (Some(_), None) => {
+            if dump_swml {
+                Ok("url/dump-swml")
+            } else if list_tools {
+                Ok("url/list-tools")
+            } else if exec_tool.is_some() {
+                Ok("url/exec")
+            } else {
+                Err("--url requires --dump-swml, --list-tools, or --exec <tool>".to_string())
+            }
+        }
+    }
+}
+
 fn print_help() {
     println!("swaig-test - SignalWire SWAIG testing tool");
     println!();
     println!("Usage:");
     println!("  swaig-test --example <NAME> --list-tools");
+    println!("  swaig-test --example <NAME> --dump-swml");
     println!("  swaig-test --url <URL> [options]");
     println!();
     println!("Options:");
@@ -171,12 +250,15 @@ fn print_help() {
     println!("                   the runtime tool registry and exits without");
     println!("                   binding any port.");
     println!("  --url <URL>      SWAIG endpoint URL (HTTP mode)");
-    println!("  --dump-swml      Fetch and dump the SWML document (URL mode)");
+    println!("  --dump-swml      Dump the SWML document: rendered in-process with");
+    println!("                   --example, or fetched from the endpoint with --url");
     println!("  --list-tools     List available SWAIG tools");
     println!("  --exec <TOOL>    Execute a specific SWAIG tool (URL mode)");
     println!("  --param <K=V>    Parameter for --exec (repeatable)");
     println!("  --raw            Print raw JSON (no formatting)");
     println!("  --verbose        Enable verbose output");
+    println!("  --parse-only     Validate the arguments and exit 0 without running");
+    println!("                   (no agent load, no network) — for tooling checks");
     println!("  --help           Print this help message");
     println!();
     println!("Auth:");
@@ -277,10 +359,68 @@ fn do_list_tools_via_introspect(example_name: &str, raw: bool, verbose: bool) {
 /// `__SWAIG_TOOLS_END__` markers in the example's stdout. Returns None if
 /// either marker is missing.
 fn extract_introspect_payload(stdout: &str) -> Option<&str> {
-    let begin = stdout.find("__SWAIG_TOOLS_BEGIN__")?;
-    let after_begin = &stdout[begin + "__SWAIG_TOOLS_BEGIN__".len()..];
-    let end = after_begin.find("__SWAIG_TOOLS_END__")?;
-    Some(after_begin[..end].trim())
+    extract_between_markers(stdout, "__SWAIG_TOOLS_BEGIN__", "__SWAIG_TOOLS_END__")
+}
+
+/// Extract the substring strictly between `begin` and `end` markers (trimmed).
+/// Returns None if either marker is missing (or `end` precedes `begin`).
+fn extract_between_markers<'a>(s: &'a str, begin: &str, end: &str) -> Option<&'a str> {
+    let b = s.find(begin)?;
+    let after_begin = &s[b + begin.len()..];
+    let e = after_begin.find(end)?;
+    Some(after_begin[..e].trim())
+}
+
+/// Render an example's SWML by spawning `cargo run --example NAME` with
+/// `SWML_DUMP=1`. The SDK's `Service::run()` honors that env var by printing the
+/// rendered SWML document between `__SWML_DUMP_BEGIN__`/`__SWML_DUMP_END__`
+/// sentinels and exiting before it binds any port. We capture stdout, slice out
+/// the document, and pretty-print or emit raw — the in-process analogue of the
+/// URL-mode `--dump-swml`.
+fn do_dump_swml_via_introspect(example_name: &str, raw: bool, verbose: bool) {
+    if verbose {
+        eprintln!("[verbose] running `cargo run --example {example_name}` with SWML_DUMP=1");
+    }
+    let mut cmd = std::process::Command::new("cargo");
+    cmd.args(["run", "--quiet", "--example", example_name])
+        .env("SWML_DUMP", "1");
+    let output = match cmd.output() {
+        Ok(o) => o,
+        Err(e) => {
+            eprintln!("Error: failed to spawn cargo: {e}");
+            process::exit(1);
+        }
+    };
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        eprintln!("Error: example `{example_name}` exited non-zero");
+        if !stderr.is_empty() {
+            eprintln!("--- cargo stderr ---\n{}", stderr.trim_end());
+        }
+        process::exit(1);
+    }
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let Some(body) = extract_between_markers(&stdout, "__SWML_DUMP_BEGIN__", "__SWML_DUMP_END__")
+    else {
+        eprintln!(
+            "Error: example `{example_name}` did not emit __SWML_DUMP_BEGIN__/__SWML_DUMP_END__ markers. Make sure it calls service.run()."
+        );
+        if verbose {
+            eprintln!("--- raw stdout ---\n{stdout}");
+        }
+        process::exit(1);
+    };
+    if raw {
+        println!("{body}");
+        return;
+    }
+    match serde_json::from_str::<Value>(body) {
+        Ok(v) => println!(
+            "{}",
+            serde_json::to_string_pretty(&v).unwrap_or_else(|_| body.to_string())
+        ),
+        Err(_) => println!("{body}"),
+    }
 }
 
 /// Extract Basic auth credentials from a URL of the form
@@ -718,6 +858,58 @@ mod tests {
         // BEGIN present, END missing — must return None, not garbage.
         let stdout = "__SWAIG_TOOLS_BEGIN__\n{\"tools\":[]}\n";
         assert!(extract_introspect_payload(stdout).is_none());
+    }
+
+    #[test]
+    fn test_extract_swml_dump_markers() {
+        let stdout = "log noise\n__SWML_DUMP_BEGIN__\n{\"version\":\"1.0.0\"}\n__SWML_DUMP_END__\ntrailing\n";
+        let body =
+            extract_between_markers(stdout, "__SWML_DUMP_BEGIN__", "__SWML_DUMP_END__").unwrap();
+        assert_eq!(body, "{\"version\":\"1.0.0\"}");
+    }
+
+    #[test]
+    fn test_extract_between_markers_missing_end() {
+        let stdout = "__SWML_DUMP_BEGIN__\n{\"x\":1}\n";
+        assert!(
+            extract_between_markers(stdout, "__SWML_DUMP_BEGIN__", "__SWML_DUMP_END__").is_none()
+        );
+    }
+
+    #[test]
+    fn test_validate_mode_example_dump_swml_ok() {
+        // agent_guide.md:237's `--example simple_agent --dump-swml` must validate.
+        assert_eq!(
+            validate_mode(None, Some("simple_agent"), false, true, None),
+            Ok("example/dump-swml")
+        );
+    }
+
+    #[test]
+    fn test_validate_mode_example_list_tools_ok() {
+        assert_eq!(
+            validate_mode(None, Some("simple_agent"), true, false, None),
+            Ok("example/list-tools")
+        );
+    }
+
+    #[test]
+    fn test_validate_mode_url_modes_ok() {
+        assert!(validate_mode(Some("http://h/"), None, false, true, None).is_ok());
+        assert!(validate_mode(Some("http://h/"), None, true, false, None).is_ok());
+        assert!(validate_mode(Some("http://h/"), None, false, false, Some("t")).is_ok());
+    }
+
+    #[test]
+    fn test_validate_mode_rejects_bad_combos() {
+        // No target.
+        assert!(validate_mode(None, None, true, false, None).is_err());
+        // Both targets.
+        assert!(validate_mode(Some("http://h/"), Some("ex"), true, false, None).is_err());
+        // Example with no action.
+        assert!(validate_mode(None, Some("ex"), false, false, None).is_err());
+        // URL with no action.
+        assert!(validate_mode(Some("http://h/"), None, false, false, None).is_err());
     }
 
     #[test]

@@ -1,6 +1,6 @@
 {
   "version": "1",
-  "generated_from": "signalwire-rust @ b23ce9c1dc29bcaccbd368fa21a5b0301750df34",
+  "generated_from": "signalwire-rust @ 69264328b3e909275ac17674aa3d10094c027153",
   "modules": {
     "signalwire": {
       "classes": {
@@ -1696,8 +1696,11 @@
         ],
         "SignalWireRestError": [
           "__init__",
+          "headers",
           "is_transport",
-          "transport"
+          "request_id",
+          "transport",
+          "with_headers"
         ],
         "SignalWireRestTransportError": [
           "__init__"
@@ -1779,7 +1782,8 @@
     "signalwire.rest.http_client": {
       "classes": {
         "HttpTransport": [
-          "execute"
+          "execute",
+          "execute_with_headers"
         ],
         "StubTransport": [
           "__init__",

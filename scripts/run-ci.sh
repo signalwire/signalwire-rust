@@ -307,6 +307,17 @@ cargo build --quiet \
     --example wire_dump --example swml_dump --example state_dump \
     --example http_dump --example wire_relay_dump 2>/dev/null || true
 
+# WAIT-LIVENESS PREBUILD (plan §2.9) — the liveness differ starts a wall-clock
+# deadline (~40s) the moment it launches its dump-cmd and measures how long
+# `Action::wait()` blocks. If the FIRST `cargo run --example wait_liveness_dump`
+# had to COMPILE the example (cold target), that build time was charged against
+# the liveness deadline and the rust nightly went RED 07-17/18. Build the example
+# HERE (outside any gate's clock) so the gate's `cargo run --quiet` is a near-
+# instant exec and the measurement excludes build time. Same rationale as the
+# BEHAVIORAL-* dump prebuild above. envelope-dump prebuilt for the same reason
+# (ENVELOPE gate runs a dump-cmd).
+cargo build --quiet --example wait_liveness_dump --bin envelope-dump 2>/dev/null || true
+
 sched_gate BEHAVIORAL-WIRE desc="diff_port_wire vs python oracle (Layer D)" \
     -- python3 "$PORTING_SDK_DIR/scripts/diff_port_wire.py" \
         --port rust \
@@ -384,6 +395,17 @@ sched_gate META-CONSISTENT tier=nightly res=dayone desc="package metadata consis
     -- python3 "$PORTING_SDK_DIR/scripts/meta_consistent.py" --port rust --repo .
 sched_gate ARTIFACT-DENY res=dayone desc="no porting artifacts in the PUBLISHED package (authoritative listing)" \
     --fn dayone_artifact_deny
+
+# WIRED-MODES (plan §1.6 / D7) — merge-coherence guard. WIRED_MODES.md declares the
+# load-bearing ENV/MODE lines this run-ci MUST keep (MOCK_RELAY_STRICT / REST strict
+# default / assert_no_wire_violations). The check greps run-ci for each and fails
+# loud if a merge silently drops one — the guard the strict-mocks × Part-5 merge race
+# proved we need (a dropped strict export makes a gate green-and-vacuous).
+# GATE-INVENTORY NOTE (§2.16): this gate has no per-port allowlist; the manifest IS
+# the checked-in declaration. A retired mode requires editing WIRED_MODES.md in the
+# same change with a reason. Self-tested: removing any declared line reds it (D6).
+sched_gate WIRED-MODES res=dayone desc="load-bearing run-ci modes declared in WIRED_MODES.md are all present (merge-coherence guard)" \
+    -- python3 "$PORTING_SDK_DIR/scripts/check_wired_modes.py" --port rust --repo .
 
 # ---- expansion gates (backlog burned to zero; now enforcing) -----------------
 sched_gate GEN-TYPE-DEGENERACY desc="generated typed I/O is not degenerate (modulo GEN_TYPE_DEGENERACY_ALLOW.md)" \
@@ -472,8 +494,14 @@ sched_gate STATUS-CLAIM res=surface desc="doc status claims (not-implemented/ada
 # The python oracle is auto-resolved by the differ (no --python-sdk flag; it
 # defaults to the adjacent/installed signalwire package — the sibling checkout in
 # CI), exactly as the BEHAVIORAL-* / EMISSION gates above do.
+# §2.9: pass --prebuild-cmd so the differ compiles the dump example UNTIMED before
+# it starts the liveness wall-clock deadline — a cold cargo build must NOT be
+# charged against the ~40s deadline (that reded rust's nightly 07-17/18). The
+# prebuild above also warms it, but wiring --prebuild-cmd makes the exclusion
+# gate-local and independent of gate ordering.
 sched_gate WAIT-LIVENESS tier=nightly defer=1 desc="RELAY Action::wait() blocks-until-event liveness matches the python golden" \
     -- python3 "$PORTING_SDK_DIR/scripts/diff_port_wait_liveness.py" --port rust \
+        --prebuild-cmd "cargo build --quiet --example wait_liveness_dump" \
         --dump-cmd "cargo run --quiet --example wait_liveness_dump"
 
 # STRICT-MOCKS (§2.2) — nightly re-run of the RELAY suite with MOCK_RELAY_STRICT=1.
