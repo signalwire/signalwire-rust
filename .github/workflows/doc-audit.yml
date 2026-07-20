@@ -47,7 +47,7 @@ jobs:
           # this branch calls porting-sdk scripts (check_wired_modes.py) that live on
           # porting-sdk plan/a-bar-2026-07-18, not yet on main. REVERT this ref to main
           # when that porting-sdk branch merges.
-          ref: plan/a-bar-2026-07-18
+          ref: main
           path: porting-sdk
           token: ${{ secrets.PORTING_SDK_TOKEN }}
 
