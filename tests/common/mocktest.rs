@@ -559,7 +559,10 @@ fn detach_process_group(cmd: &mut Command) {
 // Object; the mocks here don't fork grandchildren, so a direct spawn+kill suffices
 // for the tests to run and tear down.
 #[cfg(not(unix))]
-fn detach_process_group(_cmd: &mut Command) {}
+fn detach_process_group(cmd: &mut Command) {
+    // Intentional no-op on non-unix: the child is spawned as-is (see comment above).
+    let _ = cmd;
+}
 
 // libc setsid binding without pulling in the libc crate. Rust 2024
 // edition requires `unsafe extern` for foreign blocks. Unix-only.

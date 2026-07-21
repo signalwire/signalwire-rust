@@ -195,7 +195,11 @@ fn detach_process_group(cmd: &mut Command) {
 }
 
 #[cfg(not(unix))]
-fn detach_process_group(_cmd: &mut Command) {}
+fn detach_process_group(cmd: &mut Command) {
+    // Intentional no-op on non-unix: the child is spawned as-is; the TlsMockProc
+    // Drop handler's explicit .kill() is the cleanup.
+    let _ = cmd;
+}
 
 // libc setsid binding (unix only), without pulling in the libc crate.
 #[cfg(unix)]

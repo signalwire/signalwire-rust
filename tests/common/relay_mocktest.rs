@@ -742,7 +742,10 @@ fn detach_process_group(cmd: &mut Command) {
 // WINDOWS (non-unix): no process-group setup; the mock is a plain child cleaned up
 // by the harness's port ownership / kill. See mocktest.rs for the full rationale.
 #[cfg(not(unix))]
-fn detach_process_group(_cmd: &mut Command) {}
+fn detach_process_group(cmd: &mut Command) {
+    // Intentional no-op on non-unix: the child is spawned as-is.
+    let _ = cmd;
+}
 
 #[cfg(unix)]
 unsafe extern "C" {
