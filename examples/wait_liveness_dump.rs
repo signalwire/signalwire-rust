@@ -178,7 +178,7 @@ fn main() {
         let client = relay_mocktest::connected_client(&["default"]);
         let call = answered_inbound_call(&client, "call-xyz");
         let action = call
-            .record(json!({"audio": {"format": "mp3"}}))
+            .record(json!({"record": {"audio": {"format": "mp3"}}}))
             .expect("record must start");
         let (s, r, st, to) = drive(&call, &action, "calling.call.record");
         out.insert("live_record_wait".to_string(), classify(s, r, st, to));
@@ -214,7 +214,7 @@ fn main() {
             })
         } else {
             let inner = call
-                .record(json!({"audio": {"format": "mp3"}}))
+                .record(json!({"record": {"audio": {"format": "mp3"}}}))
                 .expect("record must start");
             let (is, ir, ist, ito) = drive(&call, &inner, "calling.call.record");
             let inner_cls = classify(is, ir, ist, ito);

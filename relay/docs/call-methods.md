@@ -29,8 +29,8 @@ let _ = call.hangup();
 
 ## Playing Audio
 
-Media verbs return an `Arc<Action>`. Poll it with `is_done()` or block on
-`wait(timeout)`.
+Media verbs return `Result<Arc<Action>, RelayError>`. Unwrap the `Arc<Action>`,
+then poll it with `is_done()` or block on `wait(timeout)`.
 
 ### TTS (Text-to-Speech)
 
@@ -38,7 +38,7 @@ Media verbs return an `Arc<Action>`. Poll it with `is_done()` or block on
 `language`, `gender`, `volume`.
 
 ```rust
-let action = call.play_tts("Hello, world!", json!({}));
+let action = call.play_tts("Hello, world!", json!({})).unwrap();
 let _ = action.wait(Some(Duration::from_secs(30)));
 ```
 
@@ -47,7 +47,7 @@ let _ = action.wait(Some(Duration::from_secs(30)));
 `play_audio(url, opts)`:
 
 ```rust
-let action = call.play_audio("https://example.com/audio.mp3", json!({}));
+let action = call.play_audio("https://example.com/audio.mp3", json!({})).unwrap();
 let _ = action.wait(Some(Duration::from_secs(30)));
 ```
 
@@ -61,7 +61,7 @@ let action = call.play(json!({
         {"type": "tts", "params": {"text": "Please hold."}},
         {"type": "audio", "params": {"url": "https://example.com/hold.mp3"}}
     ]
-}));
+})).unwrap();
 let _ = action.wait(Some(Duration::from_secs(30)));
 ```
 
@@ -70,7 +70,7 @@ let _ = action.wait(Some(Duration::from_secs(30)));
 The base `Action` supports `stop()`; `wait()` blocks for completion:
 
 ```rust
-let action = call.play_tts("Long message...", json!({}));
+let action = call.play_tts("Long message...", json!({})).unwrap();
 if !action.is_done() {
     action.stop(); // stop playback
 }
@@ -78,7 +78,8 @@ if !action.is_done() {
 
 ## Recording
 
-`record(params)` returns an `Arc<Action>`; `wait()` yields the result `Value`:
+`record(params)` returns `Result<Arc<Action>, RelayError>`; after unwrapping,
+`wait()` yields the result `Value`:
 
 ```rust
 let action = call.record(json!({
@@ -86,7 +87,7 @@ let action = call.record(json!({
     "format": "wav",
     "stereo": true,
     "terminators": "#"
-}));
+})).unwrap();
 
 if let Some(result) = action.wait(Some(Duration::from_secs(60))) {
     println!("Recording result: {result}");
@@ -96,7 +97,8 @@ if let Some(result) = action.wait(Some(Duration::from_secs(60))) {
 ## Collecting Input
 
 `prompt_tts(text, collect, opts)` plays a TTS prompt and collects DTMF/speech.
-It returns an `Arc<Action>` whose result carries the collected value.
+It returns `Result<Arc<Action>, RelayError>` whose (unwrapped) action's result
+carries the collected value.
 
 ### DTMF Digits
 
@@ -105,7 +107,7 @@ let action = call.prompt_tts(
     "Press 1 for sales.",
     json!({"digits": {"max": 1, "terminators": "#"}}),
     json!({}),
-);
+).unwrap();
 if let Some(result) = action.wait(Some(Duration::from_secs(30))) {
     println!("Collected: {result}");
 }
@@ -118,7 +120,7 @@ let action = call.prompt_tts(
     "How can I help you?",
     json!({"speech": {"end_silence_timeout": 2.0}}),
     json!({}),
-);
+).unwrap();
 let _ = action.wait(Some(Duration::from_secs(30)));
 ```
 
@@ -136,7 +138,7 @@ let _ = call.connect(json!({
 
 ## Detecting
 
-`detect(params)` returns an `Arc<Action>`.
+`detect(params)` returns `Result<Arc<Action>, RelayError>`.
 
 ### Detect Machine vs Human
 
@@ -144,7 +146,7 @@ let _ = call.connect(json!({
 let action = call.detect(json!({
     "type": "machine",
     "params": {"initial_timeout": 5.0}
-}));
+})).unwrap();
 if let Some(result) = action.wait(Some(Duration::from_secs(15))) {
     println!("Detected: {result}");
 }
@@ -153,7 +155,7 @@ if let Some(result) = action.wait(Some(Duration::from_secs(15))) {
 ### Detect Fax
 
 ```rust
-let action = call.detect(json!({"type": "fax"}));
+let action = call.detect(json!({"type": "fax"})).unwrap();
 let _ = action.wait(Some(Duration::from_secs(15)));
 ```
 
@@ -164,7 +166,7 @@ let action = call.tap(json!({
     "type": "audio",
     "params": {"direction": "both", "codec": "PCMU", "rate": 8000},
     "target": {"type": "rtp", "params": {"addr": "192.168.1.100", "port": 9000}}
-}));
+})).unwrap();
 let _ = action.is_done();
 ```
 

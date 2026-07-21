@@ -14,7 +14,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     client.on_call(|call, _event| {
         let _ = call.answer();
-        let action = call.play_tts("Welcome to SignalWire!", serde_json::json!({}));
+        let action = call.play_tts("Welcome to SignalWire!", serde_json::json!({})).unwrap();
         let _ = action.is_done();
         let _ = call.hangup();
     });

@@ -29,6 +29,7 @@ let response = client.calling().dial(
     CallingDialRequest::new("+15559876543", "+15551234567")
         .url("https://example.com/call-handler")
         .status_url("https://example.com/call-status"),
+    None,
 ).unwrap();
 
 println!("Response: {}", response["sid"]);
@@ -39,7 +40,7 @@ println!("Response: {}", response["sid"]);
 In-call commands take the `call_id` first, then a request builder:
 
 ```rust
-let _ = client.calling().end("call-id", CallingEndRequest::new()).unwrap();
+let _ = client.calling().end("call-id", CallingEndRequest::new(), None).unwrap();
 ```
 
 ## Playing Media
@@ -53,6 +54,7 @@ let _ = client.calling().play(
     CallingPlayRequest::new(json!([
         {"type": "tts", "params": {"text": "Please hold."}}
     ])),
+    None,
 ).unwrap();
 ```
 

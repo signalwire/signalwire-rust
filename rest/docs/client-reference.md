@@ -70,19 +70,19 @@ CRUD resources follow consistent signatures. `list`/`search` take a
 
 ```rust
 // List resources
-let listed = client.fabric().ai_agents().list(&HashMap::new()).unwrap();
+let listed = client.fabric().ai_agents().list(&HashMap::new(), None).unwrap();
 
 // Get a single resource
-let one = client.fabric().ai_agents().get("resource-id").unwrap();
+let one = client.fabric().ai_agents().get("resource-id", None).unwrap();
 
 // Create a resource
-let created = client.fabric().ai_agents().create(&json!({"name": "Bot"})).unwrap();
+let created = client.fabric().ai_agents().create(&json!({"name": "Bot"}), None).unwrap();
 
 // Update a resource
-let updated = client.fabric().ai_agents().update("resource-id", &json!({"name": "Bot 2"})).unwrap();
+let updated = client.fabric().ai_agents().update("resource-id", &json!({"name": "Bot 2"}), None).unwrap();
 
 // Delete a resource
-client.fabric().ai_agents().delete("resource-id").unwrap();
+client.fabric().ai_agents().delete("resource-id", None).unwrap();
 ```
 
 ### Return Type

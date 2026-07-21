@@ -21,18 +21,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     client.fabric().ai_agents().create(&serde_json::json!({
         "name": "Support Bot",
         "prompt": {"text": "You are helpful."}
-    }))?;
+    }), None)?;
 
     // Make a phone call
     client.calling().dial(
         CallingDialRequest::new("+15559876543", "+15551234567")
             .url("https://example.com/call-handler"),
+        None,
     )?;
 
     // Search for phone numbers
     let mut params = HashMap::new();
     params.insert("areacode".to_string(), "512".to_string());
-    let results = client.phone_numbers().search(&params)?;
+    let results = client.phone_numbers().search(&params, None)?;
     println!("{results:#?}");
 
     Ok(())

@@ -32,7 +32,7 @@ let agent = client.fabric().ai_agents().create(&json!({
         "code": "en-US",
         "voice": "inworld.Mark"
     }]
-})).unwrap();
+}), None).unwrap();
 
 println!("Agent ID: {}", agent["id"]);
 ```
@@ -40,7 +40,7 @@ println!("Agent ID: {}", agent["id"]);
 ### List Agents
 
 ```rust
-let agents = client.fabric().ai_agents().list(&HashMap::new()).unwrap();
+let agents = client.fabric().ai_agents().list(&HashMap::new(), None).unwrap();
 for a in agents.as_array().unwrap_or(&vec![]) {
     println!("{}: {}", a["id"], a["name"]);
 }
@@ -51,13 +51,13 @@ for a in agents.as_array().unwrap_or(&vec![]) {
 ```rust
 client.fabric().ai_agents().update("agent-id", &json!({
     "prompt": {"text": "Updated prompt."}
-})).unwrap();
+}), None).unwrap();
 ```
 
 ### Delete an Agent
 
 ```rust
-client.fabric().ai_agents().delete("agent-id").unwrap();
+client.fabric().ai_agents().delete("agent-id", None).unwrap();
 ```
 
 ## Addresses
@@ -65,7 +65,7 @@ client.fabric().ai_agents().delete("agent-id").unwrap();
 Top-level fabric addresses are read-only (`list` / `get`):
 
 ```rust
-let addrs = client.fabric().addresses().list(&HashMap::new()).unwrap();
+let addrs = client.fabric().addresses().list(&HashMap::new(), None).unwrap();
 for a in addrs.as_array().unwrap_or(&vec![]) {
     println!("{}", a["id"]);
 }
@@ -79,10 +79,10 @@ let sub = client.fabric().subscribers().create(&json!({
     "email": "user@example.com",
     "first_name": "Alice",
     "last_name": "Smith"
-})).unwrap();
+}), None).unwrap();
 
 // List subscribers
-let subs = client.fabric().subscribers().list(&HashMap::new()).unwrap();
+let subs = client.fabric().subscribers().list(&HashMap::new(), None).unwrap();
 ```
 
 ## SIP Endpoints
@@ -92,7 +92,7 @@ let endpoint = client.fabric().sip_endpoints().create(&json!({
     "username": "alice",
     "password": "secure-password",
     "caller_id": "+15551234567"
-})).unwrap();
+}), None).unwrap();
 ```
 
 ## Tokens
@@ -105,6 +105,7 @@ use signalwire::rest::namespaces::generated::fabric_resources_generated::FabricT
 
 let token = client.fabric().tokens().create_subscriber_token(
     FabricTokensCreateSubscriberTokenRequest::new("subscriber-reference").expire_at(3600),
+    None,
 ).unwrap();
 
 println!("Token: {}", token["token"]);

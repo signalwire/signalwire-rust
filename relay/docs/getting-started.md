@@ -38,7 +38,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 "type": "tts",
                 "params": {"text": "Hello! This is my first SignalWire application."}
             }]
-        }));
+        })).unwrap();
         let _ = action.is_done();
 
         let _ = call.hangup();
@@ -102,7 +102,7 @@ let call = client.dial_blocking(
 
 let action = call.play(serde_json::json!({
     "play": [{"type": "tts", "params": {"text": "This is an automated message."}}]
-}));
+})).unwrap();
 let _ = action.is_done();
 let _ = call.hangup();
 ```

@@ -160,16 +160,16 @@ Long-running media verbs return an `Arc<Action>` you poll or wait on:
 
 | Method | Returns | Description |
 |--------|---------|-------------|
-| `play(params)` | `Arc<Action>` | Play a mixed audio/TTS playlist |
-| `play_tts(text, opts)` | `Arc<Action>` | Play text-to-speech |
-| `play_audio(url, opts)` | `Arc<Action>` | Play an audio URL |
-| `record(params)` | `Arc<Action>` | Record audio |
-| `prompt_tts(text, collect, opts)` | `Arc<Action>` | Play a prompt and collect input |
-| `detect(params)` | `Arc<Action>` | Detect machine / fax |
-| `tap(params)` | `Arc<Action>` | Media streaming |
+| `play(params)` | `Result<Arc<Action>, RelayError>` | Play a mixed audio/TTS playlist |
+| `play_tts(text, opts)` | `Result<Arc<Action>, RelayError>` | Play text-to-speech |
+| `play_audio(url, opts)` | `Result<Arc<Action>, RelayError>` | Play an audio URL |
+| `record(params)` | `Result<Arc<Action>, RelayError>` | Record audio |
+| `prompt_tts(text, collect, opts)` | `Result<Arc<Action>, RelayError>` | Play a prompt and collect input |
+| `detect(params)` | `Result<Arc<Action>, RelayError>` | Detect machine / fax |
+| `tap(params)` | `Result<Arc<Action>, RelayError>` | Media streaming |
 
 ```rust
-let action = call.play_tts("Hello, world!", json!({}));
+let action = call.play_tts("Hello, world!", json!({})).unwrap();
 let _ = action.wait(Some(Duration::from_secs(30)));
 ```
 
@@ -177,7 +177,8 @@ let _ = action.wait(Some(Duration::from_secs(30)));
 
 ## Action Objects
 
-Long-running operations return `Arc<Action>`.
+Long-running operations return `Result<Arc<Action>, RelayError>`; unwrap to get
+the `Arc<Action>`.
 
 ### Common Methods
 
@@ -190,7 +191,7 @@ Long-running operations return `Arc<Action>`.
 | `stop()` | `()` | Cancel the operation |
 
 ```rust
-let action = call.play_tts("Long message...", json!({}));
+let action = call.play_tts("Long message...", json!({})).unwrap();
 if !action.is_done() {
     let _ = action.wait(Some(Duration::from_secs(10)));
 }
