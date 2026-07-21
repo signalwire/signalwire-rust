@@ -384,6 +384,23 @@ pub fn arm_method(method: &str, events: Value) {
         .unwrap_or_else(|e| panic!("relay_mocktest: arm_method: {e}"));
 }
 
+/// Like [`arm_method`] but returns `false` instead of panicking when the mock
+/// rejects the scenario (HTTP 4xx). Used to feature-probe a mock capability
+/// (e.g. the `rpc_code` result-code arm, added on porting-sdk wave/1-aplus): an
+/// older mock without it answers 400, so a test can skip cleanly rather than
+/// red against a porting-sdk checkout that predates the feature.
+#[must_use]
+pub fn try_arm_method(method: &str, events: Value) -> bool {
+    let h = harness();
+    let url = format!(
+        "{}/__mock__/scenarios/{}{}",
+        h.http_url,
+        method,
+        session_query()
+    );
+    ureq::post(&url).send_json(&events).is_ok()
+}
+
 /// Queue a dial-dance scenario, scoped to this session.
 pub fn arm_dial(payload: Value) {
     let h = harness();

@@ -21790,9 +21790,8 @@
                 },
                 {
                   "name": "params",
-                  "type": "dict<string,any>",
-                  "required": false,
-                  "kind": "var_keyword"
+                  "type": "dict<string,string>",
+                  "required": true
                 }
               ],
               "returns": "class:signalwire.value.Value"
@@ -21805,9 +21804,8 @@
                 },
                 {
                   "name": "params",
-                  "type": "dict<string,any>",
-                  "required": false,
-                  "kind": "var_keyword"
+                  "type": "dict<string,string>",
+                  "required": true
                 }
               ],
               "returns": "class:signalwire.rest._pagination.PaginatedIterator"
