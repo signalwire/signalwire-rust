@@ -91,21 +91,31 @@ jobs:
         if: runner.os == 'Windows'
         uses: ilammy/msvc-dev-cmd@v1
 
-      # Pin the MSVC linker by ABSOLUTE PATH so cargo/rustc never resolve `link.exe`
-      # through git-bash's PATH. The TEST and PACKAGE-SMOKE steps run under
-      # `shell: bash` (git-bash), which prepends `C:\Program Files\Git\usr\bin` to
-      # PATH — and that dir contains a coreutils `link.exe` (a hard-link utility) that
-      # SHADOWS the MSVC linker even though msvc-dev-cmd put MSVC's bin dir first in the
-      # Windows PATH. rustc then invokes git-bash's link.exe and the build fails:
-      #   error: linking with `link.exe` failed
-      #   note: /usr/bin/link: extra operand '...rcgu.o'
-      # Setting CARGO_TARGET_<triple>_LINKER to the absolute MSVC link.exe makes cargo
-      # pass that exact path to rustc's -Clinker, bypassing PATH resolution entirely
-      # (a RUSTFLAGS='-Clinker=link.exe' would NOT help — it still resolves via PATH).
-      # msvc-dev-cmd exports VCToolsInstallDir; the host-x64 linker lives under it.
-      # The env var is inherited by both the bash TEST step and the Python
-      # PACKAGE-SMOKE step (which also shells out to cargo), so both link with MSVC.
-      - name: Pin MSVC linker for cargo (Windows)
+      # Point the C toolchain at MSVC for the Windows cargo build. Two distinct
+      # git-bash-vs-MSVC problems are fixed here; both are inherited by the bash TEST
+      # step AND the Python PACKAGE-SMOKE step (which also shells out to cargo).
+      #
+      # (1) CC/CXX — the windows-latest runner exports `CC=/usr/bin/gcc` and
+      #     `CXX=/usr/bin/g++` as default env vars (a MinGW/MSYS convenience). cc-rs
+      #     (ring's build script) honors $CC OVER its own MSVC target detection, so
+      #     even with msvc-dev-cmd active it tries the GNU compiler and fails:
+      #       CC = Some(/usr/bin/gcc)
+      #       ring@0.17.14: GNU compiler is not supported for this target
+      #       error occurred in cc-rs: failed to find tool "/usr/bin/gcc"
+      #     ring on x86_64-pc-windows-msvc needs MSVC's cl.exe, not gcc. Override
+      #     CC/CXX to `cl.exe` (msvc-dev-cmd put it on PATH) so cc-rs uses MSVC.
+      #
+      # (2) Linker — the TEST/PACKAGE-SMOKE steps run under `shell: bash` (git-bash),
+      #     which prepends `C:\Program Files\Git\usr\bin` to PATH; that dir ships a
+      #     coreutils `link.exe` (a hard-link utility) that SHADOWS the MSVC linker
+      #     even though msvc-dev-cmd put MSVC's bin first in the Windows PATH, so rustc
+      #     links with the wrong tool:
+      #       error: linking with `link.exe` failed
+      #       note: /usr/bin/link: extra operand '...rcgu.o'
+      #     Setting CARGO_TARGET_<triple>_LINKER to the ABSOLUTE MSVC link.exe makes
+      #     cargo pass that exact path to rustc's -Clinker, bypassing PATH resolution
+      #     (a RUSTFLAGS='-Clinker=link.exe' would NOT help — it still resolves via PATH).
+      - name: Point cargo at the MSVC C toolchain (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
@@ -113,8 +123,12 @@ jobs:
           if (-not (Test-Path $linker)) {
             throw "MSVC link.exe not found at $linker (VCToolsInstallDir=$env:VCToolsInstallDir)"
           }
-          "CARGO_TARGET_X86_64_PC_WINDOWS_MSVC_LINKER=$linker" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
-          Write-Host "Pinned MSVC linker: $linker"
+          @(
+            "CC=cl.exe"
+            "CXX=cl.exe"
+            "CARGO_TARGET_X86_64_PC_WINDOWS_MSVC_LINKER=$linker"
+          ) | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          Write-Host "CC/CXX=cl.exe; pinned MSVC linker: $linker"
 
       - name: Set up Python (shared mocks + PACKAGE-SMOKE)
         uses: actions/setup-python@v6
