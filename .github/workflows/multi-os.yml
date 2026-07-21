@@ -77,6 +77,20 @@ jobs:
       - name: Set up Rust (stable)
         uses: dtolnay/rust-toolchain@stable
 
+      # Activate the MSVC build environment on the Windows runner. dtolnay/rust-
+      # toolchain@stable installs the *-pc-windows-msvc host toolchain, but the TEST
+      # and PACKAGE-SMOKE steps below run under `shell: bash` (git-bash). Without the
+      # MSVC dev env active, cc-rs (ring's build script) fails to detect a C compiler
+      # and falls back to a Unix-style `/usr/bin/gcc`, so building `ring` fails:
+      #   error occurred in cc-rs: failed to find tool "/usr/bin/gcc"
+      # ilammy/msvc-dev-cmd exports the VS dev environment (cl.exe/link.exe on PATH
+      # plus INCLUDE/LIB/LIBPATH) via $GITHUB_ENV/$GITHUB_PATH; those persist into the
+      # later bash steps, so cc-rs picks MSVC and ring's C build succeeds. windows-latest
+      # ships Visual Studio, so nothing is installed. Guarded to Windows (no-op on macOS).
+      - name: Set up MSVC dev environment (Windows)
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1
+
       - name: Set up Python (shared mocks + PACKAGE-SMOKE)
         uses: actions/setup-python@v6
         with:
