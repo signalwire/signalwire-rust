@@ -242,6 +242,7 @@ CLASS_MODULE_MAP: dict[str, str] = {
     "InfoGatherer": "signalwire.skills.info_gatherer.skill",
     "Joke": "signalwire.skills.joke.skill",
     "Math": "signalwire.skills.math.skill",
+    "McpGateway": "signalwire.skills.mcp_gateway.skill",
     "NativeVectorSearch": "signalwire.skills.native_vector_search.skill",
     "PlayBackgroundFile": "signalwire.skills.play_background_file.skill",
     "Spider": "signalwire.skills.spider.skill",
@@ -575,6 +576,11 @@ METHOD_RENAMES: dict[str, dict[str, str]] = {
     "WikipediaSearch": {
         "required_packages": None,
     },
+    # MCPGatewaySkill: same `required_packages` Rust trait-default helper drop;
+    # the reference subclass surface is the 6 interface methods only.
+    "McpGateway": {
+        "required_packages": None,
+    },
 }
 
 
@@ -615,6 +621,7 @@ CLASS_RENAME_MAP: dict[str, str] = {
     "InfoGatherer": "InfoGathererSkill",
     "Joke": "JokeSkill",
     "Math": "MathSkill",
+    "McpGateway": "MCPGatewaySkill",
     "NativeVectorSearch": "NativeVectorSearchSkill",
     "PlayBackgroundFile": "PlayBackgroundFileSkill",
     "Spider": "SpiderSkill",
@@ -1116,6 +1123,20 @@ FORCE_CLASS_METHODS: dict[tuple[str, str], list[str]] = {
     # the same `list_addresses`. Emit the reference symbols.
     ("signalwire.rest._base", "BaseResource"): ["__init__"],
     ("signalwire.rest._base", "CrudWithAddresses"): ["list_addresses"],
+    # MCPGatewaySkill: the SIGNATURE oracle records the 6 interface methods on
+    # the skill subclass (uniquely — Python defines all six in the class body:
+    # get_parameter_schema/setup/register_tools/get_hints/get_global_data/
+    # get_prompt_sections). Rust implements them on `impl SkillBase for McpGateway`
+    # (a trait impl the signature enumerator skips, so skills stay method-less on
+    # the sig side). Force the reference-declared names so the sig side matches;
+    # the synthesized self-only/any signatures are compatible (self≡cls, any
+    # return matches, receivers carry no type — diff_port_signatures). The SURFACE
+    # side already lists them via SKILL_INTERFACE_PROJECTION (this union is a
+    # harmless idempotent superset there).
+    ("signalwire.skills.mcp_gateway.skill", "MCPGatewaySkill"): [
+        "get_global_data", "get_hints", "get_parameter_schema",
+        "get_prompt_sections", "register_tools", "setup",
+    ],
 }
 # Static/associated methods Rust hosts on a class that the Python reference
 # records as MODULE-LEVEL free functions. Project the method onto the target
@@ -1183,6 +1204,7 @@ SKILL_INTERFACE_PROJECTION: dict[tuple[str, str], list[str]] = {
     ("signalwire.skills.info_gatherer.skill", "InfoGathererSkill"): ["get_global_data", "get_instance_key", "get_parameter_schema", "register_tools", "setup"],
     ("signalwire.skills.joke.skill", "JokeSkill"): ["get_global_data", "get_hints", "get_parameter_schema", "get_prompt_sections", "register_tools", "setup"],
     ("signalwire.skills.math.skill", "MathSkill"): ["get_hints", "get_parameter_schema", "get_prompt_sections", "register_tools", "setup"],
+    ("signalwire.skills.mcp_gateway.skill", "MCPGatewaySkill"): ["get_global_data", "get_hints", "get_parameter_schema", "get_prompt_sections", "register_tools", "setup"],
     ("signalwire.skills.native_vector_search.skill", "NativeVectorSearchSkill"): ["cleanup", "get_global_data", "get_hints", "get_instance_key", "get_parameter_schema", "get_prompt_sections", "register_tools", "setup"],
     ("signalwire.skills.play_background_file.skill", "PlayBackgroundFileSkill"): ["get_instance_key", "get_parameter_schema", "register_tools", "setup"],
     ("signalwire.skills.spider.skill", "SpiderSkill"): ["cleanup", "get_hints", "get_instance_key", "get_parameter_schema", "register_tools", "setup"],

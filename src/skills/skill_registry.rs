@@ -37,7 +37,7 @@ const BUILTIN_NAMES: &[&str] = &[
 
 /// Thread-safe global registry mapping `snake_case` skill names to factory functions.
 ///
-/// All 17 builtin skills are auto-registered on first access.
+/// All 18 builtin skills are auto-registered on first access.
 static REGISTRY: LazyLock<Mutex<SkillRegistryInner>> = LazyLock::new(|| {
     let mut inner = SkillRegistryInner::new();
     inner.register_builtins();
@@ -105,6 +105,10 @@ impl SkillRegistryInner {
         self.skills.insert(
             "math".to_string(),
             Box::new(|p| Box::new(builtin::math::Math::new(p))),
+        );
+        self.skills.insert(
+            "mcp_gateway".to_string(),
+            Box::new(|p| Box::new(builtin::mcp_gateway::McpGateway::new(p))),
         );
         self.skills.insert(
             "native_vector_search".to_string(),
@@ -376,13 +380,14 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_registry_lists_17_builtins() {
+    fn test_registry_lists_18_builtins() {
         let names = SkillRegistry::list_skills();
         assert!(
-            names.len() >= 17,
-            "Expected at least 17 builtins, got {}",
+            names.len() >= 18,
+            "Expected at least 18 builtins, got {}",
             names.len()
         );
+        assert!(names.contains(&"mcp_gateway".to_string()));
         assert!(names.contains(&"datetime".to_string()));
         assert!(names.contains(&"math".to_string()));
         assert!(names.contains(&"joke".to_string()));

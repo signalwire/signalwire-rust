@@ -1190,3 +1190,24 @@ signalwire.rest._base.HttpClient.put_with_options: `PUT` with a per-request Requ
 signalwire.rest._base.HttpClient.patch_with_options: `PATCH` with a per-request RequestOptions override; Python's `HttpClient.patch(..., request_options=)`. Rust method-name overload.
 signalwire.rest._base.HttpClient.delete_with_options: `DELETE` with a per-request RequestOptions override; Python's `HttpClient.delete(..., request_options=)`. Rust method-name overload.
 signalwire.rest.client.RestClient.with_base_url_and_options: RestClient constructor taking an explicit base URL AND a client-default RequestOptions; Python passes `request_options=` to `RestClient(...)`. Rust splits it into a named constructor (the base `with_base_url` has no options arg to preserve callers).
+
+### mcp_gateway CLIENT skill (oracle-ahead-of-main transitional)
+
+The `mcp_gateway` builtin CLIENT skill (`MCPGatewaySkill`) IS canonical reference
+surface: the Python oracle enumerates it on `porting-sdk` `wave/1-aplus`
+(commit f4d2154, "enumerate mcp_gateway CLIENT skill as cross-port surface") and
+every port that ships it must reproduce the 6 interface methods. This port ships
+it (`src/skills/builtin/mcp_gateway.rs`). Against `wave/1-aplus` these symbols
+MATCH the reference (this section is then a no-op). They are recorded here only so
+the drift gate stays green while PR CI still checks out `porting-sdk` **main**
+(the oracle there is temporarily behind — same transitional note as
+`.github/workflows/*.yml` "REVERT ref to main when that porting-sdk branch
+merges"). Remove this section once the Wave-1 oracle lands on porting-sdk main.
+
+signalwire.skills.mcp_gateway.skill.MCPGatewaySkill: mcp_gateway CLIENT skill — canonical on porting-sdk wave/1-aplus (oracle commit f4d2154); recorded here only while PR CI's porting-sdk is main (oracle behind). Matches the reference on wave/1-aplus.
+signalwire.skills.mcp_gateway.skill.MCPGatewaySkill.get_global_data: mcp_gateway CLIENT skill — canonical on porting-sdk wave/1-aplus (oracle commit f4d2154); recorded here only while PR CI's porting-sdk is main (oracle behind). Matches the reference on wave/1-aplus.
+signalwire.skills.mcp_gateway.skill.MCPGatewaySkill.get_hints: mcp_gateway CLIENT skill — canonical on porting-sdk wave/1-aplus (oracle commit f4d2154); recorded here only while PR CI's porting-sdk is main (oracle behind). Matches the reference on wave/1-aplus.
+signalwire.skills.mcp_gateway.skill.MCPGatewaySkill.get_parameter_schema: mcp_gateway CLIENT skill — canonical on porting-sdk wave/1-aplus (oracle commit f4d2154); recorded here only while PR CI's porting-sdk is main (oracle behind). Matches the reference on wave/1-aplus.
+signalwire.skills.mcp_gateway.skill.MCPGatewaySkill.get_prompt_sections: mcp_gateway CLIENT skill — canonical on porting-sdk wave/1-aplus (oracle commit f4d2154); recorded here only while PR CI's porting-sdk is main (oracle behind). Matches the reference on wave/1-aplus.
+signalwire.skills.mcp_gateway.skill.MCPGatewaySkill.register_tools: mcp_gateway CLIENT skill — canonical on porting-sdk wave/1-aplus (oracle commit f4d2154); recorded here only while PR CI's porting-sdk is main (oracle behind). Matches the reference on wave/1-aplus.
+signalwire.skills.mcp_gateway.skill.MCPGatewaySkill.setup: mcp_gateway CLIENT skill — canonical on porting-sdk wave/1-aplus (oracle commit f4d2154); recorded here only while PR CI's porting-sdk is main (oracle behind). Matches the reference on wave/1-aplus.

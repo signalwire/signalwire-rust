@@ -8,6 +8,7 @@ pub mod google_maps;
 pub mod info_gatherer;
 pub mod joke;
 pub mod math;
+pub mod mcp_gateway;
 pub mod native_vector_search;
 pub mod play_background_file;
 pub mod spider;
