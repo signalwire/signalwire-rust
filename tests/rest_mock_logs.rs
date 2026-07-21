@@ -36,7 +36,11 @@ fn test_logs_messages_list_returns_dict() {
 fn test_logs_messages_get_uses_id_in_path() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let body = c.logs().messages().get("ml-42", None).expect("messages.get");
+    let body = c
+        .logs()
+        .messages()
+        .get("ml-42", None)
+        .expect("messages.get");
     assert!(body.is_object());
 
     let entry = common::mocktest::journal_last();

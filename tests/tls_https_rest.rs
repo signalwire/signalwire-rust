@@ -50,10 +50,10 @@ fn tls_rest_client_https_get() {
     let body = client
         .fabric()
         .addresses()
-        .list(&std::collections::HashMap::from([(
-            "page_size".to_string(),
-            "5".to_string(),
-        )]), None)
+        .list(
+            &std::collections::HashMap::from([("page_size".to_string(), "5".to_string())]),
+            None,
+        )
         .expect("fabric addresses.list over https:// should succeed");
     let obj = body
         .as_object()

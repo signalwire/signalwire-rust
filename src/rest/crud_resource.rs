@@ -105,7 +105,7 @@ impl<'a> CrudResource<'a> {
     /// is dispatched until the iterator is first stepped.
     #[must_use]
     pub fn paginate(&self, params: &HashMap<String, String>) -> PaginatedIterator<'a> {
-        PaginatedIterator::new(self.client, &self.base_path, params.clone(), "data")
+        PaginatedIterator::new(self.client, &self.base_path, params.clone(), "data", None)
     }
 
     /// `paginate` with a per-request [`RequestOptions`] override (plan 4.2)
@@ -116,7 +116,7 @@ impl<'a> CrudResource<'a> {
         params: &HashMap<String, String>,
         request_options: Option<RequestOptions>,
     ) -> PaginatedIterator<'a> {
-        PaginatedIterator::with_options(
+        PaginatedIterator::new(
             self.client,
             &self.base_path,
             params.clone(),

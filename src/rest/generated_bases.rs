@@ -193,6 +193,7 @@ impl<'a> ReadResource<'a> {
             self.base.base_path(),
             params.clone(),
             "data",
+            None,
         )
     }
 
@@ -204,7 +205,7 @@ impl<'a> ReadResource<'a> {
         params: &HashMap<String, String>,
         request_options: Option<RequestOptions>,
     ) -> PaginatedIterator<'a> {
-        PaginatedIterator::with_options(
+        PaginatedIterator::new(
             self.base.client(),
             self.base.base_path(),
             params.clone(),
@@ -232,9 +233,11 @@ impl<'a> ReadResource<'a> {
         id: &str,
         request_options: Option<&RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.base
-            .client()
-            .get_with_options(&self.base.path(&[id]), &HashMap::new(), request_options)
+        self.base.client().get_with_options(
+            &self.base.path(&[id]),
+            &HashMap::new(),
+            request_options,
+        )
     }
 }
 

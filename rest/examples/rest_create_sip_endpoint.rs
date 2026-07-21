@@ -19,12 +19,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("Creating SIP endpoint ...");
 
-    let endpoint = client.fabric().sip_endpoints().create(&json!({
-        "username": "alice",
-        "password": "secure-password-123",
-        "caller_id": "+15551234567",
-        "name": "Alice's Desk Phone"
-    }), None)?;
+    let endpoint = client.fabric().sip_endpoints().create(
+        &json!({
+            "username": "alice",
+            "password": "secure-password-123",
+            "caller_id": "+15551234567",
+            "name": "Alice's Desk Phone"
+        }),
+        None,
+    )?;
 
     println!("Endpoint created:");
     println!("  ID: {}", endpoint["id"]);
@@ -32,7 +35,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("  Name: {}", endpoint["name"]);
 
     // List all endpoints.
-    let endpoints = client.fabric().sip_endpoints().list(&HashMap::new(), None)?;
+    let endpoints = client
+        .fabric()
+        .sip_endpoints()
+        .list(&HashMap::new(), None)?;
     if let Some(arr) = endpoints.as_array() {
         println!("\nAll SIP endpoints ({}):", arr.len());
         for ep in arr {

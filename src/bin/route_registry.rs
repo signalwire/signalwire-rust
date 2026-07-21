@@ -143,22 +143,25 @@ fn invoke_all(c: &RestClient) {
     let f = c.fabric();
     // Token operations now take generated request structs.
     let _ = f.tokens().create_subscriber_token(
-        fabric_gen::FabricTokensCreateSubscriberTokenRequest::new("x"), None
+        fabric_gen::FabricTokensCreateSubscriberTokenRequest::new("x"),
+        None,
     );
     let _ = f.tokens().refresh_subscriber_token(
-        fabric_gen::FabricTokensRefreshSubscriberTokenRequest::new("x"), None
+        fabric_gen::FabricTokensRefreshSubscriberTokenRequest::new("x"),
+        None,
     );
-    let _ = f
-        .tokens()
-        .create_invite_token(fabric_gen::FabricTokensCreateInviteTokenRequest::new("x"), None);
-    let _ = f
-        .tokens()
-        .create_guest_token(fabric_gen::FabricTokensCreateGuestTokenRequest::new(json!(
-            {}
-        )), None);
-    let _ = f
-        .tokens()
-        .create_embed_token(fabric_gen::FabricTokensCreateEmbedTokenRequest::new("x"), None);
+    let _ = f.tokens().create_invite_token(
+        fabric_gen::FabricTokensCreateInviteTokenRequest::new("x"),
+        None,
+    );
+    let _ = f.tokens().create_guest_token(
+        fabric_gen::FabricTokensCreateGuestTokenRequest::new(json!({})),
+        None,
+    );
+    let _ = f.tokens().create_embed_token(
+        fabric_gen::FabricTokensCreateEmbedTokenRequest::new("x"),
+        None,
+    );
     // Each fabric resource is now a distinct generated struct (no shared base
     // type), so drive the common Fabric CRUD + list_addresses surface per
     // resource via a small macro rather than a heterogeneous array.
@@ -201,11 +204,13 @@ fn invoke_all(c: &RestClient) {
     let _ = r.list_addresses(id, hm, None);
     let _ = r.assign_domain_application(
         id,
-        fabric_gen::GenericResourcesAssignDomainApplicationRequest::new("x"), None
+        fabric_gen::GenericResourcesAssignDomainApplicationRequest::new("x"),
+        None,
     );
     let _ = r.assign_phone_route(
         id,
-        fabric_gen::GenericResourcesAssignPhoneRouteRequest::new("x", "y"), None
+        fabric_gen::GenericResourcesAssignPhoneRouteRequest::new("x", "y"),
+        None,
     );
     // conference_rooms / call_flows / addresses sub-resources.
     let cr = f.conference_rooms();
@@ -236,13 +241,15 @@ fn invoke_all(c: &RestClient) {
     let _ = s.list_sip_endpoints(id, hm, None);
     let _ = s.create_sip_endpoint(
         id,
-        fabric_gen::SubscribersCreateSipEndpointRequest::new("x", "y"), None
+        fabric_gen::SubscribersCreateSipEndpointRequest::new("x", "y"),
+        None,
     );
     let _ = s.get_sip_endpoint(id, id, hm, None);
     let _ = s.update_sip_endpoint(
         id,
         id,
-        fabric_gen::SubscribersUpdateSipEndpointRequest::new(), None
+        fabric_gen::SubscribersUpdateSipEndpointRequest::new(),
+        None,
     );
     let _ = s.delete_sip_endpoint(id, id, None);
     // call_flows versions / deploy live on the call_flows resource:
@@ -269,7 +276,11 @@ fn invoke_all(c: &RestClient) {
     let _ = cl.record_stop(id, cg::CallingRecordStopRequest::new("x"), None);
     let _ = cl.collect(id, cg::CallingCollectRequest::new(), None);
     let _ = cl.collect_stop(id, cg::CallingCollectStopRequest::new("x"), None);
-    let _ = cl.collect_start_input_timers(id, cg::CallingCollectStartInputTimersRequest::new("x"), None);
+    let _ = cl.collect_start_input_timers(
+        id,
+        cg::CallingCollectStartInputTimersRequest::new("x"),
+        None,
+    );
     let _ = cl.detect(id, cg::CallingDetectRequest::new(json!({})), None);
     let _ = cl.detect_stop(id, cg::CallingDetectStopRequest::new("x"), None);
     let _ = cl.tap(id, cg::CallingTapRequest::new(json!({}), json!({})), None);
@@ -307,7 +318,10 @@ fn invoke_all(c: &RestClient) {
     let _ = d.get(id, None);
     let _ = d.update(id, p, None);
     let _ = d.delete(id, None);
-    let _ = d.search(datasphere_gen::DatasphereDocumentsSearchRequest::new("x"), None);
+    let _ = d.search(
+        datasphere_gen::DatasphereDocumentsSearchRequest::new("x"),
+        None,
+    );
     let _ = d.list_chunks(id, hm, None);
     let _ = d.get_chunk(id, id, hm, None);
     let _ = d.delete_chunk(id, id, None);
@@ -343,7 +357,11 @@ fn invoke_all(c: &RestClient) {
     let _ = conf.delete(id, None);
     let _ = conf.list_conference_tokens(id, hm, None);
     let _ = conf.list_streams(id, hm, None);
-    let _ = conf.create_stream(id, video_gen::VideoConferencesCreateStreamRequest::new("x"), None);
+    let _ = conf.create_stream(
+        id,
+        video_gen::VideoConferencesCreateStreamRequest::new("x"),
+        None,
+    );
     let ct = v.conference_tokens();
     let _ = ct.get(id, hm, None);
     let _ = ct.reset(id, None);
@@ -371,7 +389,11 @@ fn invoke_all(c: &RestClient) {
     let _ = ng.update(id, p, None);
     let _ = ng.delete(id, None);
     let _ = ng.list_memberships(id, hm, None);
-    let _ = ng.add_membership(id, relay_gen::NumberGroupsAddMembershipRequest::new("x"), None);
+    let _ = ng.add_membership(
+        id,
+        relay_gen::NumberGroupsAddMembershipRequest::new("x"),
+        None,
+    );
     let _ = ng.get_membership(id, hm, None);
     let _ = ng.delete_membership(id, None);
 
@@ -402,7 +424,11 @@ fn invoke_all(c: &RestClient) {
     let _ = camps.update(id, relay_gen::RegistryCampaignsUpdateRequest::new(), None);
     let _ = camps.list_numbers(id, hm, None);
     let _ = camps.list_orders(id, hm, None);
-    let _ = camps.create_order(id, relay_gen::RegistryCampaignsCreateOrderRequest::new(), None);
+    let _ = camps.create_order(
+        id,
+        relay_gen::RegistryCampaignsCreateOrderRequest::new(),
+        None,
+    );
     let orders = reg.orders();
     let _ = orders.get(id, hm, None);
     let nums = reg.numbers();
@@ -425,7 +451,10 @@ fn invoke_all(c: &RestClient) {
 
     // --- project ---
     let pt = c.project().tokens();
-    let _ = pt.create(project_gen::ProjectTokensCreateRequest::new("x", json!({})), None);
+    let _ = pt.create(
+        project_gen::ProjectTokensCreateRequest::new("x", json!({})),
+        None,
+    );
     let _ = pt.update(id, project_gen::ProjectTokensUpdateRequest::new(), None);
     let _ = pt.delete(id, None);
 
@@ -444,9 +473,10 @@ fn invoke_all(c: &RestClient) {
     let _ = pj.rotate_signing_key(id, None);
 
     // --- pubsub / chat (token-only) ---
-    let _ = c
-        .pubsub()
-        .create_token(pubsub_gen::PubSubCreateTokenRequest::new(0, json!({})), None);
+    let _ = c.pubsub().create_token(
+        pubsub_gen::PubSubCreateTokenRequest::new(0, json!({})),
+        None,
+    );
     let _ = c
         .chat()
         .create_token(chat_gen::ChatCreateTokenRequest::new(0, json!({})), None);
@@ -461,15 +491,17 @@ fn invoke_all(c: &RestClient) {
     let _ = vc.redial_verification(id, None);
     let _ = vc.submit_verification(
         id,
-        relay_gen::VerifiedCallersSubmitVerificationRequest::new("x"), None
+        relay_gen::VerifiedCallersSubmitVerificationRequest::new("x"),
+        None,
     );
 
     // --- top-level narrow resources (each mirrors python's verb set) ---
     let addr = c.addresses();
     let _ = addr.list(hm, None);
-    let _ = addr.create(relay_gen::AddressesCreateRequest::new(
-        "x", "x", "x", "x", "x", "x", "x", "x", "x",
-    ), None);
+    let _ = addr.create(
+        relay_gen::AddressesCreateRequest::new("x", "x", "x", "x", "x", "x", "x", "x", "x"),
+        None,
+    );
     let _ = addr.get(id, hm, None);
     let _ = addr.delete(id, None);
     let rec = c.recordings();

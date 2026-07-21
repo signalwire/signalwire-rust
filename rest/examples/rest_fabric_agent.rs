@@ -18,21 +18,24 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Create an AI agent.
     println!("Creating AI agent ...");
-    let agent = client.fabric().ai_agents().create(&json!({
-        "name": "Demo Support Bot",
-        "prompt": {
-            "text": "You are a helpful support agent for ACME Corporation."
-        },
-        "languages": [{
-            "name": "English",
-            "code": "en-US",
-            "voice": "inworld.Mark"
-        }],
-        "params": {
-            "end_of_speech_timeout": 500,
-            "attention_timeout": 15000
-        }
-    }), None)?;
+    let agent = client.fabric().ai_agents().create(
+        &json!({
+            "name": "Demo Support Bot",
+            "prompt": {
+                "text": "You are a helpful support agent for ACME Corporation."
+            },
+            "languages": [{
+                "name": "English",
+                "code": "en-US",
+                "voice": "inworld.Mark"
+            }],
+            "params": {
+                "end_of_speech_timeout": 500,
+                "attention_timeout": 15000
+            }
+        }),
+        None,
+    )?;
 
     let agent_id = agent["id"].as_str().unwrap_or("unknown").to_string();
     println!("Agent created: {agent_id}");
@@ -55,7 +58,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             "prompt": {
                 "text": "You are a senior support agent. Be thorough and precise."
             }
-        }), None
+        }),
+        None,
     )?;
     println!("Agent updated.");
 

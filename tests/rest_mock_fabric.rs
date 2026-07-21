@@ -160,7 +160,8 @@ fn test_fabric_subscribers_update_sip_endpoint_uses_patch() {
         .update_sip_endpoint(
             "sub-1",
             "ep-1",
-            fabric_gen::SubscribersUpdateSipEndpointRequest::new().username("renamed"), None
+            fabric_gen::SubscribersUpdateSipEndpointRequest::new().username("renamed"),
+            None,
         )
         .expect("update_sip_endpoint");
     assert!(body.is_object());
@@ -210,7 +211,8 @@ fn test_fabric_tokens_create_invite_token() {
         .fabric()
         .tokens()
         .create_invite_token(
-            fabric_gen::FabricTokensCreateInviteTokenRequest::new("addr-1").expires_at(3600), None
+            fabric_gen::FabricTokensCreateInviteTokenRequest::new("addr-1").expires_at(3600),
+            None,
         )
         .expect("create_invite_token");
     assert!(body.is_object());
@@ -234,9 +236,10 @@ fn test_fabric_tokens_create_embed_token() {
     let body = c
         .fabric()
         .tokens()
-        .create_embed_token(fabric_gen::FabricTokensCreateEmbedTokenRequest::new(
-            "tok-1",
-        ), None)
+        .create_embed_token(
+            fabric_gen::FabricTokensCreateEmbedTokenRequest::new("tok-1"),
+            None,
+        )
         .expect("create_embed_token");
     assert!(body.is_object());
 
@@ -254,9 +257,10 @@ fn test_fabric_tokens_refresh_subscriber_token() {
     let body = c
         .fabric()
         .tokens()
-        .refresh_subscriber_token(fabric_gen::FabricTokensRefreshSubscriberTokenRequest::new(
-            "abc-123",
-        ), None)
+        .refresh_subscriber_token(
+            fabric_gen::FabricTokensRefreshSubscriberTokenRequest::new("abc-123"),
+            None,
+        )
         .expect("refresh_subscriber_token");
     assert!(body.is_object());
 
@@ -355,7 +359,8 @@ fn test_fabric_resources_assign_domain_application() {
         .resources()
         .assign_domain_application(
             "res-4",
-            fabric_gen::GenericResourcesAssignDomainApplicationRequest::new("da-7"), None
+            fabric_gen::GenericResourcesAssignDomainApplicationRequest::new("da-7"),
+            None,
         )
         .expect("assign_domain_application");
     assert!(body.is_object());

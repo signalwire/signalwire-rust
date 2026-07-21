@@ -51,7 +51,8 @@ fn test_video_rooms_create_stream_posts_kwargs_in_body() {
         .rooms()
         .create_stream(
             "room-1",
-            video_gen::VideoRoomsCreateStreamRequest::new("rtmp://example.com/live"), None
+            video_gen::VideoRoomsCreateStreamRequest::new("rtmp://example.com/live"),
+            None,
         )
         .expect("create_stream");
     assert!(body.is_object());
@@ -328,7 +329,8 @@ fn test_video_streams_update_uses_put_with_kwargs() {
         .streams()
         .update(
             "stream-2",
-            video_gen::VideoStreamsUpdateRequest::new("rtmp://example.com/new"), None
+            video_gen::VideoStreamsUpdateRequest::new("rtmp://example.com/new"),
+            None,
         )
         .expect("streams.update");
     assert!(body.is_object());

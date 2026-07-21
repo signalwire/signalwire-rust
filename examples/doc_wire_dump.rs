@@ -42,15 +42,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // --- README (region: rest quickstart) ------------------------------------
     // fabric().ai_agents().create({name, prompt:{text}})
-    client.fabric().ai_agents().create(&json!({
-        "name": "Support Bot",
-        "prompt": {"text": "You are helpful."}
-    }), None)?;
+    client.fabric().ai_agents().create(
+        &json!({
+            "name": "Support Bot",
+            "prompt": {"text": "You are helpful."}
+        }),
+        None,
+    )?;
 
     // calling().dial(from, to).url(...)
     client.calling().dial(
         CallingDialRequest::new("+15559876543", "+15551234567")
-            .url("https://example.com/call-handler"), None
+            .url("https://example.com/call-handler"),
+        None,
     )?;
 
     // phone_numbers().search({areacode})  — spec key is `areacode`, NOT area_code
@@ -82,10 +86,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     )?;
 
     // --- rest/docs/datasphere search -----------------------------------------
-    client
-        .datasphere()
-        .documents()
-        .search(DatasphereDocumentsSearchRequest::new("billing policy"), None)?;
+    client.datasphere().documents().search(
+        DatasphereDocumentsSearchRequest::new("billing policy"),
+        None,
+    )?;
 
     println!("doc_wire_dump: replayed documented REST fixtures against the mock");
     Ok(())

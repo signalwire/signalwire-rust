@@ -18,10 +18,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Create a queue.
     println!("Creating queue ...");
-    let queue = client.queues().create(&json!({
-        "name": "Support Queue",
-        "max_size": 100
-    }), None)?;
+    let queue = client.queues().create(
+        &json!({
+            "name": "Support Queue",
+            "max_size": 100
+        }),
+        None,
+    )?;
     let queue_id = queue["id"].as_str().unwrap_or("unknown").to_string();
     println!("Queue created: {queue_id}");
 
@@ -45,7 +48,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("  Current size: {}", details["current_size"]);
 
     // List members in the queue.
-    let members = client.queues().list_members(&queue_id, &HashMap::new(), None)?;
+    let members = client
+        .queues()
+        .list_members(&queue_id, &HashMap::new(), None)?;
     if let Some(arr) = members.as_array() {
         println!("  Members: {}", arr.len());
     }

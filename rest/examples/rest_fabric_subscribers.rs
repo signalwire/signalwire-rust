@@ -18,12 +18,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Create a subscriber.
     println!("Creating subscriber ...");
-    let sub = client.fabric().subscribers().create(&json!({
-        "email": "alice@example.com",
-        "first_name": "Alice",
-        "last_name": "Smith",
-        "display_name": "Alice Smith"
-    }), None)?;
+    let sub = client.fabric().subscribers().create(
+        &json!({
+            "email": "alice@example.com",
+            "first_name": "Alice",
+            "last_name": "Smith",
+            "display_name": "Alice Smith"
+        }),
+        None,
+    )?;
 
     let sub_id = sub["id"].as_str().unwrap_or("unknown").to_string();
     println!("Subscriber created: {sub_id}");
@@ -46,7 +49,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         &sub_id,
         &json!({
             "display_name": "Alice S."
-        }), None
+        }),
+        None,
     )?;
     println!("Subscriber updated.");
 

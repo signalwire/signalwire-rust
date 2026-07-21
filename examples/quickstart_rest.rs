@@ -18,14 +18,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Reads SIGNALWIRE_PROJECT_ID / SIGNALWIRE_API_TOKEN / SIGNALWIRE_SPACE.
     let client = RestClient::from_env().expect("missing SIGNALWIRE_* env vars");
 
-    client.fabric().ai_agents().create(&json!({
-        "name": "Support Bot",
-        "prompt": {"text": "You are helpful."}
-    }), None)?;
+    client.fabric().ai_agents().create(
+        &json!({
+            "name": "Support Bot",
+            "prompt": {"text": "You are helpful."}
+        }),
+        None,
+    )?;
 
     client.calling().dial(
         CallingDialRequest::new("+15559876543", "+15551234567")
-            .url("https://example.com/call-handler"), None
+            .url("https://example.com/call-handler"),
+        None,
     )?;
 
     let query = HashMap::from([("areacode".to_string(), "512".to_string())]);

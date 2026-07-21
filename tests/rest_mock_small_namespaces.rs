@@ -49,7 +49,8 @@ fn test_small_addresses_create() {
         .addresses()
         .create(
             relay_gen::AddressesCreateRequest::new("", "US", "Ada", "Lovelace", "", "", "", "", "")
-                .address_type("commercial"), None
+                .address_type("commercial"),
+            None,
         )
         .expect("addresses.create");
     assert!(body.is_object());
@@ -89,7 +90,10 @@ fn test_small_addresses_get() {
 fn test_small_addresses_delete() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let body = c.addresses().delete("addr-123", None).expect("addresses.delete");
+    let body = c
+        .addresses()
+        .delete("addr-123", None)
+        .expect("addresses.delete");
     assert!(body.is_object());
 
     let entry = common::mocktest::journal_last();
@@ -150,7 +154,10 @@ fn test_small_recordings_get() {
 fn test_small_recordings_delete() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let body = c.recordings().delete("rec-123", None).expect("recordings.delete");
+    let body = c
+        .recordings()
+        .delete("rec-123", None)
+        .expect("recordings.delete");
     assert!(body.is_object());
 
     let entry = common::mocktest::journal_last();
@@ -173,7 +180,10 @@ fn test_small_short_codes_list() {
     let c = common::mocktest::client();
     let mut params = HashMap::new();
     params.insert("page_size".to_string(), "20".to_string());
-    let body = c.short_codes().list(&params, None).expect("short_codes.list");
+    let body = c
+        .short_codes()
+        .list(&params, None)
+        .expect("short_codes.list");
     assert!(body.is_object());
     let obj = body.as_object().unwrap();
     assert!(obj.contains_key("data"));
@@ -208,7 +218,8 @@ fn test_small_short_codes_update() {
         .short_codes()
         .update(
             "sc-1",
-            relay_gen::ShortCodesUpdateRequest::new("Marketing SMS", ""), None
+            relay_gen::ShortCodesUpdateRequest::new("Marketing SMS", ""),
+            None,
         )
         .expect("short_codes.update");
     assert!(body.is_object());
@@ -236,7 +247,8 @@ fn test_small_imported_numbers_create() {
         .imported_numbers()
         .create(
             relay_gen::ImportedNumbersCreateRequest::new("+15551234567", "longcode")
-                .capabilities(json!(["sms", "voice"])), None
+                .capabilities(json!(["sms", "voice"])),
+            None,
         )
         .expect("imported_numbers.create");
     assert!(body.is_object());
@@ -275,7 +287,8 @@ fn test_small_mfa_call() {
         .call(
             relay_gen::MfaCallRequest::new("+15551234567")
                 .from("+15559876543")
-                .message("Your code is {code}"), None
+                .message("Your code is {code}"),
+            None,
         )
         .expect("mfa.call");
     assert!(body.is_object());
@@ -309,7 +322,8 @@ fn test_small_sip_profile_update() {
         .update(
             relay_gen::SipProfileUpdateRequest::new()
                 .domain_identifier("myco")
-                .default_codecs(json!(["PCMU", "PCMA"])), None
+                .default_codecs(json!(["PCMU", "PCMA"])),
+            None,
         )
         .expect("sip_profile.update");
     assert!(body.is_object());
@@ -403,7 +417,8 @@ fn test_small_project_tokens_update() {
         .tokens()
         .update(
             "tok-1",
-            project_gen::ProjectTokensUpdateRequest::new().name("renamed-token"), None
+            project_gen::ProjectTokensUpdateRequest::new().name("renamed-token"),
+            None,
         )
         .expect("project.tokens.update");
     assert!(body.is_object());

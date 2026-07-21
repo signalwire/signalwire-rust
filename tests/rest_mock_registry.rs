@@ -76,7 +76,8 @@ fn test_registry_brands_create_campaign_posts_to_subpath() {
         .brands()
         .create_campaign(
             "brand-2",
-            &json!({"name": "My Campaign", "sms_use_case": "LOW_VOLUME"}), None
+            &json!({"name": "My Campaign", "sms_use_case": "LOW_VOLUME"}),
+            None,
         )
         .expect("create_campaign");
     assert!(body.is_object());
@@ -124,7 +125,8 @@ fn test_registry_campaigns_update_uses_put() {
         .campaigns()
         .update(
             "camp-2",
-            relay_gen::RegistryCampaignsUpdateRequest::new().name("Updated Campaign"), None
+            relay_gen::RegistryCampaignsUpdateRequest::new().name("Updated Campaign"),
+            None,
         )
         .expect("campaigns.update");
     assert!(body.is_object());
@@ -166,7 +168,8 @@ fn test_registry_campaigns_create_order_posts_to_subpath() {
         .create_order(
             "camp-4",
             relay_gen::RegistryCampaignsCreateOrderRequest::new()
-                .phone_numbers(json!(["pn-1", "pn-2"])), None
+                .phone_numbers(json!(["pn-1", "pn-2"])),
+            None,
         )
         .expect("create_order");
     assert!(body.is_object());
