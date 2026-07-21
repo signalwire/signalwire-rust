@@ -1,6 +1,6 @@
 {
   "version": "1",
-  "generated_from": "signalwire-rust @ c8c0ee74cc75358ea64c5db746a101a91420c638",
+  "generated_from": "signalwire-rust @ 0a3ed537ea207613b0703787ebeeaf6e0765a24e",
   "modules": {
     "signalwire": {
       "classes": {
@@ -1665,9 +1665,15 @@
           "base_path",
           "client",
           "create",
+          "create_with_options",
           "delete",
+          "delete_with_options",
+          "get_with_options",
+          "list_with_options",
+          "paginate_with_options",
           "path",
-          "update"
+          "update",
+          "update_with_options"
         ],
         "CrudWithAddresses": [
           "list_addresses"

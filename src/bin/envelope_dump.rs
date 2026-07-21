@@ -543,7 +543,7 @@ const COMPOSE_LONG_TIMEOUT: f64 = 10.0;
 const COMPOSE_DELAY_MS: u64 = 3000;
 
 /// Stand up a slow (3s) in-process mock, issue one GET with the given timeout +
-/// optional pre-set abort_signal, and return whether the request was BOUNDED
+/// optional pre-set `abort_signal`, and return whether the request was BOUNDED
 /// (raised/returned within `COMPOSE_WINDOW_S`). Mirrors the differ's `_run`.
 fn run_compose_leg(timeout: f64, abort_preset: bool) -> bool {
     let server = tiny_http::Server::http("127.0.0.1:0").expect("bind 127.0.0.1:0");
@@ -603,7 +603,7 @@ fn run_compose_leg(timeout: f64, abort_preset: bool) -> bool {
 }
 
 /// The three compose legs, each emitting the shared
-/// {ctx_cancel_honored, signal_cancel_honored, both_compose} classification.
+/// `{ctx_cancel_honored, signal_cancel_honored, both_compose}` classification.
 fn run_compose(id: &str) -> Value {
     let mut ctx = false;
     let mut signal = false;

@@ -29,7 +29,7 @@ fn test_pagination_init_state_does_not_fetch() {
 
     let mut params = HashMap::new();
     params.insert("page_size".to_string(), "2".to_string());
-    let it = PaginatedIterator::new(c.http(), FABRIC_ADDRESSES_PATH, params, "data");
+    let it = PaginatedIterator::new(c.http(), FABRIC_ADDRESSES_PATH, params, "data", None);
 
     assert_eq!(it.path(), FABRIC_ADDRESSES_PATH);
     assert_eq!(it.data_key(), "data");
@@ -51,8 +51,13 @@ fn test_pagination_iter_does_not_fetch_until_stepped() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
 
-    let _it: PaginatedIterator =
-        PaginatedIterator::new(c.http(), FABRIC_ADDRESSES_PATH, HashMap::new(), "data");
+    let _it: PaginatedIterator = PaginatedIterator::new(
+        c.http(),
+        FABRIC_ADDRESSES_PATH,
+        HashMap::new(),
+        "data",
+        None,
+    );
     // Not stepping yet.
     let entries = common::mocktest::journal_all();
     assert!(entries.is_empty(), "expected empty journal");
@@ -92,7 +97,13 @@ fn test_pagination_walks_pages_and_terminates() {
         }),
     );
 
-    let it = PaginatedIterator::new(c.http(), FABRIC_ADDRESSES_PATH, HashMap::new(), "data");
+    let it = PaginatedIterator::new(
+        c.http(),
+        FABRIC_ADDRESSES_PATH,
+        HashMap::new(),
+        "data",
+        None,
+    );
     let collected: Vec<Value> = it.map(|r| r.expect("page item")).collect();
     let ids: Vec<&str> = collected
         .iter()
@@ -138,7 +149,13 @@ fn test_pagination_terminal_page_then_exhausted() {
         json!({"data": [{"id": "only-one"}], "links": {}}),
     );
 
-    let mut it = PaginatedIterator::new(c.http(), FABRIC_ADDRESSES_PATH, HashMap::new(), "data");
+    let mut it = PaginatedIterator::new(
+        c.http(),
+        FABRIC_ADDRESSES_PATH,
+        HashMap::new(),
+        "data",
+        None,
+    );
     // First call returns the single item.
     let first = it.next_item().expect("first").expect("item present");
     assert_eq!(first.get("id").and_then(Value::as_str), Some("only-one"));
