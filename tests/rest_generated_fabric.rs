@@ -31,7 +31,7 @@ use signalwire::rest::namespaces::generated::video_resources_generated as video_
 fn test_fabric_addresses_get_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let _ = c.fabric().addresses().get("x");
+    let _ = c.fabric().addresses().get("x", None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "GET");
     assert_eq!(
@@ -48,7 +48,7 @@ fn test_fabric_addresses_get_error() {
     let err = c
         .fabric()
         .addresses()
-        .get("x")
+        .get("x", None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -66,7 +66,7 @@ fn test_fabric_addresses_list_success() {
     let _ = c
         .fabric()
         .addresses()
-        .list(&std::collections::HashMap::new());
+        .list(&std::collections::HashMap::new(), None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "GET");
     assert_eq!(
@@ -83,7 +83,7 @@ fn test_fabric_addresses_list_error() {
     let err = c
         .fabric()
         .addresses()
-        .list(&std::collections::HashMap::new())
+        .list(&std::collections::HashMap::new(), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -98,7 +98,7 @@ fn test_fabric_addresses_list_error() {
 fn test_fabric_ai_agents_create_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let _ = c.fabric().ai_agents().create(&serde_json::json!({}));
+    let _ = c.fabric().ai_agents().create(&serde_json::json!({}), None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "POST");
     assert_eq!(e.matched_route.as_deref(), Some("fabric.create_ai_agent"));
@@ -112,7 +112,7 @@ fn test_fabric_ai_agents_create_error() {
     let err = c
         .fabric()
         .ai_agents()
-        .create(&serde_json::json!({}))
+        .create(&serde_json::json!({}), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -124,7 +124,7 @@ fn test_fabric_ai_agents_create_error() {
 fn test_fabric_ai_agents_delete_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let _ = c.fabric().ai_agents().delete("x");
+    let _ = c.fabric().ai_agents().delete("x", None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "DELETE");
     assert_eq!(e.matched_route.as_deref(), Some("fabric.delete_ai_agent"));
@@ -138,7 +138,7 @@ fn test_fabric_ai_agents_delete_error() {
     let err = c
         .fabric()
         .ai_agents()
-        .delete("x")
+        .delete("x", None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -150,7 +150,7 @@ fn test_fabric_ai_agents_delete_error() {
 fn test_fabric_ai_agents_get_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let _ = c.fabric().ai_agents().get("x");
+    let _ = c.fabric().ai_agents().get("x", None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "GET");
     assert_eq!(e.matched_route.as_deref(), Some("fabric.get_ai_agent"));
@@ -164,7 +164,7 @@ fn test_fabric_ai_agents_get_error() {
     let err = c
         .fabric()
         .ai_agents()
-        .get("x")
+        .get("x", None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -179,7 +179,7 @@ fn test_fabric_ai_agents_list_success() {
     let _ = c
         .fabric()
         .ai_agents()
-        .list(&std::collections::HashMap::new());
+        .list(&std::collections::HashMap::new(), None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "GET");
     assert_eq!(e.matched_route.as_deref(), Some("fabric.list_ai_agents"));
@@ -193,7 +193,7 @@ fn test_fabric_ai_agents_list_error() {
     let err = c
         .fabric()
         .ai_agents()
-        .list(&std::collections::HashMap::new())
+        .list(&std::collections::HashMap::new(), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -208,7 +208,7 @@ fn test_fabric_ai_agents_list_addresses_success() {
     let _ = c
         .fabric()
         .ai_agents()
-        .list_addresses("x", &std::collections::HashMap::new());
+        .list_addresses("x", &std::collections::HashMap::new(), None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "GET");
     assert_eq!(
@@ -225,7 +225,7 @@ fn test_fabric_ai_agents_list_addresses_error() {
     let err = c
         .fabric()
         .ai_agents()
-        .list_addresses("x", &std::collections::HashMap::new())
+        .list_addresses("x", &std::collections::HashMap::new(), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -240,7 +240,10 @@ fn test_fabric_ai_agents_list_addresses_error() {
 fn test_fabric_ai_agents_update_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let _ = c.fabric().ai_agents().update("x", &serde_json::json!({}));
+    let _ = c
+        .fabric()
+        .ai_agents()
+        .update("x", &serde_json::json!({}), None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "PATCH");
     assert_eq!(e.matched_route.as_deref(), Some("fabric.update_ai_agent"));
@@ -254,7 +257,7 @@ fn test_fabric_ai_agents_update_error() {
     let err = c
         .fabric()
         .ai_agents()
-        .update("x", &serde_json::json!({}))
+        .update("x", &serde_json::json!({}), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -266,7 +269,7 @@ fn test_fabric_ai_agents_update_error() {
 fn test_fabric_call_flows_create_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let _ = c.fabric().call_flows().create(&serde_json::json!({}));
+    let _ = c.fabric().call_flows().create(&serde_json::json!({}), None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "POST");
     assert_eq!(e.matched_route.as_deref(), Some("fabric.create_call_flow"));
@@ -280,7 +283,7 @@ fn test_fabric_call_flows_create_error() {
     let err = c
         .fabric()
         .call_flows()
-        .create(&serde_json::json!({}))
+        .create(&serde_json::json!({}), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -292,7 +295,7 @@ fn test_fabric_call_flows_create_error() {
 fn test_fabric_call_flows_delete_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let _ = c.fabric().call_flows().delete("x");
+    let _ = c.fabric().call_flows().delete("x", None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "DELETE");
     assert_eq!(e.matched_route.as_deref(), Some("fabric.delete_call_flow"));
@@ -306,7 +309,7 @@ fn test_fabric_call_flows_delete_error() {
     let err = c
         .fabric()
         .call_flows()
-        .delete("x")
+        .delete("x", None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -321,7 +324,7 @@ fn test_fabric_call_flows_deploy_version_success() {
     let _ = c
         .fabric()
         .call_flows()
-        .deploy_version("x", &serde_json::json!({}));
+        .deploy_version("x", &serde_json::json!({}), None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "POST");
     assert_eq!(
@@ -342,7 +345,7 @@ fn test_fabric_call_flows_deploy_version_error() {
     let err = c
         .fabric()
         .call_flows()
-        .deploy_version("x", &serde_json::json!({}))
+        .deploy_version("x", &serde_json::json!({}), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -357,7 +360,7 @@ fn test_fabric_call_flows_deploy_version_error() {
 fn test_fabric_call_flows_get_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let _ = c.fabric().call_flows().get("x");
+    let _ = c.fabric().call_flows().get("x", None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "GET");
     assert_eq!(e.matched_route.as_deref(), Some("fabric.get_call_flow"));
@@ -371,7 +374,7 @@ fn test_fabric_call_flows_get_error() {
     let err = c
         .fabric()
         .call_flows()
-        .get("x")
+        .get("x", None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -386,7 +389,7 @@ fn test_fabric_call_flows_list_success() {
     let _ = c
         .fabric()
         .call_flows()
-        .list(&std::collections::HashMap::new());
+        .list(&std::collections::HashMap::new(), None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "GET");
     assert_eq!(e.matched_route.as_deref(), Some("fabric.list_call_flows"));
@@ -400,7 +403,7 @@ fn test_fabric_call_flows_list_error() {
     let err = c
         .fabric()
         .call_flows()
-        .list(&std::collections::HashMap::new())
+        .list(&std::collections::HashMap::new(), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -415,7 +418,7 @@ fn test_fabric_call_flows_list_addresses_success() {
     let _ = c
         .fabric()
         .call_flows()
-        .list_addresses("x", &std::collections::HashMap::new());
+        .list_addresses("x", &std::collections::HashMap::new(), None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "GET");
     assert_eq!(
@@ -436,7 +439,7 @@ fn test_fabric_call_flows_list_addresses_error() {
     let err = c
         .fabric()
         .call_flows()
-        .list_addresses("x", &std::collections::HashMap::new())
+        .list_addresses("x", &std::collections::HashMap::new(), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -454,7 +457,7 @@ fn test_fabric_call_flows_list_versions_success() {
     let _ = c
         .fabric()
         .call_flows()
-        .list_versions("x", &std::collections::HashMap::new());
+        .list_versions("x", &std::collections::HashMap::new(), None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "GET");
     assert_eq!(
@@ -471,7 +474,7 @@ fn test_fabric_call_flows_list_versions_error() {
     let err = c
         .fabric()
         .call_flows()
-        .list_versions("x", &std::collections::HashMap::new())
+        .list_versions("x", &std::collections::HashMap::new(), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -486,7 +489,10 @@ fn test_fabric_call_flows_list_versions_error() {
 fn test_fabric_call_flows_update_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let _ = c.fabric().call_flows().update("x", &serde_json::json!({}));
+    let _ = c
+        .fabric()
+        .call_flows()
+        .update("x", &serde_json::json!({}), None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "PUT");
     assert_eq!(e.matched_route.as_deref(), Some("fabric.update_call_flow"));
@@ -500,7 +506,7 @@ fn test_fabric_call_flows_update_error() {
     let err = c
         .fabric()
         .call_flows()
-        .update("x", &serde_json::json!({}))
+        .update("x", &serde_json::json!({}), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -512,7 +518,10 @@ fn test_fabric_call_flows_update_error() {
 fn test_fabric_conference_rooms_create_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let _ = c.fabric().conference_rooms().create(&serde_json::json!({}));
+    let _ = c
+        .fabric()
+        .conference_rooms()
+        .create(&serde_json::json!({}), None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "POST");
     assert_eq!(
@@ -529,7 +538,7 @@ fn test_fabric_conference_rooms_create_error() {
     let err = c
         .fabric()
         .conference_rooms()
-        .create(&serde_json::json!({}))
+        .create(&serde_json::json!({}), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -544,7 +553,7 @@ fn test_fabric_conference_rooms_create_error() {
 fn test_fabric_conference_rooms_delete_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let _ = c.fabric().conference_rooms().delete("x");
+    let _ = c.fabric().conference_rooms().delete("x", None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "DELETE");
     assert_eq!(
@@ -561,7 +570,7 @@ fn test_fabric_conference_rooms_delete_error() {
     let err = c
         .fabric()
         .conference_rooms()
-        .delete("x")
+        .delete("x", None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -576,7 +585,7 @@ fn test_fabric_conference_rooms_delete_error() {
 fn test_fabric_conference_rooms_get_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let _ = c.fabric().conference_rooms().get("x");
+    let _ = c.fabric().conference_rooms().get("x", None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "GET");
     assert_eq!(
@@ -593,7 +602,7 @@ fn test_fabric_conference_rooms_get_error() {
     let err = c
         .fabric()
         .conference_rooms()
-        .get("x")
+        .get("x", None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -611,7 +620,7 @@ fn test_fabric_conference_rooms_list_success() {
     let _ = c
         .fabric()
         .conference_rooms()
-        .list(&std::collections::HashMap::new());
+        .list(&std::collections::HashMap::new(), None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "GET");
     assert_eq!(
@@ -628,7 +637,7 @@ fn test_fabric_conference_rooms_list_error() {
     let err = c
         .fabric()
         .conference_rooms()
-        .list(&std::collections::HashMap::new())
+        .list(&std::collections::HashMap::new(), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -643,10 +652,10 @@ fn test_fabric_conference_rooms_list_error() {
 fn test_fabric_conference_rooms_list_addresses_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let _ = c
-        .fabric()
-        .conference_rooms()
-        .list_addresses("x", &std::collections::HashMap::new());
+    let _ =
+        c.fabric()
+            .conference_rooms()
+            .list_addresses("x", &std::collections::HashMap::new(), None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "GET");
     assert_eq!(
@@ -667,7 +676,7 @@ fn test_fabric_conference_rooms_list_addresses_error() {
     let err = c
         .fabric()
         .conference_rooms()
-        .list_addresses("x", &std::collections::HashMap::new())
+        .list_addresses("x", &std::collections::HashMap::new(), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -685,7 +694,7 @@ fn test_fabric_conference_rooms_update_success() {
     let _ = c
         .fabric()
         .conference_rooms()
-        .update("x", &serde_json::json!({}));
+        .update("x", &serde_json::json!({}), None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "PUT");
     assert_eq!(
@@ -702,7 +711,7 @@ fn test_fabric_conference_rooms_update_error() {
     let err = c
         .fabric()
         .conference_rooms()
-        .update("x", &serde_json::json!({}))
+        .update("x", &serde_json::json!({}), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -717,7 +726,7 @@ fn test_fabric_conference_rooms_update_error() {
 fn test_fabric_cxml_applications_delete_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let _ = c.fabric().cxml_applications().delete("x");
+    let _ = c.fabric().cxml_applications().delete("x", None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "DELETE");
     assert_eq!(
@@ -734,7 +743,7 @@ fn test_fabric_cxml_applications_delete_error() {
     let err = c
         .fabric()
         .cxml_applications()
-        .delete("x")
+        .delete("x", None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -752,7 +761,7 @@ fn test_fabric_cxml_applications_get_success() {
     let _ = c
         .fabric()
         .cxml_applications()
-        .get("x", &std::collections::HashMap::new());
+        .get("x", &std::collections::HashMap::new(), None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "GET");
     assert_eq!(
@@ -769,7 +778,7 @@ fn test_fabric_cxml_applications_get_error() {
     let err = c
         .fabric()
         .cxml_applications()
-        .get("x", &std::collections::HashMap::new())
+        .get("x", &std::collections::HashMap::new(), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -787,7 +796,7 @@ fn test_fabric_cxml_applications_list_success() {
     let _ = c
         .fabric()
         .cxml_applications()
-        .list(&std::collections::HashMap::new());
+        .list(&std::collections::HashMap::new(), None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "GET");
     assert_eq!(
@@ -804,7 +813,7 @@ fn test_fabric_cxml_applications_list_error() {
     let err = c
         .fabric()
         .cxml_applications()
-        .list(&std::collections::HashMap::new())
+        .list(&std::collections::HashMap::new(), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -819,10 +828,10 @@ fn test_fabric_cxml_applications_list_error() {
 fn test_fabric_cxml_applications_list_addresses_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let _ = c
-        .fabric()
-        .cxml_applications()
-        .list_addresses("x", &std::collections::HashMap::new());
+    let _ =
+        c.fabric()
+            .cxml_applications()
+            .list_addresses("x", &std::collections::HashMap::new(), None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "GET");
     assert_eq!(
@@ -843,7 +852,7 @@ fn test_fabric_cxml_applications_list_addresses_error() {
     let err = c
         .fabric()
         .cxml_applications()
-        .list_addresses("x", &std::collections::HashMap::new())
+        .list_addresses("x", &std::collections::HashMap::new(), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -858,10 +867,11 @@ fn test_fabric_cxml_applications_list_addresses_error() {
 fn test_fabric_cxml_applications_update_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let _ = c
-        .fabric()
-        .cxml_applications()
-        .update("x", fabric_gen::CxmlApplicationsUpdateRequest::new());
+    let _ = c.fabric().cxml_applications().update(
+        "x",
+        fabric_gen::CxmlApplicationsUpdateRequest::new(),
+        None,
+    );
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "PUT");
     assert_eq!(
@@ -878,7 +888,7 @@ fn test_fabric_cxml_applications_update_error() {
     let err = c
         .fabric()
         .cxml_applications()
-        .update("x", fabric_gen::CxmlApplicationsUpdateRequest::new())
+        .update("x", fabric_gen::CxmlApplicationsUpdateRequest::new(), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -893,7 +903,10 @@ fn test_fabric_cxml_applications_update_error() {
 fn test_fabric_cxml_scripts_create_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let _ = c.fabric().cxml_scripts().create(&serde_json::json!({}));
+    let _ = c
+        .fabric()
+        .cxml_scripts()
+        .create(&serde_json::json!({}), None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "POST");
     assert_eq!(
@@ -910,7 +923,7 @@ fn test_fabric_cxml_scripts_create_error() {
     let err = c
         .fabric()
         .cxml_scripts()
-        .create(&serde_json::json!({}))
+        .create(&serde_json::json!({}), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -925,7 +938,7 @@ fn test_fabric_cxml_scripts_create_error() {
 fn test_fabric_cxml_scripts_delete_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let _ = c.fabric().cxml_scripts().delete("x");
+    let _ = c.fabric().cxml_scripts().delete("x", None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "DELETE");
     assert_eq!(
@@ -942,7 +955,7 @@ fn test_fabric_cxml_scripts_delete_error() {
     let err = c
         .fabric()
         .cxml_scripts()
-        .delete("x")
+        .delete("x", None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -957,7 +970,7 @@ fn test_fabric_cxml_scripts_delete_error() {
 fn test_fabric_cxml_scripts_get_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let _ = c.fabric().cxml_scripts().get("x");
+    let _ = c.fabric().cxml_scripts().get("x", None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "GET");
     assert_eq!(e.matched_route.as_deref(), Some("fabric.get_cxml_script"));
@@ -971,7 +984,7 @@ fn test_fabric_cxml_scripts_get_error() {
     let err = c
         .fabric()
         .cxml_scripts()
-        .get("x")
+        .get("x", None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -986,7 +999,7 @@ fn test_fabric_cxml_scripts_list_success() {
     let _ = c
         .fabric()
         .cxml_scripts()
-        .list(&std::collections::HashMap::new());
+        .list(&std::collections::HashMap::new(), None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "GET");
     assert_eq!(e.matched_route.as_deref(), Some("fabric.list_cxml_scripts"));
@@ -1000,7 +1013,7 @@ fn test_fabric_cxml_scripts_list_error() {
     let err = c
         .fabric()
         .cxml_scripts()
-        .list(&std::collections::HashMap::new())
+        .list(&std::collections::HashMap::new(), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -1015,7 +1028,7 @@ fn test_fabric_cxml_scripts_list_addresses_success() {
     let _ = c
         .fabric()
         .cxml_scripts()
-        .list_addresses("x", &std::collections::HashMap::new());
+        .list_addresses("x", &std::collections::HashMap::new(), None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "GET");
     assert_eq!(
@@ -1036,7 +1049,7 @@ fn test_fabric_cxml_scripts_list_addresses_error() {
     let err = c
         .fabric()
         .cxml_scripts()
-        .list_addresses("x", &std::collections::HashMap::new())
+        .list_addresses("x", &std::collections::HashMap::new(), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -1054,7 +1067,7 @@ fn test_fabric_cxml_scripts_update_success() {
     let _ = c
         .fabric()
         .cxml_scripts()
-        .update("x", &serde_json::json!({}));
+        .update("x", &serde_json::json!({}), None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "PUT");
     assert_eq!(
@@ -1071,7 +1084,7 @@ fn test_fabric_cxml_scripts_update_error() {
     let err = c
         .fabric()
         .cxml_scripts()
-        .update("x", &serde_json::json!({}))
+        .update("x", &serde_json::json!({}), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -1086,7 +1099,10 @@ fn test_fabric_cxml_scripts_update_error() {
 fn test_fabric_cxml_webhooks_create_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let _ = c.fabric().cxml_webhooks().create(&serde_json::json!({}));
+    let _ = c
+        .fabric()
+        .cxml_webhooks()
+        .create(&serde_json::json!({}), None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "POST");
     assert_eq!(
@@ -1103,7 +1119,7 @@ fn test_fabric_cxml_webhooks_create_error() {
     let err = c
         .fabric()
         .cxml_webhooks()
-        .create(&serde_json::json!({}))
+        .create(&serde_json::json!({}), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -1118,7 +1134,7 @@ fn test_fabric_cxml_webhooks_create_error() {
 fn test_fabric_cxml_webhooks_delete_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let _ = c.fabric().cxml_webhooks().delete("x");
+    let _ = c.fabric().cxml_webhooks().delete("x", None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "DELETE");
     assert_eq!(
@@ -1135,7 +1151,7 @@ fn test_fabric_cxml_webhooks_delete_error() {
     let err = c
         .fabric()
         .cxml_webhooks()
-        .delete("x")
+        .delete("x", None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -1150,7 +1166,7 @@ fn test_fabric_cxml_webhooks_delete_error() {
 fn test_fabric_cxml_webhooks_get_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let _ = c.fabric().cxml_webhooks().get("x");
+    let _ = c.fabric().cxml_webhooks().get("x", None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "GET");
     assert_eq!(e.matched_route.as_deref(), Some("fabric.get_cxml_webhook"));
@@ -1164,7 +1180,7 @@ fn test_fabric_cxml_webhooks_get_error() {
     let err = c
         .fabric()
         .cxml_webhooks()
-        .get("x")
+        .get("x", None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -1179,7 +1195,7 @@ fn test_fabric_cxml_webhooks_list_success() {
     let _ = c
         .fabric()
         .cxml_webhooks()
-        .list(&std::collections::HashMap::new());
+        .list(&std::collections::HashMap::new(), None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "GET");
     assert_eq!(
@@ -1196,7 +1212,7 @@ fn test_fabric_cxml_webhooks_list_error() {
     let err = c
         .fabric()
         .cxml_webhooks()
-        .list(&std::collections::HashMap::new())
+        .list(&std::collections::HashMap::new(), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -1214,7 +1230,7 @@ fn test_fabric_cxml_webhooks_list_addresses_success() {
     let _ = c
         .fabric()
         .cxml_webhooks()
-        .list_addresses("x", &std::collections::HashMap::new());
+        .list_addresses("x", &std::collections::HashMap::new(), None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "GET");
     assert_eq!(
@@ -1235,7 +1251,7 @@ fn test_fabric_cxml_webhooks_list_addresses_error() {
     let err = c
         .fabric()
         .cxml_webhooks()
-        .list_addresses("x", &std::collections::HashMap::new())
+        .list_addresses("x", &std::collections::HashMap::new(), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -1253,7 +1269,7 @@ fn test_fabric_cxml_webhooks_update_success() {
     let _ = c
         .fabric()
         .cxml_webhooks()
-        .update("x", &serde_json::json!({}));
+        .update("x", &serde_json::json!({}), None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "PATCH");
     assert_eq!(
@@ -1270,7 +1286,7 @@ fn test_fabric_cxml_webhooks_update_error() {
     let err = c
         .fabric()
         .cxml_webhooks()
-        .update("x", &serde_json::json!({}))
+        .update("x", &serde_json::json!({}), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -1288,7 +1304,7 @@ fn test_fabric_freeswitch_connectors_create_success() {
     let _ = c
         .fabric()
         .freeswitch_connectors()
-        .create(&serde_json::json!({}));
+        .create(&serde_json::json!({}), None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "POST");
     assert_eq!(
@@ -1309,7 +1325,7 @@ fn test_fabric_freeswitch_connectors_create_error() {
     let err = c
         .fabric()
         .freeswitch_connectors()
-        .create(&serde_json::json!({}))
+        .create(&serde_json::json!({}), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -1324,7 +1340,7 @@ fn test_fabric_freeswitch_connectors_create_error() {
 fn test_fabric_freeswitch_connectors_delete_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let _ = c.fabric().freeswitch_connectors().delete("x");
+    let _ = c.fabric().freeswitch_connectors().delete("x", None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "DELETE");
     assert_eq!(
@@ -1345,7 +1361,7 @@ fn test_fabric_freeswitch_connectors_delete_error() {
     let err = c
         .fabric()
         .freeswitch_connectors()
-        .delete("x")
+        .delete("x", None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -1360,7 +1376,7 @@ fn test_fabric_freeswitch_connectors_delete_error() {
 fn test_fabric_freeswitch_connectors_get_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let _ = c.fabric().freeswitch_connectors().get("x");
+    let _ = c.fabric().freeswitch_connectors().get("x", None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "GET");
     assert_eq!(
@@ -1381,7 +1397,7 @@ fn test_fabric_freeswitch_connectors_get_error() {
     let err = c
         .fabric()
         .freeswitch_connectors()
-        .get("x")
+        .get("x", None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -1399,7 +1415,7 @@ fn test_fabric_freeswitch_connectors_list_success() {
     let _ = c
         .fabric()
         .freeswitch_connectors()
-        .list(&std::collections::HashMap::new());
+        .list(&std::collections::HashMap::new(), None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "GET");
     assert_eq!(
@@ -1420,7 +1436,7 @@ fn test_fabric_freeswitch_connectors_list_error() {
     let err = c
         .fabric()
         .freeswitch_connectors()
-        .list(&std::collections::HashMap::new())
+        .list(&std::collections::HashMap::new(), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -1435,10 +1451,11 @@ fn test_fabric_freeswitch_connectors_list_error() {
 fn test_fabric_freeswitch_connectors_list_addresses_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let _ = c
-        .fabric()
-        .freeswitch_connectors()
-        .list_addresses("x", &std::collections::HashMap::new());
+    let _ = c.fabric().freeswitch_connectors().list_addresses(
+        "x",
+        &std::collections::HashMap::new(),
+        None,
+    );
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "GET");
     assert_eq!(
@@ -1459,7 +1476,7 @@ fn test_fabric_freeswitch_connectors_list_addresses_error() {
     let err = c
         .fabric()
         .freeswitch_connectors()
-        .list_addresses("x", &std::collections::HashMap::new())
+        .list_addresses("x", &std::collections::HashMap::new(), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -1477,7 +1494,7 @@ fn test_fabric_freeswitch_connectors_update_success() {
     let _ = c
         .fabric()
         .freeswitch_connectors()
-        .update("x", &serde_json::json!({}));
+        .update("x", &serde_json::json!({}), None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "PUT");
     assert_eq!(
@@ -1498,7 +1515,7 @@ fn test_fabric_freeswitch_connectors_update_error() {
     let err = c
         .fabric()
         .freeswitch_connectors()
-        .update("x", &serde_json::json!({}))
+        .update("x", &serde_json::json!({}), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -1516,7 +1533,7 @@ fn test_fabric_relay_applications_create_success() {
     let _ = c
         .fabric()
         .relay_applications()
-        .create(&serde_json::json!({}));
+        .create(&serde_json::json!({}), None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "POST");
     assert_eq!(
@@ -1537,7 +1554,7 @@ fn test_fabric_relay_applications_create_error() {
     let err = c
         .fabric()
         .relay_applications()
-        .create(&serde_json::json!({}))
+        .create(&serde_json::json!({}), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -1552,7 +1569,7 @@ fn test_fabric_relay_applications_create_error() {
 fn test_fabric_relay_applications_delete_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let _ = c.fabric().relay_applications().delete("x");
+    let _ = c.fabric().relay_applications().delete("x", None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "DELETE");
     assert_eq!(
@@ -1573,7 +1590,7 @@ fn test_fabric_relay_applications_delete_error() {
     let err = c
         .fabric()
         .relay_applications()
-        .delete("x")
+        .delete("x", None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -1588,7 +1605,7 @@ fn test_fabric_relay_applications_delete_error() {
 fn test_fabric_relay_applications_get_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let _ = c.fabric().relay_applications().get("x");
+    let _ = c.fabric().relay_applications().get("x", None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "GET");
     assert_eq!(
@@ -1605,7 +1622,7 @@ fn test_fabric_relay_applications_get_error() {
     let err = c
         .fabric()
         .relay_applications()
-        .get("x")
+        .get("x", None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -1623,7 +1640,7 @@ fn test_fabric_relay_applications_list_success() {
     let _ = c
         .fabric()
         .relay_applications()
-        .list(&std::collections::HashMap::new());
+        .list(&std::collections::HashMap::new(), None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "GET");
     assert_eq!(
@@ -1640,7 +1657,7 @@ fn test_fabric_relay_applications_list_error() {
     let err = c
         .fabric()
         .relay_applications()
-        .list(&std::collections::HashMap::new())
+        .list(&std::collections::HashMap::new(), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -1655,10 +1672,11 @@ fn test_fabric_relay_applications_list_error() {
 fn test_fabric_relay_applications_list_addresses_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let _ = c
-        .fabric()
-        .relay_applications()
-        .list_addresses("x", &std::collections::HashMap::new());
+    let _ = c.fabric().relay_applications().list_addresses(
+        "x",
+        &std::collections::HashMap::new(),
+        None,
+    );
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "GET");
     assert_eq!(
@@ -1679,7 +1697,7 @@ fn test_fabric_relay_applications_list_addresses_error() {
     let err = c
         .fabric()
         .relay_applications()
-        .list_addresses("x", &std::collections::HashMap::new())
+        .list_addresses("x", &std::collections::HashMap::new(), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -1697,7 +1715,7 @@ fn test_fabric_relay_applications_update_success() {
     let _ = c
         .fabric()
         .relay_applications()
-        .update("x", &serde_json::json!({}));
+        .update("x", &serde_json::json!({}), None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "PUT");
     assert_eq!(
@@ -1718,7 +1736,7 @@ fn test_fabric_relay_applications_update_error() {
     let err = c
         .fabric()
         .relay_applications()
-        .update("x", &serde_json::json!({}))
+        .update("x", &serde_json::json!({}), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -1736,6 +1754,7 @@ fn test_fabric_resources_assign_domain_application_success() {
     let _ = c.fabric().resources().assign_domain_application(
         "x",
         fabric_gen::GenericResourcesAssignDomainApplicationRequest::new("x"),
+        None,
     );
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "POST");
@@ -1760,6 +1779,7 @@ fn test_fabric_resources_assign_domain_application_error() {
         .assign_domain_application(
             "x",
             fabric_gen::GenericResourcesAssignDomainApplicationRequest::new("x"),
+            None,
         )
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
@@ -1778,6 +1798,7 @@ fn test_fabric_resources_assign_phone_route_success() {
     let _ = c.fabric().resources().assign_phone_route(
         "x",
         fabric_gen::GenericResourcesAssignPhoneRouteRequest::new("x", "y"),
+        None,
     );
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "POST");
@@ -1802,6 +1823,7 @@ fn test_fabric_resources_assign_phone_route_error() {
         .assign_phone_route(
             "x",
             fabric_gen::GenericResourcesAssignPhoneRouteRequest::new("x", "y"),
+            None,
         )
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
@@ -1817,7 +1839,7 @@ fn test_fabric_resources_assign_phone_route_error() {
 fn test_fabric_resources_delete_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let _ = c.fabric().resources().delete("x");
+    let _ = c.fabric().resources().delete("x", None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "DELETE");
     assert_eq!(e.matched_route.as_deref(), Some("fabric.delete_resource"));
@@ -1831,7 +1853,7 @@ fn test_fabric_resources_delete_error() {
     let err = c
         .fabric()
         .resources()
-        .delete("x")
+        .delete("x", None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -1846,7 +1868,7 @@ fn test_fabric_resources_get_success() {
     let _ = c
         .fabric()
         .resources()
-        .get("x", &std::collections::HashMap::new());
+        .get("x", &std::collections::HashMap::new(), None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "GET");
     assert_eq!(e.matched_route.as_deref(), Some("fabric.get_resource"));
@@ -1860,7 +1882,7 @@ fn test_fabric_resources_get_error() {
     let err = c
         .fabric()
         .resources()
-        .get("x", &std::collections::HashMap::new())
+        .get("x", &std::collections::HashMap::new(), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -1875,7 +1897,7 @@ fn test_fabric_resources_list_success() {
     let _ = c
         .fabric()
         .resources()
-        .list(&std::collections::HashMap::new());
+        .list(&std::collections::HashMap::new(), None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "GET");
     assert_eq!(e.matched_route.as_deref(), Some("fabric.list_resources"));
@@ -1889,7 +1911,7 @@ fn test_fabric_resources_list_error() {
     let err = c
         .fabric()
         .resources()
-        .list(&std::collections::HashMap::new())
+        .list(&std::collections::HashMap::new(), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -1904,7 +1926,7 @@ fn test_fabric_resources_list_addresses_success() {
     let _ = c
         .fabric()
         .resources()
-        .list_addresses("x", &std::collections::HashMap::new());
+        .list_addresses("x", &std::collections::HashMap::new(), None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "GET");
     assert_eq!(
@@ -1921,7 +1943,7 @@ fn test_fabric_resources_list_addresses_error() {
     let err = c
         .fabric()
         .resources()
-        .list_addresses("x", &std::collections::HashMap::new())
+        .list_addresses("x", &std::collections::HashMap::new(), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -1936,7 +1958,10 @@ fn test_fabric_resources_list_addresses_error() {
 fn test_fabric_sip_endpoints_create_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let _ = c.fabric().sip_endpoints().create(&serde_json::json!({}));
+    let _ = c
+        .fabric()
+        .sip_endpoints()
+        .create(&serde_json::json!({}), None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "POST");
     assert_eq!(
@@ -1953,7 +1978,7 @@ fn test_fabric_sip_endpoints_create_error() {
     let err = c
         .fabric()
         .sip_endpoints()
-        .create(&serde_json::json!({}))
+        .create(&serde_json::json!({}), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -1968,7 +1993,7 @@ fn test_fabric_sip_endpoints_create_error() {
 fn test_fabric_sip_endpoints_delete_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let _ = c.fabric().sip_endpoints().delete("x");
+    let _ = c.fabric().sip_endpoints().delete("x", None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "DELETE");
     assert_eq!(
@@ -1985,7 +2010,7 @@ fn test_fabric_sip_endpoints_delete_error() {
     let err = c
         .fabric()
         .sip_endpoints()
-        .delete("x")
+        .delete("x", None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -2000,7 +2025,7 @@ fn test_fabric_sip_endpoints_delete_error() {
 fn test_fabric_sip_endpoints_get_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let _ = c.fabric().sip_endpoints().get("x");
+    let _ = c.fabric().sip_endpoints().get("x", None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "GET");
     assert_eq!(e.matched_route.as_deref(), Some("fabric.get_sip_endpoint"));
@@ -2014,7 +2039,7 @@ fn test_fabric_sip_endpoints_get_error() {
     let err = c
         .fabric()
         .sip_endpoints()
-        .get("x")
+        .get("x", None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -2029,7 +2054,7 @@ fn test_fabric_sip_endpoints_list_success() {
     let _ = c
         .fabric()
         .sip_endpoints()
-        .list(&std::collections::HashMap::new());
+        .list(&std::collections::HashMap::new(), None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "GET");
     assert_eq!(
@@ -2046,7 +2071,7 @@ fn test_fabric_sip_endpoints_list_error() {
     let err = c
         .fabric()
         .sip_endpoints()
-        .list(&std::collections::HashMap::new())
+        .list(&std::collections::HashMap::new(), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -2064,7 +2089,7 @@ fn test_fabric_sip_endpoints_list_addresses_success() {
     let _ = c
         .fabric()
         .sip_endpoints()
-        .list_addresses("x", &std::collections::HashMap::new());
+        .list_addresses("x", &std::collections::HashMap::new(), None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "GET");
     assert_eq!(
@@ -2085,7 +2110,7 @@ fn test_fabric_sip_endpoints_list_addresses_error() {
     let err = c
         .fabric()
         .sip_endpoints()
-        .list_addresses("x", &std::collections::HashMap::new())
+        .list_addresses("x", &std::collections::HashMap::new(), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -2103,7 +2128,7 @@ fn test_fabric_sip_endpoints_update_success() {
     let _ = c
         .fabric()
         .sip_endpoints()
-        .update("x", &serde_json::json!({}));
+        .update("x", &serde_json::json!({}), None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "PUT");
     assert_eq!(
@@ -2120,7 +2145,7 @@ fn test_fabric_sip_endpoints_update_error() {
     let err = c
         .fabric()
         .sip_endpoints()
-        .update("x", &serde_json::json!({}))
+        .update("x", &serde_json::json!({}), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -2135,7 +2160,10 @@ fn test_fabric_sip_endpoints_update_error() {
 fn test_fabric_sip_gateways_create_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let _ = c.fabric().sip_gateways().create(&serde_json::json!({}));
+    let _ = c
+        .fabric()
+        .sip_gateways()
+        .create(&serde_json::json!({}), None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "POST");
     assert_eq!(
@@ -2152,7 +2180,7 @@ fn test_fabric_sip_gateways_create_error() {
     let err = c
         .fabric()
         .sip_gateways()
-        .create(&serde_json::json!({}))
+        .create(&serde_json::json!({}), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -2167,7 +2195,7 @@ fn test_fabric_sip_gateways_create_error() {
 fn test_fabric_sip_gateways_delete_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let _ = c.fabric().sip_gateways().delete("x");
+    let _ = c.fabric().sip_gateways().delete("x", None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "DELETE");
     assert_eq!(
@@ -2184,7 +2212,7 @@ fn test_fabric_sip_gateways_delete_error() {
     let err = c
         .fabric()
         .sip_gateways()
-        .delete("x")
+        .delete("x", None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -2199,7 +2227,7 @@ fn test_fabric_sip_gateways_delete_error() {
 fn test_fabric_sip_gateways_get_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let _ = c.fabric().sip_gateways().get("x");
+    let _ = c.fabric().sip_gateways().get("x", None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "GET");
     assert_eq!(e.matched_route.as_deref(), Some("fabric.get_sip_gateway"));
@@ -2213,7 +2241,7 @@ fn test_fabric_sip_gateways_get_error() {
     let err = c
         .fabric()
         .sip_gateways()
-        .get("x")
+        .get("x", None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -2228,7 +2256,7 @@ fn test_fabric_sip_gateways_list_success() {
     let _ = c
         .fabric()
         .sip_gateways()
-        .list(&std::collections::HashMap::new());
+        .list(&std::collections::HashMap::new(), None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "GET");
     assert_eq!(e.matched_route.as_deref(), Some("fabric.list_sip_gateways"));
@@ -2242,7 +2270,7 @@ fn test_fabric_sip_gateways_list_error() {
     let err = c
         .fabric()
         .sip_gateways()
-        .list(&std::collections::HashMap::new())
+        .list(&std::collections::HashMap::new(), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -2257,7 +2285,7 @@ fn test_fabric_sip_gateways_list_addresses_success() {
     let _ = c
         .fabric()
         .sip_gateways()
-        .list_addresses("x", &std::collections::HashMap::new());
+        .list_addresses("x", &std::collections::HashMap::new(), None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "GET");
     assert_eq!(
@@ -2278,7 +2306,7 @@ fn test_fabric_sip_gateways_list_addresses_error() {
     let err = c
         .fabric()
         .sip_gateways()
-        .list_addresses("x", &std::collections::HashMap::new())
+        .list_addresses("x", &std::collections::HashMap::new(), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -2296,7 +2324,7 @@ fn test_fabric_sip_gateways_update_success() {
     let _ = c
         .fabric()
         .sip_gateways()
-        .update("x", &serde_json::json!({}));
+        .update("x", &serde_json::json!({}), None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "PATCH");
     assert_eq!(
@@ -2313,7 +2341,7 @@ fn test_fabric_sip_gateways_update_error() {
     let err = c
         .fabric()
         .sip_gateways()
-        .update("x", &serde_json::json!({}))
+        .update("x", &serde_json::json!({}), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -2328,7 +2356,10 @@ fn test_fabric_sip_gateways_update_error() {
 fn test_fabric_subscribers_create_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let _ = c.fabric().subscribers().create(&serde_json::json!({}));
+    let _ = c
+        .fabric()
+        .subscribers()
+        .create(&serde_json::json!({}), None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "POST");
     assert_eq!(e.matched_route.as_deref(), Some("fabric.create_subscriber"));
@@ -2342,7 +2373,7 @@ fn test_fabric_subscribers_create_error() {
     let err = c
         .fabric()
         .subscribers()
-        .create(&serde_json::json!({}))
+        .create(&serde_json::json!({}), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -2357,6 +2388,7 @@ fn test_fabric_subscribers_create_sip_endpoint_success() {
     let _ = c.fabric().subscribers().create_sip_endpoint(
         "x",
         fabric_gen::SubscribersCreateSipEndpointRequest::new("x", "y"),
+        None,
     );
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "POST");
@@ -2381,6 +2413,7 @@ fn test_fabric_subscribers_create_sip_endpoint_error() {
         .create_sip_endpoint(
             "x",
             fabric_gen::SubscribersCreateSipEndpointRequest::new("x", "y"),
+            None,
         )
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
@@ -2396,7 +2429,7 @@ fn test_fabric_subscribers_create_sip_endpoint_error() {
 fn test_fabric_subscribers_delete_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let _ = c.fabric().subscribers().delete("x");
+    let _ = c.fabric().subscribers().delete("x", None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "DELETE");
     assert_eq!(e.matched_route.as_deref(), Some("fabric.delete_subscriber"));
@@ -2410,7 +2443,7 @@ fn test_fabric_subscribers_delete_error() {
     let err = c
         .fabric()
         .subscribers()
-        .delete("x")
+        .delete("x", None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -2422,7 +2455,7 @@ fn test_fabric_subscribers_delete_error() {
 fn test_fabric_subscribers_delete_sip_endpoint_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let _ = c.fabric().subscribers().delete_sip_endpoint("x", "x");
+    let _ = c.fabric().subscribers().delete_sip_endpoint("x", "x", None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "DELETE");
     assert_eq!(
@@ -2443,7 +2476,7 @@ fn test_fabric_subscribers_delete_sip_endpoint_error() {
     let err = c
         .fabric()
         .subscribers()
-        .delete_sip_endpoint("x", "x")
+        .delete_sip_endpoint("x", "x", None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -2458,7 +2491,7 @@ fn test_fabric_subscribers_delete_sip_endpoint_error() {
 fn test_fabric_subscribers_get_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let _ = c.fabric().subscribers().get("x");
+    let _ = c.fabric().subscribers().get("x", None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "GET");
     assert_eq!(e.matched_route.as_deref(), Some("fabric.get_subscriber"));
@@ -2472,7 +2505,7 @@ fn test_fabric_subscribers_get_error() {
     let err = c
         .fabric()
         .subscribers()
-        .get("x")
+        .get("x", None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -2484,10 +2517,12 @@ fn test_fabric_subscribers_get_error() {
 fn test_fabric_subscribers_get_sip_endpoint_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let _ = c
-        .fabric()
-        .subscribers()
-        .get_sip_endpoint("x", "x", &std::collections::HashMap::new());
+    let _ = c.fabric().subscribers().get_sip_endpoint(
+        "x",
+        "x",
+        &std::collections::HashMap::new(),
+        None,
+    );
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "GET");
     assert_eq!(
@@ -2508,7 +2543,7 @@ fn test_fabric_subscribers_get_sip_endpoint_error() {
     let err = c
         .fabric()
         .subscribers()
-        .get_sip_endpoint("x", "x", &std::collections::HashMap::new())
+        .get_sip_endpoint("x", "x", &std::collections::HashMap::new(), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -2526,7 +2561,7 @@ fn test_fabric_subscribers_list_success() {
     let _ = c
         .fabric()
         .subscribers()
-        .list(&std::collections::HashMap::new());
+        .list(&std::collections::HashMap::new(), None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "GET");
     assert_eq!(e.matched_route.as_deref(), Some("fabric.list_subscribers"));
@@ -2540,7 +2575,7 @@ fn test_fabric_subscribers_list_error() {
     let err = c
         .fabric()
         .subscribers()
-        .list(&std::collections::HashMap::new())
+        .list(&std::collections::HashMap::new(), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -2555,7 +2590,7 @@ fn test_fabric_subscribers_list_addresses_success() {
     let _ = c
         .fabric()
         .subscribers()
-        .list_addresses("x", &std::collections::HashMap::new());
+        .list_addresses("x", &std::collections::HashMap::new(), None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "GET");
     assert_eq!(
@@ -2576,7 +2611,7 @@ fn test_fabric_subscribers_list_addresses_error() {
     let err = c
         .fabric()
         .subscribers()
-        .list_addresses("x", &std::collections::HashMap::new())
+        .list_addresses("x", &std::collections::HashMap::new(), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -2591,10 +2626,10 @@ fn test_fabric_subscribers_list_addresses_error() {
 fn test_fabric_subscribers_list_sip_endpoints_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let _ = c
-        .fabric()
-        .subscribers()
-        .list_sip_endpoints("x", &std::collections::HashMap::new());
+    let _ =
+        c.fabric()
+            .subscribers()
+            .list_sip_endpoints("x", &std::collections::HashMap::new(), None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "GET");
     assert_eq!(
@@ -2615,7 +2650,7 @@ fn test_fabric_subscribers_list_sip_endpoints_error() {
     let err = c
         .fabric()
         .subscribers()
-        .list_sip_endpoints("x", &std::collections::HashMap::new())
+        .list_sip_endpoints("x", &std::collections::HashMap::new(), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -2630,7 +2665,10 @@ fn test_fabric_subscribers_list_sip_endpoints_error() {
 fn test_fabric_subscribers_update_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let _ = c.fabric().subscribers().update("x", &serde_json::json!({}));
+    let _ = c
+        .fabric()
+        .subscribers()
+        .update("x", &serde_json::json!({}), None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "PUT");
     assert_eq!(e.matched_route.as_deref(), Some("fabric.update_subscriber"));
@@ -2644,7 +2682,7 @@ fn test_fabric_subscribers_update_error() {
     let err = c
         .fabric()
         .subscribers()
-        .update("x", &serde_json::json!({}))
+        .update("x", &serde_json::json!({}), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -2660,6 +2698,7 @@ fn test_fabric_subscribers_update_sip_endpoint_success() {
         "x",
         "x",
         fabric_gen::SubscribersUpdateSipEndpointRequest::new(),
+        None,
     );
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "PATCH");
@@ -2685,6 +2724,7 @@ fn test_fabric_subscribers_update_sip_endpoint_error() {
             "x",
             "x",
             fabric_gen::SubscribersUpdateSipEndpointRequest::new(),
+            None,
         )
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
@@ -2700,7 +2740,10 @@ fn test_fabric_subscribers_update_sip_endpoint_error() {
 fn test_fabric_swml_scripts_create_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let _ = c.fabric().swml_scripts().create(&serde_json::json!({}));
+    let _ = c
+        .fabric()
+        .swml_scripts()
+        .create(&serde_json::json!({}), None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "POST");
     assert_eq!(
@@ -2717,7 +2760,7 @@ fn test_fabric_swml_scripts_create_error() {
     let err = c
         .fabric()
         .swml_scripts()
-        .create(&serde_json::json!({}))
+        .create(&serde_json::json!({}), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -2732,7 +2775,7 @@ fn test_fabric_swml_scripts_create_error() {
 fn test_fabric_swml_scripts_delete_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let _ = c.fabric().swml_scripts().delete("x");
+    let _ = c.fabric().swml_scripts().delete("x", None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "DELETE");
     assert_eq!(
@@ -2749,7 +2792,7 @@ fn test_fabric_swml_scripts_delete_error() {
     let err = c
         .fabric()
         .swml_scripts()
-        .delete("x")
+        .delete("x", None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -2764,7 +2807,7 @@ fn test_fabric_swml_scripts_delete_error() {
 fn test_fabric_swml_scripts_get_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let _ = c.fabric().swml_scripts().get("x");
+    let _ = c.fabric().swml_scripts().get("x", None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "GET");
     assert_eq!(e.matched_route.as_deref(), Some("fabric.get_swml_script"));
@@ -2778,7 +2821,7 @@ fn test_fabric_swml_scripts_get_error() {
     let err = c
         .fabric()
         .swml_scripts()
-        .get("x")
+        .get("x", None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -2793,7 +2836,7 @@ fn test_fabric_swml_scripts_list_success() {
     let _ = c
         .fabric()
         .swml_scripts()
-        .list(&std::collections::HashMap::new());
+        .list(&std::collections::HashMap::new(), None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "GET");
     assert_eq!(e.matched_route.as_deref(), Some("fabric.list_swml_scripts"));
@@ -2807,7 +2850,7 @@ fn test_fabric_swml_scripts_list_error() {
     let err = c
         .fabric()
         .swml_scripts()
-        .list(&std::collections::HashMap::new())
+        .list(&std::collections::HashMap::new(), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -2822,7 +2865,7 @@ fn test_fabric_swml_scripts_list_addresses_success() {
     let _ = c
         .fabric()
         .swml_scripts()
-        .list_addresses("x", &std::collections::HashMap::new());
+        .list_addresses("x", &std::collections::HashMap::new(), None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "GET");
     assert_eq!(
@@ -2843,7 +2886,7 @@ fn test_fabric_swml_scripts_list_addresses_error() {
     let err = c
         .fabric()
         .swml_scripts()
-        .list_addresses("x", &std::collections::HashMap::new())
+        .list_addresses("x", &std::collections::HashMap::new(), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -2861,7 +2904,7 @@ fn test_fabric_swml_scripts_update_success() {
     let _ = c
         .fabric()
         .swml_scripts()
-        .update("x", &serde_json::json!({}));
+        .update("x", &serde_json::json!({}), None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "PUT");
     assert_eq!(
@@ -2878,7 +2921,7 @@ fn test_fabric_swml_scripts_update_error() {
     let err = c
         .fabric()
         .swml_scripts()
-        .update("x", &serde_json::json!({}))
+        .update("x", &serde_json::json!({}), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -2893,7 +2936,10 @@ fn test_fabric_swml_scripts_update_error() {
 fn test_fabric_swml_webhooks_create_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let _ = c.fabric().swml_webhooks().create(&serde_json::json!({}));
+    let _ = c
+        .fabric()
+        .swml_webhooks()
+        .create(&serde_json::json!({}), None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "POST");
     assert_eq!(
@@ -2910,7 +2956,7 @@ fn test_fabric_swml_webhooks_create_error() {
     let err = c
         .fabric()
         .swml_webhooks()
-        .create(&serde_json::json!({}))
+        .create(&serde_json::json!({}), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -2925,7 +2971,7 @@ fn test_fabric_swml_webhooks_create_error() {
 fn test_fabric_swml_webhooks_delete_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let _ = c.fabric().swml_webhooks().delete("x");
+    let _ = c.fabric().swml_webhooks().delete("x", None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "DELETE");
     assert_eq!(
@@ -2942,7 +2988,7 @@ fn test_fabric_swml_webhooks_delete_error() {
     let err = c
         .fabric()
         .swml_webhooks()
-        .delete("x")
+        .delete("x", None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -2957,7 +3003,7 @@ fn test_fabric_swml_webhooks_delete_error() {
 fn test_fabric_swml_webhooks_get_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let _ = c.fabric().swml_webhooks().get("x");
+    let _ = c.fabric().swml_webhooks().get("x", None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "GET");
     assert_eq!(e.matched_route.as_deref(), Some("fabric.get_swml_webhook"));
@@ -2971,7 +3017,7 @@ fn test_fabric_swml_webhooks_get_error() {
     let err = c
         .fabric()
         .swml_webhooks()
-        .get("x")
+        .get("x", None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -2986,7 +3032,7 @@ fn test_fabric_swml_webhooks_list_success() {
     let _ = c
         .fabric()
         .swml_webhooks()
-        .list(&std::collections::HashMap::new());
+        .list(&std::collections::HashMap::new(), None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "GET");
     assert_eq!(
@@ -3003,7 +3049,7 @@ fn test_fabric_swml_webhooks_list_error() {
     let err = c
         .fabric()
         .swml_webhooks()
-        .list(&std::collections::HashMap::new())
+        .list(&std::collections::HashMap::new(), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -3021,7 +3067,7 @@ fn test_fabric_swml_webhooks_list_addresses_success() {
     let _ = c
         .fabric()
         .swml_webhooks()
-        .list_addresses("x", &std::collections::HashMap::new());
+        .list_addresses("x", &std::collections::HashMap::new(), None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "GET");
     assert_eq!(
@@ -3042,7 +3088,7 @@ fn test_fabric_swml_webhooks_list_addresses_error() {
     let err = c
         .fabric()
         .swml_webhooks()
-        .list_addresses("x", &std::collections::HashMap::new())
+        .list_addresses("x", &std::collections::HashMap::new(), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -3060,7 +3106,7 @@ fn test_fabric_swml_webhooks_update_success() {
     let _ = c
         .fabric()
         .swml_webhooks()
-        .update("x", &serde_json::json!({}));
+        .update("x", &serde_json::json!({}), None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "PATCH");
     assert_eq!(
@@ -3077,7 +3123,7 @@ fn test_fabric_swml_webhooks_update_error() {
     let err = c
         .fabric()
         .swml_webhooks()
-        .update("x", &serde_json::json!({}))
+        .update("x", &serde_json::json!({}), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -3092,10 +3138,10 @@ fn test_fabric_swml_webhooks_update_error() {
 fn test_fabric_tokens_create_embed_token_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let _ = c
-        .fabric()
-        .tokens()
-        .create_embed_token(fabric_gen::FabricTokensCreateEmbedTokenRequest::new("x"));
+    let _ = c.fabric().tokens().create_embed_token(
+        fabric_gen::FabricTokensCreateEmbedTokenRequest::new("x"),
+        None,
+    );
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "POST");
     assert_eq!(
@@ -3112,7 +3158,10 @@ fn test_fabric_tokens_create_embed_token_error() {
     let err = c
         .fabric()
         .tokens()
-        .create_embed_token(fabric_gen::FabricTokensCreateEmbedTokenRequest::new("x"))
+        .create_embed_token(
+            fabric_gen::FabricTokensCreateEmbedTokenRequest::new("x"),
+            None,
+        )
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -3129,6 +3178,7 @@ fn test_fabric_tokens_create_guest_token_success() {
     let c = common::mocktest::client();
     let _ = c.fabric().tokens().create_guest_token(
         fabric_gen::FabricTokensCreateGuestTokenRequest::new(serde_json::json!({})),
+        None,
     );
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "POST");
@@ -3150,9 +3200,10 @@ fn test_fabric_tokens_create_guest_token_error() {
     let err = c
         .fabric()
         .tokens()
-        .create_guest_token(fabric_gen::FabricTokensCreateGuestTokenRequest::new(
-            serde_json::json!({}),
-        ))
+        .create_guest_token(
+            fabric_gen::FabricTokensCreateGuestTokenRequest::new(serde_json::json!({})),
+            None,
+        )
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -3167,10 +3218,10 @@ fn test_fabric_tokens_create_guest_token_error() {
 fn test_fabric_tokens_create_invite_token_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let _ = c
-        .fabric()
-        .tokens()
-        .create_invite_token(fabric_gen::FabricTokensCreateInviteTokenRequest::new("x"));
+    let _ = c.fabric().tokens().create_invite_token(
+        fabric_gen::FabricTokensCreateInviteTokenRequest::new("x"),
+        None,
+    );
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "POST");
     assert_eq!(
@@ -3191,7 +3242,10 @@ fn test_fabric_tokens_create_invite_token_error() {
     let err = c
         .fabric()
         .tokens()
-        .create_invite_token(fabric_gen::FabricTokensCreateInviteTokenRequest::new("x"))
+        .create_invite_token(
+            fabric_gen::FabricTokensCreateInviteTokenRequest::new("x"),
+            None,
+        )
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -3208,6 +3262,7 @@ fn test_fabric_tokens_create_subscriber_token_success() {
     let c = common::mocktest::client();
     let _ = c.fabric().tokens().create_subscriber_token(
         fabric_gen::FabricTokensCreateSubscriberTokenRequest::new("x"),
+        None,
     );
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "POST");
@@ -3225,9 +3280,10 @@ fn test_fabric_tokens_create_subscriber_token_error() {
     let err = c
         .fabric()
         .tokens()
-        .create_subscriber_token(fabric_gen::FabricTokensCreateSubscriberTokenRequest::new(
-            "x",
-        ))
+        .create_subscriber_token(
+            fabric_gen::FabricTokensCreateSubscriberTokenRequest::new("x"),
+            None,
+        )
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -3244,6 +3300,7 @@ fn test_fabric_tokens_refresh_subscriber_token_success() {
     let c = common::mocktest::client();
     let _ = c.fabric().tokens().refresh_subscriber_token(
         fabric_gen::FabricTokensRefreshSubscriberTokenRequest::new("x"),
+        None,
     );
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "POST");
@@ -3265,9 +3322,10 @@ fn test_fabric_tokens_refresh_subscriber_token_error() {
     let err = c
         .fabric()
         .tokens()
-        .refresh_subscriber_token(fabric_gen::FabricTokensRefreshSubscriberTokenRequest::new(
-            "x",
-        ))
+        .refresh_subscriber_token(
+            fabric_gen::FabricTokensRefreshSubscriberTokenRequest::new("x"),
+            None,
+        )
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();

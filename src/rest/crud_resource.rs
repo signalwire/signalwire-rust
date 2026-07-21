@@ -5,6 +5,7 @@ use serde_json::Value;
 use super::error::SignalWireRestError;
 use super::http_client::HttpClient;
 use super::pagination::PaginatedIterator;
+use super::request_options::RequestOptions;
 
 /// Generic CRUD wrapper around an `HttpClient` and a base API path.
 ///
@@ -60,7 +61,23 @@ impl<'a> CrudResource<'a> {
     /// reach the Space (transport failure), the API responds with a non-2xx
     /// status, or the response body is not valid JSON.
     pub fn list(&self, params: &HashMap<String, String>) -> Result<Value, SignalWireRestError> {
-        self.client.get(&self.base_path, params)
+        self.list_with_options(params, None)
+    }
+
+    /// `list` with a per-request [`RequestOptions`] override (plan 4.2). The
+    /// options control transport behavior (timeout / retry / cancellation) and
+    /// are NEVER serialized into the request — they are forwarded to the HTTP
+    /// layer only.
+    ///
+    /// # Errors
+    /// As [`list`](Self::list).
+    pub fn list_with_options(
+        &self,
+        params: &HashMap<String, String>,
+        request_options: Option<&RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.client
+            .get_with_options(&self.base_path, params, request_options)
     }
 
     /// Iterate every item across all pages of this resource's list endpoint.
@@ -91,6 +108,23 @@ impl<'a> CrudResource<'a> {
         PaginatedIterator::new(self.client, &self.base_path, params.clone(), "data")
     }
 
+    /// `paginate` with a per-request [`RequestOptions`] override (plan 4.2)
+    /// forwarded to every page GET. Options are never serialized.
+    #[must_use]
+    pub fn paginate_with_options(
+        &self,
+        params: &HashMap<String, String>,
+        request_options: Option<RequestOptions>,
+    ) -> PaginatedIterator<'a> {
+        PaginatedIterator::with_options(
+            self.client,
+            &self.base_path,
+            params.clone(),
+            "data",
+            request_options,
+        )
+    }
+
     /// Create a new resource (POST basePath).
     ///
     /// # Errors
@@ -99,7 +133,22 @@ impl<'a> CrudResource<'a> {
     /// status (e.g. 422 when `data` fails server-side validation), or the
     /// response body is not valid JSON.
     pub fn create(&self, data: &Value) -> Result<Value, SignalWireRestError> {
-        self.client.post(&self.base_path, data)
+        self.create_with_options(data, None)
+    }
+
+    /// `create` with a per-request [`RequestOptions`] override (plan 4.2).
+    /// Options are forwarded to the HTTP layer only, never serialized into the
+    /// body.
+    ///
+    /// # Errors
+    /// As [`create`](Self::create).
+    pub fn create_with_options(
+        &self,
+        data: &Value,
+        request_options: Option<&RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.client
+            .post_with_options(&self.base_path, data, request_options)
     }
 
     /// Retrieve a single resource by ID (GET basePath/{id}).
@@ -110,7 +159,21 @@ impl<'a> CrudResource<'a> {
     /// status (e.g. 404 when no resource has the given `id`), or the response
     /// body is not valid JSON.
     pub fn get(&self, id: &str) -> Result<Value, SignalWireRestError> {
-        self.client.get(&self.path(&[id]), &HashMap::new())
+        self.get_with_options(id, None)
+    }
+
+    /// `get` with a per-request [`RequestOptions`] override (plan 4.2). Options
+    /// are forwarded to the HTTP layer only.
+    ///
+    /// # Errors
+    /// As [`get`](Self::get).
+    pub fn get_with_options(
+        &self,
+        id: &str,
+        request_options: Option<&RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.client
+            .get_with_options(&self.path(&[id]), &HashMap::new(), request_options)
     }
 
     /// Update a resource by ID (PUT/PATCH basePath/{id}, per `update_method`).
@@ -121,11 +184,26 @@ impl<'a> CrudResource<'a> {
     /// status (e.g. 404 for a missing `id` or 422 when `data` fails
     /// validation), or the response body is not valid JSON.
     pub fn update(&self, id: &str, data: &Value) -> Result<Value, SignalWireRestError> {
+        self.update_with_options(id, data, None)
+    }
+
+    /// `update` with a per-request [`RequestOptions`] override (plan 4.2).
+    /// Options are forwarded to the HTTP layer only, never serialized into the
+    /// body.
+    ///
+    /// # Errors
+    /// As [`update`](Self::update).
+    pub fn update_with_options(
+        &self,
+        id: &str,
+        data: &Value,
+        request_options: Option<&RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
         let path = self.path(&[id]);
         if self.update_method.eq_ignore_ascii_case("PUT") {
-            self.client.put(&path, data)
+            self.client.put_with_options(&path, data, request_options)
         } else {
-            self.client.patch(&path, data)
+            self.client.patch_with_options(&path, data, request_options)
         }
     }
 
@@ -137,7 +215,21 @@ impl<'a> CrudResource<'a> {
     /// status (e.g. 404 when no resource has the given `id`), or the response
     /// body is not valid JSON.
     pub fn delete(&self, id: &str) -> Result<Value, SignalWireRestError> {
-        self.client.delete(&self.path(&[id]))
+        self.delete_with_options(id, None)
+    }
+
+    /// `delete` with a per-request [`RequestOptions`] override (plan 4.2).
+    /// Options are forwarded to the HTTP layer only.
+    ///
+    /// # Errors
+    /// As [`delete`](Self::delete).
+    pub fn delete_with_options(
+        &self,
+        id: &str,
+        request_options: Option<&RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.client
+            .delete_with_options(&self.path(&[id]), request_options)
     }
 }
 

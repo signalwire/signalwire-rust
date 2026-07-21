@@ -27,6 +27,7 @@ use serde_json::Value;
 use super::error::SignalWireRestError;
 use super::http_client::HttpClient;
 use super::pagination::PaginatedIterator;
+use super::request_options::RequestOptions;
 
 /// Characters escaped when percent-encoding a URL path segment. Starts from the
 /// full control set and adds every character that is NOT an RFC 3986 unreserved
@@ -160,7 +161,22 @@ impl<'a> ReadResource<'a> {
     /// Returns [`SignalWireRestError`] on transport failure, a non-2xx status,
     /// or an unparseable response body.
     pub fn list(&self, params: &HashMap<String, String>) -> Result<Value, SignalWireRestError> {
-        self.base.client().get(self.base.base_path(), params)
+        self.list_with_options(params, None)
+    }
+
+    /// `list` with a per-request [`RequestOptions`] override (plan 4.2). Options
+    /// are forwarded to the HTTP layer only, never serialized.
+    ///
+    /// # Errors
+    /// As [`list`](Self::list).
+    pub fn list_with_options(
+        &self,
+        params: &HashMap<String, String>,
+        request_options: Option<&RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base
+            .client()
+            .get_with_options(self.base.base_path(), params, request_options)
     }
 
     /// Iterate every item across all pages of this resource's list endpoint.
@@ -180,15 +196,45 @@ impl<'a> ReadResource<'a> {
         )
     }
 
+    /// `paginate` with a per-request [`RequestOptions`] override (plan 4.2)
+    /// forwarded to every page GET. Options are never serialized.
+    #[must_use]
+    pub fn paginate_with_options(
+        &self,
+        params: &HashMap<String, String>,
+        request_options: Option<RequestOptions>,
+    ) -> PaginatedIterator<'a> {
+        PaginatedIterator::with_options(
+            self.base.client(),
+            self.base.base_path(),
+            params.clone(),
+            "data",
+            request_options,
+        )
+    }
+
     /// Retrieve a single resource by id (GET base/{id}).
     ///
     /// # Errors
     /// Returns [`SignalWireRestError`] on transport failure, a non-2xx status,
     /// or an unparseable response body.
     pub fn get(&self, id: &str) -> Result<Value, SignalWireRestError> {
+        self.get_with_options(id, None)
+    }
+
+    /// `get` with a per-request [`RequestOptions`] override (plan 4.2). Options
+    /// are forwarded to the HTTP layer only.
+    ///
+    /// # Errors
+    /// As [`get`](Self::get).
+    pub fn get_with_options(
+        &self,
+        id: &str,
+        request_options: Option<&RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
         self.base
             .client()
-            .get(&self.base.path(&[id]), &HashMap::new())
+            .get_with_options(&self.base.path(&[id]), &HashMap::new(), request_options)
     }
 }
 
@@ -236,6 +282,18 @@ impl<'a> FabricResource<'a> {
         self.base.list(params)
     }
 
+    /// `list` with a per-request [`RequestOptions`] override (plan 4.2).
+    ///
+    /// # Errors
+    /// As [`list`](Self::list).
+    pub fn list_with_options(
+        &self,
+        params: &HashMap<String, String>,
+        request_options: Option<&RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base.list_with_options(params, request_options)
+    }
+
     /// Create a new resource (POST base path).
     ///
     /// # Errors
@@ -243,6 +301,18 @@ impl<'a> FabricResource<'a> {
     /// or an unparseable response body.
     pub fn create(&self, data: &Value) -> Result<Value, SignalWireRestError> {
         self.base.create(data)
+    }
+
+    /// `create` with a per-request [`RequestOptions`] override (plan 4.2).
+    ///
+    /// # Errors
+    /// As [`create`](Self::create).
+    pub fn create_with_options(
+        &self,
+        data: &Value,
+        request_options: Option<&RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base.create_with_options(data, request_options)
     }
 
     /// Retrieve a single resource by id (GET base/{id}).
@@ -254,6 +324,18 @@ impl<'a> FabricResource<'a> {
         self.base.get(id)
     }
 
+    /// `get` with a per-request [`RequestOptions`] override (plan 4.2).
+    ///
+    /// # Errors
+    /// As [`get`](Self::get).
+    pub fn get_with_options(
+        &self,
+        id: &str,
+        request_options: Option<&RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base.get_with_options(id, request_options)
+    }
+
     /// Update a resource by id (PUT/PATCH base/{id}, per `update_method`).
     ///
     /// # Errors
@@ -263,6 +345,19 @@ impl<'a> FabricResource<'a> {
         self.base.update(id, data)
     }
 
+    /// `update` with a per-request [`RequestOptions`] override (plan 4.2).
+    ///
+    /// # Errors
+    /// As [`update`](Self::update).
+    pub fn update_with_options(
+        &self,
+        id: &str,
+        data: &Value,
+        request_options: Option<&RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base.update_with_options(id, data, request_options)
+    }
+
     /// Delete a resource by id (DELETE base/{id}).
     ///
     /// # Errors
@@ -270,6 +365,18 @@ impl<'a> FabricResource<'a> {
     /// or an unparseable response body.
     pub fn delete(&self, id: &str) -> Result<Value, SignalWireRestError> {
         self.base.delete(id)
+    }
+
+    /// `delete` with a per-request [`RequestOptions`] override (plan 4.2).
+    ///
+    /// # Errors
+    /// As [`delete`](Self::delete).
+    pub fn delete_with_options(
+        &self,
+        id: &str,
+        request_options: Option<&RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base.delete_with_options(id, request_options)
     }
 
     /// List the addresses bound to a resource (GET base/{id}/addresses).
@@ -282,9 +389,24 @@ impl<'a> FabricResource<'a> {
         id: &str,
         params: &HashMap<String, String>,
     ) -> Result<Value, SignalWireRestError> {
-        self.base
-            .client()
-            .get(&self.base.path(&[id, "addresses"]), params)
+        self.list_addresses_with_options(id, params, None)
+    }
+
+    /// `list_addresses` with a per-request [`RequestOptions`] override (plan 4.2).
+    ///
+    /// # Errors
+    /// As [`list_addresses`](Self::list_addresses).
+    pub fn list_addresses_with_options(
+        &self,
+        id: &str,
+        params: &HashMap<String, String>,
+        request_options: Option<&RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base.client().get_with_options(
+            &self.base.path(&[id, "addresses"]),
+            params,
+            request_options,
+        )
     }
 }
 

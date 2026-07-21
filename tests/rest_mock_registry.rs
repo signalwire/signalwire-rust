@@ -24,7 +24,7 @@ fn test_registry_brands_list_returns_dict() {
     let body = c
         .registry()
         .brands()
-        .list(&HashMap::new())
+        .list(&HashMap::new(), None)
         .expect("brands.list");
     assert!(body.is_object());
 
@@ -41,7 +41,7 @@ fn test_registry_brands_get_uses_id_in_path() {
     let body = c
         .registry()
         .brands()
-        .get("brand-77", &HashMap::new())
+        .get("brand-77", &HashMap::new(), None)
         .expect("brands.get");
     assert!(body.is_object());
 
@@ -57,7 +57,7 @@ fn test_registry_brands_list_campaigns_uses_brand_subpath() {
     let body = c
         .registry()
         .brands()
-        .list_campaigns("brand-1", &HashMap::new())
+        .list_campaigns("brand-1", &HashMap::new(), None)
         .expect("list_campaigns");
     assert!(body.is_object());
 
@@ -76,7 +76,7 @@ fn test_registry_brands_create_campaign_posts_to_subpath() {
         .brands()
         .create_campaign(
             "brand-2",
-            &json!({"name": "My Campaign", "sms_use_case": "LOW_VOLUME"}),
+            &json!({"name": "My Campaign", "sms_use_case": "LOW_VOLUME"}), None
         )
         .expect("create_campaign");
     assert!(body.is_object());
@@ -106,7 +106,7 @@ fn test_registry_campaigns_get_uses_id_in_path() {
     let body = c
         .registry()
         .campaigns()
-        .get("camp-1", &HashMap::new())
+        .get("camp-1", &HashMap::new(), None)
         .expect("campaigns.get");
     assert!(body.is_object());
 
@@ -124,7 +124,7 @@ fn test_registry_campaigns_update_uses_put() {
         .campaigns()
         .update(
             "camp-2",
-            relay_gen::RegistryCampaignsUpdateRequest::new().name("Updated Campaign"),
+            relay_gen::RegistryCampaignsUpdateRequest::new().name("Updated Campaign"), None
         )
         .expect("campaigns.update");
     assert!(body.is_object());
@@ -146,7 +146,7 @@ fn test_registry_campaigns_list_numbers_uses_subpath() {
     let body = c
         .registry()
         .campaigns()
-        .list_numbers("camp-3", &HashMap::new())
+        .list_numbers("camp-3", &HashMap::new(), None)
         .expect("list_numbers");
     assert!(body.is_object());
 
@@ -166,7 +166,7 @@ fn test_registry_campaigns_create_order_posts_to_subpath() {
         .create_order(
             "camp-4",
             relay_gen::RegistryCampaignsCreateOrderRequest::new()
-                .phone_numbers(json!(["pn-1", "pn-2"])),
+                .phone_numbers(json!(["pn-1", "pn-2"])), None
         )
         .expect("create_order");
     assert!(body.is_object());
@@ -194,7 +194,7 @@ fn test_registry_orders_get_uses_id_in_path() {
     let body = c
         .registry()
         .orders()
-        .get("order-1", &HashMap::new())
+        .get("order-1", &HashMap::new(), None)
         .expect("orders.get");
     assert!(body.is_object());
 
@@ -215,7 +215,7 @@ fn test_registry_numbers_delete_uses_id_in_path() {
     let body = c
         .registry()
         .numbers()
-        .delete("num-1")
+        .delete("num-1", None)
         .expect("numbers.delete");
     assert!(body.is_object());
 

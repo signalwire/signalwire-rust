@@ -24,7 +24,7 @@ fn test_small_addresses_list() {
     let c = common::mocktest::client();
     let mut params = HashMap::new();
     params.insert("page_size".to_string(), "10".to_string());
-    let body = c.addresses().list(&params).expect("addresses.list");
+    let body = c.addresses().list(&params, None).expect("addresses.list");
     assert!(body.is_object());
     let obj = body.as_object().unwrap();
     assert!(obj.contains_key("data"), "missing 'data' key");
@@ -49,7 +49,7 @@ fn test_small_addresses_create() {
         .addresses()
         .create(
             relay_gen::AddressesCreateRequest::new("", "US", "Ada", "Lovelace", "", "", "", "", "")
-                .address_type("commercial"),
+                .address_type("commercial"), None
         )
         .expect("addresses.create");
     assert!(body.is_object());
@@ -74,7 +74,7 @@ fn test_small_addresses_get() {
     let c = common::mocktest::client();
     let body = c
         .addresses()
-        .get("addr-123", &HashMap::new())
+        .get("addr-123", &HashMap::new(), None)
         .expect("addresses.get");
     assert!(body.is_object());
     assert!(body.as_object().unwrap().contains_key("id"));
@@ -89,7 +89,7 @@ fn test_small_addresses_get() {
 fn test_small_addresses_delete() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let body = c.addresses().delete("addr-123").expect("addresses.delete");
+    let body = c.addresses().delete("addr-123", None).expect("addresses.delete");
     assert!(body.is_object());
 
     let entry = common::mocktest::journal_last();
@@ -112,7 +112,7 @@ fn test_small_recordings_list() {
     let c = common::mocktest::client();
     let mut params = HashMap::new();
     params.insert("page_size".to_string(), "5".to_string());
-    let body = c.recordings().list(&params).expect("recordings.list");
+    let body = c.recordings().list(&params, None).expect("recordings.list");
     assert!(body.is_object());
     let obj = body.as_object().unwrap();
     assert!(obj.contains_key("data"), "missing 'data'");
@@ -136,7 +136,7 @@ fn test_small_recordings_get() {
     let c = common::mocktest::client();
     let body = c
         .recordings()
-        .get("rec-123", &HashMap::new())
+        .get("rec-123", &HashMap::new(), None)
         .expect("recordings.get");
     assert!(body.is_object());
     assert!(body.as_object().unwrap().contains_key("id"));
@@ -150,7 +150,7 @@ fn test_small_recordings_get() {
 fn test_small_recordings_delete() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let body = c.recordings().delete("rec-123").expect("recordings.delete");
+    let body = c.recordings().delete("rec-123", None).expect("recordings.delete");
     assert!(body.is_object());
 
     let entry = common::mocktest::journal_last();
@@ -173,7 +173,7 @@ fn test_small_short_codes_list() {
     let c = common::mocktest::client();
     let mut params = HashMap::new();
     params.insert("page_size".to_string(), "20".to_string());
-    let body = c.short_codes().list(&params).expect("short_codes.list");
+    let body = c.short_codes().list(&params, None).expect("short_codes.list");
     assert!(body.is_object());
     let obj = body.as_object().unwrap();
     assert!(obj.contains_key("data"));
@@ -190,7 +190,7 @@ fn test_small_short_codes_get() {
     let c = common::mocktest::client();
     let body = c
         .short_codes()
-        .get("sc-1", &HashMap::new())
+        .get("sc-1", &HashMap::new(), None)
         .expect("short_codes.get");
     assert!(body.is_object());
     assert!(body.as_object().unwrap().contains_key("id"));
@@ -208,7 +208,7 @@ fn test_small_short_codes_update() {
         .short_codes()
         .update(
             "sc-1",
-            relay_gen::ShortCodesUpdateRequest::new("Marketing SMS", ""),
+            relay_gen::ShortCodesUpdateRequest::new("Marketing SMS", ""), None
         )
         .expect("short_codes.update");
     assert!(body.is_object());
@@ -236,7 +236,7 @@ fn test_small_imported_numbers_create() {
         .imported_numbers()
         .create(
             relay_gen::ImportedNumbersCreateRequest::new("+15551234567", "longcode")
-                .capabilities(json!(["sms", "voice"])),
+                .capabilities(json!(["sms", "voice"])), None
         )
         .expect("imported_numbers.create");
     assert!(body.is_object());
@@ -275,7 +275,7 @@ fn test_small_mfa_call() {
         .call(
             relay_gen::MfaCallRequest::new("+15551234567")
                 .from("+15559876543")
-                .message("Your code is {code}"),
+                .message("Your code is {code}"), None
         )
         .expect("mfa.call");
     assert!(body.is_object());
@@ -309,7 +309,7 @@ fn test_small_sip_profile_update() {
         .update(
             relay_gen::SipProfileUpdateRequest::new()
                 .domain_identifier("myco")
-                .default_codecs(json!(["PCMU", "PCMA"])),
+                .default_codecs(json!(["PCMU", "PCMA"])), None
         )
         .expect("sip_profile.update");
     assert!(body.is_object());
@@ -348,7 +348,7 @@ fn test_small_number_groups_list_memberships() {
     mem_params.insert("page_size".to_string(), "10".to_string());
     let body = c
         .number_groups()
-        .list_memberships("ng-1", &mem_params)
+        .list_memberships("ng-1", &mem_params, None)
         .expect("list_memberships");
     assert!(body.is_object());
     let obj = body.as_object().unwrap();
@@ -376,7 +376,7 @@ fn test_small_number_groups_delete_membership() {
     let c = common::mocktest::client();
     let body = c
         .number_groups()
-        .delete_membership("mem-1")
+        .delete_membership("mem-1", None)
         .expect("delete_membership");
     assert!(body.is_object());
 
@@ -403,7 +403,7 @@ fn test_small_project_tokens_update() {
         .tokens()
         .update(
             "tok-1",
-            project_gen::ProjectTokensUpdateRequest::new().name("renamed-token"),
+            project_gen::ProjectTokensUpdateRequest::new().name("renamed-token"), None
         )
         .expect("project.tokens.update");
     assert!(body.is_object());
@@ -426,7 +426,7 @@ fn test_small_project_tokens_delete() {
     let body = c
         .project()
         .tokens()
-        .delete("tok-1")
+        .delete("tok-1", None)
         .expect("project.tokens.delete");
     assert!(body.is_object());
 
@@ -451,7 +451,7 @@ fn test_small_datasphere_get_chunk() {
     let body = c
         .datasphere()
         .documents()
-        .get_chunk("doc-1", "chunk-99", &HashMap::new())
+        .get_chunk("doc-1", "chunk-99", &HashMap::new(), None)
         .expect("get_chunk");
     assert!(body.is_object());
     assert!(body.as_object().unwrap().contains_key("id"));
@@ -474,7 +474,7 @@ fn test_small_queues_get_member() {
     let c = common::mocktest::client();
     let body = c
         .queues()
-        .get_member("q-1", "mem-7", &HashMap::new())
+        .get_member("q-1", "mem-7", &HashMap::new(), None)
         .expect("queues.get_member");
     assert!(body.is_object());
     let obj = body.as_object().unwrap();

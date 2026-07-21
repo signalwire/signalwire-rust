@@ -12,6 +12,7 @@ use serde_json::{Map, Value};
 use crate::rest::error::SignalWireRestError;
 use crate::rest::generated_bases::CrudResource;
 use crate::rest::http_client::HttpClient;
+use crate::rest::request_options::RequestOptions;
 
 /// Named request parameters for the generated method (Rust options-builder
 /// idiom — required fields in `new`, optionals via setters, `extras` open door).
@@ -151,40 +152,64 @@ impl<'a> DatasphereDocuments<'a> {
     ///
     /// # Errors
     /// See the base resource.
-    pub fn list(&self, params: &HashMap<String, String>) -> Result<Value, SignalWireRestError> {
-        self.base.list(params)
+    pub fn list(
+        &self,
+        params: &HashMap<String, String>,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base
+            .list_with_options(params, request_options.as_ref())
     }
 
     /// `get` (delegated to the base; GET base/{id}).
     ///
     /// # Errors
     /// See the base resource.
-    pub fn get(&self, id: &str) -> Result<Value, SignalWireRestError> {
-        self.base.get(id)
+    pub fn get(
+        &self,
+        id: &str,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base.get_with_options(id, request_options.as_ref())
     }
 
     /// `create` (delegated to the base; POST base path).
     ///
     /// # Errors
     /// See the base resource.
-    pub fn create(&self, data: &Value) -> Result<Value, SignalWireRestError> {
-        self.base.create(data)
+    pub fn create(
+        &self,
+        data: &Value,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base
+            .create_with_options(data, request_options.as_ref())
     }
 
     /// `update` (delegated to the base; PUT/PATCH base/{id}).
     ///
     /// # Errors
     /// See the base resource.
-    pub fn update(&self, id: &str, data: &Value) -> Result<Value, SignalWireRestError> {
-        self.base.update(id, data)
+    pub fn update(
+        &self,
+        id: &str,
+        data: &Value,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base
+            .update_with_options(id, data, request_options.as_ref())
     }
 
     /// `delete` (delegated to the base; DELETE base/{id}).
     ///
     /// # Errors
     /// See the base resource.
-    pub fn delete(&self, id: &str) -> Result<Value, SignalWireRestError> {
-        self.base.delete(id)
+    pub fn delete(
+        &self,
+        id: &str,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base.delete_with_options(id, request_options.as_ref())
     }
 
     /// `POST /documents/search` (generated operation method).
@@ -195,9 +220,13 @@ impl<'a> DatasphereDocuments<'a> {
     pub fn search(
         &self,
         request: DatasphereDocumentsSearchRequest,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.client()
-            .post(&self.path(&["search"]), &request.build())
+        self.client().post_with_options(
+            &self.path(&["search"]),
+            &request.build(),
+            request_options.as_ref(),
+        )
     }
 
     /// `GET /documents/{documentId}/chunks` (generated operation method; query params).
@@ -208,9 +237,13 @@ impl<'a> DatasphereDocuments<'a> {
         &self,
         document_id: &str,
         params: &HashMap<String, String>,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.client()
-            .get(&self.path(&[document_id, "chunks"]), params)
+        self.client().get_with_options(
+            &self.path(&[document_id, "chunks"]),
+            params,
+            request_options.as_ref(),
+        )
     }
 
     /// `GET /documents/{documentId}/chunks/{chunkId}` (generated operation method; query params).
@@ -222,9 +255,13 @@ impl<'a> DatasphereDocuments<'a> {
         document_id: &str,
         chunk_id: &str,
         params: &HashMap<String, String>,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.client()
-            .get(&self.path(&[document_id, "chunks", chunk_id]), params)
+        self.client().get_with_options(
+            &self.path(&[document_id, "chunks", chunk_id]),
+            params,
+            request_options.as_ref(),
+        )
     }
 
     /// `DELETE /documents/{documentId}/chunks/{chunkId}` (generated operation method).
@@ -235,8 +272,11 @@ impl<'a> DatasphereDocuments<'a> {
         &self,
         document_id: &str,
         chunk_id: &str,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.client()
-            .delete(&self.path(&[document_id, "chunks", chunk_id]))
+        self.client().delete_with_options(
+            &self.path(&[document_id, "chunks", chunk_id]),
+            request_options.as_ref(),
+        )
     }
 }

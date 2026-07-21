@@ -9,6 +9,7 @@ use serde_json::{Map, Value};
 
 use crate::rest::error::SignalWireRestError;
 use crate::rest::http_client::HttpClient;
+use crate::rest::request_options::RequestOptions;
 
 /// Named request parameters for the generated method (Rust options-builder
 /// idiom — required fields in `new`, optionals via setters, `extras` open door).
@@ -1741,6 +1742,7 @@ impl<'a> Calling<'a> {
         command: &str,
         call_id: Option<&str>,
         params: Value,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
         let mut body = Map::new();
         body.insert("command".to_string(), Value::from(command));
@@ -1748,23 +1750,37 @@ impl<'a> Calling<'a> {
         if let Some(id) = call_id {
             body.insert("id".to_string(), Value::from(id));
         }
-        self.client.post(Self::BASE_PATH, &Value::Object(body))
+        // request_options is transport-only — forwarded to the HTTP layer, never
+        // serialized into the command body.
+        self.client.post_with_options(
+            Self::BASE_PATH,
+            &Value::Object(body),
+            request_options.as_ref(),
+        )
     }
 
     /// `dial` — generated command method.
     ///
     /// # Errors
     /// Returns [`SignalWireRestError`] on transport failure or a non-2xx status.
-    pub fn dial(&self, request: CallingDialRequest) -> Result<Value, SignalWireRestError> {
-        self.execute("dial", None, request.build())
+    pub fn dial(
+        &self,
+        request: CallingDialRequest,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.execute("dial", None, request.build(), request_options)
     }
 
     /// `update` — generated command method.
     ///
     /// # Errors
     /// Returns [`SignalWireRestError`] on transport failure or a non-2xx status.
-    pub fn update(&self, request: CallingUpdateRequest) -> Result<Value, SignalWireRestError> {
-        self.execute("update", None, request.build())
+    pub fn update(
+        &self,
+        request: CallingUpdateRequest,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.execute("update", None, request.build(), request_options)
     }
 
     /// `calling.end` — generated command method.
@@ -1775,8 +1791,14 @@ impl<'a> Calling<'a> {
         &self,
         call_id: &str,
         request: CallingEndRequest,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.execute("calling.end", Some(call_id), request.build())
+        self.execute(
+            "calling.end",
+            Some(call_id),
+            request.build(),
+            request_options,
+        )
     }
 
     /// `calling.ai_hold` — generated command method.
@@ -1787,8 +1809,14 @@ impl<'a> Calling<'a> {
         &self,
         call_id: &str,
         request: CallingAiHoldRequest,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.execute("calling.ai_hold", Some(call_id), request.build())
+        self.execute(
+            "calling.ai_hold",
+            Some(call_id),
+            request.build(),
+            request_options,
+        )
     }
 
     /// `calling.ai_unhold` — generated command method.
@@ -1799,8 +1827,14 @@ impl<'a> Calling<'a> {
         &self,
         call_id: &str,
         request: CallingAiUnholdRequest,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.execute("calling.ai_unhold", Some(call_id), request.build())
+        self.execute(
+            "calling.ai_unhold",
+            Some(call_id),
+            request.build(),
+            request_options,
+        )
     }
 
     /// `calling.ai_message` — generated command method.
@@ -1811,8 +1845,14 @@ impl<'a> Calling<'a> {
         &self,
         call_id: &str,
         request: CallingAiMessageRequest,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.execute("calling.ai_message", Some(call_id), request.build())
+        self.execute(
+            "calling.ai_message",
+            Some(call_id),
+            request.build(),
+            request_options,
+        )
     }
 
     /// `calling.live_transcribe` — generated command method.
@@ -1823,8 +1863,14 @@ impl<'a> Calling<'a> {
         &self,
         call_id: &str,
         request: CallingLiveTranscribeRequest,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.execute("calling.live_transcribe", Some(call_id), request.build())
+        self.execute(
+            "calling.live_transcribe",
+            Some(call_id),
+            request.build(),
+            request_options,
+        )
     }
 
     /// `calling.live_translate` — generated command method.
@@ -1835,8 +1881,14 @@ impl<'a> Calling<'a> {
         &self,
         call_id: &str,
         request: CallingLiveTranslateRequest,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.execute("calling.live_translate", Some(call_id), request.build())
+        self.execute(
+            "calling.live_translate",
+            Some(call_id),
+            request.build(),
+            request_options,
+        )
     }
 
     /// `calling.transfer` — generated command method.
@@ -1847,8 +1899,14 @@ impl<'a> Calling<'a> {
         &self,
         call_id: &str,
         request: CallingTransferRequest,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.execute("calling.transfer", Some(call_id), request.build())
+        self.execute(
+            "calling.transfer",
+            Some(call_id),
+            request.build(),
+            request_options,
+        )
     }
 
     /// `calling.user_event` — generated command method.
@@ -1859,8 +1917,14 @@ impl<'a> Calling<'a> {
         &self,
         call_id: &str,
         request: CallingUserEventRequest,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.execute("calling.user_event", Some(call_id), request.build())
+        self.execute(
+            "calling.user_event",
+            Some(call_id),
+            request.build(),
+            request_options,
+        )
     }
 
     /// `calling.disconnect` — generated command method.
@@ -1871,8 +1935,14 @@ impl<'a> Calling<'a> {
         &self,
         call_id: &str,
         request: CallingDisconnectRequest,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.execute("calling.disconnect", Some(call_id), request.build())
+        self.execute(
+            "calling.disconnect",
+            Some(call_id),
+            request.build(),
+            request_options,
+        )
     }
 
     /// `calling.play` — generated command method.
@@ -1883,8 +1953,14 @@ impl<'a> Calling<'a> {
         &self,
         call_id: &str,
         request: CallingPlayRequest,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.execute("calling.play", Some(call_id), request.build())
+        self.execute(
+            "calling.play",
+            Some(call_id),
+            request.build(),
+            request_options,
+        )
     }
 
     /// `calling.play.pause` — generated command method.
@@ -1895,8 +1971,14 @@ impl<'a> Calling<'a> {
         &self,
         call_id: &str,
         request: CallingPlayPauseRequest,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.execute("calling.play.pause", Some(call_id), request.build())
+        self.execute(
+            "calling.play.pause",
+            Some(call_id),
+            request.build(),
+            request_options,
+        )
     }
 
     /// `calling.play.resume` — generated command method.
@@ -1907,8 +1989,14 @@ impl<'a> Calling<'a> {
         &self,
         call_id: &str,
         request: CallingPlayResumeRequest,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.execute("calling.play.resume", Some(call_id), request.build())
+        self.execute(
+            "calling.play.resume",
+            Some(call_id),
+            request.build(),
+            request_options,
+        )
     }
 
     /// `calling.play.stop` — generated command method.
@@ -1919,8 +2007,14 @@ impl<'a> Calling<'a> {
         &self,
         call_id: &str,
         request: CallingPlayStopRequest,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.execute("calling.play.stop", Some(call_id), request.build())
+        self.execute(
+            "calling.play.stop",
+            Some(call_id),
+            request.build(),
+            request_options,
+        )
     }
 
     /// `calling.play.volume` — generated command method.
@@ -1931,8 +2025,14 @@ impl<'a> Calling<'a> {
         &self,
         call_id: &str,
         request: CallingPlayVolumeRequest,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.execute("calling.play.volume", Some(call_id), request.build())
+        self.execute(
+            "calling.play.volume",
+            Some(call_id),
+            request.build(),
+            request_options,
+        )
     }
 
     /// `calling.record` — generated command method.
@@ -1943,8 +2043,14 @@ impl<'a> Calling<'a> {
         &self,
         call_id: &str,
         request: CallingRecordRequest,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.execute("calling.record", Some(call_id), request.build())
+        self.execute(
+            "calling.record",
+            Some(call_id),
+            request.build(),
+            request_options,
+        )
     }
 
     /// `calling.record.pause` — generated command method.
@@ -1955,8 +2061,14 @@ impl<'a> Calling<'a> {
         &self,
         call_id: &str,
         request: CallingRecordPauseRequest,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.execute("calling.record.pause", Some(call_id), request.build())
+        self.execute(
+            "calling.record.pause",
+            Some(call_id),
+            request.build(),
+            request_options,
+        )
     }
 
     /// `calling.record.resume` — generated command method.
@@ -1967,8 +2079,14 @@ impl<'a> Calling<'a> {
         &self,
         call_id: &str,
         request: CallingRecordResumeRequest,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.execute("calling.record.resume", Some(call_id), request.build())
+        self.execute(
+            "calling.record.resume",
+            Some(call_id),
+            request.build(),
+            request_options,
+        )
     }
 
     /// `calling.record.stop` — generated command method.
@@ -1979,8 +2097,14 @@ impl<'a> Calling<'a> {
         &self,
         call_id: &str,
         request: CallingRecordStopRequest,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.execute("calling.record.stop", Some(call_id), request.build())
+        self.execute(
+            "calling.record.stop",
+            Some(call_id),
+            request.build(),
+            request_options,
+        )
     }
 
     /// `calling.collect` — generated command method.
@@ -1991,8 +2115,14 @@ impl<'a> Calling<'a> {
         &self,
         call_id: &str,
         request: CallingCollectRequest,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.execute("calling.collect", Some(call_id), request.build())
+        self.execute(
+            "calling.collect",
+            Some(call_id),
+            request.build(),
+            request_options,
+        )
     }
 
     /// `calling.collect.stop` — generated command method.
@@ -2003,8 +2133,14 @@ impl<'a> Calling<'a> {
         &self,
         call_id: &str,
         request: CallingCollectStopRequest,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.execute("calling.collect.stop", Some(call_id), request.build())
+        self.execute(
+            "calling.collect.stop",
+            Some(call_id),
+            request.build(),
+            request_options,
+        )
     }
 
     /// `calling.collect.start_input_timers` — generated command method.
@@ -2015,11 +2151,13 @@ impl<'a> Calling<'a> {
         &self,
         call_id: &str,
         request: CallingCollectStartInputTimersRequest,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
         self.execute(
             "calling.collect.start_input_timers",
             Some(call_id),
             request.build(),
+            request_options,
         )
     }
 
@@ -2031,8 +2169,14 @@ impl<'a> Calling<'a> {
         &self,
         call_id: &str,
         request: CallingDetectRequest,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.execute("calling.detect", Some(call_id), request.build())
+        self.execute(
+            "calling.detect",
+            Some(call_id),
+            request.build(),
+            request_options,
+        )
     }
 
     /// `calling.detect.stop` — generated command method.
@@ -2043,8 +2187,14 @@ impl<'a> Calling<'a> {
         &self,
         call_id: &str,
         request: CallingDetectStopRequest,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.execute("calling.detect.stop", Some(call_id), request.build())
+        self.execute(
+            "calling.detect.stop",
+            Some(call_id),
+            request.build(),
+            request_options,
+        )
     }
 
     /// `calling.tap` — generated command method.
@@ -2055,8 +2205,14 @@ impl<'a> Calling<'a> {
         &self,
         call_id: &str,
         request: CallingTapRequest,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.execute("calling.tap", Some(call_id), request.build())
+        self.execute(
+            "calling.tap",
+            Some(call_id),
+            request.build(),
+            request_options,
+        )
     }
 
     /// `calling.tap.stop` — generated command method.
@@ -2067,8 +2223,14 @@ impl<'a> Calling<'a> {
         &self,
         call_id: &str,
         request: CallingTapStopRequest,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.execute("calling.tap.stop", Some(call_id), request.build())
+        self.execute(
+            "calling.tap.stop",
+            Some(call_id),
+            request.build(),
+            request_options,
+        )
     }
 
     /// `calling.stream` — generated command method.
@@ -2079,8 +2241,14 @@ impl<'a> Calling<'a> {
         &self,
         call_id: &str,
         request: CallingStreamRequest,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.execute("calling.stream", Some(call_id), request.build())
+        self.execute(
+            "calling.stream",
+            Some(call_id),
+            request.build(),
+            request_options,
+        )
     }
 
     /// `calling.stream.stop` — generated command method.
@@ -2091,8 +2259,14 @@ impl<'a> Calling<'a> {
         &self,
         call_id: &str,
         request: CallingStreamStopRequest,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.execute("calling.stream.stop", Some(call_id), request.build())
+        self.execute(
+            "calling.stream.stop",
+            Some(call_id),
+            request.build(),
+            request_options,
+        )
     }
 
     /// `calling.denoise` — generated command method.
@@ -2103,8 +2277,14 @@ impl<'a> Calling<'a> {
         &self,
         call_id: &str,
         request: CallingDenoiseRequest,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.execute("calling.denoise", Some(call_id), request.build())
+        self.execute(
+            "calling.denoise",
+            Some(call_id),
+            request.build(),
+            request_options,
+        )
     }
 
     /// `calling.denoise.stop` — generated command method.
@@ -2115,8 +2295,14 @@ impl<'a> Calling<'a> {
         &self,
         call_id: &str,
         request: CallingDenoiseStopRequest,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.execute("calling.denoise.stop", Some(call_id), request.build())
+        self.execute(
+            "calling.denoise.stop",
+            Some(call_id),
+            request.build(),
+            request_options,
+        )
     }
 
     /// `calling.transcribe` — generated command method.
@@ -2127,8 +2313,14 @@ impl<'a> Calling<'a> {
         &self,
         call_id: &str,
         request: CallingTranscribeRequest,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.execute("calling.transcribe", Some(call_id), request.build())
+        self.execute(
+            "calling.transcribe",
+            Some(call_id),
+            request.build(),
+            request_options,
+        )
     }
 
     /// `calling.transcribe.stop` — generated command method.
@@ -2139,8 +2331,14 @@ impl<'a> Calling<'a> {
         &self,
         call_id: &str,
         request: CallingTranscribeStopRequest,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.execute("calling.transcribe.stop", Some(call_id), request.build())
+        self.execute(
+            "calling.transcribe.stop",
+            Some(call_id),
+            request.build(),
+            request_options,
+        )
     }
 
     /// `calling.ai.stop` — generated command method.
@@ -2151,8 +2349,14 @@ impl<'a> Calling<'a> {
         &self,
         call_id: &str,
         request: CallingAiStopRequest,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.execute("calling.ai.stop", Some(call_id), request.build())
+        self.execute(
+            "calling.ai.stop",
+            Some(call_id),
+            request.build(),
+            request_options,
+        )
     }
 
     /// `calling.send_fax.stop` — generated command method.
@@ -2163,8 +2367,14 @@ impl<'a> Calling<'a> {
         &self,
         call_id: &str,
         request: CallingSendFaxStopRequest,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.execute("calling.send_fax.stop", Some(call_id), request.build())
+        self.execute(
+            "calling.send_fax.stop",
+            Some(call_id),
+            request.build(),
+            request_options,
+        )
     }
 
     /// `calling.receive_fax.stop` — generated command method.
@@ -2175,8 +2385,14 @@ impl<'a> Calling<'a> {
         &self,
         call_id: &str,
         request: CallingReceiveFaxStopRequest,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.execute("calling.receive_fax.stop", Some(call_id), request.build())
+        self.execute(
+            "calling.receive_fax.stop",
+            Some(call_id),
+            request.build(),
+            request_options,
+        )
     }
 
     /// `calling.refer` — generated command method.
@@ -2187,7 +2403,13 @@ impl<'a> Calling<'a> {
         &self,
         call_id: &str,
         request: CallingReferRequest,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.execute("calling.refer", Some(call_id), request.build())
+        self.execute(
+            "calling.refer",
+            Some(call_id),
+            request.build(),
+            request_options,
+        )
     }
 }

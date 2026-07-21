@@ -13,6 +13,7 @@ use crate::rest::error::SignalWireRestError;
 use crate::rest::generated_bases::{BaseResource, CrudResource, ReadResource};
 use crate::rest::http_client::HttpClient;
 use crate::rest::pagination::PaginatedIterator;
+use crate::rest::request_options::RequestOptions;
 
 /// Named request parameters for the generated method (Rust options-builder
 /// idiom — required fields in `new`, optionals via setters, `extras` open door).
@@ -358,17 +359,26 @@ impl<'a> VideoConferenceTokens<'a> {
         &self,
         id: &str,
         params: &HashMap<String, String>,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.client().get(&self.path(&[id]), params)
+        self.client()
+            .get_with_options(&self.path(&[id]), params, request_options.as_ref())
     }
 
     /// `POST /conference_tokens/{id}/reset` (generated operation method; no body).
     ///
     /// # Errors
     /// Returns [`SignalWireRestError`] on transport failure, a non-2xx status.
-    pub fn reset(&self, id: &str) -> Result<Value, SignalWireRestError> {
-        self.client()
-            .post(&self.path(&[id, "reset"]), &Value::Object(Map::new()))
+    pub fn reset(
+        &self,
+        id: &str,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.client().post_with_options(
+            &self.path(&[id, "reset"]),
+            &Value::Object(Map::new()),
+            request_options.as_ref(),
+        )
     }
 }
 
@@ -406,40 +416,64 @@ impl<'a> VideoConferences<'a> {
     ///
     /// # Errors
     /// See the base resource.
-    pub fn list(&self, params: &HashMap<String, String>) -> Result<Value, SignalWireRestError> {
-        self.base.list(params)
+    pub fn list(
+        &self,
+        params: &HashMap<String, String>,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base
+            .list_with_options(params, request_options.as_ref())
     }
 
     /// `get` (delegated to the base; GET base/{id}).
     ///
     /// # Errors
     /// See the base resource.
-    pub fn get(&self, id: &str) -> Result<Value, SignalWireRestError> {
-        self.base.get(id)
+    pub fn get(
+        &self,
+        id: &str,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base.get_with_options(id, request_options.as_ref())
     }
 
     /// `create` (delegated to the base; POST base path).
     ///
     /// # Errors
     /// See the base resource.
-    pub fn create(&self, data: &Value) -> Result<Value, SignalWireRestError> {
-        self.base.create(data)
+    pub fn create(
+        &self,
+        data: &Value,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base
+            .create_with_options(data, request_options.as_ref())
     }
 
     /// `update` (delegated to the base; PUT/PATCH base/{id}).
     ///
     /// # Errors
     /// See the base resource.
-    pub fn update(&self, id: &str, data: &Value) -> Result<Value, SignalWireRestError> {
-        self.base.update(id, data)
+    pub fn update(
+        &self,
+        id: &str,
+        data: &Value,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base
+            .update_with_options(id, data, request_options.as_ref())
     }
 
     /// `delete` (delegated to the base; DELETE base/{id}).
     ///
     /// # Errors
     /// See the base resource.
-    pub fn delete(&self, id: &str) -> Result<Value, SignalWireRestError> {
-        self.base.delete(id)
+    pub fn delete(
+        &self,
+        id: &str,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base.delete_with_options(id, request_options.as_ref())
     }
 
     /// `GET /conferences/{id}/conference_tokens` (generated operation method; query params).
@@ -450,9 +484,13 @@ impl<'a> VideoConferences<'a> {
         &self,
         id: &str,
         params: &HashMap<String, String>,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.client()
-            .get(&self.path(&[id, "conference_tokens"]), params)
+        self.client().get_with_options(
+            &self.path(&[id, "conference_tokens"]),
+            params,
+            request_options.as_ref(),
+        )
     }
 
     /// `GET /conferences/{id}/streams` (generated operation method; query params).
@@ -463,8 +501,13 @@ impl<'a> VideoConferences<'a> {
         &self,
         id: &str,
         params: &HashMap<String, String>,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.client().get(&self.path(&[id, "streams"]), params)
+        self.client().get_with_options(
+            &self.path(&[id, "streams"]),
+            params,
+            request_options.as_ref(),
+        )
     }
 
     /// `POST /conferences/{id}/streams` (generated operation method).
@@ -476,9 +519,13 @@ impl<'a> VideoConferences<'a> {
         &self,
         id: &str,
         request: VideoConferencesCreateStreamRequest,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.client()
-            .post(&self.path(&[id, "streams"]), &request.build())
+        self.client().post_with_options(
+            &self.path(&[id, "streams"]),
+            &request.build(),
+            request_options.as_ref(),
+        )
     }
 }
 
@@ -516,8 +563,13 @@ impl<'a> VideoRoomRecordings<'a> {
     ///
     /// # Errors
     /// Returns [`SignalWireRestError`] on transport failure, a non-2xx status.
-    pub fn list(&self, params: &HashMap<String, String>) -> Result<Value, SignalWireRestError> {
-        self.client().get(self.base_path(), params)
+    pub fn list(
+        &self,
+        params: &HashMap<String, String>,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.client()
+            .get_with_options(self.base_path(), params, request_options.as_ref())
     }
 
     /// `GET /room_recordings/{id}` (generated operation method; query params).
@@ -528,16 +580,23 @@ impl<'a> VideoRoomRecordings<'a> {
         &self,
         id: &str,
         params: &HashMap<String, String>,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.client().get(&self.path(&[id]), params)
+        self.client()
+            .get_with_options(&self.path(&[id]), params, request_options.as_ref())
     }
 
     /// `DELETE /room_recordings/{id}` (generated operation method).
     ///
     /// # Errors
     /// Returns [`SignalWireRestError`] on transport failure, a non-2xx status.
-    pub fn delete(&self, id: &str) -> Result<Value, SignalWireRestError> {
-        self.client().delete(&self.path(&[id]))
+    pub fn delete(
+        &self,
+        id: &str,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.client()
+            .delete_with_options(&self.path(&[id]), request_options.as_ref())
     }
 
     /// `GET /room_recordings/{id}/events` (generated operation method; query params).
@@ -548,8 +607,13 @@ impl<'a> VideoRoomRecordings<'a> {
         &self,
         id: &str,
         params: &HashMap<String, String>,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.client().get(&self.path(&[id, "events"]), params)
+        self.client().get_with_options(
+            &self.path(&[id, "events"]),
+            params,
+            request_options.as_ref(),
+        )
     }
 }
 
@@ -587,23 +651,36 @@ impl<'a> VideoRoomSessions<'a> {
     ///
     /// # Errors
     /// See the base resource.
-    pub fn list(&self, params: &HashMap<String, String>) -> Result<Value, SignalWireRestError> {
-        self.base.list(params)
+    pub fn list(
+        &self,
+        params: &HashMap<String, String>,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base
+            .list_with_options(params, request_options.as_ref())
     }
 
     /// `get` (delegated to the base; GET base/{id}).
     ///
     /// # Errors
     /// See the base resource.
-    pub fn get(&self, id: &str) -> Result<Value, SignalWireRestError> {
-        self.base.get(id)
+    pub fn get(
+        &self,
+        id: &str,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base.get_with_options(id, request_options.as_ref())
     }
 
     /// `paginate` (delegated to the base): iterate every item across all
     /// pages, following the response's `links.next` cursor.
     #[must_use]
-    pub fn paginate(&self, params: &HashMap<String, String>) -> PaginatedIterator<'a> {
-        self.base.paginate(params)
+    pub fn paginate(
+        &self,
+        params: &HashMap<String, String>,
+        request_options: Option<RequestOptions>,
+    ) -> PaginatedIterator<'a> {
+        self.base.paginate_with_options(params, request_options)
     }
 
     /// `GET /room_sessions/{id}/events` (generated operation method; query params).
@@ -614,8 +691,13 @@ impl<'a> VideoRoomSessions<'a> {
         &self,
         id: &str,
         params: &HashMap<String, String>,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.client().get(&self.path(&[id, "events"]), params)
+        self.client().get_with_options(
+            &self.path(&[id, "events"]),
+            params,
+            request_options.as_ref(),
+        )
     }
 
     /// `GET /room_sessions/{id}/members` (generated operation method; query params).
@@ -626,8 +708,13 @@ impl<'a> VideoRoomSessions<'a> {
         &self,
         id: &str,
         params: &HashMap<String, String>,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.client().get(&self.path(&[id, "members"]), params)
+        self.client().get_with_options(
+            &self.path(&[id, "members"]),
+            params,
+            request_options.as_ref(),
+        )
     }
 
     /// `GET /room_sessions/{id}/recordings` (generated operation method; query params).
@@ -638,8 +725,13 @@ impl<'a> VideoRoomSessions<'a> {
         &self,
         id: &str,
         params: &HashMap<String, String>,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.client().get(&self.path(&[id, "recordings"]), params)
+        self.client().get_with_options(
+            &self.path(&[id, "recordings"]),
+            params,
+            request_options.as_ref(),
+        )
     }
 }
 
@@ -677,8 +769,13 @@ impl<'a> VideoRoomTokens<'a> {
     pub fn create(
         &self,
         request: VideoRoomTokensCreateRequest,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.client().post(self.base_path(), &request.build())
+        self.client().post_with_options(
+            self.base_path(),
+            &request.build(),
+            request_options.as_ref(),
+        )
     }
 }
 
@@ -716,40 +813,64 @@ impl<'a> VideoRooms<'a> {
     ///
     /// # Errors
     /// See the base resource.
-    pub fn list(&self, params: &HashMap<String, String>) -> Result<Value, SignalWireRestError> {
-        self.base.list(params)
+    pub fn list(
+        &self,
+        params: &HashMap<String, String>,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base
+            .list_with_options(params, request_options.as_ref())
     }
 
     /// `get` (delegated to the base; GET base/{id}).
     ///
     /// # Errors
     /// See the base resource.
-    pub fn get(&self, id: &str) -> Result<Value, SignalWireRestError> {
-        self.base.get(id)
+    pub fn get(
+        &self,
+        id: &str,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base.get_with_options(id, request_options.as_ref())
     }
 
     /// `create` (delegated to the base; POST base path).
     ///
     /// # Errors
     /// See the base resource.
-    pub fn create(&self, data: &Value) -> Result<Value, SignalWireRestError> {
-        self.base.create(data)
+    pub fn create(
+        &self,
+        data: &Value,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base
+            .create_with_options(data, request_options.as_ref())
     }
 
     /// `update` (delegated to the base; PUT/PATCH base/{id}).
     ///
     /// # Errors
     /// See the base resource.
-    pub fn update(&self, id: &str, data: &Value) -> Result<Value, SignalWireRestError> {
-        self.base.update(id, data)
+    pub fn update(
+        &self,
+        id: &str,
+        data: &Value,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base
+            .update_with_options(id, data, request_options.as_ref())
     }
 
     /// `delete` (delegated to the base; DELETE base/{id}).
     ///
     /// # Errors
     /// See the base resource.
-    pub fn delete(&self, id: &str) -> Result<Value, SignalWireRestError> {
-        self.base.delete(id)
+    pub fn delete(
+        &self,
+        id: &str,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base.delete_with_options(id, request_options.as_ref())
     }
 
     /// `GET /rooms/{id}/streams` (generated operation method; query params).
@@ -760,8 +881,13 @@ impl<'a> VideoRooms<'a> {
         &self,
         id: &str,
         params: &HashMap<String, String>,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.client().get(&self.path(&[id, "streams"]), params)
+        self.client().get_with_options(
+            &self.path(&[id, "streams"]),
+            params,
+            request_options.as_ref(),
+        )
     }
 
     /// `POST /rooms/{id}/streams` (generated operation method).
@@ -773,9 +899,13 @@ impl<'a> VideoRooms<'a> {
         &self,
         id: &str,
         request: VideoRoomsCreateStreamRequest,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.client()
-            .post(&self.path(&[id, "streams"]), &request.build())
+        self.client().post_with_options(
+            &self.path(&[id, "streams"]),
+            &request.build(),
+            request_options.as_ref(),
+        )
     }
 }
 
@@ -817,8 +947,10 @@ impl<'a> VideoStreams<'a> {
         &self,
         id: &str,
         params: &HashMap<String, String>,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.client().get(&self.path(&[id]), params)
+        self.client()
+            .get_with_options(&self.path(&[id]), params, request_options.as_ref())
     }
 
     /// `PUT /streams/{id}` (generated operation method).
@@ -830,15 +962,25 @@ impl<'a> VideoStreams<'a> {
         &self,
         id: &str,
         request: VideoStreamsUpdateRequest,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.client().put(&self.path(&[id]), &request.build())
+        self.client().put_with_options(
+            &self.path(&[id]),
+            &request.build(),
+            request_options.as_ref(),
+        )
     }
 
     /// `DELETE /streams/{id}` (generated operation method).
     ///
     /// # Errors
     /// Returns [`SignalWireRestError`] on transport failure, a non-2xx status.
-    pub fn delete(&self, id: &str) -> Result<Value, SignalWireRestError> {
-        self.client().delete(&self.path(&[id]))
+    pub fn delete(
+        &self,
+        id: &str,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.client()
+            .delete_with_options(&self.path(&[id]), request_options.as_ref())
     }
 }

@@ -123,7 +123,16 @@ impl Recorder {
             path,
             chain: chain.iter().map(|s| (*s).to_string()).collect(),
             member: member.to_string(),
-            args: args.iter().map(|s| (*s).to_string()).collect(),
+            // Every generated REST method carries a trailing
+            // ``request_options: Option<RequestOptions>`` (plan 4.2 / PY-9). The
+            // captured closures pass ``None`` for it; the generator emits the same
+            // literal token, so append it here to every plan entry's arg list
+            // (one place, so the 205 authored calls need not each spell it).
+            args: args
+                .iter()
+                .map(|s| (*s).to_string())
+                .chain(std::iter::once("None".to_string()))
+                .collect(),
         });
     }
 }
@@ -193,7 +202,7 @@ fn enumerate(rec: &mut Recorder) {
         &["fabric_gen::FabricTokensCreateSubscriberTokenRequest::new(\"x\")"],
         |c| {
             let _ = c.fabric().tokens().create_subscriber_token(
-                fabric_gen::FabricTokensCreateSubscriberTokenRequest::new("x"),
+                fabric_gen::FabricTokensCreateSubscriberTokenRequest::new("x"), None
             );
         },
     );
@@ -203,7 +212,7 @@ fn enumerate(rec: &mut Recorder) {
         &["fabric_gen::FabricTokensRefreshSubscriberTokenRequest::new(\"x\")"],
         |c| {
             let _ = c.fabric().tokens().refresh_subscriber_token(
-                fabric_gen::FabricTokensRefreshSubscriberTokenRequest::new("x"),
+                fabric_gen::FabricTokensRefreshSubscriberTokenRequest::new("x"), None
             );
         },
     );
@@ -215,7 +224,7 @@ fn enumerate(rec: &mut Recorder) {
             let _ = c
                 .fabric()
                 .tokens()
-                .create_invite_token(fabric_gen::FabricTokensCreateInviteTokenRequest::new("x"));
+                .create_invite_token(fabric_gen::FabricTokensCreateInviteTokenRequest::new("x"), None);
         },
     );
     rec.record(
@@ -224,7 +233,7 @@ fn enumerate(rec: &mut Recorder) {
         &["fabric_gen::FabricTokensCreateGuestTokenRequest::new(serde_json::json!({}))"],
         |c| {
             let _ = c.fabric().tokens().create_guest_token(
-                fabric_gen::FabricTokensCreateGuestTokenRequest::new(json!({})),
+                fabric_gen::FabricTokensCreateGuestTokenRequest::new(json!({})), None
             );
         },
     );
@@ -236,7 +245,7 @@ fn enumerate(rec: &mut Recorder) {
             let _ = c
                 .fabric()
                 .tokens()
-                .create_embed_token(fabric_gen::FabricTokensCreateEmbedTokenRequest::new("x"));
+                .create_embed_token(fabric_gen::FabricTokensCreateEmbedTokenRequest::new("x"), None);
         },
     );
 
@@ -244,22 +253,22 @@ fn enumerate(rec: &mut Recorder) {
     macro_rules! fabric_crud {
         ($chain:expr, $acc:ident) => {{
             rec.record(&$chain, "list", &[A_HM], |c| {
-                let _ = c.fabric().$acc().list(hm);
+                let _ = c.fabric().$acc().list(hm, None);
             });
             rec.record(&$chain, "create", &[A_BODY], |c| {
-                let _ = c.fabric().$acc().create(p);
+                let _ = c.fabric().$acc().create(p, None);
             });
             rec.record(&$chain, "get", &[A_ID], |c| {
-                let _ = c.fabric().$acc().get(id);
+                let _ = c.fabric().$acc().get(id, None);
             });
             rec.record(&$chain, "update", &[A_ID, A_BODY], |c| {
-                let _ = c.fabric().$acc().update(id, p);
+                let _ = c.fabric().$acc().update(id, p, None);
             });
             rec.record(&$chain, "delete", &[A_ID], |c| {
-                let _ = c.fabric().$acc().delete(id);
+                let _ = c.fabric().$acc().delete(id, None);
             });
             rec.record(&$chain, "list_addresses", &[A_ID, A_HM], |c| {
-                let _ = c.fabric().$acc().list_addresses(id, hm);
+                let _ = c.fabric().$acc().list_addresses(id, hm, None);
             });
         }};
     }
@@ -275,14 +284,14 @@ fn enumerate(rec: &mut Recorder) {
 
     // cxml_applications: list/get/update/delete (no create by design).
     rec.record(&["fabric", "cxml_applications"], "list", &[A_HM], |c| {
-        let _ = c.fabric().cxml_applications().list(hm);
+        let _ = c.fabric().cxml_applications().list(hm, None);
     });
     rec.record(
         &["fabric", "cxml_applications"],
         "get",
         &[A_ID, A_HM],
         |c| {
-            let _ = c.fabric().cxml_applications().get(id, hm);
+            let _ = c.fabric().cxml_applications().get(id, hm, None);
         },
     );
     rec.record(
@@ -293,37 +302,37 @@ fn enumerate(rec: &mut Recorder) {
             let _ = c
                 .fabric()
                 .cxml_applications()
-                .update(id, fabric_gen::CxmlApplicationsUpdateRequest::new());
+                .update(id, fabric_gen::CxmlApplicationsUpdateRequest::new(), None);
         },
     );
     rec.record(&["fabric", "cxml_applications"], "delete", &[A_ID], |c| {
-        let _ = c.fabric().cxml_applications().delete(id);
+        let _ = c.fabric().cxml_applications().delete(id, None);
     });
     rec.record(
         &["fabric", "cxml_applications"],
         "list_addresses",
         &[A_ID, A_HM],
         |c| {
-            let _ = c.fabric().cxml_applications().list_addresses(id, hm);
+            let _ = c.fabric().cxml_applications().list_addresses(id, hm, None);
         },
     );
 
     // resources(): read-only generic accessor + address-assignment routes.
     rec.record(&["fabric", "resources"], "list", &[A_HM], |c| {
-        let _ = c.fabric().resources().list(hm);
+        let _ = c.fabric().resources().list(hm, None);
     });
     rec.record(&["fabric", "resources"], "get", &[A_ID, A_HM], |c| {
-        let _ = c.fabric().resources().get(id, hm);
+        let _ = c.fabric().resources().get(id, hm, None);
     });
     rec.record(&["fabric", "resources"], "delete", &[A_ID], |c| {
-        let _ = c.fabric().resources().delete(id);
+        let _ = c.fabric().resources().delete(id, None);
     });
     rec.record(
         &["fabric", "resources"],
         "list_addresses",
         &[A_ID, A_HM],
         |c| {
-            let _ = c.fabric().resources().list_addresses(id, hm);
+            let _ = c.fabric().resources().list_addresses(id, hm, None);
         },
     );
     rec.record(
@@ -336,7 +345,7 @@ fn enumerate(rec: &mut Recorder) {
         |c| {
             let _ = c.fabric().resources().assign_domain_application(
                 id,
-                fabric_gen::GenericResourcesAssignDomainApplicationRequest::new("x"),
+                fabric_gen::GenericResourcesAssignDomainApplicationRequest::new("x"), None
             );
         },
     );
@@ -350,62 +359,62 @@ fn enumerate(rec: &mut Recorder) {
         |c| {
             let _ = c.fabric().resources().assign_phone_route(
                 id,
-                fabric_gen::GenericResourcesAssignPhoneRouteRequest::new("x", "y"),
+                fabric_gen::GenericResourcesAssignPhoneRouteRequest::new("x", "y"), None
             );
         },
     );
 
     // conference_rooms / call_flows / addresses sub-resources.
     rec.record(&["fabric", "conference_rooms"], "list", &[A_HM], |c| {
-        let _ = c.fabric().conference_rooms().list(hm);
+        let _ = c.fabric().conference_rooms().list(hm, None);
     });
     rec.record(&["fabric", "conference_rooms"], "create", &[A_BODY], |c| {
-        let _ = c.fabric().conference_rooms().create(p);
+        let _ = c.fabric().conference_rooms().create(p, None);
     });
     rec.record(&["fabric", "conference_rooms"], "get", &[A_ID], |c| {
-        let _ = c.fabric().conference_rooms().get(id);
+        let _ = c.fabric().conference_rooms().get(id, None);
     });
     rec.record(
         &["fabric", "conference_rooms"],
         "update",
         &[A_ID, A_BODY],
         |c| {
-            let _ = c.fabric().conference_rooms().update(id, p);
+            let _ = c.fabric().conference_rooms().update(id, p, None);
         },
     );
     rec.record(&["fabric", "conference_rooms"], "delete", &[A_ID], |c| {
-        let _ = c.fabric().conference_rooms().delete(id);
+        let _ = c.fabric().conference_rooms().delete(id, None);
     });
     rec.record(
         &["fabric", "conference_rooms"],
         "list_addresses",
         &[A_ID, A_HM],
         |c| {
-            let _ = c.fabric().conference_rooms().list_addresses(id, hm);
+            let _ = c.fabric().conference_rooms().list_addresses(id, hm, None);
         },
     );
 
     rec.record(&["fabric", "call_flows"], "list", &[A_HM], |c| {
-        let _ = c.fabric().call_flows().list(hm);
+        let _ = c.fabric().call_flows().list(hm, None);
     });
     rec.record(&["fabric", "call_flows"], "create", &[A_BODY], |c| {
-        let _ = c.fabric().call_flows().create(p);
+        let _ = c.fabric().call_flows().create(p, None);
     });
     rec.record(&["fabric", "call_flows"], "get", &[A_ID], |c| {
-        let _ = c.fabric().call_flows().get(id);
+        let _ = c.fabric().call_flows().get(id, None);
     });
     rec.record(&["fabric", "call_flows"], "update", &[A_ID, A_BODY], |c| {
-        let _ = c.fabric().call_flows().update(id, p);
+        let _ = c.fabric().call_flows().update(id, p, None);
     });
     rec.record(&["fabric", "call_flows"], "delete", &[A_ID], |c| {
-        let _ = c.fabric().call_flows().delete(id);
+        let _ = c.fabric().call_flows().delete(id, None);
     });
     rec.record(
         &["fabric", "call_flows"],
         "list_addresses",
         &[A_ID, A_HM],
         |c| {
-            let _ = c.fabric().call_flows().list_addresses(id, hm);
+            let _ = c.fabric().call_flows().list_addresses(id, hm, None);
         },
     );
     rec.record(
@@ -413,7 +422,7 @@ fn enumerate(rec: &mut Recorder) {
         "list_versions",
         &[A_ID, A_HM],
         |c| {
-            let _ = c.fabric().call_flows().list_versions(id, hm);
+            let _ = c.fabric().call_flows().list_versions(id, hm, None);
         },
     );
     rec.record(
@@ -421,39 +430,39 @@ fn enumerate(rec: &mut Recorder) {
         "deploy_version",
         &[A_ID, A_BODY],
         |c| {
-            let _ = c.fabric().call_flows().deploy_version(id, p);
+            let _ = c.fabric().call_flows().deploy_version(id, p, None);
         },
     );
 
     rec.record(&["fabric", "addresses"], "list", &[A_HM], |c| {
-        let _ = c.fabric().addresses().list(hm);
+        let _ = c.fabric().addresses().list(hm, None);
     });
     rec.record(&["fabric", "addresses"], "get", &[A_ID], |c| {
-        let _ = c.fabric().addresses().get(id);
+        let _ = c.fabric().addresses().get(id, None);
     });
 
     // subscribers: CRUD + addresses + sip endpoint sub-resource.
     rec.record(&["fabric", "subscribers"], "list", &[A_HM], |c| {
-        let _ = c.fabric().subscribers().list(hm);
+        let _ = c.fabric().subscribers().list(hm, None);
     });
     rec.record(&["fabric", "subscribers"], "create", &[A_BODY], |c| {
-        let _ = c.fabric().subscribers().create(p);
+        let _ = c.fabric().subscribers().create(p, None);
     });
     rec.record(&["fabric", "subscribers"], "get", &[A_ID], |c| {
-        let _ = c.fabric().subscribers().get(id);
+        let _ = c.fabric().subscribers().get(id, None);
     });
     rec.record(&["fabric", "subscribers"], "update", &[A_ID, A_BODY], |c| {
-        let _ = c.fabric().subscribers().update(id, p);
+        let _ = c.fabric().subscribers().update(id, p, None);
     });
     rec.record(&["fabric", "subscribers"], "delete", &[A_ID], |c| {
-        let _ = c.fabric().subscribers().delete(id);
+        let _ = c.fabric().subscribers().delete(id, None);
     });
     rec.record(
         &["fabric", "subscribers"],
         "list_addresses",
         &[A_ID, A_HM],
         |c| {
-            let _ = c.fabric().subscribers().list_addresses(id, hm);
+            let _ = c.fabric().subscribers().list_addresses(id, hm, None);
         },
     );
     rec.record(
@@ -461,7 +470,7 @@ fn enumerate(rec: &mut Recorder) {
         "list_sip_endpoints",
         &[A_ID, A_HM],
         |c| {
-            let _ = c.fabric().subscribers().list_sip_endpoints(id, hm);
+            let _ = c.fabric().subscribers().list_sip_endpoints(id, hm, None);
         },
     );
     rec.record(
@@ -474,7 +483,7 @@ fn enumerate(rec: &mut Recorder) {
         |c| {
             let _ = c.fabric().subscribers().create_sip_endpoint(
                 id,
-                fabric_gen::SubscribersCreateSipEndpointRequest::new("x", "y"),
+                fabric_gen::SubscribersCreateSipEndpointRequest::new("x", "y"), None
             );
         },
     );
@@ -483,7 +492,7 @@ fn enumerate(rec: &mut Recorder) {
         "get_sip_endpoint",
         &[A_ID, A_ID, A_HM],
         |c| {
-            let _ = c.fabric().subscribers().get_sip_endpoint(id, id, hm);
+            let _ = c.fabric().subscribers().get_sip_endpoint(id, id, hm, None);
         },
     );
     rec.record(
@@ -498,7 +507,7 @@ fn enumerate(rec: &mut Recorder) {
             let _ = c.fabric().subscribers().update_sip_endpoint(
                 id,
                 id,
-                fabric_gen::SubscribersUpdateSipEndpointRequest::new(),
+                fabric_gen::SubscribersUpdateSipEndpointRequest::new(), None
             );
         },
     );
@@ -507,7 +516,7 @@ fn enumerate(rec: &mut Recorder) {
         "delete_sip_endpoint",
         &[A_ID, A_ID],
         |c| {
-            let _ = c.fabric().subscribers().delete_sip_endpoint(id, id);
+            let _ = c.fabric().subscribers().delete_sip_endpoint(id, id, None);
         },
     );
 
@@ -517,7 +526,7 @@ fn enumerate(rec: &mut Recorder) {
         "dial",
         &["cg::CallingDialRequest::new(\"x\", \"y\")"],
         |c| {
-            let _ = c.calling().dial(cg::CallingDialRequest::new("x", "y"));
+            let _ = c.calling().dial(cg::CallingDialRequest::new("x", "y"), None);
         },
     );
     rec.record(
@@ -525,7 +534,7 @@ fn enumerate(rec: &mut Recorder) {
         "update",
         &["cg::CallingUpdateRequest::new(\"x\")"],
         |c| {
-            let _ = c.calling().update(cg::CallingUpdateRequest::new("x"));
+            let _ = c.calling().update(cg::CallingUpdateRequest::new("x"), None);
         },
     );
     rec.record(
@@ -533,7 +542,7 @@ fn enumerate(rec: &mut Recorder) {
         "end",
         &[A_ID, "cg::CallingEndRequest::new()"],
         |c| {
-            let _ = c.calling().end(id, cg::CallingEndRequest::new());
+            let _ = c.calling().end(id, cg::CallingEndRequest::new(), None);
         },
     );
     rec.record(
@@ -546,7 +555,7 @@ fn enumerate(rec: &mut Recorder) {
         |c| {
             let _ = c
                 .calling()
-                .transfer(id, cg::CallingTransferRequest::new(json!({})));
+                .transfer(id, cg::CallingTransferRequest::new(json!({})), None);
         },
     );
     rec.record(
@@ -556,7 +565,7 @@ fn enumerate(rec: &mut Recorder) {
         |c| {
             let _ = c
                 .calling()
-                .disconnect(id, cg::CallingDisconnectRequest::new());
+                .disconnect(id, cg::CallingDisconnectRequest::new(), None);
         },
     );
     rec.record(
@@ -564,7 +573,7 @@ fn enumerate(rec: &mut Recorder) {
         "play",
         &[A_ID, "cg::CallingPlayRequest::new(serde_json::json!({}))"],
         |c| {
-            let _ = c.calling().play(id, cg::CallingPlayRequest::new(json!({})));
+            let _ = c.calling().play(id, cg::CallingPlayRequest::new(json!({})), None);
         },
     );
     rec.record(
@@ -574,7 +583,7 @@ fn enumerate(rec: &mut Recorder) {
         |c| {
             let _ = c
                 .calling()
-                .play_pause(id, cg::CallingPlayPauseRequest::new("x"));
+                .play_pause(id, cg::CallingPlayPauseRequest::new("x"), None);
         },
     );
     rec.record(
@@ -584,7 +593,7 @@ fn enumerate(rec: &mut Recorder) {
         |c| {
             let _ = c
                 .calling()
-                .play_resume(id, cg::CallingPlayResumeRequest::new("x"));
+                .play_resume(id, cg::CallingPlayResumeRequest::new("x"), None);
         },
     );
     rec.record(
@@ -594,7 +603,7 @@ fn enumerate(rec: &mut Recorder) {
         |c| {
             let _ = c
                 .calling()
-                .play_stop(id, cg::CallingPlayStopRequest::new("x"));
+                .play_stop(id, cg::CallingPlayStopRequest::new("x"), None);
         },
     );
     rec.record(
@@ -604,7 +613,7 @@ fn enumerate(rec: &mut Recorder) {
         |c| {
             let _ = c
                 .calling()
-                .play_volume(id, cg::CallingPlayVolumeRequest::new("x", 0.0));
+                .play_volume(id, cg::CallingPlayVolumeRequest::new("x", 0.0), None);
         },
     );
     rec.record(
@@ -612,7 +621,7 @@ fn enumerate(rec: &mut Recorder) {
         "record",
         &[A_ID, "cg::CallingRecordRequest::new()"],
         |c| {
-            let _ = c.calling().record(id, cg::CallingRecordRequest::new());
+            let _ = c.calling().record(id, cg::CallingRecordRequest::new(), None);
         },
     );
     rec.record(
@@ -622,7 +631,7 @@ fn enumerate(rec: &mut Recorder) {
         |c| {
             let _ = c
                 .calling()
-                .record_pause(id, cg::CallingRecordPauseRequest::new("x"));
+                .record_pause(id, cg::CallingRecordPauseRequest::new("x"), None);
         },
     );
     rec.record(
@@ -632,7 +641,7 @@ fn enumerate(rec: &mut Recorder) {
         |c| {
             let _ = c
                 .calling()
-                .record_resume(id, cg::CallingRecordResumeRequest::new("x"));
+                .record_resume(id, cg::CallingRecordResumeRequest::new("x"), None);
         },
     );
     rec.record(
@@ -642,7 +651,7 @@ fn enumerate(rec: &mut Recorder) {
         |c| {
             let _ = c
                 .calling()
-                .record_stop(id, cg::CallingRecordStopRequest::new("x"));
+                .record_stop(id, cg::CallingRecordStopRequest::new("x"), None);
         },
     );
     rec.record(
@@ -650,7 +659,7 @@ fn enumerate(rec: &mut Recorder) {
         "collect",
         &[A_ID, "cg::CallingCollectRequest::new()"],
         |c| {
-            let _ = c.calling().collect(id, cg::CallingCollectRequest::new());
+            let _ = c.calling().collect(id, cg::CallingCollectRequest::new(), None);
         },
     );
     rec.record(
@@ -660,7 +669,7 @@ fn enumerate(rec: &mut Recorder) {
         |c| {
             let _ = c
                 .calling()
-                .collect_stop(id, cg::CallingCollectStopRequest::new("x"));
+                .collect_stop(id, cg::CallingCollectStopRequest::new("x"), None);
         },
     );
     rec.record(
@@ -673,7 +682,7 @@ fn enumerate(rec: &mut Recorder) {
         |c| {
             let _ = c.calling().collect_start_input_timers(
                 id,
-                cg::CallingCollectStartInputTimersRequest::new("x"),
+                cg::CallingCollectStartInputTimersRequest::new("x"), None
             );
         },
     );
@@ -684,7 +693,7 @@ fn enumerate(rec: &mut Recorder) {
         |c| {
             let _ = c
                 .calling()
-                .detect(id, cg::CallingDetectRequest::new(json!({})));
+                .detect(id, cg::CallingDetectRequest::new(json!({})), None);
         },
     );
     rec.record(
@@ -694,7 +703,7 @@ fn enumerate(rec: &mut Recorder) {
         |c| {
             let _ = c
                 .calling()
-                .detect_stop(id, cg::CallingDetectStopRequest::new("x"));
+                .detect_stop(id, cg::CallingDetectStopRequest::new("x"), None);
         },
     );
     rec.record(
@@ -707,7 +716,7 @@ fn enumerate(rec: &mut Recorder) {
         |c| {
             let _ = c
                 .calling()
-                .tap(id, cg::CallingTapRequest::new(json!({}), json!({})));
+                .tap(id, cg::CallingTapRequest::new(json!({}), json!({})), None);
         },
     );
     rec.record(
@@ -717,7 +726,7 @@ fn enumerate(rec: &mut Recorder) {
         |c| {
             let _ = c
                 .calling()
-                .tap_stop(id, cg::CallingTapStopRequest::new("x"));
+                .tap_stop(id, cg::CallingTapStopRequest::new("x"), None);
         },
     );
     rec.record(
@@ -725,7 +734,7 @@ fn enumerate(rec: &mut Recorder) {
         "stream",
         &[A_ID, "cg::CallingStreamRequest::new(\"x\")"],
         |c| {
-            let _ = c.calling().stream(id, cg::CallingStreamRequest::new("x"));
+            let _ = c.calling().stream(id, cg::CallingStreamRequest::new("x"), None);
         },
     );
     rec.record(
@@ -735,7 +744,7 @@ fn enumerate(rec: &mut Recorder) {
         |c| {
             let _ = c
                 .calling()
-                .stream_stop(id, cg::CallingStreamStopRequest::new("x"));
+                .stream_stop(id, cg::CallingStreamStopRequest::new("x"), None);
         },
     );
     rec.record(
@@ -743,7 +752,7 @@ fn enumerate(rec: &mut Recorder) {
         "denoise",
         &[A_ID, "cg::CallingDenoiseRequest::new()"],
         |c| {
-            let _ = c.calling().denoise(id, cg::CallingDenoiseRequest::new());
+            let _ = c.calling().denoise(id, cg::CallingDenoiseRequest::new(), None);
         },
     );
     rec.record(
@@ -753,7 +762,7 @@ fn enumerate(rec: &mut Recorder) {
         |c| {
             let _ = c
                 .calling()
-                .denoise_stop(id, cg::CallingDenoiseStopRequest::new());
+                .denoise_stop(id, cg::CallingDenoiseStopRequest::new(), None);
         },
     );
     rec.record(
@@ -763,7 +772,7 @@ fn enumerate(rec: &mut Recorder) {
         |c| {
             let _ = c
                 .calling()
-                .transcribe(id, cg::CallingTranscribeRequest::new());
+                .transcribe(id, cg::CallingTranscribeRequest::new(), None);
         },
     );
     rec.record(
@@ -773,7 +782,7 @@ fn enumerate(rec: &mut Recorder) {
         |c| {
             let _ = c
                 .calling()
-                .transcribe_stop(id, cg::CallingTranscribeStopRequest::new("x"));
+                .transcribe_stop(id, cg::CallingTranscribeStopRequest::new("x"), None);
         },
     );
     rec.record(
@@ -783,7 +792,7 @@ fn enumerate(rec: &mut Recorder) {
         |c| {
             let _ = c
                 .calling()
-                .ai_message(id, cg::CallingAiMessageRequest::new());
+                .ai_message(id, cg::CallingAiMessageRequest::new(), None);
         },
     );
     rec.record(
@@ -791,7 +800,7 @@ fn enumerate(rec: &mut Recorder) {
         "ai_hold",
         &[A_ID, "cg::CallingAiHoldRequest::new()"],
         |c| {
-            let _ = c.calling().ai_hold(id, cg::CallingAiHoldRequest::new());
+            let _ = c.calling().ai_hold(id, cg::CallingAiHoldRequest::new(), None);
         },
     );
     rec.record(
@@ -799,7 +808,7 @@ fn enumerate(rec: &mut Recorder) {
         "ai_unhold",
         &[A_ID, "cg::CallingAiUnholdRequest::new()"],
         |c| {
-            let _ = c.calling().ai_unhold(id, cg::CallingAiUnholdRequest::new());
+            let _ = c.calling().ai_unhold(id, cg::CallingAiUnholdRequest::new(), None);
         },
     );
     rec.record(
@@ -807,7 +816,7 @@ fn enumerate(rec: &mut Recorder) {
         "ai_stop",
         &[A_ID, "cg::CallingAiStopRequest::new(\"x\")"],
         |c| {
-            let _ = c.calling().ai_stop(id, cg::CallingAiStopRequest::new("x"));
+            let _ = c.calling().ai_stop(id, cg::CallingAiStopRequest::new("x"), None);
         },
     );
     rec.record(
@@ -820,7 +829,7 @@ fn enumerate(rec: &mut Recorder) {
         |c| {
             let _ = c
                 .calling()
-                .live_transcribe(id, cg::CallingLiveTranscribeRequest::new(json!({})));
+                .live_transcribe(id, cg::CallingLiveTranscribeRequest::new(json!({})), None);
         },
     );
     rec.record(
@@ -833,7 +842,7 @@ fn enumerate(rec: &mut Recorder) {
         |c| {
             let _ = c
                 .calling()
-                .live_translate(id, cg::CallingLiveTranslateRequest::new(json!({})));
+                .live_translate(id, cg::CallingLiveTranslateRequest::new(json!({})), None);
         },
     );
     rec.record(
@@ -843,7 +852,7 @@ fn enumerate(rec: &mut Recorder) {
         |c| {
             let _ = c
                 .calling()
-                .send_fax_stop(id, cg::CallingSendFaxStopRequest::new("x"));
+                .send_fax_stop(id, cg::CallingSendFaxStopRequest::new("x"), None);
         },
     );
     rec.record(
@@ -853,7 +862,7 @@ fn enumerate(rec: &mut Recorder) {
         |c| {
             let _ = c
                 .calling()
-                .receive_fax_stop(id, cg::CallingReceiveFaxStopRequest::new("x"));
+                .receive_fax_stop(id, cg::CallingReceiveFaxStopRequest::new("x"), None);
         },
     );
     rec.record(
@@ -863,7 +872,7 @@ fn enumerate(rec: &mut Recorder) {
         |c| {
             let _ = c
                 .calling()
-                .refer(id, cg::CallingReferRequest::new(json!({})));
+                .refer(id, cg::CallingReferRequest::new(json!({})), None);
         },
     );
     rec.record(
@@ -876,50 +885,50 @@ fn enumerate(rec: &mut Recorder) {
         |c| {
             let _ = c
                 .calling()
-                .user_event(id, cg::CallingUserEventRequest::new(json!({})));
+                .user_event(id, cg::CallingUserEventRequest::new(json!({})), None);
         },
     );
 
     // --- phone_numbers ---
     rec.record(&["phone_numbers"], "list", &[A_HM], |c| {
-        let _ = c.phone_numbers().list(hm);
+        let _ = c.phone_numbers().list(hm, None);
     });
     rec.record(&["phone_numbers"], "create", &[A_BODY], |c| {
-        let _ = c.phone_numbers().create(p);
+        let _ = c.phone_numbers().create(p, None);
     });
     rec.record(&["phone_numbers"], "get", &[A_ID], |c| {
-        let _ = c.phone_numbers().get(id);
+        let _ = c.phone_numbers().get(id, None);
     });
     rec.record(&["phone_numbers"], "update", &[A_ID, A_BODY], |c| {
-        let _ = c.phone_numbers().update(id, p);
+        let _ = c.phone_numbers().update(id, p, None);
     });
     rec.record(&["phone_numbers"], "delete", &[A_ID], |c| {
-        let _ = c.phone_numbers().delete(id);
+        let _ = c.phone_numbers().delete(id, None);
     });
     rec.record(&["phone_numbers"], "search", &[A_HM], |c| {
-        let _ = c.phone_numbers().search(hm);
+        let _ = c.phone_numbers().search(hm, None);
     });
 
     // --- datasphere ---
     rec.record(&["datasphere", "documents"], "list", &[A_HM], |c| {
-        let _ = c.datasphere().documents().list(hm);
+        let _ = c.datasphere().documents().list(hm, None);
     });
     rec.record(&["datasphere", "documents"], "create", &[A_BODY], |c| {
-        let _ = c.datasphere().documents().create(p);
+        let _ = c.datasphere().documents().create(p, None);
     });
     rec.record(&["datasphere", "documents"], "get", &[A_ID], |c| {
-        let _ = c.datasphere().documents().get(id);
+        let _ = c.datasphere().documents().get(id, None);
     });
     rec.record(
         &["datasphere", "documents"],
         "update",
         &[A_ID, A_BODY],
         |c| {
-            let _ = c.datasphere().documents().update(id, p);
+            let _ = c.datasphere().documents().update(id, p, None);
         },
     );
     rec.record(&["datasphere", "documents"], "delete", &[A_ID], |c| {
-        let _ = c.datasphere().documents().delete(id);
+        let _ = c.datasphere().documents().delete(id, None);
     });
     rec.record(
         &["datasphere", "documents"],
@@ -929,7 +938,7 @@ fn enumerate(rec: &mut Recorder) {
             let _ = c
                 .datasphere()
                 .documents()
-                .search(datasphere_gen::DatasphereDocumentsSearchRequest::new("x"));
+                .search(datasphere_gen::DatasphereDocumentsSearchRequest::new("x"), None);
         },
     );
     rec.record(
@@ -937,7 +946,7 @@ fn enumerate(rec: &mut Recorder) {
         "list_chunks",
         &[A_ID, A_HM],
         |c| {
-            let _ = c.datasphere().documents().list_chunks(id, hm);
+            let _ = c.datasphere().documents().list_chunks(id, hm, None);
         },
     );
     rec.record(
@@ -945,7 +954,7 @@ fn enumerate(rec: &mut Recorder) {
         "get_chunk",
         &[A_ID, A_ID, A_HM],
         |c| {
-            let _ = c.datasphere().documents().get_chunk(id, id, hm);
+            let _ = c.datasphere().documents().get_chunk(id, id, hm, None);
         },
     );
     rec.record(
@@ -953,28 +962,28 @@ fn enumerate(rec: &mut Recorder) {
         "delete_chunk",
         &[A_ID, A_ID],
         |c| {
-            let _ = c.datasphere().documents().delete_chunk(id, id);
+            let _ = c.datasphere().documents().delete_chunk(id, id, None);
         },
     );
 
     // --- video ---
     rec.record(&["video", "rooms"], "list", &[A_HM], |c| {
-        let _ = c.video().rooms().list(hm);
+        let _ = c.video().rooms().list(hm, None);
     });
     rec.record(&["video", "rooms"], "create", &[A_BODY], |c| {
-        let _ = c.video().rooms().create(p);
+        let _ = c.video().rooms().create(p, None);
     });
     rec.record(&["video", "rooms"], "get", &[A_ID], |c| {
-        let _ = c.video().rooms().get(id);
+        let _ = c.video().rooms().get(id, None);
     });
     rec.record(&["video", "rooms"], "update", &[A_ID, A_BODY], |c| {
-        let _ = c.video().rooms().update(id, p);
+        let _ = c.video().rooms().update(id, p, None);
     });
     rec.record(&["video", "rooms"], "delete", &[A_ID], |c| {
-        let _ = c.video().rooms().delete(id);
+        let _ = c.video().rooms().delete(id, None);
     });
     rec.record(&["video", "rooms"], "list_streams", &[A_ID, A_HM], |c| {
-        let _ = c.video().rooms().list_streams(id, hm);
+        let _ = c.video().rooms().list_streams(id, hm, None);
     });
     rec.record(
         &["video", "rooms"],
@@ -984,7 +993,7 @@ fn enumerate(rec: &mut Recorder) {
             let _ = c
                 .video()
                 .rooms()
-                .create_stream(id, video_gen::VideoRoomsCreateStreamRequest::new("x"));
+                .create_stream(id, video_gen::VideoRoomsCreateStreamRequest::new("x"), None);
         },
     );
     rec.record(
@@ -995,21 +1004,21 @@ fn enumerate(rec: &mut Recorder) {
             let _ = c
                 .video()
                 .room_tokens()
-                .create(video_gen::VideoRoomTokensCreateRequest::new("x"));
+                .create(video_gen::VideoRoomTokensCreateRequest::new("x"), None);
         },
     );
     rec.record(&["video", "room_sessions"], "list", &[A_HM], |c| {
-        let _ = c.video().room_sessions().list(hm);
+        let _ = c.video().room_sessions().list(hm, None);
     });
     rec.record(&["video", "room_sessions"], "get", &[A_ID], |c| {
-        let _ = c.video().room_sessions().get(id);
+        let _ = c.video().room_sessions().get(id, None);
     });
     rec.record(
         &["video", "room_sessions"],
         "list_members",
         &[A_ID, A_HM],
         |c| {
-            let _ = c.video().room_sessions().list_members(id, hm);
+            let _ = c.video().room_sessions().list_members(id, hm, None);
         },
     );
     rec.record(
@@ -1017,7 +1026,7 @@ fn enumerate(rec: &mut Recorder) {
         "list_recordings",
         &[A_ID, A_HM],
         |c| {
-            let _ = c.video().room_sessions().list_recordings(id, hm);
+            let _ = c.video().room_sessions().list_recordings(id, hm, None);
         },
     );
     rec.record(
@@ -1025,47 +1034,47 @@ fn enumerate(rec: &mut Recorder) {
         "list_events",
         &[A_ID, A_HM],
         |c| {
-            let _ = c.video().room_sessions().list_events(id, hm);
+            let _ = c.video().room_sessions().list_events(id, hm, None);
         },
     );
     rec.record(&["video", "room_recordings"], "list", &[A_HM], |c| {
-        let _ = c.video().room_recordings().list(hm);
+        let _ = c.video().room_recordings().list(hm, None);
     });
     rec.record(&["video", "room_recordings"], "get", &[A_ID, A_HM], |c| {
-        let _ = c.video().room_recordings().get(id, hm);
+        let _ = c.video().room_recordings().get(id, hm, None);
     });
     rec.record(&["video", "room_recordings"], "delete", &[A_ID], |c| {
-        let _ = c.video().room_recordings().delete(id);
+        let _ = c.video().room_recordings().delete(id, None);
     });
     rec.record(
         &["video", "room_recordings"],
         "list_events",
         &[A_ID, A_HM],
         |c| {
-            let _ = c.video().room_recordings().list_events(id, hm);
+            let _ = c.video().room_recordings().list_events(id, hm, None);
         },
     );
     rec.record(&["video", "conferences"], "list", &[A_HM], |c| {
-        let _ = c.video().conferences().list(hm);
+        let _ = c.video().conferences().list(hm, None);
     });
     rec.record(&["video", "conferences"], "create", &[A_BODY], |c| {
-        let _ = c.video().conferences().create(p);
+        let _ = c.video().conferences().create(p, None);
     });
     rec.record(&["video", "conferences"], "get", &[A_ID], |c| {
-        let _ = c.video().conferences().get(id);
+        let _ = c.video().conferences().get(id, None);
     });
     rec.record(&["video", "conferences"], "update", &[A_ID, A_BODY], |c| {
-        let _ = c.video().conferences().update(id, p);
+        let _ = c.video().conferences().update(id, p, None);
     });
     rec.record(&["video", "conferences"], "delete", &[A_ID], |c| {
-        let _ = c.video().conferences().delete(id);
+        let _ = c.video().conferences().delete(id, None);
     });
     rec.record(
         &["video", "conferences"],
         "list_conference_tokens",
         &[A_ID, A_HM],
         |c| {
-            let _ = c.video().conferences().list_conference_tokens(id, hm);
+            let _ = c.video().conferences().list_conference_tokens(id, hm, None);
         },
     );
     rec.record(
@@ -1073,7 +1082,7 @@ fn enumerate(rec: &mut Recorder) {
         "list_streams",
         &[A_ID, A_HM],
         |c| {
-            let _ = c.video().conferences().list_streams(id, hm);
+            let _ = c.video().conferences().list_streams(id, hm, None);
         },
     );
     rec.record(
@@ -1087,17 +1096,17 @@ fn enumerate(rec: &mut Recorder) {
             let _ = c
                 .video()
                 .conferences()
-                .create_stream(id, video_gen::VideoConferencesCreateStreamRequest::new("x"));
+                .create_stream(id, video_gen::VideoConferencesCreateStreamRequest::new("x"), None);
         },
     );
     rec.record(&["video", "conference_tokens"], "get", &[A_ID, A_HM], |c| {
-        let _ = c.video().conference_tokens().get(id, hm);
+        let _ = c.video().conference_tokens().get(id, hm, None);
     });
     rec.record(&["video", "conference_tokens"], "reset", &[A_ID], |c| {
-        let _ = c.video().conference_tokens().reset(id);
+        let _ = c.video().conference_tokens().reset(id, None);
     });
     rec.record(&["video", "streams"], "get", &[A_ID, A_HM], |c| {
-        let _ = c.video().streams().get(id, hm);
+        let _ = c.video().streams().get(id, hm, None);
     });
     rec.record(
         &["video", "streams"],
@@ -1107,57 +1116,57 @@ fn enumerate(rec: &mut Recorder) {
             let _ = c
                 .video()
                 .streams()
-                .update(id, video_gen::VideoStreamsUpdateRequest::new("x"));
+                .update(id, video_gen::VideoStreamsUpdateRequest::new("x"), None);
         },
     );
     rec.record(&["video", "streams"], "delete", &[A_ID], |c| {
-        let _ = c.video().streams().delete(id);
+        let _ = c.video().streams().delete(id, None);
     });
 
     // --- queues ---
     rec.record(&["queues"], "list", &[A_HM], |c| {
-        let _ = c.queues().list(hm);
+        let _ = c.queues().list(hm, None);
     });
     rec.record(&["queues"], "create", &[A_BODY], |c| {
-        let _ = c.queues().create(p);
+        let _ = c.queues().create(p, None);
     });
     rec.record(&["queues"], "get", &[A_ID], |c| {
-        let _ = c.queues().get(id);
+        let _ = c.queues().get(id, None);
     });
     rec.record(&["queues"], "update", &[A_ID, A_BODY], |c| {
-        let _ = c.queues().update(id, p);
+        let _ = c.queues().update(id, p, None);
     });
     rec.record(&["queues"], "delete", &[A_ID], |c| {
-        let _ = c.queues().delete(id);
+        let _ = c.queues().delete(id, None);
     });
     rec.record(&["queues"], "list_members", &[A_ID, A_HM], |c| {
-        let _ = c.queues().list_members(id, hm);
+        let _ = c.queues().list_members(id, hm, None);
     });
     rec.record(&["queues"], "get_next_member", &[A_ID, A_HM], |c| {
-        let _ = c.queues().get_next_member(id, hm);
+        let _ = c.queues().get_next_member(id, hm, None);
     });
     rec.record(&["queues"], "get_member", &[A_ID, A_ID, A_HM], |c| {
-        let _ = c.queues().get_member(id, id, hm);
+        let _ = c.queues().get_member(id, id, hm, None);
     });
 
     // --- number_groups ---
     rec.record(&["number_groups"], "list", &[A_HM], |c| {
-        let _ = c.number_groups().list(hm);
+        let _ = c.number_groups().list(hm, None);
     });
     rec.record(&["number_groups"], "create", &[A_BODY], |c| {
-        let _ = c.number_groups().create(p);
+        let _ = c.number_groups().create(p, None);
     });
     rec.record(&["number_groups"], "get", &[A_ID], |c| {
-        let _ = c.number_groups().get(id);
+        let _ = c.number_groups().get(id, None);
     });
     rec.record(&["number_groups"], "update", &[A_ID, A_BODY], |c| {
-        let _ = c.number_groups().update(id, p);
+        let _ = c.number_groups().update(id, p, None);
     });
     rec.record(&["number_groups"], "delete", &[A_ID], |c| {
-        let _ = c.number_groups().delete(id);
+        let _ = c.number_groups().delete(id, None);
     });
     rec.record(&["number_groups"], "list_memberships", &[A_ID, A_HM], |c| {
-        let _ = c.number_groups().list_memberships(id, hm);
+        let _ = c.number_groups().list_memberships(id, hm, None);
     });
     rec.record(
         &["number_groups"],
@@ -1169,19 +1178,19 @@ fn enumerate(rec: &mut Recorder) {
         |c| {
             let _ = c
                 .number_groups()
-                .add_membership(id, relay_gen::NumberGroupsAddMembershipRequest::new("x"));
+                .add_membership(id, relay_gen::NumberGroupsAddMembershipRequest::new("x"), None);
         },
     );
     rec.record(&["number_groups"], "get_membership", &[A_ID, A_HM], |c| {
-        let _ = c.number_groups().get_membership(id, hm);
+        let _ = c.number_groups().get_membership(id, hm, None);
     });
     rec.record(&["number_groups"], "delete_membership", &[A_ID], |c| {
-        let _ = c.number_groups().delete_membership(id);
+        let _ = c.number_groups().delete_membership(id, None);
     });
 
     // --- sip_profile (singleton) ---
     rec.record(&["sip_profile"], "get", &[A_HM], |c| {
-        let _ = c.sip_profile().get(hm);
+        let _ = c.sip_profile().get(hm, None);
     });
     rec.record(
         &["sip_profile"],
@@ -1190,13 +1199,13 @@ fn enumerate(rec: &mut Recorder) {
         |c| {
             let _ = c
                 .sip_profile()
-                .update(relay_gen::SipProfileUpdateRequest::new());
+                .update(relay_gen::SipProfileUpdateRequest::new(), None);
         },
     );
 
     // --- lookup ---
     rec.record(&["lookup"], "phone_number", &[A_ID, A_HM], |c| {
-        let _ = c.lookup().phone_number(id, hm);
+        let _ = c.lookup().phone_number(id, hm, None);
     });
 
     // --- mfa ---
@@ -1205,7 +1214,7 @@ fn enumerate(rec: &mut Recorder) {
         "sms",
         &["relay_gen::MfaSmsRequest::new(\"x\")"],
         |c| {
-            let _ = c.mfa().sms(relay_gen::MfaSmsRequest::new("x"));
+            let _ = c.mfa().sms(relay_gen::MfaSmsRequest::new("x"), None);
         },
     );
     rec.record(
@@ -1213,7 +1222,7 @@ fn enumerate(rec: &mut Recorder) {
         "call",
         &["relay_gen::MfaCallRequest::new(\"x\")"],
         |c| {
-            let _ = c.mfa().call(relay_gen::MfaCallRequest::new("x"));
+            let _ = c.mfa().call(relay_gen::MfaCallRequest::new("x"), None);
         },
     );
     rec.record(
@@ -1221,26 +1230,26 @@ fn enumerate(rec: &mut Recorder) {
         "verify",
         &[A_ID, "relay_gen::MfaVerifyRequest::new(\"x\")"],
         |c| {
-            let _ = c.mfa().verify(id, relay_gen::MfaVerifyRequest::new("x"));
+            let _ = c.mfa().verify(id, relay_gen::MfaVerifyRequest::new("x"), None);
         },
     );
 
     // --- registry (10DLC) ---
     rec.record(&["registry", "brands"], "list", &[A_HM], |c| {
-        let _ = c.registry().brands().list(hm);
+        let _ = c.registry().brands().list(hm, None);
     });
     rec.record(&["registry", "brands"], "create", &[A_BODY], |c| {
-        let _ = c.registry().brands().create(p);
+        let _ = c.registry().brands().create(p, None);
     });
     rec.record(&["registry", "brands"], "get", &[A_ID, A_HM], |c| {
-        let _ = c.registry().brands().get(id, hm);
+        let _ = c.registry().brands().get(id, hm, None);
     });
     rec.record(
         &["registry", "brands"],
         "list_campaigns",
         &[A_ID, A_HM],
         |c| {
-            let _ = c.registry().brands().list_campaigns(id, hm);
+            let _ = c.registry().brands().list_campaigns(id, hm, None);
         },
     );
     rec.record(
@@ -1248,11 +1257,11 @@ fn enumerate(rec: &mut Recorder) {
         "create_campaign",
         &[A_ID, A_BODY],
         |c| {
-            let _ = c.registry().brands().create_campaign(id, p);
+            let _ = c.registry().brands().create_campaign(id, p, None);
         },
     );
     rec.record(&["registry", "campaigns"], "get", &[A_ID, A_HM], |c| {
-        let _ = c.registry().campaigns().get(id, hm);
+        let _ = c.registry().campaigns().get(id, hm, None);
     });
     rec.record(
         &["registry", "campaigns"],
@@ -1262,7 +1271,7 @@ fn enumerate(rec: &mut Recorder) {
             let _ = c
                 .registry()
                 .campaigns()
-                .update(id, relay_gen::RegistryCampaignsUpdateRequest::new());
+                .update(id, relay_gen::RegistryCampaignsUpdateRequest::new(), None);
         },
     );
     rec.record(
@@ -1270,7 +1279,7 @@ fn enumerate(rec: &mut Recorder) {
         "list_numbers",
         &[A_ID, A_HM],
         |c| {
-            let _ = c.registry().campaigns().list_numbers(id, hm);
+            let _ = c.registry().campaigns().list_numbers(id, hm, None);
         },
     );
     rec.record(
@@ -1278,7 +1287,7 @@ fn enumerate(rec: &mut Recorder) {
         "list_orders",
         &[A_ID, A_HM],
         |c| {
-            let _ = c.registry().campaigns().list_orders(id, hm);
+            let _ = c.registry().campaigns().list_orders(id, hm, None);
         },
     );
     rec.record(
@@ -1292,40 +1301,40 @@ fn enumerate(rec: &mut Recorder) {
             let _ = c
                 .registry()
                 .campaigns()
-                .create_order(id, relay_gen::RegistryCampaignsCreateOrderRequest::new());
+                .create_order(id, relay_gen::RegistryCampaignsCreateOrderRequest::new(), None);
         },
     );
     rec.record(&["registry", "orders"], "get", &[A_ID, A_HM], |c| {
-        let _ = c.registry().orders().get(id, hm);
+        let _ = c.registry().orders().get(id, hm, None);
     });
     rec.record(&["registry", "numbers"], "delete", &[A_ID], |c| {
-        let _ = c.registry().numbers().delete(id);
+        let _ = c.registry().numbers().delete(id, None);
     });
 
     // --- logs ---
     rec.record(&["logs", "messages"], "list", &[A_HM], |c| {
-        let _ = c.logs().messages().list(hm);
+        let _ = c.logs().messages().list(hm, None);
     });
     rec.record(&["logs", "messages"], "get", &[A_ID], |c| {
-        let _ = c.logs().messages().get(id);
+        let _ = c.logs().messages().get(id, None);
     });
     rec.record(&["logs", "voice"], "list", &[A_HM], |c| {
-        let _ = c.logs().voice().list(hm);
+        let _ = c.logs().voice().list(hm, None);
     });
     rec.record(&["logs", "voice"], "get", &[A_ID], |c| {
-        let _ = c.logs().voice().get(id);
+        let _ = c.logs().voice().get(id, None);
     });
     rec.record(&["logs", "voice"], "list_events", &[A_ID, A_HM], |c| {
-        let _ = c.logs().voice().list_events(id, hm);
+        let _ = c.logs().voice().list_events(id, hm, None);
     });
     rec.record(&["logs", "fax"], "list", &[A_HM], |c| {
-        let _ = c.logs().fax().list(hm);
+        let _ = c.logs().fax().list(hm, None);
     });
     rec.record(&["logs", "fax"], "get", &[A_ID], |c| {
-        let _ = c.logs().fax().get(id);
+        let _ = c.logs().fax().get(id, None);
     });
     rec.record(&["logs", "conferences"], "list", &[A_HM], |c| {
-        let _ = c.logs().conferences().list(hm);
+        let _ = c.logs().conferences().list(hm, None);
     });
 
     // --- project ---
@@ -1337,7 +1346,7 @@ fn enumerate(rec: &mut Recorder) {
             let _ = c
                 .project()
                 .tokens()
-                .create(project_gen::ProjectTokensCreateRequest::new("x", json!({})));
+                .create(project_gen::ProjectTokensCreateRequest::new("x", json!({})), None);
         },
     );
     rec.record(
@@ -1348,11 +1357,11 @@ fn enumerate(rec: &mut Recorder) {
             let _ = c
                 .project()
                 .tokens()
-                .update(id, project_gen::ProjectTokensUpdateRequest::new());
+                .update(id, project_gen::ProjectTokensUpdateRequest::new(), None);
         },
     );
     rec.record(&["project", "tokens"], "delete", &[A_ID], |c| {
-        let _ = c.project().tokens().delete(id);
+        let _ = c.project().tokens().delete(id, None);
     });
 
     // --- messages (flat /api/messaging/messages send + redact) ---
@@ -1363,7 +1372,7 @@ fn enumerate(rec: &mut Recorder) {
         |c| {
             let _ = c
                 .messages()
-                .create(messages_gen::MessagesCreateRequest::new("x", "x"));
+                .create(messages_gen::MessagesCreateRequest::new("x", "x"), None);
         },
     );
     rec.record(
@@ -1373,28 +1382,28 @@ fn enumerate(rec: &mut Recorder) {
         |c| {
             let _ = c
                 .messages()
-                .update(id, messages_gen::MessagesUpdateRequest::new("x"));
+                .update(id, messages_gen::MessagesUpdateRequest::new("x"), None);
         },
     );
 
     // --- projects (flat /api/projects CRUD + rotate_signing_key) ---
     rec.record(&["projects"], "list", &[A_HM], |c| {
-        let _ = c.projects().list(hm);
+        let _ = c.projects().list(hm, None);
     });
     rec.record(&["projects"], "create", &[A_BODY], |c| {
-        let _ = c.projects().create(p);
+        let _ = c.projects().create(p, None);
     });
     rec.record(&["projects"], "get", &[A_ID], |c| {
-        let _ = c.projects().get(id);
+        let _ = c.projects().get(id, None);
     });
     rec.record(&["projects"], "update", &[A_ID, A_BODY], |c| {
-        let _ = c.projects().update(id, p);
+        let _ = c.projects().update(id, p, None);
     });
     rec.record(&["projects"], "delete", &[A_ID], |c| {
-        let _ = c.projects().delete(id);
+        let _ = c.projects().delete(id, None);
     });
     rec.record(&["projects"], "rotate_signing_key", &[A_ID], |c| {
-        let _ = c.projects().rotate_signing_key(id);
+        let _ = c.projects().rotate_signing_key(id, None);
     });
 
     // --- pubsub / chat (token-only) ---
@@ -1405,7 +1414,7 @@ fn enumerate(rec: &mut Recorder) {
         |c| {
             let _ = c
                 .pubsub()
-                .create_token(pubsub_gen::PubSubCreateTokenRequest::new(0, json!({})));
+                .create_token(pubsub_gen::PubSubCreateTokenRequest::new(0, json!({})), None);
         },
     );
     rec.record(
@@ -1415,28 +1424,28 @@ fn enumerate(rec: &mut Recorder) {
         |c| {
             let _ = c
                 .chat()
-                .create_token(chat_gen::ChatCreateTokenRequest::new(0, json!({})));
+                .create_token(chat_gen::ChatCreateTokenRequest::new(0, json!({})), None);
         },
     );
 
     // --- verified callers ---
     rec.record(&["verified_callers"], "list", &[A_HM], |c| {
-        let _ = c.verified_callers().list(hm);
+        let _ = c.verified_callers().list(hm, None);
     });
     rec.record(&["verified_callers"], "create", &[A_BODY], |c| {
-        let _ = c.verified_callers().create(p);
+        let _ = c.verified_callers().create(p, None);
     });
     rec.record(&["verified_callers"], "get", &[A_ID], |c| {
-        let _ = c.verified_callers().get(id);
+        let _ = c.verified_callers().get(id, None);
     });
     rec.record(&["verified_callers"], "update", &[A_ID, A_BODY], |c| {
-        let _ = c.verified_callers().update(id, p);
+        let _ = c.verified_callers().update(id, p, None);
     });
     rec.record(&["verified_callers"], "delete", &[A_ID], |c| {
-        let _ = c.verified_callers().delete(id);
+        let _ = c.verified_callers().delete(id, None);
     });
     rec.record(&["verified_callers"], "redial_verification", &[A_ID], |c| {
-        let _ = c.verified_callers().redial_verification(id);
+        let _ = c.verified_callers().redial_verification(id, None);
     });
     rec.record(
         &["verified_callers"],
@@ -1448,36 +1457,36 @@ fn enumerate(rec: &mut Recorder) {
         |c| {
             let _ = c.verified_callers().submit_verification(
                 id,
-                relay_gen::VerifiedCallersSubmitVerificationRequest::new("x"),
+                relay_gen::VerifiedCallersSubmitVerificationRequest::new("x"), None
             );
         },
     );
 
     // --- top-level narrow resources ---
     rec.record(&["addresses"], "list", &[A_HM], |c| {
-        let _ = c.addresses().list(hm);
+        let _ = c.addresses().list(hm, None);
     });
-    rec.record(&["addresses"], "create", &["relay_gen::AddressesCreateRequest::new(\"x\", \"x\", \"x\", \"x\", \"x\", \"x\", \"x\", \"x\", \"x\")"], |c| { let _ = c.addresses().create(relay_gen::AddressesCreateRequest::new("x", "x", "x", "x", "x", "x", "x", "x", "x")); });
+    rec.record(&["addresses"], "create", &["relay_gen::AddressesCreateRequest::new(\"x\", \"x\", \"x\", \"x\", \"x\", \"x\", \"x\", \"x\", \"x\")"], |c| { let _ = c.addresses().create(relay_gen::AddressesCreateRequest::new("x", "x", "x", "x", "x", "x", "x", "x", "x"), None); });
     rec.record(&["addresses"], "get", &[A_ID, A_HM], |c| {
-        let _ = c.addresses().get(id, hm);
+        let _ = c.addresses().get(id, hm, None);
     });
     rec.record(&["addresses"], "delete", &[A_ID], |c| {
-        let _ = c.addresses().delete(id);
+        let _ = c.addresses().delete(id, None);
     });
     rec.record(&["recordings"], "list", &[A_HM], |c| {
-        let _ = c.recordings().list(hm);
+        let _ = c.recordings().list(hm, None);
     });
     rec.record(&["recordings"], "get", &[A_ID, A_HM], |c| {
-        let _ = c.recordings().get(id, hm);
+        let _ = c.recordings().get(id, hm, None);
     });
     rec.record(&["recordings"], "delete", &[A_ID], |c| {
-        let _ = c.recordings().delete(id);
+        let _ = c.recordings().delete(id, None);
     });
     rec.record(&["short_codes"], "list", &[A_HM], |c| {
-        let _ = c.short_codes().list(hm);
+        let _ = c.short_codes().list(hm, None);
     });
     rec.record(&["short_codes"], "get", &[A_ID, A_HM], |c| {
-        let _ = c.short_codes().get(id, hm);
+        let _ = c.short_codes().get(id, hm, None);
     });
     rec.record(
         &["short_codes"],
@@ -1489,7 +1498,7 @@ fn enumerate(rec: &mut Recorder) {
         |c| {
             let _ = c
                 .short_codes()
-                .update(id, relay_gen::ShortCodesUpdateRequest::new("x", "y"));
+                .update(id, relay_gen::ShortCodesUpdateRequest::new("x", "y"), None);
         },
     );
     rec.record(
@@ -1499,7 +1508,7 @@ fn enumerate(rec: &mut Recorder) {
         |c| {
             let _ = c
                 .imported_numbers()
-                .create(relay_gen::ImportedNumbersCreateRequest::new("x", "y"));
+                .create(relay_gen::ImportedNumbersCreateRequest::new("x", "y"), None);
         },
     );
 }

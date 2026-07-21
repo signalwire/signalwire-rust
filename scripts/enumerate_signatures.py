@@ -225,7 +225,18 @@ def build_generated_signatures(sidecar: dict) -> dict:
         # returning PaginatedIterator (mirrors ReadResource.paginate in the oracle).
         if r.get("base") == "ReadResource":
             methods["paginate"] = {
-                "params": [{"name": "self", "kind": "self"}],
+                "params": [
+                    {"name": "self", "kind": "self"},
+                    # The reference records ``paginate(self, *, request_options=None,
+                    # **params)`` — the enumerator drops ``**params``, leaving the
+                    # trailing keyword-only ``request_options`` (plan 4.2 / PY-9).
+                    {
+                        "name": "request_options",
+                        "kind": "keyword",
+                        "required": False,
+                        "type": "optional<class:signalwire.rest._request_options.RequestOptions>",
+                    },
+                ],
                 "returns": "class:signalwire.rest._pagination.PaginatedIterator",
             }
         out.setdefault(mod, {"classes": {}})

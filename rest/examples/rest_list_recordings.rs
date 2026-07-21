@@ -17,7 +17,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Fetching recordings ...");
 
     let params = HashMap::from([("limit".to_string(), "20".to_string())]);
-    let recordings = client.recordings().list(&params)?;
+    let recordings = client.recordings().list(&params, None)?;
 
     if let Some(arr) = recordings.as_array() {
         println!("Recordings ({}):", arr.len());

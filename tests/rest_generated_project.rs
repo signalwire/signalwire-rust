@@ -31,13 +31,10 @@ use signalwire::rest::namespaces::generated::video_resources_generated as video_
 fn test_project_tokens_create_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let _ = c
-        .project()
-        .tokens()
-        .create(project_gen::ProjectTokensCreateRequest::new(
-            "x",
-            serde_json::json!({}),
-        ));
+    let _ = c.project().tokens().create(
+        project_gen::ProjectTokensCreateRequest::new("x", serde_json::json!({})),
+        None,
+    );
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "POST");
     assert_eq!(e.matched_route.as_deref(), Some("project.create_token"));
@@ -51,10 +48,10 @@ fn test_project_tokens_create_error() {
     let err = c
         .project()
         .tokens()
-        .create(project_gen::ProjectTokensCreateRequest::new(
-            "x",
-            serde_json::json!({}),
-        ))
+        .create(
+            project_gen::ProjectTokensCreateRequest::new("x", serde_json::json!({})),
+            None,
+        )
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -66,7 +63,7 @@ fn test_project_tokens_create_error() {
 fn test_project_tokens_delete_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let _ = c.project().tokens().delete("x");
+    let _ = c.project().tokens().delete("x", None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "DELETE");
     assert_eq!(e.matched_route.as_deref(), Some("project.delete_token"));
@@ -80,7 +77,7 @@ fn test_project_tokens_delete_error() {
     let err = c
         .project()
         .tokens()
-        .delete("x")
+        .delete("x", None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -95,7 +92,7 @@ fn test_project_tokens_update_success() {
     let _ = c
         .project()
         .tokens()
-        .update("x", project_gen::ProjectTokensUpdateRequest::new());
+        .update("x", project_gen::ProjectTokensUpdateRequest::new(), None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "PATCH");
     assert_eq!(e.matched_route.as_deref(), Some("project.update_token"));
@@ -109,7 +106,7 @@ fn test_project_tokens_update_error() {
     let err = c
         .project()
         .tokens()
-        .update("x", project_gen::ProjectTokensUpdateRequest::new())
+        .update("x", project_gen::ProjectTokensUpdateRequest::new(), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();

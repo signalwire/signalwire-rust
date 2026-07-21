@@ -17,7 +17,7 @@ fn test_logs_messages_list_returns_dict() {
     let body = c
         .logs()
         .messages()
-        .list(&std::collections::HashMap::<String, String>::new())
+        .list(&std::collections::HashMap::<String, String>::new(), None)
         .expect("messages.list");
     assert!(body.is_object());
 
@@ -36,7 +36,7 @@ fn test_logs_messages_list_returns_dict() {
 fn test_logs_messages_get_uses_id_in_path() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let body = c.logs().messages().get("ml-42").expect("messages.get");
+    let body = c.logs().messages().get("ml-42", None).expect("messages.get");
     assert!(body.is_object());
 
     let entry = common::mocktest::journal_last();
@@ -59,7 +59,7 @@ fn test_logs_voice_list_returns_dict() {
     let body = c
         .logs()
         .voice()
-        .list(&std::collections::HashMap::<String, String>::new())
+        .list(&std::collections::HashMap::<String, String>::new(), None)
         .expect("voice.list");
     assert!(body.is_object());
 
@@ -76,7 +76,7 @@ fn test_logs_voice_list_returns_dict() {
 fn test_logs_voice_get_uses_id_in_path() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let body = c.logs().voice().get("vl-99").expect("voice.get");
+    let body = c.logs().voice().get("vl-99", None).expect("voice.get");
     assert!(body.is_object());
 
     let entry = common::mocktest::journal_last();
@@ -95,7 +95,7 @@ fn test_logs_fax_list_returns_dict() {
     let body = c
         .logs()
         .fax()
-        .list(&std::collections::HashMap::<String, String>::new())
+        .list(&std::collections::HashMap::<String, String>::new(), None)
         .expect("fax.list");
     assert!(body.is_object());
 
@@ -109,7 +109,7 @@ fn test_logs_fax_list_returns_dict() {
 fn test_logs_fax_get_uses_id_in_path() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let body = c.logs().fax().get("fl-7").expect("fax.get");
+    let body = c.logs().fax().get("fl-7", None).expect("fax.get");
     assert!(body.is_object());
 
     let entry = common::mocktest::journal_last();
@@ -128,7 +128,7 @@ fn test_logs_conferences_list_returns_dict() {
     let body = c
         .logs()
         .conferences()
-        .list(&std::collections::HashMap::<String, String>::new())
+        .list(&std::collections::HashMap::<String, String>::new(), None)
         .expect("conferences.list");
     assert!(body.is_object());
 

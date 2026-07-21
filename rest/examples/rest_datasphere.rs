@@ -19,7 +19,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // List existing documents.
     println!("Listing documents ...");
-    let docs = client.datasphere().documents().list(&HashMap::new())?;
+    let docs = client.datasphere().documents().list(&HashMap::new(), None)?;
     if let Some(arr) = docs.as_array() {
         println!("Documents ({}):", arr.len());
         for d in arr {
@@ -32,7 +32,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let results = client
         .datasphere()
         .documents()
-        .search(DatasphereDocumentsSearchRequest::new("pricing").count(5))?;
+        .search(DatasphereDocumentsSearchRequest::new("pricing").count(5), None)?;
 
     if let Some(arr) = results["results"].as_array() {
         println!("Search results ({}):", arr.len());

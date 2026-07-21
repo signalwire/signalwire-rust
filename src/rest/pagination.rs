@@ -42,6 +42,10 @@ pub struct PaginatedIterator<'a> {
     /// cursor that keeps handing back the same `next` would loop forever;
     /// re-seeing a URL terminates iteration.
     seen_next: std::collections::HashSet<String>,
+
+    /// Per-request options (plan 4.2) forwarded to every page GET (timeout /
+    /// retry / cancellation). `None` = the client default. Never serialized.
+    request_options: Option<super::request_options::RequestOptions>,
 }
 
 impl<'a> PaginatedIterator<'a> {
@@ -56,6 +60,19 @@ impl<'a> PaginatedIterator<'a> {
         params: HashMap<String, String>,
         data_key: &str,
     ) -> Self {
+        Self::with_options(http, path, params, data_key, None)
+    }
+
+    /// Construct an iterator that forwards a per-request [`RequestOptions`]
+    /// (plan 4.2) to every page GET. The options control transport behavior
+    /// (timeout / retry / cancellation) and are never serialized.
+    pub fn with_options(
+        http: &'a HttpClient,
+        path: &str,
+        params: HashMap<String, String>,
+        data_key: &str,
+        request_options: Option<super::request_options::RequestOptions>,
+    ) -> Self {
         PaginatedIterator {
             http,
             path: path.to_string(),
@@ -67,6 +84,7 @@ impl<'a> PaginatedIterator<'a> {
             pending_path: None,
             pending_params: None,
             seen_next: std::collections::HashSet::new(),
+            request_options,
         }
     }
 
@@ -130,7 +148,9 @@ impl<'a> PaginatedIterator<'a> {
     /// Fetch one page: replace the item buffer and resolve the next cursor.
     fn fetch_next(&mut self) -> Result<(), SignalWireRestError> {
         let (path, params) = self.next_request();
-        let response = self.http.get(&path, &params)?;
+        let response =
+            self.http
+                .get_with_options(&path, &params, self.request_options.as_ref())?;
 
         let data = response
             .get(&self.data_key)

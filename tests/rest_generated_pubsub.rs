@@ -31,12 +31,10 @@ use signalwire::rest::namespaces::generated::video_resources_generated as video_
 fn test_pubsub_create_token_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let _ = c
-        .pubsub()
-        .create_token(pubsub_gen::PubSubCreateTokenRequest::new(
-            0,
-            serde_json::json!({}),
-        ));
+    let _ = c.pubsub().create_token(
+        pubsub_gen::PubSubCreateTokenRequest::new(0, serde_json::json!({})),
+        None,
+    );
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "POST");
     assert_eq!(e.matched_route.as_deref(), Some("pubsub.create_token"));
@@ -49,10 +47,10 @@ fn test_pubsub_create_token_error() {
     common::mocktest::scenario_set("pubsub.create_token", 500, json!({"error": "x"}));
     let err = c
         .pubsub()
-        .create_token(pubsub_gen::PubSubCreateTokenRequest::new(
-            0,
-            serde_json::json!({}),
-        ))
+        .create_token(
+            pubsub_gen::PubSubCreateTokenRequest::new(0, serde_json::json!({})),
+            None,
+        )
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();

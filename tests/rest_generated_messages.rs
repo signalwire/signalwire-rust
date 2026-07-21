@@ -33,7 +33,7 @@ fn test_messages_create_success() {
     let c = common::mocktest::client();
     let _ = c
         .messages()
-        .create(messages_gen::MessagesCreateRequest::new("x", "x"));
+        .create(messages_gen::MessagesCreateRequest::new("x", "x"), None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "POST");
     assert_eq!(e.matched_route.as_deref(), Some("messages.create_message"));
@@ -46,7 +46,7 @@ fn test_messages_create_error() {
     common::mocktest::scenario_set("messages.create_message", 500, json!({"error": "x"}));
     let err = c
         .messages()
-        .create(messages_gen::MessagesCreateRequest::new("x", "x"))
+        .create(messages_gen::MessagesCreateRequest::new("x", "x"), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -60,7 +60,7 @@ fn test_messages_update_success() {
     let c = common::mocktest::client();
     let _ = c
         .messages()
-        .update("x", messages_gen::MessagesUpdateRequest::new("x"));
+        .update("x", messages_gen::MessagesUpdateRequest::new("x"), None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "PATCH");
     assert_eq!(e.matched_route.as_deref(), Some("messages.update_message"));
@@ -73,7 +73,7 @@ fn test_messages_update_error() {
     common::mocktest::scenario_set("messages.update_message", 500, json!({"error": "x"}));
     let err = c
         .messages()
-        .update("x", messages_gen::MessagesUpdateRequest::new("x"))
+        .update("x", messages_gen::MessagesUpdateRequest::new("x"), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();

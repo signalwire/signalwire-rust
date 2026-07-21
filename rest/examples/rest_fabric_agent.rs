@@ -32,14 +32,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             "end_of_speech_timeout": 500,
             "attention_timeout": 15000
         }
-    }))?;
+    }), None)?;
 
     let agent_id = agent["id"].as_str().unwrap_or("unknown").to_string();
     println!("Agent created: {agent_id}");
     println!("  Name: {}", agent["name"]);
 
     // List all agents.
-    let agents = client.fabric().ai_agents().list(&HashMap::new())?;
+    let agents = client.fabric().ai_agents().list(&HashMap::new(), None)?;
     if let Some(arr) = agents.as_array() {
         println!("\nAll AI agents ({}):", arr.len());
         for a in arr {
@@ -55,12 +55,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             "prompt": {
                 "text": "You are a senior support agent. Be thorough and precise."
             }
-        }),
+        }), None
     )?;
     println!("Agent updated.");
 
     // Get the updated agent.
-    let updated = client.fabric().ai_agents().get(&agent_id)?;
+    let updated = client.fabric().ai_agents().get(&agent_id, None)?;
     println!("Updated prompt: {}", updated["prompt"]["text"]);
 
     Ok(())

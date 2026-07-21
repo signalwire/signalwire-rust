@@ -22,7 +22,7 @@ fn test_video_rooms_list_streams_returns_data_collection() {
     let body = c
         .video()
         .rooms()
-        .list_streams("room-1", &HashMap::new())
+        .list_streams("room-1", &HashMap::new(), None)
         .expect("list_streams");
     assert!(body.is_object());
     let obj = body.as_object().unwrap();
@@ -51,7 +51,7 @@ fn test_video_rooms_create_stream_posts_kwargs_in_body() {
         .rooms()
         .create_stream(
             "room-1",
-            video_gen::VideoRoomsCreateStreamRequest::new("rtmp://example.com/live"),
+            video_gen::VideoRoomsCreateStreamRequest::new("rtmp://example.com/live"), None
         )
         .expect("create_stream");
     assert!(body.is_object());
@@ -77,7 +77,7 @@ fn test_video_room_sessions_list_returns_data_collection() {
     let body = c
         .video()
         .room_sessions()
-        .list(&HashMap::new())
+        .list(&HashMap::new(), None)
         .expect("room_sessions.list");
     assert!(body.is_object());
     let obj = body.as_object().unwrap();
@@ -96,7 +96,7 @@ fn test_video_room_sessions_get_returns_session_object() {
     let body = c
         .video()
         .room_sessions()
-        .get("sess-abc")
+        .get("sess-abc", None)
         .expect("room_sessions.get");
     assert!(body.is_object());
 
@@ -113,7 +113,7 @@ fn test_video_room_sessions_list_events_uses_subpath() {
     let body = c
         .video()
         .room_sessions()
-        .list_events("sess-1", &HashMap::new())
+        .list_events("sess-1", &HashMap::new(), None)
         .expect("list_events");
     assert!(body.is_object());
     assert!(body.as_object().unwrap().contains_key("data"));
@@ -130,7 +130,7 @@ fn test_video_room_sessions_list_recordings_uses_subpath() {
     let body = c
         .video()
         .room_sessions()
-        .list_recordings("sess-2", &HashMap::new())
+        .list_recordings("sess-2", &HashMap::new(), None)
         .expect("list_recordings");
     assert!(body.is_object());
     assert!(body.as_object().unwrap().contains_key("data"));
@@ -151,7 +151,7 @@ fn test_video_room_recordings_list_returns_data_collection() {
     let body = c
         .video()
         .room_recordings()
-        .list(&HashMap::new())
+        .list(&HashMap::new(), None)
         .expect("room_recordings.list");
     assert!(body.is_object());
     let obj = body.as_object().unwrap();
@@ -170,7 +170,7 @@ fn test_video_room_recordings_get_returns_single() {
     let body = c
         .video()
         .room_recordings()
-        .get("rec-xyz", &HashMap::new())
+        .get("rec-xyz", &HashMap::new(), None)
         .expect("room_recordings.get");
     assert!(body.is_object());
 
@@ -186,7 +186,7 @@ fn test_video_room_recordings_delete_returns_dict_for_204() {
     let body = c
         .video()
         .room_recordings()
-        .delete("rec-del")
+        .delete("rec-del", None)
         .expect("room_recordings.delete");
     assert!(body.is_object());
 
@@ -203,7 +203,7 @@ fn test_video_room_recordings_list_events_uses_subpath() {
     let body = c
         .video()
         .room_recordings()
-        .list_events("rec-1", &HashMap::new())
+        .list_events("rec-1", &HashMap::new(), None)
         .expect("list_events");
     assert!(body.is_object());
     assert!(body.as_object().unwrap().contains_key("data"));
@@ -224,7 +224,7 @@ fn test_video_conferences_list_conference_tokens() {
     let body = c
         .video()
         .conferences()
-        .list_conference_tokens("conf-1", &HashMap::new())
+        .list_conference_tokens("conf-1", &HashMap::new(), None)
         .expect("list_conference_tokens");
     assert!(body.is_object());
     let obj = body.as_object().unwrap();
@@ -246,7 +246,7 @@ fn test_video_conferences_list_streams() {
     let body = c
         .video()
         .conferences()
-        .list_streams("conf-2", &HashMap::new())
+        .list_streams("conf-2", &HashMap::new(), None)
         .expect("list_streams");
     assert!(body.is_object());
     let obj = body.as_object().unwrap();
@@ -269,7 +269,7 @@ fn test_video_conference_tokens_get_returns_single() {
     let body = c
         .video()
         .conference_tokens()
-        .get("tok-1", &HashMap::new())
+        .get("tok-1", &HashMap::new(), None)
         .expect("conference_tokens.get");
     assert!(body.is_object());
 
@@ -286,7 +286,7 @@ fn test_video_conference_tokens_reset_posts_to_subpath() {
     let body = c
         .video()
         .conference_tokens()
-        .reset("tok-2")
+        .reset("tok-2", None)
         .expect("conference_tokens.reset");
     assert!(body.is_object());
 
@@ -310,7 +310,7 @@ fn test_video_streams_get_returns_resource() {
     let body = c
         .video()
         .streams()
-        .get("stream-1", &HashMap::new())
+        .get("stream-1", &HashMap::new(), None)
         .expect("streams.get");
     assert!(body.is_object());
 
@@ -328,7 +328,7 @@ fn test_video_streams_update_uses_put_with_kwargs() {
         .streams()
         .update(
             "stream-2",
-            video_gen::VideoStreamsUpdateRequest::new("rtmp://example.com/new"),
+            video_gen::VideoStreamsUpdateRequest::new("rtmp://example.com/new"), None
         )
         .expect("streams.update");
     assert!(body.is_object());
@@ -350,7 +350,7 @@ fn test_video_streams_delete_returns_dict() {
     let body = c
         .video()
         .streams()
-        .delete("stream-3")
+        .delete("stream-3", None)
         .expect("streams.delete");
     assert!(body.is_object());
 

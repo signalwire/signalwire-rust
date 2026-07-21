@@ -12,6 +12,7 @@ use serde_json::Value;
 use crate::rest::error::SignalWireRestError;
 use crate::rest::generated_bases::BaseResource;
 use crate::rest::http_client::HttpClient;
+use crate::rest::request_options::RequestOptions;
 
 /// `ConferenceLogs` resource for the SignalWire `logs` REST API.
 ///
@@ -43,7 +44,12 @@ impl<'a> ConferenceLogs<'a> {
     ///
     /// # Errors
     /// Returns [`SignalWireRestError`] on transport failure, a non-2xx status.
-    pub fn list(&self, params: &HashMap<String, String>) -> Result<Value, SignalWireRestError> {
-        self.client().get(self.base_path(), params)
+    pub fn list(
+        &self,
+        params: &HashMap<String, String>,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.client()
+            .get_with_options(self.base_path(), params, request_options.as_ref())
     }
 }

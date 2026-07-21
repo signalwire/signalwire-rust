@@ -31,7 +31,7 @@ use signalwire::rest::namespaces::generated::video_resources_generated as video_
 fn test_logs_messages_get_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let _ = c.logs().messages().get("x");
+    let _ = c.logs().messages().get("x", None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "GET");
     assert_eq!(e.matched_route.as_deref(), Some("message.get_message_log"));
@@ -45,7 +45,7 @@ fn test_logs_messages_get_error() {
     let err = c
         .logs()
         .messages()
-        .get("x")
+        .get("x", None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -57,7 +57,10 @@ fn test_logs_messages_get_error() {
 fn test_logs_messages_list_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let _ = c.logs().messages().list(&std::collections::HashMap::new());
+    let _ = c
+        .logs()
+        .messages()
+        .list(&std::collections::HashMap::new(), None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "GET");
     assert_eq!(
@@ -74,7 +77,7 @@ fn test_logs_messages_list_error() {
     let err = c
         .logs()
         .messages()
-        .list(&std::collections::HashMap::new())
+        .list(&std::collections::HashMap::new(), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();

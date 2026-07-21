@@ -34,7 +34,7 @@ fn test_video_conference_tokens_get_success() {
     let _ = c
         .video()
         .conference_tokens()
-        .get("x", &std::collections::HashMap::new());
+        .get("x", &std::collections::HashMap::new(), None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "GET");
     assert_eq!(
@@ -51,7 +51,7 @@ fn test_video_conference_tokens_get_error() {
     let err = c
         .video()
         .conference_tokens()
-        .get("x", &std::collections::HashMap::new())
+        .get("x", &std::collections::HashMap::new(), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -66,7 +66,7 @@ fn test_video_conference_tokens_get_error() {
 fn test_video_conference_tokens_reset_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let _ = c.video().conference_tokens().reset("x");
+    let _ = c.video().conference_tokens().reset("x", None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "POST");
     assert_eq!(
@@ -83,7 +83,7 @@ fn test_video_conference_tokens_reset_error() {
     let err = c
         .video()
         .conference_tokens()
-        .reset("x")
+        .reset("x", None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -98,7 +98,7 @@ fn test_video_conference_tokens_reset_error() {
 fn test_video_conferences_create_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let _ = c.video().conferences().create(&serde_json::json!({}));
+    let _ = c.video().conferences().create(&serde_json::json!({}), None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "POST");
     assert_eq!(
@@ -115,7 +115,7 @@ fn test_video_conferences_create_error() {
     let err = c
         .video()
         .conferences()
-        .create(&serde_json::json!({}))
+        .create(&serde_json::json!({}), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -133,6 +133,7 @@ fn test_video_conferences_create_stream_success() {
     let _ = c.video().conferences().create_stream(
         "x",
         video_gen::VideoConferencesCreateStreamRequest::new("x"),
+        None,
     );
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "POST");
@@ -153,6 +154,7 @@ fn test_video_conferences_create_stream_error() {
         .create_stream(
             "x",
             video_gen::VideoConferencesCreateStreamRequest::new("x"),
+            None,
         )
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
@@ -168,7 +170,7 @@ fn test_video_conferences_create_stream_error() {
 fn test_video_conferences_delete_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let _ = c.video().conferences().delete("x");
+    let _ = c.video().conferences().delete("x", None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "DELETE");
     assert_eq!(
@@ -185,7 +187,7 @@ fn test_video_conferences_delete_error() {
     let err = c
         .video()
         .conferences()
-        .delete("x")
+        .delete("x", None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -200,7 +202,7 @@ fn test_video_conferences_delete_error() {
 fn test_video_conferences_get_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let _ = c.video().conferences().get("x");
+    let _ = c.video().conferences().get("x", None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "GET");
     assert_eq!(
@@ -217,7 +219,7 @@ fn test_video_conferences_get_error() {
     let err = c
         .video()
         .conferences()
-        .get("x")
+        .get("x", None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -235,7 +237,7 @@ fn test_video_conferences_list_success() {
     let _ = c
         .video()
         .conferences()
-        .list(&std::collections::HashMap::new());
+        .list(&std::collections::HashMap::new(), None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "GET");
     assert_eq!(
@@ -252,7 +254,7 @@ fn test_video_conferences_list_error() {
     let err = c
         .video()
         .conferences()
-        .list(&std::collections::HashMap::new())
+        .list(&std::collections::HashMap::new(), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -267,10 +269,11 @@ fn test_video_conferences_list_error() {
 fn test_video_conferences_list_conference_tokens_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let _ = c
-        .video()
-        .conferences()
-        .list_conference_tokens("x", &std::collections::HashMap::new());
+    let _ = c.video().conferences().list_conference_tokens(
+        "x",
+        &std::collections::HashMap::new(),
+        None,
+    );
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "GET");
     assert_eq!(
@@ -287,7 +290,7 @@ fn test_video_conferences_list_conference_tokens_error() {
     let err = c
         .video()
         .conferences()
-        .list_conference_tokens("x", &std::collections::HashMap::new())
+        .list_conference_tokens("x", &std::collections::HashMap::new(), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -305,7 +308,7 @@ fn test_video_conferences_list_streams_success() {
     let _ = c
         .video()
         .conferences()
-        .list_streams("x", &std::collections::HashMap::new());
+        .list_streams("x", &std::collections::HashMap::new(), None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "GET");
     assert_eq!(
@@ -322,7 +325,7 @@ fn test_video_conferences_list_streams_error() {
     let err = c
         .video()
         .conferences()
-        .list_streams("x", &std::collections::HashMap::new())
+        .list_streams("x", &std::collections::HashMap::new(), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -337,7 +340,10 @@ fn test_video_conferences_list_streams_error() {
 fn test_video_conferences_update_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let _ = c.video().conferences().update("x", &serde_json::json!({}));
+    let _ = c
+        .video()
+        .conferences()
+        .update("x", &serde_json::json!({}), None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "PUT");
     assert_eq!(
@@ -354,7 +360,7 @@ fn test_video_conferences_update_error() {
     let err = c
         .video()
         .conferences()
-        .update("x", &serde_json::json!({}))
+        .update("x", &serde_json::json!({}), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -369,7 +375,7 @@ fn test_video_conferences_update_error() {
 fn test_video_room_recordings_delete_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let _ = c.video().room_recordings().delete("x");
+    let _ = c.video().room_recordings().delete("x", None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "DELETE");
     assert_eq!(
@@ -386,7 +392,7 @@ fn test_video_room_recordings_delete_error() {
     let err = c
         .video()
         .room_recordings()
-        .delete("x")
+        .delete("x", None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -404,7 +410,7 @@ fn test_video_room_recordings_get_success() {
     let _ = c
         .video()
         .room_recordings()
-        .get("x", &std::collections::HashMap::new());
+        .get("x", &std::collections::HashMap::new(), None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "GET");
     assert_eq!(e.matched_route.as_deref(), Some("video.get_room_recording"));
@@ -418,7 +424,7 @@ fn test_video_room_recordings_get_error() {
     let err = c
         .video()
         .room_recordings()
-        .get("x", &std::collections::HashMap::new())
+        .get("x", &std::collections::HashMap::new(), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -433,7 +439,7 @@ fn test_video_room_recordings_list_success() {
     let _ = c
         .video()
         .room_recordings()
-        .list(&std::collections::HashMap::new());
+        .list(&std::collections::HashMap::new(), None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "GET");
     assert_eq!(
@@ -450,7 +456,7 @@ fn test_video_room_recordings_list_error() {
     let err = c
         .video()
         .room_recordings()
-        .list(&std::collections::HashMap::new())
+        .list(&std::collections::HashMap::new(), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -468,7 +474,7 @@ fn test_video_room_recordings_list_events_success() {
     let _ = c
         .video()
         .room_recordings()
-        .list_events("x", &std::collections::HashMap::new());
+        .list_events("x", &std::collections::HashMap::new(), None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "GET");
     assert_eq!(
@@ -489,7 +495,7 @@ fn test_video_room_recordings_list_events_error() {
     let err = c
         .video()
         .room_recordings()
-        .list_events("x", &std::collections::HashMap::new())
+        .list_events("x", &std::collections::HashMap::new(), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -504,7 +510,7 @@ fn test_video_room_recordings_list_events_error() {
 fn test_video_room_sessions_get_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let _ = c.video().room_sessions().get("x");
+    let _ = c.video().room_sessions().get("x", None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "GET");
     assert_eq!(e.matched_route.as_deref(), Some("video.get_room_session"));
@@ -518,7 +524,7 @@ fn test_video_room_sessions_get_error() {
     let err = c
         .video()
         .room_sessions()
-        .get("x")
+        .get("x", None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -533,7 +539,7 @@ fn test_video_room_sessions_list_success() {
     let _ = c
         .video()
         .room_sessions()
-        .list(&std::collections::HashMap::new());
+        .list(&std::collections::HashMap::new(), None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "GET");
     assert_eq!(e.matched_route.as_deref(), Some("video.list_room_sessions"));
@@ -547,7 +553,7 @@ fn test_video_room_sessions_list_error() {
     let err = c
         .video()
         .room_sessions()
-        .list(&std::collections::HashMap::new())
+        .list(&std::collections::HashMap::new(), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -562,7 +568,7 @@ fn test_video_room_sessions_list_events_success() {
     let _ = c
         .video()
         .room_sessions()
-        .list_events("x", &std::collections::HashMap::new());
+        .list_events("x", &std::collections::HashMap::new(), None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "GET");
     assert_eq!(
@@ -579,7 +585,7 @@ fn test_video_room_sessions_list_events_error() {
     let err = c
         .video()
         .room_sessions()
-        .list_events("x", &std::collections::HashMap::new())
+        .list_events("x", &std::collections::HashMap::new(), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -597,7 +603,7 @@ fn test_video_room_sessions_list_members_success() {
     let _ = c
         .video()
         .room_sessions()
-        .list_members("x", &std::collections::HashMap::new());
+        .list_members("x", &std::collections::HashMap::new(), None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "GET");
     assert_eq!(
@@ -618,7 +624,7 @@ fn test_video_room_sessions_list_members_error() {
     let err = c
         .video()
         .room_sessions()
-        .list_members("x", &std::collections::HashMap::new())
+        .list_members("x", &std::collections::HashMap::new(), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -636,7 +642,7 @@ fn test_video_room_sessions_list_recordings_success() {
     let _ = c
         .video()
         .room_sessions()
-        .list_recordings("x", &std::collections::HashMap::new());
+        .list_recordings("x", &std::collections::HashMap::new(), None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "GET");
     assert_eq!(
@@ -657,7 +663,7 @@ fn test_video_room_sessions_list_recordings_error() {
     let err = c
         .video()
         .room_sessions()
-        .list_recordings("x", &std::collections::HashMap::new())
+        .list_recordings("x", &std::collections::HashMap::new(), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -675,7 +681,7 @@ fn test_video_room_tokens_create_success() {
     let _ = c
         .video()
         .room_tokens()
-        .create(video_gen::VideoRoomTokensCreateRequest::new("x"));
+        .create(video_gen::VideoRoomTokensCreateRequest::new("x"), None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "POST");
     assert_eq!(e.matched_route.as_deref(), Some("video.create_room_token"));
@@ -689,7 +695,7 @@ fn test_video_room_tokens_create_error() {
     let err = c
         .video()
         .room_tokens()
-        .create(video_gen::VideoRoomTokensCreateRequest::new("x"))
+        .create(video_gen::VideoRoomTokensCreateRequest::new("x"), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -701,7 +707,7 @@ fn test_video_room_tokens_create_error() {
 fn test_video_rooms_create_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let _ = c.video().rooms().create(&serde_json::json!({}));
+    let _ = c.video().rooms().create(&serde_json::json!({}), None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "POST");
     assert_eq!(e.matched_route.as_deref(), Some("video.create_room"));
@@ -715,7 +721,7 @@ fn test_video_rooms_create_error() {
     let err = c
         .video()
         .rooms()
-        .create(&serde_json::json!({}))
+        .create(&serde_json::json!({}), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -727,10 +733,11 @@ fn test_video_rooms_create_error() {
 fn test_video_rooms_create_stream_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let _ = c
-        .video()
-        .rooms()
-        .create_stream("x", video_gen::VideoRoomsCreateStreamRequest::new("x"));
+    let _ = c.video().rooms().create_stream(
+        "x",
+        video_gen::VideoRoomsCreateStreamRequest::new("x"),
+        None,
+    );
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "POST");
     assert_eq!(e.matched_route.as_deref(), Some("video.create_room_stream"));
@@ -744,7 +751,11 @@ fn test_video_rooms_create_stream_error() {
     let err = c
         .video()
         .rooms()
-        .create_stream("x", video_gen::VideoRoomsCreateStreamRequest::new("x"))
+        .create_stream(
+            "x",
+            video_gen::VideoRoomsCreateStreamRequest::new("x"),
+            None,
+        )
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -756,7 +767,7 @@ fn test_video_rooms_create_stream_error() {
 fn test_video_rooms_delete_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let _ = c.video().rooms().delete("x");
+    let _ = c.video().rooms().delete("x", None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "DELETE");
     assert_eq!(e.matched_route.as_deref(), Some("video.delete_room"));
@@ -770,7 +781,7 @@ fn test_video_rooms_delete_error() {
     let err = c
         .video()
         .rooms()
-        .delete("x")
+        .delete("x", None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -782,7 +793,7 @@ fn test_video_rooms_delete_error() {
 fn test_video_rooms_get_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let _ = c.video().rooms().get("x");
+    let _ = c.video().rooms().get("x", None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "GET");
     assert_eq!(e.matched_route.as_deref(), Some("video.get_room_by_name"));
@@ -796,7 +807,7 @@ fn test_video_rooms_get_error() {
     let err = c
         .video()
         .rooms()
-        .get("x")
+        .get("x", None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -808,7 +819,10 @@ fn test_video_rooms_get_error() {
 fn test_video_rooms_list_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let _ = c.video().rooms().list(&std::collections::HashMap::new());
+    let _ = c
+        .video()
+        .rooms()
+        .list(&std::collections::HashMap::new(), None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "GET");
     assert_eq!(e.matched_route.as_deref(), Some("video.list_rooms"));
@@ -822,7 +836,7 @@ fn test_video_rooms_list_error() {
     let err = c
         .video()
         .rooms()
-        .list(&std::collections::HashMap::new())
+        .list(&std::collections::HashMap::new(), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -837,7 +851,7 @@ fn test_video_rooms_list_streams_success() {
     let _ = c
         .video()
         .rooms()
-        .list_streams("x", &std::collections::HashMap::new());
+        .list_streams("x", &std::collections::HashMap::new(), None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "GET");
     assert_eq!(e.matched_route.as_deref(), Some("video.list_room_streams"));
@@ -851,7 +865,7 @@ fn test_video_rooms_list_streams_error() {
     let err = c
         .video()
         .rooms()
-        .list_streams("x", &std::collections::HashMap::new())
+        .list_streams("x", &std::collections::HashMap::new(), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -863,7 +877,7 @@ fn test_video_rooms_list_streams_error() {
 fn test_video_rooms_update_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let _ = c.video().rooms().update("x", &serde_json::json!({}));
+    let _ = c.video().rooms().update("x", &serde_json::json!({}), None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "PUT");
     assert_eq!(e.matched_route.as_deref(), Some("video.update_room"));
@@ -877,7 +891,7 @@ fn test_video_rooms_update_error() {
     let err = c
         .video()
         .rooms()
-        .update("x", &serde_json::json!({}))
+        .update("x", &serde_json::json!({}), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -889,7 +903,7 @@ fn test_video_rooms_update_error() {
 fn test_video_streams_delete_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let _ = c.video().streams().delete("x");
+    let _ = c.video().streams().delete("x", None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "DELETE");
     assert_eq!(e.matched_route.as_deref(), Some("video.delete_stream"));
@@ -903,7 +917,7 @@ fn test_video_streams_delete_error() {
     let err = c
         .video()
         .streams()
-        .delete("x")
+        .delete("x", None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -918,7 +932,7 @@ fn test_video_streams_get_success() {
     let _ = c
         .video()
         .streams()
-        .get("x", &std::collections::HashMap::new());
+        .get("x", &std::collections::HashMap::new(), None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "GET");
     assert_eq!(e.matched_route.as_deref(), Some("video.get_stream"));
@@ -932,7 +946,7 @@ fn test_video_streams_get_error() {
     let err = c
         .video()
         .streams()
-        .get("x", &std::collections::HashMap::new())
+        .get("x", &std::collections::HashMap::new(), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -947,7 +961,7 @@ fn test_video_streams_update_success() {
     let _ = c
         .video()
         .streams()
-        .update("x", video_gen::VideoStreamsUpdateRequest::new("x"));
+        .update("x", video_gen::VideoStreamsUpdateRequest::new("x"), None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "PUT");
     assert_eq!(e.matched_route.as_deref(), Some("video.update_stream"));
@@ -961,7 +975,7 @@ fn test_video_streams_update_error() {
     let err = c
         .video()
         .streams()
-        .update("x", video_gen::VideoStreamsUpdateRequest::new("x"))
+        .update("x", video_gen::VideoStreamsUpdateRequest::new("x"), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();

@@ -24,7 +24,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         ("areacode".to_string(), area_code.clone()),
         ("limit".to_string(), "10".to_string()),
     ]);
-    let results = client.phone_numbers().search(&params)?;
+    let results = client.phone_numbers().search(&params, None)?;
 
     if let Some(arr) = results.as_array() {
         println!("Found {} available numbers:", arr.len());

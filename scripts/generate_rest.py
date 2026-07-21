@@ -621,6 +621,8 @@ def gen_imports(body: str) -> str:
         lines.append("")
     if re.search(r"\bSignalWireRestError\b", body):
         lines.append("use crate::rest::error::SignalWireRestError;")
+    if re.search(r"\bRequestOptions\b", body):
+        lines.append("use crate::rest::request_options::RequestOptions;")
     bases = [b for b in ("BaseResource", "CrudResource", "FabricResource", "ReadResource")
              if re.search(rf"\b{b}\b", body)]
     if bases:
@@ -826,6 +828,11 @@ def emit_operation_method(spec: Spec, anchor: str, markup: dict, base: str,
     write_verb = verb in ("post", "put", "patch")
     verb_fn = {"post": "post", "put": "put", "patch": "patch"}.get(verb, verb)
 
+    # Every generated method carries a trailing ``request_options:
+    # Option<RequestOptions>`` (plan 4.2 / PY-9), forwarded to the client's
+    # ``*_with_options`` variant (transport-only; NEVER serialized into the body).
+    ro_param = "request_options: Option<RequestOptions>"
+    ro_fwd = "request_options.as_ref()"
     if write_verb and has_body:
         body_schema = spec.op_body.get(op_id) or {}
         if is_object_body(spec, body_schema):
@@ -833,55 +840,53 @@ def emit_operation_method(spec: Spec, anchor: str, markup: dict, base: str,
             sname = _request_struct_name(cls, name)
             src, _ = emit_request_struct(sname, spec, [], fields, "body")
             structs[sname] = src
-            params = id_params + [f"request: {sname}"]
+            params = id_params + [f"request: {sname}", ro_param]
             lines.append(f"    /// `{verb.upper()} {op_path}` (generated operation method).")
             lines.append("    ///")
             lines.append("    /// # Errors")
             lines.append("    /// Returns [`SignalWireRestError`] on transport failure, a non-2xx")
             lines.append("    /// status, or an unparseable response body.")
             lines.append(f"    pub fn {name}(&self, {', '.join(params)}) -> Result<Value, SignalWireRestError> {{")
-            lines.append(f"        self.client().{verb_fn}({path_expr}, &request.build())")
+            lines.append(f"        self.client().{verb_fn}_with_options({path_expr}, &request.build(), {ro_fwd})")
             lines.append("    }")
         else:
             # §5.2 union body → a single positional body: Value.
-            params = id_params + ["body: &Value"]
+            params = id_params + ["body: &Value", ro_param]
             lines.append(f"    /// `{verb.upper()} {op_path}` (generated operation method; union body).")
             lines.append("    ///")
             lines.append("    /// # Errors")
             lines.append("    /// Returns [`SignalWireRestError`] on transport failure, a non-2xx")
             lines.append("    /// status, or an unparseable response body.")
             lines.append(f"    pub fn {name}(&self, {', '.join(params)}) -> Result<Value, SignalWireRestError> {{")
-            lines.append(f"        self.client().{verb_fn}({path_expr}, body)")
+            lines.append(f"        self.client().{verb_fn}_with_options({path_expr}, body, {ro_fwd})")
             lines.append("    }")
     elif write_verb:
-        params = id_params
-        sig = ("&self, " + ", ".join(params)) if params else "&self"
+        params = id_params + [ro_param]
         lines.append(f"    /// `{verb.upper()} {op_path}` (generated operation method; no body).")
         lines.append("    ///")
         lines.append("    /// # Errors")
         lines.append("    /// Returns [`SignalWireRestError`] on transport failure, a non-2xx status.")
-        lines.append(f"    pub fn {name}({sig}) -> Result<Value, SignalWireRestError> {{")
-        lines.append(f"        self.client().{verb_fn}({path_expr}, &Value::Object(Map::new()))")
+        lines.append(f"    pub fn {name}(&self, {', '.join(params)}) -> Result<Value, SignalWireRestError> {{")
+        lines.append(f"        self.client().{verb_fn}_with_options({path_expr}, &Value::Object(Map::new()), {ro_fwd})")
         lines.append("    }")
     elif verb == "get":
-        # §5.3 GET query door — a trailing params map.
-        params = id_params + ["params: &HashMap<String, String>"]
+        # §5.3 GET query door — a trailing params map + request_options.
+        params = id_params + ["params: &HashMap<String, String>", ro_param]
         lines.append(f"    /// `GET {op_path}` (generated operation method; query params).")
         lines.append("    ///")
         lines.append("    /// # Errors")
         lines.append("    /// Returns [`SignalWireRestError`] on transport failure, a non-2xx status.")
         lines.append(f"    pub fn {name}(&self, {', '.join(params)}) -> Result<Value, SignalWireRestError> {{")
-        lines.append(f"        self.client().get({path_expr}, params)")
+        lines.append(f"        self.client().get_with_options({path_expr}, params, {ro_fwd})")
         lines.append("    }")
     else:  # delete
-        params = id_params
-        sig = ("&self, " + ", ".join(params)) if params else "&self"
+        params = id_params + [ro_param]
         lines.append(f"    /// `DELETE {op_path}` (generated operation method).")
         lines.append("    ///")
         lines.append("    /// # Errors")
         lines.append("    /// Returns [`SignalWireRestError`] on transport failure, a non-2xx status.")
-        lines.append(f"    pub fn {name}({sig}) -> Result<Value, SignalWireRestError> {{")
-        lines.append(f"        self.client().delete({path_expr})")
+        lines.append(f"    pub fn {name}(&self, {', '.join(params)}) -> Result<Value, SignalWireRestError> {{")
+        lines.append(f"        self.client().delete_with_options({path_expr}, {ro_fwd})")
         lines.append("    }")
     return "\n".join(lines)
 
@@ -988,8 +993,8 @@ def emit_set_method(spec: Spec, markup: dict, sm_name: str, sm: dict,
     lines.append("    ///")
     lines.append("    /// # Errors")
     lines.append("    /// Returns [`SignalWireRestError`] on transport failure or a non-2xx status.")
-    lines.append(f"    pub fn {name}(&self, resource_id: &str, request: {sname}) -> Result<Value, SignalWireRestError> {{")
-    lines.append("        self.update(resource_id, &request.build())")
+    lines.append(f"    pub fn {name}(&self, resource_id: &str, request: {sname}, request_options: Option<RequestOptions>) -> Result<Value, SignalWireRestError> {{")
+    lines.append("        self.update(resource_id, &request.build(), request_options)")
     lines.append("    }")
     return "\n".join(lines)
 
@@ -1027,7 +1032,8 @@ def emit_command_dispatch(spec: Spec, anchor: str, markup: dict, structs: dict[s
     lines.append("        Self::BASE_PATH")
     lines.append("    }")
     lines.append("")
-    lines.append("    fn execute(&self, command: &str, call_id: Option<&str>, params: Value)")
+    lines.append("    fn execute(&self, command: &str, call_id: Option<&str>, params: Value,")
+    lines.append("        request_options: Option<RequestOptions>)")
     lines.append("        -> Result<Value, SignalWireRestError> {")
     lines.append("        let mut body = Map::new();")
     lines.append("        body.insert(\"command\".to_string(), Value::from(command));")
@@ -1035,7 +1041,9 @@ def emit_command_dispatch(spec: Spec, anchor: str, markup: dict, structs: dict[s
     lines.append("        if let Some(id) = call_id {")
     lines.append("            body.insert(\"id\".to_string(), Value::from(id));")
     lines.append("        }")
-    lines.append("        self.client.post(Self::BASE_PATH, &Value::Object(body))")
+    lines.append("        // request_options is transport-only — forwarded to the HTTP layer, never")
+    lines.append("        // serialized into the command body.")
+    lines.append("        self.client.post_with_options(Self::BASE_PATH, &Value::Object(body), request_options.as_ref())")
     lines.append("    }")
 
     for cmd in commands:
@@ -1054,8 +1062,8 @@ def emit_command_dispatch(spec: Spec, anchor: str, markup: dict, structs: dict[s
         lines.append("    ///")
         lines.append("    /// # Errors")
         lines.append("    /// Returns [`SignalWireRestError`] on transport failure or a non-2xx status.")
-        lines.append(f"    pub fn {mname}(&self, {id_param}request: {sname}) -> Result<Value, SignalWireRestError> {{")
-        lines.append(f"        self.execute({rs_str(cmd)}, {call_arg}, request.build())")
+        lines.append(f"    pub fn {mname}(&self, {id_param}request: {sname}, request_options: Option<RequestOptions>) -> Result<Value, SignalWireRestError> {{")
+        lines.append(f"        self.execute({rs_str(cmd)}, {call_arg}, request.build(), request_options)")
         lines.append("    }")
     lines.append("}")
     return "\n".join(lines)
@@ -1132,14 +1140,18 @@ def emit_resource(spec: Spec, anchor: str, markup: dict, structs: dict[str, str]
 
     # Re-expose base CRUD/read methods by delegation (so the resource surface
     # carries them, matching the oracle which records them on the resource).
+    # Each carries the trailing keyword-only ``request_options`` (plan 4.2 /
+    # PY-9), forwarded to the base's ``*_with_options`` variant (transport-only —
+    # never serialized into the body). The Rust ``Option<RequestOptions>`` is the
+    # named idiom for the reference's ``*, request_options=None``.
     if "list" in provided:
         lines.append("")
         lines.append("    /// `list` (delegated to the base; GET base path).")
         lines.append("    ///")
         lines.append("    /// # Errors")
         lines.append("    /// See the base resource.")
-        lines.append("    pub fn list(&self, params: &HashMap<String, String>) -> Result<Value, SignalWireRestError> {")
-        lines.append("        self.base.list(params)")
+        lines.append("    pub fn list(&self, params: &HashMap<String, String>, request_options: Option<RequestOptions>) -> Result<Value, SignalWireRestError> {")
+        lines.append("        self.base.list_with_options(params, request_options.as_ref())")
         lines.append("    }")
     if "get" in provided:
         lines.append("")
@@ -1147,16 +1159,16 @@ def emit_resource(spec: Spec, anchor: str, markup: dict, structs: dict[str, str]
         lines.append("    ///")
         lines.append("    /// # Errors")
         lines.append("    /// See the base resource.")
-        lines.append("    pub fn get(&self, id: &str) -> Result<Value, SignalWireRestError> {")
-        lines.append("        self.base.get(id)")
+        lines.append("    pub fn get(&self, id: &str, request_options: Option<RequestOptions>) -> Result<Value, SignalWireRestError> {")
+        lines.append("        self.base.get_with_options(id, request_options.as_ref())")
         lines.append("    }")
     if "paginate" in provided:
         lines.append("")
         lines.append("    /// `paginate` (delegated to the base): iterate every item across all")
         lines.append("    /// pages, following the response's `links.next` cursor.")
         lines.append("    #[must_use]")
-        lines.append("    pub fn paginate(&self, params: &HashMap<String, String>) -> PaginatedIterator<'a> {")
-        lines.append("        self.base.paginate(params)")
+        lines.append("    pub fn paginate(&self, params: &HashMap<String, String>, request_options: Option<RequestOptions>) -> PaginatedIterator<'a> {")
+        lines.append("        self.base.paginate_with_options(params, request_options)")
         lines.append("    }")
     if "create" in provided:
         lines.append("")
@@ -1164,8 +1176,8 @@ def emit_resource(spec: Spec, anchor: str, markup: dict, structs: dict[str, str]
         lines.append("    ///")
         lines.append("    /// # Errors")
         lines.append("    /// See the base resource.")
-        lines.append("    pub fn create(&self, data: &Value) -> Result<Value, SignalWireRestError> {")
-        lines.append("        self.base.create(data)")
+        lines.append("    pub fn create(&self, data: &Value, request_options: Option<RequestOptions>) -> Result<Value, SignalWireRestError> {")
+        lines.append("        self.base.create_with_options(data, request_options.as_ref())")
         lines.append("    }")
     if "update" in provided:
         lines.append("")
@@ -1173,8 +1185,8 @@ def emit_resource(spec: Spec, anchor: str, markup: dict, structs: dict[str, str]
         lines.append("    ///")
         lines.append("    /// # Errors")
         lines.append("    /// See the base resource.")
-        lines.append("    pub fn update(&self, id: &str, data: &Value) -> Result<Value, SignalWireRestError> {")
-        lines.append("        self.base.update(id, data)")
+        lines.append("    pub fn update(&self, id: &str, data: &Value, request_options: Option<RequestOptions>) -> Result<Value, SignalWireRestError> {")
+        lines.append("        self.base.update_with_options(id, data, request_options.as_ref())")
         lines.append("    }")
     if "delete" in provided:
         lines.append("")
@@ -1182,8 +1194,8 @@ def emit_resource(spec: Spec, anchor: str, markup: dict, structs: dict[str, str]
         lines.append("    ///")
         lines.append("    /// # Errors")
         lines.append("    /// See the base resource.")
-        lines.append("    pub fn delete(&self, id: &str) -> Result<Value, SignalWireRestError> {")
-        lines.append("        self.base.delete(id)")
+        lines.append("    pub fn delete(&self, id: &str, request_options: Option<RequestOptions>) -> Result<Value, SignalWireRestError> {")
+        lines.append("        self.base.delete_with_options(id, request_options.as_ref())")
         lines.append("    }")
     if "list_addresses" in provided and not override_list_addresses:
         lines.append("")
@@ -1191,8 +1203,8 @@ def emit_resource(spec: Spec, anchor: str, markup: dict, structs: dict[str, str]
         lines.append("    ///")
         lines.append("    /// # Errors")
         lines.append("    /// See the base resource.")
-        lines.append("    pub fn list_addresses(&self, id: &str, params: &HashMap<String, String>) -> Result<Value, SignalWireRestError> {")
-        lines.append("        self.base.list_addresses(id, params)")
+        lines.append("    pub fn list_addresses(&self, id: &str, params: &HashMap<String, String>, request_options: Option<RequestOptions>) -> Result<Value, SignalWireRestError> {")
+        lines.append("        self.base.list_addresses_with_options(id, params, request_options.as_ref())")
         lines.append("    }")
 
     for method_snake, spec_ref in declared.items():
@@ -1731,6 +1743,36 @@ def _param(name: str, kind: str, required: bool, ptype: str = "any") -> dict:
     return {"name": name, "kind": kind, "required": required, "type": ptype}
 
 
+# The per-request options envelope (plan 4.2 / tracker PY-9). The Python
+# reference records a trailing keyword-only ``request_options: RequestOptions |
+# None = None`` on EVERY generated REST method (operation/command/set/paginate +
+# the CRUD create/update overrides); the enumerator drops the ``**params`` /
+# ``**kwargs`` var_keyword tail, so ``request_options`` is the last param the
+# oracle records. Mirror that EXACTLY: a keyword, optional, carrying the concrete
+# RequestOptions class type (a bare ``any`` here would read as untyped-laziness
+# and FAIL drift — the reference types it concretely). The Rust type is projected
+# to the reference module ``signalwire.rest._request_options`` by the enumerator's
+# FREE_FN module rename, so the canonical type token is identical across ports.
+_REQUEST_OPTIONS_TYPE = "optional<class:signalwire.rest._request_options.RequestOptions>"
+
+
+def _request_options_param() -> dict:
+    return _param("request_options", "keyword", False, _REQUEST_OPTIONS_TYPE)
+
+
+def _with_request_options(params: list[dict]) -> list[dict]:
+    """Insert the trailing keyword-only ``request_options`` param BEFORE any
+    trailing var_keyword (``params``/``kwargs``) — matching the reference's
+    ``(..., *, request_options=None, **params)`` ordering, where the oracle drops
+    the var_keyword tail so ``request_options`` becomes the last recorded param.
+    A remaining port-side var_keyword is an optional extra the drift tool ignores
+    (overlap-prefix compare), so ``request_options`` still aligns at the oracle's
+    slot."""
+    tail = params[-1:] if params and params[-1].get("kind") == "var_keyword" else []
+    head = params[: len(params) - len(tail)]
+    return head + [_request_options_param()] + tail
+
+
 def _body_field_params(spec: Spec, fields, kind_for_fields: str,
                        tail_extra_name: str, tail_kwargs: bool) -> list[dict]:
     """Exploded params for an object/command body: each field → kind_for_fields
@@ -1768,7 +1810,7 @@ def sidecar_operation_method(spec: Spec, anchor: str, markup: dict, base: str,
     elif verb == "get":
         params.append(_param("params", "var_keyword", False))
     # delete → just the id positionals
-    return params
+    return _with_request_options(params)
 
 
 def sidecar_set_method(spec: Spec, markup: dict, sm_name: str, sm: dict,
@@ -1786,7 +1828,7 @@ def sidecar_set_method(spec: Spec, markup: dict, sm_name: str, sm: dict,
         # set_* args are ``impl Into<String>`` in the generated builder → string.
         params.append(_param(field_ident(arg_name), "positional", req, "string"))
     params.append(_param("extra", "var_keyword", False))
-    return params
+    return _with_request_options(params)
 
 
 def sidecar_command_method(spec: Spec, mapping_leaf: str, cmd_schema: dict,
@@ -1796,7 +1838,7 @@ def sidecar_command_method(spec: Spec, mapping_leaf: str, cmd_schema: dict,
     if with_id:
         params.append(_param("call_id", "positional", True, "string"))
     params += _body_field_params(spec, fields, "keyword", "extras", False)
-    return params
+    return _with_request_options(params)
 
 
 def sidecar_for_resource(spec: Spec, anchor: str, markup: dict) -> dict:
@@ -1831,9 +1873,10 @@ def sidecar_for_resource(spec: Spec, anchor: str, markup: dict) -> dict:
     # so drift is param-count/type only where the oracle explodes, NOT a
     # kind-mismatch on the id.
     if base in ("CrudResource", "FabricResource"):
-        methods["create"] = [_param("data", "positional", True)]
-        methods["update"] = [_param("id", "positional", True, "string"),
-                             _param("data", "positional", True)]
+        methods["create"] = _with_request_options([_param("data", "positional", True)])
+        methods["update"] = _with_request_options(
+            [_param("id", "positional", True, "string"),
+             _param("data", "positional", True)])
 
     # Declared operation methods (may override list_addresses with a sibling path).
     for m_snake, ref in declared.items():

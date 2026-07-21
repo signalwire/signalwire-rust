@@ -10,6 +10,7 @@ use serde_json::{Map, Value};
 use crate::rest::error::SignalWireRestError;
 use crate::rest::generated_bases::BaseResource;
 use crate::rest::http_client::HttpClient;
+use crate::rest::request_options::RequestOptions;
 
 /// Named request parameters for the generated method (Rust options-builder
 /// idiom — required fields in `new`, optionals via setters, `extras` open door).
@@ -167,8 +168,16 @@ impl<'a> Messages<'a> {
     /// # Errors
     /// Returns [`SignalWireRestError`] on transport failure, a non-2xx
     /// status, or an unparseable response body.
-    pub fn create(&self, request: MessagesCreateRequest) -> Result<Value, SignalWireRestError> {
-        self.client().post(self.base_path(), &request.build())
+    pub fn create(
+        &self,
+        request: MessagesCreateRequest,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.client().post_with_options(
+            self.base_path(),
+            &request.build(),
+            request_options.as_ref(),
+        )
     }
 
     /// `PATCH /messages/{message_id}` (generated operation method).
@@ -180,8 +189,12 @@ impl<'a> Messages<'a> {
         &self,
         message_id: &str,
         request: MessagesUpdateRequest,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.client()
-            .patch(&self.path(&[message_id]), &request.build())
+        self.client().patch_with_options(
+            &self.path(&[message_id]),
+            &request.build(),
+            request_options.as_ref(),
+        )
     }
 }
