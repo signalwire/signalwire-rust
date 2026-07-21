@@ -1,6 +1,6 @@
 {
   "version": "1",
-  "generated_from": "signalwire-rust @ 69264328b3e909275ac17674aa3d10094c027153",
+  "generated_from": "signalwire-rust @ 0a3ed537ea207613b0703787ebeeaf6e0765a24e",
   "modules": {
     "signalwire": {
       "classes": {
@@ -1665,9 +1665,15 @@
           "base_path",
           "client",
           "create",
+          "create_with_options",
           "delete",
+          "delete_with_options",
+          "get_with_options",
+          "list_with_options",
+          "paginate_with_options",
           "path",
-          "update"
+          "update",
+          "update_with_options"
         ],
         "CrudWithAddresses": [
           "list_addresses"
@@ -3222,6 +3228,20 @@
       "classes": {
         "MathSkill": [
           "__init__",
+          "get_hints",
+          "get_parameter_schema",
+          "get_prompt_sections",
+          "register_tools",
+          "setup"
+        ]
+      },
+      "functions": []
+    },
+    "signalwire.skills.mcp_gateway.skill": {
+      "classes": {
+        "MCPGatewaySkill": [
+          "__init__",
+          "get_global_data",
           "get_hints",
           "get_parameter_schema",
           "get_prompt_sections",

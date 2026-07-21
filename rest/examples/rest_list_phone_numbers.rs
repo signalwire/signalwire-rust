@@ -15,7 +15,7 @@ use std::collections::HashMap;
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let client = RestClient::from_env()?;
 
-    let numbers = client.phone_numbers().list(&HashMap::new())?;
+    let numbers = client.phone_numbers().list(&HashMap::new(), None)?;
 
     if let Some(arr) = numbers.as_array() {
         println!("Phone numbers ({}):", arr.len());

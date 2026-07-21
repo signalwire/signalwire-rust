@@ -50,10 +50,10 @@ fn tls_rest_client_https_get() {
     let body = client
         .fabric()
         .addresses()
-        .list(&std::collections::HashMap::from([(
-            "page_size".to_string(),
-            "5".to_string(),
-        )]))
+        .list(
+            &std::collections::HashMap::from([("page_size".to_string(), "5".to_string())]),
+            None,
+        )
         .expect("fabric addresses.list over https:// should succeed");
     let obj = body
         .as_object()
@@ -89,7 +89,7 @@ fn tls_rest_client_https_get() {
     let result = untrusted
         .fabric()
         .addresses()
-        .list(&std::collections::HashMap::new());
+        .list(&std::collections::HashMap::new(), None);
     assert!(
         result.is_err(),
         "HTTPS GET with only webpki roots unexpectedly succeeded against the self-signed CA"

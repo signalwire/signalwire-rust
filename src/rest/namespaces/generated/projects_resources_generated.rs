@@ -12,6 +12,7 @@ use serde_json::{Map, Value};
 use crate::rest::error::SignalWireRestError;
 use crate::rest::generated_bases::CrudResource;
 use crate::rest::http_client::HttpClient;
+use crate::rest::request_options::RequestOptions;
 
 /// `Projects` resource for the SignalWire `projects` REST API.
 ///
@@ -47,50 +48,79 @@ impl<'a> Projects<'a> {
     ///
     /// # Errors
     /// See the base resource.
-    pub fn list(&self, params: &HashMap<String, String>) -> Result<Value, SignalWireRestError> {
-        self.base.list(params)
+    pub fn list(
+        &self,
+        params: &HashMap<String, String>,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base
+            .list_with_options(params, request_options.as_ref())
     }
 
     /// `get` (delegated to the base; GET base/{id}).
     ///
     /// # Errors
     /// See the base resource.
-    pub fn get(&self, id: &str) -> Result<Value, SignalWireRestError> {
-        self.base.get(id)
+    pub fn get(
+        &self,
+        id: &str,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base.get_with_options(id, request_options.as_ref())
     }
 
     /// `create` (delegated to the base; POST base path).
     ///
     /// # Errors
     /// See the base resource.
-    pub fn create(&self, data: &Value) -> Result<Value, SignalWireRestError> {
-        self.base.create(data)
+    pub fn create(
+        &self,
+        data: &Value,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base
+            .create_with_options(data, request_options.as_ref())
     }
 
     /// `update` (delegated to the base; PUT/PATCH base/{id}).
     ///
     /// # Errors
     /// See the base resource.
-    pub fn update(&self, id: &str, data: &Value) -> Result<Value, SignalWireRestError> {
-        self.base.update(id, data)
+    pub fn update(
+        &self,
+        id: &str,
+        data: &Value,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base
+            .update_with_options(id, data, request_options.as_ref())
     }
 
     /// `delete` (delegated to the base; DELETE base/{id}).
     ///
     /// # Errors
     /// See the base resource.
-    pub fn delete(&self, id: &str) -> Result<Value, SignalWireRestError> {
-        self.base.delete(id)
+    pub fn delete(
+        &self,
+        id: &str,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base.delete_with_options(id, request_options.as_ref())
     }
 
     /// `POST /projects/{id}/signing-key/rotate` (generated operation method; no body).
     ///
     /// # Errors
     /// Returns [`SignalWireRestError`] on transport failure, a non-2xx status.
-    pub fn rotate_signing_key(&self, id: &str) -> Result<Value, SignalWireRestError> {
-        self.client().post(
+    pub fn rotate_signing_key(
+        &self,
+        id: &str,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.client().post_with_options(
             &self.path(&[id, "signing-key", "rotate"]),
             &Value::Object(Map::new()),
+            request_options.as_ref(),
         )
     }
 }

@@ -517,10 +517,131 @@ fn reduce_result(art: &mut Artifact, result: Result<Value, SignalWireRestError>)
     }
 }
 
-fn main() {
-    let mut out: HashMap<&'static str, Artifact> = HashMap::new();
-    for case in &corpus() {
-        out.insert(case.id, run_case(case));
+// ---------------------------------------------------------------------------
+// ctx/abort_signal COMPOSITION cases (plan PSDK-4c, ENVELOPE_COMPOSE_WIRING.md).
+//
+// A per-request cancellation (`abort_signal`) and a per-attempt `timeout` must
+// COMPOSE — a cancel from EITHER source cancels the request (they are two
+// independent RequestOptions fields; neither replaces the other). Each leg is
+// driven against a SLOW (3s) mock and reduced to whether the request was BOUNDED
+// (returned/cancelled within a generous 1.5s window) by its intended source:
+//   * "ctx"    → ctx_cancel_honored:   a SHORT timeout (0.5s) cuts the slow reply.
+//   * "signal" → signal_cancel_honored: a PRE-SET abort_signal cuts the request
+//                (GENEROUS 10s timeout, so the SIGNAL is what fired).
+//   * "both"   → both_compose:         a SHORT timeout AND a live (un-set) signal
+//                are BOTH armed; the request is still bounded (the timeout fires,
+//                proving the ctx-timeout is NOT dropped when a signal coexists —
+//                the go GO-5 red).
+// The unset booleans stay false, so a leg that did not cancel in-window reds.
+// ---------------------------------------------------------------------------
+
+const COMPOSE_WINDOW_S: f64 = 1.5;
+const COMPOSE_SHORT_TIMEOUT: f64 = 0.5;
+const COMPOSE_LONG_TIMEOUT: f64 = 10.0;
+/// The slow response the compose mock serves (must exceed the SHORT timeout AND
+/// the compose window, so an un-cancelled request runs past the window).
+const COMPOSE_DELAY_MS: u64 = 3000;
+
+/// Stand up a slow (3s) in-process mock, issue one GET with the given timeout +
+/// optional pre-set `abort_signal`, and return whether the request was BOUNDED
+/// (raised/returned within `COMPOSE_WINDOW_S`). Mirrors the differ's `_run`.
+fn run_compose_leg(timeout: f64, abort_preset: bool) -> bool {
+    let server = tiny_http::Server::http("127.0.0.1:0").expect("bind 127.0.0.1:0");
+    let port = server.server_addr().to_ip().unwrap().port();
+    let base_url = format!("http://127.0.0.1:{port}");
+    let stop = Arc::new(std::sync::atomic::AtomicBool::new(false));
+    let stop_srv = Arc::clone(&stop);
+    let handle = std::thread::spawn(move || {
+        loop {
+            if stop_srv.load(Ordering::SeqCst) {
+                break;
+            }
+            let Ok(Some(mut req)) = server.recv_timeout(Duration::from_millis(200)) else {
+                if stop_srv.load(Ordering::SeqCst) {
+                    break;
+                }
+                continue;
+            };
+            let mut discard = String::new();
+            let _ = req.as_reader().read_to_string(&mut discard);
+            // Slow reply: the timeout (or a pre-set signal, pre-attempt) must cut
+            // this before it completes.
+            std::thread::sleep(Duration::from_millis(COMPOSE_DELAY_MS));
+            let response = tiny_http::Response::from_string(r#"{"data":[]}"#.to_string())
+                .with_status_code(200u16);
+            let _ = req.respond(response);
+        }
+    });
+
+    let mut ro = RequestOptions::new().timeout(timeout).retries(0);
+    if abort_preset {
+        let sig: std::sync::Arc<std::sync::atomic::AtomicBool> =
+            std::sync::Arc::new(std::sync::atomic::AtomicBool::new(true));
+        ro = ro.abort_signal(sig);
+    } else {
+        // A real (un-set) signal object present but not triggered — proves the
+        // ctx-timeout is not dropped when a signal coexists (the "both" leg).
+        let sig: std::sync::Arc<std::sync::atomic::AtomicBool> =
+            std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+        ro = ro.abort_signal(sig);
     }
-    println!("{}", serde_json::to_string_pretty(&out).unwrap());
+
+    let client =
+        RestClient::with_base_url_and_options("compose_proj", "compose_tok", &base_url, Some(ro))
+            .expect("construct client");
+
+    let t0 = std::time::Instant::now();
+    let result = client.http().get("/api/fabric/addresses", &HashMap::new());
+    let elapsed = t0.elapsed().as_secs_f64();
+    // A cancellation surfaces as the typed transport-error family (a timeout, or
+    // a pre-attempt abort_signal). Bounded iff it cut within the window.
+    let bounded = result.is_err() && elapsed < COMPOSE_WINDOW_S;
+
+    stop.store(true, Ordering::SeqCst);
+    let _ = handle.join();
+    bounded
+}
+
+/// The three compose legs, each emitting the shared
+/// `{ctx_cancel_honored, signal_cancel_honored, both_compose}` classification.
+fn run_compose(id: &str) -> Value {
+    let mut ctx = false;
+    let mut signal = false;
+    let mut both = false;
+    match id {
+        // SHORT timeout vs slow reply, signal present-but-unset: the timeout cuts it.
+        "compose_ctx_timeout_alone" => ctx = run_compose_leg(COMPOSE_SHORT_TIMEOUT, false),
+        // GENEROUS timeout, a PRE-SET signal: the signal cuts it (pre-attempt).
+        "compose_abort_signal_alone" => signal = run_compose_leg(COMPOSE_LONG_TIMEOUT, true),
+        // SHORT timeout AND a live (un-set) signal both armed: the timeout fires,
+        // proving the ctx-timeout is NOT dropped when a signal coexists.
+        "compose_ctx_and_signal_both" => both = run_compose_leg(COMPOSE_SHORT_TIMEOUT, false),
+        other => panic!("unknown compose case {other}"),
+    }
+    json!({
+        "ctx_cancel_honored": ctx,
+        "signal_cancel_honored": signal,
+        "both_compose": both,
+    })
+}
+
+fn main() {
+    let mut out: serde_json::Map<String, Value> = serde_json::Map::new();
+    for case in &corpus() {
+        out.insert(
+            case.id.to_string(),
+            serde_json::to_value(run_case(case)).unwrap(),
+        );
+    }
+    for id in [
+        "compose_ctx_timeout_alone",
+        "compose_abort_signal_alone",
+        "compose_ctx_and_signal_both",
+    ] {
+        out.insert(id.to_string(), run_compose(id));
+    }
+    println!(
+        "{}",
+        serde_json::to_string_pretty(&Value::Object(out)).unwrap()
+    );
 }

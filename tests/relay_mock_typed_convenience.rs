@@ -104,10 +104,12 @@ fn test_play_tts_builds_and_journals_tts_media() {
     let client = relay_mocktest::connected_client(&["default"]);
     let call = answered_inbound_call(&client, "call-ptts");
 
-    let action = call.play_tts(
-        "Hello world",
-        json!({"language": "en-US", "gender": "female", "voice": "spore", "volume": -2.5}),
-    );
+    let action = call
+        .play_tts(
+            "Hello world",
+            json!({"language": "en-US", "gender": "female", "voice": "spore", "volume": -2.5}),
+        )
+        .unwrap();
     assert!(!action.is_done());
 
     let p = journal_built(&call, "calling.play");
@@ -131,7 +133,7 @@ fn test_play_tts_omits_unset_optionals() {
     let client = relay_mocktest::connected_client(&["default"]);
     let call = answered_inbound_call(&client, "call-ptts-min");
 
-    call.play_tts("Just text", json!({}));
+    call.play_tts("Just text", json!({})).unwrap();
 
     let p = journal_built(&call, "calling.play");
     let mp = p.get("play").and_then(Value::as_array).unwrap()[0]
@@ -156,7 +158,8 @@ fn test_play_audio_builds_and_journals_audio_media() {
     let client = relay_mocktest::connected_client(&["default"]);
     let call = answered_inbound_call(&client, "call-paudio");
 
-    call.play_audio("https://cdn.example/clip.mp3", json!({"volume": 3.0}));
+    call.play_audio("https://cdn.example/clip.mp3", json!({"volume": 3.0}))
+        .unwrap();
 
     let p = journal_built(&call, "calling.play");
     let media = p.get("play").and_then(Value::as_array).unwrap();
@@ -182,7 +185,7 @@ fn test_play_silence_builds_and_journals_silence_media() {
     let client = relay_mocktest::connected_client(&["default"]);
     let call = answered_inbound_call(&client, "call-psil");
 
-    call.play_silence(4.5);
+    call.play_silence(4.5).unwrap();
 
     let p = journal_built(&call, "calling.play");
     let media = p.get("play").and_then(Value::as_array).unwrap();
@@ -210,7 +213,8 @@ fn test_play_ringtone_builds_and_journals_ringtone_media() {
     let client = relay_mocktest::connected_client(&["default"]);
     let call = answered_inbound_call(&client, "call-prt");
 
-    call.play_ringtone("us", json!({"duration": 8.0, "volume": -1.0}));
+    call.play_ringtone("us", json!({"duration": 8.0, "volume": -1.0}))
+        .unwrap();
 
     let p = journal_built(&call, "calling.play");
     let media = p.get("play").and_then(Value::as_array).unwrap();
@@ -235,7 +239,8 @@ fn test_detect_digit_builds_and_journals_digit_detect() {
     let client = relay_mocktest::connected_client(&["default"]);
     let call = answered_inbound_call(&client, "call-ddig");
 
-    call.detect_digit(json!({"digits": "123", "timeout": 12.0}));
+    call.detect_digit(json!({"digits": "123", "timeout": 12.0}))
+        .unwrap();
 
     let p = journal_built(&call, "calling.detect");
     let detect = p.get("detect").expect("detect object");
@@ -258,7 +263,7 @@ fn test_detect_digit_empty_params_when_unset() {
     let client = relay_mocktest::connected_client(&["default"]);
     let call = answered_inbound_call(&client, "call-ddig-min");
 
-    call.detect_digit(json!({}));
+    call.detect_digit(json!({})).unwrap();
 
     let p = journal_built(&call, "calling.detect");
     let detect = p.get("detect").unwrap();
@@ -289,7 +294,8 @@ fn test_detect_answering_machine_builds_only_provided_keys() {
         "machine_words_threshold": 6,
         "detect_interruptions": true,
         "timeout": 30.0,
-    }));
+    }))
+    .unwrap();
 
     let p = journal_built(&call, "calling.detect");
     let detect = p.get("detect").unwrap();
@@ -324,7 +330,8 @@ fn test_detect_fax_builds_and_journals_fax_detect() {
     let client = relay_mocktest::connected_client(&["default"]);
     let call = answered_inbound_call(&client, "call-dfax");
 
-    call.detect_fax(json!({"tone": "CED", "timeout": 20.0}));
+    call.detect_fax(json!({"tone": "CED", "timeout": 20.0}))
+        .unwrap();
 
     let p = journal_built(&call, "calling.detect");
     let detect = p.get("detect").unwrap();
@@ -354,7 +361,8 @@ fn test_prompt_tts_builds_tts_media_plus_collect() {
         "Press a digit",
         json!({"digits": {"max": 1}}),
         json!({"voice": "spore", "volume": 0.5}),
-    );
+    )
+    .unwrap();
 
     let p = journal_built(&call, "calling.play_and_collect");
     let media = p.get("play").and_then(Value::as_array).unwrap();
@@ -391,7 +399,8 @@ fn test_prompt_audio_builds_audio_media_plus_collect() {
         "https://cdn.example/prompt.wav",
         json!({"speech": {"end_silence_timeout": 1}}),
         json!({"volume": -4.0}),
-    );
+    )
+    .unwrap();
 
     let p = journal_built(&call, "calling.play_and_collect");
     let media = p.get("play").and_then(Value::as_array).unwrap();

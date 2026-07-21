@@ -44,18 +44,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let _ = call.answer();
 
         // Play the IVR menu and collect a single digit.
-        let prompt = call.prompt_tts(
-            "Welcome to ACME Corporation. Press 1 for sales. \
+        let prompt = call
+            .prompt_tts(
+                "Welcome to ACME Corporation. Press 1 for sales. \
              Press 2 for support. Press 3 to leave a voicemail.",
-            json!({
-                "digits": {
-                    "max": 1,
-                    "digit_timeout": 5.0,
-                    "terminators": "#"
-                }
-            }),
-            json!({}),
-        );
+                json!({
+                    "digits": {
+                        "max": 1,
+                        "digit_timeout": 5.0,
+                        "terminators": "#"
+                    }
+                }),
+                json!({}),
+            )
+            .expect("relay verb must start against the server");
 
         let digit = prompt
             .wait(Some(Duration::from_secs(30)))
@@ -66,7 +68,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         match digit.as_str() {
             "1" => {
                 println!("Transferring to sales: {sales_number}");
-                let action = call.play_tts("Connecting you to our sales team.", json!({}));
+                let action = call
+                    .play_tts("Connecting you to our sales team.", json!({}))
+                    .expect("relay verb must start against the server");
                 let _ = action.wait(Some(Duration::from_secs(15)));
                 // `connect` is a simple control verb: returns the transmitted params.
                 let _ = call.connect(json!({
@@ -78,7 +82,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
             "2" => {
                 println!("Transferring to support: {support_number}");
-                let action = call.play_tts("Connecting you to technical support.", json!({}));
+                let action = call
+                    .play_tts("Connecting you to technical support.", json!({}))
+                    .expect("relay verb must start against the server");
                 let _ = action.wait(Some(Duration::from_secs(15)));
                 let _ = call.connect(json!({
                     "devices": [[{
@@ -89,27 +95,35 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
             "3" => {
                 println!("Recording voicemail");
-                let action = call.play_tts(
-                    "Please leave a message after the beep. Press pound when finished.",
-                    json!({}),
-                );
+                let action = call
+                    .play_tts(
+                        "Please leave a message after the beep. Press pound when finished.",
+                        json!({}),
+                    )
+                    .expect("relay verb must start against the server");
                 let _ = action.wait(Some(Duration::from_secs(15)));
 
-                let rec = call.record(json!({
-                    "direction": "speak",
-                    "format": "wav",
-                    "beep": true,
-                    "terminators": "#",
-                    "end_silence_timeout": 3.0
-                }));
+                let rec = call
+                    .record(json!({
+                        "direction": "speak",
+                        "format": "wav",
+                        "beep": true,
+                        "terminators": "#",
+                        "end_silence_timeout": 3.0
+                    }))
+                    .expect("relay verb must start against the server");
                 if let Some(result) = rec.wait(Some(Duration::from_secs(120))) {
                     println!("Voicemail recorded: {result}");
                 }
-                let action = call.play_tts("Thank you for your message. Goodbye!", json!({}));
+                let action = call
+                    .play_tts("Thank you for your message. Goodbye!", json!({}))
+                    .expect("relay verb must start against the server");
                 let _ = action.wait(Some(Duration::from_secs(15)));
             }
             _ => {
-                let action = call.play_tts("Invalid selection. Goodbye!", json!({}));
+                let action = call
+                    .play_tts("Invalid selection. Goodbye!", json!({}))
+                    .expect("relay verb must start against the server");
                 let _ = action.wait(Some(Duration::from_secs(15)));
             }
         }

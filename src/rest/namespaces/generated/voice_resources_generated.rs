@@ -13,6 +13,7 @@ use crate::rest::error::SignalWireRestError;
 use crate::rest::generated_bases::ReadResource;
 use crate::rest::http_client::HttpClient;
 use crate::rest::pagination::PaginatedIterator;
+use crate::rest::request_options::RequestOptions;
 
 /// `VoiceLogs` resource for the SignalWire `voice` REST API.
 ///
@@ -48,23 +49,36 @@ impl<'a> VoiceLogs<'a> {
     ///
     /// # Errors
     /// See the base resource.
-    pub fn list(&self, params: &HashMap<String, String>) -> Result<Value, SignalWireRestError> {
-        self.base.list(params)
+    pub fn list(
+        &self,
+        params: &HashMap<String, String>,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base
+            .list_with_options(params, request_options.as_ref())
     }
 
     /// `get` (delegated to the base; GET base/{id}).
     ///
     /// # Errors
     /// See the base resource.
-    pub fn get(&self, id: &str) -> Result<Value, SignalWireRestError> {
-        self.base.get(id)
+    pub fn get(
+        &self,
+        id: &str,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base.get_with_options(id, request_options.as_ref())
     }
 
     /// `paginate` (delegated to the base): iterate every item across all
     /// pages, following the response's `links.next` cursor.
     #[must_use]
-    pub fn paginate(&self, params: &HashMap<String, String>) -> PaginatedIterator<'a> {
-        self.base.paginate(params)
+    pub fn paginate(
+        &self,
+        params: &HashMap<String, String>,
+        request_options: Option<RequestOptions>,
+    ) -> PaginatedIterator<'a> {
+        self.base.paginate_with_options(params, request_options)
     }
 
     /// `GET /logs/{id}/events` (generated operation method; query params).
@@ -75,7 +89,12 @@ impl<'a> VoiceLogs<'a> {
         &self,
         id: &str,
         params: &HashMap<String, String>,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.client().get(&self.path(&[id, "events"]), params)
+        self.client().get_with_options(
+            &self.path(&[id, "events"]),
+            params,
+            request_options.as_ref(),
+        )
     }
 }

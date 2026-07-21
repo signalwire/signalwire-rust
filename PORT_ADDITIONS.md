@@ -1190,3 +1190,39 @@ signalwire.rest._base.HttpClient.put_with_options: `PUT` with a per-request Requ
 signalwire.rest._base.HttpClient.patch_with_options: `PATCH` with a per-request RequestOptions override; Python's `HttpClient.patch(..., request_options=)`. Rust method-name overload.
 signalwire.rest._base.HttpClient.delete_with_options: `DELETE` with a per-request RequestOptions override; Python's `HttpClient.delete(..., request_options=)`. Rust method-name overload.
 signalwire.rest.client.RestClient.with_base_url_and_options: RestClient constructor taking an explicit base URL AND a client-default RequestOptions; Python passes `request_options=` to `RestClient(...)`. Rust splits it into a named constructor (the base `with_base_url` has no options arg to preserve callers).
+signalwire.rest._base.CrudResource.list_with_options: `list` with a per-request RequestOptions override; Python's `CrudResource.list(..., request_options=)`. Rust threads the per-request override through a sibling method (no default/keyword args) — the plain `list` keeps the client-default RequestOptions. Same method-name-overload idiom as HttpClient.get_with_options.
+signalwire.rest._base.CrudResource.create_with_options: `create` with a per-request RequestOptions override; Python's `CrudResource.create(..., request_options=)`. Rust method-name overload (sibling of `create`).
+signalwire.rest._base.CrudResource.get_with_options: `get` with a per-request RequestOptions override; Python's `CrudResource.get(..., request_options=)`. Rust method-name overload (sibling of `get`).
+signalwire.rest._base.CrudResource.update_with_options: `update` with a per-request RequestOptions override; Python's `CrudResource.update(..., request_options=)`. Rust method-name overload (sibling of `update`).
+signalwire.rest._base.CrudResource.delete_with_options: `delete` with a per-request RequestOptions override; Python's `CrudResource.delete(..., request_options=)`. Rust method-name overload (sibling of `delete`).
+signalwire.rest._base.CrudResource.paginate_with_options: `paginate` with a per-request RequestOptions override forwarded to every page GET; Python's `CrudResource.paginate(..., request_options=)`. Rust method-name overload (sibling of `paginate`).
+signalwire.rest._base.ReadResource.list_with_options: `list` with a per-request RequestOptions override; Python's `ReadResource.list(..., request_options=)`. Rust method-name overload (sibling of `list`).
+signalwire.rest._base.ReadResource.get_with_options: `get` with a per-request RequestOptions override; Python's `ReadResource.get(..., request_options=)`. Rust method-name overload (sibling of `get`).
+signalwire.rest._base.ReadResource.paginate_with_options: `paginate` with a per-request RequestOptions override forwarded to every page GET; Python's `ReadResource.paginate(..., request_options=)`. Rust method-name overload (sibling of `paginate`).
+signalwire.rest._base.FabricResource.list_with_options: `list` with a per-request RequestOptions override; Python's Fabric CRUD `list(..., request_options=)`. Rust method-name overload (sibling of `list`).
+signalwire.rest._base.FabricResource.create_with_options: `create` with a per-request RequestOptions override; Python's Fabric CRUD `create(..., request_options=)`. Rust method-name overload (sibling of `create`).
+signalwire.rest._base.FabricResource.get_with_options: `get` with a per-request RequestOptions override; Python's Fabric CRUD `get(..., request_options=)`. Rust method-name overload (sibling of `get`).
+signalwire.rest._base.FabricResource.update_with_options: `update` with a per-request RequestOptions override; Python's Fabric CRUD `update(..., request_options=)`. Rust method-name overload (sibling of `update`).
+signalwire.rest._base.FabricResource.delete_with_options: `delete` with a per-request RequestOptions override; Python's Fabric CRUD `delete(..., request_options=)`. Rust method-name overload (sibling of `delete`).
+signalwire.rest._base.FabricResource.list_addresses_with_options: `list_addresses` with a per-request RequestOptions override; Python's Fabric `list_addresses(..., request_options=)`. Rust method-name overload (sibling of `list_addresses`).
+
+### mcp_gateway CLIENT skill (oracle-ahead-of-main transitional)
+
+The `mcp_gateway` builtin CLIENT skill (`MCPGatewaySkill`) IS canonical reference
+surface: the Python oracle enumerates it on `porting-sdk` `wave/1-aplus`
+(commit f4d2154, "enumerate mcp_gateway CLIENT skill as cross-port surface") and
+every port that ships it must reproduce the 6 interface methods. This port ships
+it (`src/skills/builtin/mcp_gateway.rs`). Against `wave/1-aplus` these symbols
+MATCH the reference (this section is then a no-op). They are recorded here only so
+the drift gate stays green while PR CI still checks out `porting-sdk` **main**
+(the oracle there is temporarily behind — same transitional note as
+`.github/workflows/*.yml` "REVERT ref to main when that porting-sdk branch
+merges"). Remove this section once the Wave-1 oracle lands on porting-sdk main.
+
+signalwire.skills.mcp_gateway.skill.MCPGatewaySkill: mcp_gateway CLIENT skill — canonical on porting-sdk wave/1-aplus (oracle commit f4d2154); recorded here only while PR CI's porting-sdk is main (oracle behind). Matches the reference on wave/1-aplus.
+signalwire.skills.mcp_gateway.skill.MCPGatewaySkill.get_global_data: mcp_gateway CLIENT skill — canonical on porting-sdk wave/1-aplus (oracle commit f4d2154); recorded here only while PR CI's porting-sdk is main (oracle behind). Matches the reference on wave/1-aplus.
+signalwire.skills.mcp_gateway.skill.MCPGatewaySkill.get_hints: mcp_gateway CLIENT skill — canonical on porting-sdk wave/1-aplus (oracle commit f4d2154); recorded here only while PR CI's porting-sdk is main (oracle behind). Matches the reference on wave/1-aplus.
+signalwire.skills.mcp_gateway.skill.MCPGatewaySkill.get_parameter_schema: mcp_gateway CLIENT skill — canonical on porting-sdk wave/1-aplus (oracle commit f4d2154); recorded here only while PR CI's porting-sdk is main (oracle behind). Matches the reference on wave/1-aplus.
+signalwire.skills.mcp_gateway.skill.MCPGatewaySkill.get_prompt_sections: mcp_gateway CLIENT skill — canonical on porting-sdk wave/1-aplus (oracle commit f4d2154); recorded here only while PR CI's porting-sdk is main (oracle behind). Matches the reference on wave/1-aplus.
+signalwire.skills.mcp_gateway.skill.MCPGatewaySkill.register_tools: mcp_gateway CLIENT skill — canonical on porting-sdk wave/1-aplus (oracle commit f4d2154); recorded here only while PR CI's porting-sdk is main (oracle behind). Matches the reference on wave/1-aplus.
+signalwire.skills.mcp_gateway.skill.MCPGatewaySkill.setup: mcp_gateway CLIENT skill — canonical on porting-sdk wave/1-aplus (oracle commit f4d2154); recorded here only while PR CI's porting-sdk is main (oracle behind). Matches the reference on wave/1-aplus.

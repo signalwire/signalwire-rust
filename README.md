@@ -135,14 +135,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let client = Arc::new(Client::from_env()?);
 
     client.on_call(|call, _event| {
+        // Verbs return `Result<_, RelayError>` — a rejected verb surfaces as Err.
         let _ = call.answer();
-        let action = call.play(serde_json::json!({
+        if let Ok(action) = call.play(serde_json::json!({
             "play": [{
                 "type": "tts",
                 "params": {"text": "Welcome to SignalWire!"}
             }]
-        }));
-        let _ = action.is_done();
+        })) {
+            let _ = action.is_done();
+        }
         let _ = call.hangup();
     });
 
@@ -160,7 +162,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 - 50+ calling methods (play, record, collect, detect, tap, stream, AI, conferencing, and more)
 - SMS/MMS messaging with delivery tracking
 - `Action` objects with `is_done()`, `state()`, `result()`, `on_completed()`, `stop()`
-- Auto-reconnect with exponential backoff
+- Caller-driven `reconnect()` with exponential backoff (on connection loss the client stops — `is_running()` returns `false` and pending requests fault — rather than reconnecting silently)
 
 See the **[RELAY documentation](relay/README.md)** for the full guide, API reference, and examples.
 
@@ -181,18 +183,22 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Reads SIGNALWIRE_PROJECT_ID / SIGNALWIRE_API_TOKEN / SIGNALWIRE_SPACE.
     let client = RestClient::from_env().expect("missing SIGNALWIRE_* env vars");
 
-    client.fabric().ai_agents().create(&json!({
-        "name": "Support Bot",
-        "prompt": {"text": "You are helpful."}
-    }))?;
+    client.fabric().ai_agents().create(
+        &json!({
+            "name": "Support Bot",
+            "prompt": {"text": "You are helpful."}
+        }),
+        None,
+    )?;
 
     client.calling().dial(
         CallingDialRequest::new("+15559876543", "+15551234567")
             .url("https://example.com/call-handler"),
+        None,
     )?;
 
     let query = HashMap::from([("areacode".to_string(), "512".to_string())]);
-    let results = client.phone_numbers().search(&query)?;
+    let results = client.phone_numbers().search(&query, None)?;
     println!("{results:#?}");
 
     Ok(())

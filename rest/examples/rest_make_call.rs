@@ -31,6 +31,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         CallingDialRequest::new(from, to)
             .url(&url)
             .status_url(format!("{url}/status")),
+        None,
     )?;
 
     println!("Call SID: {}", result["sid"]);

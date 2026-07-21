@@ -164,7 +164,9 @@ fn main() {
         let _g = relay_mocktest::begin();
         let client = relay_mocktest::connected_client(&["default"]);
         let call = answered_inbound_call(&client, "call-xyz");
-        let action = call.play(json!({"play": play_media()}));
+        let action = call
+            .play(json!({"play": play_media()}))
+            .expect("play must start");
         let (s, r, st, to) = drive(&call, &action, "calling.call.play");
         out.insert("live_play_wait".to_string(), classify(s, r, st, to));
         client.disconnect();
@@ -175,7 +177,9 @@ fn main() {
         let _g = relay_mocktest::begin();
         let client = relay_mocktest::connected_client(&["default"]);
         let call = answered_inbound_call(&client, "call-xyz");
-        let action = call.record(json!({"audio": {"format": "mp3"}}));
+        let action = call
+            .record(json!({"audio": {"format": "mp3"}}))
+            .expect("record must start");
         let (s, r, st, to) = drive(&call, &action, "calling.call.record");
         out.insert("live_record_wait".to_string(), classify(s, r, st, to));
         client.disconnect();
@@ -195,7 +199,9 @@ fn main() {
         let client = relay_mocktest::connected_client(&["default"]);
         let call = answered_inbound_call(&client, "call-xyz");
 
-        let outer = call.play(json!({"play": play_media()}));
+        let outer = call
+            .play(json!({"play": play_media()}))
+            .expect("play must start");
         let (os, or, _ost, oto) = drive(&call, &outer, "calling.call.play");
 
         let outer_cls = classify(os, or, "finished".to_string(), oto);
@@ -207,7 +213,9 @@ fn main() {
                 "timed_out": true,
             })
         } else {
-            let inner = call.record(json!({"audio": {"format": "mp3"}}));
+            let inner = call
+                .record(json!({"audio": {"format": "mp3"}}))
+                .expect("record must start");
             let (is, ir, ist, ito) = drive(&call, &inner, "calling.call.record");
             let inner_cls = classify(is, ir, ist, ito);
             if inner_cls["timed_out"].as_bool().unwrap_or(false) {

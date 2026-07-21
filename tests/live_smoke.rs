@@ -62,7 +62,7 @@ fn live_rest_list() {
     // (creds are present by construction).
     let page = client
         .phone_numbers()
-        .list(&HashMap::new())
+        .list(&HashMap::new(), None)
         .expect("live REST phone_numbers.list() must succeed with valid creds");
     // The platform returns a JSON object/array envelope; assert we got JSON back.
     assert!(

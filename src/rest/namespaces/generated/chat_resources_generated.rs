@@ -10,6 +10,7 @@ use serde_json::{Map, Value};
 use crate::rest::error::SignalWireRestError;
 use crate::rest::generated_bases::BaseResource;
 use crate::rest::http_client::HttpClient;
+use crate::rest::request_options::RequestOptions;
 
 /// Named request parameters for the generated method (Rust options-builder
 /// idiom — required fields in `new`, optionals via setters, `extras` open door).
@@ -102,7 +103,12 @@ impl<'a> Chat<'a> {
     pub fn create_token(
         &self,
         request: ChatCreateTokenRequest,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.client().post(self.base_path(), &request.build())
+        self.client().post_with_options(
+            self.base_path(),
+            &request.build(),
+            request_options.as_ref(),
+        )
     }
 }

@@ -31,7 +31,10 @@ use signalwire::rest::namespaces::generated::video_resources_generated as video_
 fn test_datasphere_documents_create_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let _ = c.datasphere().documents().create(&serde_json::json!({}));
+    let _ = c
+        .datasphere()
+        .documents()
+        .create(&serde_json::json!({}), None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "POST");
     assert_eq!(
@@ -48,7 +51,7 @@ fn test_datasphere_documents_create_error() {
     let err = c
         .datasphere()
         .documents()
-        .create(&serde_json::json!({}))
+        .create(&serde_json::json!({}), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -63,7 +66,7 @@ fn test_datasphere_documents_create_error() {
 fn test_datasphere_documents_delete_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let _ = c.datasphere().documents().delete("x");
+    let _ = c.datasphere().documents().delete("x", None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "DELETE");
     assert_eq!(
@@ -80,7 +83,7 @@ fn test_datasphere_documents_delete_error() {
     let err = c
         .datasphere()
         .documents()
-        .delete("x")
+        .delete("x", None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -95,7 +98,7 @@ fn test_datasphere_documents_delete_error() {
 fn test_datasphere_documents_delete_chunk_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let _ = c.datasphere().documents().delete_chunk("x", "x");
+    let _ = c.datasphere().documents().delete_chunk("x", "x", None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "DELETE");
     assert_eq!(
@@ -116,7 +119,7 @@ fn test_datasphere_documents_delete_chunk_error() {
     let err = c
         .datasphere()
         .documents()
-        .delete_chunk("x", "x")
+        .delete_chunk("x", "x", None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -131,7 +134,7 @@ fn test_datasphere_documents_delete_chunk_error() {
 fn test_datasphere_documents_get_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let _ = c.datasphere().documents().get("x");
+    let _ = c.datasphere().documents().get("x", None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "GET");
     assert_eq!(e.matched_route.as_deref(), Some("datasphere.get_document"));
@@ -145,7 +148,7 @@ fn test_datasphere_documents_get_error() {
     let err = c
         .datasphere()
         .documents()
-        .get("x")
+        .get("x", None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -160,7 +163,7 @@ fn test_datasphere_documents_get_chunk_success() {
     let _ = c
         .datasphere()
         .documents()
-        .get_chunk("x", "x", &std::collections::HashMap::new());
+        .get_chunk("x", "x", &std::collections::HashMap::new(), None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "GET");
     assert_eq!(
@@ -177,7 +180,7 @@ fn test_datasphere_documents_get_chunk_error() {
     let err = c
         .datasphere()
         .documents()
-        .get_chunk("x", "x", &std::collections::HashMap::new())
+        .get_chunk("x", "x", &std::collections::HashMap::new(), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -195,7 +198,7 @@ fn test_datasphere_documents_list_success() {
     let _ = c
         .datasphere()
         .documents()
-        .list(&std::collections::HashMap::new());
+        .list(&std::collections::HashMap::new(), None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "GET");
     assert_eq!(
@@ -212,7 +215,7 @@ fn test_datasphere_documents_list_error() {
     let err = c
         .datasphere()
         .documents()
-        .list(&std::collections::HashMap::new())
+        .list(&std::collections::HashMap::new(), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -230,7 +233,7 @@ fn test_datasphere_documents_list_chunks_success() {
     let _ = c
         .datasphere()
         .documents()
-        .list_chunks("x", &std::collections::HashMap::new());
+        .list_chunks("x", &std::collections::HashMap::new(), None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "GET");
     assert_eq!(
@@ -251,7 +254,7 @@ fn test_datasphere_documents_list_chunks_error() {
     let err = c
         .datasphere()
         .documents()
-        .list_chunks("x", &std::collections::HashMap::new())
+        .list_chunks("x", &std::collections::HashMap::new(), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -266,10 +269,10 @@ fn test_datasphere_documents_list_chunks_error() {
 fn test_datasphere_documents_search_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let _ = c
-        .datasphere()
-        .documents()
-        .search(datasphere_gen::DatasphereDocumentsSearchRequest::new("x"));
+    let _ = c.datasphere().documents().search(
+        datasphere_gen::DatasphereDocumentsSearchRequest::new("x"),
+        None,
+    );
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "POST");
     assert_eq!(
@@ -286,7 +289,10 @@ fn test_datasphere_documents_search_error() {
     let err = c
         .datasphere()
         .documents()
-        .search(datasphere_gen::DatasphereDocumentsSearchRequest::new("x"))
+        .search(
+            datasphere_gen::DatasphereDocumentsSearchRequest::new("x"),
+            None,
+        )
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -304,7 +310,7 @@ fn test_datasphere_documents_update_success() {
     let _ = c
         .datasphere()
         .documents()
-        .update("x", &serde_json::json!({}));
+        .update("x", &serde_json::json!({}), None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "PATCH");
     assert_eq!(
@@ -321,7 +327,7 @@ fn test_datasphere_documents_update_error() {
     let err = c
         .datasphere()
         .documents()
-        .update("x", &serde_json::json!({}))
+        .update("x", &serde_json::json!({}), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();

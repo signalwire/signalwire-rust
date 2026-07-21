@@ -27,14 +27,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("Incoming call: {}", call.repr());
         let _ = call.answer();
 
-        // Media verbs return an `Arc<Action>`; block on `wait()` for completion.
-        let action = call.play(serde_json::json!({
+        // Media verbs return `Result<Arc<Action>, RelayError>`; a rejected
+        // start surfaces here instead of being silently dropped. On success,
+        // block on `wait()` for completion.
+        if let Ok(action) = call.play(serde_json::json!({
             "play": [{
                 "type": "tts",
                 "params": {"text": "Welcome to SignalWire!"}
             }]
-        }));
-        let _ = action.wait(Some(Duration::from_secs(30)));
+        })) {
+            let _ = action.wait(Some(Duration::from_secs(30)));
+        }
 
         let _ = call.hangup();
         println!("Call ended: {}", call.repr());

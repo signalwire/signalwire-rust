@@ -42,6 +42,10 @@ pub struct PaginatedIterator<'a> {
     /// cursor that keeps handing back the same `next` would loop forever;
     /// re-seeing a URL terminates iteration.
     seen_next: std::collections::HashSet<String>,
+
+    /// Per-request options (plan 4.2) forwarded to every page GET (timeout /
+    /// retry / cancellation). `None` = the client default. Never serialized.
+    request_options: Option<super::request_options::RequestOptions>,
 }
 
 impl<'a> PaginatedIterator<'a> {
@@ -50,11 +54,17 @@ impl<'a> PaginatedIterator<'a> {
     /// `params` and `data_key` mirror the Python signature: the body field
     /// containing the items array is named `data_key` (typically `"data"`),
     /// and `params` is forwarded on the first GET.
+    ///
+    /// The trailing `request_options` (plan 4.2) is forwarded to every page GET
+    /// (timeout / retry / cancellation); `None` inherits the client default. It
+    /// is never serialized. This mirrors the Python reference's
+    /// `PaginatedIterator.__init__(http, path, params, data_key, request_options)`.
     pub fn new(
         http: &'a HttpClient,
         path: &str,
         params: HashMap<String, String>,
         data_key: &str,
+        request_options: Option<super::request_options::RequestOptions>,
     ) -> Self {
         PaginatedIterator {
             http,
@@ -67,6 +77,7 @@ impl<'a> PaginatedIterator<'a> {
             pending_path: None,
             pending_params: None,
             seen_next: std::collections::HashSet::new(),
+            request_options,
         }
     }
 
@@ -130,7 +141,9 @@ impl<'a> PaginatedIterator<'a> {
     /// Fetch one page: replace the item buffer and resolve the next cursor.
     fn fetch_next(&mut self) -> Result<(), SignalWireRestError> {
         let (path, params) = self.next_request();
-        let response = self.http.get(&path, &params)?;
+        let response = self
+            .http
+            .get_with_options(&path, &params, self.request_options.as_ref())?;
 
         let data = response
             .get(&self.data_key)
@@ -263,7 +276,7 @@ mod tests {
         let (client, seq) = make_sequenced(vec![page1, page2]);
         let mut params = HashMap::new();
         params.insert("page".to_string(), "1".to_string());
-        let it = PaginatedIterator::new(&client, "/api/items", params, "data");
+        let it = PaginatedIterator::new(&client, "/api/items", params, "data", None);
         let collected: Vec<Value> = it.map(Result::unwrap).collect();
         assert_eq!(collected.len(), 1, "must page past the empty page");
         assert_eq!(collected[0]["id"], 9);
@@ -284,7 +297,7 @@ mod tests {
             r#"{"data":[{"id":2}],"links":{"next":""}}"#.to_string(),
         );
         let (client, seq) = make_sequenced(vec![page1, page2]);
-        let it = PaginatedIterator::new(&client, "/api/items", HashMap::new(), "data");
+        let it = PaginatedIterator::new(&client, "/api/items", HashMap::new(), "data", None);
         let collected: Vec<Value> = it.map(Result::unwrap).collect();
         assert_eq!(collected.len(), 2);
 
@@ -304,7 +317,7 @@ mod tests {
             r#"{"data":[{"id":1}],"links":{"next":"/api/items?cursor=STUCK"}}"#.to_string(),
         );
         let (client, seq) = make_sequenced(vec![looping]);
-        let it = PaginatedIterator::new(&client, "/api/items", HashMap::new(), "data");
+        let it = PaginatedIterator::new(&client, "/api/items", HashMap::new(), "data", None);
         let collected: Vec<Value> = it.map(Result::unwrap).collect();
         assert!(
             collected.len() <= 2,
@@ -319,7 +332,7 @@ mod tests {
         let (c, stub) = make();
         let mut params = HashMap::new();
         params.insert("page_size".to_string(), "2".to_string());
-        let it = PaginatedIterator::new(&c, "/api/items", params, "data");
+        let it = PaginatedIterator::new(&c, "/api/items", params, "data", None);
         assert_eq!(it.path(), "/api/items");
         assert_eq!(it.data_key(), "data");
         assert_eq!(it.index(), 0);

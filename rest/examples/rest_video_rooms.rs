@@ -19,20 +19,23 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Create a video room.
     println!("Creating video room ...");
-    let room = client.video().rooms().create(&json!({
-        "name": "team-standup",
-        "display_name": "Daily Standup",
-        "max_members": 20,
-        "layout": "grid-responsive",
-        "record_on_start": false
-    }))?;
+    let room = client.video().rooms().create(
+        &json!({
+            "name": "team-standup",
+            "display_name": "Daily Standup",
+            "max_members": 20,
+            "layout": "grid-responsive",
+            "record_on_start": false
+        }),
+        None,
+    )?;
 
     let room_id = room["id"].as_str().unwrap_or("unknown").to_string();
     println!("Room created: {room_id}");
     println!("  Name: {}", room["name"]);
 
     // List all rooms.
-    let rooms = client.video().rooms().list(&HashMap::new())?;
+    let rooms = client.video().rooms().list(&HashMap::new(), None)?;
     if let Some(arr) = rooms.as_array() {
         println!("\nAll video rooms ({}):", arr.len());
         for r in arr {
@@ -44,14 +47,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // Get room details.
-    let details = client.video().rooms().get(&room_id)?;
+    let details = client.video().rooms().get(&room_id, None)?;
     println!("\nRoom details:");
     println!("  Name: {}", details["display_name"]);
     println!("  Layout: {}", details["layout"]);
     println!("  Max members: {}", details["max_members"]);
 
     // List room recordings.
-    let recordings = client.video().room_recordings().list(&HashMap::new())?;
+    let recordings = client
+        .video()
+        .room_recordings()
+        .list(&HashMap::new(), None)?;
     if let Some(arr) = recordings.as_array() {
         println!("  Recordings: {}", arr.len());
     }

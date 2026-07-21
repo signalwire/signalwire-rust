@@ -96,6 +96,7 @@ const BUILTIN_SKILL_NAMES: &[&str] = &[
     "info_gatherer",
     "joke",
     "math",
+    "mcp_gateway",
     "native_vector_search",
     "play_background_file",
     "spider",

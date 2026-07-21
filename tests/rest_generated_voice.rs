@@ -31,7 +31,7 @@ use signalwire::rest::namespaces::generated::video_resources_generated as video_
 fn test_logs_voice_get_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let _ = c.logs().voice().get("x");
+    let _ = c.logs().voice().get("x", None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "GET");
     assert_eq!(e.matched_route.as_deref(), Some("voice.get_voice_log"));
@@ -42,7 +42,11 @@ fn test_logs_voice_get_error() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
     common::mocktest::scenario_set("voice.get_voice_log", 500, json!({"error": "x"}));
-    let err = c.logs().voice().get("x").expect_err("expected a 500 error");
+    let err = c
+        .logs()
+        .voice()
+        .get("x", None)
+        .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
     assert_eq!(e.response_status, Some(500));
@@ -53,7 +57,10 @@ fn test_logs_voice_get_error() {
 fn test_logs_voice_list_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let _ = c.logs().voice().list(&std::collections::HashMap::new());
+    let _ = c
+        .logs()
+        .voice()
+        .list(&std::collections::HashMap::new(), None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "GET");
     assert_eq!(e.matched_route.as_deref(), Some("voice.list_voice_logs"));
@@ -67,7 +74,7 @@ fn test_logs_voice_list_error() {
     let err = c
         .logs()
         .voice()
-        .list(&std::collections::HashMap::new())
+        .list(&std::collections::HashMap::new(), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -82,7 +89,7 @@ fn test_logs_voice_list_events_success() {
     let _ = c
         .logs()
         .voice()
-        .list_events("x", &std::collections::HashMap::new());
+        .list_events("x", &std::collections::HashMap::new(), None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "GET");
     assert_eq!(
@@ -99,7 +106,7 @@ fn test_logs_voice_list_events_error() {
     let err = c
         .logs()
         .voice()
-        .list_events("x", &std::collections::HashMap::new())
+        .list_events("x", &std::collections::HashMap::new(), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();

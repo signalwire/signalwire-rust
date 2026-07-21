@@ -422,3 +422,108 @@ fn test_scenario_play_full_inbound_flow() {
     std::thread::sleep(std::time::Duration::from_millis(100));
     client.disconnect();
 }
+
+// ---------------------------------------------------------------------------
+// RUST-2 / NB-1: an on_call handler that sends a verb and then blocks on
+// Action::wait() must complete — the play frame must reach the mock AND the
+// wait must RESOLVE (not burn its timeout). This is only possible if the
+// handler runs OFF the reader thread: on the pre-fix inline dispatch, the
+// reader thread was stuck running the handler, so (a) the play frame never
+// flushed to the mock and (b) no completion event could be read, so wait()
+// burned its full timeout every time and wait(None) bricked the client.
+// ---------------------------------------------------------------------------
+
+#[test]
+fn test_in_handler_play_then_wait_completes_not_deadlocks() {
+    use std::time::{Duration, Instant};
+
+    let _g = relay_mocktest::begin();
+    let client = relay_mocktest::connected_client(&["default"]);
+
+    // Records set by the handler thread: whether wait() resolved, and how long
+    // it blocked. A deadlock/timeout leaves resolved=false.
+    let resolved: Arc<Mutex<Option<bool>>> = Arc::new(Mutex::new(None));
+    let waited_ms: Arc<Mutex<u128>> = Arc::new(Mutex::new(0));
+    let resolved2 = resolved.clone();
+    let waited2 = waited_ms.clone();
+    // Capture this test's mock session scope so the pusher thread (spawned
+    // from inside the handler) targets the right client.
+    let scope = relay_mocktest::scope();
+
+    client.on_call(move |call, _ev| {
+        // Start a play action — this frame must flush to the mock while the
+        // handler is still running (it can only do so if the reader thread is
+        // free, i.e. the handler is NOT on the reader thread).
+        let action = call
+            .play(json!({
+                "play": [{"type": "audio", "params": {"url": "https://x/a.mp3"}}]
+            }))
+            .expect("play against the mock must succeed");
+        let control_id = action.control_id().to_string();
+        let call_id = call.call_id.clone().unwrap_or_default();
+
+        // Arm a deferred "finished" completion ~150ms out, delivered through the
+        // mock's socket -> reader-loop -> dispatch path (the reader must be free
+        // to read it while THIS handler thread is parked in wait()).
+        let scope_inner = scope.clone();
+        std::thread::spawn(move || {
+            relay_mocktest::set_scope(scope_inner);
+            std::thread::sleep(Duration::from_millis(150));
+            relay_mocktest::push(json!({
+                "jsonrpc": "2.0",
+                "id": format!("evt-play-{call_id}"),
+                "method": "signalwire.event",
+                "params": {
+                    "event_type": "calling.call.play",
+                    "params": {"call_id": call_id, "control_id": control_id, "state": "finished"},
+                },
+            }));
+        });
+
+        // Block on wait() with a generous deadline. On the pre-fix code this
+        // ALWAYS burns the full timeout (deadlock); post-fix it resolves in
+        // ~150ms when the completion event arrives.
+        let start = Instant::now();
+        let _ = action.wait(Some(Duration::from_secs(3)));
+        let elapsed = start.elapsed().as_millis();
+        *waited2.lock().unwrap() = elapsed;
+        // The completing event resolves the action with an empty (None) result,
+        // so we key on is_done() (the action reached terminal), NOT on a
+        // non-empty result. A deadlock leaves is_done()==false at the deadline.
+        *resolved2.lock().unwrap() = Some(action.is_done());
+    });
+
+    relay_mocktest::inbound_call(json!({
+        "call_id": "c-handler-wait",
+        "auto_states": ["created"],
+    }));
+
+    // The handler runs on its own thread; give it time to play + wait + resolve.
+    assert!(
+        wait_until(5000, || resolved.lock().unwrap().is_some()),
+        "handler never returned — in-handler wait() deadlocked the client"
+    );
+
+    // The wait must have RESOLVED (action reached terminal), not timed out.
+    assert_eq!(
+        resolved.lock().unwrap().clone(),
+        Some(true),
+        "Action::wait() inside the handler did not resolve (burned its timeout — deadlock)"
+    );
+    // And it blocked for roughly the completion delay, NOT the full 3s deadline
+    // (a timed-out wait would report ~3000ms).
+    let ms = *waited_ms.lock().unwrap();
+    assert!(
+        ms < 2500,
+        "wait() blocked {ms}ms — that is a burned timeout, not a real completion"
+    );
+
+    // The play frame must have reached the mock while the handler was blocked.
+    let plays = relay_mocktest::journal_recv(Some("calling.play"));
+    assert!(
+        !plays.is_empty(),
+        "the play frame never flushed to the mock — the reader thread was blocked by the handler"
+    );
+
+    client.disconnect();
+}

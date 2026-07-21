@@ -59,7 +59,7 @@ fn dispatch(client: &RestClient, op: &str, args: &Value) -> Result<Value, String
             let params = args_to_string_map(args);
             client
                 .phone_numbers()
-                .list(&params)
+                .list(&params, None)
                 .map_err(|e| format!("{}: {}", op, e.message()))
         }
         "fabric.subscribers.list" => {
@@ -69,7 +69,7 @@ fn dispatch(client: &RestClient, op: &str, args: &Value) -> Result<Value, String
             client
                 .fabric()
                 .subscribers()
-                .list(&params)
+                .list(&params, None)
                 .map_err(|e| format!("{}: {}", op, e.message()))
         }
         other => Err(format!(

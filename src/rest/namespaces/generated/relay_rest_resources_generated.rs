@@ -12,6 +12,7 @@ use serde_json::{Map, Value};
 use crate::rest::error::SignalWireRestError;
 use crate::rest::generated_bases::{BaseResource, CrudResource};
 use crate::rest::http_client::HttpClient;
+use crate::rest::request_options::RequestOptions;
 
 /// Named request parameters for the generated method (Rust options-builder
 /// idiom — required fields in `new`, optionals via setters, `extras` open door).
@@ -1018,8 +1019,13 @@ impl<'a> Addresses<'a> {
     ///
     /// # Errors
     /// Returns [`SignalWireRestError`] on transport failure, a non-2xx status.
-    pub fn list(&self, params: &HashMap<String, String>) -> Result<Value, SignalWireRestError> {
-        self.client().get(self.base_path(), params)
+    pub fn list(
+        &self,
+        params: &HashMap<String, String>,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.client()
+            .get_with_options(self.base_path(), params, request_options.as_ref())
     }
 
     /// `POST /addresses` (generated operation method).
@@ -1027,8 +1033,16 @@ impl<'a> Addresses<'a> {
     /// # Errors
     /// Returns [`SignalWireRestError`] on transport failure, a non-2xx
     /// status, or an unparseable response body.
-    pub fn create(&self, request: AddressesCreateRequest) -> Result<Value, SignalWireRestError> {
-        self.client().post(self.base_path(), &request.build())
+    pub fn create(
+        &self,
+        request: AddressesCreateRequest,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.client().post_with_options(
+            self.base_path(),
+            &request.build(),
+            request_options.as_ref(),
+        )
     }
 
     /// `GET /addresses/{id}` (generated operation method; query params).
@@ -1039,16 +1053,23 @@ impl<'a> Addresses<'a> {
         &self,
         id: &str,
         params: &HashMap<String, String>,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.client().get(&self.path(&[id]), params)
+        self.client()
+            .get_with_options(&self.path(&[id]), params, request_options.as_ref())
     }
 
     /// `DELETE /addresses/{id}` (generated operation method).
     ///
     /// # Errors
     /// Returns [`SignalWireRestError`] on transport failure, a non-2xx status.
-    pub fn delete(&self, id: &str) -> Result<Value, SignalWireRestError> {
-        self.client().delete(&self.path(&[id]))
+    pub fn delete(
+        &self,
+        id: &str,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.client()
+            .delete_with_options(&self.path(&[id]), request_options.as_ref())
     }
 }
 
@@ -1086,8 +1107,13 @@ impl<'a> ImportedNumbers<'a> {
     pub fn create(
         &self,
         request: ImportedNumbersCreateRequest,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.client().post(self.base_path(), &request.build())
+        self.client().post_with_options(
+            self.base_path(),
+            &request.build(),
+            request_options.as_ref(),
+        )
     }
 }
 
@@ -1129,9 +1155,13 @@ impl<'a> Lookup<'a> {
         &self,
         e164: &str,
         params: &HashMap<String, String>,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.client()
-            .get(&self.path(&["phone_number", e164]), params)
+        self.client().get_with_options(
+            &self.path(&["phone_number", e164]),
+            params,
+            request_options.as_ref(),
+        )
     }
 }
 
@@ -1170,8 +1200,16 @@ impl<'a> Mfa<'a> {
     /// # Errors
     /// Returns [`SignalWireRestError`] on transport failure, a non-2xx
     /// status, or an unparseable response body.
-    pub fn sms(&self, request: MfaSmsRequest) -> Result<Value, SignalWireRestError> {
-        self.client().post(&self.path(&["sms"]), &request.build())
+    pub fn sms(
+        &self,
+        request: MfaSmsRequest,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.client().post_with_options(
+            &self.path(&["sms"]),
+            &request.build(),
+            request_options.as_ref(),
+        )
     }
 
     /// `POST /mfa/call` (generated operation method).
@@ -1179,8 +1217,16 @@ impl<'a> Mfa<'a> {
     /// # Errors
     /// Returns [`SignalWireRestError`] on transport failure, a non-2xx
     /// status, or an unparseable response body.
-    pub fn call(&self, request: MfaCallRequest) -> Result<Value, SignalWireRestError> {
-        self.client().post(&self.path(&["call"]), &request.build())
+    pub fn call(
+        &self,
+        request: MfaCallRequest,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.client().post_with_options(
+            &self.path(&["call"]),
+            &request.build(),
+            request_options.as_ref(),
+        )
     }
 
     /// `POST /mfa/{mfa_request_id}/verify` (generated operation method).
@@ -1192,9 +1238,13 @@ impl<'a> Mfa<'a> {
         &self,
         request_id: &str,
         request: MfaVerifyRequest,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.client()
-            .post(&self.path(&[request_id, "verify"]), &request.build())
+        self.client().post_with_options(
+            &self.path(&[request_id, "verify"]),
+            &request.build(),
+            request_options.as_ref(),
+        )
     }
 }
 
@@ -1232,40 +1282,64 @@ impl<'a> NumberGroups<'a> {
     ///
     /// # Errors
     /// See the base resource.
-    pub fn list(&self, params: &HashMap<String, String>) -> Result<Value, SignalWireRestError> {
-        self.base.list(params)
+    pub fn list(
+        &self,
+        params: &HashMap<String, String>,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base
+            .list_with_options(params, request_options.as_ref())
     }
 
     /// `get` (delegated to the base; GET base/{id}).
     ///
     /// # Errors
     /// See the base resource.
-    pub fn get(&self, id: &str) -> Result<Value, SignalWireRestError> {
-        self.base.get(id)
+    pub fn get(
+        &self,
+        id: &str,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base.get_with_options(id, request_options.as_ref())
     }
 
     /// `create` (delegated to the base; POST base path).
     ///
     /// # Errors
     /// See the base resource.
-    pub fn create(&self, data: &Value) -> Result<Value, SignalWireRestError> {
-        self.base.create(data)
+    pub fn create(
+        &self,
+        data: &Value,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base
+            .create_with_options(data, request_options.as_ref())
     }
 
     /// `update` (delegated to the base; PUT/PATCH base/{id}).
     ///
     /// # Errors
     /// See the base resource.
-    pub fn update(&self, id: &str, data: &Value) -> Result<Value, SignalWireRestError> {
-        self.base.update(id, data)
+    pub fn update(
+        &self,
+        id: &str,
+        data: &Value,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base
+            .update_with_options(id, data, request_options.as_ref())
     }
 
     /// `delete` (delegated to the base; DELETE base/{id}).
     ///
     /// # Errors
     /// See the base resource.
-    pub fn delete(&self, id: &str) -> Result<Value, SignalWireRestError> {
-        self.base.delete(id)
+    pub fn delete(
+        &self,
+        id: &str,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base.delete_with_options(id, request_options.as_ref())
     }
 
     /// `GET /number_groups/{NumberGroupId}/number_group_memberships` (generated operation method; query params).
@@ -1276,9 +1350,13 @@ impl<'a> NumberGroups<'a> {
         &self,
         group_id: &str,
         params: &HashMap<String, String>,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.client()
-            .get(&self.path(&[group_id, "number_group_memberships"]), params)
+        self.client().get_with_options(
+            &self.path(&[group_id, "number_group_memberships"]),
+            params,
+            request_options.as_ref(),
+        )
     }
 
     /// `POST /number_groups/{NumberGroupId}/number_group_memberships` (generated operation method).
@@ -1290,10 +1368,12 @@ impl<'a> NumberGroups<'a> {
         &self,
         group_id: &str,
         request: NumberGroupsAddMembershipRequest,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.client().post(
+        self.client().post_with_options(
             &self.path(&[group_id, "number_group_memberships"]),
             &request.build(),
+            request_options.as_ref(),
         )
     }
 
@@ -1305,10 +1385,12 @@ impl<'a> NumberGroups<'a> {
         &self,
         id: &str,
         params: &HashMap<String, String>,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.client().get(
+        self.client().get_with_options(
             &format!("/api/relay/rest/number_group_memberships/{id}"),
             params,
+            request_options.as_ref(),
         )
     }
 
@@ -1316,9 +1398,15 @@ impl<'a> NumberGroups<'a> {
     ///
     /// # Errors
     /// Returns [`SignalWireRestError`] on transport failure, a non-2xx status.
-    pub fn delete_membership(&self, id: &str) -> Result<Value, SignalWireRestError> {
-        self.client()
-            .delete(&format!("/api/relay/rest/number_group_memberships/{id}"))
+    pub fn delete_membership(
+        &self,
+        id: &str,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.client().delete_with_options(
+            &format!("/api/relay/rest/number_group_memberships/{id}"),
+            request_options.as_ref(),
+        )
     }
 }
 
@@ -1356,48 +1444,77 @@ impl<'a> PhoneNumbers<'a> {
     ///
     /// # Errors
     /// See the base resource.
-    pub fn list(&self, params: &HashMap<String, String>) -> Result<Value, SignalWireRestError> {
-        self.base.list(params)
+    pub fn list(
+        &self,
+        params: &HashMap<String, String>,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base
+            .list_with_options(params, request_options.as_ref())
     }
 
     /// `get` (delegated to the base; GET base/{id}).
     ///
     /// # Errors
     /// See the base resource.
-    pub fn get(&self, id: &str) -> Result<Value, SignalWireRestError> {
-        self.base.get(id)
+    pub fn get(
+        &self,
+        id: &str,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base.get_with_options(id, request_options.as_ref())
     }
 
     /// `create` (delegated to the base; POST base path).
     ///
     /// # Errors
     /// See the base resource.
-    pub fn create(&self, data: &Value) -> Result<Value, SignalWireRestError> {
-        self.base.create(data)
+    pub fn create(
+        &self,
+        data: &Value,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base
+            .create_with_options(data, request_options.as_ref())
     }
 
     /// `update` (delegated to the base; PUT/PATCH base/{id}).
     ///
     /// # Errors
     /// See the base resource.
-    pub fn update(&self, id: &str, data: &Value) -> Result<Value, SignalWireRestError> {
-        self.base.update(id, data)
+    pub fn update(
+        &self,
+        id: &str,
+        data: &Value,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base
+            .update_with_options(id, data, request_options.as_ref())
     }
 
     /// `delete` (delegated to the base; DELETE base/{id}).
     ///
     /// # Errors
     /// See the base resource.
-    pub fn delete(&self, id: &str) -> Result<Value, SignalWireRestError> {
-        self.base.delete(id)
+    pub fn delete(
+        &self,
+        id: &str,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base.delete_with_options(id, request_options.as_ref())
     }
 
     /// `GET /phone_numbers/search` (generated operation method; query params).
     ///
     /// # Errors
     /// Returns [`SignalWireRestError`] on transport failure, a non-2xx status.
-    pub fn search(&self, params: &HashMap<String, String>) -> Result<Value, SignalWireRestError> {
-        self.client().get(&self.path(&["search"]), params)
+    pub fn search(
+        &self,
+        params: &HashMap<String, String>,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.client()
+            .get_with_options(&self.path(&["search"]), params, request_options.as_ref())
     }
 
     /// `set_set_swml_webhook` — update wrapper binding a fixed `call_handler` (§7).
@@ -1408,8 +1525,9 @@ impl<'a> PhoneNumbers<'a> {
         &self,
         resource_id: &str,
         request: PhoneNumbersSetSwmlWebhookRequest,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.update(resource_id, &request.build())
+        self.update(resource_id, &request.build(), request_options)
     }
 
     /// `set_set_cxml_webhook` — update wrapper binding a fixed `call_handler` (§7).
@@ -1420,8 +1538,9 @@ impl<'a> PhoneNumbers<'a> {
         &self,
         resource_id: &str,
         request: PhoneNumbersSetCxmlWebhookRequest,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.update(resource_id, &request.build())
+        self.update(resource_id, &request.build(), request_options)
     }
 
     /// `set_set_cxml_application` — update wrapper binding a fixed `call_handler` (§7).
@@ -1432,8 +1551,9 @@ impl<'a> PhoneNumbers<'a> {
         &self,
         resource_id: &str,
         request: PhoneNumbersSetCxmlApplicationRequest,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.update(resource_id, &request.build())
+        self.update(resource_id, &request.build(), request_options)
     }
 
     /// `set_set_ai_agent` — update wrapper binding a fixed `call_handler` (§7).
@@ -1444,8 +1564,9 @@ impl<'a> PhoneNumbers<'a> {
         &self,
         resource_id: &str,
         request: PhoneNumbersSetAiAgentRequest,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.update(resource_id, &request.build())
+        self.update(resource_id, &request.build(), request_options)
     }
 
     /// `set_set_call_flow` — update wrapper binding a fixed `call_handler` (§7).
@@ -1456,8 +1577,9 @@ impl<'a> PhoneNumbers<'a> {
         &self,
         resource_id: &str,
         request: PhoneNumbersSetCallFlowRequest,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.update(resource_id, &request.build())
+        self.update(resource_id, &request.build(), request_options)
     }
 
     /// `set_set_relay_application` — update wrapper binding a fixed `call_handler` (§7).
@@ -1468,8 +1590,9 @@ impl<'a> PhoneNumbers<'a> {
         &self,
         resource_id: &str,
         request: PhoneNumbersSetRelayApplicationRequest,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.update(resource_id, &request.build())
+        self.update(resource_id, &request.build(), request_options)
     }
 
     /// `set_set_relay_topic` — update wrapper binding a fixed `call_handler` (§7).
@@ -1480,8 +1603,9 @@ impl<'a> PhoneNumbers<'a> {
         &self,
         resource_id: &str,
         request: PhoneNumbersSetRelayTopicRequest,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.update(resource_id, &request.build())
+        self.update(resource_id, &request.build(), request_options)
     }
 }
 
@@ -1519,40 +1643,64 @@ impl<'a> Queues<'a> {
     ///
     /// # Errors
     /// See the base resource.
-    pub fn list(&self, params: &HashMap<String, String>) -> Result<Value, SignalWireRestError> {
-        self.base.list(params)
+    pub fn list(
+        &self,
+        params: &HashMap<String, String>,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base
+            .list_with_options(params, request_options.as_ref())
     }
 
     /// `get` (delegated to the base; GET base/{id}).
     ///
     /// # Errors
     /// See the base resource.
-    pub fn get(&self, id: &str) -> Result<Value, SignalWireRestError> {
-        self.base.get(id)
+    pub fn get(
+        &self,
+        id: &str,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base.get_with_options(id, request_options.as_ref())
     }
 
     /// `create` (delegated to the base; POST base path).
     ///
     /// # Errors
     /// See the base resource.
-    pub fn create(&self, data: &Value) -> Result<Value, SignalWireRestError> {
-        self.base.create(data)
+    pub fn create(
+        &self,
+        data: &Value,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base
+            .create_with_options(data, request_options.as_ref())
     }
 
     /// `update` (delegated to the base; PUT/PATCH base/{id}).
     ///
     /// # Errors
     /// See the base resource.
-    pub fn update(&self, id: &str, data: &Value) -> Result<Value, SignalWireRestError> {
-        self.base.update(id, data)
+    pub fn update(
+        &self,
+        id: &str,
+        data: &Value,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base
+            .update_with_options(id, data, request_options.as_ref())
     }
 
     /// `delete` (delegated to the base; DELETE base/{id}).
     ///
     /// # Errors
     /// See the base resource.
-    pub fn delete(&self, id: &str) -> Result<Value, SignalWireRestError> {
-        self.base.delete(id)
+    pub fn delete(
+        &self,
+        id: &str,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base.delete_with_options(id, request_options.as_ref())
     }
 
     /// `GET /queues/{queue_id}/members` (generated operation method; query params).
@@ -1563,9 +1711,13 @@ impl<'a> Queues<'a> {
         &self,
         queue_id: &str,
         params: &HashMap<String, String>,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.client()
-            .get(&self.path(&[queue_id, "members"]), params)
+        self.client().get_with_options(
+            &self.path(&[queue_id, "members"]),
+            params,
+            request_options.as_ref(),
+        )
     }
 
     /// `GET /queues/{queue_id}/members/next` (generated operation method; query params).
@@ -1576,9 +1728,13 @@ impl<'a> Queues<'a> {
         &self,
         queue_id: &str,
         params: &HashMap<String, String>,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.client()
-            .get(&self.path(&[queue_id, "members", "next"]), params)
+        self.client().get_with_options(
+            &self.path(&[queue_id, "members", "next"]),
+            params,
+            request_options.as_ref(),
+        )
     }
 
     /// `GET /queues/{queue_id}/members/{id}` (generated operation method; query params).
@@ -1590,9 +1746,13 @@ impl<'a> Queues<'a> {
         queue_id: &str,
         id: &str,
         params: &HashMap<String, String>,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.client()
-            .get(&self.path(&[queue_id, "members", id]), params)
+        self.client().get_with_options(
+            &self.path(&[queue_id, "members", id]),
+            params,
+            request_options.as_ref(),
+        )
     }
 }
 
@@ -1630,8 +1790,13 @@ impl<'a> Recordings<'a> {
     ///
     /// # Errors
     /// Returns [`SignalWireRestError`] on transport failure, a non-2xx status.
-    pub fn list(&self, params: &HashMap<String, String>) -> Result<Value, SignalWireRestError> {
-        self.client().get(self.base_path(), params)
+    pub fn list(
+        &self,
+        params: &HashMap<String, String>,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.client()
+            .get_with_options(self.base_path(), params, request_options.as_ref())
     }
 
     /// `GET /recordings/{id}` (generated operation method; query params).
@@ -1642,16 +1807,23 @@ impl<'a> Recordings<'a> {
         &self,
         id: &str,
         params: &HashMap<String, String>,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.client().get(&self.path(&[id]), params)
+        self.client()
+            .get_with_options(&self.path(&[id]), params, request_options.as_ref())
     }
 
     /// `DELETE /recordings/{id}` (generated operation method).
     ///
     /// # Errors
     /// Returns [`SignalWireRestError`] on transport failure, a non-2xx status.
-    pub fn delete(&self, id: &str) -> Result<Value, SignalWireRestError> {
-        self.client().delete(&self.path(&[id]))
+    pub fn delete(
+        &self,
+        id: &str,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.client()
+            .delete_with_options(&self.path(&[id]), request_options.as_ref())
     }
 }
 
@@ -1689,8 +1861,13 @@ impl<'a> RegistryBrands<'a> {
     ///
     /// # Errors
     /// Returns [`SignalWireRestError`] on transport failure, a non-2xx status.
-    pub fn list(&self, params: &HashMap<String, String>) -> Result<Value, SignalWireRestError> {
-        self.client().get(self.base_path(), params)
+    pub fn list(
+        &self,
+        params: &HashMap<String, String>,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.client()
+            .get_with_options(self.base_path(), params, request_options.as_ref())
     }
 
     /// `POST /registry/beta/brands` (generated operation method; union body).
@@ -1698,8 +1875,13 @@ impl<'a> RegistryBrands<'a> {
     /// # Errors
     /// Returns [`SignalWireRestError`] on transport failure, a non-2xx
     /// status, or an unparseable response body.
-    pub fn create(&self, body: &Value) -> Result<Value, SignalWireRestError> {
-        self.client().post(self.base_path(), body)
+    pub fn create(
+        &self,
+        body: &Value,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.client()
+            .post_with_options(self.base_path(), body, request_options.as_ref())
     }
 
     /// `GET /registry/beta/brands/{id}` (generated operation method; query params).
@@ -1710,8 +1892,10 @@ impl<'a> RegistryBrands<'a> {
         &self,
         id: &str,
         params: &HashMap<String, String>,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.client().get(&self.path(&[id]), params)
+        self.client()
+            .get_with_options(&self.path(&[id]), params, request_options.as_ref())
     }
 
     /// `GET /registry/beta/brands/{id}/campaigns` (generated operation method; query params).
@@ -1722,8 +1906,13 @@ impl<'a> RegistryBrands<'a> {
         &self,
         id: &str,
         params: &HashMap<String, String>,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.client().get(&self.path(&[id, "campaigns"]), params)
+        self.client().get_with_options(
+            &self.path(&[id, "campaigns"]),
+            params,
+            request_options.as_ref(),
+        )
     }
 
     /// `POST /registry/beta/brands/{id}/campaigns` (generated operation method; union body).
@@ -1731,8 +1920,17 @@ impl<'a> RegistryBrands<'a> {
     /// # Errors
     /// Returns [`SignalWireRestError`] on transport failure, a non-2xx
     /// status, or an unparseable response body.
-    pub fn create_campaign(&self, id: &str, body: &Value) -> Result<Value, SignalWireRestError> {
-        self.client().post(&self.path(&[id, "campaigns"]), body)
+    pub fn create_campaign(
+        &self,
+        id: &str,
+        body: &Value,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.client().post_with_options(
+            &self.path(&[id, "campaigns"]),
+            body,
+            request_options.as_ref(),
+        )
     }
 }
 
@@ -1774,8 +1972,10 @@ impl<'a> RegistryCampaigns<'a> {
         &self,
         id: &str,
         params: &HashMap<String, String>,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.client().get(&self.path(&[id]), params)
+        self.client()
+            .get_with_options(&self.path(&[id]), params, request_options.as_ref())
     }
 
     /// `PUT /registry/beta/campaigns/{id}` (generated operation method).
@@ -1787,8 +1987,13 @@ impl<'a> RegistryCampaigns<'a> {
         &self,
         id: &str,
         request: RegistryCampaignsUpdateRequest,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.client().put(&self.path(&[id]), &request.build())
+        self.client().put_with_options(
+            &self.path(&[id]),
+            &request.build(),
+            request_options.as_ref(),
+        )
     }
 
     /// `GET /registry/beta/campaigns/{id}/numbers` (generated operation method; query params).
@@ -1799,8 +2004,13 @@ impl<'a> RegistryCampaigns<'a> {
         &self,
         id: &str,
         params: &HashMap<String, String>,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.client().get(&self.path(&[id, "numbers"]), params)
+        self.client().get_with_options(
+            &self.path(&[id, "numbers"]),
+            params,
+            request_options.as_ref(),
+        )
     }
 
     /// `GET /registry/beta/campaigns/{id}/orders` (generated operation method; query params).
@@ -1811,8 +2021,13 @@ impl<'a> RegistryCampaigns<'a> {
         &self,
         id: &str,
         params: &HashMap<String, String>,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.client().get(&self.path(&[id, "orders"]), params)
+        self.client().get_with_options(
+            &self.path(&[id, "orders"]),
+            params,
+            request_options.as_ref(),
+        )
     }
 
     /// `POST /registry/beta/campaigns/{id}/orders` (generated operation method).
@@ -1824,9 +2039,13 @@ impl<'a> RegistryCampaigns<'a> {
         &self,
         id: &str,
         request: RegistryCampaignsCreateOrderRequest,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.client()
-            .post(&self.path(&[id, "orders"]), &request.build())
+        self.client().post_with_options(
+            &self.path(&[id, "orders"]),
+            &request.build(),
+            request_options.as_ref(),
+        )
     }
 }
 
@@ -1864,8 +2083,13 @@ impl<'a> RegistryNumbers<'a> {
     ///
     /// # Errors
     /// Returns [`SignalWireRestError`] on transport failure, a non-2xx status.
-    pub fn delete(&self, id: &str) -> Result<Value, SignalWireRestError> {
-        self.client().delete(&self.path(&[id]))
+    pub fn delete(
+        &self,
+        id: &str,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.client()
+            .delete_with_options(&self.path(&[id]), request_options.as_ref())
     }
 }
 
@@ -1907,8 +2131,10 @@ impl<'a> RegistryOrders<'a> {
         &self,
         id: &str,
         params: &HashMap<String, String>,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.client().get(&self.path(&[id]), params)
+        self.client()
+            .get_with_options(&self.path(&[id]), params, request_options.as_ref())
     }
 }
 
@@ -1946,8 +2172,13 @@ impl<'a> ShortCodes<'a> {
     ///
     /// # Errors
     /// Returns [`SignalWireRestError`] on transport failure, a non-2xx status.
-    pub fn list(&self, params: &HashMap<String, String>) -> Result<Value, SignalWireRestError> {
-        self.client().get(self.base_path(), params)
+    pub fn list(
+        &self,
+        params: &HashMap<String, String>,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.client()
+            .get_with_options(self.base_path(), params, request_options.as_ref())
     }
 
     /// `GET /short_codes/{id}` (generated operation method; query params).
@@ -1958,8 +2189,10 @@ impl<'a> ShortCodes<'a> {
         &self,
         id: &str,
         params: &HashMap<String, String>,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.client().get(&self.path(&[id]), params)
+        self.client()
+            .get_with_options(&self.path(&[id]), params, request_options.as_ref())
     }
 
     /// `PUT /short_codes/{id}` (generated operation method).
@@ -1971,8 +2204,13 @@ impl<'a> ShortCodes<'a> {
         &self,
         id: &str,
         request: ShortCodesUpdateRequest,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.client().put(&self.path(&[id]), &request.build())
+        self.client().put_with_options(
+            &self.path(&[id]),
+            &request.build(),
+            request_options.as_ref(),
+        )
     }
 }
 
@@ -2006,8 +2244,13 @@ impl<'a> SipProfile<'a> {
     ///
     /// # Errors
     /// Returns [`SignalWireRestError`] on transport failure, a non-2xx status.
-    pub fn get(&self, params: &HashMap<String, String>) -> Result<Value, SignalWireRestError> {
-        self.client().get(self.base_path(), params)
+    pub fn get(
+        &self,
+        params: &HashMap<String, String>,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.client()
+            .get_with_options(self.base_path(), params, request_options.as_ref())
     }
 
     /// `PUT /sip_profile` (generated operation method).
@@ -2015,8 +2258,13 @@ impl<'a> SipProfile<'a> {
     /// # Errors
     /// Returns [`SignalWireRestError`] on transport failure, a non-2xx
     /// status, or an unparseable response body.
-    pub fn update(&self, request: SipProfileUpdateRequest) -> Result<Value, SignalWireRestError> {
-        self.client().put(self.base_path(), &request.build())
+    pub fn update(
+        &self,
+        request: SipProfileUpdateRequest,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.client()
+            .put_with_options(self.base_path(), &request.build(), request_options.as_ref())
     }
 }
 
@@ -2054,50 +2302,79 @@ impl<'a> VerifiedCallers<'a> {
     ///
     /// # Errors
     /// See the base resource.
-    pub fn list(&self, params: &HashMap<String, String>) -> Result<Value, SignalWireRestError> {
-        self.base.list(params)
+    pub fn list(
+        &self,
+        params: &HashMap<String, String>,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base
+            .list_with_options(params, request_options.as_ref())
     }
 
     /// `get` (delegated to the base; GET base/{id}).
     ///
     /// # Errors
     /// See the base resource.
-    pub fn get(&self, id: &str) -> Result<Value, SignalWireRestError> {
-        self.base.get(id)
+    pub fn get(
+        &self,
+        id: &str,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base.get_with_options(id, request_options.as_ref())
     }
 
     /// `create` (delegated to the base; POST base path).
     ///
     /// # Errors
     /// See the base resource.
-    pub fn create(&self, data: &Value) -> Result<Value, SignalWireRestError> {
-        self.base.create(data)
+    pub fn create(
+        &self,
+        data: &Value,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base
+            .create_with_options(data, request_options.as_ref())
     }
 
     /// `update` (delegated to the base; PUT/PATCH base/{id}).
     ///
     /// # Errors
     /// See the base resource.
-    pub fn update(&self, id: &str, data: &Value) -> Result<Value, SignalWireRestError> {
-        self.base.update(id, data)
+    pub fn update(
+        &self,
+        id: &str,
+        data: &Value,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base
+            .update_with_options(id, data, request_options.as_ref())
     }
 
     /// `delete` (delegated to the base; DELETE base/{id}).
     ///
     /// # Errors
     /// See the base resource.
-    pub fn delete(&self, id: &str) -> Result<Value, SignalWireRestError> {
-        self.base.delete(id)
+    pub fn delete(
+        &self,
+        id: &str,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base.delete_with_options(id, request_options.as_ref())
     }
 
     /// `POST /verified_caller_ids/{id}/verification` (generated operation method; no body).
     ///
     /// # Errors
     /// Returns [`SignalWireRestError`] on transport failure, a non-2xx status.
-    pub fn redial_verification(&self, id: &str) -> Result<Value, SignalWireRestError> {
-        self.client().post(
+    pub fn redial_verification(
+        &self,
+        id: &str,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.client().post_with_options(
             &self.path(&[id, "verification"]),
             &Value::Object(Map::new()),
+            request_options.as_ref(),
         )
     }
 
@@ -2110,8 +2387,12 @@ impl<'a> VerifiedCallers<'a> {
         &self,
         id: &str,
         request: VerifiedCallersSubmitVerificationRequest,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.client()
-            .put(&self.path(&[id, "verification"]), &request.build())
+        self.client().put_with_options(
+            &self.path(&[id, "verification"]),
+            &request.build(),
+            request_options.as_ref(),
+        )
     }
 }

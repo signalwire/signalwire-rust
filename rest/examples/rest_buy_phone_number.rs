@@ -24,7 +24,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let result = client
         .phone_numbers()
-        .create(&json!({ "number": number }))?;
+        .create(&json!({ "number": number }), None)?;
 
     println!("Purchased: {}", result["phone_number"]);
     println!("ID: {}", result["id"]);

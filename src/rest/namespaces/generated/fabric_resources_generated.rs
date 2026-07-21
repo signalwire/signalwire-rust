@@ -13,6 +13,7 @@ use crate::rest::error::SignalWireRestError;
 use crate::rest::generated_bases::{BaseResource, FabricResource, ReadResource};
 use crate::rest::http_client::HttpClient;
 use crate::rest::pagination::PaginatedIterator;
+use crate::rest::request_options::RequestOptions;
 
 /// Named request parameters for the generated method (Rust options-builder
 /// idiom — required fields in `new`, optionals via setters, `extras` open door).
@@ -776,23 +777,36 @@ impl<'a> FabricAddresses<'a> {
     ///
     /// # Errors
     /// See the base resource.
-    pub fn list(&self, params: &HashMap<String, String>) -> Result<Value, SignalWireRestError> {
-        self.base.list(params)
+    pub fn list(
+        &self,
+        params: &HashMap<String, String>,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base
+            .list_with_options(params, request_options.as_ref())
     }
 
     /// `get` (delegated to the base; GET base/{id}).
     ///
     /// # Errors
     /// See the base resource.
-    pub fn get(&self, id: &str) -> Result<Value, SignalWireRestError> {
-        self.base.get(id)
+    pub fn get(
+        &self,
+        id: &str,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base.get_with_options(id, request_options.as_ref())
     }
 
     /// `paginate` (delegated to the base): iterate every item across all
     /// pages, following the response's `links.next` cursor.
     #[must_use]
-    pub fn paginate(&self, params: &HashMap<String, String>) -> PaginatedIterator<'a> {
-        self.base.paginate(params)
+    pub fn paginate(
+        &self,
+        params: &HashMap<String, String>,
+        request_options: Option<RequestOptions>,
+    ) -> PaginatedIterator<'a> {
+        self.base.paginate_with_options(params, request_options)
     }
 }
 
@@ -830,8 +844,13 @@ impl<'a> GenericResources<'a> {
     ///
     /// # Errors
     /// Returns [`SignalWireRestError`] on transport failure, a non-2xx status.
-    pub fn list(&self, params: &HashMap<String, String>) -> Result<Value, SignalWireRestError> {
-        self.client().get(self.base_path(), params)
+    pub fn list(
+        &self,
+        params: &HashMap<String, String>,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.client()
+            .get_with_options(self.base_path(), params, request_options.as_ref())
     }
 
     /// `GET /resources/{id}` (generated operation method; query params).
@@ -842,16 +861,23 @@ impl<'a> GenericResources<'a> {
         &self,
         id: &str,
         params: &HashMap<String, String>,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.client().get(&self.path(&[id]), params)
+        self.client()
+            .get_with_options(&self.path(&[id]), params, request_options.as_ref())
     }
 
     /// `DELETE /resources/{id}` (generated operation method).
     ///
     /// # Errors
     /// Returns [`SignalWireRestError`] on transport failure, a non-2xx status.
-    pub fn delete(&self, id: &str) -> Result<Value, SignalWireRestError> {
-        self.client().delete(&self.path(&[id]))
+    pub fn delete(
+        &self,
+        id: &str,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.client()
+            .delete_with_options(&self.path(&[id]), request_options.as_ref())
     }
 
     /// `GET /resources/{id}/addresses` (generated operation method; query params).
@@ -862,8 +888,13 @@ impl<'a> GenericResources<'a> {
         &self,
         id: &str,
         params: &HashMap<String, String>,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.client().get(&self.path(&[id, "addresses"]), params)
+        self.client().get_with_options(
+            &self.path(&[id, "addresses"]),
+            params,
+            request_options.as_ref(),
+        )
     }
 
     /// `POST /resources/{id}/phone_routes` (generated operation method).
@@ -875,9 +906,13 @@ impl<'a> GenericResources<'a> {
         &self,
         id: &str,
         request: GenericResourcesAssignPhoneRouteRequest,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.client()
-            .post(&self.path(&[id, "phone_routes"]), &request.build())
+        self.client().post_with_options(
+            &self.path(&[id, "phone_routes"]),
+            &request.build(),
+            request_options.as_ref(),
+        )
     }
 
     /// `POST /resources/{id}/domain_applications` (generated operation method).
@@ -889,9 +924,13 @@ impl<'a> GenericResources<'a> {
         &self,
         id: &str,
         request: GenericResourcesAssignDomainApplicationRequest,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.client()
-            .post(&self.path(&[id, "domain_applications"]), &request.build())
+        self.client().post_with_options(
+            &self.path(&[id, "domain_applications"]),
+            &request.build(),
+            request_options.as_ref(),
+        )
     }
 }
 
@@ -921,40 +960,64 @@ impl<'a> AiAgents<'a> {
     ///
     /// # Errors
     /// See the base resource.
-    pub fn list(&self, params: &HashMap<String, String>) -> Result<Value, SignalWireRestError> {
-        self.base.list(params)
+    pub fn list(
+        &self,
+        params: &HashMap<String, String>,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base
+            .list_with_options(params, request_options.as_ref())
     }
 
     /// `get` (delegated to the base; GET base/{id}).
     ///
     /// # Errors
     /// See the base resource.
-    pub fn get(&self, id: &str) -> Result<Value, SignalWireRestError> {
-        self.base.get(id)
+    pub fn get(
+        &self,
+        id: &str,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base.get_with_options(id, request_options.as_ref())
     }
 
     /// `create` (delegated to the base; POST base path).
     ///
     /// # Errors
     /// See the base resource.
-    pub fn create(&self, data: &Value) -> Result<Value, SignalWireRestError> {
-        self.base.create(data)
+    pub fn create(
+        &self,
+        data: &Value,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base
+            .create_with_options(data, request_options.as_ref())
     }
 
     /// `update` (delegated to the base; PUT/PATCH base/{id}).
     ///
     /// # Errors
     /// See the base resource.
-    pub fn update(&self, id: &str, data: &Value) -> Result<Value, SignalWireRestError> {
-        self.base.update(id, data)
+    pub fn update(
+        &self,
+        id: &str,
+        data: &Value,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base
+            .update_with_options(id, data, request_options.as_ref())
     }
 
     /// `delete` (delegated to the base; DELETE base/{id}).
     ///
     /// # Errors
     /// See the base resource.
-    pub fn delete(&self, id: &str) -> Result<Value, SignalWireRestError> {
-        self.base.delete(id)
+    pub fn delete(
+        &self,
+        id: &str,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base.delete_with_options(id, request_options.as_ref())
     }
 
     /// `list_addresses` (delegated to the Fabric base; GET base/{id}/addresses).
@@ -965,8 +1028,10 @@ impl<'a> AiAgents<'a> {
         &self,
         id: &str,
         params: &HashMap<String, String>,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.base.list_addresses(id, params)
+        self.base
+            .list_addresses_with_options(id, params, request_options.as_ref())
     }
 }
 
@@ -1000,40 +1065,64 @@ impl<'a> CallFlows<'a> {
     ///
     /// # Errors
     /// See the base resource.
-    pub fn list(&self, params: &HashMap<String, String>) -> Result<Value, SignalWireRestError> {
-        self.base.list(params)
+    pub fn list(
+        &self,
+        params: &HashMap<String, String>,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base
+            .list_with_options(params, request_options.as_ref())
     }
 
     /// `get` (delegated to the base; GET base/{id}).
     ///
     /// # Errors
     /// See the base resource.
-    pub fn get(&self, id: &str) -> Result<Value, SignalWireRestError> {
-        self.base.get(id)
+    pub fn get(
+        &self,
+        id: &str,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base.get_with_options(id, request_options.as_ref())
     }
 
     /// `create` (delegated to the base; POST base path).
     ///
     /// # Errors
     /// See the base resource.
-    pub fn create(&self, data: &Value) -> Result<Value, SignalWireRestError> {
-        self.base.create(data)
+    pub fn create(
+        &self,
+        data: &Value,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base
+            .create_with_options(data, request_options.as_ref())
     }
 
     /// `update` (delegated to the base; PUT/PATCH base/{id}).
     ///
     /// # Errors
     /// See the base resource.
-    pub fn update(&self, id: &str, data: &Value) -> Result<Value, SignalWireRestError> {
-        self.base.update(id, data)
+    pub fn update(
+        &self,
+        id: &str,
+        data: &Value,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base
+            .update_with_options(id, data, request_options.as_ref())
     }
 
     /// `delete` (delegated to the base; DELETE base/{id}).
     ///
     /// # Errors
     /// See the base resource.
-    pub fn delete(&self, id: &str) -> Result<Value, SignalWireRestError> {
-        self.base.delete(id)
+    pub fn delete(
+        &self,
+        id: &str,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base.delete_with_options(id, request_options.as_ref())
     }
 
     /// `GET /resources/call_flow/{id}/addresses` (generated operation method; query params).
@@ -1044,10 +1133,12 @@ impl<'a> CallFlows<'a> {
         &self,
         id: &str,
         params: &HashMap<String, String>,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.client().get(
+        self.client().get_with_options(
             &format!("/api/fabric/resources/call_flow/{id}/addresses"),
             params,
+            request_options.as_ref(),
         )
     }
 
@@ -1059,10 +1150,12 @@ impl<'a> CallFlows<'a> {
         &self,
         id: &str,
         params: &HashMap<String, String>,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.client().get(
+        self.client().get_with_options(
             &format!("/api/fabric/resources/call_flow/{id}/versions"),
             params,
+            request_options.as_ref(),
         )
     }
 
@@ -1071,10 +1164,16 @@ impl<'a> CallFlows<'a> {
     /// # Errors
     /// Returns [`SignalWireRestError`] on transport failure, a non-2xx
     /// status, or an unparseable response body.
-    pub fn deploy_version(&self, id: &str, body: &Value) -> Result<Value, SignalWireRestError> {
-        self.client().post(
+    pub fn deploy_version(
+        &self,
+        id: &str,
+        body: &Value,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.client().post_with_options(
             &format!("/api/fabric/resources/call_flow/{id}/versions"),
             body,
+            request_options.as_ref(),
         )
     }
 }
@@ -1109,40 +1208,64 @@ impl<'a> ConferenceRooms<'a> {
     ///
     /// # Errors
     /// See the base resource.
-    pub fn list(&self, params: &HashMap<String, String>) -> Result<Value, SignalWireRestError> {
-        self.base.list(params)
+    pub fn list(
+        &self,
+        params: &HashMap<String, String>,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base
+            .list_with_options(params, request_options.as_ref())
     }
 
     /// `get` (delegated to the base; GET base/{id}).
     ///
     /// # Errors
     /// See the base resource.
-    pub fn get(&self, id: &str) -> Result<Value, SignalWireRestError> {
-        self.base.get(id)
+    pub fn get(
+        &self,
+        id: &str,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base.get_with_options(id, request_options.as_ref())
     }
 
     /// `create` (delegated to the base; POST base path).
     ///
     /// # Errors
     /// See the base resource.
-    pub fn create(&self, data: &Value) -> Result<Value, SignalWireRestError> {
-        self.base.create(data)
+    pub fn create(
+        &self,
+        data: &Value,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base
+            .create_with_options(data, request_options.as_ref())
     }
 
     /// `update` (delegated to the base; PUT/PATCH base/{id}).
     ///
     /// # Errors
     /// See the base resource.
-    pub fn update(&self, id: &str, data: &Value) -> Result<Value, SignalWireRestError> {
-        self.base.update(id, data)
+    pub fn update(
+        &self,
+        id: &str,
+        data: &Value,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base
+            .update_with_options(id, data, request_options.as_ref())
     }
 
     /// `delete` (delegated to the base; DELETE base/{id}).
     ///
     /// # Errors
     /// See the base resource.
-    pub fn delete(&self, id: &str) -> Result<Value, SignalWireRestError> {
-        self.base.delete(id)
+    pub fn delete(
+        &self,
+        id: &str,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base.delete_with_options(id, request_options.as_ref())
     }
 
     /// `GET /resources/conference_room/{id}/addresses` (generated operation method; query params).
@@ -1153,10 +1276,12 @@ impl<'a> ConferenceRooms<'a> {
         &self,
         id: &str,
         params: &HashMap<String, String>,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.client().get(
+        self.client().get_with_options(
             &format!("/api/fabric/resources/conference_room/{id}/addresses"),
             params,
+            request_options.as_ref(),
         )
     }
 }
@@ -1195,8 +1320,13 @@ impl<'a> CxmlApplications<'a> {
     ///
     /// # Errors
     /// Returns [`SignalWireRestError`] on transport failure, a non-2xx status.
-    pub fn list(&self, params: &HashMap<String, String>) -> Result<Value, SignalWireRestError> {
-        self.client().get(self.base_path(), params)
+    pub fn list(
+        &self,
+        params: &HashMap<String, String>,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.client()
+            .get_with_options(self.base_path(), params, request_options.as_ref())
     }
 
     /// `GET /resources/cxml_applications/{id}` (generated operation method; query params).
@@ -1207,8 +1337,10 @@ impl<'a> CxmlApplications<'a> {
         &self,
         id: &str,
         params: &HashMap<String, String>,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.client().get(&self.path(&[id]), params)
+        self.client()
+            .get_with_options(&self.path(&[id]), params, request_options.as_ref())
     }
 
     /// `PUT /resources/cxml_applications/{id}` (generated operation method).
@@ -1220,16 +1352,26 @@ impl<'a> CxmlApplications<'a> {
         &self,
         id: &str,
         request: CxmlApplicationsUpdateRequest,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.client().put(&self.path(&[id]), &request.build())
+        self.client().put_with_options(
+            &self.path(&[id]),
+            &request.build(),
+            request_options.as_ref(),
+        )
     }
 
     /// `DELETE /resources/cxml_applications/{id}` (generated operation method).
     ///
     /// # Errors
     /// Returns [`SignalWireRestError`] on transport failure, a non-2xx status.
-    pub fn delete(&self, id: &str) -> Result<Value, SignalWireRestError> {
-        self.client().delete(&self.path(&[id]))
+    pub fn delete(
+        &self,
+        id: &str,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.client()
+            .delete_with_options(&self.path(&[id]), request_options.as_ref())
     }
 
     /// `GET /resources/cxml_applications/{id}/addresses` (generated operation method; query params).
@@ -1240,8 +1382,13 @@ impl<'a> CxmlApplications<'a> {
         &self,
         id: &str,
         params: &HashMap<String, String>,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.client().get(&self.path(&[id, "addresses"]), params)
+        self.client().get_with_options(
+            &self.path(&[id, "addresses"]),
+            params,
+            request_options.as_ref(),
+        )
     }
 }
 
@@ -1271,40 +1418,64 @@ impl<'a> CxmlScripts<'a> {
     ///
     /// # Errors
     /// See the base resource.
-    pub fn list(&self, params: &HashMap<String, String>) -> Result<Value, SignalWireRestError> {
-        self.base.list(params)
+    pub fn list(
+        &self,
+        params: &HashMap<String, String>,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base
+            .list_with_options(params, request_options.as_ref())
     }
 
     /// `get` (delegated to the base; GET base/{id}).
     ///
     /// # Errors
     /// See the base resource.
-    pub fn get(&self, id: &str) -> Result<Value, SignalWireRestError> {
-        self.base.get(id)
+    pub fn get(
+        &self,
+        id: &str,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base.get_with_options(id, request_options.as_ref())
     }
 
     /// `create` (delegated to the base; POST base path).
     ///
     /// # Errors
     /// See the base resource.
-    pub fn create(&self, data: &Value) -> Result<Value, SignalWireRestError> {
-        self.base.create(data)
+    pub fn create(
+        &self,
+        data: &Value,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base
+            .create_with_options(data, request_options.as_ref())
     }
 
     /// `update` (delegated to the base; PUT/PATCH base/{id}).
     ///
     /// # Errors
     /// See the base resource.
-    pub fn update(&self, id: &str, data: &Value) -> Result<Value, SignalWireRestError> {
-        self.base.update(id, data)
+    pub fn update(
+        &self,
+        id: &str,
+        data: &Value,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base
+            .update_with_options(id, data, request_options.as_ref())
     }
 
     /// `delete` (delegated to the base; DELETE base/{id}).
     ///
     /// # Errors
     /// See the base resource.
-    pub fn delete(&self, id: &str) -> Result<Value, SignalWireRestError> {
-        self.base.delete(id)
+    pub fn delete(
+        &self,
+        id: &str,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base.delete_with_options(id, request_options.as_ref())
     }
 
     /// `list_addresses` (delegated to the Fabric base; GET base/{id}/addresses).
@@ -1315,8 +1486,10 @@ impl<'a> CxmlScripts<'a> {
         &self,
         id: &str,
         params: &HashMap<String, String>,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.base.list_addresses(id, params)
+        self.base
+            .list_addresses_with_options(id, params, request_options.as_ref())
     }
 }
 
@@ -1346,40 +1519,64 @@ impl<'a> CxmlWebhooks<'a> {
     ///
     /// # Errors
     /// See the base resource.
-    pub fn list(&self, params: &HashMap<String, String>) -> Result<Value, SignalWireRestError> {
-        self.base.list(params)
+    pub fn list(
+        &self,
+        params: &HashMap<String, String>,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base
+            .list_with_options(params, request_options.as_ref())
     }
 
     /// `get` (delegated to the base; GET base/{id}).
     ///
     /// # Errors
     /// See the base resource.
-    pub fn get(&self, id: &str) -> Result<Value, SignalWireRestError> {
-        self.base.get(id)
+    pub fn get(
+        &self,
+        id: &str,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base.get_with_options(id, request_options.as_ref())
     }
 
     /// `create` (delegated to the base; POST base path).
     ///
     /// # Errors
     /// See the base resource.
-    pub fn create(&self, data: &Value) -> Result<Value, SignalWireRestError> {
-        self.base.create(data)
+    pub fn create(
+        &self,
+        data: &Value,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base
+            .create_with_options(data, request_options.as_ref())
     }
 
     /// `update` (delegated to the base; PUT/PATCH base/{id}).
     ///
     /// # Errors
     /// See the base resource.
-    pub fn update(&self, id: &str, data: &Value) -> Result<Value, SignalWireRestError> {
-        self.base.update(id, data)
+    pub fn update(
+        &self,
+        id: &str,
+        data: &Value,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base
+            .update_with_options(id, data, request_options.as_ref())
     }
 
     /// `delete` (delegated to the base; DELETE base/{id}).
     ///
     /// # Errors
     /// See the base resource.
-    pub fn delete(&self, id: &str) -> Result<Value, SignalWireRestError> {
-        self.base.delete(id)
+    pub fn delete(
+        &self,
+        id: &str,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base.delete_with_options(id, request_options.as_ref())
     }
 
     /// `list_addresses` (delegated to the Fabric base; GET base/{id}/addresses).
@@ -1390,8 +1587,10 @@ impl<'a> CxmlWebhooks<'a> {
         &self,
         id: &str,
         params: &HashMap<String, String>,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.base.list_addresses(id, params)
+        self.base
+            .list_addresses_with_options(id, params, request_options.as_ref())
     }
 }
 
@@ -1421,40 +1620,64 @@ impl<'a> FreeswitchConnectors<'a> {
     ///
     /// # Errors
     /// See the base resource.
-    pub fn list(&self, params: &HashMap<String, String>) -> Result<Value, SignalWireRestError> {
-        self.base.list(params)
+    pub fn list(
+        &self,
+        params: &HashMap<String, String>,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base
+            .list_with_options(params, request_options.as_ref())
     }
 
     /// `get` (delegated to the base; GET base/{id}).
     ///
     /// # Errors
     /// See the base resource.
-    pub fn get(&self, id: &str) -> Result<Value, SignalWireRestError> {
-        self.base.get(id)
+    pub fn get(
+        &self,
+        id: &str,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base.get_with_options(id, request_options.as_ref())
     }
 
     /// `create` (delegated to the base; POST base path).
     ///
     /// # Errors
     /// See the base resource.
-    pub fn create(&self, data: &Value) -> Result<Value, SignalWireRestError> {
-        self.base.create(data)
+    pub fn create(
+        &self,
+        data: &Value,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base
+            .create_with_options(data, request_options.as_ref())
     }
 
     /// `update` (delegated to the base; PUT/PATCH base/{id}).
     ///
     /// # Errors
     /// See the base resource.
-    pub fn update(&self, id: &str, data: &Value) -> Result<Value, SignalWireRestError> {
-        self.base.update(id, data)
+    pub fn update(
+        &self,
+        id: &str,
+        data: &Value,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base
+            .update_with_options(id, data, request_options.as_ref())
     }
 
     /// `delete` (delegated to the base; DELETE base/{id}).
     ///
     /// # Errors
     /// See the base resource.
-    pub fn delete(&self, id: &str) -> Result<Value, SignalWireRestError> {
-        self.base.delete(id)
+    pub fn delete(
+        &self,
+        id: &str,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base.delete_with_options(id, request_options.as_ref())
     }
 
     /// `list_addresses` (delegated to the Fabric base; GET base/{id}/addresses).
@@ -1465,8 +1688,10 @@ impl<'a> FreeswitchConnectors<'a> {
         &self,
         id: &str,
         params: &HashMap<String, String>,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.base.list_addresses(id, params)
+        self.base
+            .list_addresses_with_options(id, params, request_options.as_ref())
     }
 }
 
@@ -1496,40 +1721,64 @@ impl<'a> RelayApplications<'a> {
     ///
     /// # Errors
     /// See the base resource.
-    pub fn list(&self, params: &HashMap<String, String>) -> Result<Value, SignalWireRestError> {
-        self.base.list(params)
+    pub fn list(
+        &self,
+        params: &HashMap<String, String>,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base
+            .list_with_options(params, request_options.as_ref())
     }
 
     /// `get` (delegated to the base; GET base/{id}).
     ///
     /// # Errors
     /// See the base resource.
-    pub fn get(&self, id: &str) -> Result<Value, SignalWireRestError> {
-        self.base.get(id)
+    pub fn get(
+        &self,
+        id: &str,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base.get_with_options(id, request_options.as_ref())
     }
 
     /// `create` (delegated to the base; POST base path).
     ///
     /// # Errors
     /// See the base resource.
-    pub fn create(&self, data: &Value) -> Result<Value, SignalWireRestError> {
-        self.base.create(data)
+    pub fn create(
+        &self,
+        data: &Value,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base
+            .create_with_options(data, request_options.as_ref())
     }
 
     /// `update` (delegated to the base; PUT/PATCH base/{id}).
     ///
     /// # Errors
     /// See the base resource.
-    pub fn update(&self, id: &str, data: &Value) -> Result<Value, SignalWireRestError> {
-        self.base.update(id, data)
+    pub fn update(
+        &self,
+        id: &str,
+        data: &Value,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base
+            .update_with_options(id, data, request_options.as_ref())
     }
 
     /// `delete` (delegated to the base; DELETE base/{id}).
     ///
     /// # Errors
     /// See the base resource.
-    pub fn delete(&self, id: &str) -> Result<Value, SignalWireRestError> {
-        self.base.delete(id)
+    pub fn delete(
+        &self,
+        id: &str,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base.delete_with_options(id, request_options.as_ref())
     }
 
     /// `list_addresses` (delegated to the Fabric base; GET base/{id}/addresses).
@@ -1540,8 +1789,10 @@ impl<'a> RelayApplications<'a> {
         &self,
         id: &str,
         params: &HashMap<String, String>,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.base.list_addresses(id, params)
+        self.base
+            .list_addresses_with_options(id, params, request_options.as_ref())
     }
 }
 
@@ -1571,40 +1822,64 @@ impl<'a> SipEndpoints<'a> {
     ///
     /// # Errors
     /// See the base resource.
-    pub fn list(&self, params: &HashMap<String, String>) -> Result<Value, SignalWireRestError> {
-        self.base.list(params)
+    pub fn list(
+        &self,
+        params: &HashMap<String, String>,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base
+            .list_with_options(params, request_options.as_ref())
     }
 
     /// `get` (delegated to the base; GET base/{id}).
     ///
     /// # Errors
     /// See the base resource.
-    pub fn get(&self, id: &str) -> Result<Value, SignalWireRestError> {
-        self.base.get(id)
+    pub fn get(
+        &self,
+        id: &str,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base.get_with_options(id, request_options.as_ref())
     }
 
     /// `create` (delegated to the base; POST base path).
     ///
     /// # Errors
     /// See the base resource.
-    pub fn create(&self, data: &Value) -> Result<Value, SignalWireRestError> {
-        self.base.create(data)
+    pub fn create(
+        &self,
+        data: &Value,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base
+            .create_with_options(data, request_options.as_ref())
     }
 
     /// `update` (delegated to the base; PUT/PATCH base/{id}).
     ///
     /// # Errors
     /// See the base resource.
-    pub fn update(&self, id: &str, data: &Value) -> Result<Value, SignalWireRestError> {
-        self.base.update(id, data)
+    pub fn update(
+        &self,
+        id: &str,
+        data: &Value,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base
+            .update_with_options(id, data, request_options.as_ref())
     }
 
     /// `delete` (delegated to the base; DELETE base/{id}).
     ///
     /// # Errors
     /// See the base resource.
-    pub fn delete(&self, id: &str) -> Result<Value, SignalWireRestError> {
-        self.base.delete(id)
+    pub fn delete(
+        &self,
+        id: &str,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base.delete_with_options(id, request_options.as_ref())
     }
 
     /// `list_addresses` (delegated to the Fabric base; GET base/{id}/addresses).
@@ -1615,8 +1890,10 @@ impl<'a> SipEndpoints<'a> {
         &self,
         id: &str,
         params: &HashMap<String, String>,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.base.list_addresses(id, params)
+        self.base
+            .list_addresses_with_options(id, params, request_options.as_ref())
     }
 }
 
@@ -1646,40 +1923,64 @@ impl<'a> SipGateways<'a> {
     ///
     /// # Errors
     /// See the base resource.
-    pub fn list(&self, params: &HashMap<String, String>) -> Result<Value, SignalWireRestError> {
-        self.base.list(params)
+    pub fn list(
+        &self,
+        params: &HashMap<String, String>,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base
+            .list_with_options(params, request_options.as_ref())
     }
 
     /// `get` (delegated to the base; GET base/{id}).
     ///
     /// # Errors
     /// See the base resource.
-    pub fn get(&self, id: &str) -> Result<Value, SignalWireRestError> {
-        self.base.get(id)
+    pub fn get(
+        &self,
+        id: &str,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base.get_with_options(id, request_options.as_ref())
     }
 
     /// `create` (delegated to the base; POST base path).
     ///
     /// # Errors
     /// See the base resource.
-    pub fn create(&self, data: &Value) -> Result<Value, SignalWireRestError> {
-        self.base.create(data)
+    pub fn create(
+        &self,
+        data: &Value,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base
+            .create_with_options(data, request_options.as_ref())
     }
 
     /// `update` (delegated to the base; PUT/PATCH base/{id}).
     ///
     /// # Errors
     /// See the base resource.
-    pub fn update(&self, id: &str, data: &Value) -> Result<Value, SignalWireRestError> {
-        self.base.update(id, data)
+    pub fn update(
+        &self,
+        id: &str,
+        data: &Value,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base
+            .update_with_options(id, data, request_options.as_ref())
     }
 
     /// `delete` (delegated to the base; DELETE base/{id}).
     ///
     /// # Errors
     /// See the base resource.
-    pub fn delete(&self, id: &str) -> Result<Value, SignalWireRestError> {
-        self.base.delete(id)
+    pub fn delete(
+        &self,
+        id: &str,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base.delete_with_options(id, request_options.as_ref())
     }
 
     /// `list_addresses` (delegated to the Fabric base; GET base/{id}/addresses).
@@ -1690,8 +1991,10 @@ impl<'a> SipGateways<'a> {
         &self,
         id: &str,
         params: &HashMap<String, String>,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.base.list_addresses(id, params)
+        self.base
+            .list_addresses_with_options(id, params, request_options.as_ref())
     }
 }
 
@@ -1729,40 +2032,64 @@ impl<'a> Subscribers<'a> {
     ///
     /// # Errors
     /// See the base resource.
-    pub fn list(&self, params: &HashMap<String, String>) -> Result<Value, SignalWireRestError> {
-        self.base.list(params)
+    pub fn list(
+        &self,
+        params: &HashMap<String, String>,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base
+            .list_with_options(params, request_options.as_ref())
     }
 
     /// `get` (delegated to the base; GET base/{id}).
     ///
     /// # Errors
     /// See the base resource.
-    pub fn get(&self, id: &str) -> Result<Value, SignalWireRestError> {
-        self.base.get(id)
+    pub fn get(
+        &self,
+        id: &str,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base.get_with_options(id, request_options.as_ref())
     }
 
     /// `create` (delegated to the base; POST base path).
     ///
     /// # Errors
     /// See the base resource.
-    pub fn create(&self, data: &Value) -> Result<Value, SignalWireRestError> {
-        self.base.create(data)
+    pub fn create(
+        &self,
+        data: &Value,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base
+            .create_with_options(data, request_options.as_ref())
     }
 
     /// `update` (delegated to the base; PUT/PATCH base/{id}).
     ///
     /// # Errors
     /// See the base resource.
-    pub fn update(&self, id: &str, data: &Value) -> Result<Value, SignalWireRestError> {
-        self.base.update(id, data)
+    pub fn update(
+        &self,
+        id: &str,
+        data: &Value,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base
+            .update_with_options(id, data, request_options.as_ref())
     }
 
     /// `delete` (delegated to the base; DELETE base/{id}).
     ///
     /// # Errors
     /// See the base resource.
-    pub fn delete(&self, id: &str) -> Result<Value, SignalWireRestError> {
-        self.base.delete(id)
+    pub fn delete(
+        &self,
+        id: &str,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base.delete_with_options(id, request_options.as_ref())
     }
 
     /// `list_addresses` (delegated to the Fabric base; GET base/{id}/addresses).
@@ -1773,8 +2100,10 @@ impl<'a> Subscribers<'a> {
         &self,
         id: &str,
         params: &HashMap<String, String>,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.base.list_addresses(id, params)
+        self.base
+            .list_addresses_with_options(id, params, request_options.as_ref())
     }
 
     /// `GET /resources/subscribers/{fabric_subscriber_id}/sip_endpoints` (generated operation method; query params).
@@ -1785,9 +2114,13 @@ impl<'a> Subscribers<'a> {
         &self,
         subscriber_id: &str,
         params: &HashMap<String, String>,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.client()
-            .get(&self.path(&[subscriber_id, "sip_endpoints"]), params)
+        self.client().get_with_options(
+            &self.path(&[subscriber_id, "sip_endpoints"]),
+            params,
+            request_options.as_ref(),
+        )
     }
 
     /// `POST /resources/subscribers/{fabric_subscriber_id}/sip_endpoints` (generated operation method).
@@ -1799,10 +2132,12 @@ impl<'a> Subscribers<'a> {
         &self,
         subscriber_id: &str,
         request: SubscribersCreateSipEndpointRequest,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.client().post(
+        self.client().post_with_options(
             &self.path(&[subscriber_id, "sip_endpoints"]),
             &request.build(),
+            request_options.as_ref(),
         )
     }
 
@@ -1815,9 +2150,13 @@ impl<'a> Subscribers<'a> {
         subscriber_id: &str,
         id: &str,
         params: &HashMap<String, String>,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.client()
-            .get(&self.path(&[subscriber_id, "sip_endpoints", id]), params)
+        self.client().get_with_options(
+            &self.path(&[subscriber_id, "sip_endpoints", id]),
+            params,
+            request_options.as_ref(),
+        )
     }
 
     /// `PATCH /resources/subscribers/{fabric_subscriber_id}/sip_endpoints/{id}` (generated operation method).
@@ -1830,10 +2169,12 @@ impl<'a> Subscribers<'a> {
         subscriber_id: &str,
         id: &str,
         request: SubscribersUpdateSipEndpointRequest,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.client().patch(
+        self.client().patch_with_options(
             &self.path(&[subscriber_id, "sip_endpoints", id]),
             &request.build(),
+            request_options.as_ref(),
         )
     }
 
@@ -1845,9 +2186,12 @@ impl<'a> Subscribers<'a> {
         &self,
         subscriber_id: &str,
         id: &str,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.client()
-            .delete(&self.path(&[subscriber_id, "sip_endpoints", id]))
+        self.client().delete_with_options(
+            &self.path(&[subscriber_id, "sip_endpoints", id]),
+            request_options.as_ref(),
+        )
     }
 }
 
@@ -1877,40 +2221,64 @@ impl<'a> SwmlScripts<'a> {
     ///
     /// # Errors
     /// See the base resource.
-    pub fn list(&self, params: &HashMap<String, String>) -> Result<Value, SignalWireRestError> {
-        self.base.list(params)
+    pub fn list(
+        &self,
+        params: &HashMap<String, String>,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base
+            .list_with_options(params, request_options.as_ref())
     }
 
     /// `get` (delegated to the base; GET base/{id}).
     ///
     /// # Errors
     /// See the base resource.
-    pub fn get(&self, id: &str) -> Result<Value, SignalWireRestError> {
-        self.base.get(id)
+    pub fn get(
+        &self,
+        id: &str,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base.get_with_options(id, request_options.as_ref())
     }
 
     /// `create` (delegated to the base; POST base path).
     ///
     /// # Errors
     /// See the base resource.
-    pub fn create(&self, data: &Value) -> Result<Value, SignalWireRestError> {
-        self.base.create(data)
+    pub fn create(
+        &self,
+        data: &Value,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base
+            .create_with_options(data, request_options.as_ref())
     }
 
     /// `update` (delegated to the base; PUT/PATCH base/{id}).
     ///
     /// # Errors
     /// See the base resource.
-    pub fn update(&self, id: &str, data: &Value) -> Result<Value, SignalWireRestError> {
-        self.base.update(id, data)
+    pub fn update(
+        &self,
+        id: &str,
+        data: &Value,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base
+            .update_with_options(id, data, request_options.as_ref())
     }
 
     /// `delete` (delegated to the base; DELETE base/{id}).
     ///
     /// # Errors
     /// See the base resource.
-    pub fn delete(&self, id: &str) -> Result<Value, SignalWireRestError> {
-        self.base.delete(id)
+    pub fn delete(
+        &self,
+        id: &str,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base.delete_with_options(id, request_options.as_ref())
     }
 
     /// `list_addresses` (delegated to the Fabric base; GET base/{id}/addresses).
@@ -1921,8 +2289,10 @@ impl<'a> SwmlScripts<'a> {
         &self,
         id: &str,
         params: &HashMap<String, String>,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.base.list_addresses(id, params)
+        self.base
+            .list_addresses_with_options(id, params, request_options.as_ref())
     }
 }
 
@@ -1952,40 +2322,64 @@ impl<'a> SwmlWebhooks<'a> {
     ///
     /// # Errors
     /// See the base resource.
-    pub fn list(&self, params: &HashMap<String, String>) -> Result<Value, SignalWireRestError> {
-        self.base.list(params)
+    pub fn list(
+        &self,
+        params: &HashMap<String, String>,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base
+            .list_with_options(params, request_options.as_ref())
     }
 
     /// `get` (delegated to the base; GET base/{id}).
     ///
     /// # Errors
     /// See the base resource.
-    pub fn get(&self, id: &str) -> Result<Value, SignalWireRestError> {
-        self.base.get(id)
+    pub fn get(
+        &self,
+        id: &str,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base.get_with_options(id, request_options.as_ref())
     }
 
     /// `create` (delegated to the base; POST base path).
     ///
     /// # Errors
     /// See the base resource.
-    pub fn create(&self, data: &Value) -> Result<Value, SignalWireRestError> {
-        self.base.create(data)
+    pub fn create(
+        &self,
+        data: &Value,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base
+            .create_with_options(data, request_options.as_ref())
     }
 
     /// `update` (delegated to the base; PUT/PATCH base/{id}).
     ///
     /// # Errors
     /// See the base resource.
-    pub fn update(&self, id: &str, data: &Value) -> Result<Value, SignalWireRestError> {
-        self.base.update(id, data)
+    pub fn update(
+        &self,
+        id: &str,
+        data: &Value,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base
+            .update_with_options(id, data, request_options.as_ref())
     }
 
     /// `delete` (delegated to the base; DELETE base/{id}).
     ///
     /// # Errors
     /// See the base resource.
-    pub fn delete(&self, id: &str) -> Result<Value, SignalWireRestError> {
-        self.base.delete(id)
+    pub fn delete(
+        &self,
+        id: &str,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base.delete_with_options(id, request_options.as_ref())
     }
 
     /// `list_addresses` (delegated to the Fabric base; GET base/{id}/addresses).
@@ -1996,8 +2390,10 @@ impl<'a> SwmlWebhooks<'a> {
         &self,
         id: &str,
         params: &HashMap<String, String>,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.base.list_addresses(id, params)
+        self.base
+            .list_addresses_with_options(id, params, request_options.as_ref())
     }
 }
 
@@ -2035,9 +2431,13 @@ impl<'a> FabricTokens<'a> {
     pub fn create_subscriber_token(
         &self,
         request: FabricTokensCreateSubscriberTokenRequest,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.client()
-            .post("/api/fabric/subscribers/tokens", &request.build())
+        self.client().post_with_options(
+            "/api/fabric/subscribers/tokens",
+            &request.build(),
+            request_options.as_ref(),
+        )
     }
 
     /// `POST /subscribers/tokens/refresh` (generated operation method).
@@ -2048,9 +2448,13 @@ impl<'a> FabricTokens<'a> {
     pub fn refresh_subscriber_token(
         &self,
         request: FabricTokensRefreshSubscriberTokenRequest,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.client()
-            .post("/api/fabric/subscribers/tokens/refresh", &request.build())
+        self.client().post_with_options(
+            "/api/fabric/subscribers/tokens/refresh",
+            &request.build(),
+            request_options.as_ref(),
+        )
     }
 
     /// `POST /subscriber/invites` (generated operation method).
@@ -2061,9 +2465,13 @@ impl<'a> FabricTokens<'a> {
     pub fn create_invite_token(
         &self,
         request: FabricTokensCreateInviteTokenRequest,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.client()
-            .post("/api/fabric/subscriber/invites", &request.build())
+        self.client().post_with_options(
+            "/api/fabric/subscriber/invites",
+            &request.build(),
+            request_options.as_ref(),
+        )
     }
 
     /// `POST /guests/tokens` (generated operation method).
@@ -2074,9 +2482,13 @@ impl<'a> FabricTokens<'a> {
     pub fn create_guest_token(
         &self,
         request: FabricTokensCreateGuestTokenRequest,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.client()
-            .post("/api/fabric/guests/tokens", &request.build())
+        self.client().post_with_options(
+            "/api/fabric/guests/tokens",
+            &request.build(),
+            request_options.as_ref(),
+        )
     }
 
     /// `POST /embeds/tokens` (generated operation method).
@@ -2087,8 +2499,12 @@ impl<'a> FabricTokens<'a> {
     pub fn create_embed_token(
         &self,
         request: FabricTokensCreateEmbedTokenRequest,
+        request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.client()
-            .post("/api/fabric/embeds/tokens", &request.build())
+        self.client().post_with_options(
+            "/api/fabric/embeds/tokens",
+            &request.build(),
+            request_options.as_ref(),
+        )
     }
 }

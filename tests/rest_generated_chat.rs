@@ -31,10 +31,10 @@ use signalwire::rest::namespaces::generated::video_resources_generated as video_
 fn test_chat_create_token_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let _ = c.chat().create_token(chat_gen::ChatCreateTokenRequest::new(
-        0,
-        serde_json::json!({}),
-    ));
+    let _ = c.chat().create_token(
+        chat_gen::ChatCreateTokenRequest::new(0, serde_json::json!({})),
+        None,
+    );
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "POST");
     assert_eq!(e.matched_route.as_deref(), Some("chat.create_chat_token"));
@@ -47,10 +47,10 @@ fn test_chat_create_token_error() {
     common::mocktest::scenario_set("chat.create_chat_token", 500, json!({"error": "x"}));
     let err = c
         .chat()
-        .create_token(chat_gen::ChatCreateTokenRequest::new(
-            0,
-            serde_json::json!({}),
-        ))
+        .create_token(
+            chat_gen::ChatCreateTokenRequest::new(0, serde_json::json!({})),
+            None,
+        )
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();

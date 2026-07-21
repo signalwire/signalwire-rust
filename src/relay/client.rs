@@ -143,14 +143,18 @@ mod tls {
     }
 }
 
-/// Callback type for inbound call handler.
-pub type OnCallHandler = Box<dyn Fn(Arc<Call>, &Event) + Send + Sync>;
+/// Callback type for inbound call handler. Stored as `Arc` (not `Box`) so the
+/// reader thread can clone it and run it on a dedicated dispatcher thread —
+/// the handler must NOT run inline on the reader thread, or a verb it sends
+/// (answer/play) can never flush and an `Action::wait` inside it deadlocks the
+/// whole client (the reader is the only writer + reader).
+pub type OnCallHandler = Arc<dyn Fn(Arc<Call>, &Event) + Send + Sync>;
 
 /// Callback type for inbound message handler.
-pub type OnMessageHandler = Box<dyn Fn(&Event, &Value) + Send + Sync>;
+pub type OnMessageHandler = Arc<dyn Fn(&Event, &Value) + Send + Sync>;
 
 /// Callback type for generic events.
-pub type OnEventHandler = Box<dyn Fn(&Event, &Value) + Send + Sync>;
+pub type OnEventHandler = Arc<dyn Fn(&Event, &Value) + Send + Sync>;
 
 /// Resolve callback for a pending RPC request.
 type ResolveCallback = Box<dyn FnOnce(Value) + Send>;
@@ -223,6 +227,13 @@ pub struct Client {
     /// `disconnect()` / drop.
     reader_thread: Mutex<Option<thread::JoinHandle<()>>>,
 
+    /// Join handles for the per-inbound-call handler-dispatcher threads. An
+    /// `on_call` handler runs on its own thread (NOT the reader thread) so it can
+    /// send verbs and `Action::wait` without deadlocking the client (RUST-2 /
+    /// NB-1). Finished handles are reaped opportunistically; `disconnect()`
+    /// joins any that remain so no dispatcher thread leaks.
+    handler_threads: Mutex<Vec<thread::JoinHandle<()>>>,
+
     /// Reader thread observes this to know when to exit.
     closing: Arc<AtomicBool>,
 
@@ -261,6 +272,7 @@ impl Client {
             running: Mutex::new(false),
             write_tx: Mutex::new(None),
             reader_thread: Mutex::new(None),
+            handler_threads: Mutex::new(Vec::new()),
             closing: Arc::new(AtomicBool::new(false)),
             sent_messages: Mutex::new(Vec::new()),
             logger: Logger::new("relay.client"),
@@ -584,6 +596,20 @@ impl Client {
         if let Some(handle) = self.reader_thread.lock().unwrap().take() {
             let _ = handle.join();
         }
+
+        // Unblock any on_call-handler thread that is parked in `Action::wait`:
+        // the reader is gone, so no completion event can arrive — resolve every
+        // in-flight action on every tracked call so a waiting handler returns
+        // instead of hanging. Then join the dispatcher threads so none leak.
+        let calls: Vec<Arc<Call>> = self.calls.lock().unwrap().values().cloned().collect();
+        for call in calls {
+            call.resolve_all_actions();
+        }
+        let handlers: Vec<thread::JoinHandle<()>> =
+            self.handler_threads.lock().unwrap().drain(..).collect();
+        for h in handlers {
+            let _ = h.join();
+        }
     }
 
     /// Reconnect with exponential back-off (1s → 30s cap). Sleeps for
@@ -655,6 +681,24 @@ impl Client {
         *self.running.lock().unwrap()
     }
 
+    /// Whether a live WebSocket writer is attached (i.e. a real reader thread
+    /// is pumping I/O), as opposed to the purely in-memory dispatch mode the
+    /// unit tests use.
+    ///
+    /// The `Call` verbs read this to decide whether to genuinely block on the
+    /// server's response (surfacing `RelayError::Rpc` / `Timeout`) or to stay
+    /// in the fire-and-record in-memory path — so the same verb works both
+    /// against a live/mock server and in the socket-less dispatch tests.
+    ///
+    /// # Panics
+    ///
+    /// Panics if an internal mutex is poisoned (i.e. another thread panicked
+    /// while holding the lock). This does not occur under normal operation.
+    #[must_use]
+    pub(crate) fn has_live_socket(&self) -> bool {
+        self.write_tx.lock().unwrap().is_some()
+    }
+
     // ══════════════════════════════════════════════════════════════════
     //  JSON-RPC transport
     // ══════════════════════════════════════════════════════════════════
@@ -719,7 +763,11 @@ impl Client {
     /// panicked while holding the lock). This does not occur under
     /// normal operation.
     pub fn send(&self, msg: &Value) {
-        self.logger.debug(&format!(">> {msg}"));
+        // SECRET-SCRUB: never log the raw frame — it carries project/token/
+        // jwt_token/authorization_state on the connect + re-auth frames. Route
+        // through scrub_frame_value so the wire shape is visible but the
+        // credential VALUES are masked (mirrors python's `>> {_scrub_frame(...)}`).
+        self.logger.debug(&format!(">> {}", scrub_frame_value(msg)));
         {
             // Bounded ring: retain only the most recent SENT_LOG_CAP frames so a
             // long-running session cannot grow this inspection log without limit.
@@ -758,7 +806,12 @@ impl Client {
     /// panicked while holding the lock). This does not occur under
     /// normal operation.
     pub fn handle_message(self: &Arc<Self>, raw: &str) {
-        self.logger.debug(&format!("<< {raw}"));
+        // SECRET-SCRUB: never log the raw inbound frame — a re-auth
+        // (`signalwire.authorization.state`) frame carries the authorization_state
+        // blob, and a connect echo could carry credentials. Route through
+        // scrub_frame_raw so the values are masked (mirrors python's
+        // `<< {_scrub_frame(raw)}`).
+        self.logger.debug(&format!("<< {}", scrub_frame_raw(raw)));
 
         let data: Value = if let Ok(d) = serde_json::from_str(raw) {
             d
@@ -843,7 +896,10 @@ impl Client {
 
         // ── inbound message ──────────────────────────────────────────
         if event_type == "messaging.receive" {
-            if let Some(handler) = self.on_message_handler.lock().unwrap().as_ref() {
+            // Clone the handler out and drop the guard before invoking it
+            // (DX-5: don't hold the registration mutex across the callback).
+            let handler = self.on_message_handler.lock().unwrap().clone();
+            if let Some(handler) = handler {
                 handler(&event, &params);
             }
             return;
@@ -899,8 +955,10 @@ impl Client {
             }
         }
 
-        // Fire generic event handler if nothing else matched.
-        if let Some(handler) = self.on_event_handler.lock().unwrap().as_ref() {
+        // Fire generic event handler if nothing else matched. Clone out and
+        // drop the guard before invoking (DX-5: don't hold the mutex across it).
+        let handler = self.on_event_handler.lock().unwrap().clone();
+        if let Some(handler) = handler {
             handler(&event, outer_params);
         }
     }
@@ -953,7 +1011,7 @@ impl Client {
     /// panicked while holding the lock). This does not occur under
     /// normal operation.
     pub fn on_call<F: Fn(Arc<Call>, &Event) + Send + Sync + 'static>(&self, cb: F) {
-        *self.on_call_handler.lock().unwrap() = Some(Box::new(cb));
+        *self.on_call_handler.lock().unwrap() = Some(Arc::new(cb));
     }
 
     /// Register a handler for inbound messages.
@@ -964,7 +1022,7 @@ impl Client {
     /// panicked while holding the lock). This does not occur under
     /// normal operation.
     pub fn on_message<F: Fn(&Event, &Value) + Send + Sync + 'static>(&self, cb: F) {
-        *self.on_message_handler.lock().unwrap() = Some(Box::new(cb));
+        *self.on_message_handler.lock().unwrap() = Some(Arc::new(cb));
     }
 
     /// Register a generic event handler.
@@ -975,7 +1033,7 @@ impl Client {
     /// panicked while holding the lock). This does not occur under
     /// normal operation.
     pub fn on_event<F: Fn(&Event, &Value) + Send + Sync + 'static>(&self, cb: F) {
-        *self.on_event_handler.lock().unwrap() = Some(Box::new(cb));
+        *self.on_event_handler.lock().unwrap() = Some(Arc::new(cb));
     }
 
     /// Get a call by ID.
@@ -1115,6 +1173,157 @@ impl Client {
                 })
             }
         }
+    }
+
+    /// Execute a `calling.*` verb frame and block for the server's response,
+    /// applying the RELAY "call gone" contract that mirrors Python's
+    /// `Call._execute`.
+    ///
+    /// This is the fallible core the [`Call`](crate::relay::Call) verbs route
+    /// through when a live socket is attached. It behaves like
+    /// [`execute_blocking`](Self::execute_blocking) except that a **404** or
+    /// **410** server error — meaning the call no longer exists — is swallowed
+    /// and returned as `Ok({})` (a no-op), because the verb simply can't
+    /// proceed and that isn't a failure worth surfacing. **Every other non-2xx
+    /// server error propagates** as `Err(RelayError::Rpc)`, so real failures
+    /// (auth, bad params, server faults) reach the caller rather than being
+    /// hidden. A missing response within the deadline is `Err(RelayError::Timeout)`.
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err(RelayError::Rpc { method, message })` for a non-2xx server
+    /// error whose code is not 404/410, or `Err(RelayError::Timeout)` if no
+    /// response arrives within `HANDSHAKE_TIMEOUT`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if an internal mutex is poisoned (i.e. another thread panicked
+    /// while holding the lock). This does not occur under normal operation.
+    pub(crate) fn execute_call_verb(
+        &self,
+        method: &str,
+        params: Value,
+    ) -> Result<Value, RelayError> {
+        let id = generate_uuid();
+        let frame = json!({
+            "jsonrpc": "2.0",
+            "id": id,
+            "method": method,
+            "params": params,
+        });
+
+        let (resp_tx, resp_rx) = mpsc::channel::<Result<Value, Value>>();
+        let resolve_tx = resp_tx.clone();
+        let reject_tx = resp_tx;
+        self.register_pending(
+            &id,
+            move |v| {
+                let _ = resolve_tx.send(Ok(v));
+            },
+            move |e| {
+                let _ = reject_tx.send(Err(e));
+            },
+        );
+
+        self.send(&frame);
+
+        match resp_rx.recv_timeout(HANDSHAKE_TIMEOUT) {
+            // A `calling.*` RESULT carries a `code`; any 2xx is success. A non-2xx
+            // result code is a server-side failure (mirrors Python's
+            // `_handle_message`: `_SUCCESS_CODE_RE = ^2\d{2}$` → else raise), so
+            // route it through the same 404/410-swallow / else-raise contract as
+            // an error frame.
+            Ok(Ok(result)) => {
+                let msg = result
+                    .get("message")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("execute failed")
+                    .to_string();
+                match Self::classify_verb_outcome(method, result.get("code"), &msg, &self.logger) {
+                    // Real non-2xx failure → propagate.
+                    Some(e) => e,
+                    // 2xx (or no code) → the real result; a swallowed 404/410
+                    // becomes `{}`.
+                    None => {
+                        if Self::code_is_gone(result.get("code")) {
+                            Ok(json!({}))
+                        } else {
+                            Ok(result)
+                        }
+                    }
+                }
+            }
+            Ok(Err(err)) => {
+                // JSON-RPC error frame: the error object carries the `code`.
+                let msg = err
+                    .get("message")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("execute failed")
+                    .to_string();
+                match Self::classify_verb_outcome(method, err.get("code"), &msg, &self.logger) {
+                    Some(e) => e,
+                    // A swallowed 404/410 (or a code-less error) → no-op `{}`.
+                    None => Ok(json!({})),
+                }
+            }
+            Err(_) => {
+                self.pending.lock().unwrap().remove(&id);
+                Err(RelayError::Timeout {
+                    what: format!("{method} response"),
+                })
+            }
+        }
+    }
+
+    /// Classify a `calling.*` response `code` into the RELAY call-verb contract:
+    /// `None` → success (2xx or a call-gone 404/410 that is swallowed to a
+    /// no-op by the caller), `Some(Err(RelayError::Rpc))` → a real non-2xx
+    /// failure that must propagate. Shared by the result-code and error-frame
+    /// arms of [`execute_call_verb`](Self::execute_call_verb).
+    fn classify_verb_outcome(
+        method: &str,
+        code: Option<&Value>,
+        message: &str,
+        logger: &crate::logging::Logger,
+    ) -> Option<Result<Value, RelayError>> {
+        // No code → treat as success (nothing to check).
+        let code_val = code?;
+        let code_str = match code_val {
+            Value::String(s) => s.clone(),
+            Value::Number(n) => n.to_string(),
+            _ => return None,
+        };
+        // Any 2xx is success.
+        if code_str.len() == 3
+            && code_str.starts_with('2')
+            && code_str[1..].chars().all(|c| c.is_ascii_digit())
+        {
+            return None;
+        }
+        let numeric: Option<i64> = code_str.parse().ok();
+        // 404/410 mean the call is gone — swallow to a no-op (caller returns {}).
+        if matches!(numeric, Some(404 | 410)) {
+            logger.warn(&format!(
+                "call gone during {method} (code={code_str}); no-op"
+            ));
+            return None;
+        }
+        Some(Err(RelayError::Rpc {
+            method: method.to_string(),
+            message: message.to_string(),
+        }))
+    }
+
+    /// Whether a response `code` is a "call gone" (404/410) code — used to
+    /// return a no-op `{}` for a swallowed result, distinguishing it from a
+    /// genuine 2xx success.
+    fn code_is_gone(code: Option<&Value>) -> bool {
+        let n = code.and_then(|c| match c {
+            Value::String(s) => s.parse::<i64>().ok(),
+            Value::Number(num) => num.as_i64(),
+            _ => None,
+        });
+        matches!(n, Some(404 | 410))
     }
 
     /// Send an outbound SMS/MMS message.
@@ -1389,9 +1598,42 @@ impl Client {
 
         self.logger.info(&format!("Inbound call {call_id}"));
 
-        if let Some(handler) = self.on_call_handler.lock().unwrap().as_ref() {
-            handler(call, event);
+        // Clone the handler Arc OUT of the mutex and drop the guard BEFORE
+        // invoking it (DX-5: holding on_call_handler locked across the handler
+        // self-deadlocks a handler that re-registers). Then run the handler on
+        // a DEDICATED dispatcher thread, NOT inline on this reader thread
+        // (NB-1 / RUST-2): the reader thread is the ONLY thread that flushes
+        // the outbound write channel and reads inbound completion events, so a
+        // handler that sends a verb (answer/play) and then `Action::wait`s for
+        // its completion would otherwise deadlock — the verb frame never
+        // flushes and the completion event never gets read. Dispatching
+        // off-thread lets the reader keep pumping I/O while the handler blocks.
+        let handler = self.on_call_handler.lock().unwrap().clone();
+        if let Some(handler) = handler {
+            let owned_event = event.clone();
+            let dispatch = thread::Builder::new()
+                .name("relay-on-call".to_string())
+                .spawn(move || {
+                    handler(call, &owned_event);
+                });
+            match dispatch {
+                Ok(join) => self.reap_and_track_handler(join),
+                Err(e) => {
+                    self.logger
+                        .warn(&format!("failed to spawn on_call dispatcher: {e}"));
+                }
+            }
         }
+    }
+
+    /// Store a handler-dispatcher thread's join handle so it can be reaped, and
+    /// opportunistically join any finished handler threads to keep the vector
+    /// from growing without bound. Called after each inbound-call dispatch;
+    /// `disconnect()` joins whatever remains.
+    fn reap_and_track_handler(&self, join: thread::JoinHandle<()>) {
+        let mut handlers = self.handler_threads.lock().unwrap();
+        handlers.retain(|h| !h.is_finished());
+        handlers.push(join);
     }
 
     fn handle_dial_event(self: &Arc<Self>, _event: &Event, params: &Value) {
@@ -1564,6 +1806,108 @@ impl Client {
         // `send()` calls fall back to in-memory buffering rather than
         // pushing into a dead channel.
         *client.write_tx.lock().unwrap() = None;
+
+        // RUST-3 / NB-2 — HONEST connection loss (no zombie, no phantom
+        // auto-reconnect). If the reader is exiting for any reason OTHER than a
+        // caller-driven `disconnect()` (`closing` set), the socket died out from
+        // under us. Previously `running` stayed `true` forever, so
+        // `is_running()` lied, `run()` spun forever, and every subsequently-sent
+        // verb buffered into the void — a zombie client. Now we flip `running`
+        // to `false` (so `is_running()` reports the truth and `run()` returns)
+        // and FAULT every in-flight request + action so a blocked caller gets a
+        // typed error instead of hanging forever. The docs no longer claim an
+        // auto-reconnect the code never performed; a caller who wants to
+        // recover drives `reconnect()` explicitly.
+        if !client.closing.load(Ordering::SeqCst) {
+            client.logger.warn("RELAY connection lost — client stopped (no auto-reconnect); call reconnect() to re-establish");
+            *client.running.lock().unwrap() = false;
+            client.fault_pending("connection lost");
+        }
+    }
+
+    /// Fault every in-flight request and in-flight call action so a blocked
+    /// caller (a `wait`/blocking `execute`) is released with an error rather
+    /// than hanging forever after the socket dies. Called from the reader-exit
+    /// path (RUST-3) and reusable by an explicit `reconnect()`.
+    ///
+    /// # Panics
+    /// Panics if an internal mutex is poisoned (another thread panicked while
+    /// holding the lock). This does not occur under normal operation.
+    fn fault_pending(&self, reason: &str) {
+        // Reject every pending RPC so a blocking waiter unblocks with an error.
+        let pending: Vec<PendingRequest> = self
+            .pending
+            .lock()
+            .unwrap()
+            .drain()
+            .map(|(_, v)| v)
+            .collect();
+        for mut slot in pending {
+            if let Some(reject) = slot.reject.take() {
+                reject(json!({ "message": format!("connection lost: {reason}") }));
+            }
+        }
+        // Resolve every in-flight action on every call so an in-handler
+        // `Action::wait` returns instead of blocking on an event that can no
+        // longer arrive.
+        let calls: Vec<Arc<Call>> = self.calls.lock().unwrap().values().cloned().collect();
+        for call in calls {
+            call.resolve_all_actions();
+        }
+    }
+}
+
+/// Credential / re-auth keys whose VALUES must never reach a log or error
+/// string (enterprise SECRET-SCRUB, `r5/deep_enterprise.md` F3.1/F3.2). Mirrors
+/// the python reference's `_scrub_frame` masked-key set.
+const SENSITIVE_KEYS: [&str; 4] = ["project", "token", "jwt_token", "authorization_state"];
+
+/// The mask substituted for a scrubbed credential value.
+const SCRUB_MASK: &str = "***";
+
+/// Recursively mask the VALUES of any [`SENSITIVE_KEYS`] anywhere in `value`,
+/// leaving structure and non-sensitive fields intact. Used so a debug frame log
+/// can show the wire shape without ever printing a live project id / token /
+/// jwt / re-auth blob.
+fn scrub_value(value: &mut Value) {
+    match value {
+        Value::Object(map) => {
+            for (k, v) in map.iter_mut() {
+                if SENSITIVE_KEYS.contains(&k.as_str()) {
+                    *v = Value::String(SCRUB_MASK.to_string());
+                } else {
+                    scrub_value(v);
+                }
+            }
+        }
+        Value::Array(items) => {
+            for item in items.iter_mut() {
+                scrub_value(item);
+            }
+        }
+        _ => {}
+    }
+}
+
+/// Return a display string for a relay frame (`&Value`) with every credential /
+/// re-auth VALUE masked. The clean, log-safe rendering of an outbound frame.
+fn scrub_frame_value(msg: &Value) -> String {
+    let mut clone = msg.clone();
+    scrub_value(&mut clone);
+    clone.to_string()
+}
+
+/// Return a display string for a raw inbound frame string with every credential
+/// / re-auth VALUE masked. Parses `raw` as JSON and scrubs it; if it does not
+/// parse, returns a redacted placeholder rather than echoing the raw bytes (an
+/// unparseable frame could still carry secrets).
+fn scrub_frame_raw(raw: &str) -> String {
+    match serde_json::from_str::<Value>(raw) {
+        Ok(mut v) => {
+            scrub_value(&mut v);
+            v.to_string()
+        }
+        Err(_) => "<unparseable frame redacted>".to_string(),
     }
 }
 
@@ -1600,6 +1944,80 @@ mod tests {
 
     fn make_client() -> Client {
         Client::new("test-project", "test-token", "test.signalwire.com")
+    }
+
+    // -- SECRET-SCRUB (RUST-6) --
+
+    #[test]
+    fn test_scrub_frame_value_masks_connect_credentials() {
+        let frame = json!({
+            "jsonrpc": "2.0",
+            "method": "signalwire.connect",
+            "params": {
+                "project": "PJ-LIVE-SECRET",
+                "token": "PT-LIVE-SECRET",
+                "authentication": { "project": "PJ-LIVE-SECRET", "token": "PT-LIVE-SECRET" },
+                "agent": "signalwire-agents-rust/1.0",
+            }
+        });
+        let out = scrub_frame_value(&frame);
+        assert!(!out.contains("PJ-LIVE-SECRET"), "project leaked: {out}");
+        assert!(!out.contains("PT-LIVE-SECRET"), "token leaked: {out}");
+        // Structure/shape survives: method name + masked keys still present.
+        assert!(out.contains("signalwire.connect"));
+        assert!(out.contains("***"));
+    }
+
+    #[test]
+    fn test_scrub_frame_raw_masks_authorization_state() {
+        let raw = r#"{"method":"signalwire.event","params":{"event_type":"signalwire.authorization.state","params":{"authorization_state":"AENC-LIVE-BLOB","jwt_token":"JWT-LIVE"}}}"#;
+        let out = scrub_frame_raw(raw);
+        assert!(!out.contains("AENC-LIVE-BLOB"), "auth_state leaked: {out}");
+        assert!(!out.contains("JWT-LIVE"), "jwt leaked: {out}");
+        assert!(out.contains("signalwire.authorization.state"));
+    }
+
+    #[test]
+    fn test_scrub_frame_raw_redacts_unparseable() {
+        // A non-JSON frame must not be echoed verbatim (could still carry secrets).
+        let out = scrub_frame_raw("token=PT-LIVE-SECRET not-json");
+        assert!(!out.contains("PT-LIVE-SECRET"));
+        assert!(out.contains("redacted"));
+    }
+
+    // -- RUST-3 honest connection-loss --
+
+    /// `fault_pending` must release a blocked waiter: a pending request's reject
+    /// callback fires (a blocking `execute` would otherwise hang forever after a
+    /// silent socket drop), and every in-flight action resolves.
+    #[test]
+    fn test_fault_pending_releases_pending_request_and_actions() {
+        let c = make_client();
+        // A pending request whose reject records that it fired.
+        let rejected = Arc::new(Mutex::new(false));
+        let r2 = rejected.clone();
+        c.register_pending(
+            "req-1",
+            |_v| panic!("resolve must not fire on a faulted connection"),
+            move |_e| *r2.lock().unwrap() = true,
+        );
+        // An in-flight call + action.
+        let call = Arc::new(Call::new(&json!({"call_id": "c1", "node_id": "n1"})));
+        let action = call.play(json!({})).unwrap();
+        c.calls.lock().unwrap().insert("c1".to_string(), call);
+        assert!(!action.is_done());
+
+        c.fault_pending("connection lost");
+
+        assert!(*rejected.lock().unwrap(), "pending request was not faulted");
+        assert!(
+            action.is_done(),
+            "in-flight action was not resolved on loss"
+        );
+        assert!(
+            c.pending.lock().unwrap().is_empty(),
+            "pending map not drained"
+        );
     }
 
     #[test]
@@ -1886,7 +2304,13 @@ mod tests {
             },
         }));
 
-        assert!(*received.lock().unwrap());
+        // RUST-2: the on_call handler runs on its own dispatcher thread (not
+        // inline), so poll for it rather than asserting synchronously.
+        let deadline = std::time::Instant::now() + Duration::from_secs(2);
+        while !*received.lock().unwrap() && std::time::Instant::now() < deadline {
+            thread::sleep(Duration::from_millis(5));
+        }
+        assert!(*received.lock().unwrap(), "on_call handler did not fire");
         assert!(c.calls.lock().unwrap().contains_key("call-1"));
     }
 
@@ -2091,7 +2515,12 @@ mod tests {
         });
         c.handle_message(&msg.to_string());
 
-        assert!(*received.lock().unwrap());
+        // RUST-2: the on_call handler runs on its own dispatcher thread; poll.
+        let deadline = std::time::Instant::now() + Duration::from_secs(2);
+        while !*received.lock().unwrap() && std::time::Instant::now() < deadline {
+            thread::sleep(Duration::from_millis(5));
+        }
+        assert!(*received.lock().unwrap(), "on_call handler did not fire");
         // Should have sent an ack
         let msgs = c.sent_messages.lock().unwrap();
         assert!(msgs.iter().any(|m| m["id"] == "evt-1"));

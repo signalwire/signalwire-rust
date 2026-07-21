@@ -31,7 +31,7 @@ use signalwire::rest::namespaces::generated::video_resources_generated as video_
 fn test_projects_create_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let _ = c.projects().create(&serde_json::json!({}));
+    let _ = c.projects().create(&serde_json::json!({}), None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "POST");
     assert_eq!(
@@ -47,7 +47,7 @@ fn test_projects_create_error() {
     common::mocktest::scenario_set("projects.create_subproject", 500, json!({"error": "x"}));
     let err = c
         .projects()
-        .create(&serde_json::json!({}))
+        .create(&serde_json::json!({}), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -62,7 +62,7 @@ fn test_projects_create_error() {
 fn test_projects_delete_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let _ = c.projects().delete("x");
+    let _ = c.projects().delete("x", None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "DELETE");
     assert_eq!(
@@ -76,7 +76,10 @@ fn test_projects_delete_error() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
     common::mocktest::scenario_set("projects.delete_subproject", 500, json!({"error": "x"}));
-    let err = c.projects().delete("x").expect_err("expected a 500 error");
+    let err = c
+        .projects()
+        .delete("x", None)
+        .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
     assert_eq!(e.response_status, Some(500));
@@ -90,7 +93,7 @@ fn test_projects_delete_error() {
 fn test_projects_get_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let _ = c.projects().get("x");
+    let _ = c.projects().get("x", None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "GET");
     assert_eq!(e.matched_route.as_deref(), Some("projects.get_project"));
@@ -101,7 +104,10 @@ fn test_projects_get_error() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
     common::mocktest::scenario_set("projects.get_project", 500, json!({"error": "x"}));
-    let err = c.projects().get("x").expect_err("expected a 500 error");
+    let err = c
+        .projects()
+        .get("x", None)
+        .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
     assert_eq!(e.response_status, Some(500));
@@ -112,7 +118,7 @@ fn test_projects_get_error() {
 fn test_projects_list_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let _ = c.projects().list(&std::collections::HashMap::new());
+    let _ = c.projects().list(&std::collections::HashMap::new(), None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "GET");
     assert_eq!(e.matched_route.as_deref(), Some("projects.list_projects"));
@@ -125,7 +131,7 @@ fn test_projects_list_error() {
     common::mocktest::scenario_set("projects.list_projects", 500, json!({"error": "x"}));
     let err = c
         .projects()
-        .list(&std::collections::HashMap::new())
+        .list(&std::collections::HashMap::new(), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -137,7 +143,7 @@ fn test_projects_list_error() {
 fn test_projects_rotate_signing_key_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let _ = c.projects().rotate_signing_key("x");
+    let _ = c.projects().rotate_signing_key("x", None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "POST");
     assert_eq!(
@@ -153,7 +159,7 @@ fn test_projects_rotate_signing_key_error() {
     common::mocktest::scenario_set("projects.rotate_signing_key", 500, json!({"error": "x"}));
     let err = c
         .projects()
-        .rotate_signing_key("x")
+        .rotate_signing_key("x", None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -168,7 +174,7 @@ fn test_projects_rotate_signing_key_error() {
 fn test_projects_update_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let _ = c.projects().update("x", &serde_json::json!({}));
+    let _ = c.projects().update("x", &serde_json::json!({}), None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "PATCH");
     assert_eq!(e.matched_route.as_deref(), Some("projects.update_project"));
@@ -181,7 +187,7 @@ fn test_projects_update_error() {
     common::mocktest::scenario_set("projects.update_project", 500, json!({"error": "x"}));
     let err = c
         .projects()
-        .update("x", &serde_json::json!({}))
+        .update("x", &serde_json::json!({}), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();

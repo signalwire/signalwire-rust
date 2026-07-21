@@ -23,7 +23,7 @@ fn test_fabric_addresses_list_returns_data_collection() {
     let body = c
         .fabric()
         .addresses()
-        .list(&HashMap::new())
+        .list(&HashMap::new(), None)
         .expect("addresses.list");
     assert!(body.is_object());
     let obj = body.as_object().unwrap();
@@ -52,7 +52,7 @@ fn test_fabric_addresses_get_uses_address_id() {
     let body = c
         .fabric()
         .addresses()
-        .get("addr-9001")
+        .get("addr-9001", None)
         .expect("addresses.get");
     assert!(body.is_object());
 
@@ -83,7 +83,7 @@ fn test_fabric_call_flows_list_addresses_uses_singular_path() {
     let body = c
         .fabric()
         .call_flows()
-        .list_addresses("cf-1", &HashMap::new())
+        .list_addresses("cf-1", &HashMap::new(), None)
         .expect("list_addresses");
     assert!(body.is_object());
     let obj = body.as_object().unwrap();
@@ -111,7 +111,7 @@ fn test_fabric_conference_rooms_list_addresses_uses_singular_path() {
     let body = c
         .fabric()
         .conference_rooms()
-        .list_addresses("cr-1", &HashMap::new())
+        .list_addresses("cr-1", &HashMap::new(), None)
         .expect("list_addresses");
     assert!(body.is_object());
     assert!(body.as_object().unwrap().contains_key("data"));
@@ -137,7 +137,7 @@ fn test_fabric_subscribers_get_sip_endpoint() {
     let body = c
         .fabric()
         .subscribers()
-        .get_sip_endpoint("sub-1", "ep-1", &HashMap::new())
+        .get_sip_endpoint("sub-1", "ep-1", &HashMap::new(), None)
         .expect("get_sip_endpoint");
     assert!(body.is_object());
 
@@ -161,6 +161,7 @@ fn test_fabric_subscribers_update_sip_endpoint_uses_patch() {
             "sub-1",
             "ep-1",
             fabric_gen::SubscribersUpdateSipEndpointRequest::new().username("renamed"),
+            None,
         )
         .expect("update_sip_endpoint");
     assert!(body.is_object());
@@ -185,7 +186,7 @@ fn test_fabric_subscribers_delete_sip_endpoint() {
     let body = c
         .fabric()
         .subscribers()
-        .delete_sip_endpoint("sub-1", "ep-1")
+        .delete_sip_endpoint("sub-1", "ep-1", None)
         .expect("delete_sip_endpoint");
     assert!(body.is_object());
 
@@ -211,6 +212,7 @@ fn test_fabric_tokens_create_invite_token() {
         .tokens()
         .create_invite_token(
             fabric_gen::FabricTokensCreateInviteTokenRequest::new("addr-1").expires_at(3600),
+            None,
         )
         .expect("create_invite_token");
     assert!(body.is_object());
@@ -234,9 +236,10 @@ fn test_fabric_tokens_create_embed_token() {
     let body = c
         .fabric()
         .tokens()
-        .create_embed_token(fabric_gen::FabricTokensCreateEmbedTokenRequest::new(
-            "tok-1",
-        ))
+        .create_embed_token(
+            fabric_gen::FabricTokensCreateEmbedTokenRequest::new("tok-1"),
+            None,
+        )
         .expect("create_embed_token");
     assert!(body.is_object());
 
@@ -254,9 +257,10 @@ fn test_fabric_tokens_refresh_subscriber_token() {
     let body = c
         .fabric()
         .tokens()
-        .refresh_subscriber_token(fabric_gen::FabricTokensRefreshSubscriberTokenRequest::new(
-            "abc-123",
-        ))
+        .refresh_subscriber_token(
+            fabric_gen::FabricTokensRefreshSubscriberTokenRequest::new("abc-123"),
+            None,
+        )
         .expect("refresh_subscriber_token");
     assert!(body.is_object());
 
@@ -281,7 +285,7 @@ fn test_fabric_resources_list_returns_data_collection() {
     let body = c
         .fabric()
         .resources()
-        .list(&HashMap::new())
+        .list(&HashMap::new(), None)
         .expect("resources.list");
     assert!(body.is_object());
     let obj = body.as_object().unwrap();
@@ -301,7 +305,7 @@ fn test_fabric_resources_get_returns_single() {
     let body = c
         .fabric()
         .resources()
-        .get("res-1", &std::collections::HashMap::new())
+        .get("res-1", &std::collections::HashMap::new(), None)
         .expect("resources.get");
     assert!(body.is_object());
 
@@ -317,7 +321,7 @@ fn test_fabric_resources_delete() {
     let body = c
         .fabric()
         .resources()
-        .delete("res-2")
+        .delete("res-2", None)
         .expect("resources.delete");
     assert!(body.is_object());
 
@@ -334,7 +338,7 @@ fn test_fabric_resources_list_addresses() {
     let body = c
         .fabric()
         .resources()
-        .list_addresses("res-3", &HashMap::new())
+        .list_addresses("res-3", &HashMap::new(), None)
         .expect("list_addresses");
     assert!(body.is_object());
     let obj = body.as_object().unwrap();
@@ -356,6 +360,7 @@ fn test_fabric_resources_assign_domain_application() {
         .assign_domain_application(
             "res-4",
             fabric_gen::GenericResourcesAssignDomainApplicationRequest::new("da-7"),
+            None,
         )
         .expect("assign_domain_application");
     assert!(body.is_object());

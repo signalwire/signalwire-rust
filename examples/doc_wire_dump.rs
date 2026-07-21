@@ -42,26 +42,30 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // --- README (region: rest quickstart) ------------------------------------
     // fabric().ai_agents().create({name, prompt:{text}})
-    client.fabric().ai_agents().create(&json!({
-        "name": "Support Bot",
-        "prompt": {"text": "You are helpful."}
-    }))?;
+    client.fabric().ai_agents().create(
+        &json!({
+            "name": "Support Bot",
+            "prompt": {"text": "You are helpful."}
+        }),
+        None,
+    )?;
 
     // calling().dial(from, to).url(...)
     client.calling().dial(
         CallingDialRequest::new("+15559876543", "+15551234567")
             .url("https://example.com/call-handler"),
+        None,
     )?;
 
     // phone_numbers().search({areacode})  — spec key is `areacode`, NOT area_code
     let query = HashMap::from([("areacode".to_string(), "512".to_string())]);
-    client.phone_numbers().search(&query)?;
+    client.phone_numbers().search(&query, None)?;
 
     // --- rest/docs/getting-started.md ----------------------------------------
     let mut params = HashMap::new();
     params.insert("areacode".to_string(), "512".to_string());
-    client.phone_numbers().search(&params)?;
-    client.fabric().ai_agents().list(&HashMap::new())?;
+    client.phone_numbers().search(&params, None)?;
+    client.fabric().ai_agents().list(&HashMap::new(), None)?;
 
     // --- rest/docs/calling.md play (nested params:{text}) --------------------
     client.calling().play(
@@ -69,6 +73,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         CallingPlayRequest::new(json!([
             {"type": "tts", "params": {"text": "Please hold."}}
         ])),
+        None,
     )?;
     // With an optional volume set (rest/docs/calling.md variant).
     client.calling().play(
@@ -77,13 +82,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             {"type": "tts", "params": {"text": "Hello!"}}
         ]))
         .volume(5.0),
+        None,
     )?;
 
     // --- rest/docs/datasphere search -----------------------------------------
-    client
-        .datasphere()
-        .documents()
-        .search(DatasphereDocumentsSearchRequest::new("billing policy"))?;
+    client.datasphere().documents().search(
+        DatasphereDocumentsSearchRequest::new("billing policy"),
+        None,
+    )?;
 
     println!("doc_wire_dump: replayed documented REST fixtures against the mock");
     Ok(())

@@ -34,7 +34,7 @@ fn test_logs_conferences_list_success() {
     let _ = c
         .logs()
         .conferences()
-        .list(&std::collections::HashMap::new());
+        .list(&std::collections::HashMap::new(), None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "GET");
     assert_eq!(e.matched_route.as_deref(), Some("logs.list_conferences"));
@@ -48,7 +48,7 @@ fn test_logs_conferences_list_error() {
     let err = c
         .logs()
         .conferences()
-        .list(&std::collections::HashMap::new())
+        .list(&std::collections::HashMap::new(), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();

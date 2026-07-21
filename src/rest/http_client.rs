@@ -673,7 +673,7 @@ impl HttpClient {
                 // family (no response was produced), not a bare error.
                 return Err(SignalWireRestError::transport(
                     &format!("{method} {path} cancelled by abort_signal"),
-                    path,
+                    &url,
                     method,
                     TransportFailure("request cancelled by abort_signal".to_string()),
                 ));
@@ -694,7 +694,7 @@ impl HttpClient {
                     }
                     return Err(SignalWireRestError::transport(
                         &format!("{method} {path} failed: {e}"),
-                        path,
+                        &url,
                         method,
                         TransportFailure(e),
                     ));
@@ -713,7 +713,7 @@ impl HttpClient {
                             &format!("{method} {path} returned {status}"),
                             status,
                             &response_body,
-                            path,
+                            &url,
                             method,
                         )
                         .with_headers(resp_headers));
@@ -729,7 +729,7 @@ impl HttpClient {
                             &format!("{method} {path} returned non-JSON"),
                             status,
                             &response_body,
-                            path,
+                            &url,
                             method,
                         )
                         .with_headers(resp_headers)
@@ -952,6 +952,69 @@ mod tests {
             err.to_string().contains("(request-id: req-abc-123)"),
             "Display must surface the request id: {err}"
         );
+    }
+
+    /// RUST-4 (D1 ripple): a non-2xx error must carry the FULL request URL
+    /// (`base_url + path + ?encoded-query`), not the bare path. A caller
+    /// correlating the failure needs the real endpoint it hit.
+    #[test]
+    fn test_status_error_url_is_full_with_query() {
+        let (client, stub) = make_client();
+        stub.set_response(404, r#"{"error":"missing"}"#);
+        let mut params = HashMap::new();
+        params.insert("page".to_string(), "2".to_string());
+        let err = client.get("/api/missing", &params).unwrap_err();
+        // Full origin, path, AND the encoded query — never just "/api/missing".
+        assert_eq!(
+            err.url(),
+            "https://test.signalwire.com/api/missing?page=2",
+            "error.url must be the full request URL incl. query, got {:?}",
+            err.url()
+        );
+    }
+
+    /// RUST-4: a transport failure error must likewise carry the full URL
+    /// (base + path + query), not the bare path.
+    #[test]
+    fn test_transport_error_url_is_full_with_query() {
+        struct FailTransport;
+        impl HttpTransport for FailTransport {
+            fn execute(
+                &self,
+                _m: &str,
+                _u: &str,
+                _h: &HashMap<String, String>,
+                _b: Option<&str>,
+                _t: Duration,
+            ) -> Result<(u16, String), String> {
+                Err("connection refused".to_string())
+            }
+        }
+        let client = HttpClient::new(
+            "proj",
+            "tok",
+            "https://test.signalwire.com",
+            Box::new(FailTransport),
+        );
+        let mut params = HashMap::new();
+        params.insert("q".to_string(), "x y".to_string());
+        let err = client.get("/api/x", &params).unwrap_err();
+        assert!(err.is_transport());
+        assert_eq!(
+            err.url(),
+            "https://test.signalwire.com/api/x?q=x+y",
+            "transport error.url must be the full request URL incl. query, got {:?}",
+            err.url()
+        );
+    }
+
+    /// RUST-4: a non-JSON 2xx body error must carry the full URL too.
+    #[test]
+    fn test_non_json_error_url_is_full() {
+        let (client, stub) = make_client();
+        stub.set_response(200, "not json at all");
+        let err = client.get("/api/weird", &HashMap::new()).unwrap_err();
+        assert_eq!(err.url(), "https://test.signalwire.com/api/weird");
     }
 
     #[test]

@@ -36,7 +36,10 @@ fn test_calling_update() {
     let c = common::mocktest::client();
     let body = c
         .calling()
-        .update(calling_gen::CallingUpdateRequest::new("call-1").extra("state", json!("hold")))
+        .update(
+            calling_gen::CallingUpdateRequest::new("call-1").extra("state", json!("hold")),
+            None,
+        )
         .expect("calling.update");
     assert!(body.is_object());
     assert!(body.as_object().unwrap().contains_key("id"));
@@ -73,6 +76,7 @@ fn test_calling_dial_forwards_codecs_array() {
             calling_gen::CallingDialRequest::new("", "+15551234567")
                 .url("https://example.com/swml")
                 .codecs(json!(["OPUS", "G729", "VP8", "PCMA"])),
+            None,
         )
         .expect("calling.dial");
     assert!(body.is_object());
@@ -115,6 +119,7 @@ fn test_calling_dial_forwards_codecs_string() {
             calling_gen::CallingDialRequest::new("", "+15551234567")
                 .url("https://example.com/swml")
                 .codecs(json!("OPUS,G729,VP8,PCMA")),
+            None,
         )
         .expect("calling.dial");
     assert!(body.is_object());
@@ -143,6 +148,7 @@ fn test_calling_transfer() {
             calling_gen::CallingTransferRequest::new(
                 json!({"destination": "+15551234567", "from_number": "+15559876543"}),
             ),
+            None,
         )
         .expect("calling.transfer");
     assert!(body.is_object());
@@ -182,6 +188,7 @@ fn test_calling_disconnect() {
         .disconnect(
             "call-456",
             calling_gen::CallingDisconnectRequest::new().extra("reason", json!("busy")),
+            None,
         )
         .expect("calling.disconnect");
     assert!(body.is_object());
@@ -217,6 +224,7 @@ fn test_calling_play_pause() {
         .play_pause(
             "call-1",
             calling_gen::CallingPlayPauseRequest::new("ctrl-1"),
+            None,
         )
         .expect("play_pause");
     assert!(body.is_object());
@@ -248,6 +256,7 @@ fn test_calling_play_resume() {
         .play_resume(
             "call-1",
             calling_gen::CallingPlayResumeRequest::new("ctrl-1"),
+            None,
         )
         .expect("play_resume");
     assert!(body.is_object());
@@ -274,7 +283,11 @@ fn test_calling_play_stop() {
     let c = common::mocktest::client();
     let body = c
         .calling()
-        .play_stop("call-1", calling_gen::CallingPlayStopRequest::new("ctrl-1"))
+        .play_stop(
+            "call-1",
+            calling_gen::CallingPlayStopRequest::new("ctrl-1"),
+            None,
+        )
         .expect("play_stop");
     assert!(body.is_object());
     assert!(body.as_object().unwrap().contains_key("id"));
@@ -297,6 +310,7 @@ fn test_calling_play_volume() {
         .play_volume(
             "call-1",
             calling_gen::CallingPlayVolumeRequest::new("ctrl-1", 2.5),
+            None,
         )
         .expect("play_volume");
     assert!(body.is_object());
@@ -330,6 +344,7 @@ fn test_calling_record() {
         .record(
             "call-1",
             calling_gen::CallingRecordRequest::new().extra("record", json!({"format": "mp3"})),
+            None,
         )
         .expect("record");
     assert!(body.is_object());
@@ -362,6 +377,7 @@ fn test_calling_record_pause() {
         .record_pause(
             "call-1",
             calling_gen::CallingRecordPauseRequest::new("rec-1"),
+            None,
         )
         .expect("record_pause");
     assert!(body.is_object());
@@ -391,6 +407,7 @@ fn test_calling_record_resume() {
         .record_resume(
             "call-1",
             calling_gen::CallingRecordResumeRequest::new("rec-1"),
+            None,
         )
         .expect("record_resume");
     assert!(body.is_object());
@@ -429,6 +446,7 @@ fn test_calling_collect() {
             calling_gen::CallingCollectRequest::new()
                 .extra("initial_timeout", json!(5))
                 .digits(json!({"max": 4})),
+            None,
         )
         .expect("collect");
     assert!(body.is_object());
@@ -458,6 +476,7 @@ fn test_calling_collect_stop() {
         .collect_stop(
             "call-1",
             calling_gen::CallingCollectStopRequest::new("col-1"),
+            None,
         )
         .expect("collect_stop");
     assert!(body.is_object());
@@ -487,6 +506,7 @@ fn test_calling_collect_start_input_timers() {
         .collect_start_input_timers(
             "call-1",
             calling_gen::CallingCollectStartInputTimersRequest::new("col-1"),
+            None,
         )
         .expect("collect_start_input_timers");
     assert!(body.is_object());
@@ -520,6 +540,7 @@ fn test_calling_detect() {
         .detect(
             "call-1",
             calling_gen::CallingDetectRequest::new(json!({"type": "machine", "params": {}})),
+            None,
         )
         .expect("detect");
     assert!(body.is_object());
@@ -548,6 +569,7 @@ fn test_calling_detect_stop() {
         .detect_stop(
             "call-1",
             calling_gen::CallingDetectStopRequest::new("det-1"),
+            None,
         )
         .expect("detect_stop");
     assert!(body.is_object());
@@ -581,6 +603,7 @@ fn test_calling_tap() {
         .tap(
             "call-1",
             calling_gen::CallingTapRequest::new(json!({"type": "audio"}), json!({"type": "rtp"})),
+            None,
         )
         .expect("tap");
     assert!(body.is_object());
@@ -606,7 +629,11 @@ fn test_calling_tap_stop() {
     let c = common::mocktest::client();
     let body = c
         .calling()
-        .tap_stop("call-1", calling_gen::CallingTapStopRequest::new("tap-1"))
+        .tap_stop(
+            "call-1",
+            calling_gen::CallingTapStopRequest::new("tap-1"),
+            None,
+        )
         .expect("tap_stop");
     assert!(body.is_object());
     assert!(body.as_object().unwrap().contains_key("id"));
@@ -639,6 +666,7 @@ fn test_calling_stream() {
         .stream(
             "call-1",
             calling_gen::CallingStreamRequest::new("wss://example.com/audio"),
+            None,
         )
         .expect("stream");
     assert!(body.is_object());
@@ -668,6 +696,7 @@ fn test_calling_stream_stop() {
         .stream_stop(
             "call-1",
             calling_gen::CallingStreamStopRequest::new("stream-1"),
+            None,
         )
         .expect("stream_stop");
     assert!(body.is_object());
@@ -698,7 +727,7 @@ fn test_calling_denoise() {
     let c = common::mocktest::client();
     let body = c
         .calling()
-        .denoise("call-1", calling_gen::CallingDenoiseRequest::new())
+        .denoise("call-1", calling_gen::CallingDenoiseRequest::new(), None)
         .expect("denoise");
     assert!(body.is_object());
     assert!(body.as_object().unwrap().contains_key("id"));
@@ -718,7 +747,11 @@ fn test_calling_denoise_stop() {
     let c = common::mocktest::client();
     let body = c
         .calling()
-        .denoise_stop("call-1", calling_gen::CallingDenoiseStopRequest::new())
+        .denoise_stop(
+            "call-1",
+            calling_gen::CallingDenoiseStopRequest::new(),
+            None,
+        )
         .expect("denoise_stop");
     assert!(body.is_object());
     assert!(body.as_object().unwrap().contains_key("id"));
@@ -758,6 +791,7 @@ fn test_calling_transcribe() {
             calling_gen::CallingTranscribeRequest::new()
                 .extra("language", json!("en-US"))
                 .extra("transcribe", json!({"engine": "google"})),
+            None,
         )
         .expect("transcribe");
     assert!(body.is_object());
@@ -787,6 +821,7 @@ fn test_calling_transcribe_stop() {
         .transcribe_stop(
             "call-1",
             calling_gen::CallingTranscribeStopRequest::new("tr-1"),
+            None,
         )
         .expect("transcribe_stop");
     assert!(body.is_object());
@@ -817,7 +852,7 @@ fn test_calling_ai_hold() {
     let c = common::mocktest::client();
     let body = c
         .calling()
-        .ai_hold("call-1", calling_gen::CallingAiHoldRequest::new())
+        .ai_hold("call-1", calling_gen::CallingAiHoldRequest::new(), None)
         .expect("ai_hold");
     assert!(body.is_object());
     assert!(body.as_object().unwrap().contains_key("id"));
@@ -837,7 +872,7 @@ fn test_calling_ai_unhold() {
     let c = common::mocktest::client();
     let body = c
         .calling()
-        .ai_unhold("call-1", calling_gen::CallingAiUnholdRequest::new())
+        .ai_unhold("call-1", calling_gen::CallingAiUnholdRequest::new(), None)
         .expect("ai_unhold");
     assert!(body.is_object());
     assert!(body.as_object().unwrap().contains_key("id"));
@@ -859,7 +894,7 @@ fn test_calling_ai_stop() {
     // test sent an empty body and asserts only command + id, so pass "".
     let body = c
         .calling()
-        .ai_stop("call-1", calling_gen::CallingAiStopRequest::new(""))
+        .ai_stop("call-1", calling_gen::CallingAiStopRequest::new(""), None)
         .expect("ai_stop");
     assert!(body.is_object());
     assert!(body.as_object().unwrap().contains_key("id"));
@@ -886,6 +921,7 @@ fn test_calling_live_transcribe() {
         .live_transcribe(
             "call-1",
             calling_gen::CallingLiveTranscribeRequest::new(json!({"language": "en-US"})),
+            None,
         )
         .expect("live_transcribe");
     assert!(body.is_object());
@@ -920,6 +956,7 @@ fn test_calling_live_translate() {
             calling_gen::CallingLiveTranslateRequest::new(
                 json!({"source_language": "en", "target_language": "es"}),
             ),
+            None,
         )
         .expect("live_translate");
     assert!(body.is_object());
@@ -957,7 +994,11 @@ fn test_calling_send_fax_stop() {
     let c = common::mocktest::client();
     let body = c
         .calling()
-        .send_fax_stop("call-1", calling_gen::CallingSendFaxStopRequest::new(""))
+        .send_fax_stop(
+            "call-1",
+            calling_gen::CallingSendFaxStopRequest::new(""),
+            None,
+        )
         .expect("send_fax_stop");
     assert!(body.is_object());
     assert!(body.as_object().unwrap().contains_key("id"));
@@ -977,7 +1018,11 @@ fn test_calling_receive_fax_stop() {
     let c = common::mocktest::client();
     let body = c
         .calling()
-        .receive_fax_stop("call-1", calling_gen::CallingReceiveFaxStopRequest::new(""))
+        .receive_fax_stop(
+            "call-1",
+            calling_gen::CallingReceiveFaxStopRequest::new(""),
+            None,
+        )
         .expect("receive_fax_stop");
     assert!(body.is_object());
     assert!(body.as_object().unwrap().contains_key("id"));
@@ -1004,6 +1049,7 @@ fn test_calling_refer() {
         .refer(
             "call-1",
             calling_gen::CallingReferRequest::new(json!({"to": "sip:other@example.com"})),
+            None,
         )
         .expect("refer");
     assert!(body.is_object());
@@ -1038,6 +1084,7 @@ fn test_calling_user_event() {
             calling_gen::CallingUserEventRequest::new(
                 json!({"event_name": "my-event", "payload": {"foo": "bar"}}),
             ),
+            None,
         )
         .expect("user_event");
     assert!(body.is_object());

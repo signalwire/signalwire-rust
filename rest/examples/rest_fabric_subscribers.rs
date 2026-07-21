@@ -18,18 +18,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Create a subscriber.
     println!("Creating subscriber ...");
-    let sub = client.fabric().subscribers().create(&json!({
-        "email": "alice@example.com",
-        "first_name": "Alice",
-        "last_name": "Smith",
-        "display_name": "Alice Smith"
-    }))?;
+    let sub = client.fabric().subscribers().create(
+        &json!({
+            "email": "alice@example.com",
+            "first_name": "Alice",
+            "last_name": "Smith",
+            "display_name": "Alice Smith"
+        }),
+        None,
+    )?;
 
     let sub_id = sub["id"].as_str().unwrap_or("unknown").to_string();
     println!("Subscriber created: {sub_id}");
 
     // List all subscribers.
-    let subs = client.fabric().subscribers().list(&HashMap::new())?;
+    let subs = client.fabric().subscribers().list(&HashMap::new(), None)?;
     if let Some(arr) = subs.as_array() {
         println!("\nAll subscribers ({}):", arr.len());
         for s in arr {
@@ -47,11 +50,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         &json!({
             "display_name": "Alice S."
         }),
+        None,
     )?;
     println!("Subscriber updated.");
 
     // Get subscriber details.
-    let details = client.fabric().subscribers().get(&sub_id)?;
+    let details = client.fabric().subscribers().get(&sub_id, None)?;
     println!("Display name: {}", details["display_name"]);
 
     Ok(())
