@@ -91,6 +91,31 @@ jobs:
         if: runner.os == 'Windows'
         uses: ilammy/msvc-dev-cmd@v1
 
+      # Pin the MSVC linker by ABSOLUTE PATH so cargo/rustc never resolve `link.exe`
+      # through git-bash's PATH. The TEST and PACKAGE-SMOKE steps run under
+      # `shell: bash` (git-bash), which prepends `C:\Program Files\Git\usr\bin` to
+      # PATH — and that dir contains a coreutils `link.exe` (a hard-link utility) that
+      # SHADOWS the MSVC linker even though msvc-dev-cmd put MSVC's bin dir first in the
+      # Windows PATH. rustc then invokes git-bash's link.exe and the build fails:
+      #   error: linking with `link.exe` failed
+      #   note: /usr/bin/link: extra operand '...rcgu.o'
+      # Setting CARGO_TARGET_<triple>_LINKER to the absolute MSVC link.exe makes cargo
+      # pass that exact path to rustc's -Clinker, bypassing PATH resolution entirely
+      # (a RUSTFLAGS='-Clinker=link.exe' would NOT help — it still resolves via PATH).
+      # msvc-dev-cmd exports VCToolsInstallDir; the host-x64 linker lives under it.
+      # The env var is inherited by both the bash TEST step and the Python
+      # PACKAGE-SMOKE step (which also shells out to cargo), so both link with MSVC.
+      - name: Pin MSVC linker for cargo (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $linker = Join-Path $env:VCToolsInstallDir 'bin\Hostx64\x64\link.exe'
+          if (-not (Test-Path $linker)) {
+            throw "MSVC link.exe not found at $linker (VCToolsInstallDir=$env:VCToolsInstallDir)"
+          }
+          "CARGO_TARGET_X86_64_PC_WINDOWS_MSVC_LINKER=$linker" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          Write-Host "Pinned MSVC linker: $linker"
+
       - name: Set up Python (shared mocks + PACKAGE-SMOKE)
         uses: actions/setup-python@v6
         with:
