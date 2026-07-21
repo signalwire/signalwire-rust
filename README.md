@@ -135,14 +135,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let client = Arc::new(Client::from_env()?);
 
     client.on_call(|call, _event| {
+        // Verbs return `Result<_, RelayError>` — a rejected verb surfaces as Err.
         let _ = call.answer();
-        let action = call.play(serde_json::json!({
+        if let Ok(action) = call.play(serde_json::json!({
             "play": [{
                 "type": "tts",
                 "params": {"text": "Welcome to SignalWire!"}
             }]
-        }));
-        let _ = action.is_done();
+        })) {
+            let _ = action.is_done();
+        }
         let _ = call.hangup();
     });
 

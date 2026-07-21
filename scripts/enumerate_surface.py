@@ -495,6 +495,15 @@ METHOD_RENAMES: dict[str, dict[str, str]] = {
         "with_stub": None,
         "list_all": None,
     },
+    # relay::Client (RelayClient): `execute_call_verb` + `has_live_socket` are
+    # `pub(crate)` crate-internal helpers the Call verbs route their frames
+    # through (the verb→Result flip, RUST-1). They show up in the public-fn
+    # regex (which permits `pub(...)`) but aren't part of the cross-port RELAY
+    # contract — the same case as Section's `render_markdown_at`. Drop them.
+    "Client": {
+        "execute_call_verb": None,
+        "has_live_socket": None,
+    },
     # SignalWireRestError: reference records only __init__. Drop the Rust
     # field-accessor reads (message/status_code/response_body/url/method — all
     # mirror the Python exception's instance attributes of the same names, which
