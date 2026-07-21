@@ -6,6 +6,7 @@ use serde_json::Value;
 use super::action::Action;
 use super::client::Client;
 use super::constants;
+use super::error::RelayError;
 use super::event::Event;
 use crate::logging::Logger;
 
@@ -280,69 +281,69 @@ impl Call {
     // Simple RPC methods (fire-and-return)
     // ------------------------------------------------------------------
 
-    pub fn answer(&self) -> Value {
+    pub fn answer(&self) -> Result<Value, RelayError> {
         self.execute("calling.answer", Value::Object(serde_json::Map::new()))
     }
 
-    pub fn hangup(&self) -> Value {
+    pub fn hangup(&self) -> Result<Value, RelayError> {
         self.execute("calling.hangup", Value::Object(serde_json::Map::new()))
     }
 
-    pub fn pass(&self) -> Value {
+    pub fn pass(&self) -> Result<Value, RelayError> {
         self.execute("calling.pass", Value::Object(serde_json::Map::new()))
     }
 
-    pub fn connect(&self, params: Value) -> Value {
+    pub fn connect(&self, params: Value) -> Result<Value, RelayError> {
         self.execute("calling.connect", params)
     }
 
-    pub fn disconnect(&self) -> Value {
+    pub fn disconnect(&self) -> Result<Value, RelayError> {
         self.execute("calling.disconnect", Value::Object(serde_json::Map::new()))
     }
 
-    pub fn hold(&self) -> Value {
+    pub fn hold(&self) -> Result<Value, RelayError> {
         self.execute("calling.hold", Value::Object(serde_json::Map::new()))
     }
 
-    pub fn unhold(&self) -> Value {
+    pub fn unhold(&self) -> Result<Value, RelayError> {
         self.execute("calling.unhold", Value::Object(serde_json::Map::new()))
     }
 
-    pub fn denoise(&self) -> Value {
+    pub fn denoise(&self) -> Result<Value, RelayError> {
         self.execute("calling.denoise", Value::Object(serde_json::Map::new()))
     }
 
-    pub fn denoise_stop(&self) -> Value {
+    pub fn denoise_stop(&self) -> Result<Value, RelayError> {
         self.execute(
             "calling.denoise.stop",
             Value::Object(serde_json::Map::new()),
         )
     }
 
-    pub fn transfer(&self, params: Value) -> Value {
+    pub fn transfer(&self, params: Value) -> Result<Value, RelayError> {
         self.execute("calling.transfer", params)
     }
 
-    pub fn join_conference(&self, params: Value) -> Value {
+    pub fn join_conference(&self, params: Value) -> Result<Value, RelayError> {
         self.execute("calling.conference.join", params)
     }
 
-    pub fn leave_conference(&self) -> Value {
+    pub fn leave_conference(&self) -> Result<Value, RelayError> {
         self.execute(
             "calling.conference.leave",
             Value::Object(serde_json::Map::new()),
         )
     }
 
-    pub fn echo_call(&self) -> Value {
+    pub fn echo_call(&self) -> Result<Value, RelayError> {
         self.execute("calling.echo", Value::Object(serde_json::Map::new()))
     }
 
-    pub fn bind_digit(&self, params: Value) -> Value {
+    pub fn bind_digit(&self, params: Value) -> Result<Value, RelayError> {
         self.execute("calling.bind_digit", params)
     }
 
-    pub fn clear_digit_bindings(&self) -> Value {
+    pub fn clear_digit_bindings(&self) -> Result<Value, RelayError> {
         self.execute(
             "calling.clear_digit_bindings",
             Value::Object(serde_json::Map::new()),
@@ -354,7 +355,7 @@ impl Call {
     /// The wire schema (`relay-protocol/calling.live_transcribe.params.json`)
     /// requires `params.action` -- the caller's `action` value must be
     /// wrapped, not forwarded flat.
-    pub fn live_transcribe(&self, action: Value) -> Value {
+    pub fn live_transcribe(&self, action: Value) -> Result<Value, RelayError> {
         let params = serde_json::json!({ "action": action });
         self.execute("calling.live_transcribe", params)
     }
@@ -364,7 +365,11 @@ impl Call {
     /// The wire schema (`relay-protocol/calling.live_translate.params.json`)
     /// requires `params.action` -- the caller's `action` value must be
     /// wrapped, not forwarded flat. `status_url` is an optional sibling param.
-    pub fn live_translate(&self, action: Value, status_url: Option<&str>) -> Value {
+    pub fn live_translate(
+        &self,
+        action: Value,
+        status_url: Option<&str>,
+    ) -> Result<Value, RelayError> {
         let mut params = serde_json::json!({ "action": action });
         if let Some(url) = status_url {
             params["status_url"] = Value::String(url.to_string());
@@ -372,43 +377,43 @@ impl Call {
         self.execute("calling.live_translate", params)
     }
 
-    pub fn join_room(&self, params: Value) -> Value {
+    pub fn join_room(&self, params: Value) -> Result<Value, RelayError> {
         self.execute("calling.room.join", params)
     }
 
-    pub fn leave_room(&self) -> Value {
+    pub fn leave_room(&self) -> Result<Value, RelayError> {
         self.execute("calling.room.leave", Value::Object(serde_json::Map::new()))
     }
 
-    pub fn amazon_bedrock(&self, params: Value) -> Value {
+    pub fn amazon_bedrock(&self, params: Value) -> Result<Value, RelayError> {
         self.execute("calling.amazon_bedrock", params)
     }
 
-    pub fn ai_message(&self, params: Value) -> Value {
+    pub fn ai_message(&self, params: Value) -> Result<Value, RelayError> {
         self.execute("calling.ai.message", params)
     }
 
-    pub fn ai_hold(&self) -> Value {
+    pub fn ai_hold(&self) -> Result<Value, RelayError> {
         self.execute("calling.ai.hold", Value::Object(serde_json::Map::new()))
     }
 
-    pub fn ai_unhold(&self) -> Value {
+    pub fn ai_unhold(&self) -> Result<Value, RelayError> {
         self.execute("calling.ai.unhold", Value::Object(serde_json::Map::new()))
     }
 
-    pub fn user_event(&self, params: Value) -> Value {
+    pub fn user_event(&self, params: Value) -> Result<Value, RelayError> {
         self.execute("calling.user_event", params)
     }
 
-    pub fn queue_enter(&self, params: Value) -> Value {
+    pub fn queue_enter(&self, params: Value) -> Result<Value, RelayError> {
         self.execute("calling.queue.enter", params)
     }
 
-    pub fn queue_leave(&self) -> Value {
+    pub fn queue_leave(&self) -> Result<Value, RelayError> {
         self.execute("calling.queue.leave", Value::Object(serde_json::Map::new()))
     }
 
-    pub fn refer_call(&self, params: Value) -> Value {
+    pub fn refer_call(&self, params: Value) -> Result<Value, RelayError> {
         self.execute("calling.refer", params)
     }
 
@@ -428,7 +433,7 @@ impl Call {
     /// Echo audio back to the caller (mirrors Python `Call.echo`).
     /// Emits `calling.echo`. Optional `timeout` / `status_url` may be
     /// supplied via `params`; pass `Value::Null` or an empty object for none.
-    pub fn echo(&self, params: Value) -> Value {
+    pub fn echo(&self, params: Value) -> Result<Value, RelayError> {
         let extra = if params.is_object() {
             params
         } else {
@@ -439,18 +444,18 @@ impl Call {
 
     /// Decline control of an inbound call, returning it to routing
     /// (mirrors Python `Call.pass_`). Emits `calling.pass`.
-    pub fn pass_(&self) -> Value {
+    pub fn pass_(&self) -> Result<Value, RelayError> {
         self.execute("calling.pass", Value::Object(serde_json::Map::new()))
     }
 
     /// Transfer a SIP call to an external SIP endpoint via REFER
     /// (mirrors Python `Call.refer`). Emits `calling.refer` with the
     /// supplied `device` (+ optional `status_url`) params.
-    pub fn refer(&self, params: Value) -> Value {
+    pub fn refer(&self, params: Value) -> Result<Value, RelayError> {
         self.execute("calling.refer", params)
     }
 
-    pub fn send_digits(&self, params: Value) -> Value {
+    pub fn send_digits(&self, params: Value) -> Result<Value, RelayError> {
         self.execute("calling.send_digits", params)
     }
 
@@ -458,19 +463,19 @@ impl Call {
     // Action methods (return Action objects tracked by control_id)
     // ------------------------------------------------------------------
 
-    pub fn play(&self, params: Value) -> Arc<Action> {
+    pub fn play(&self, params: Value) -> Result<Arc<Action>, RelayError> {
         self.start_action("calling.play", "calling.play.stop", params)
     }
 
-    pub fn record(&self, params: Value) -> Arc<Action> {
+    pub fn record(&self, params: Value) -> Result<Arc<Action>, RelayError> {
         self.start_action("calling.record", "calling.record.stop", params)
     }
 
-    pub fn collect(&self, params: Value) -> Arc<Action> {
+    pub fn collect(&self, params: Value) -> Result<Arc<Action>, RelayError> {
         self.start_action("calling.collect", "calling.collect.stop", params)
     }
 
-    pub fn play_and_collect(&self, params: Value) -> Arc<Action> {
+    pub fn play_and_collect(&self, params: Value) -> Result<Arc<Action>, RelayError> {
         self.start_action(
             "calling.play_and_collect",
             "calling.play_and_collect.stop",
@@ -478,35 +483,35 @@ impl Call {
         )
     }
 
-    pub fn detect(&self, params: Value) -> Arc<Action> {
+    pub fn detect(&self, params: Value) -> Result<Arc<Action>, RelayError> {
         self.start_action("calling.detect", "calling.detect.stop", params)
     }
 
-    pub fn send_fax(&self, params: Value) -> Arc<Action> {
+    pub fn send_fax(&self, params: Value) -> Result<Arc<Action>, RelayError> {
         self.start_action("calling.send_fax", "calling.send_fax.stop", params)
     }
 
-    pub fn receive_fax(&self, params: Value) -> Arc<Action> {
+    pub fn receive_fax(&self, params: Value) -> Result<Arc<Action>, RelayError> {
         self.start_action("calling.receive_fax", "calling.receive_fax.stop", params)
     }
 
-    pub fn tap(&self, params: Value) -> Arc<Action> {
+    pub fn tap(&self, params: Value) -> Result<Arc<Action>, RelayError> {
         self.start_action("calling.tap", "calling.tap.stop", params)
     }
 
-    pub fn stream(&self, params: Value) -> Arc<Action> {
+    pub fn stream(&self, params: Value) -> Result<Arc<Action>, RelayError> {
         self.start_action("calling.stream", "calling.stream.stop", params)
     }
 
-    pub fn pay(&self, params: Value) -> Arc<Action> {
+    pub fn pay(&self, params: Value) -> Result<Arc<Action>, RelayError> {
         self.start_action("calling.pay", "calling.pay.stop", params)
     }
 
-    pub fn transcribe(&self, params: Value) -> Arc<Action> {
+    pub fn transcribe(&self, params: Value) -> Result<Arc<Action>, RelayError> {
         self.start_action("calling.transcribe", "calling.transcribe.stop", params)
     }
 
-    pub fn ai(&self, params: Value) -> Arc<Action> {
+    pub fn ai(&self, params: Value) -> Result<Arc<Action>, RelayError> {
         self.start_action("calling.ai", "calling.ai.stop", params)
     }
 
@@ -534,7 +539,7 @@ impl Call {
     /// gender?,voice?}}]` with an optional top-level `volume`.
     /// `opts` may carry `language`, `gender`, `voice` (strings) and
     /// `volume` (number).
-    pub fn play_tts(&self, text: &str, opts: Value) -> Arc<Action> {
+    pub fn play_tts(&self, text: &str, opts: Value) -> Result<Arc<Action>, RelayError> {
         let mut tts = serde_json::Map::new();
         tts.insert("text".to_string(), Value::String(text.to_string()));
         for key in ["language", "gender", "voice"] {
@@ -557,7 +562,7 @@ impl Call {
     ///
     /// Wire shape: `play [{"type":"audio","params":{"url":...}}]` with an
     /// optional top-level `volume` (read from `opts`).
-    pub fn play_audio(&self, url: &str, opts: Value) -> Arc<Action> {
+    pub fn play_audio(&self, url: &str, opts: Value) -> Result<Arc<Action>, RelayError> {
         let mut params = serde_json::Map::new();
         params.insert(
             "play".to_string(),
@@ -573,7 +578,7 @@ impl Call {
     /// [`Call::play`].
     ///
     /// Wire shape: `play [{"type":"silence","params":{"duration":...}}]`.
-    pub fn play_silence(&self, duration: f64) -> Arc<Action> {
+    pub fn play_silence(&self, duration: f64) -> Result<Arc<Action>, RelayError> {
         self.play(serde_json::json!({
             "play": [{ "type": "silence", "params": { "duration": duration } }]
         }))
@@ -585,7 +590,7 @@ impl Call {
     /// Wire shape: `play [{"type":"ringtone","params":{"name":...,
     /// duration?}}]` with an optional top-level `volume`.
     /// `opts` may carry `duration` and `volume` (numbers).
-    pub fn play_ringtone(&self, name: &str, opts: Value) -> Arc<Action> {
+    pub fn play_ringtone(&self, name: &str, opts: Value) -> Result<Arc<Action>, RelayError> {
         let mut rt = serde_json::Map::new();
         rt.insert("name".to_string(), Value::String(name.to_string()));
         if let Some(d) = opts.get("duration") {
@@ -607,7 +612,7 @@ impl Call {
     /// Wire shape: `detect {"type":"digit","params":{digits?}}` with an
     /// optional top-level `timeout`. `opts` may carry `digits` (string)
     /// and `timeout` (number).
-    pub fn detect_digit(&self, opts: Value) -> Arc<Action> {
+    pub fn detect_digit(&self, opts: Value) -> Result<Arc<Action>, RelayError> {
         let mut detect_params = serde_json::Map::new();
         if let Some(d) = opts.get("digits") {
             detect_params.insert("digits".to_string(), d.clone());
@@ -631,7 +636,7 @@ impl Call {
     /// `initial_timeout`, `end_silence_timeout`, `machine_voice_threshold`,
     /// `machine_words_threshold`, `detect_interruptions`,
     /// `detect_message_end`, and `timeout`.
-    pub fn detect_answering_machine(&self, opts: Value) -> Arc<Action> {
+    pub fn detect_answering_machine(&self, opts: Value) -> Result<Arc<Action>, RelayError> {
         let mut detect_params = serde_json::Map::new();
         for key in [
             "initial_timeout",
@@ -661,7 +666,7 @@ impl Call {
     /// Wire shape: `detect {"type":"fax","params":{tone?}}` with an optional
     /// top-level `timeout`. `opts` may carry `tone` (string) and `timeout`
     /// (number).
-    pub fn detect_fax(&self, opts: Value) -> Arc<Action> {
+    pub fn detect_fax(&self, opts: Value) -> Result<Arc<Action>, RelayError> {
         let mut detect_params = serde_json::Map::new();
         if let Some(tone) = opts.get("tone") {
             detect_params.insert("tone".to_string(), tone.clone());
@@ -684,7 +689,12 @@ impl Call {
     /// language?,gender?,voice?}}]` with the given `collect` object and an
     /// optional top-level `volume`. `opts` may carry `language`, `gender`,
     /// `voice` (strings) and `volume` (number).
-    pub fn prompt_tts(&self, text: &str, collect: Value, opts: Value) -> Arc<Action> {
+    pub fn prompt_tts(
+        &self,
+        text: &str,
+        collect: Value,
+        opts: Value,
+    ) -> Result<Arc<Action>, RelayError> {
         let mut tts = serde_json::Map::new();
         tts.insert("text".to_string(), Value::String(text.to_string()));
         for key in ["language", "gender", "voice"] {
@@ -710,7 +720,12 @@ impl Call {
     /// Wire shape: `play_and_collect [{"type":"audio","params":{"url":...}}]`
     /// with the given `collect` object and an optional top-level `volume`.
     /// `opts` may carry `volume` (number).
-    pub fn prompt_audio(&self, url: &str, collect: Value, opts: Value) -> Arc<Action> {
+    pub fn prompt_audio(
+        &self,
+        url: &str,
+        collect: Value,
+        opts: Value,
+    ) -> Result<Arc<Action>, RelayError> {
         let mut params = serde_json::Map::new();
         params.insert(
             "play".to_string(),
@@ -862,7 +877,7 @@ impl Call {
     /// The params are always also recorded in `sent_commands` for local
     /// inspection/tests. Mirrors Python's `Call._execute`, which calls
     /// `self._client.execute(method, params)`.
-    fn execute(&self, method: &str, extra: Value) -> Value {
+    fn execute(&self, method: &str, extra: Value) -> Result<Value, RelayError> {
         let mut base = self.base_params();
         if let (Some(base_map), Some(extra_map)) = (base.as_object_mut(), extra.as_object()) {
             for (k, v) in extra_map {
@@ -870,15 +885,35 @@ impl Call {
             }
         }
         self.record_command(method, base.clone());
-        // Transmit to the wire through the owning client, if attached.
-        if let Some(client) = self.client() {
-            client.send_request(method, base.clone());
+        // With a LIVE socket attached, genuinely block for the server's
+        // response so a rejected verb surfaces as `Err(RelayError::Rpc)` /
+        // `Timeout` (404/410 "call gone" swallowed to `Ok({})`), mirroring
+        // Python's `await self._client.execute(...)`. Without a live socket
+        // (the in-memory dispatch tests, or a bare `Call::new`) keep the
+        // fire-and-record path and return the built frame — EMISSION unchanged.
+        match self.client() {
+            Some(client) if client.has_live_socket() => client.execute_call_verb(method, base),
+            Some(client) => {
+                client.send_request(method, base.clone());
+                Ok(base)
+            }
+            None => Ok(base),
         }
-        base
     }
 
     /// Spin up a long-running action tracked by a unique `control_id`.
-    fn start_action(&self, method: &str, stop_method: &str, extra: Value) -> Arc<Action> {
+    ///
+    /// Mirrors Python's `Call._start_action`: register the action, execute the
+    /// start RPC, and — with a live socket — block for its response. If the RPC
+    /// fails the action is removed and the error propagates; if the call is
+    /// gone (404/410 → `Ok({})`) the action is immediately resolved so a later
+    /// `wait()` returns instead of hanging.
+    fn start_action(
+        &self,
+        method: &str,
+        stop_method: &str,
+        extra: Value,
+    ) -> Result<Arc<Action>, RelayError> {
         let control_id = generate_uuid();
         let call_id = self.call_id.as_deref().unwrap_or("");
         let node_id = self.node_id.as_deref().unwrap_or("");
@@ -902,7 +937,7 @@ impl Call {
 
         let mut base = self.base_params();
         if let Some(base_map) = base.as_object_mut() {
-            base_map.insert("control_id".to_string(), Value::String(control_id));
+            base_map.insert("control_id".to_string(), Value::String(control_id.clone()));
             if let Some(extra_map) = extra.as_object() {
                 for (k, v) in extra_map {
                     base_map.insert(k.clone(), v.clone());
@@ -910,13 +945,37 @@ impl Call {
             }
         }
         self.record_command(method, base.clone());
-        // Transmit the action's start frame to the wire, if a client is
-        // attached (mirrors Python's `_start_action` -> `_execute`).
-        if let Some(client) = self.client() {
-            client.send_request(method, base);
-        }
 
-        action
+        // Transmit the action's start frame (mirrors Python's `_start_action`
+        // -> `_execute`).
+        match self.client() {
+            Some(client) if client.has_live_socket() => {
+                match client.execute_call_verb(method, base) {
+                    Ok(result) => {
+                        // `execute_call_verb` returns `{}` when the call was
+                        // gone (404/410) — resolve the action immediately so a
+                        // later `wait()` doesn't hang forever.
+                        if result.as_object().is_some_and(serde_json::Map::is_empty) {
+                            self.actions.lock().unwrap().remove(&control_id);
+                            action.resolve(None);
+                        }
+                        Ok(action)
+                    }
+                    Err(e) => {
+                        // The start RPC failed: drop the action and release any
+                        // waiter with the error, then propagate.
+                        self.actions.lock().unwrap().remove(&control_id);
+                        action.resolve(None);
+                        Err(e)
+                    }
+                }
+            }
+            Some(client) => {
+                client.send_request(method, base);
+                Ok(action)
+            }
+            None => Ok(action),
+        }
     }
 }
 
@@ -995,7 +1054,7 @@ mod tests {
     #[test]
     fn test_dispatch_ended_resolves_actions() {
         let call = make_call();
-        let action = call.play(json!({}));
+        let action = call.play(json!({})).unwrap();
         assert!(!action.is_done());
 
         let ev = make_event("calling.call.state", json!({"call_state": "ended"}));
@@ -1029,7 +1088,7 @@ mod tests {
     #[test]
     fn test_dispatch_action_event() {
         let call = make_call();
-        let action = call.play(json!({}));
+        let action = call.play(json!({})).unwrap();
         let control_id = action.control_id().to_string();
 
         let ev = make_event(
@@ -1043,7 +1102,7 @@ mod tests {
     #[test]
     fn test_dispatch_action_terminal() {
         let call = make_call();
-        let action = call.play(json!({}));
+        let action = call.play(json!({})).unwrap();
         let control_id = action.control_id().to_string();
 
         let ev = make_event(
@@ -1075,21 +1134,21 @@ mod tests {
     fn test_simple_methods_send_commands() {
         let call = make_call();
 
-        call.answer();
-        call.hangup();
-        call.pass();
-        call.hold();
-        call.unhold();
-        call.denoise();
-        call.denoise_stop();
-        call.disconnect();
-        call.echo_call();
-        call.leave_conference();
-        call.leave_room();
-        call.ai_hold();
-        call.ai_unhold();
-        call.queue_leave();
-        call.clear_digit_bindings();
+        call.answer().unwrap();
+        call.hangup().unwrap();
+        call.pass().unwrap();
+        call.hold().unwrap();
+        call.unhold().unwrap();
+        call.denoise().unwrap();
+        call.denoise_stop().unwrap();
+        call.disconnect().unwrap();
+        call.echo_call().unwrap();
+        call.leave_conference().unwrap();
+        call.leave_room().unwrap();
+        call.ai_hold().unwrap();
+        call.ai_unhold().unwrap();
+        call.queue_leave().unwrap();
+        call.clear_digit_bindings().unwrap();
 
         let cmds = call.sent_commands.lock().unwrap();
         assert_eq!(cmds.len(), 15);
@@ -1104,11 +1163,11 @@ mod tests {
     fn test_parameterized_methods() {
         let call = make_call();
 
-        call.connect(json!({"to": "+15551001000"}));
-        call.transfer(json!({"dest": "sip:foo@bar"}));
-        call.join_conference(json!({"name": "room1"}));
-        call.bind_digit(json!({"digits": "*"}));
-        call.send_digits(json!({"digits": "1234"}));
+        call.connect(json!({"to": "+15551001000"})).unwrap();
+        call.transfer(json!({"dest": "sip:foo@bar"})).unwrap();
+        call.join_conference(json!({"name": "room1"})).unwrap();
+        call.bind_digit(json!({"digits": "*"})).unwrap();
+        call.send_digits(json!({"digits": "1234"})).unwrap();
 
         let cmds = call.sent_commands.lock().unwrap();
         assert_eq!(cmds.len(), 5);
@@ -1121,7 +1180,9 @@ mod tests {
     #[test]
     fn test_play_creates_action() {
         let call = make_call();
-        let action = call.play(json!({"url": "http://example.com/audio.mp3"}));
+        let action = call
+            .play(json!({"url": "http://example.com/audio.mp3"}))
+            .unwrap();
         assert!(!action.is_done());
         assert_eq!(action.stop_method(), "calling.play.stop");
         assert_eq!(call.actions.lock().unwrap().len(), 1);
@@ -1134,77 +1195,77 @@ mod tests {
     #[test]
     fn test_record_creates_action() {
         let call = make_call();
-        let action = call.record(json!({}));
+        let action = call.record(json!({})).unwrap();
         assert_eq!(action.stop_method(), "calling.record.stop");
     }
 
     #[test]
     fn test_collect_creates_action() {
         let call = make_call();
-        let action = call.collect(json!({}));
+        let action = call.collect(json!({})).unwrap();
         assert_eq!(action.stop_method(), "calling.collect.stop");
     }
 
     #[test]
     fn test_detect_creates_action() {
         let call = make_call();
-        let action = call.detect(json!({}));
+        let action = call.detect(json!({})).unwrap();
         assert_eq!(action.stop_method(), "calling.detect.stop");
     }
 
     #[test]
     fn test_tap_creates_action() {
         let call = make_call();
-        let action = call.tap(json!({}));
+        let action = call.tap(json!({})).unwrap();
         assert_eq!(action.stop_method(), "calling.tap.stop");
     }
 
     #[test]
     fn test_stream_creates_action() {
         let call = make_call();
-        let action = call.stream(json!({}));
+        let action = call.stream(json!({})).unwrap();
         assert_eq!(action.stop_method(), "calling.stream.stop");
     }
 
     #[test]
     fn test_pay_creates_action() {
         let call = make_call();
-        let action = call.pay(json!({}));
+        let action = call.pay(json!({})).unwrap();
         assert_eq!(action.stop_method(), "calling.pay.stop");
     }
 
     #[test]
     fn test_transcribe_creates_action() {
         let call = make_call();
-        let action = call.transcribe(json!({}));
+        let action = call.transcribe(json!({})).unwrap();
         assert_eq!(action.stop_method(), "calling.transcribe.stop");
     }
 
     #[test]
     fn test_ai_creates_action() {
         let call = make_call();
-        let action = call.ai(json!({}));
+        let action = call.ai(json!({})).unwrap();
         assert_eq!(action.stop_method(), "calling.ai.stop");
     }
 
     #[test]
     fn test_send_fax_creates_action() {
         let call = make_call();
-        let action = call.send_fax(json!({}));
+        let action = call.send_fax(json!({})).unwrap();
         assert_eq!(action.stop_method(), "calling.send_fax.stop");
     }
 
     #[test]
     fn test_receive_fax_creates_action() {
         let call = make_call();
-        let action = call.receive_fax(json!({}));
+        let action = call.receive_fax(json!({})).unwrap();
         assert_eq!(action.stop_method(), "calling.receive_fax.stop");
     }
 
     #[test]
     fn test_play_and_collect_creates_action() {
         let call = make_call();
-        let action = call.play_and_collect(json!({}));
+        let action = call.play_and_collect(json!({})).unwrap();
         assert_eq!(action.stop_method(), "calling.play_and_collect.stop");
     }
 
@@ -1221,10 +1282,12 @@ mod tests {
     #[test]
     fn test_play_tts_builds_tts_media() {
         let call = make_call();
-        let action = call.play_tts(
-            "Hi there",
-            json!({"language": "en-US", "gender": "male", "voice": "spore", "volume": -2.0}),
-        );
+        let action = call
+            .play_tts(
+                "Hi there",
+                json!({"language": "en-US", "gender": "male", "voice": "spore", "volume": -2.0}),
+            )
+            .unwrap();
         assert_eq!(action.stop_method(), "calling.play.stop");
         let p = one_built(&call, "calling.play");
         let media = &p["play"][0];
@@ -1241,7 +1304,7 @@ mod tests {
     #[test]
     fn test_play_tts_omits_unset_optionals() {
         let call = make_call();
-        call.play_tts("Bare", json!({}));
+        call.play_tts("Bare", json!({})).unwrap();
         let p = one_built(&call, "calling.play");
         let params = &p["play"][0]["params"];
         assert_eq!(params["text"], "Bare");
@@ -1254,7 +1317,8 @@ mod tests {
     #[test]
     fn test_play_audio_builds_audio_media() {
         let call = make_call();
-        call.play_audio("https://x/a.mp3", json!({"volume": 1.5}));
+        call.play_audio("https://x/a.mp3", json!({"volume": 1.5}))
+            .unwrap();
         let p = one_built(&call, "calling.play");
         assert_eq!(p["play"][0]["type"], "audio");
         assert_eq!(p["play"][0]["params"]["url"], "https://x/a.mp3");
@@ -1264,7 +1328,7 @@ mod tests {
     #[test]
     fn test_play_silence_builds_silence_media() {
         let call = make_call();
-        call.play_silence(3.0);
+        call.play_silence(3.0).unwrap();
         let p = one_built(&call, "calling.play");
         assert_eq!(p["play"][0]["type"], "silence");
         assert_eq!(p["play"][0]["params"]["duration"], 3.0);
@@ -1273,7 +1337,8 @@ mod tests {
     #[test]
     fn test_play_ringtone_builds_ringtone_media() {
         let call = make_call();
-        call.play_ringtone("us", json!({"duration": 5.0, "volume": -1.0}));
+        call.play_ringtone("us", json!({"duration": 5.0, "volume": -1.0}))
+            .unwrap();
         let p = one_built(&call, "calling.play");
         assert_eq!(p["play"][0]["type"], "ringtone");
         assert_eq!(p["play"][0]["params"]["name"], "us");
@@ -1284,7 +1349,7 @@ mod tests {
     #[test]
     fn test_play_ringtone_omits_unset_duration() {
         let call = make_call();
-        call.play_ringtone("de", json!({}));
+        call.play_ringtone("de", json!({})).unwrap();
         let p = one_built(&call, "calling.play");
         assert_eq!(p["play"][0]["params"]["name"], "de");
         assert!(p["play"][0]["params"].get("duration").is_none());
@@ -1294,7 +1359,9 @@ mod tests {
     #[test]
     fn test_detect_digit_builds_digit_detect() {
         let call = make_call();
-        let action = call.detect_digit(json!({"digits": "42", "timeout": 10.0}));
+        let action = call
+            .detect_digit(json!({"digits": "42", "timeout": 10.0}))
+            .unwrap();
         assert_eq!(action.stop_method(), "calling.detect.stop");
         let p = one_built(&call, "calling.detect");
         assert_eq!(p["detect"]["type"], "digit");
@@ -1305,7 +1372,7 @@ mod tests {
     #[test]
     fn test_detect_digit_empty_params() {
         let call = make_call();
-        call.detect_digit(json!({}));
+        call.detect_digit(json!({})).unwrap();
         let p = one_built(&call, "calling.detect");
         assert_eq!(p["detect"]["type"], "digit");
         assert!(p["detect"]["params"].as_object().unwrap().is_empty());
@@ -1320,7 +1387,8 @@ mod tests {
             "machine_words_threshold": 6,
             "detect_message_end": false,
             "timeout": 25.0,
-        }));
+        }))
+        .unwrap();
         let p = one_built(&call, "calling.detect");
         assert_eq!(p["detect"]["type"], "machine");
         let dp = p["detect"]["params"].as_object().unwrap();
@@ -1338,7 +1406,7 @@ mod tests {
     #[test]
     fn test_detect_fax_builds_fax_detect() {
         let call = make_call();
-        call.detect_fax(json!({"tone": "CNG"}));
+        call.detect_fax(json!({"tone": "CNG"})).unwrap();
         let p = one_built(&call, "calling.detect");
         assert_eq!(p["detect"]["type"], "fax");
         assert_eq!(p["detect"]["params"]["tone"], "CNG");
@@ -1348,11 +1416,13 @@ mod tests {
     #[test]
     fn test_prompt_tts_builds_tts_media_plus_collect() {
         let call = make_call();
-        let action = call.prompt_tts(
-            "Pick one",
-            json!({"digits": {"max": 1}}),
-            json!({"voice": "spore", "volume": 0.5}),
-        );
+        let action = call
+            .prompt_tts(
+                "Pick one",
+                json!({"digits": {"max": 1}}),
+                json!({"voice": "spore", "volume": 0.5}),
+            )
+            .unwrap();
         assert_eq!(action.stop_method(), "calling.play_and_collect.stop");
         let p = one_built(&call, "calling.play_and_collect");
         assert_eq!(p["play"][0]["type"], "tts");
@@ -1369,7 +1439,8 @@ mod tests {
             "https://x/p.wav",
             json!({"speech": {"end_silence_timeout": 1}}),
             json!({}),
-        );
+        )
+        .unwrap();
         let p = one_built(&call, "calling.play_and_collect");
         assert_eq!(p["play"][0]["type"], "audio");
         assert_eq!(p["play"][0]["params"]["url"], "https://x/p.wav");
@@ -1381,8 +1452,8 @@ mod tests {
     #[test]
     fn test_resolve_all_actions() {
         let call = make_call();
-        let a1 = call.play(json!({}));
-        let a2 = call.record(json!({}));
+        let a1 = call.play(json!({})).unwrap();
+        let a2 = call.record(json!({})).unwrap();
         assert!(!a1.is_done());
         assert!(!a2.is_done());
 
@@ -1417,7 +1488,7 @@ mod tests {
     #[test]
     fn test_echo_emits_calling_echo() {
         let call = make_call();
-        call.echo(Value::Null);
+        call.echo(Value::Null).unwrap();
         let cmds = call.sent_commands.lock().unwrap();
         assert_eq!(cmds[0].0, "calling.echo");
         assert_eq!(cmds[0].1["call_id"], "call-1");
@@ -1427,7 +1498,8 @@ mod tests {
     #[test]
     fn test_echo_forwards_params() {
         let call = make_call();
-        call.echo(json!({"timeout": 30, "status_url": "https://x"}));
+        call.echo(json!({"timeout": 30, "status_url": "https://x"}))
+            .unwrap();
         let cmds = call.sent_commands.lock().unwrap();
         assert_eq!(cmds[0].0, "calling.echo");
         assert_eq!(cmds[0].1["timeout"], 30);
@@ -1437,7 +1509,7 @@ mod tests {
     #[test]
     fn test_pass_emits_calling_pass() {
         let call = make_call();
-        call.pass_();
+        call.pass_().unwrap();
         let cmds = call.sent_commands.lock().unwrap();
         assert_eq!(cmds[0].0, "calling.pass");
         assert_eq!(cmds[0].1["call_id"], "call-1");
@@ -1446,7 +1518,8 @@ mod tests {
     #[test]
     fn test_refer_emits_calling_refer_with_device() {
         let call = make_call();
-        call.refer(json!({"device": {"type": "sip", "params": {"to": "sip:x"}}}));
+        call.refer(json!({"device": {"type": "sip", "params": {"to": "sip:x"}}}))
+            .unwrap();
         let cmds = call.sent_commands.lock().unwrap();
         assert_eq!(cmds[0].0, "calling.refer");
         assert_eq!(cmds[0].1["device"]["type"], "sip");

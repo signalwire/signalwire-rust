@@ -44,21 +44,25 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Call connected: {}", call.repr());
 
     // Play a greeting (TTS).
-    let action = call.play(serde_json::json!({
-        "play": [{
-            "type": "tts",
-            "params": {"text": "Hello! This is an automated message from SignalWire."}
-        }]
-    }));
+    let action = call
+        .play(serde_json::json!({
+            "play": [{
+                "type": "tts",
+                "params": {"text": "Hello! This is an automated message from SignalWire."}
+            }]
+        }))
+        .expect("relay verb must start against the server");
     let _ = action.wait(Some(Duration::from_secs(30)));
 
     // Play an audio file.
-    let action = call.play(serde_json::json!({
-        "play": [{
-            "type": "audio",
-            "params": {"url": "https://cdn.signalwire.com/default-music/welcome.mp3"}
-        }]
-    }));
+    let action = call
+        .play(serde_json::json!({
+            "play": [{
+                "type": "audio",
+                "params": {"url": "https://cdn.signalwire.com/default-music/welcome.mp3"}
+            }]
+        }))
+        .expect("relay verb must start against the server");
     let _ = action.wait(Some(Duration::from_secs(30)));
 
     // Hang up.

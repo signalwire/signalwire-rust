@@ -17,12 +17,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     client.on_call(|call, _event| {
         let _ = call.answer();
-        let action = call.play(serde_json::json!({
-            "play": [{
-                "type": "tts",
-                "params": {"text": "Welcome to SignalWire!"}
-            }]
-        }));
+        let action = call
+            .play(serde_json::json!({
+                "play": [{
+                    "type": "tts",
+                    "params": {"text": "Welcome to SignalWire!"}
+                }]
+            }))
+            .expect("relay verb must start against the server");
         let _ = action.is_done();
         let _ = call.hangup();
     });

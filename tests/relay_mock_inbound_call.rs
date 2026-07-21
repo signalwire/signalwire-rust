@@ -454,9 +454,11 @@ fn test_in_handler_play_then_wait_completes_not_deadlocks() {
         // Start a play action — this frame must flush to the mock while the
         // handler is still running (it can only do so if the reader thread is
         // free, i.e. the handler is NOT on the reader thread).
-        let action = call.play(json!({
-            "play": [{"type": "audio", "params": {"url": "https://x/a.mp3"}}]
-        }));
+        let action = call
+            .play(json!({
+                "play": [{"type": "audio", "params": {"url": "https://x/a.mp3"}}]
+            }))
+            .expect("play against the mock must succeed");
         let control_id = action.control_id().to_string();
         let call_id = call.call_id.clone().unwrap_or_default();
 

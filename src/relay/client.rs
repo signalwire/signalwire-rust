@@ -681,6 +681,24 @@ impl Client {
         *self.running.lock().unwrap()
     }
 
+    /// Whether a live WebSocket writer is attached (i.e. a real reader thread
+    /// is pumping I/O), as opposed to the purely in-memory dispatch mode the
+    /// unit tests use.
+    ///
+    /// The `Call` verbs read this to decide whether to genuinely block on the
+    /// server's response (surfacing `RelayError::Rpc` / `Timeout`) or to stay
+    /// in the fire-and-record in-memory path — so the same verb works both
+    /// against a live/mock server and in the socket-less dispatch tests.
+    ///
+    /// # Panics
+    ///
+    /// Panics if an internal mutex is poisoned (i.e. another thread panicked
+    /// while holding the lock). This does not occur under normal operation.
+    #[must_use]
+    pub fn has_live_socket(&self) -> bool {
+        self.write_tx.lock().unwrap().is_some()
+    }
+
     // ══════════════════════════════════════════════════════════════════
     //  JSON-RPC transport
     // ══════════════════════════════════════════════════════════════════
@@ -1155,6 +1173,155 @@ impl Client {
                 })
             }
         }
+    }
+
+    /// Execute a `calling.*` verb frame and block for the server's response,
+    /// applying the RELAY "call gone" contract that mirrors Python's
+    /// `Call._execute`.
+    ///
+    /// This is the fallible core the [`Call`](crate::relay::Call) verbs route
+    /// through when a live socket is attached. It behaves like
+    /// [`execute_blocking`](Self::execute_blocking) except that a **404** or
+    /// **410** server error — meaning the call no longer exists — is swallowed
+    /// and returned as `Ok({})` (a no-op), because the verb simply can't
+    /// proceed and that isn't a failure worth surfacing. **Every other non-2xx
+    /// server error propagates** as `Err(RelayError::Rpc)`, so real failures
+    /// (auth, bad params, server faults) reach the caller rather than being
+    /// hidden. A missing response within the deadline is `Err(RelayError::Timeout)`.
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err(RelayError::Rpc { method, message })` for a non-2xx server
+    /// error whose code is not 404/410, or `Err(RelayError::Timeout)` if no
+    /// response arrives within `HANDSHAKE_TIMEOUT`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if an internal mutex is poisoned (i.e. another thread panicked
+    /// while holding the lock). This does not occur under normal operation.
+    pub fn execute_call_verb(&self, method: &str, params: Value) -> Result<Value, RelayError> {
+        let id = generate_uuid();
+        let frame = json!({
+            "jsonrpc": "2.0",
+            "id": id,
+            "method": method,
+            "params": params,
+        });
+
+        let (resp_tx, resp_rx) = mpsc::channel::<Result<Value, Value>>();
+        let resolve_tx = resp_tx.clone();
+        let reject_tx = resp_tx;
+        self.register_pending(
+            &id,
+            move |v| {
+                let _ = resolve_tx.send(Ok(v));
+            },
+            move |e| {
+                let _ = reject_tx.send(Err(e));
+            },
+        );
+
+        self.send(&frame);
+
+        match resp_rx.recv_timeout(HANDSHAKE_TIMEOUT) {
+            // A `calling.*` RESULT carries a `code`; any 2xx is success. A non-2xx
+            // result code is a server-side failure (mirrors Python's
+            // `_handle_message`: `_SUCCESS_CODE_RE = ^2\d{2}$` → else raise), so
+            // route it through the same 404/410-swallow / else-raise contract as
+            // an error frame.
+            Ok(Ok(result)) => {
+                let msg = result
+                    .get("message")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("execute failed")
+                    .to_string();
+                match Self::classify_verb_outcome(method, result.get("code"), &msg, &self.logger) {
+                    // Real non-2xx failure → propagate.
+                    Some(e) => e,
+                    // 2xx (or no code) → the real result; a swallowed 404/410
+                    // becomes `{}`.
+                    None => {
+                        if Self::code_is_gone(result.get("code")) {
+                            Ok(json!({}))
+                        } else {
+                            Ok(result)
+                        }
+                    }
+                }
+            }
+            Ok(Err(err)) => {
+                // JSON-RPC error frame: the error object carries the `code`.
+                let msg = err
+                    .get("message")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("execute failed")
+                    .to_string();
+                match Self::classify_verb_outcome(method, err.get("code"), &msg, &self.logger) {
+                    Some(e) => e,
+                    // A swallowed 404/410 (or a code-less error) → no-op `{}`.
+                    None => Ok(json!({})),
+                }
+            }
+            Err(_) => {
+                self.pending.lock().unwrap().remove(&id);
+                Err(RelayError::Timeout {
+                    what: format!("{method} response"),
+                })
+            }
+        }
+    }
+
+    /// Classify a `calling.*` response `code` into the RELAY call-verb contract:
+    /// `None` → success (2xx or a call-gone 404/410 that is swallowed to a
+    /// no-op by the caller), `Some(Err(RelayError::Rpc))` → a real non-2xx
+    /// failure that must propagate. Shared by the result-code and error-frame
+    /// arms of [`execute_call_verb`](Self::execute_call_verb).
+    fn classify_verb_outcome(
+        method: &str,
+        code: Option<&Value>,
+        message: &str,
+        logger: &crate::logging::Logger,
+    ) -> Option<Result<Value, RelayError>> {
+        // No code → treat as success (nothing to check).
+        let Some(code_val) = code else {
+            return None;
+        };
+        let code_str = match code_val {
+            Value::String(s) => s.clone(),
+            Value::Number(n) => n.to_string(),
+            _ => return None,
+        };
+        // Any 2xx is success.
+        if code_str.len() == 3
+            && code_str.starts_with('2')
+            && code_str[1..].chars().all(|c| c.is_ascii_digit())
+        {
+            return None;
+        }
+        let numeric: Option<i64> = code_str.parse().ok();
+        // 404/410 mean the call is gone — swallow to a no-op (caller returns {}).
+        if matches!(numeric, Some(404 | 410)) {
+            logger.warn(&format!(
+                "call gone during {method} (code={code_str}); no-op"
+            ));
+            return None;
+        }
+        Some(Err(RelayError::Rpc {
+            method: method.to_string(),
+            message: message.to_string(),
+        }))
+    }
+
+    /// Whether a response `code` is a "call gone" (404/410) code — used to
+    /// return a no-op `{}` for a swallowed result, distinguishing it from a
+    /// genuine 2xx success.
+    fn code_is_gone(code: Option<&Value>) -> bool {
+        let n = code.and_then(|c| match c {
+            Value::String(s) => s.parse::<i64>().ok(),
+            Value::Number(num) => num.as_i64(),
+            _ => None,
+        });
+        matches!(n, Some(404 | 410))
     }
 
     /// Send an outbound SMS/MMS message.
@@ -1834,7 +2001,7 @@ mod tests {
         );
         // An in-flight call + action.
         let call = Arc::new(Call::new(&json!({"call_id": "c1", "node_id": "n1"})));
-        let action = call.play(json!({}));
+        let action = call.play(json!({})).unwrap();
         c.calls.lock().unwrap().insert("c1".to_string(), call);
         assert!(!action.is_done());
 

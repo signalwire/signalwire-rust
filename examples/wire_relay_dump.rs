@@ -118,14 +118,16 @@ fn capture_verbs(out: &mut BTreeMap<&str, Value>) {
             "play": [{"type": "audio", "params": {"url": "https://x/a.mp3"}}],
             "volume": 5.0,
             "control_id": CID,
-        }));
+        }))
+        .unwrap();
         out.insert("relay_play", last_client_frame(&client));
     }
     // relay_play_tts (typed convenience)
     {
         let client = recording_client();
         let call = make_call(&client);
-        call.play_tts("Hello world", json!({"voice": "en-US-Neural"}));
+        call.play_tts("Hello world", json!({"voice": "en-US-Neural"}))
+            .unwrap();
         out.insert("relay_play_tts", last_client_frame(&client));
     }
     // relay_record
@@ -135,7 +137,8 @@ fn capture_verbs(out: &mut BTreeMap<&str, Value>) {
         call.record(json!({
             "record": {"audio": {"format": "mp3", "beep": true}},
             "control_id": CID,
-        }));
+        }))
+        .unwrap();
         out.insert("relay_record", last_client_frame(&client));
     }
     // relay_connect
@@ -147,7 +150,8 @@ fn capture_verbs(out: &mut BTreeMap<&str, Value>) {
             "ringback": [{"type": "ringtone", "params": {"name": "us"}}],
             "tag": "leg-1",
             "max_duration": 3600,
-        }));
+        }))
+        .unwrap();
         out.insert("relay_connect", last_client_frame(&client));
     }
     // relay_collect
@@ -160,7 +164,8 @@ fn capture_verbs(out: &mut BTreeMap<&str, Value>) {
             "initial_timeout": 5.0,
             "partial_results": true,
             "control_id": CID,
-        }));
+        }))
+        .unwrap();
         out.insert("relay_collect", last_client_frame(&client));
     }
     // relay_prompt (play_and_collect via typed prompt_tts)
@@ -171,7 +176,8 @@ fn capture_verbs(out: &mut BTreeMap<&str, Value>) {
             "Enter your PIN",
             json!({"digits": {"max": 4}}),
             json!({"voice": "en-US-Neural"}),
-        );
+        )
+        .unwrap();
         out.insert("relay_prompt", last_client_frame(&client));
     }
     // relay_detect
@@ -182,7 +188,8 @@ fn capture_verbs(out: &mut BTreeMap<&str, Value>) {
             "detect": {"type": "machine", "params": {"initial_timeout": 4.0}},
             "timeout": 30.0,
             "control_id": CID,
-        }));
+        }))
+        .unwrap();
         out.insert("relay_detect", last_client_frame(&client));
     }
     // relay_detect_amd (typed convenience)
@@ -193,7 +200,8 @@ fn capture_verbs(out: &mut BTreeMap<&str, Value>) {
             "initial_timeout": 4.0,
             "machine_words_threshold": 6,
             "timeout": 30.0,
-        }));
+        }))
+        .unwrap();
         out.insert("relay_detect_amd", last_client_frame(&client));
     }
     // relay_tap
@@ -204,7 +212,8 @@ fn capture_verbs(out: &mut BTreeMap<&str, Value>) {
             "tap": {"type": "audio", "params": {"direction": "both"}},
             "device": {"type": "ws", "params": {"uri": "wss://x/tap"}},
             "control_id": CID,
-        }));
+        }))
+        .unwrap();
         out.insert("relay_tap", last_client_frame(&client));
     }
     // relay_send_fax
@@ -216,7 +225,8 @@ fn capture_verbs(out: &mut BTreeMap<&str, Value>) {
             "identity": "+15550001111",
             "header_info": "Hdr",
             "control_id": CID,
-        }));
+        }))
+        .unwrap();
         out.insert("relay_send_fax", last_client_frame(&client));
     }
     // relay_live_transcribe — params.action must be wrapped (wire schema
@@ -224,7 +234,8 @@ fn capture_verbs(out: &mut BTreeMap<&str, Value>) {
     {
         let client = recording_client();
         let call = make_call(&client);
-        call.live_transcribe(json!({"start": {"lang": "en"}}));
+        call.live_transcribe(json!({"start": {"lang": "en"}}))
+            .unwrap();
         out.insert("relay_live_transcribe", last_client_frame(&client));
     }
     // relay_live_translate — params.action wrapped + optional status_url
@@ -235,7 +246,8 @@ fn capture_verbs(out: &mut BTreeMap<&str, Value>) {
         call.live_translate(
             json!({"start": {"from_lang": "en", "to_lang": "es"}}),
             Some("https://x/cb"),
-        );
+        )
+        .unwrap();
         out.insert("relay_live_translate", last_client_frame(&client));
     }
 
@@ -247,10 +259,12 @@ fn capture_verbs(out: &mut BTreeMap<&str, Value>) {
     {
         let client = recording_client();
         let call = make_call(&client);
-        let action = call.play(json!({
-            "play": [{"type": "audio", "params": {"url": "https://x/a.mp3"}}],
-            "control_id": CID,
-        }));
+        let action = call
+            .play(json!({
+                "play": [{"type": "audio", "params": {"url": "https://x/a.mp3"}}],
+                "control_id": CID,
+            }))
+            .unwrap();
         action.stop();
         out.insert("relay_play_stop", last_client_frame(&client));
     }
@@ -261,10 +275,12 @@ fn capture_verbs(out: &mut BTreeMap<&str, Value>) {
     {
         let client = recording_client();
         let call = make_call(&client);
-        let action = call.play(json!({
-            "play": [{"type": "audio", "params": {"url": "https://x/a.mp3"}}],
-            "control_id": CID,
-        }));
+        let action = call
+            .play(json!({
+                "play": [{"type": "audio", "params": {"url": "https://x/a.mp3"}}],
+                "control_id": CID,
+            }))
+            .unwrap();
         let mut extra = std::collections::HashMap::new();
         extra.insert("behavior".to_string(), json!("silence"));
         action.execute_subcommand("calling.play.pause", extra);
@@ -274,10 +290,12 @@ fn capture_verbs(out: &mut BTreeMap<&str, Value>) {
     {
         let client = recording_client();
         let call = make_call(&client);
-        let action = call.record(json!({
-            "record": {"audio": {"format": "mp3"}},
-            "control_id": CID,
-        }));
+        let action = call
+            .record(json!({
+                "record": {"audio": {"format": "mp3"}},
+                "control_id": CID,
+            }))
+            .unwrap();
         action.execute_subcommand("calling.record.resume", std::collections::HashMap::new());
         out.insert("relay_record_resume", last_client_frame(&client));
     }
@@ -285,10 +303,12 @@ fn capture_verbs(out: &mut BTreeMap<&str, Value>) {
     {
         let client = recording_client();
         let call = make_call(&client);
-        let action = call.play(json!({
-            "play": [{"type": "audio", "params": {"url": "https://x/a.mp3"}}],
-            "control_id": CID,
-        }));
+        let action = call
+            .play(json!({
+                "play": [{"type": "audio", "params": {"url": "https://x/a.mp3"}}],
+                "control_id": CID,
+            }))
+            .unwrap();
         let mut extra = std::collections::HashMap::new();
         extra.insert("volume".to_string(), json!(3.5));
         action.execute_subcommand("calling.play.volume", extra);
