@@ -448,10 +448,6 @@ fn probe_health(base_url: &str) -> bool {
 }
 
 fn spawn_server(port: u16) -> Result<(), String> {
-    // Detach via a new session/process group so the test binary's pipe-drain
-    // logic doesn't block. We mirror Go's `setsid + Setpgid` approach.
-    use std::os::unix::process::CommandExt;
-
     // Try to inject porting-sdk/test_harness/mock_signalwire/ into
     // PYTHONPATH so `python -m mock_signalwire` resolves without a prior
     // `pip install -e ...`. Adjacency contract: porting-sdk next to
@@ -490,16 +486,10 @@ fn spawn_server(port: u16) -> Result<(), String> {
         cmd.env("PYTHONPATH", new_pp);
     }
 
-    // Detach to a new session.
-    unsafe {
-        cmd.pre_exec(|| {
-            // setsid() -> own process group + session, no controlling terminal.
-            if libc_setsid() == -1 {
-                // Best effort; not fatal.
-            }
-            Ok(())
-        });
-    }
+    // Detach the child so the test binary's pipe-drain logic doesn't block and a
+    // clean teardown is possible (unix: new session/process group via setsid;
+    // windows: no-op — see detach_process_group).
+    detach_process_group(&mut cmd);
 
     cmd.spawn()
         .map_err(|e| format!("failed to spawn `python -m mock_signalwire`: {e} (set MOCK_SIGNALWIRE_PORT to use a pre-running instance)"))?;
@@ -541,12 +531,44 @@ fn separator() -> &'static str {
     ";"
 }
 
+// Detach the spawned mock into its own process group so the test binary neither
+// blocks on its pipes nor orphans it oddly. This is a POSIX concept; the two arms
+// keep the mock-spawn path cross-platform (the Windows CI leg builds the test
+// crate, so unix-only APIs here would be a compile error there).
+//
+// UNIX: `pre_exec(setsid)` — the child gets a new session + process group and no
+// controlling terminal, mirroring Go's `setsid + Setpgid`.
+#[cfg(unix)]
+fn detach_process_group(cmd: &mut Command) {
+    use std::os::unix::process::CommandExt;
+    // SAFETY: setsid() is async-signal-safe and the closure does nothing else,
+    // so it is sound to run in the post-fork / pre-exec child.
+    unsafe {
+        cmd.pre_exec(|| {
+            // setsid() -> own process group + session, no controlling terminal.
+            // Best effort; a failure here is not fatal to the test.
+            let _ = libc_setsid();
+            Ok(())
+        });
+    }
+}
+
+// WINDOWS (and any non-unix): no setsid/process-group equivalent is applied. The
+// mock is spawned as a plain child and cleaned up by the caller's kill / the
+// harness's port ownership. Full process-tree cleanup on Windows would need a Job
+// Object; the mocks here don't fork grandchildren, so a direct spawn+kill suffices
+// for the tests to run and tear down.
+#[cfg(not(unix))]
+fn detach_process_group(_cmd: &mut Command) {}
+
 // libc setsid binding without pulling in the libc crate. Rust 2024
-// edition requires `unsafe extern` for foreign blocks.
+// edition requires `unsafe extern` for foreign blocks. Unix-only.
+#[cfg(unix)]
 unsafe extern "C" {
     fn setsid() -> i32;
 }
 
+#[cfg(unix)]
 fn libc_setsid() -> i32 {
     unsafe { setsid() }
 }
