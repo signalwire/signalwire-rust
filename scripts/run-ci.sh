@@ -282,6 +282,26 @@ sched_gate DRIFT deps=SIGNATURES desc="diff_port_signatures vs python reference"
 sched_gate SURFACE-FRESH res=surface desc="check_surface_freshness vs committed port_surface.json" \
     --fn surface_fresh_gate
 
+# RELAY-VERB-RESULT-LOCK: the ~52 calling.* verbs on relay::Call return
+# Result<_, RelayError> (RUST-1). DRIFT tolerates a reversion (the enumerator
+# unwraps Result<T,E>→T so a bare-return verb records the same concrete type),
+# so this parses src/relay/call.rs to lock the flip against a silent revert.
+# The gate SCRIPT lives on porting-sdk wave/1-aplus; PR CI currently checks out
+# porting-sdk main (post-#50 unpin), where it is not yet present. Guard on the
+# script's presence so PR #51 stays green against a main psdk while enforcing the
+# instant psdk carries it (wave/1-aplus locally, and unconditionally once the
+# Wave-1 psdk merges to main — at which point this guard becomes a no-op). This
+# is an availability-guard on a psdk-side gate, NOT a silenced local gate: the
+# verb→Result flip itself is proven by cargo tests + relay_mock_verb_result.
+if [ -f "$PORTING_SDK_DIR/scripts/rust_relay_verb_result_lock.py" ]; then
+    sched_gate RELAY-VERB-RESULT-LOCK desc="every relay::Call calling.* verb returns Result<_, RelayError>" \
+        -- python3 "$PORTING_SDK_DIR/scripts/rust_relay_verb_result_lock.py" \
+            --call-source "$PORT_ROOT/src/relay/call.rs" --min-locked 40
+else
+    echo "run-ci: RELAY-VERB-RESULT-LOCK skipped — gate script not in this porting-sdk" \
+         "checkout (on wave/1-aplus; enforces once psdk carries it / merges to main)." >&2
+fi
+
 sched_gate NO-CHEAT desc="audit_no_cheat_tests" \
     -- python3 "$PORTING_SDK_DIR/scripts/audit_no_cheat_tests.py" --root "$PORT_ROOT"
 

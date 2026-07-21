@@ -695,7 +695,7 @@ impl Client {
     /// Panics if an internal mutex is poisoned (i.e. another thread panicked
     /// while holding the lock). This does not occur under normal operation.
     #[must_use]
-    pub fn has_live_socket(&self) -> bool {
+    pub(crate) fn has_live_socket(&self) -> bool {
         self.write_tx.lock().unwrap().is_some()
     }
 
@@ -1199,7 +1199,11 @@ impl Client {
     ///
     /// Panics if an internal mutex is poisoned (i.e. another thread panicked
     /// while holding the lock). This does not occur under normal operation.
-    pub fn execute_call_verb(&self, method: &str, params: Value) -> Result<Value, RelayError> {
+    pub(crate) fn execute_call_verb(
+        &self,
+        method: &str,
+        params: Value,
+    ) -> Result<Value, RelayError> {
         let id = generate_uuid();
         let frame = json!({
             "jsonrpc": "2.0",
@@ -1283,9 +1287,7 @@ impl Client {
         logger: &crate::logging::Logger,
     ) -> Option<Result<Value, RelayError>> {
         // No code → treat as success (nothing to check).
-        let Some(code_val) = code else {
-            return None;
-        };
+        let code_val = code?;
         let code_str = match code_val {
             Value::String(s) => s.clone(),
             Value::Number(n) => n.to_string(),

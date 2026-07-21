@@ -281,38 +281,92 @@ impl Call {
     // Simple RPC methods (fire-and-return)
     // ------------------------------------------------------------------
 
+    /// # Errors
+    ///
+    /// With a live socket, returns `Err(RelayError::Rpc)` if the RELAY
+    /// server rejects the verb with a non-2xx result code, or
+    /// `Err(RelayError::Timeout)` if no response arrives within the
+    /// deadline. A 404/410 "call gone" result is swallowed to `Ok`.
     pub fn answer(&self) -> Result<Value, RelayError> {
         self.execute("calling.answer", Value::Object(serde_json::Map::new()))
     }
 
+    /// # Errors
+    ///
+    /// With a live socket, returns `Err(RelayError::Rpc)` if the RELAY
+    /// server rejects the verb with a non-2xx result code, or
+    /// `Err(RelayError::Timeout)` if no response arrives within the
+    /// deadline. A 404/410 "call gone" result is swallowed to `Ok`.
     pub fn hangup(&self) -> Result<Value, RelayError> {
         self.execute("calling.hangup", Value::Object(serde_json::Map::new()))
     }
 
+    /// # Errors
+    ///
+    /// With a live socket, returns `Err(RelayError::Rpc)` if the RELAY
+    /// server rejects the verb with a non-2xx result code, or
+    /// `Err(RelayError::Timeout)` if no response arrives within the
+    /// deadline. A 404/410 "call gone" result is swallowed to `Ok`.
     pub fn pass(&self) -> Result<Value, RelayError> {
         self.execute("calling.pass", Value::Object(serde_json::Map::new()))
     }
 
+    /// # Errors
+    ///
+    /// With a live socket, returns `Err(RelayError::Rpc)` if the RELAY
+    /// server rejects the verb with a non-2xx result code, or
+    /// `Err(RelayError::Timeout)` if no response arrives within the
+    /// deadline. A 404/410 "call gone" result is swallowed to `Ok`.
     pub fn connect(&self, params: Value) -> Result<Value, RelayError> {
         self.execute("calling.connect", params)
     }
 
+    /// # Errors
+    ///
+    /// With a live socket, returns `Err(RelayError::Rpc)` if the RELAY
+    /// server rejects the verb with a non-2xx result code, or
+    /// `Err(RelayError::Timeout)` if no response arrives within the
+    /// deadline. A 404/410 "call gone" result is swallowed to `Ok`.
     pub fn disconnect(&self) -> Result<Value, RelayError> {
         self.execute("calling.disconnect", Value::Object(serde_json::Map::new()))
     }
 
+    /// # Errors
+    ///
+    /// With a live socket, returns `Err(RelayError::Rpc)` if the RELAY
+    /// server rejects the verb with a non-2xx result code, or
+    /// `Err(RelayError::Timeout)` if no response arrives within the
+    /// deadline. A 404/410 "call gone" result is swallowed to `Ok`.
     pub fn hold(&self) -> Result<Value, RelayError> {
         self.execute("calling.hold", Value::Object(serde_json::Map::new()))
     }
 
+    /// # Errors
+    ///
+    /// With a live socket, returns `Err(RelayError::Rpc)` if the RELAY
+    /// server rejects the verb with a non-2xx result code, or
+    /// `Err(RelayError::Timeout)` if no response arrives within the
+    /// deadline. A 404/410 "call gone" result is swallowed to `Ok`.
     pub fn unhold(&self) -> Result<Value, RelayError> {
         self.execute("calling.unhold", Value::Object(serde_json::Map::new()))
     }
 
+    /// # Errors
+    ///
+    /// With a live socket, returns `Err(RelayError::Rpc)` if the RELAY
+    /// server rejects the verb with a non-2xx result code, or
+    /// `Err(RelayError::Timeout)` if no response arrives within the
+    /// deadline. A 404/410 "call gone" result is swallowed to `Ok`.
     pub fn denoise(&self) -> Result<Value, RelayError> {
         self.execute("calling.denoise", Value::Object(serde_json::Map::new()))
     }
 
+    /// # Errors
+    ///
+    /// With a live socket, returns `Err(RelayError::Rpc)` if the RELAY
+    /// server rejects the verb with a non-2xx result code, or
+    /// `Err(RelayError::Timeout)` if no response arrives within the
+    /// deadline. A 404/410 "call gone" result is swallowed to `Ok`.
     pub fn denoise_stop(&self) -> Result<Value, RelayError> {
         self.execute(
             "calling.denoise.stop",
@@ -320,14 +374,32 @@ impl Call {
         )
     }
 
+    /// # Errors
+    ///
+    /// With a live socket, returns `Err(RelayError::Rpc)` if the RELAY
+    /// server rejects the verb with a non-2xx result code, or
+    /// `Err(RelayError::Timeout)` if no response arrives within the
+    /// deadline. A 404/410 "call gone" result is swallowed to `Ok`.
     pub fn transfer(&self, params: Value) -> Result<Value, RelayError> {
         self.execute("calling.transfer", params)
     }
 
+    /// # Errors
+    ///
+    /// With a live socket, returns `Err(RelayError::Rpc)` if the RELAY
+    /// server rejects the verb with a non-2xx result code, or
+    /// `Err(RelayError::Timeout)` if no response arrives within the
+    /// deadline. A 404/410 "call gone" result is swallowed to `Ok`.
     pub fn join_conference(&self, params: Value) -> Result<Value, RelayError> {
         self.execute("calling.conference.join", params)
     }
 
+    /// # Errors
+    ///
+    /// With a live socket, returns `Err(RelayError::Rpc)` if the RELAY
+    /// server rejects the verb with a non-2xx result code, or
+    /// `Err(RelayError::Timeout)` if no response arrives within the
+    /// deadline. A 404/410 "call gone" result is swallowed to `Ok`.
     pub fn leave_conference(&self) -> Result<Value, RelayError> {
         self.execute(
             "calling.conference.leave",
@@ -335,14 +407,32 @@ impl Call {
         )
     }
 
+    /// # Errors
+    ///
+    /// With a live socket, returns `Err(RelayError::Rpc)` if the RELAY
+    /// server rejects the verb with a non-2xx result code, or
+    /// `Err(RelayError::Timeout)` if no response arrives within the
+    /// deadline. A 404/410 "call gone" result is swallowed to `Ok`.
     pub fn echo_call(&self) -> Result<Value, RelayError> {
         self.execute("calling.echo", Value::Object(serde_json::Map::new()))
     }
 
+    /// # Errors
+    ///
+    /// With a live socket, returns `Err(RelayError::Rpc)` if the RELAY
+    /// server rejects the verb with a non-2xx result code, or
+    /// `Err(RelayError::Timeout)` if no response arrives within the
+    /// deadline. A 404/410 "call gone" result is swallowed to `Ok`.
     pub fn bind_digit(&self, params: Value) -> Result<Value, RelayError> {
         self.execute("calling.bind_digit", params)
     }
 
+    /// # Errors
+    ///
+    /// With a live socket, returns `Err(RelayError::Rpc)` if the RELAY
+    /// server rejects the verb with a non-2xx result code, or
+    /// `Err(RelayError::Timeout)` if no response arrives within the
+    /// deadline. A 404/410 "call gone" result is swallowed to `Ok`.
     pub fn clear_digit_bindings(&self) -> Result<Value, RelayError> {
         self.execute(
             "calling.clear_digit_bindings",
@@ -355,6 +445,13 @@ impl Call {
     /// The wire schema (`relay-protocol/calling.live_transcribe.params.json`)
     /// requires `params.action` -- the caller's `action` value must be
     /// wrapped, not forwarded flat.
+    ///
+    /// # Errors
+    ///
+    /// With a live socket, returns `Err(RelayError::Rpc)` if the RELAY
+    /// server rejects the verb with a non-2xx result code, or
+    /// `Err(RelayError::Timeout)` if no response arrives within the
+    /// deadline. A 404/410 "call gone" result is swallowed to `Ok`.
     pub fn live_transcribe(&self, action: Value) -> Result<Value, RelayError> {
         let params = serde_json::json!({ "action": action });
         self.execute("calling.live_transcribe", params)
@@ -365,6 +462,13 @@ impl Call {
     /// The wire schema (`relay-protocol/calling.live_translate.params.json`)
     /// requires `params.action` -- the caller's `action` value must be
     /// wrapped, not forwarded flat. `status_url` is an optional sibling param.
+    ///
+    /// # Errors
+    ///
+    /// With a live socket, returns `Err(RelayError::Rpc)` if the RELAY
+    /// server rejects the verb with a non-2xx result code, or
+    /// `Err(RelayError::Timeout)` if no response arrives within the
+    /// deadline. A 404/410 "call gone" result is swallowed to `Ok`.
     pub fn live_translate(
         &self,
         action: Value,
@@ -377,42 +481,102 @@ impl Call {
         self.execute("calling.live_translate", params)
     }
 
+    /// # Errors
+    ///
+    /// With a live socket, returns `Err(RelayError::Rpc)` if the RELAY
+    /// server rejects the verb with a non-2xx result code, or
+    /// `Err(RelayError::Timeout)` if no response arrives within the
+    /// deadline. A 404/410 "call gone" result is swallowed to `Ok`.
     pub fn join_room(&self, params: Value) -> Result<Value, RelayError> {
         self.execute("calling.room.join", params)
     }
 
+    /// # Errors
+    ///
+    /// With a live socket, returns `Err(RelayError::Rpc)` if the RELAY
+    /// server rejects the verb with a non-2xx result code, or
+    /// `Err(RelayError::Timeout)` if no response arrives within the
+    /// deadline. A 404/410 "call gone" result is swallowed to `Ok`.
     pub fn leave_room(&self) -> Result<Value, RelayError> {
         self.execute("calling.room.leave", Value::Object(serde_json::Map::new()))
     }
 
+    /// # Errors
+    ///
+    /// With a live socket, returns `Err(RelayError::Rpc)` if the RELAY
+    /// server rejects the verb with a non-2xx result code, or
+    /// `Err(RelayError::Timeout)` if no response arrives within the
+    /// deadline. A 404/410 "call gone" result is swallowed to `Ok`.
     pub fn amazon_bedrock(&self, params: Value) -> Result<Value, RelayError> {
         self.execute("calling.amazon_bedrock", params)
     }
 
+    /// # Errors
+    ///
+    /// With a live socket, returns `Err(RelayError::Rpc)` if the RELAY
+    /// server rejects the verb with a non-2xx result code, or
+    /// `Err(RelayError::Timeout)` if no response arrives within the
+    /// deadline. A 404/410 "call gone" result is swallowed to `Ok`.
     pub fn ai_message(&self, params: Value) -> Result<Value, RelayError> {
         self.execute("calling.ai.message", params)
     }
 
+    /// # Errors
+    ///
+    /// With a live socket, returns `Err(RelayError::Rpc)` if the RELAY
+    /// server rejects the verb with a non-2xx result code, or
+    /// `Err(RelayError::Timeout)` if no response arrives within the
+    /// deadline. A 404/410 "call gone" result is swallowed to `Ok`.
     pub fn ai_hold(&self) -> Result<Value, RelayError> {
         self.execute("calling.ai.hold", Value::Object(serde_json::Map::new()))
     }
 
+    /// # Errors
+    ///
+    /// With a live socket, returns `Err(RelayError::Rpc)` if the RELAY
+    /// server rejects the verb with a non-2xx result code, or
+    /// `Err(RelayError::Timeout)` if no response arrives within the
+    /// deadline. A 404/410 "call gone" result is swallowed to `Ok`.
     pub fn ai_unhold(&self) -> Result<Value, RelayError> {
         self.execute("calling.ai.unhold", Value::Object(serde_json::Map::new()))
     }
 
+    /// # Errors
+    ///
+    /// With a live socket, returns `Err(RelayError::Rpc)` if the RELAY
+    /// server rejects the verb with a non-2xx result code, or
+    /// `Err(RelayError::Timeout)` if no response arrives within the
+    /// deadline. A 404/410 "call gone" result is swallowed to `Ok`.
     pub fn user_event(&self, params: Value) -> Result<Value, RelayError> {
         self.execute("calling.user_event", params)
     }
 
+    /// # Errors
+    ///
+    /// With a live socket, returns `Err(RelayError::Rpc)` if the RELAY
+    /// server rejects the verb with a non-2xx result code, or
+    /// `Err(RelayError::Timeout)` if no response arrives within the
+    /// deadline. A 404/410 "call gone" result is swallowed to `Ok`.
     pub fn queue_enter(&self, params: Value) -> Result<Value, RelayError> {
         self.execute("calling.queue.enter", params)
     }
 
+    /// # Errors
+    ///
+    /// With a live socket, returns `Err(RelayError::Rpc)` if the RELAY
+    /// server rejects the verb with a non-2xx result code, or
+    /// `Err(RelayError::Timeout)` if no response arrives within the
+    /// deadline. A 404/410 "call gone" result is swallowed to `Ok`.
     pub fn queue_leave(&self) -> Result<Value, RelayError> {
         self.execute("calling.queue.leave", Value::Object(serde_json::Map::new()))
     }
 
+    /// # Errors
+    ///
+    /// With a live socket, returns `Err(RelayError::Rpc)` if the RELAY
+    /// server rejects the verb with a non-2xx result code, or
+    /// `Err(RelayError::Timeout)` if no response arrives within the
+    /// deadline. A 404/410 "call gone" result is swallowed to `Ok`.
     pub fn refer_call(&self, params: Value) -> Result<Value, RelayError> {
         self.execute("calling.refer", params)
     }
@@ -433,6 +597,13 @@ impl Call {
     /// Echo audio back to the caller (mirrors Python `Call.echo`).
     /// Emits `calling.echo`. Optional `timeout` / `status_url` may be
     /// supplied via `params`; pass `Value::Null` or an empty object for none.
+    ///
+    /// # Errors
+    ///
+    /// With a live socket, returns `Err(RelayError::Rpc)` if the RELAY
+    /// server rejects the verb with a non-2xx result code, or
+    /// `Err(RelayError::Timeout)` if no response arrives within the
+    /// deadline. A 404/410 "call gone" result is swallowed to `Ok`.
     pub fn echo(&self, params: Value) -> Result<Value, RelayError> {
         let extra = if params.is_object() {
             params
@@ -444,6 +615,13 @@ impl Call {
 
     /// Decline control of an inbound call, returning it to routing
     /// (mirrors Python `Call.pass_`). Emits `calling.pass`.
+    ///
+    /// # Errors
+    ///
+    /// With a live socket, returns `Err(RelayError::Rpc)` if the RELAY
+    /// server rejects the verb with a non-2xx result code, or
+    /// `Err(RelayError::Timeout)` if no response arrives within the
+    /// deadline. A 404/410 "call gone" result is swallowed to `Ok`.
     pub fn pass_(&self) -> Result<Value, RelayError> {
         self.execute("calling.pass", Value::Object(serde_json::Map::new()))
     }
@@ -451,10 +629,23 @@ impl Call {
     /// Transfer a SIP call to an external SIP endpoint via REFER
     /// (mirrors Python `Call.refer`). Emits `calling.refer` with the
     /// supplied `device` (+ optional `status_url`) params.
+    ///
+    /// # Errors
+    ///
+    /// With a live socket, returns `Err(RelayError::Rpc)` if the RELAY
+    /// server rejects the verb with a non-2xx result code, or
+    /// `Err(RelayError::Timeout)` if no response arrives within the
+    /// deadline. A 404/410 "call gone" result is swallowed to `Ok`.
     pub fn refer(&self, params: Value) -> Result<Value, RelayError> {
         self.execute("calling.refer", params)
     }
 
+    /// # Errors
+    ///
+    /// With a live socket, returns `Err(RelayError::Rpc)` if the RELAY
+    /// server rejects the verb with a non-2xx result code, or
+    /// `Err(RelayError::Timeout)` if no response arrives within the
+    /// deadline. A 404/410 "call gone" result is swallowed to `Ok`.
     pub fn send_digits(&self, params: Value) -> Result<Value, RelayError> {
         self.execute("calling.send_digits", params)
     }
@@ -463,18 +654,42 @@ impl Call {
     // Action methods (return Action objects tracked by control_id)
     // ------------------------------------------------------------------
 
+    /// # Errors
+    ///
+    /// With a live socket, returns `Err(RelayError::Rpc)` if the RELAY
+    /// server rejects the verb with a non-2xx result code, or
+    /// `Err(RelayError::Timeout)` if no response arrives within the
+    /// deadline. A 404/410 "call gone" result is swallowed to `Ok`.
     pub fn play(&self, params: Value) -> Result<Arc<Action>, RelayError> {
         self.start_action("calling.play", "calling.play.stop", params)
     }
 
+    /// # Errors
+    ///
+    /// With a live socket, returns `Err(RelayError::Rpc)` if the RELAY
+    /// server rejects the verb with a non-2xx result code, or
+    /// `Err(RelayError::Timeout)` if no response arrives within the
+    /// deadline. A 404/410 "call gone" result is swallowed to `Ok`.
     pub fn record(&self, params: Value) -> Result<Arc<Action>, RelayError> {
         self.start_action("calling.record", "calling.record.stop", params)
     }
 
+    /// # Errors
+    ///
+    /// With a live socket, returns `Err(RelayError::Rpc)` if the RELAY
+    /// server rejects the verb with a non-2xx result code, or
+    /// `Err(RelayError::Timeout)` if no response arrives within the
+    /// deadline. A 404/410 "call gone" result is swallowed to `Ok`.
     pub fn collect(&self, params: Value) -> Result<Arc<Action>, RelayError> {
         self.start_action("calling.collect", "calling.collect.stop", params)
     }
 
+    /// # Errors
+    ///
+    /// With a live socket, returns `Err(RelayError::Rpc)` if the RELAY
+    /// server rejects the verb with a non-2xx result code, or
+    /// `Err(RelayError::Timeout)` if no response arrives within the
+    /// deadline. A 404/410 "call gone" result is swallowed to `Ok`.
     pub fn play_and_collect(&self, params: Value) -> Result<Arc<Action>, RelayError> {
         self.start_action(
             "calling.play_and_collect",
@@ -483,34 +698,82 @@ impl Call {
         )
     }
 
+    /// # Errors
+    ///
+    /// With a live socket, returns `Err(RelayError::Rpc)` if the RELAY
+    /// server rejects the verb with a non-2xx result code, or
+    /// `Err(RelayError::Timeout)` if no response arrives within the
+    /// deadline. A 404/410 "call gone" result is swallowed to `Ok`.
     pub fn detect(&self, params: Value) -> Result<Arc<Action>, RelayError> {
         self.start_action("calling.detect", "calling.detect.stop", params)
     }
 
+    /// # Errors
+    ///
+    /// With a live socket, returns `Err(RelayError::Rpc)` if the RELAY
+    /// server rejects the verb with a non-2xx result code, or
+    /// `Err(RelayError::Timeout)` if no response arrives within the
+    /// deadline. A 404/410 "call gone" result is swallowed to `Ok`.
     pub fn send_fax(&self, params: Value) -> Result<Arc<Action>, RelayError> {
         self.start_action("calling.send_fax", "calling.send_fax.stop", params)
     }
 
+    /// # Errors
+    ///
+    /// With a live socket, returns `Err(RelayError::Rpc)` if the RELAY
+    /// server rejects the verb with a non-2xx result code, or
+    /// `Err(RelayError::Timeout)` if no response arrives within the
+    /// deadline. A 404/410 "call gone" result is swallowed to `Ok`.
     pub fn receive_fax(&self, params: Value) -> Result<Arc<Action>, RelayError> {
         self.start_action("calling.receive_fax", "calling.receive_fax.stop", params)
     }
 
+    /// # Errors
+    ///
+    /// With a live socket, returns `Err(RelayError::Rpc)` if the RELAY
+    /// server rejects the verb with a non-2xx result code, or
+    /// `Err(RelayError::Timeout)` if no response arrives within the
+    /// deadline. A 404/410 "call gone" result is swallowed to `Ok`.
     pub fn tap(&self, params: Value) -> Result<Arc<Action>, RelayError> {
         self.start_action("calling.tap", "calling.tap.stop", params)
     }
 
+    /// # Errors
+    ///
+    /// With a live socket, returns `Err(RelayError::Rpc)` if the RELAY
+    /// server rejects the verb with a non-2xx result code, or
+    /// `Err(RelayError::Timeout)` if no response arrives within the
+    /// deadline. A 404/410 "call gone" result is swallowed to `Ok`.
     pub fn stream(&self, params: Value) -> Result<Arc<Action>, RelayError> {
         self.start_action("calling.stream", "calling.stream.stop", params)
     }
 
+    /// # Errors
+    ///
+    /// With a live socket, returns `Err(RelayError::Rpc)` if the RELAY
+    /// server rejects the verb with a non-2xx result code, or
+    /// `Err(RelayError::Timeout)` if no response arrives within the
+    /// deadline. A 404/410 "call gone" result is swallowed to `Ok`.
     pub fn pay(&self, params: Value) -> Result<Arc<Action>, RelayError> {
         self.start_action("calling.pay", "calling.pay.stop", params)
     }
 
+    /// # Errors
+    ///
+    /// With a live socket, returns `Err(RelayError::Rpc)` if the RELAY
+    /// server rejects the verb with a non-2xx result code, or
+    /// `Err(RelayError::Timeout)` if no response arrives within the
+    /// deadline. A 404/410 "call gone" result is swallowed to `Ok`.
     pub fn transcribe(&self, params: Value) -> Result<Arc<Action>, RelayError> {
         self.start_action("calling.transcribe", "calling.transcribe.stop", params)
     }
 
+    /// # Errors
+    ///
+    /// With a live socket, returns `Err(RelayError::Rpc)` if the RELAY
+    /// server rejects the verb with a non-2xx result code, or
+    /// `Err(RelayError::Timeout)` if no response arrives within the
+    /// deadline. A 404/410 "call gone" result is swallowed to `Ok`.
     pub fn ai(&self, params: Value) -> Result<Arc<Action>, RelayError> {
         self.start_action("calling.ai", "calling.ai.stop", params)
     }
@@ -539,6 +802,13 @@ impl Call {
     /// gender?,voice?}}]` with an optional top-level `volume`.
     /// `opts` may carry `language`, `gender`, `voice` (strings) and
     /// `volume` (number).
+    ///
+    /// # Errors
+    ///
+    /// With a live socket, returns `Err(RelayError::Rpc)` if the RELAY
+    /// server rejects the verb with a non-2xx result code, or
+    /// `Err(RelayError::Timeout)` if no response arrives within the
+    /// deadline. A 404/410 "call gone" result is swallowed to `Ok`.
     pub fn play_tts(&self, text: &str, opts: Value) -> Result<Arc<Action>, RelayError> {
         let mut tts = serde_json::Map::new();
         tts.insert("text".to_string(), Value::String(text.to_string()));
@@ -562,6 +832,13 @@ impl Call {
     ///
     /// Wire shape: `play [{"type":"audio","params":{"url":...}}]` with an
     /// optional top-level `volume` (read from `opts`).
+    ///
+    /// # Errors
+    ///
+    /// With a live socket, returns `Err(RelayError::Rpc)` if the RELAY
+    /// server rejects the verb with a non-2xx result code, or
+    /// `Err(RelayError::Timeout)` if no response arrives within the
+    /// deadline. A 404/410 "call gone" result is swallowed to `Ok`.
     pub fn play_audio(&self, url: &str, opts: Value) -> Result<Arc<Action>, RelayError> {
         let mut params = serde_json::Map::new();
         params.insert(
@@ -578,6 +855,13 @@ impl Call {
     /// [`Call::play`].
     ///
     /// Wire shape: `play [{"type":"silence","params":{"duration":...}}]`.
+    ///
+    /// # Errors
+    ///
+    /// With a live socket, returns `Err(RelayError::Rpc)` if the RELAY
+    /// server rejects the verb with a non-2xx result code, or
+    /// `Err(RelayError::Timeout)` if no response arrives within the
+    /// deadline. A 404/410 "call gone" result is swallowed to `Ok`.
     pub fn play_silence(&self, duration: f64) -> Result<Arc<Action>, RelayError> {
         self.play(serde_json::json!({
             "play": [{ "type": "silence", "params": { "duration": duration } }]
@@ -590,6 +874,13 @@ impl Call {
     /// Wire shape: `play [{"type":"ringtone","params":{"name":...,
     /// duration?}}]` with an optional top-level `volume`.
     /// `opts` may carry `duration` and `volume` (numbers).
+    ///
+    /// # Errors
+    ///
+    /// With a live socket, returns `Err(RelayError::Rpc)` if the RELAY
+    /// server rejects the verb with a non-2xx result code, or
+    /// `Err(RelayError::Timeout)` if no response arrives within the
+    /// deadline. A 404/410 "call gone" result is swallowed to `Ok`.
     pub fn play_ringtone(&self, name: &str, opts: Value) -> Result<Arc<Action>, RelayError> {
         let mut rt = serde_json::Map::new();
         rt.insert("name".to_string(), Value::String(name.to_string()));
@@ -612,6 +903,13 @@ impl Call {
     /// Wire shape: `detect {"type":"digit","params":{digits?}}` with an
     /// optional top-level `timeout`. `opts` may carry `digits` (string)
     /// and `timeout` (number).
+    ///
+    /// # Errors
+    ///
+    /// With a live socket, returns `Err(RelayError::Rpc)` if the RELAY
+    /// server rejects the verb with a non-2xx result code, or
+    /// `Err(RelayError::Timeout)` if no response arrives within the
+    /// deadline. A 404/410 "call gone" result is swallowed to `Ok`.
     pub fn detect_digit(&self, opts: Value) -> Result<Arc<Action>, RelayError> {
         let mut detect_params = serde_json::Map::new();
         if let Some(d) = opts.get("digits") {
@@ -636,6 +934,13 @@ impl Call {
     /// `initial_timeout`, `end_silence_timeout`, `machine_voice_threshold`,
     /// `machine_words_threshold`, `detect_interruptions`,
     /// `detect_message_end`, and `timeout`.
+    ///
+    /// # Errors
+    ///
+    /// With a live socket, returns `Err(RelayError::Rpc)` if the RELAY
+    /// server rejects the verb with a non-2xx result code, or
+    /// `Err(RelayError::Timeout)` if no response arrives within the
+    /// deadline. A 404/410 "call gone" result is swallowed to `Ok`.
     pub fn detect_answering_machine(&self, opts: Value) -> Result<Arc<Action>, RelayError> {
         let mut detect_params = serde_json::Map::new();
         for key in [
@@ -666,6 +971,13 @@ impl Call {
     /// Wire shape: `detect {"type":"fax","params":{tone?}}` with an optional
     /// top-level `timeout`. `opts` may carry `tone` (string) and `timeout`
     /// (number).
+    ///
+    /// # Errors
+    ///
+    /// With a live socket, returns `Err(RelayError::Rpc)` if the RELAY
+    /// server rejects the verb with a non-2xx result code, or
+    /// `Err(RelayError::Timeout)` if no response arrives within the
+    /// deadline. A 404/410 "call gone" result is swallowed to `Ok`.
     pub fn detect_fax(&self, opts: Value) -> Result<Arc<Action>, RelayError> {
         let mut detect_params = serde_json::Map::new();
         if let Some(tone) = opts.get("tone") {
@@ -689,6 +1001,13 @@ impl Call {
     /// language?,gender?,voice?}}]` with the given `collect` object and an
     /// optional top-level `volume`. `opts` may carry `language`, `gender`,
     /// `voice` (strings) and `volume` (number).
+    ///
+    /// # Errors
+    ///
+    /// With a live socket, returns `Err(RelayError::Rpc)` if the RELAY
+    /// server rejects the verb with a non-2xx result code, or
+    /// `Err(RelayError::Timeout)` if no response arrives within the
+    /// deadline. A 404/410 "call gone" result is swallowed to `Ok`.
     pub fn prompt_tts(
         &self,
         text: &str,
@@ -720,6 +1039,13 @@ impl Call {
     /// Wire shape: `play_and_collect [{"type":"audio","params":{"url":...}}]`
     /// with the given `collect` object and an optional top-level `volume`.
     /// `opts` may carry `volume` (number).
+    ///
+    /// # Errors
+    ///
+    /// With a live socket, returns `Err(RelayError::Rpc)` if the RELAY
+    /// server rejects the verb with a non-2xx result code, or
+    /// `Err(RelayError::Timeout)` if no response arrives within the
+    /// deadline. A 404/410 "call gone" result is swallowed to `Ok`.
     pub fn prompt_audio(
         &self,
         url: &str,
