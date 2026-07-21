@@ -28,7 +28,6 @@
 #![allow(dead_code)]
 
 use std::fs::OpenOptions;
-use std::os::unix::io::AsRawFd;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
@@ -138,7 +137,6 @@ impl Drop for TlsMockProc {
 }
 
 fn spawn_with_pythonpath(name: &str, args: &[String]) -> Option<std::process::Child> {
-    use std::os::unix::process::CommandExt;
     let pkg_dir = discover_harness_pkg(name)?;
 
     let mut cmd = Command::new("python");
@@ -154,7 +152,7 @@ fn spawn_with_pythonpath(name: &str, args: &[String]) -> Option<std::process::Ch
     let new_pp: std::ffi::OsString = match existing {
         Some(ev) if !ev.is_empty() => {
             let mut joined = std::ffi::OsString::from(&pkg_dir);
-            joined.push(":");
+            joined.push(pythonpath_separator());
             joined.push(ev);
             joined
         }
@@ -163,14 +161,55 @@ fn spawn_with_pythonpath(name: &str, args: &[String]) -> Option<std::process::Ch
     cmd.env("PYTHONPATH", new_pp);
 
     // Detach into its own session so the test binary's exit doesn't orphan it
-    // weirdly; the Drop handler kills it explicitly.
+    // weirdly; the Drop handler kills it explicitly (unix only — windows is a
+    // no-op, see detach_process_group).
+    detach_process_group(&mut cmd);
+    cmd.spawn().ok()
+}
+
+#[cfg(unix)]
+fn pythonpath_separator() -> &'static str {
+    ":"
+}
+
+#[cfg(windows)]
+fn pythonpath_separator() -> &'static str {
+    ";"
+}
+
+// Detach the spawned TLS mock into its own process group (unix) or spawn it plainly
+// (windows). The Windows CI leg compiles this test crate, so the unix-only
+// pre_exec/setsid path must be cfg-gated. On Windows the TlsMockProc Drop handler's
+// explicit `.kill()` is the cleanup; no Job Object is needed as the mock forks no
+// grandchildren.
+#[cfg(unix)]
+fn detach_process_group(cmd: &mut Command) {
+    use std::os::unix::process::CommandExt;
+    // SAFETY: setsid() is async-signal-safe and the closure does nothing else.
     unsafe {
         cmd.pre_exec(|| {
-            libc_setsid();
+            let _ = libc_setsid();
             Ok(())
         });
     }
-    cmd.spawn().ok()
+}
+
+#[cfg(not(unix))]
+fn detach_process_group(cmd: &mut Command) {
+    // Intentional no-op on non-unix: the child is spawned as-is; the TlsMockProc
+    // Drop handler's explicit .kill() is the cleanup.
+    let _ = cmd;
+}
+
+// libc setsid binding (unix only), without pulling in the libc crate.
+#[cfg(unix)]
+unsafe extern "C" {
+    fn setsid() -> i32;
+}
+
+#[cfg(unix)]
+fn libc_setsid() -> i32 {
+    unsafe { setsid() }
 }
 
 /// Spawn `python -m mock_relay --tls` on the dedicated TLS WS/HTTP ports.
@@ -260,53 +299,129 @@ fn wait_health_https(agent: &ureq::Agent, base_url: &str, expect_key: &str) -> b
 }
 
 // ---------------------------------------------------------------------------
-// Cross-binary flock for the TLS mock-relay instance
+// Cross-binary advisory lock for the TLS mock-relay instance
 // ---------------------------------------------------------------------------
 
-const RELAY_TLS_LOCK_PATH: &str = "/tmp/signalwire-rust-mock-relay-tls.lock";
+/// Path to the cross-binary lock file. Derived from the OS temp dir so it is
+/// portable (POSIX `/tmp`, Windows `%TEMP%`) rather than a hardcoded `/tmp`.
+fn relay_tls_lock_path() -> PathBuf {
+    std::env::temp_dir().join("signalwire-rust-mock-relay-tls.lock")
+}
 
 /// Exclusive cross-binary advisory lock guarding the dedicated TLS mock-relay
-/// instance — mirrors the plain `relay_mocktest` lock so two concurrently-run
-/// test binaries can't both drive the same WSS mock session registry.
+/// instance so two concurrently-run test binaries can't both drive the same WSS
+/// mock session registry. Uses the OS's whole-file advisory lock: `flock` on unix,
+/// `LockFileEx` on Windows.
 pub struct RelayTlsLock {
     file: std::fs::File,
 }
 
 impl RelayTlsLock {
     pub fn acquire() -> Self {
+        let path = relay_tls_lock_path();
         let file = OpenOptions::new()
             .create(true)
             .read(true)
             .write(true)
             .truncate(false)
-            .open(RELAY_TLS_LOCK_PATH)
-            .unwrap_or_else(|e| panic!("tls_support: open {RELAY_TLS_LOCK_PATH}: {e}"));
-        let fd = file.as_raw_fd();
-        let rc = unsafe { flock(fd, LOCK_EX) };
-        assert!(
-            rc == 0,
-            "tls_support: flock LOCK_EX on {RELAY_TLS_LOCK_PATH}: {}",
-            std::io::Error::last_os_error()
-        );
+            .open(&path)
+            .unwrap_or_else(|e| panic!("tls_support: open {}: {e}", path.display()));
+        lock_exclusive(&file);
         RelayTlsLock { file }
     }
 }
 
 impl Drop for RelayTlsLock {
     fn drop(&mut self) {
-        let fd = self.file.as_raw_fd();
-        let _ = unsafe { flock(fd, LOCK_UN) };
+        unlock(&self.file);
     }
 }
 
-const LOCK_EX: i32 = 2;
-const LOCK_UN: i32 = 8;
-
-unsafe extern "C" {
-    fn flock(fd: i32, operation: i32) -> i32;
-    fn setsid() -> i32;
+// --- unix: flock(LOCK_EX / LOCK_UN) ----------------------------------------
+#[cfg(unix)]
+fn lock_exclusive(file: &std::fs::File) {
+    use std::os::unix::io::AsRawFd;
+    const LOCK_EX: i32 = 2;
+    let rc = unsafe { flock(file.as_raw_fd(), LOCK_EX) };
+    assert!(
+        rc == 0,
+        "tls_support: flock LOCK_EX: {}",
+        std::io::Error::last_os_error()
+    );
 }
 
-fn libc_setsid() -> i32 {
-    unsafe { setsid() }
+#[cfg(unix)]
+fn unlock(file: &std::fs::File) {
+    use std::os::unix::io::AsRawFd;
+    const LOCK_UN: i32 = 8;
+    let _ = unsafe { flock(file.as_raw_fd(), LOCK_UN) };
+}
+
+#[cfg(unix)]
+unsafe extern "C" {
+    fn flock(fd: i32, operation: i32) -> i32;
+}
+
+// --- windows: LockFileEx / UnlockFileEx ------------------------------------
+// Whole-file exclusive lock over a large byte range, the Win32 analog of flock.
+#[cfg(windows)]
+fn lock_exclusive(file: &std::fs::File) {
+    use std::os::windows::io::AsRawHandle;
+    const LOCKFILE_EXCLUSIVE_LOCK: u32 = 0x0000_0002;
+    let mut overlapped = [0u8; OVERLAPPED_SIZE];
+    let ok = unsafe {
+        LockFileEx(
+            file.as_raw_handle(),
+            LOCKFILE_EXCLUSIVE_LOCK,
+            0,
+            u32::MAX,
+            u32::MAX,
+            overlapped.as_mut_ptr(),
+        )
+    };
+    assert!(
+        ok != 0,
+        "tls_support: LockFileEx: {}",
+        std::io::Error::last_os_error()
+    );
+}
+
+#[cfg(windows)]
+fn unlock(file: &std::fs::File) {
+    use std::os::windows::io::AsRawHandle;
+    let mut overlapped = [0u8; OVERLAPPED_SIZE];
+    let _ = unsafe {
+        UnlockFileEx(
+            file.as_raw_handle(),
+            0,
+            u32::MAX,
+            u32::MAX,
+            overlapped.as_mut_ptr(),
+        )
+    };
+}
+
+// A zeroed OVERLAPPED is all LockFileEx needs for a blocking whole-file lock (no
+// offset, no completion event). Its size on x64 Windows is 32 bytes; we pass a
+// zeroed buffer of that size rather than pulling in the winapi/windows crate.
+#[cfg(windows)]
+const OVERLAPPED_SIZE: usize = 32;
+
+#[cfg(windows)]
+unsafe extern "system" {
+    fn LockFileEx(
+        handle: std::os::windows::raw::HANDLE,
+        flags: u32,
+        reserved: u32,
+        bytes_low: u32,
+        bytes_high: u32,
+        overlapped: *mut u8,
+    ) -> i32;
+    fn UnlockFileEx(
+        handle: std::os::windows::raw::HANDLE,
+        reserved: u32,
+        bytes_low: u32,
+        bytes_high: u32,
+        overlapped: *mut u8,
+    ) -> i32;
 }

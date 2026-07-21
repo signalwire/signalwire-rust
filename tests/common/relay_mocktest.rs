@@ -654,8 +654,6 @@ fn probe_health(http_url: &str) -> bool {
 }
 
 fn spawn_server(ws_port: u16, http_port: u16) -> Result<(), String> {
-    use std::os::unix::process::CommandExt;
-
     let pkg_dir = discover_porting_sdk_package("mock_relay");
 
     let mut cmd = Command::new("python");
@@ -687,14 +685,9 @@ fn spawn_server(ws_port: u16, http_port: u16) -> Result<(), String> {
         cmd.env("PYTHONPATH", new_pp);
     }
 
-    unsafe {
-        cmd.pre_exec(|| {
-            if libc_setsid() == -1 {
-                // Best effort.
-            }
-            Ok(())
-        });
-    }
+    // Detach the child (unix: new session/process group via setsid; windows:
+    // no-op — see detach_process_group).
+    detach_process_group(&mut cmd);
 
     cmd.spawn()
         .map_err(|e| format!("failed to spawn `python -m mock_relay`: {e} (set MOCK_RELAY_PORT/MOCK_RELAY_HTTP_PORT to use a pre-running instance)"))?;
@@ -728,10 +721,38 @@ fn separator() -> &'static str {
     ";"
 }
 
+// Detach the spawned mock into its own process group so the test binary neither
+// blocks on its pipes nor orphans it oddly (the Windows CI leg compiles this test
+// crate, so unix-only APIs here must be cfg-gated).
+//
+// UNIX: `pre_exec(setsid)` — new session + process group, no controlling terminal.
+#[cfg(unix)]
+fn detach_process_group(cmd: &mut Command) {
+    use std::os::unix::process::CommandExt;
+    // SAFETY: setsid() is async-signal-safe and the closure does nothing else.
+    unsafe {
+        cmd.pre_exec(|| {
+            // Best effort; a failure here is not fatal to the test.
+            let _ = libc_setsid();
+            Ok(())
+        });
+    }
+}
+
+// WINDOWS (non-unix): no process-group setup; the mock is a plain child cleaned up
+// by the harness's port ownership / kill. See mocktest.rs for the full rationale.
+#[cfg(not(unix))]
+fn detach_process_group(cmd: &mut Command) {
+    // Intentional no-op on non-unix: the child is spawned as-is.
+    let _ = cmd;
+}
+
+#[cfg(unix)]
 unsafe extern "C" {
     fn setsid() -> i32;
 }
 
+#[cfg(unix)]
 fn libc_setsid() -> i32 {
     unsafe { setsid() }
 }
