@@ -53,7 +53,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let client = RestClient::from_env()?;
 
     // List your phone numbers
-    let numbers = client.phone_numbers().list(&HashMap::new())?;
+    let numbers = client.phone_numbers().list(&HashMap::new(), None)?;
     for number in numbers.as_array().unwrap_or(&vec![]) {
         println!("{}", number["phone_number"]);
     }
@@ -81,7 +81,7 @@ let mut params = HashMap::new();
 params.insert("areacode".to_string(), "512".to_string());
 params.insert("limit".to_string(), "5".to_string());
 
-let result = client.phone_numbers().search(&params).unwrap();
+let result = client.phone_numbers().search(&params, None).unwrap();
 
 // result is a serde_json::Value
 if let Some(numbers) = result.as_array() {
@@ -96,7 +96,7 @@ if let Some(numbers) = result.as_array() {
 API errors are returned as `Result` errors carrying a `SignalWireRestError`:
 
 ```rust
-match client.fabric().ai_agents().list(&HashMap::new()) {
+match client.fabric().ai_agents().list(&HashMap::new(), None) {
     Ok(agents) => println!("count: {}", agents.as_array().map_or(0, Vec::len)),
     Err(e) => eprintln!("API error: {e}"),
 }
