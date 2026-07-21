@@ -42,7 +42,7 @@ jobs:
         with:
           repository: signalwire/porting-sdk
           # PINNED to wave/1-aplus: the mcp_gateway client-skill oracle (MCPGatewaySkill) lives there; REVERT to main on merge.
-          ref: wave/1-aplus
+          ref: main
           # PINNED to the gate-enforcement plan branch: the WIRED-MODES gate wired on
           # this branch calls porting-sdk scripts (check_wired_modes.py) that live on
           # porting-sdk plan/a-bar-2026-07-18, not yet on main. REVERT this ref to main
