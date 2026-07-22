@@ -1166,6 +1166,12 @@ MODULE_METHOD_DROPS: dict[str, set[str]] = {
     # handler). It is the trait analog of a `Clone` impl, not part of the
     # reference contract. Python's SWMLVerbHandler exposes no such method.
     "signalwire.core.swml_handler": {"clone_box"},
+    # `shared_default` is the `pub(crate)` accessor for the process-wide default
+    # SchemaUtils (the SWML schema-cache: parse+build the 495 KB schema once, not
+    # per add_verb). Crate-internal performance plumbing behind the public
+    # `Service::schema_utils()` — external callers cannot reach it and Python has
+    # no counterpart. Rustdoc surfaces `pub(crate)` items, so drop it here.
+    "signalwire.utils.schema_utils": {"shared_default"},
 }
 # Module-level FREE FUNCTIONS to drop — `pub(crate)` crate-internal helpers the
 # public-fn regex captures but that are NOT public crate API (external callers

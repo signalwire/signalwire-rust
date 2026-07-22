@@ -20,23 +20,8 @@ use std::fmt::Write as _;
 use std::fs;
 use std::path::Path;
 use std::sync::LazyLock;
-use std::sync::atomic::{AtomicU64, Ordering};
 
 use serde_json::{Map, Value};
-
-/// Number of times the embedded 495 KB schema has actually been parsed +
-/// verb-extracted this process. The parse-once cache (`DEFAULT_SCHEMA` /
-/// `DEFAULT_SCHEMA_UTILS`) must keep this at 1 no matter how many verbs are
-/// added; the perf test asserts on it (see `tests`/`schema_parses_once`).
-static SCHEMA_BUILD_COUNT: AtomicU64 = AtomicU64::new(0);
-
-/// Test/diagnostic hook: how many times the default embedded schema has been
-/// fully parsed + verb-extracted. Stays 1 for the whole process once anything
-/// touches the default `SchemaUtils`, regardless of how many verbs are rendered.
-#[must_use]
-pub fn default_schema_build_count() -> u64 {
-    SCHEMA_BUILD_COUNT.load(Ordering::Relaxed)
-}
 
 /// The embedded SWML JSON Schema (~495 KB), parsed exactly ONCE for the whole
 /// process. Previously `load_schema()` re-ran `serde_json::from_str` over the
@@ -124,17 +109,20 @@ impl SchemaUtils {
 
     /// A shared, process-wide default `SchemaUtils` (embedded schema,
     /// validation on), built exactly once. The per-`add_verb` validation path
-    /// borrows this instead of constructing a new helper each call — the parse
-    /// + verb-extract happens a single time no matter how many verbs render.
+    /// borrows this instead of constructing a new helper each call, so the
+    /// parse-and-verb-extract happens a single time no matter how many verbs
+    /// render. Crate-internal: a performance-plumbing accessor behind the public
+    /// `Service::schema_utils()`, not public API surface of its own.
     #[must_use]
-    pub fn shared_default() -> &'static SchemaUtils {
+    pub(crate) fn shared_default() -> &'static SchemaUtils {
         &DEFAULT_SCHEMA_UTILS
     }
 
-    /// The actual constructor. Increments the process-wide build counter so the
-    /// perf test can assert the default schema is parsed + extracted only once.
+    /// The actual constructor (parses the schema + extracts verbs). Callers on
+    /// the hot path use `shared_default()` so this runs once process-wide; the
+    /// parse-once perf test asserts that via pointer identity of the shared
+    /// instance across a large `add_verb` workload.
     fn build(schema_path: Option<String>, schema_validation: bool) -> Self {
-        SCHEMA_BUILD_COUNT.fetch_add(1, Ordering::Relaxed);
         let env_skip = env_boolish(&env::var("SWML_SKIP_SCHEMA_VALIDATION").unwrap_or_default());
         let mut su = Self {
             schema: Value::Null,
