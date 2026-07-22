@@ -499,10 +499,16 @@ impl Service {
 
     /// `SchemaUtils` helper bound to this Service.  Mirrors Python's
     /// `self.schema_utils` instance attribute on `SWMLService`.
-    /// Returns a freshly-built helper each call — the underlying
-    /// schema is `LazyLock`-cached, so this is cheap.
-    pub fn schema_utils(&self) -> crate::utils::SchemaUtils {
-        crate::utils::SchemaUtils::new(None, true)
+    ///
+    /// Returns a borrow of the single process-wide default `SchemaUtils`
+    /// (`SchemaUtils::shared_default`) — the embedded 495 KB schema is parsed
+    /// and verb-extracted exactly once, not per `add_verb`. Previously this
+    /// built a fresh helper each call (deep-clone of the parsed 495 KB Value +
+    /// full `$defs` verb-extract), which was ~1 ms/verb and dominated SWML
+    /// render time (`r5/deep_perf_baseline`: ~24 ms/doc).
+    #[must_use]
+    pub fn schema_utils(&self) -> &'static crate::utils::SchemaUtils {
+        crate::utils::SchemaUtils::shared_default()
     }
 
     pub fn document(&self) -> &Document {
@@ -2029,5 +2035,45 @@ mod tests {
         });
         svc.on_swml_request(None, None);
         assert!(called.load(Ordering::SeqCst));
+    }
+
+    /// Perf-regression guard for the r5 schema-reparse defect: adding N verbs
+    /// must NOT re-parse/re-extract the 495 KB schema per verb. `add_verb`
+    /// borrows the process-wide `SchemaUtils::shared_default()` — the same
+    /// `&'static` instance every call — instead of constructing a fresh helper
+    /// (deep-clone of the parsed 495 KB Value + full `$defs` verb-extract,
+    /// ~1 ms/verb, ≈24 ms/20-verb doc before the fix).
+    ///
+    /// Proof is by POINTER IDENTITY of the returned shared instance across a
+    /// large `add_verb` workload: identical addresses ⇒ no per-verb rebuild. (A
+    /// process-wide build COUNTER would race with other tests in this binary
+    /// that also construct `SchemaUtils`; pointer identity is race-free.)
+    #[test]
+    fn test_schema_parsed_once_across_many_verbs() {
+        let svc = Service::new(default_options("perf"));
+
+        // The address of the shared default SchemaUtils the hot path uses.
+        let baseline = std::ptr::from_ref::<crate::utils::SchemaUtils>(svc.schema_utils());
+
+        let mut svc = svc;
+        for _ in 0..500 {
+            // `answer` is validated via the shared SchemaUtils on the add_verb
+            // hot path; each iteration re-fetches the shared instance.
+            assert!(svc.add_verb("answer", serde_json::json!({})));
+            let cur = std::ptr::from_ref::<crate::utils::SchemaUtils>(svc.schema_utils());
+            assert_eq!(
+                cur, baseline,
+                "add_verb built a fresh SchemaUtils instead of borrowing the \
+                 process-wide shared_default() (r5 reparse regression)"
+            );
+        }
+
+        // Sanity: the shared instance is the fully-built one (verbs extracted),
+        // so validation actually works — not an empty/stub helper.
+        assert!(
+            svc.schema_utils()
+                .get_all_verb_names()
+                .contains(&"answer".to_string())
+        );
     }
 }

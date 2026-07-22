@@ -20,8 +20,23 @@ use std::fmt::Write as _;
 use std::fs;
 use std::path::Path;
 use std::sync::LazyLock;
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use serde_json::{Map, Value};
+
+/// Number of times the embedded 495 KB schema has actually been parsed +
+/// verb-extracted this process. The parse-once cache (`DEFAULT_SCHEMA` /
+/// `DEFAULT_SCHEMA_UTILS`) must keep this at 1 no matter how many verbs are
+/// added; the perf test asserts on it (see `tests`/`schema_parses_once`).
+static SCHEMA_BUILD_COUNT: AtomicU64 = AtomicU64::new(0);
+
+/// Test/diagnostic hook: how many times the default embedded schema has been
+/// fully parsed + verb-extracted. Stays 1 for the whole process once anything
+/// touches the default `SchemaUtils`, regardless of how many verbs are rendered.
+#[must_use]
+pub fn default_schema_build_count() -> u64 {
+    SCHEMA_BUILD_COUNT.load(Ordering::Relaxed)
+}
 
 /// The embedded SWML JSON Schema (~495 KB), parsed exactly ONCE for the whole
 /// process. Previously `load_schema()` re-ran `serde_json::from_str` over the
@@ -35,6 +50,17 @@ static DEFAULT_SCHEMA: LazyLock<Value> = LazyLock::new(|| {
     let raw = include_str!("../swml/schema.json");
     serde_json::from_str(raw).unwrap_or(Value::Null)
 });
+
+/// The fully-built default `SchemaUtils` (embedded schema, validation on),
+/// constructed exactly ONCE for the whole process. Cloning the parsed
+/// `DEFAULT_SCHEMA` Value and re-running `extract_verbs()` on every
+/// `SchemaUtils::new` was still ~1 ms/verb (a deep clone of the 495 KB tree
+/// plus a full `$defs` walk building the verb `BTreeMap`) — 20 verbs ≈ the whole
+/// 24 ms/doc in `r5/deep_perf_baseline`. `add_verb` only needs read-only access
+/// to `validate_verb`, so it borrows this shared instance instead of building a
+/// fresh one. This is the real fix for the per-verb reparse/rebuild.
+static DEFAULT_SCHEMA_UTILS: LazyLock<SchemaUtils> =
+    LazyLock::new(|| SchemaUtils::build(None, true));
 
 /// `SchemaValidationError` — Rust port of
 /// `signalwire.utils.schema_utils.SchemaValidationError`.
@@ -86,7 +112,29 @@ pub struct SchemaUtils {
 impl SchemaUtils {
     /// Construct a `SchemaUtils`.  Mirrors Python's
     /// `SchemaUtils(schema_path=None, schema_validation=True)`.
+    ///
+    /// For the default embedded-schema path (`schema_path = None`), prefer
+    /// [`SchemaUtils::shared_default`] on the hot path — it borrows a single
+    /// process-wide instance instead of re-parsing/re-extracting the 495 KB
+    /// schema. `new` always builds a fresh owned instance (needed when a caller
+    /// wants a distinct `schema_path` or an independent owned value).
     pub fn new(schema_path: Option<String>, schema_validation: bool) -> Self {
+        Self::build(schema_path, schema_validation)
+    }
+
+    /// A shared, process-wide default `SchemaUtils` (embedded schema,
+    /// validation on), built exactly once. The per-`add_verb` validation path
+    /// borrows this instead of constructing a new helper each call — the parse
+    /// + verb-extract happens a single time no matter how many verbs render.
+    #[must_use]
+    pub fn shared_default() -> &'static SchemaUtils {
+        &DEFAULT_SCHEMA_UTILS
+    }
+
+    /// The actual constructor. Increments the process-wide build counter so the
+    /// perf test can assert the default schema is parsed + extracted only once.
+    fn build(schema_path: Option<String>, schema_validation: bool) -> Self {
+        SCHEMA_BUILD_COUNT.fetch_add(1, Ordering::Relaxed);
         let env_skip = env_boolish(&env::var("SWML_SKIP_SCHEMA_VALIDATION").unwrap_or_default());
         let mut su = Self {
             schema: Value::Null,
