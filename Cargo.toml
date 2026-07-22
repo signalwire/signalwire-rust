@@ -161,6 +161,13 @@ path = "src/bin/rest_test_plan.rs"
 name = "envelope-dump"
 path = "src/bin/envelope_dump.rs"
 
+# perf-swml — the rust P2 (SWML render µs/doc) bench for the shared
+# PERF-BASELINE nightly gate. Prints `P2 default <µs>`; run-ci's PERF-BASELINE
+# gate builds it (release) and ratchets the number via perf_baseline.py.
+[[bin]]
+name = "perf-swml"
+path = "src/bin/perf_swml.rs"
+
 # ---------------------------------------------------------------------------
 # Sub-directory examples (rest/examples/, relay/examples/).
 #

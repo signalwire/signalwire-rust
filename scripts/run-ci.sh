@@ -237,6 +237,46 @@ strict_mocks_gate() {
             -- --test-threads=1
 }
 
+# PERF-BASELINE (r5 deep_perf_baseline / porting-sdk scripts/perf) — the nightly
+# SWML-render ratchet (P2). Builds the release `perf-swml` bench (which prints
+# `P2 default <µs/doc>`), folds it into perf_results.json, and ratchets against
+# the committed perf_baseline.json via the shared perf_baseline.py checker.
+# Release build is heavy → nightly-only (tier=nightly, deferred behind the cheap
+# wave). Its noise control: a >15% regression must reproduce on an immediate
+# re-measure before it reds (measure → check → on-red confirm-measure → recheck).
+perf_baseline_gate() {
+    local checker="$PORTING_SDK_DIR/scripts/perf_baseline.py"
+    if [ ! -f "$checker" ]; then
+        echo "PERF-BASELINE: perf_baseline.py not present in porting-sdk — skipping (harness not yet adopted)"
+        return 0
+    fi
+    local results="$PORT_ROOT/.sw-tmp/perf_results.json"
+    mkdir -p "$PORT_ROOT/.sw-tmp"
+    _perf_measure() {
+        local out
+        out="$(cargo run --quiet --release --bin perf-swml -- 1000 2>/dev/null)" || return 1
+        # Fold the single `P2 default <µs>` line into the shared perf_results shape.
+        python3 - "$out" "$results" <<'PY'
+import json, sys
+line, out = sys.argv[1], sys.argv[2]
+metrics = {}
+for ln in line.splitlines():
+    p = ln.split()
+    if len(p) == 3:
+        metrics.setdefault(p[0], {})[p[1]] = float(p[2])
+json.dump({"port": "rust", "toolchain": "cargo", "metrics": metrics}, open(out, "w"), indent=2, sort_keys=True)
+PY
+    }
+    _perf_measure || { echo "PERF-BASELINE: bench build/run failed"; return 1; }
+    if python3 "$checker" --baseline "$PORT_ROOT/perf_baseline.json" --results "$results"; then
+        return 0
+    fi
+    # Confirm pass (two-consecutive-medians noise control): re-measure, re-check.
+    echo "PERF-BASELINE: over threshold — confirming with a re-measure..."
+    _perf_measure || { echo "PERF-BASELINE: confirm bench run failed"; return 1; }
+    python3 "$checker" --baseline "$PORT_ROOT/perf_baseline.json" --results "$results"
+}
+
 # ---- register gates ----------------------------------------------------------
 sched_init "$@"
 
@@ -454,6 +494,11 @@ sched_gate SEMVER-DIFF deps=SIGNATURES desc="version bump matches the public-API
 # + install + a smoke that constructs RestClient). ~heavy → defer.
 sched_gate PACKAGE-SMOKE tier=nightly defer=1 desc="published crate builds, installs, and imports (real artifact smoke)" \
     -- python3 "$PORTING_SDK_DIR/scripts/package_smoke.py" --port rust --repo .
+
+# PERF-BASELINE — nightly SWML-render (P2) ratchet vs committed perf_baseline.json
+# (release bench build → heavy → nightly-only, deferred behind the cheap wave).
+sched_gate PERF-BASELINE tier=nightly defer=1 desc="SWML 20-verb render µs/doc within the ratchet threshold vs perf_baseline.json (r5 P2)" \
+    --fn perf_baseline_gate
 
 # ---- §G anti-laundering ledger -----------------------------------------------
 sched_gate SUPPRESSION-LEDGER res=dayone desc="no un-ledgered broad analyzer suppressions (#![allow] modulo SUPPRESSION_LEDGER.md)" \
