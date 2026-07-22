@@ -440,8 +440,9 @@
                 },
                 {
                   "name": "_params",
-                  "type": "class:signalwire.value.Value",
-                  "required": true
+                  "type": "dict<string,any>",
+                  "required": false,
+                  "kind": "var_keyword"
                 }
               ],
               "returns": "any"
@@ -454,8 +455,9 @@
                 },
                 {
                   "name": "_params",
-                  "type": "class:signalwire.value.Value",
-                  "required": true
+                  "type": "dict<string,any>",
+                  "required": false,
+                  "kind": "var_keyword"
                 }
               ],
               "returns": "any"

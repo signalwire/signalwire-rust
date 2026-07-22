@@ -643,7 +643,13 @@ def _apply_method_renames(cls_name: str, methods: dict) -> dict:
 # Rust parameter names used as the ``*args`` / ``**kwargs`` variadic-equivalent
 # (a single ``serde_json::Value`` / ``Vec<..>`` / ``HashMap<..>`` carries what
 # Python spells with a splat). Only these names are treated as variadic tails.
-_VARIADIC_TAIL_NAMES = ("params", "kwargs", "args", "options")
+# ``_params`` is the underscore-ignored form of ``params``: a no-op forwarder
+# (e.g. BedrockAgent's set_prompt_llm_params / set_post_prompt_llm_params, which
+# warn-and-drop because Bedrock's prompt/post-prompt run on a platform-side model)
+# names the arg ``_params`` so clippy doesn't flag the unused binding. It is the
+# SAME **kwargs-equivalent variadic tail as ``params`` — reconcile it identically
+# so the idiom does not surface as drift against the oracle's stripped-kwargs twin.
+_VARIADIC_TAIL_NAMES = ("params", "_params", "kwargs", "args", "options")
 
 
 def _reconcile_variadic_tail(py_sig: dict, rust_sig: dict) -> None:
