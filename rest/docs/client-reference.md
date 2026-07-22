@@ -34,6 +34,26 @@ let explicit = RestClient::new("project-id", "api-token", "example.signalwire.co
 | `SIGNALWIRE_PROJECT_ID` | Project identifier |
 | `SIGNALWIRE_API_TOKEN` | API token |
 | `SIGNALWIRE_SPACE` | Space hostname |
+| `SIGNALWIRE_REST_BASE_URL` | Override the REST base URL (`from_env` only). When set, replaces the `https://{SIGNALWIRE_SPACE}` resolution — point the client at a regional host, a proxy, or a local fixture without a code change; `SIGNALWIRE_SPACE` is then not required |
+
+### Per-call timeout (`RequestOptions`)
+
+Every request accepts an optional [`RequestOptions`] carrying a per-call
+`timeout` (seconds). Construct a client with a default `RequestOptions` applied
+to every request via `RestClient::with_base_url_and_options`, and override it per
+request where the call supports it. A per-request value shallow-overrides the
+client default; an unset field falls back to the client default, then the
+built-in.
+
+```rust
+use signalwire::rest::RequestOptions;
+
+// A client-default 5s timeout on every request through this client:
+let opts = RequestOptions::default().timeout(5.0);
+let client = RestClient::with_base_url_and_options(
+    "project-id", "api-token", "https://example.signalwire.com", Some(opts),
+);
+```
 
 ### Namespace Accessors
 

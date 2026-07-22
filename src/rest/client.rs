@@ -145,9 +145,22 @@ impl RestClient {
     /// `SIGNALWIRE_PROJECT_ID`, `SIGNALWIRE_API_TOKEN`, or `SIGNALWIRE_SPACE` is
     /// unset or empty (they default to the empty string, which fails the same
     /// validation as [`new`](Self::new)). No network request is made here.
+    ///
+    /// Honors `SIGNALWIRE_REST_BASE_URL`: when set (and non-empty), it overrides
+    /// the `https://{space}` resolution so a developer can point the client at a
+    /// different endpoint (a regional host, a proxy, a local fixture) purely via
+    /// env, without a code change. When it is set, `SIGNALWIRE_SPACE` is not
+    /// required (the base URL is explicit); otherwise the space resolution and
+    /// its credential check apply as in [`new`](Self::new).
     pub fn from_env() -> Result<Self, RestClientBuilderError> {
         let project_id = env::var("SIGNALWIRE_PROJECT_ID").unwrap_or_default();
         let token = env::var("SIGNALWIRE_API_TOKEN").unwrap_or_default();
+        let base_url_override = env::var("SIGNALWIRE_REST_BASE_URL")
+            .ok()
+            .filter(|s| !s.is_empty());
+        if let Some(base_url) = base_url_override {
+            return Self::with_base_url(&project_id, &token, &base_url);
+        }
         let space = env::var("SIGNALWIRE_SPACE").unwrap_or_default();
         Self::new(&project_id, &token, &space)
     }
