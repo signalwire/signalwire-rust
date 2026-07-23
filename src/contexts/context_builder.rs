@@ -1344,10 +1344,11 @@ impl ContextBuilder {
         // change_context / gather_submit when contexts/steps are present,
         // so user tools sharing those names would never be called.
         if let Some(ref supplier) = self.tool_name_supplier {
-            let registered = supplier();
-            let mut colliding: Vec<String> = registered
-                .into_iter()
+            let registered_names = supplier();
+            let mut colliding: Vec<String> = registered_names
+                .iter()
                 .filter(|name| RESERVED_NATIVE_TOOL_NAMES.contains(&name.as_str()))
+                .cloned()
                 .collect();
             colliding.sort();
             colliding.dedup();
@@ -1361,6 +1362,49 @@ impl ContextBuilder {
                      when contexts/steps are in use. Rename your tool(s) to \
                      avoid the collision."
                 ));
+            }
+
+            // Validate step set_functions([...]) whitelists against the known
+            // tool universe. A step that whitelists a function which is neither a
+            // registered SWAIG tool nor a reserved native tool is a DANGLING
+            // reference: the rendered step's active-function set silently points
+            // at nothing (r5 F3 — get_datetime vs get_current_time). Only enforce
+            // when a real registry is attached (the supplier IS the registry
+            // presence); a contexts builder with no agent can't know the tool
+            // universe and must not red a valid document. Mirrors Python
+            // `ContextBuilder.validate` (045919a): known = registered ∪
+            // RESERVED_NATIVE_TOOL_NAMES; a non-list `functions` ("none") and the
+            // empty list [] are explicit disable-all, never lists of references.
+            let mut known: std::collections::HashSet<String> =
+                registered_names.into_iter().collect();
+            for &r in RESERVED_NATIVE_TOOL_NAMES {
+                known.insert(r.to_string());
+            }
+            for (ctx_name, ctx) in &self.contexts {
+                for (step_name, step) in &ctx.steps {
+                    // Only an array-of-strings whitelist lists references to
+                    // resolve; "none" / non-array is disable-all.
+                    let Some(Value::Array(funcs)) = &step.functions else {
+                        continue;
+                    };
+                    for fn_val in funcs {
+                        let Some(fname) = fn_val.as_str() else {
+                            continue;
+                        };
+                        if !known.contains(fname) {
+                            let mut available: Vec<&String> = known.iter().collect();
+                            available.sort();
+                            errors.push(format!(
+                                "Step '{step_name}' in context '{ctx_name}' whitelists \
+                                 function '{fname}' via set_functions(), but no such SWAIG \
+                                 tool is registered on the agent and it is not a reserved \
+                                 native tool. This would emit a dangling function \
+                                 reference. Register the tool (define_tool / a skill) or \
+                                 remove it from the step. Available: {available:?}"
+                            ));
+                        }
+                    }
+                }
             }
         }
 

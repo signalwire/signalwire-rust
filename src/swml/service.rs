@@ -669,7 +669,24 @@ impl Service {
         // runs. An invalid config fails loud with `SchemaValidationError`
         // (Python `raise SchemaValidationError(verb_name, errors)`).
         let (is_valid, errors) = if let Some(handler) = self.verb_registry.get_handler(verb) {
-            handler.validate_config(&config)
+            // A handler's validate_config carries verb-specific diagnostics (the
+            // ai verb's prompt/SWAIG shape checks) but does NOT run the schema's
+            // closed-key check — so unknown/misspelled top-level keys (temperatur,
+            // zzz) would slip through silently (the r5 silent-drop family). Run
+            // the schema pass too, so a handler verb rejects stray top-level keys
+            // like every other verb. The ai verb's `params` sub-object stays
+            // OPEN in the schema (LLM tuning params vary), so a key inside
+            // `ai.params` is not a misspelling and still renders. Mirrors Python
+            // `SWMLService.add_verb` (045919a): after `handler.validate_config`
+            // passes, also `schema_utils.validate_verb`. The schema pass is a
+            // no-op when validation is disabled, so the validation-off path is
+            // unchanged.
+            let (handler_valid, handler_errors) = handler.validate_config(&config);
+            if handler_valid {
+                self.schema_utils().validate_verb(verb, &config)
+            } else {
+                (handler_valid, handler_errors)
+            }
         } else {
             // Preserve the fail-loud unknown-verb contract (distinct panic
             // message) before schema-based property validation.

@@ -91,7 +91,15 @@ pub struct SchemaUtils {
     schema_path: Option<String>,
     validation_enabled: bool,
     verbs: BTreeMap<String, VerbDefinition>,
-    full_validator: Option<()>,
+    /// The compiled Draft-2020-12 validator for the WHOLE SWML document schema,
+    /// present when full validation is enabled. `validate_verb` wraps a verb in
+    /// a minimal `{version, sections:{main:[{verb: config}]}}` document and
+    /// validates it against this (mirroring the Python reference's
+    /// `jsonschema_rs.Draft202012Validator(self.schema)` over the same minimal
+    /// doc). The schema's verb objects are CLOSED via `unevaluatedProperties`,
+    /// so this rejects unknown/misspelled keys and wrong-typed config — the
+    /// full validation that replaced the former required-props-only stub.
+    full_validator: Option<std::sync::Arc<jsonschema::Validator>>,
 }
 
 impl SchemaUtils {
@@ -216,9 +224,46 @@ impl SchemaUtils {
         self.validate_verb_lightweight(verb_name, verb_config)
     }
 
+    /// Full JSON-Schema validation of a single verb config (Python
+    /// `_validate_verb_full`). Wraps the verb in a minimal SWML document
+    /// `{version, sections:{main:[{verb_name: verb_config}]}}` and validates it
+    /// against the whole compiled Draft-2020-12 schema. Because the schema's
+    /// verb objects are closed (`unevaluatedProperties: {not:{}}`), this rejects
+    /// unknown/misspelled keys, wrong-typed config, and missing-required — full
+    /// validation, not just the required-props check.
     fn validate_verb_full(&self, verb_name: &str, verb_config: &Value) -> (bool, Vec<String>) {
-        // Reserved for full-validator wiring; falls back to lightweight check.
-        self.validate_verb_lightweight(verb_name, verb_config)
+        let Some(validator) = &self.full_validator else {
+            return self.validate_verb_lightweight(verb_name, verb_config);
+        };
+        // Partial/test schemas without full document structure can't wrap a
+        // verb in a document; fall back (mirrors Python's `"sections" not in
+        // schema_props` guard).
+        let has_sections = self
+            .schema
+            .get("properties")
+            .and_then(|p| p.as_object())
+            .is_some_and(|p| p.contains_key("sections"));
+        if !has_sections {
+            return self.validate_verb_lightweight(verb_name, verb_config);
+        }
+        let minimal_doc = serde_json::json!({
+            "version": "1.0.0",
+            "sections": {"main": [{verb_name: verb_config}]},
+        });
+        match validator.validate(&minimal_doc) {
+            Ok(()) => (true, Vec::new()),
+            Err(e) => {
+                let mut msg = e.to_string();
+                if msg.len() > 500 {
+                    msg.truncate(500);
+                    msg.push_str("...");
+                }
+                (
+                    false,
+                    vec![format!("Schema validation error for '{verb_name}': {msg}")],
+                )
+            }
+        }
     }
 
     fn validate_verb_lightweight(
@@ -243,12 +288,21 @@ impl SchemaUtils {
     /// `validate_document(document)`.  Returns
     /// `(false, ["Schema validator not initialized"])` when no full
     /// validator is wired in.
-    pub fn validate_document(&self, _document: &Value) -> (bool, Vec<String>) {
-        if self.full_validator.is_none() {
+    pub fn validate_document(&self, document: &Value) -> (bool, Vec<String>) {
+        let Some(validator) = &self.full_validator else {
             return (false, vec!["Schema validator not initialized".to_string()]);
+        };
+        match validator.validate(document) {
+            Ok(()) => (true, Vec::new()),
+            Err(e) => {
+                let mut msg = e.to_string();
+                if msg.len() > 500 {
+                    msg.truncate(500);
+                    msg.push_str("...");
+                }
+                (false, vec![format!("Document validation error: {msg}")])
+            }
         }
-        // Reserved for full-validator wiring.
-        (true, Vec::new())
     }
 
     /// Generate a Python-style method signature string for a verb.
@@ -364,9 +418,19 @@ impl SchemaUtils {
         }
     }
 
+    /// Compile the Draft-2020-12 validator for the whole SWML schema (Python
+    /// `_init_full_validator` — `jsonschema_rs.Draft202012Validator(self.schema)`).
+    /// The embedded schema is self-contained: its only non-`#` `$ref`
+    /// (`SWMLObject.json`) is a self-reference to the root `$id`, so no remote
+    /// retrieval is needed (the crate is built with `default-features = false`,
+    /// dropping the http/file resolvers). A schema that fails to compile leaves
+    /// `full_validator = None`, so `validate_verb` degrades to the lightweight
+    /// required-props check rather than crashing — same fallback shape as Python.
     fn init_full_validator(&mut self) {
-        // Reserved for full-validator wiring (`jsonschema` crate).
-        self.full_validator = None;
+        match jsonschema::draft202012::new(&self.schema) {
+            Ok(v) => self.full_validator = Some(std::sync::Arc::new(v)),
+            Err(_) => self.full_validator = None,
+        }
     }
 }
 
@@ -485,8 +549,30 @@ mod tests {
     }
 
     #[test]
-    fn validate_document_no_full_validator() {
+    fn validate_document_full_validator() {
+        // With validation ON the full Draft-2020-12 validator is compiled, so
+        // a well-formed minimal document validates and a malformed one is
+        // rejected (the required-props-only stub could do neither).
         let (_g, su) = fresh();
+        assert!(su.full_validation_available());
+        let (valid, _errors) = su.validate_document(&json!({
+            "version": "1.0.0",
+            "sections": {"main": [{"answer": {"max_duration": 5}}]},
+        }));
+        assert!(valid, "a valid SWML doc must pass full validation");
+        let (bad, errors) = su.validate_document(&json!({
+            "version": "1.0.0",
+            "sections": {"main": [{"answer": {"wibble": 1}}]},
+        }));
+        assert!(!bad, "an unknown verb key must fail full validation");
+        assert!(!errors.is_empty());
+    }
+
+    #[test]
+    fn validate_document_no_full_validator_when_disabled() {
+        // With validation OFF no validator is compiled, so validate_document
+        // reports "not initialized" (the documented no-validator contract).
+        let su = SchemaUtils::new(None, false);
         let (valid, errors) = su.validate_document(&json!({
             "version": "1.0.0",
             "sections": {"main": []},
