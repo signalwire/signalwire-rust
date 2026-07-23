@@ -129,6 +129,14 @@ url = "2"
 # because the REST client uses it explicitly. Query strings go through
 # `url::form_urlencoded` (application/x-www-form-urlencoded).
 percent-encoding = "2"
+# reqwest + tokio power the async AI Chat client (`signalwire::ai_chat`). It is
+# the one async surface in this otherwise-synchronous crate: an AI Chat turn
+# awaits a full LLM round trip on an event loop, mirroring the async-first python
+# reference (aiohttp). `rustls-tls` keeps the crate's rustls-only TLS posture
+# (no OpenSSL); `read_timeout` supplies the byte-idle liveness the streaming
+# keepalive contract needs (no total wall-clock cap on a live turn).
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+tokio = { version = "1", features = ["rt", "macros"] }
 # Optional Tower middleware integration. Enabled by default so users on
 # axum / hyper get a drop-in webhook-validation Layer; opt out via
 # `default-features = false` if you only need the standalone validator.
@@ -168,6 +176,12 @@ path = "src/bin/rest_test_plan.rs"
 [[bin]]
 name = "envelope-dump"
 path = "src/bin/envelope_dump.rs"
+
+# AI-CHAT dump — the cross-port AI Chat wire-behavioral differ program (consumed
+# by porting-sdk/scripts/diff_port_ai_chat.py — see src/bin/ai_chat_dump.rs).
+[[bin]]
+name = "ai-chat-dump"
+path = "src/bin/ai_chat_dump.rs"
 
 # perf-swml — the rust P2 (SWML render µs/doc) bench for the shared
 # PERF-BASELINE nightly gate. Prints `P2 default <µs>`; run-ci's PERF-BASELINE

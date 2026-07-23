@@ -1251,6 +1251,42 @@ def build_surface() -> dict:
             # Method-less: record the bare type name with an empty method list.
             modules[gen_mod]["classes"].setdefault(cls, [])
 
+    # AI Chat data types (signalwire.ai_chat.client): ChatLog / ChatResponse /
+    # ConversationInfo are plain public-field Rust structs (no `pub fn`), the
+    # 1:1 twins of the reference's `@dataclass` result models — which the Python
+    # surface oracle records METHOD-LESS. A field-only struct carries no methods,
+    # so the normal method-keyed passes below never record them; emit them here
+    # method-less (like the generated-type pass) so the surface matches the
+    # reference dataclasses instead of leaving them absent. The method-BEARING
+    # ai_chat types (AIChatClient / the builder / the *Options structs) are left
+    # to the normal passes so their method lists are captured. The error family
+    # (AIChatError / AIChatErrorKind) is a Rust enum-fold of Python's 6 error
+    # CLASSES and is reconciled via PORT_OMISSIONS.md, not emitted here.
+    _AI_CHAT_CLIENT_REL = Path("src/ai_chat/client.rs")
+    _AI_CHAT_DATACLASS_TWINS = ("ChatLog", "ChatResponse", "ConversationInfo")
+    # The Python error family is a class hierarchy (base AIChatError + 5
+    # subclasses). Rust folds it into one `AIChatError` struct whose kind is an
+    # `AIChatErrorKind` enum; each Python error CLASS corresponds to an enum
+    # VARIANT. Project those variant identities back onto the reference's error
+    # class names (method-less) so the surface RECONCILES in emit (rename/
+    # projection, not omission) rather than leaving 6 classes absent. The port
+    # struct/enum genuinely carry these identities (AIChatErrorKind::{Api,
+    # Authentication, ConversationNotFound, RateLimit, ChatInProgress, Summary}).
+    _AI_CHAT_ERROR_CLASSES = (
+        "AIChatError", "AuthenticationError", "ConversationNotFoundError",
+        "RateLimitError", "ChatInProgressError", "SummaryError",
+    )
+    for path in files:
+        if path.relative_to(REPO_ROOT) != _AI_CHAT_CLIENT_REL:
+            continue
+        _free, _methods, classes = _parse_file(path)
+        for cls in _AI_CHAT_DATACLASS_TWINS:
+            if cls in classes:
+                modules["signalwire.ai_chat.client"]["classes"].setdefault(cls, [])
+        for cls in _AI_CHAT_ERROR_CLASSES:
+            modules["signalwire.ai_chat.client"]["classes"].setdefault(cls, [])
+        break
+
     # First pass: collect class declarations + their files (module mapping)
     class_defining_files: dict[str, Path] = {}
     for path in files:

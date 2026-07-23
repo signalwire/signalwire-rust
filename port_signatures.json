@@ -521,6 +521,140 @@
         }
       }
     },
+    "signalwire.ai_chat.client": {
+      "classes": {
+        "AIChatClient": {
+          "methods": {
+            "builder": {
+              "params": [],
+              "returns": "class:signalwire.aichatclientbuilder.AIChatClientBuilder"
+            },
+            "chat": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                },
+                {
+                  "name": "conversation_id",
+                  "type": "string",
+                  "required": true
+                },
+                {
+                  "name": "message",
+                  "type": "string",
+                  "required": true
+                },
+                {
+                  "name": "options",
+                  "type": "class:signalwire.chatoptions.ChatOptions",
+                  "required": true
+                }
+              ],
+              "returns": "class:signalwire.chatresponse.ChatResponse"
+            },
+            "create_conversation": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                },
+                {
+                  "name": "conversation_id",
+                  "type": "string",
+                  "required": true
+                },
+                {
+                  "name": "options",
+                  "type": "class:signalwire.createoptions.CreateOptions",
+                  "required": true
+                }
+              ],
+              "returns": "class:signalwire.conversationinfo.ConversationInfo"
+            },
+            "delete": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                },
+                {
+                  "name": "conversation_id",
+                  "type": "string",
+                  "required": true
+                }
+              ],
+              "returns": "bool"
+            },
+            "end": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                },
+                {
+                  "name": "conversation_id",
+                  "type": "string",
+                  "required": true
+                }
+              ],
+              "returns": "bool"
+            },
+            "log": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                },
+                {
+                  "name": "conversation_id",
+                  "type": "string",
+                  "required": true
+                }
+              ],
+              "returns": "class:signalwire.chatlog.ChatLog"
+            },
+            "project": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "string"
+            },
+            "summarize": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                },
+                {
+                  "name": "conversation_id",
+                  "type": "string",
+                  "required": true
+                },
+                {
+                  "name": "options",
+                  "type": "class:signalwire.summarizeoptions.SummarizeOptions",
+                  "required": true
+                }
+              ],
+              "returns": "string"
+            },
+            "url": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "string"
+            }
+          }
+        }
+      }
+    },
     "signalwire.core.agent.prompt.manager": {
       "classes": {
         "PromptManager": {

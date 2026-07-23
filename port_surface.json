@@ -1,6 +1,6 @@
 {
   "version": "1",
-  "generated_from": "signalwire-rust @ 26ecf8c7b9225c9e406df62fa38fb3077bb1256e",
+  "generated_from": "signalwire-rust @ 6c9466077059ac58c1313a8405ec2241c0777502",
   "modules": {
     "signalwire": {
       "classes": {
@@ -9,6 +9,7 @@
         ]
       },
       "functions": [
+        "AIChatClient",
         "AgentBase",
         "AgentOptions",
         "AgentServer",
@@ -83,6 +84,51 @@
         "BedrockOptions": [
           "with_name"
         ]
+      },
+      "functions": []
+    },
+    "signalwire.ai_chat.client": {
+      "classes": {
+        "AIChatClient": [
+          "builder",
+          "chat",
+          "create_conversation",
+          "delete",
+          "end",
+          "log",
+          "project",
+          "summarize",
+          "url"
+        ],
+        "AIChatClientBuilder": [
+          "build",
+          "project",
+          "space",
+          "token",
+          "url"
+        ],
+        "AIChatError": [],
+        "AuthenticationError": [],
+        "ChatInProgressError": [],
+        "ChatLog": [],
+        "ChatOptions": [
+          "config_url",
+          "role",
+          "user_metadata"
+        ],
+        "ChatResponse": [],
+        "ConversationInfo": [],
+        "ConversationNotFoundError": [],
+        "CreateOptions": [
+          "__init__",
+          "user_message",
+          "user_metadata"
+        ],
+        "RateLimitError": [],
+        "SummarizeOptions": [
+          "summary_prompt"
+        ],
+        "SummaryError": []
       },
       "functions": []
     },
