@@ -183,8 +183,10 @@ def load_rest_sidecar() -> dict:
 def _sidecar_param(p: dict) -> dict:
     """Map a sidecar param {name, kind, required, type} to a port_signatures
     param. Path-id / string args carry their real ``string`` type (genuine
-    Rust ``&str``); body/command keyword fields carry the open ``any`` (the
-    drift gate compares count+kind on those — L10)."""
+    Rust ``&str``); body/command keyword fields carry the concrete field type
+    the generator threaded from the spec schema (scalar → string/int/float/bool,
+    array → list<any>, object/$ref/union → dict<string,any>); the ``extras``/
+    ``extra`` door + var_keyword tail stay open (the cross-port extras signal)."""
     return {
         "name": p["name"],
         "kind": p["kind"],

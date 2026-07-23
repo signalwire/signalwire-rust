@@ -1773,15 +1773,84 @@ def _with_request_options(params: list[dict]) -> list[dict]:
     return head + [_request_options_param()] + tail
 
 
+# JSON scalar → the oracle's canonical *param-type* token (the reference records
+# ``string``/``int``/``float``/``bool`` — NOT ``integer``/``number``). This is the
+# SAME schema the generator already types the struct field from (rust_field_type /
+# _wire_owned_type map the identical scalar set to String/i64/f64/bool); here we
+# spell it in the reference's canonical vocabulary so the enumerated param compares
+# EQUAL to the oracle under diff_port_signatures.types_compatible.
+_SCALAR_CANON = {"string": "string", "integer": "int", "number": "float", "boolean": "bool"}
+
+
+def _named_ref_leaf(schema: dict) -> str | None:
+    """The components/schemas NAME a field points at through a bare ``$ref`` or a
+    single-element ``allOf`` (the OpenAPI idiom for "this field IS <NamedSchema>,
+    plus a description"). None for an inline/anonymous field. This is the name the
+    reference generates its ``<ns>_types_generated.<Name>`` type under."""
+    if not isinstance(schema, dict):
+        return None
+    ref = schema.get("$ref")
+    if ref:
+        return ref.rsplit("/", 1)[-1]
+    allof = schema.get("allOf")
+    if allof and len(allof) == 1 and not schema.get("properties") and not schema.get("type"):
+        return _named_ref_leaf(allof[0])
+    return None
+
+
+def _body_field_canon_type(spec: Spec, schema: dict) -> str:
+    """Canonical param-type token for an exploded body field, matching the oracle.
+
+    A field that IS a NAMED spec schema (via ``$ref`` / single ``allOf``) which the
+    reference materialises as a generated type — an object schema OR a string-``enum``
+    — carries that generated type ref
+    (``class:signalwire.rest.namespaces.<ns>_types_generated.<Name>``, which the diff
+    normalises to ``gen:<Name>`` by leaf, the cross-port contract go/java/etc. also
+    record). Scalars carry their concrete token (``string``/``int``/``float``/``bool``,
+    the same schema→type decision ``rust_field_type`` makes for the struct field); an
+    array carries ``list<inner>``; an anonymous object / union / untyped field carries
+    the open ``dict<string,any>``. Every branch is non-``any`` (passes the typed-surface
+    param gate) and compatible with what the reference records for that wire field (the
+    port serialises them through one ``serde_json::Value`` on the wire — wire-neutral)."""
+    if not isinstance(schema, dict):
+        return "dict<string,any>"
+    # A field that IS a NAMED spec schema (via ``$ref`` / single ``allOf``) → the
+    # reference materialises it as a generated type keyed by the RAW schema name
+    # (``Encryption``, ``UsedForType``, the string-format aliases ``uuid``/``jwt``/
+    # ``docid``, …). Record the matching ``class:...<ns>_types_generated.<rawname>``
+    # ref, which the diff normalises to ``gen:<rawname>`` by leaf — the same
+    # cross-port token go/java/etc. record. (Raw name, NOT ``type_name`` — the oracle
+    # preserves the lowercase alias spellings ``uuid``/``jwt``/``docid``.)
+    leaf = _named_ref_leaf(schema)
+    if leaf and isinstance(spec.schemas.get(leaf), dict):
+        return f"class:signalwire.rest.namespaces.{spec.name}_types_generated.{leaf}"
+    resolved = resolve_schema(spec, schema)
+    jt = _json_type(resolved) if isinstance(resolved, dict) else None
+    if jt in _SCALAR_CANON:
+        return _SCALAR_CANON[jt]
+    if jt == "array":
+        items = resolved.get("items") if isinstance(resolved, dict) else None
+        inner = _body_field_canon_type(spec, items) if isinstance(items, dict) else "any"
+        return f"list<{inner}>"
+    # anonymous object / oneOf / anyOf / union / untyped → open JSON object.
+    return "dict<string,any>"
+
+
 def _body_field_params(spec: Spec, fields, kind_for_fields: str,
                        tail_extra_name: str, tail_kwargs: bool) -> list[dict]:
     """Exploded params for an object/command body: each field → kind_for_fields
-    (``keyword``); then the ``extras``/``extra`` door + optional ``kwargs`` tail,
-    mirroring the oracle. Required-first ordering (matches ``ordered_fields``)."""
+    (``keyword``) carrying the field's CONCRETE type (threaded from its schema so the
+    param compares equal to the oracle, not a bare ``any``); then the
+    ``extras``/``extra`` OPEN door + optional ``kwargs`` tail, mirroring the oracle.
+    The ``extras``/``extra`` door carries the OPEN ``dict<string,any>`` (the reference's
+    ``optional<dict<string,any>>``, the cross-port extras SIGNAL — an open dict, NOT a
+    typed field) and the ``kwargs`` tail stays var_keyword. Required-first
+    (``ordered_fields``)."""
     out: list[dict] = []
     for wire, _sch, req in ordered_fields(fields):
-        out.append(_param(field_ident(wire), kind_for_fields, bool(req)))
-    out.append(_param(tail_extra_name, kind_for_fields, False))
+        out.append(_param(field_ident(wire), kind_for_fields, bool(req),
+                          _body_field_canon_type(spec, _sch)))
+    out.append(_param(tail_extra_name, kind_for_fields, False, "dict<string,any>"))
     if tail_kwargs:
         out.append(_param("kwargs", "var_keyword", False))
     return out
@@ -1803,8 +1872,13 @@ def sidecar_operation_method(spec: Spec, anchor: str, markup: dict, base: str,
             fields = object_body_fields(spec, body_schema)
             params += _body_field_params(spec, fields, "keyword", "extras", True)
         else:
-            # union body → a single loose ``body`` param (L10 watch-out: do NOT explode).
-            params.append(_param("body", "positional", True))
+            # union body → a single ``body`` param (L10 watch-out: do NOT explode). A
+            # NAMED union schema ($ref) carries its generated-type ref (the oracle records
+            # ``class:...<Name>`` / ``gen:<Name>``); an anonymous union stays open.
+            btype = _body_field_canon_type(spec, body_schema)
+            if btype == "dict<string,any>":
+                btype = "any"  # anonymous union body → the open value (unchanged)
+            params.append(_param("body", "positional", True, btype))
     elif write_verb:
         pass  # no body
     elif verb == "get":
@@ -1821,12 +1895,16 @@ def sidecar_set_method(spec: Spec, markup: dict, sm_name: str, sm: dict,
     resource_id, flow_id, version?, **extra)."""
     params: list[dict] = [_param("resource_id", "positional", True, "string")]
     args = sm.get("args") or {}
-    bound = []
     for arg_name, arg in args.items():
-        bound.append((arg_name, bool(arg.get("required"))))
-    for arg_name, req in bound:
-        # set_* args are ``impl Into<String>`` in the generated builder → string.
-        params.append(_param(field_ident(arg_name), "positional", req, "string"))
+        req = bool(arg.get("required"))
+        # Thread the BOUND update-field's concrete schema type (matching the oracle:
+        # set_call_flow.flow_id is bound to ``call_flow_id`` → the named ``uuid`` schema
+        # → ``gen:uuid``, NOT a bare ``string``). Falls back to ``string`` when the
+        # field schema is absent/plain-string.
+        fld = arg.get("field")
+        fsch = field_schemas.get(fld) if fld else None
+        ptype = _body_field_canon_type(spec, fsch) if isinstance(fsch, dict) else "string"
+        params.append(_param(field_ident(arg_name), "positional", req, ptype))
     params.append(_param("extra", "var_keyword", False))
     return _with_request_options(params)
 
