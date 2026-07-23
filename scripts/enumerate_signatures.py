@@ -1336,9 +1336,9 @@ def build_signature(fn: dict, paths: dict, aliases: dict, context: str) -> dict:
 # realizes each reference method through an idiom the raw rustdoc signature does
 # not match the Python kwargs of:
 #   * construction is `AIChatClient::builder()` (folded onto `__init__` for the
-#     NAME) -- but the builder fn takes zero args, so the rustdoc `__init__` has
-#     an empty param list rather than the reference (project, token, space, url,
-#     session) kwargs;
+#     NAME) -- the builder fn takes zero args, so the rustdoc `__init__` has an
+#     empty param list rather than the reference (project, token, space, url)
+#     kwargs;
 #   * `create_conversation` / `chat` / `summarize` collapse their optional kwargs
 #     into a single typed options-object (`CreateOptions` / `ChatOptions` /
 #     `SummarizeOptions`);
@@ -1352,14 +1352,9 @@ def build_signature(fn: dict, paths: dict, aliases: dict, context: str) -> dict:
 # build_generated_signatures does for the generated REST layer. The Rust wire is
 # identical (AI-CHAT gate verified); only the STATIC call shape differs, and that
 # difference is the options-object / builder / struct-literal idiom.
-#
-# The `session` 5th param of `__init__`: the reference's `session:
-# aiohttp.ClientSession` is an injected-HTTP-client seam. The Rust builder exposes
-# no reqwest::Client / session injection seam (it always builds its own pooled
-# client from the timeout knobs), so there is no port member to map onto
-# `session`. Its NAME is projected here so `__init__` presents the full reference
-# param list (names+count) -- the reference records it optional/defaulted, so a
-# projected-name entry satisfies the diff without inventing an injection seam.
+# (The reference no longer records a `session: aiohttp.ClientSession` DI param on
+# __init__ -- it was dropped upstream -- so __init__ folds to the natural
+# (project, token, space, url) with no name-projection.)
 _AI_CHAT_MODULE = "signalwire.ai_chat.client"
 _S = {"name": "self", "kind": "self"}
 
@@ -1384,8 +1379,9 @@ def build_ai_chat_signatures() -> dict:
         return d
 
     client_methods = {
-        # project/token/space/url map onto the builder setters; session is the
-        # injected-session seam the Rust builder does not expose (name-projected).
+        # project/token/space/url map onto the builder setters. The oracle no
+        # longer records a `session` DI param (dropped upstream), so __init__
+        # folds naturally to (project, token, space, url) with no name-projection.
         "__init__": {
             "params": [
                 _S,
@@ -1393,7 +1389,6 @@ def build_ai_chat_signatures() -> dict:
                 kw("token", "optional<string>", False, None),
                 kw("space", "optional<string>", False, None),
                 kw("url", "optional<string>", False, None),
-                kw("session", "optional<class:aiohttp.ClientSession>", False, None),
             ],
             "returns": "void",
         },
@@ -1418,6 +1413,8 @@ def build_ai_chat_signatures() -> dict:
                 kw("role", "string", False, "user"),
                 kw("config_url", "optional<string>", False, None),
                 kw("user_metadata", "optional<dict<string,any>>", False, None),
+                kw("timeout", "optional<int>", False, None),
+                kw("reinit", "bool", False, False),
             ],
             "returns": "class:signalwire.ai_chat.client.ChatResponse",
         },
