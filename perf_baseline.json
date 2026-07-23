@@ -1,0 +1,9 @@
+{
+  "port": "rust",
+  "toolchain": "cargo",
+  "metrics": {
+    "P2": {
+      "default": 70.0
+    }
+  }
+}

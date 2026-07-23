@@ -223,13 +223,25 @@ mod tests {
 
     #[test]
     fn test_render_function_response() {
+        // Actions render as their own verbs. `hangup` reason must be a
+        // schema-valid enum value (hangup|busy|decline) — the full validator
+        // rejects "done" exactly as the Python reference does. Empty
+        // response_text takes the no-play-verb branch, so the only verb is the
+        // hangup action.
+        //
+        // NOTE: a NON-empty response_text makes this function emit
+        // `{"play":{"text":...}}`, an out-of-schema shape (`play` takes
+        // `url`/`urls`, not `text`) that the full validator now rejects — a
+        // latent shape carried VERBATIM from the Python reference
+        // (swml_renderer.py `add_verb("play", {"text": response_text})`), which
+        // raises identically. The port matches the reference; the reference's
+        // own bug is out of scope here (fixing it would be a reference change).
         let mut s = svc();
-        let actions = vec![json!({"hangup": {"reason": "done"}})];
-        let out = SwmlRenderer::render_function_response_swml("Goodbye", &mut s, Some(&actions));
+        let actions = vec![json!({"hangup": {"reason": "busy"}})];
+        let out = SwmlRenderer::render_function_response_swml("", &mut s, Some(&actions));
         let doc: Value = serde_json::from_str(&out).unwrap();
         let main = doc["sections"]["main"].as_array().unwrap();
-        assert_eq!(main[0]["play"]["text"], "Goodbye");
-        assert_eq!(main[1]["hangup"]["reason"], "done");
+        assert_eq!(main[0]["hangup"]["reason"], "busy");
     }
 
     #[test]

@@ -36,6 +36,17 @@ static DEFAULT_SCHEMA: LazyLock<Value> = LazyLock::new(|| {
     serde_json::from_str(raw).unwrap_or(Value::Null)
 });
 
+/// The fully-built default `SchemaUtils` (embedded schema, validation on),
+/// constructed exactly ONCE for the whole process. Cloning the parsed
+/// `DEFAULT_SCHEMA` Value and re-running `extract_verbs()` on every
+/// `SchemaUtils::new` was still ~1 ms/verb (a deep clone of the 495 KB tree
+/// plus a full `$defs` walk building the verb `BTreeMap`) — 20 verbs ≈ the whole
+/// 24 ms/doc in `r5/deep_perf_baseline`. `add_verb` only needs read-only access
+/// to `validate_verb`, so it borrows this shared instance instead of building a
+/// fresh one. This is the real fix for the per-verb reparse/rebuild.
+static DEFAULT_SCHEMA_UTILS: LazyLock<SchemaUtils> =
+    LazyLock::new(|| SchemaUtils::build(None, true));
+
 /// `SchemaValidationError` — Rust port of
 /// `signalwire.utils.schema_utils.SchemaValidationError`.
 #[derive(Debug, Clone)]
@@ -80,13 +91,46 @@ pub struct SchemaUtils {
     schema_path: Option<String>,
     validation_enabled: bool,
     verbs: BTreeMap<String, VerbDefinition>,
-    full_validator: Option<()>,
+    /// The compiled Draft-2020-12 validator for the WHOLE SWML document schema,
+    /// present when full validation is enabled. `validate_verb` wraps a verb in
+    /// a minimal `{version, sections:{main:[{verb: config}]}}` document and
+    /// validates it against this (mirroring the Python reference's
+    /// `jsonschema_rs.Draft202012Validator(self.schema)` over the same minimal
+    /// doc). The schema's verb objects are CLOSED via `unevaluatedProperties`,
+    /// so this rejects unknown/misspelled keys and wrong-typed config — the
+    /// full validation that replaced the former required-props-only stub.
+    full_validator: Option<std::sync::Arc<jsonschema::Validator>>,
 }
 
 impl SchemaUtils {
     /// Construct a `SchemaUtils`.  Mirrors Python's
     /// `SchemaUtils(schema_path=None, schema_validation=True)`.
+    ///
+    /// For the default embedded-schema path (`schema_path = None`), prefer
+    /// [`SchemaUtils::shared_default`] on the hot path — it borrows a single
+    /// process-wide instance instead of re-parsing/re-extracting the 495 KB
+    /// schema. `new` always builds a fresh owned instance (needed when a caller
+    /// wants a distinct `schema_path` or an independent owned value).
     pub fn new(schema_path: Option<String>, schema_validation: bool) -> Self {
+        Self::build(schema_path, schema_validation)
+    }
+
+    /// A shared, process-wide default `SchemaUtils` (embedded schema,
+    /// validation on), built exactly once. The per-`add_verb` validation path
+    /// borrows this instead of constructing a new helper each call, so the
+    /// parse-and-verb-extract happens a single time no matter how many verbs
+    /// render. Crate-internal: a performance-plumbing accessor behind the public
+    /// `Service::schema_utils()`, not public API surface of its own.
+    #[must_use]
+    pub(crate) fn shared_default() -> &'static SchemaUtils {
+        &DEFAULT_SCHEMA_UTILS
+    }
+
+    /// The actual constructor (parses the schema + extracts verbs). Callers on
+    /// the hot path use `shared_default()` so this runs once process-wide; the
+    /// parse-once perf test asserts that via pointer identity of the shared
+    /// instance across a large `add_verb` workload.
+    fn build(schema_path: Option<String>, schema_validation: bool) -> Self {
         let env_skip = env_boolish(&env::var("SWML_SKIP_SCHEMA_VALIDATION").unwrap_or_default());
         let mut su = Self {
             schema: Value::Null,
@@ -165,6 +209,82 @@ impl SchemaUtils {
         }
     }
 
+    /// The set of KNOWN top-level property names for a verb's config object,
+    /// resolving one `$ref` into `$defs` when the verb's inner schema is a
+    /// reference (the `ai` verb's inner schema is `{"$ref": "#/$defs/AIObject"}`,
+    /// so the property names live on `AIObject`, not inline). Returns an empty
+    /// set when the names can't be determined (an open/unknown shape), which
+    /// callers treat as "don't reject any key".
+    fn verb_top_level_property_names(&self, verb_name: &str) -> std::collections::HashSet<String> {
+        // `get_verb_properties` returns the inner `{verb_name: <schema>}` node.
+        let inner = self.get_verb_properties(verb_name);
+        // Resolve one `$ref` hop into `$defs` if present.
+        let resolved: std::borrow::Cow<'_, Map<String, Value>> =
+            if let Some(ref_str) = inner.get("$ref").and_then(|r| r.as_str()) {
+                let prefix = "#/$defs/";
+                ref_str
+                    .strip_prefix(prefix)
+                    .and_then(|name| self.schema.get("$defs").and_then(|d| d.get(name)))
+                    .and_then(|d| d.as_object())
+                    .map_or(std::borrow::Cow::Borrowed(&inner), |o| {
+                        std::borrow::Cow::Owned(o.clone())
+                    })
+            } else {
+                std::borrow::Cow::Borrowed(&inner)
+            };
+        resolved
+            .get("properties")
+            .and_then(|p| p.as_object())
+            .map(|o| o.keys().cloned().collect())
+            .unwrap_or_default()
+    }
+
+    /// Validate ONLY that every top-level key of a verb config is a known
+    /// property of that verb's object schema — the closed-key check, WITHOUT
+    /// deep-validating the sub-object shapes.
+    ///
+    /// This is the strict-render contract for a HANDLER verb (the `ai` verb):
+    /// reject unknown/misspelled TOP-LEVEL keys (temperatur, zzz), but do NOT
+    /// deep-validate the sub-objects. The `ai` verb legitimately renders deep
+    /// shapes (empty `prompt.pom []`, `SWAIG.defaults.web_hook_url`,
+    /// `functions[].web_hook_url` with a `?__token=` query, `__token`, …) that
+    /// the bundled JSON schema's deep sub-schemas do not fully accept under this
+    /// crate's Draft-2020-12 engine — full-deep-validating the `ai` verb
+    /// FALSE-REJECTS valid documents. The python reference's contract for `ai`
+    /// is top-level-keys-only too (its jsonschema-rs engine happens to accept
+    /// the deep shapes, so its identical minimal-doc pass is a no-op on them;
+    /// here we make the SAME outcome explicit and engine-independent). Returns
+    /// `(true, [])` when the property-name set can't be determined (open shape).
+    /// Crate-internal (behind `Service::add_verb`): a validation-plumbing helper
+    /// for the ai-handler path, not public surface of its own.
+    pub(crate) fn validate_verb_top_keys(
+        &self,
+        verb_name: &str,
+        verb_config: &Value,
+    ) -> (bool, Vec<String>) {
+        if !self.validation_enabled {
+            return (true, Vec::new());
+        }
+        let known = self.verb_top_level_property_names(verb_name);
+        if known.is_empty() {
+            return (true, Vec::new());
+        }
+        let Some(obj) = verb_config.as_object() else {
+            return (true, Vec::new());
+        };
+        let mut errors = Vec::new();
+        for key in obj.keys() {
+            if !known.contains(key) {
+                let mut available: Vec<&String> = known.iter().collect();
+                available.sort();
+                errors.push(format!(
+                    "Unknown key '{key}' for verb '{verb_name}'. Known keys: {available:?}"
+                ));
+            }
+        }
+        (errors.is_empty(), errors)
+    }
+
     /// Validate a verb config against the schema.  Mirrors Python's
     /// `validate_verb(verb_name, verb_config)`.
     pub fn validate_verb(&self, verb_name: &str, verb_config: &Value) -> (bool, Vec<String>) {
@@ -180,9 +300,46 @@ impl SchemaUtils {
         self.validate_verb_lightweight(verb_name, verb_config)
     }
 
+    /// Full JSON-Schema validation of a single verb config (Python
+    /// `_validate_verb_full`). Wraps the verb in a minimal SWML document
+    /// `{version, sections:{main:[{verb_name: verb_config}]}}` and validates it
+    /// against the whole compiled Draft-2020-12 schema. Because the schema's
+    /// verb objects are closed (`unevaluatedProperties: {not:{}}`), this rejects
+    /// unknown/misspelled keys, wrong-typed config, and missing-required — full
+    /// validation, not just the required-props check.
     fn validate_verb_full(&self, verb_name: &str, verb_config: &Value) -> (bool, Vec<String>) {
-        // Reserved for full-validator wiring; falls back to lightweight check.
-        self.validate_verb_lightweight(verb_name, verb_config)
+        let Some(validator) = &self.full_validator else {
+            return self.validate_verb_lightweight(verb_name, verb_config);
+        };
+        // Partial/test schemas without full document structure can't wrap a
+        // verb in a document; fall back (mirrors Python's `"sections" not in
+        // schema_props` guard).
+        let has_sections = self
+            .schema
+            .get("properties")
+            .and_then(|p| p.as_object())
+            .is_some_and(|p| p.contains_key("sections"));
+        if !has_sections {
+            return self.validate_verb_lightweight(verb_name, verb_config);
+        }
+        let minimal_doc = serde_json::json!({
+            "version": "1.0.0",
+            "sections": {"main": [{verb_name: verb_config}]},
+        });
+        match validator.validate(&minimal_doc) {
+            Ok(()) => (true, Vec::new()),
+            Err(e) => {
+                let mut msg = e.to_string();
+                if msg.len() > 500 {
+                    msg.truncate(500);
+                    msg.push_str("...");
+                }
+                (
+                    false,
+                    vec![format!("Schema validation error for '{verb_name}': {msg}")],
+                )
+            }
+        }
     }
 
     fn validate_verb_lightweight(
@@ -207,12 +364,21 @@ impl SchemaUtils {
     /// `validate_document(document)`.  Returns
     /// `(false, ["Schema validator not initialized"])` when no full
     /// validator is wired in.
-    pub fn validate_document(&self, _document: &Value) -> (bool, Vec<String>) {
-        if self.full_validator.is_none() {
+    pub fn validate_document(&self, document: &Value) -> (bool, Vec<String>) {
+        let Some(validator) = &self.full_validator else {
             return (false, vec!["Schema validator not initialized".to_string()]);
+        };
+        match validator.validate(document) {
+            Ok(()) => (true, Vec::new()),
+            Err(e) => {
+                let mut msg = e.to_string();
+                if msg.len() > 500 {
+                    msg.truncate(500);
+                    msg.push_str("...");
+                }
+                (false, vec![format!("Document validation error: {msg}")])
+            }
         }
-        // Reserved for full-validator wiring.
-        (true, Vec::new())
     }
 
     /// Generate a Python-style method signature string for a verb.
@@ -328,9 +494,19 @@ impl SchemaUtils {
         }
     }
 
+    /// Compile the Draft-2020-12 validator for the whole SWML schema (Python
+    /// `_init_full_validator` — `jsonschema_rs.Draft202012Validator(self.schema)`).
+    /// The embedded schema is self-contained: its only non-`#` `$ref`
+    /// (`SWMLObject.json`) is a self-reference to the root `$id`, so no remote
+    /// retrieval is needed (the crate is built with `default-features = false`,
+    /// dropping the http/file resolvers). A schema that fails to compile leaves
+    /// `full_validator = None`, so `validate_verb` degrades to the lightweight
+    /// required-props check rather than crashing — same fallback shape as Python.
     fn init_full_validator(&mut self) {
-        // Reserved for full-validator wiring (`jsonschema` crate).
-        self.full_validator = None;
+        match jsonschema::draft202012::new(&self.schema) {
+            Ok(v) => self.full_validator = Some(std::sync::Arc::new(v)),
+            Err(_) => self.full_validator = None,
+        }
     }
 }
 
@@ -449,8 +625,30 @@ mod tests {
     }
 
     #[test]
-    fn validate_document_no_full_validator() {
+    fn validate_document_full_validator() {
+        // With validation ON the full Draft-2020-12 validator is compiled, so
+        // a well-formed minimal document validates and a malformed one is
+        // rejected (the required-props-only stub could do neither).
         let (_g, su) = fresh();
+        assert!(su.full_validation_available());
+        let (valid, _errors) = su.validate_document(&json!({
+            "version": "1.0.0",
+            "sections": {"main": [{"answer": {"max_duration": 5}}]},
+        }));
+        assert!(valid, "a valid SWML doc must pass full validation");
+        let (bad, errors) = su.validate_document(&json!({
+            "version": "1.0.0",
+            "sections": {"main": [{"answer": {"wibble": 1}}]},
+        }));
+        assert!(!bad, "an unknown verb key must fail full validation");
+        assert!(!errors.is_empty());
+    }
+
+    #[test]
+    fn validate_document_no_full_validator_when_disabled() {
+        // With validation OFF no validator is compiled, so validate_document
+        // reports "not initialized" (the documented no-validator contract).
+        let su = SchemaUtils::new(None, false);
         let (valid, errors) = su.validate_document(&json!({
             "version": "1.0.0",
             "sections": {"main": []},

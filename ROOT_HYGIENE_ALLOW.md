@@ -18,6 +18,7 @@ relative path; moving them under `eng/` would break the shared audit pipeline
 - REST_COVERAGE_GAPS.md — required audit-contract file read by porting-sdk audit scripts (orchestrator, 2026-07-06)
 - audit_coverage.json — required audit-contract file read by porting-sdk audit scripts (audit_coverage_map.py) (orchestrator, 2026-07-06)
 - audit_coverage_baseline.json — required audit-contract file read by porting-sdk audit scripts (audit_coverage_map.py) (orchestrator, 2026-07-06)
+- perf_baseline.json — committed per-port PERF-BASELINE ratchet baseline (r5 P2 SWML-render), read at repo root by scripts/run-ci.sh's PERF-BASELINE gate + porting-sdk perf_baseline.py; parallel to port_signatures.baseline.json (c2-rust, 2026-07-22)
 - port_signatures.json — regenerated + read at root by scripts/run-ci.sh, scripts/enumerate_signatures.py, and porting-sdk diff_port_signatures.py (orchestrator, 2026-07-06)
 - port_signatures.baseline.json — load-bearing SEMVER-DIFF release-floor file; mirrors port_signatures.json; must be at root (read by porting-sdk semver_diff.py), must not ship (Cargo.toml exclude) (orchestrator, 2026-07-13)
 - port_surface.json — regenerated + read at root by scripts/run-ci.sh, scripts/enumerate_surface.py, and porting-sdk audit_docs.py/ignore_ledger_verify.py (orchestrator, 2026-07-06)

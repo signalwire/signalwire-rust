@@ -215,6 +215,12 @@ See the **[REST documentation](rest/README.md)** for the full guide, API referen
 
 ## Installation
 
+> **Pre-release note.** This README documents the `4.x` surface. The latest
+> version currently published to crates.io lags the source, so
+> `cargo add signalwire-sdk` may resolve an older crate that lacks the APIs
+> below. Until `4.x` is published, install **from source** (the git dependency
+> shown last) to get the surface this README describes.
+
 Add to your `Cargo.toml`:
 
 ```toml
@@ -228,6 +234,24 @@ Or with `cargo`:
 
 ```bash
 cargo add signalwire-sdk
+```
+
+### Install from source (current `4.x` surface)
+
+Point the dependency at the git repository to build the exact surface this
+README documents before the `4.x` crate is published:
+
+```toml
+[dependencies]
+signalwire = { package = "signalwire-sdk", git = "https://github.com/signalwire/signalwire-rust", branch = "main" }
+```
+
+Or clone and build locally:
+
+```bash
+git clone https://github.com/signalwire/signalwire-rust
+cd signalwire-rust
+cargo build
 ```
 
 Requires Rust edition 2024 with a minimum supported `rustc` of 1.88 (let-chains, enforced via `rust-version` in `Cargo.toml`).
@@ -273,11 +297,17 @@ Guides are also available in the [`docs/`](docs/) directory:
 
 ## Environment Variables
 
+Your `SIGNALWIRE_PROJECT_ID`, `SIGNALWIRE_API_TOKEN`, and `SIGNALWIRE_SPACE` come
+from the **API** section of your [SignalWire Dashboard](https://signalwire.com/signin)
+(create a free account at [signalwire.com](https://signalwire.com/) if you don't
+have one).
+
 | Variable | Used by | Description |
 |----------|---------|-------------|
 | `SIGNALWIRE_PROJECT_ID` | RELAY, REST | Project identifier |
 | `SIGNALWIRE_API_TOKEN` | RELAY, REST | API token |
 | `SIGNALWIRE_SPACE` | RELAY, REST | Space hostname (e.g. `example.signalwire.com`) |
+| `SIGNALWIRE_REST_BASE_URL` | REST | Override the REST base URL (`RestClient::from_env`); replaces the `https://{SIGNALWIRE_SPACE}` resolution when set |
 | `SWML_BASIC_AUTH_USER` | Agents | Basic auth username (default: auto-generated) |
 | `SWML_BASIC_AUTH_PASSWORD` | Agents | Basic auth password (default: auto-generated) |
 | `SWML_PROXY_URL_BASE` | Agents | Base URL when behind a reverse proxy |

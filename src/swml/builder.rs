@@ -224,25 +224,33 @@ mod tests {
     fn test_answer_hangup_chain() {
         let mut s = svc();
         let mut b = SwmlBuilder::new(&mut s);
-        b.answer(Some(3600), None).hangup(Some("done"));
+        // "busy" is a schema-valid hangup reason (hangup|busy|decline); the
+        // full validator now rejects an out-of-enum reason like "done" (which
+        // the Python reference also rejects), so the chain uses a valid one.
+        b.answer(Some(3600), None).hangup(Some("busy"));
         let doc = b.build();
         let main = doc["sections"]["main"].as_array().unwrap();
         assert_eq!(main[0]["answer"]["max_duration"], 3600);
-        assert_eq!(main[1]["hangup"]["reason"], "done");
+        assert_eq!(main[1]["hangup"]["reason"], "busy");
     }
 
     #[test]
     fn test_ai_verb() {
         let mut s = svc();
         let mut b = SwmlBuilder::new(&mut s);
+        // `temperature` is NOT a valid TOP-LEVEL ai key (it lives under
+        // ai.params); the full validator rejects it at the top level exactly
+        // as the Python reference does. `post_prompt_url` IS a valid top-level
+        // ai key, so it exercises the builder's top-level-merge path against a
+        // config the schema accepts.
         let mut args = Map::new();
         args.insert("prompt_text".to_string(), json!("hi"));
-        args.insert("temperature".to_string(), json!(0.5));
+        args.insert("post_prompt_url".to_string(), json!("https://x/pp"));
         b.ai(&args);
         let doc = b.build();
         let ai = &doc["sections"]["main"][0]["ai"];
         assert_eq!(ai["prompt"]["text"], "hi");
-        assert_eq!(ai["temperature"], 0.5);
+        assert_eq!(ai["post_prompt_url"], "https://x/pp");
     }
 
     #[test]

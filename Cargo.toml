@@ -84,6 +84,14 @@ serde_json = { version = "1", features = ["preserve_order"] }
 # Same API (from_str / Value). NOT serde_yml — that fork carries
 # RUSTSEC-2025-0068 (unsound + unmaintained).
 serde_norway = "0.9"
+# Full JSON-Schema (Draft 2020-12) validation for SWML verb configs. The Python
+# reference validates each verb via jsonschema-rs Draft202012Validator against
+# the embedded SWML schema (whose verb objects are CLOSED via
+# `unevaluatedProperties`), which is how unknown/misspelled keys and wrong-typed
+# config are rejected. This crate is the Rust analogue (same 2020-12 support:
+# $defs/$ref, anyOf/oneOf, const, unevaluatedProperties). Upgrades the SWML
+# validator from the former required-props-only stub to full validation.
+jsonschema = { version = "0.48", default-features = false }
 hmac = "0.13"
 sha1 = "0.11"
 sha2 = "0.11"
@@ -160,6 +168,13 @@ path = "src/bin/rest_test_plan.rs"
 [[bin]]
 name = "envelope-dump"
 path = "src/bin/envelope_dump.rs"
+
+# perf-swml — the rust P2 (SWML render µs/doc) bench for the shared
+# PERF-BASELINE nightly gate. Prints `P2 default <µs>`; run-ci's PERF-BASELINE
+# gate builds it (release) and ratchets the number via perf_baseline.py.
+[[bin]]
+name = "perf-swml"
+path = "src/bin/perf_swml.rs"
 
 # ---------------------------------------------------------------------------
 # Sub-directory examples (rest/examples/, relay/examples/).

@@ -183,8 +183,10 @@ def load_rest_sidecar() -> dict:
 def _sidecar_param(p: dict) -> dict:
     """Map a sidecar param {name, kind, required, type} to a port_signatures
     param. Path-id / string args carry their real ``string`` type (genuine
-    Rust ``&str``); body/command keyword fields carry the open ``any`` (the
-    drift gate compares count+kind on those — L10)."""
+    Rust ``&str``); body/command keyword fields carry the concrete field type
+    the generator threaded from the spec schema (scalar → string/int/float/bool,
+    array → list<any>, object/$ref/union → dict<string,any>); the ``extras``/
+    ``extra`` door + var_keyword tail stay open (the cross-port extras signal)."""
     return {
         "name": p["name"],
         "kind": p["kind"],
@@ -643,7 +645,13 @@ def _apply_method_renames(cls_name: str, methods: dict) -> dict:
 # Rust parameter names used as the ``*args`` / ``**kwargs`` variadic-equivalent
 # (a single ``serde_json::Value`` / ``Vec<..>`` / ``HashMap<..>`` carries what
 # Python spells with a splat). Only these names are treated as variadic tails.
-_VARIADIC_TAIL_NAMES = ("params", "kwargs", "args", "options")
+# ``_params`` is the underscore-ignored form of ``params``: a no-op forwarder
+# (e.g. BedrockAgent's set_prompt_llm_params / set_post_prompt_llm_params, which
+# warn-and-drop because Bedrock's prompt/post-prompt run on a platform-side model)
+# names the arg ``_params`` so clippy doesn't flag the unused binding. It is the
+# SAME **kwargs-equivalent variadic tail as ``params`` — reconcile it identically
+# so the idiom does not surface as drift against the oracle's stripped-kwargs twin.
+_VARIADIC_TAIL_NAMES = ("params", "_params", "kwargs", "args", "options")
 
 
 def _reconcile_variadic_tail(py_sig: dict, rust_sig: dict) -> None:
