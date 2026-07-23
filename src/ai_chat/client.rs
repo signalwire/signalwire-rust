@@ -553,6 +553,16 @@ impl AIChatClient {
         &self.project
     }
 
+    /// Release the client's resources, completing the lifecycle contract.
+    ///
+    /// The reference exposes an async `close()` that disposes the aiohttp
+    /// session. Rust's `reqwest::Client` pools its connections internally and is
+    /// RAII-freed when the last handle drops, so there is nothing to release here
+    /// -- this is a well-defined no-op that lets callers mirror the reference's
+    /// explicit-close lifecycle (and drop the client afterwards) without changing
+    /// any wire behavior.
+    pub fn close(&self) {}
+
     /// Resolve the endpoint URL: explicit `url` wins; else build from `space`.
     fn resolve_url(url: Option<&str>, space: Option<&str>) -> Result<String, AIChatError> {
         if let Some(url) = url.filter(|u| !u.is_empty()) {

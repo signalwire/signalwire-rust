@@ -1,6 +1,6 @@
 {
   "version": "1",
-  "generated_from": "signalwire-rust @ 27a494044bbd58463879cee7db9ab9f1ab4b05be",
+  "generated_from": "signalwire-rust @ 794477e03335a877d96bc0ce73d5c58aa28ace76",
   "modules": {
     "signalwire": {
       "classes": {
@@ -92,13 +92,16 @@
         "AIChatClient": [
           "__init__",
           "chat",
+          "close",
           "create_conversation",
           "delete",
           "end",
           "log",
           "summarize"
         ],
-        "AIChatError": [],
+        "AIChatError": [
+          "__init__"
+        ],
         "AuthenticationError": [],
         "ChatInProgressError": [],
         "ChatLog": [],

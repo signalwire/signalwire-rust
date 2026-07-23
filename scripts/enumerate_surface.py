@@ -592,10 +592,12 @@ METHOD_RENAMES: dict[str, dict[str, str]] = {
     #     which the surface oracle does NOT record as members of AIChatClient —
     #     so drop the Rust getters (they are the attribute-access idiom, not surface).
     # The async methods (chat/create_conversation/delete/end/log/summarize) pass
-    # through unchanged and match the oracle. Members the oracle records but Rust
-    # cannot express (`__aenter__`/`__aexit__`/`close` — no async-context-manager
-    # protocol, RAII-drop instead of an explicit close) remain in PORT_OMISSIONS.md
-    # as `impossible:`.
+    # through unchanged and match the oracle. `close()` is a real member — a
+    # well-defined no-op that completes the lifecycle contract (reqwest::Client is
+    # pooled/RAII-freed, so there is nothing to release), folding the reference
+    # `close` onto a genuine method. The ONLY members the oracle records that Rust
+    # cannot express are `__aenter__`/`__aexit__` (no async-context-manager
+    # protocol) — those remain in PORT_OMISSIONS.md as `impossible:`.
     "AIChatClient": {
         "builder": "__init__",
         "url": None,
@@ -1329,6 +1331,13 @@ def build_surface() -> dict:
                 modules["signalwire.ai_chat.client"]["classes"].setdefault(cls, [])
         for cls in _AI_CHAT_ERROR_CLASSES:
             modules["signalwire.ai_chat.client"]["classes"].setdefault(cls, [])
+        # The reference surface records `__init__` on the BASE `AIChatError` only
+        # (the 5 subclasses stay method-less). Rust's `AIChatError` struct carries
+        # a real field-wise constructor (code, message) — project `__init__` onto
+        # the base so the surface reconciles in emit (rename/projection), folding
+        # the former AIChatError.__init__ omission.
+        if "__init__" not in modules["signalwire.ai_chat.client"]["classes"]["AIChatError"]:
+            modules["signalwire.ai_chat.client"]["classes"]["AIChatError"].append("__init__")
         break
 
     # First pass: collect class declarations + their files (module mapping)
