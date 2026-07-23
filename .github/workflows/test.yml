@@ -50,7 +50,7 @@ jobs:
         with:
           repository: signalwire/signalwire-python
           path: signalwire-python
-          ref: main
+          ref: ${{ vars.PORTING_SDK_REF || 'main' }}
 
       - name: Set up Rust (stable + nightly for rustdoc-json)
         # Stable for `cargo test` + the FMT/LINT gates (run-ci.sh pins those to
