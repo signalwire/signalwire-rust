@@ -36,6 +36,7 @@ insert: stdlib HashMap::insert / Vec::insert / BTreeMap::insert
 into: stdlib Into::into
 is_empty: stdlib str::is_empty / Vec::is_empty / HashMap::is_empty
 is_err: stdlib Result::is_err
+is_ok: stdlib Result::is_ok
 is_none_or: stdlib Option::is_none_or combinator
 is_some_and: stdlib Option::is_some_and combinator
 iter: stdlib slice::iter / Vec::iter / HashMap::iter
@@ -202,6 +203,7 @@ from_slice: serde_json::from_slice
 from_utf8: stdlib String::from_utf8
 from_utf8_lossy: stdlib String::from_utf8_lossy
 new: builder/constructor associated fn (AgentBase::new / AgentOptions::new / Duration::new / etc.) — the generic `new` associated-function name is not recorded as a surface method
+set_hook: stdlib std::panic::set_hook (silence the panic backtrace for expected fail-loud add_verb panics in the strict-render dump)
 set_var: stdlib std::env::set_var
 spawn: stdlib std::thread::spawn
 to_string_pretty: serde_json::to_string_pretty
