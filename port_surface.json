@@ -1,6 +1,6 @@
 {
   "version": "1",
-  "generated_from": "signalwire-rust @ 5fdf1476237defb86b8d038c87e26ab1097d626f",
+  "generated_from": "signalwire-rust @ 230481360a8e0e7ad7ed2e8404643470b70d1469",
   "modules": {
     "signalwire": {
       "classes": {
@@ -9,7 +9,6 @@
         ]
       },
       "functions": [
-        "AIChatClient",
         "AgentBase",
         "AgentOptions",
         "AgentServer",

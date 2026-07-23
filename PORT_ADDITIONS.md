@@ -1227,6 +1227,3 @@ signalwire.skills.mcp_gateway.skill.MCPGatewaySkill.get_prompt_sections: mcp_gat
 signalwire.skills.mcp_gateway.skill.MCPGatewaySkill.register_tools: mcp_gateway CLIENT skill — canonical on porting-sdk wave/1-aplus (oracle commit f4d2154); recorded here only while PR CI's porting-sdk is main (oracle behind). Matches the reference on wave/1-aplus.
 signalwire.skills.mcp_gateway.skill.MCPGatewaySkill.setup: mcp_gateway CLIENT skill — canonical on porting-sdk wave/1-aplus (oracle commit f4d2154); recorded here only while PR CI's porting-sdk is main (oracle behind). Matches the reference on wave/1-aplus.
 
-### AI Chat client top-level re-export (signalwire)
-
-signalwire.AIChatClient: Top-level re-export `signalwire::AIChatClient` (mirrors Python's `from signalwire import AIChatClient`). The lib.rs `pub use` surfaces it flat at the crate root for `use signalwire::*` parity; the Python surface oracle does not record the class at the top-level `signalwire` module, so it registers here as a re-export addition.

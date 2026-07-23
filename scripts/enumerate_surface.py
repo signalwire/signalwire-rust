@@ -948,6 +948,14 @@ def _parse_file(path: Path) -> tuple[set[str], dict[str, set[str]], set[str]]:
     return free_fns, dict(methods), classes
 
 
+# Crate-root `pub use` re-exports that must NOT be emitted as top-level
+# `signalwire` module symbols because the reference oracle does not record
+# them at the root. AIChatClient is a re-exported CLASS already enumerated
+# under signalwire.ai_chat.client (the oracle lists it once, at its module),
+# so the crate-root re-export is a duplicate, folded away in the emitter.
+_LIB_REEXPORT_TOPLEVEL_DROP = {"AIChatClient"}
+
+
 def _parse_lib_reexports(path: Path) -> set[str]:
     """Pull `pub use ...::Name;` items from src/lib.rs.
 
@@ -1362,6 +1370,15 @@ def build_surface() -> dict:
     lib_path = SRC_DIR / "lib.rs"
     if lib_path.is_file():
         for name in sorted(_parse_lib_reexports(lib_path)):
+            # AIChatClient is a CLASS already enumerated under
+            # signalwire.ai_chat.client; the crate-root `pub use ...AIChatClient`
+            # re-exports that same class for `use signalwire::*`. Python's oracle
+            # does NOT double-list a re-exported class at the top-level `signalwire`
+            # module (RestClient appears there as a factory fn, but AIChatClient is
+            # not recorded twice), so emitting it here would be a duplicate. Fold it
+            # away (idiom in the emitter, Rule 2) rather than record a PORT_ADDITION.
+            if name in _LIB_REEXPORT_TOPLEVEL_DROP:
+                continue
             if name not in modules["signalwire"]["functions"]:
                 modules["signalwire"]["functions"].append(name)
         # keep functions sorted for determinism
