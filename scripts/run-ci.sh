@@ -391,6 +391,11 @@ sched_gate BEHAVIORAL-SWML desc="diff_port_swml vs python oracle (Layer D)" \
         --port rust \
         --dump-cmd 'cargo run -q --example swml_dump 2>/dev/null'
 
+sched_gate BEHAVIORAL-STRICT-RENDER desc="diff_port_strict_render vs python oracle (Wave-2 P#5)" \
+    -- python3 "$PORTING_SDK_DIR/scripts/diff_port_strict_render.py" \
+        --port rust \
+        --dump-cmd 'cargo run -q --example strict_render_dump 2>/dev/null'
+
 sched_gate BEHAVIORAL-STATE desc="diff_port_state vs python oracle (Layer D)" \
     -- python3 "$PORTING_SDK_DIR/scripts/diff_port_state.py" \
         --port rust \
