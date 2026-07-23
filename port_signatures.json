@@ -30869,7 +30869,7 @@
                   "kind": "self"
                 },
                 {
-                  "name": "_document",
+                  "name": "document",
                   "type": "class:signalwire.value.Value",
                   "required": true
                 }
