@@ -1171,7 +1171,15 @@ MODULE_METHOD_DROPS: dict[str, set[str]] = {
     # per add_verb). Crate-internal performance plumbing behind the public
     # `Service::schema_utils()` — external callers cannot reach it and Python has
     # no counterpart. Rustdoc surfaces `pub(crate)` items, so drop it here.
-    "signalwire.utils.schema_utils": {"shared_default"},
+    # `validate_verb_top_keys` is the `pub(crate)` top-level-key-only check the
+    # ai-handler path in Service::add_verb uses (reject unknown/misspelled
+    # top-level ai keys without deep-validating the ai sub-objects, which this
+    # crate's json-schema engine would false-reject). Crate-internal validation
+    # plumbing behind the public add_verb; Python's SchemaUtils has no such
+    # method (its jsonschema-rs engine accepts the deep ai shapes, so its
+    # identical full-validate pass is a no-op there). Same pub(crate)-drop as
+    # shared_default.
+    "signalwire.utils.schema_utils": {"shared_default", "validate_verb_top_keys"},
 }
 # Module-level FREE FUNCTIONS to drop — `pub(crate)` crate-internal helpers the
 # public-fn regex captures but that are NOT public crate API (external callers

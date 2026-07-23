@@ -209,6 +209,82 @@ impl SchemaUtils {
         }
     }
 
+    /// The set of KNOWN top-level property names for a verb's config object,
+    /// resolving one `$ref` into `$defs` when the verb's inner schema is a
+    /// reference (the `ai` verb's inner schema is `{"$ref": "#/$defs/AIObject"}`,
+    /// so the property names live on `AIObject`, not inline). Returns an empty
+    /// set when the names can't be determined (an open/unknown shape), which
+    /// callers treat as "don't reject any key".
+    fn verb_top_level_property_names(&self, verb_name: &str) -> std::collections::HashSet<String> {
+        // `get_verb_properties` returns the inner `{verb_name: <schema>}` node.
+        let inner = self.get_verb_properties(verb_name);
+        // Resolve one `$ref` hop into `$defs` if present.
+        let resolved: std::borrow::Cow<'_, Map<String, Value>> =
+            if let Some(ref_str) = inner.get("$ref").and_then(|r| r.as_str()) {
+                let prefix = "#/$defs/";
+                ref_str
+                    .strip_prefix(prefix)
+                    .and_then(|name| self.schema.get("$defs").and_then(|d| d.get(name)))
+                    .and_then(|d| d.as_object())
+                    .map_or(std::borrow::Cow::Borrowed(&inner), |o| {
+                        std::borrow::Cow::Owned(o.clone())
+                    })
+            } else {
+                std::borrow::Cow::Borrowed(&inner)
+            };
+        resolved
+            .get("properties")
+            .and_then(|p| p.as_object())
+            .map(|o| o.keys().cloned().collect())
+            .unwrap_or_default()
+    }
+
+    /// Validate ONLY that every top-level key of a verb config is a known
+    /// property of that verb's object schema — the closed-key check, WITHOUT
+    /// deep-validating the sub-object shapes.
+    ///
+    /// This is the strict-render contract for a HANDLER verb (the `ai` verb):
+    /// reject unknown/misspelled TOP-LEVEL keys (temperatur, zzz), but do NOT
+    /// deep-validate the sub-objects. The `ai` verb legitimately renders deep
+    /// shapes (empty `prompt.pom []`, `SWAIG.defaults.web_hook_url`,
+    /// `functions[].web_hook_url` with a `?__token=` query, `__token`, …) that
+    /// the bundled JSON schema's deep sub-schemas do not fully accept under this
+    /// crate's Draft-2020-12 engine — full-deep-validating the `ai` verb
+    /// FALSE-REJECTS valid documents. The python reference's contract for `ai`
+    /// is top-level-keys-only too (its jsonschema-rs engine happens to accept
+    /// the deep shapes, so its identical minimal-doc pass is a no-op on them;
+    /// here we make the SAME outcome explicit and engine-independent). Returns
+    /// `(true, [])` when the property-name set can't be determined (open shape).
+    /// Crate-internal (behind `Service::add_verb`): a validation-plumbing helper
+    /// for the ai-handler path, not public surface of its own.
+    pub(crate) fn validate_verb_top_keys(
+        &self,
+        verb_name: &str,
+        verb_config: &Value,
+    ) -> (bool, Vec<String>) {
+        if !self.validation_enabled {
+            return (true, Vec::new());
+        }
+        let known = self.verb_top_level_property_names(verb_name);
+        if known.is_empty() {
+            return (true, Vec::new());
+        }
+        let Some(obj) = verb_config.as_object() else {
+            return (true, Vec::new());
+        };
+        let mut errors = Vec::new();
+        for key in obj.keys() {
+            if !known.contains(key) {
+                let mut available: Vec<&String> = known.iter().collect();
+                available.sort();
+                errors.push(format!(
+                    "Unknown key '{key}' for verb '{verb_name}'. Known keys: {available:?}"
+                ));
+            }
+        }
+        (errors.is_empty(), errors)
+    }
+
     /// Validate a verb config against the schema.  Mirrors Python's
     /// `validate_verb(verb_name, verb_config)`.
     pub fn validate_verb(&self, verb_name: &str, verb_config: &Value) -> (bool, Vec<String>) {

@@ -168,6 +168,48 @@ fn strict_ai_params_open_ok() {
     );
 }
 
+// ── ai verb is TOP-LEVEL-KEY-only, NOT deep-validated ──────────────────────
+// The ai verb legitimately renders deep shapes the bundled JSON schema's deep
+// sub-schemas don't fully accept under this crate's engine; the strict-render
+// contract for ai is top-level-keys-only (the python reference accepts these).
+// These pin that the ai schema pass does NOT over-raise on valid deep shapes —
+// a future refactor that re-tightens ai to full-deep validation reds here.
+
+#[test]
+fn strict_ai_deep_empty_pom_ok() {
+    assert!(
+        !verb_raises("ai", json!({"prompt": {"pom": []}})),
+        "an empty prompt.pom is a valid promptless-agent render, must not raise"
+    );
+}
+
+#[test]
+fn strict_ai_deep_pom_sections_ok() {
+    assert!(
+        !verb_raises(
+            "ai",
+            json!({"prompt": {"pom": [{"title": "Role", "body": "x"}]}})
+        ),
+        "a populated prompt.pom must render"
+    );
+}
+
+#[test]
+fn strict_ai_deep_swaig_defaults_ok() {
+    // SWAIG defaults / functions[].web_hook_url (with a ?__token= query) are
+    // exactly what a real AgentBase render emits; they must not false-reject.
+    assert!(
+        !verb_raises(
+            "ai",
+            json!({"prompt": {"text": "hi"},
+                "SWAIG": {"defaults": {"web_hook_url": "https://x/swaig"},
+                          "functions": [{"function": "startup_hook",
+                                         "web_hook_url": "https://x/start?__token=abc"}]}}),
+        ),
+        "SWAIG defaults + function web_hook_url must render"
+    );
+}
+
 // ── Contexts-level: dangling step-function reference (GAP2 / r5 F3) ─────────
 
 fn noop_tool(agent: &mut AgentBase, name: &str) {

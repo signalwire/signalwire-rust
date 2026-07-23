@@ -683,7 +683,15 @@ impl Service {
             // unchanged.
             let (handler_valid, handler_errors) = handler.validate_config(&config);
             if handler_valid {
-                self.schema_utils().validate_verb(verb, &config)
+                // TOP-LEVEL-KEY check only for a handler verb (the ai verb):
+                // reject unknown/misspelled top-level keys, but do NOT
+                // deep-validate the sub-objects. The ai verb legitimately
+                // renders deep shapes (empty prompt.pom, SWAIG defaults /
+                // web_hook_url / __token) that this crate's Draft-2020-12
+                // engine would false-reject under full validation; the python
+                // reference's contract for ai is top-level-keys-only as well
+                // (see validate_verb_top_keys). ai.params stays open.
+                self.schema_utils().validate_verb_top_keys(verb, &config)
             } else {
                 (handler_valid, handler_errors)
             }
