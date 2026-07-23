@@ -3,7 +3,7 @@
   "toolchain": "cargo",
   "metrics": {
     "P2": {
-      "default": 30.0
+      "default": 70.0
     }
   }
 }
