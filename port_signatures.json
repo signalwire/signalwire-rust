@@ -525,7 +525,7 @@
       "classes": {
         "AIChatClient": {
           "methods": {
-            "builder": {
+            "__init__": {
               "params": [],
               "returns": "class:signalwire.aichatclientbuilder.AIChatClientBuilder"
             },
@@ -614,15 +614,6 @@
               ],
               "returns": "class:signalwire.chatlog.ChatLog"
             },
-            "project": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "string"
-            },
             "summarize": {
               "params": [
                 {
@@ -638,15 +629,6 @@
                   "name": "options",
                   "type": "class:signalwire.summarizeoptions.SummarizeOptions",
                   "required": true
-                }
-              ],
-              "returns": "string"
-            },
-            "url": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
                 }
               ],
               "returns": "string"

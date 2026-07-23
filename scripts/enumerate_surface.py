@@ -581,7 +581,47 @@ METHOD_RENAMES: dict[str, dict[str, str]] = {
     "McpGateway": {
         "required_packages": None,
     },
+    # AIChatClient: fold the Rust construction/accessor idiom onto the Python
+    # reference shape (EMISSION COVERS IDIOM).
+    #   * `builder()` (associated fn returning AIChatClientBuilder) IS the Rust
+    #     construction idiom — Python constructs via `__init__` with the same
+    #     keyword args the builder's setters take. Fold it onto `__init__`
+    #     (the builder struct itself is suppressed via AI_CHAT_SUPPRESS_CLASSES).
+    #   * `url()` / `project()` are read-only field getters. The Python reference
+    #     reads these as plain instance attributes (`client.url` / `client.project`),
+    #     which the surface oracle does NOT record as members of AIChatClient —
+    #     so drop the Rust getters (they are the attribute-access idiom, not surface).
+    # The async methods (chat/create_conversation/delete/end/log/summarize) pass
+    # through unchanged and match the oracle. Members the oracle records but Rust
+    # cannot express (`__aenter__`/`__aexit__`/`close` — no async-context-manager
+    # protocol, RAII-drop instead of an explicit close) remain in PORT_OMISSIONS.md
+    # as `impossible:`.
+    "AIChatClient": {
+        "builder": "__init__",
+        "url": None,
+        "project": None,
+    },
 }
+
+
+# Port-only structs the Rust ai_chat client exposes purely as the CONSTRUCTION /
+# OPTIONS idiom for AIChatClient — folded away entirely so the surface matches the
+# Python reference (EMISSION COVERS IDIOM), NOT recorded as additions:
+#   * AIChatClientBuilder    — the fluent constructor behind `AIChatClient::builder()`;
+#                              its setters ARE the Python `__init__` kwargs. `builder`
+#                              is folded onto `__init__` (METHOD_RENAMES above); the
+#                              builder struct + its setters carry no independent surface.
+#   * CreateOptions / ChatOptions / SummarizeOptions — typed options-objects that
+#                              collapse each method's optional kwargs into one value;
+#                              they ARE those methods' optional parameters, not
+#                              standalone reference surface.
+# The Python surface oracle records none of these as classes, so suppress them.
+AI_CHAT_SUPPRESS_CLASSES: frozenset[str] = frozenset({
+    "AIChatClientBuilder",
+    "CreateOptions",
+    "ChatOptions",
+    "SummarizeOptions",
+})
 
 
 # Rust class name → Python canonical class name (when they differ).
@@ -1235,6 +1275,10 @@ def build_surface() -> dict:
     files = _walk_source_files()
     sidecar = load_rest_sidecar()
     sidecar_classes, suppressed_classes = _sidecar_class_index(sidecar)
+    # Fold the ai_chat construction/options structs away entirely (see
+    # AI_CHAT_SUPPRESS_CLASSES): they are the builder + options-object idiom for
+    # AIChatClient, not independent reference surface.
+    suppressed_classes = suppressed_classes | AI_CHAT_SUPPRESS_CLASSES
 
     # Generated-type pass (§D3/§H): route each generated-type FILE by path and
     # emit every declared struct/enum METHOD-LESS to the oracle module. Done first

@@ -711,11 +711,11 @@ the overlay's ``deprecated`` list, so it is not ledgered here.)
 The Rust `AIChatClient` implements every AI Chat METHOD and error identity the
 reference does (create_conversation/chat/end/delete/log/summarize wire-verified
 by the AI-CHAT gate; the 6 error classes are projected onto the `AIChatError`
-struct + `AIChatErrorKind` enum in the surface enumerator). The five members
-below are Python lifecycle protocols with no Rust analogue — the OO cousin (TS)
-also omits `close`/`__aenter__`/`__aexit__`.
+struct + `AIChatErrorKind` enum in the surface enumerator; construction folds the
+`AIChatClient::builder()` associated fn onto `__init__`). The members below are
+Python protocol members with no Rust analogue — the OO cousin (TS) also omits
+`close`/`__aenter__`/`__aexit__`.
 
-signalwire.ai_chat.client.AIChatClient.__init__: impossible: Rust has no `__init__` method protocol; the client is constructed via the `AIChatClient::builder()` options-builder (struct + associated fn), which the surface records as the builder. There is no `__init__` member to enumerate — the OO cousin (TS) likewise constructs via a `new`/constructor, not an `__init__` method.
 signalwire.ai_chat.client.AIChatClient.__aenter__: impossible: Rust has no async-context-manager (`async with`) protocol; the pooled `reqwest::Client` is used directly. No `__aenter__` analogue exists (TS cousin omits it too).
 signalwire.ai_chat.client.AIChatClient.__aexit__: impossible: Rust has no async-context-manager protocol (see `__aenter__`); the client is released on drop. No `__aexit__` analogue exists (TS cousin omits it too).
 signalwire.ai_chat.client.AIChatClient.close: impossible: Python's async `close()` disposes the aiohttp session; Rust's `reqwest::Client` pools connections internally and is freed on drop with no explicit close — the resource is RAII-managed, so no `close()` member exists (TS cousin omits it too).
