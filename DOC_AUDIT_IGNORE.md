@@ -240,4 +240,4 @@ language-level `fn main` entry point or a fragment-local helper), not
 references to a port API.
 
 create_agent: doc-local helper fn defined in docs/cloud_functions_guide.md (item-only fragment `fn create_agent()`), not a port symbol
-main: doc-local `fn main` entry point in getting-started fragments (rest/docs + relay/docs), not a port symbol
+main: doc-local `fn main` entry point in the getting-started code fragments (rest/docs + relay/docs) — a Rust program entry point written inline in the example, distinct from the `Section.main` POM field the surface exposes under that bare name
