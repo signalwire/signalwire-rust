@@ -1555,25 +1555,6 @@
               ],
               "returns": "class:signalwire.core.contexts.ContextBuilder"
             },
-            "create_tool_token": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                },
-                {
-                  "name": "tool_name",
-                  "type": "string",
-                  "required": true
-                },
-                {
-                  "name": "call_id",
-                  "type": "string",
-                  "required": true
-                }
-              ],
-              "returns": "string"
-            },
             "define_contexts": {
               "params": [
                 {
@@ -1656,15 +1637,6 @@
               ],
               "returns": "tuple<string,string>"
             },
-            "get_contexts": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "optional<class:signalwire.value.Value>"
-            },
             "get_full_url": {
               "params": [
                 {
@@ -1678,15 +1650,6 @@
                 }
               ],
               "returns": "string"
-            },
-            "get_global_data": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "class:signalwire.value.Value"
             },
             "get_language_params": {
               "params": [
@@ -1728,15 +1691,6 @@
                 }
               ],
               "returns": "class:signalwire.value.Value"
-            },
-            "get_raw_prompt": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "optional<string>"
             },
             "handle_request": {
               "params": [
@@ -2010,20 +1964,6 @@
                 }
               ],
               "returns": "any"
-            },
-            "render_swml": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                },
-                {
-                  "name": "headers",
-                  "type": "dict<string,string>",
-                  "required": true
-                }
-              ],
-              "returns": "class:signalwire.value.Value"
             },
             "reset_contexts": {
               "params": [
@@ -6353,6 +6293,15 @@
                 }
               ],
               "returns": "bool"
+            },
+            "pom": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "class:signalwire.pom.pom.PromptObjectModel"
             },
             "render_markdown": {
               "params": [

@@ -1,258 +1,86 @@
 # PORT_OMISSIONS.md (signalwire-rust)
 
-Python symbols deliberately not implemented in this Rust port. Format:
+<!-- ══════════════════════════════════════════════════════════════════════════
+BEFORE YOU ADD AN ENTRY TO THIS FILE — READ THIS.
 
-```
-<fully.qualified.symbol>: <one-sentence rationale>
-```
+Every entry here is a place the parity checker STOPS comparing. That is a real cost:
+a divergence you list is a divergence no gate will ever catch again. So entries must
+be RARE, and each one must earn its place. Default to skepticism: assume the entry is
+NOT needed and make the case that it is.
 
-`scripts/diff_port_surface.py` reads this file to know which Python
-symbols to ignore when checking parity. Anything not in this file AND
-not implemented in the port fails the diff.
+The order of preference, always:
+  1. FIX THE PORT so it matches the reference (add the missing member; make the
+     signature match).
+  2. FIX THE EMISSION so idiom folds onto the reference shape — the enumerator/emitter
+     canonicalizes your language's spelling onto the oracle's (builder → __init__,
+     getters → attributes, Result<T,E> → the plain return, CamelCase → the reference
+     name, options-object/kwargs → the expanded param list, RAII/dispose → close).
+     MOST divergences are idiom and belong here, not in this file.
+  3. FIX THE REFERENCE if the oracle itself is wrong or stale (a Python-only symbol
+     that leaked into the contract, a param the reference added and the oracle never
+     re-enumerated). Fix Python / the oracle, then re-drift — do not paper over a
+     broken reference with a per-port entry.
+  4. Only when 1–3 genuinely cannot apply does an entry here become justified.
+
+An entry is JUSTIFIED ONLY IF it is irreducible after correct emission — i.e. the
+divergence survives because the two languages genuinely cannot express the same thing,
+not because the emitter hasn't folded the idiom yet. If emission COULD fold it, the
+entry is a bug in this file; go fix the emitter.
+
+Each entry MUST state WHY, concretely, in one of these forms:
+  • ADDITION — this symbol exists in the port but not the reference. Answer: is it
+    genuine port-only surface with NO reference twin (say what it is and why the
+    reference has no equivalent), or is it IDIOM the emitter should have folded (then
+    it does not belong here — fold it)? A convenience/alias/back-compat wrapper is NOT
+    a justification.
+  • OMISSION — this reference symbol has no port member. Answer: WHY can it not exist
+    here — what specific language feature is absent (e.g. no async-context-manager
+    protocol, no __init__ method protocol)? "impossible:" means the construct cannot
+    be expressed at all; if it merely LOOKS different, that's idiom → fold it, don't
+    omit it. Cite a precedent when one exists (e.g. RelayClient omits the same dunder).
+  • SIGNATURE — the symbol matches by name but its parameters differ. Answer: is the
+    difference a foldable idiom collapse (options-object, leading context/self,
+    builder) — then EXPAND it in the signature emitter so names+count match, don't list
+    it — or a genuine reference-only parameter with no cross-language analogue?
+
+If you cannot write a crisp, specific WHY that survives the "could emission fold this?"
+test, the entry is not ready. Prove it's needed before you add it.
+═══════════════════════════════════════════════════════════════════════════════ -->
+
+Python symbols deliberately not implemented in this Rust port. Each entry states an
+`impossible:` or `approved:` reason. Both the surface diff (folded keys) and the
+signature diff (unfolded per-class keys, incl. class-level coverage) read this file.
+
+> NOTE: `signalwire.rest.*` `*Resource`/`*Namespace` entries are FROZEN pending the
+> spec-driven REST base+subclass parity pass — do not delete/rename them here.
 
 ---
 
-## Skip-list categories
-
-These broad categories are Python-only per the SignalWire SDK skip
-rules (search subsystem, sigmond infrastructure, scaffolding helpers
-that don't make sense in a compiled language):
-
-- **`signalwire.search.*`** — Vector / embedding indexing (Python ML
-  stack: sentence-transformers, pgvector, faiss). Per the porting-sdk
-  skip list, search is Python-only.
-- **`signalwire.cli.build_search`**, **`signalwire.cli.dokku`** —
-  Search-tool CLI and Dokku project generator. Both are interactive
-  scaffolding helpers tied to Python's runtime.
-- **`signalwire.cli.init_project`** — Interactive project generator.
-  Rust users use `cargo new`; the SDK does not ship an equivalent.
-- **`signalwire.cli.simulation.*`**, **`signalwire.cli.execution.*`**,
-  **`signalwire.cli.output.*`**, **`signalwire.cli.types`**,
-  **`signalwire.cli.core.*`**, **`signalwire.cli.test_swaig`**,
-  **`signalwire.cli.swaig_test_wrapper`** — Python-CLI internal
-  helpers that don't translate to a compiled-binary CLI. The Rust
-  `swaig-test` binary covers the same user-facing CLI surface.
-- **`signalwire.livewire.*`** — Internal LiveWire integration not
-  exposed via the cross-port skip-list rules.
-- **`signalwire.mcp_gateway.*`** — Standalone MCP gateway server
-  implementation. Rust ships the MCP **skill** (`mcp_gateway` skill),
-  but not the standalone server (Python users run it directly via
-  `python -m signalwire.mcp_gateway`).
-- **`signalwire.skills.datasphere_serverless`**,
-  **`signalwire.skills.web_search.skill_original`**,
-  **`signalwire.skills.web_search.skill_improved`**,
-  **`signalwire.skills.native_vector_search.*`** — Search-related and
-  Python-experimental skill variants. The Rust port ships the
-  canonical `web_search`, `wikipedia_search`, `datasphere`, and
-  `spider` skills; the experimental / serverless / vector-search
-  variants are Python-only.
-- **`signalwire.pom.*`** — Internal Prompt Object Model helper
-  classes. The Rust port does the equivalent work via JSON values on
-  AgentBase (`prompt_add_section`, `prompt_add_subsection`,
-  `prompt_add_to_section`); the symbol-level map differs.
-
-(Per-symbol entries below — one line per Python symbol.)
-
----
-
-## Search subsystem (skip)
-
-signalwire.search.engine.SearchEngine: search-related; not ported per skip list
-signalwire.search.engine.SearchEngine.__init__: search-related; not ported per skip list
-signalwire.search.engine.SearchEngine.add_document: search-related; not ported per skip list
-signalwire.search.engine.SearchEngine.build: search-related; not ported per skip list
-signalwire.search.engine.SearchEngine.list_indexed_files: search-related; not ported per skip list
-signalwire.search.engine.SearchEngine.query: search-related; not ported per skip list
-signalwire.search.engine.SearchEngine.save: search-related; not ported per skip list
-signalwire.search.indexer.DocumentIndexer: search-related; not ported per skip list
-signalwire.search.indexer.DocumentIndexer.__init__: search-related; not ported per skip list
-signalwire.search.indexer.DocumentIndexer.detect_file_format: search-related; not ported per skip list
-signalwire.search.indexer.DocumentIndexer.find_supported_files: search-related; not ported per skip list
-signalwire.search.indexer.DocumentIndexer.index_directory: search-related; not ported per skip list
-signalwire.search.indexer.DocumentIndexer.process_file: search-related; not ported per skip list
-signalwire.search.migration.PgvectorMigration: search-related; not ported per skip list
-signalwire.search.migration.PgvectorMigration.__init__: search-related; not ported per skip list
-signalwire.search.migration.PgvectorMigration.migrate_index: search-related; not ported per skip list
-signalwire.search.migration.PgvectorMigration.migrate_indices: search-related; not ported per skip list
-signalwire.search.pgvector_backend.PgVectorBackend: search-related; not ported per skip list
-signalwire.search.pgvector_backend.PgVectorBackend.__init__: search-related; not ported per skip list
-signalwire.search.pgvector_backend.PgVectorBackend.add_chunks: search-related; not ported per skip list
-signalwire.search.pgvector_backend.PgVectorBackend.connect: search-related; not ported per skip list
-signalwire.search.pgvector_backend.PgVectorBackend.disconnect: search-related; not ported per skip list
-signalwire.search.pgvector_backend.PgVectorBackend.get_stats: search-related; not ported per skip list
-signalwire.search.pgvector_backend.PgVectorBackend.initialize_database: search-related; not ported per skip list
-signalwire.search.pgvector_backend.PgVectorBackend.search: search-related; not ported per skip list
-signalwire.search.query_processor.detect_language: search-related; not ported per skip list
-signalwire.search.query_processor.expand_query_with_synonyms: search-related; not ported per skip list
-signalwire.search.query_processor.extract_keywords: search-related; not ported per skip list
-signalwire.search.query_processor.get_pos_tag: search-related; not ported per skip list
-signalwire.search.query_processor.get_synonyms: search-related; not ported per skip list
-signalwire.search.query_processor.preprocess_document_content: search-related; not ported per skip list
-signalwire.search.query_processor.preprocess_query: search-related; not ported per skip list
-signalwire.search.query_processor.preprocess_text: search-related; not ported per skip list
-signalwire.search.query_processor.tokenize_with_pos: search-related; not ported per skip list
-signalwire.search.search_service.SearchService: search-related; not ported per skip list
-signalwire.search.search_service.SearchService.__init__: search-related; not ported per skip list
-signalwire.search.search_service.SearchService.get_search_engine: search-related; not ported per skip list
-signalwire.search.search_service.SearchService.health_check: search-related; not ported per skip list
-signalwire.search.search_service.SearchService.list_indices: search-related; not ported per skip list
-signalwire.search.search_service.SearchService.preload_index: search-related; not ported per skip list
-signalwire.search.search_service.SearchService.search: search-related; not ported per skip list
-signalwire.search.search_service.SearchService.search_remote: search-related; not ported per skip list
-signalwire.search.search_service.start_remote_server: search-related; not ported per skip list
-signalwire.search.startup_validation.SearchStartupValidator: search-related; not ported per skip list
-signalwire.search.startup_validation.SearchStartupValidator.__init__: search-related; not ported per skip list
-signalwire.search.startup_validation.SearchStartupValidator.validate_at_startup: search-related; not ported per skip list
-signalwire.search.startup_validation.validate_search_startup: search-related; not ported per skip list
-
-## CLI scaffolding helpers (skip)
-
-signalwire.cli.build_search.console_entry_point: Python-CLI scaffolding; no Rust equivalent
-signalwire.cli.build_search.main: Python-CLI scaffolding; no Rust equivalent
-signalwire.cli.build_search.migrate_command: Python-CLI scaffolding; no Rust equivalent
-signalwire.cli.build_search.remote_command: Python-CLI scaffolding; no Rust equivalent
-signalwire.cli.build_search.search_command: Python-CLI scaffolding; no Rust equivalent
-signalwire.cli.build_search.validate_command: Python-CLI scaffolding; no Rust equivalent
-signalwire.cli.dokku.Colors: Python-CLI scaffolding; no Rust equivalent
-signalwire.cli.dokku.DokkuProjectGenerator: Python-CLI scaffolding; no Rust equivalent
-signalwire.cli.dokku.DokkuProjectGenerator.__init__: Python-CLI scaffolding; no Rust equivalent
-signalwire.cli.dokku.DokkuProjectGenerator.generate: Python-CLI scaffolding; no Rust equivalent
-signalwire.cli.dokku.cmd_config: Python-CLI scaffolding; no Rust equivalent
-signalwire.cli.dokku.cmd_deploy: Python-CLI scaffolding; no Rust equivalent
-signalwire.cli.dokku.cmd_init: Python-CLI scaffolding; no Rust equivalent
-signalwire.cli.dokku.cmd_logs: Python-CLI scaffolding; no Rust equivalent
-signalwire.cli.dokku.cmd_scale: Python-CLI scaffolding; no Rust equivalent
-signalwire.cli.dokku.generate_password: Python-CLI scaffolding; no Rust equivalent
-signalwire.cli.dokku.main: Python-CLI scaffolding; no Rust equivalent
-signalwire.cli.dokku.print_error: Python-CLI scaffolding; no Rust equivalent
-signalwire.cli.dokku.print_header: Python-CLI scaffolding; no Rust equivalent
-signalwire.cli.dokku.print_step: Python-CLI scaffolding; no Rust equivalent
-signalwire.cli.dokku.print_success: Python-CLI scaffolding; no Rust equivalent
-signalwire.cli.dokku.print_warning: Python-CLI scaffolding; no Rust equivalent
-signalwire.cli.dokku.prompt: Python-CLI scaffolding; no Rust equivalent
-signalwire.cli.dokku.prompt_yes_no: Python-CLI scaffolding; no Rust equivalent
-signalwire.cli.init_project.Colors: Python-CLI scaffolding; cargo new is the Rust equivalent
-signalwire.cli.init_project.ProjectGenerator: Python-CLI scaffolding; cargo new is the Rust equivalent
-signalwire.cli.init_project.ProjectGenerator.__init__: Python-CLI scaffolding; cargo new is the Rust equivalent
-signalwire.cli.init_project.ProjectGenerator.generate: Python-CLI scaffolding; cargo new is the Rust equivalent
-signalwire.cli.init_project.generate_password: Python-CLI scaffolding; cargo new is the Rust equivalent
-signalwire.cli.init_project.get_agent_template: Python-CLI scaffolding; cargo new is the Rust equivalent
-signalwire.cli.init_project.get_app_template: Python-CLI scaffolding; cargo new is the Rust equivalent
-signalwire.cli.init_project.get_env_credentials: Python-CLI scaffolding; cargo new is the Rust equivalent
-signalwire.cli.init_project.get_readme_template: Python-CLI scaffolding; cargo new is the Rust equivalent
-signalwire.cli.init_project.get_test_template: Python-CLI scaffolding; cargo new is the Rust equivalent
-signalwire.cli.init_project.get_web_index_template: Python-CLI scaffolding; cargo new is the Rust equivalent
-signalwire.cli.init_project.main: Python-CLI scaffolding; cargo new is the Rust equivalent
-signalwire.cli.init_project.mask_token: Python-CLI scaffolding; cargo new is the Rust equivalent
-signalwire.cli.init_project.print_error: Python-CLI scaffolding; cargo new is the Rust equivalent
-signalwire.cli.init_project.print_step: Python-CLI scaffolding; cargo new is the Rust equivalent
-signalwire.cli.init_project.print_success: Python-CLI scaffolding; cargo new is the Rust equivalent
-signalwire.cli.init_project.print_warning: Python-CLI scaffolding; cargo new is the Rust equivalent
-signalwire.cli.init_project.prompt: Python-CLI scaffolding; cargo new is the Rust equivalent
-signalwire.cli.init_project.prompt_multiselect: Python-CLI scaffolding; cargo new is the Rust equivalent
-signalwire.cli.init_project.prompt_select: Python-CLI scaffolding; cargo new is the Rust equivalent
-signalwire.cli.init_project.prompt_yes_no: Python-CLI scaffolding; cargo new is the Rust equivalent
-signalwire.cli.init_project.run_interactive: Python-CLI scaffolding; cargo new is the Rust equivalent
-signalwire.cli.init_project.run_quick: Python-CLI scaffolding; cargo new is the Rust equivalent
-signalwire.cli.swaig_test_wrapper.main: Python-CLI scaffolding; Rust ships swaig-test as a binary
-signalwire.cli.test_swaig.console_entry_point: Python-CLI scaffolding; Rust ships swaig-test as a binary
-signalwire.cli.test_swaig.main: Python-CLI scaffolding; Rust ships swaig-test as a binary
-signalwire.cli.test_swaig.print_help_examples: Python-CLI scaffolding; Rust ships swaig-test as a binary
-signalwire.cli.test_swaig.print_help_platforms: Python-CLI scaffolding; Rust ships swaig-test as a binary
-signalwire.cli.types.AgentInfo: Python-CLI scaffolding; Rust CLI types are language-private
-signalwire.cli.types.CallData: Python-CLI scaffolding; Rust CLI types are language-private
-signalwire.cli.types.DataMapConfig: Python-CLI scaffolding; Rust CLI types are language-private
-signalwire.cli.types.FunctionInfo: Python-CLI scaffolding; Rust CLI types are language-private
-signalwire.cli.types.PostData: Python-CLI scaffolding; Rust CLI types are language-private
-signalwire.cli.types.VarsData: Python-CLI scaffolding; Rust CLI types are language-private
-signalwire.cli.core.agent_loader.discover_agents_in_file: Python-CLI scaffolding; Rust CLI is binary-based
-signalwire.cli.core.agent_loader.discover_services_in_file: Python-CLI scaffolding; Rust CLI is binary-based
-signalwire.cli.core.agent_loader.load_agent_from_file: Python-CLI scaffolding; Rust CLI is binary-based
-signalwire.cli.core.agent_loader.load_service_from_file: Python-CLI scaffolding; Rust CLI is binary-based
-signalwire.cli.core.argparse_helpers.CustomArgumentParser: Python argparse subclass; Rust uses clap-style parsing
-signalwire.cli.core.argparse_helpers.CustomArgumentParser.__init__: Python argparse subclass; Rust uses clap-style parsing
-signalwire.cli.core.argparse_helpers.CustomArgumentParser.error: Python argparse subclass; Rust uses clap-style parsing
-signalwire.cli.core.argparse_helpers.CustomArgumentParser.parse_args: Python argparse subclass; Rust uses clap-style parsing
-signalwire.cli.core.argparse_helpers.CustomArgumentParser.print_usage: Python argparse subclass; Rust uses clap-style parsing
-signalwire.cli.core.argparse_helpers.parse_function_arguments: Python argparse helper; Rust CLI parses args directly
-signalwire.cli.core.dynamic_config.apply_dynamic_config: Python CLI helper; Rust CLI is binary-based
-signalwire.cli.core.service_loader.ServiceCapture: Python CLI helper; Rust CLI is binary-based
-signalwire.cli.core.service_loader.ServiceCapture.__init__: Python CLI helper; Rust CLI is binary-based
-signalwire.cli.core.service_loader.ServiceCapture.capture: Python CLI helper; Rust CLI is binary-based
-signalwire.cli.core.service_loader.discover_agents_in_file: Python CLI helper; Rust CLI is binary-based
-signalwire.cli.core.service_loader.load_agent_from_file: Python CLI helper; Rust CLI is binary-based
-signalwire.cli.core.service_loader.load_and_simulate_service: Python CLI helper; Rust CLI is binary-based
-signalwire.cli.core.service_loader.simulate_request_to_service: Python CLI helper; Rust CLI is binary-based
-signalwire.cli.execution.datamap_exec.execute_datamap_function: Python CLI helper; Rust CLI handles execution directly
-signalwire.cli.execution.datamap_exec.simple_template_expand: Python CLI helper; Rust CLI handles execution directly
-signalwire.cli.execution.webhook_exec.execute_external_webhook_function: Python CLI helper; Rust CLI handles execution directly
-signalwire.cli.output.output_formatter.display_agent_tools: Python CLI output helper; Rust CLI prints directly
-signalwire.cli.output.output_formatter.format_result: Python CLI output helper; Rust CLI prints directly
-signalwire.cli.output.swml_dump.handle_dump_swml: Python CLI output helper; Rust CLI prints directly
-signalwire.cli.output.swml_dump.setup_output_suppression: Python CLI output helper; Rust CLI prints directly
-signalwire.cli.simulation.data_generation.adapt_for_call_type: Python simulation helper; not ported
-signalwire.cli.simulation.data_generation.generate_comprehensive_post_data: Python simulation helper; not ported
-signalwire.cli.simulation.data_generation.generate_fake_node_id: Python simulation helper; not ported
-signalwire.cli.simulation.data_generation.generate_fake_sip_from: Python simulation helper; not ported
-signalwire.cli.simulation.data_generation.generate_fake_sip_to: Python simulation helper; not ported
-signalwire.cli.simulation.data_generation.generate_fake_swml_post_data: Python simulation helper; not ported
-signalwire.cli.simulation.data_generation.generate_fake_uuid: Python simulation helper; not ported
-signalwire.cli.simulation.data_generation.generate_minimal_post_data: Python simulation helper; not ported
-signalwire.cli.simulation.data_overrides.apply_convenience_mappings: Python simulation helper; not ported
-signalwire.cli.simulation.data_overrides.apply_overrides: Python simulation helper; not ported
-signalwire.cli.simulation.data_overrides.parse_value: Python simulation helper; not ported
-signalwire.cli.simulation.data_overrides.set_nested_value: Python simulation helper; not ported
-signalwire.cli.simulation.mock_env.MockHeaders: Python simulation helper; not ported
-signalwire.cli.simulation.mock_env.MockHeaders.__contains__: Python simulation helper; not ported
-signalwire.cli.simulation.mock_env.MockHeaders.__getitem__: Python simulation helper; not ported
-signalwire.cli.simulation.mock_env.MockHeaders.__init__: Python simulation helper; not ported
-signalwire.cli.simulation.mock_env.MockHeaders.get: Python simulation helper; not ported
-signalwire.cli.simulation.mock_env.MockHeaders.items: Python simulation helper; not ported
-signalwire.cli.simulation.mock_env.MockHeaders.keys: Python simulation helper; not ported
-signalwire.cli.simulation.mock_env.MockHeaders.values: Python simulation helper; not ported
-signalwire.cli.simulation.mock_env.MockQueryParams: Python simulation helper; not ported
-signalwire.cli.simulation.mock_env.MockQueryParams.__contains__: Python simulation helper; not ported
-signalwire.cli.simulation.mock_env.MockQueryParams.__getitem__: Python simulation helper; not ported
-signalwire.cli.simulation.mock_env.MockQueryParams.__init__: Python simulation helper; not ported
-signalwire.cli.simulation.mock_env.MockQueryParams.get: Python simulation helper; not ported
-signalwire.cli.simulation.mock_env.MockQueryParams.items: Python simulation helper; not ported
-signalwire.cli.simulation.mock_env.MockQueryParams.keys: Python simulation helper; not ported
-signalwire.cli.simulation.mock_env.MockQueryParams.values: Python simulation helper; not ported
-signalwire.cli.simulation.mock_env.MockRequest: Python simulation helper; not ported
-signalwire.cli.simulation.mock_env.MockRequest.__init__: Python simulation helper; not ported
-signalwire.cli.simulation.mock_env.MockRequest.body: Python simulation helper; not ported
-signalwire.cli.simulation.mock_env.MockRequest.client: Python simulation helper; not ported
-signalwire.cli.simulation.mock_env.MockRequest.json: Python simulation helper; not ported
-signalwire.cli.simulation.mock_env.MockURL: Python simulation helper; not ported
-signalwire.cli.simulation.mock_env.MockURL.__init__: Python simulation helper; not ported
-signalwire.cli.simulation.mock_env.MockURL.__str__: Python simulation helper; not ported
-signalwire.cli.simulation.mock_env.ServerlessSimulator: Python simulation helper; not ported
-signalwire.cli.simulation.mock_env.ServerlessSimulator.__init__: Python simulation helper; not ported
-signalwire.cli.simulation.mock_env.ServerlessSimulator.activate: Python simulation helper; not ported
-signalwire.cli.simulation.mock_env.ServerlessSimulator.add_override: Python simulation helper; not ported
-signalwire.cli.simulation.mock_env.ServerlessSimulator.deactivate: Python simulation helper; not ported
-signalwire.cli.simulation.mock_env.ServerlessSimulator.get_current_env: Python simulation helper; not ported
-signalwire.cli.simulation.mock_env.create_mock_request: Python simulation helper; not ported
-signalwire.cli.simulation.mock_env.load_env_file: Python simulation helper; not ported
-
-## Bulk per-symbol omissions (auto-generated from skip rules)
-
-Each line below is a Python symbol that the Rust port deliberately
-does not expose under that exact name. The rationale explains why
-(internal helper, Python-only mixin, alternate Rust idiom, etc.).
-
+agentbase-family.skill_manager: impossible: Python AgentBase exposes ``self.skill_manager`` as a SkillManager attribute; Rust owns the SkillManager privately and exposes the skill operations as methods — no per-instance manager object surfaced.
+signalwire.agent_server.AgentServer.agents: impossible: Python exposes ``agents`` as a public dict attribute; Rust keeps the map private and exposes it via ``get_agents()`` (private-field + accessor idiom, matching go).
+signalwire.agent_server.AgentServer.app: Python's AgentServer exposes its FastAPI instance as a public attribute; Rust keeps the underlying axum/poem app private (server runs the app internally rather than handing it back).
+signalwire.agent_server.AgentServer.logger: impossible: Python exposes ``self.logger`` as a per-instance logging.Logger attribute; Rust logging is module-level (``tracing``/``log`` macros), no per-instance logger struct field to surface (same divergence cpp/go record).
+signalwire.ai_chat.client.AIChatClient.__aenter__: impossible: Rust has no async-context-manager (`async with`) protocol; the pooled `reqwest::Client` is used directly. No `__aenter__` analogue exists (TS cousin omits it too).
+signalwire.ai_chat.client.AIChatClient.__aexit__: impossible: Rust has no async-context-manager protocol (see `__aenter__`); the client is released on drop. No `__aexit__` analogue exists (TS cousin omits it too).
 signalwire.core.agent.tools.decorator.ToolDecorator: impossible: Python decorator-protocol class (ToolDecorator / class-decorated-tool registration) — Rust has no decorator syntax and no class-decoration hook; TS/PHP cousins also omit it (re-audited L18)
 signalwire.core.agent.tools.decorator.ToolDecorator.create_class_decorator: impossible: Python decorator-protocol class (ToolDecorator / class-decorated-tool registration) — Rust has no decorator syntax and no class-decoration hook; TS/PHP cousins also omit it (re-audited L18)
 signalwire.core.agent.tools.decorator.ToolDecorator.create_instance_decorator: impossible: Python decorator-protocol class (ToolDecorator / class-decorated-tool registration) — Rust has no decorator syntax and no class-decoration hook; TS/PHP cousins also omit it (re-audited L18)
 signalwire.core.agent.tools.registry.ToolRegistry.register_class_decorated_tools: impossible: Python decorator-protocol class (ToolDecorator / class-decorated-tool registration) — Rust has no decorator syntax and no class-decoration hook; TS/PHP cousins also omit it (re-audited L18)
+signalwire.core.agent_base.AgentBase.skill_manager: Python exposes ``self.skill_manager`` as a public attribute; Rust holds the SkillManager privately and exposes typed methods on AgentBase (add_skill, list_skills, etc.) instead.
 signalwire.core.contexts.create_simple_context: Python helper that wraps ContextBuilder; Rust users call ContextBuilder::new() directly
 signalwire.core.data_map.create_expression_tool: Python helper functions; Rust ships create_simple_api_tool and create_expression_tool — already exposed (this entry is a duplicate from a Python-side path-prefix difference)
 signalwire.core.data_map.create_simple_api_tool: Python helper functions; Rust ships create_simple_api_tool and create_expression_tool — already exposed (this entry is a duplicate from a Python-side path-prefix difference)
 signalwire.core.mixins.mcp_server_mixin.MCPServerMixin: impossible: Python decorator-protocol surface (the @tool / MCPServerMixin decorator factory) — Rust has no decorator syntax; the OO cousins TS/PHP also express tool registration without this decorator method (re-audited L18)
 signalwire.core.pom_builder.PomBuilder: Python POM builder helper class; Rust uses serde_json::Value directly
+signalwire.core.security.webhook_middleware.make_webhook_validation_dependency: impossible: FastAPI dependency-factory (make_webhook_validation_dependency returns a Depends() callable) — a framework-specific DI primitive with no Rust equivalent; TS/PHP cousins also omit it (re-audited L18)
+signalwire.core.skill_base.SkillBase.logger: impossible: see AgentServer.logger — Rust uses module-level ``tracing`` macros, no per-instance logger attribute on the SkillBase trait.
+signalwire.core.skill_manager.SkillManager.loaded_skills: impossible: Python exposes ``loaded_skills`` as a public dict attribute; Rust keeps the HashMap private and exposes it via ``list_loaded_skills()``.
+signalwire.core.skill_manager.SkillManager.logger: impossible: see AgentServer.logger — Rust uses module-level ``tracing`` macros, no per-instance logger attribute on SkillManager.
 signalwire.core.swaig_function.SWAIGFunction: Python SWAIGFunction wrapper class; Rust merges into ToolDef on Service
 signalwire.core.swml_builder.SWMLBuilder: Python SWMLBuilder helper class; Rust uses serde_json::Value directly
 signalwire.core.swml_handler.AIVerbHandler.build_config: Python SWML request-handler helper; Rust merges into Service::handle_request and AgentBase::handle_request
+signalwire.core.swml_service.SWMLService.security: impossible: Python's ``self.security`` is a SecurityConfig object attribute; Rust holds auth state in private fields and exposes only the operations (get_basic_auth_credentials, validate_basic_auth) — no security object surfaced (same fold cpp/go apply).
+signalwire.core.swml_service.SWMLService.verb_registry: impossible: Python's ``self.verb_registry`` exposes the VerbHandlerRegistry map; Rust keeps it private and exposes only the verb-registration operations (add_verb, register_verb_handler) — no registry object surfaced (same fold cpp/go apply).
 signalwire.livewire.Agent: approved: livewire ported only to Python + Node/TS (the LiveKit AGENTS SDK languages); it is invented surface in every other port — user, 2026-07 pass (§I.1/L21)
 signalwire.livewire.Agent.__init__: approved: livewire ported only to Python + Node/TS (the LiveKit AGENTS SDK languages); it is invented surface in every other port — user, 2026-07 pass (§I.1/L21)
 signalwire.livewire.Agent.llm_node: approved: livewire ported only to Python + Node/TS (the LiveKit AGENTS SDK languages); it is invented surface in every other port — user, 2026-07 pass (§I.1/L21)
@@ -312,49 +140,13 @@ signalwire.livewire.plugins.SileroVAD: approved: livewire ported only to Python 
 signalwire.livewire.plugins.SileroVAD.__init__: approved: livewire ported only to Python + Node/TS (the LiveKit AGENTS SDK languages); it is invented surface in every other port — user, 2026-07 pass (§I.1/L21)
 signalwire.livewire.plugins.SileroVAD.load: approved: livewire ported only to Python + Node/TS (the LiveKit AGENTS SDK languages); it is invented surface in every other port — user, 2026-07 pass (§I.1/L21)
 signalwire.livewire.run_app: approved: livewire ported only to Python + Node/TS (the LiveKit AGENTS SDK languages); it is invented surface in every other port — user, 2026-07 pass (§I.1/L21)
-signalwire.mcp_gateway.gateway_service.MCPGateway: standalone MCP gateway server; Rust ships the mcp_gateway *skill* (skill-level integration), not the standalone server
-signalwire.mcp_gateway.gateway_service.MCPGateway.__init__: standalone MCP gateway server; Rust ships the mcp_gateway *skill* (skill-level integration), not the standalone server
-signalwire.mcp_gateway.gateway_service.MCPGateway.run: standalone MCP gateway server; Rust ships the mcp_gateway *skill* (skill-level integration), not the standalone server
-signalwire.mcp_gateway.gateway_service.MCPGateway.shutdown: standalone MCP gateway server; Rust ships the mcp_gateway *skill* (skill-level integration), not the standalone server
-signalwire.mcp_gateway.gateway_service.main: standalone MCP gateway server; Rust ships the mcp_gateway *skill* (skill-level integration), not the standalone server
-signalwire.mcp_gateway.mcp_manager.MCPClient: standalone MCP gateway server; Rust ships the mcp_gateway *skill* (skill-level integration), not the standalone server
-signalwire.mcp_gateway.mcp_manager.MCPClient.__init__: standalone MCP gateway server; Rust ships the mcp_gateway *skill* (skill-level integration), not the standalone server
-signalwire.mcp_gateway.mcp_manager.MCPClient.call_method: standalone MCP gateway server; Rust ships the mcp_gateway *skill* (skill-level integration), not the standalone server
-signalwire.mcp_gateway.mcp_manager.MCPClient.call_tool: standalone MCP gateway server; Rust ships the mcp_gateway *skill* (skill-level integration), not the standalone server
-signalwire.mcp_gateway.mcp_manager.MCPClient.get_tools: standalone MCP gateway server; Rust ships the mcp_gateway *skill* (skill-level integration), not the standalone server
-signalwire.mcp_gateway.mcp_manager.MCPClient.start: standalone MCP gateway server; Rust ships the mcp_gateway *skill* (skill-level integration), not the standalone server
-signalwire.mcp_gateway.mcp_manager.MCPClient.stop: standalone MCP gateway server; Rust ships the mcp_gateway *skill* (skill-level integration), not the standalone server
-signalwire.mcp_gateway.mcp_manager.MCPManager: standalone MCP gateway server; Rust ships the mcp_gateway *skill* (skill-level integration), not the standalone server
-signalwire.mcp_gateway.mcp_manager.MCPManager.__init__: standalone MCP gateway server; Rust ships the mcp_gateway *skill* (skill-level integration), not the standalone server
-signalwire.mcp_gateway.mcp_manager.MCPManager.create_client: standalone MCP gateway server; Rust ships the mcp_gateway *skill* (skill-level integration), not the standalone server
-signalwire.mcp_gateway.mcp_manager.MCPManager.get_service: standalone MCP gateway server; Rust ships the mcp_gateway *skill* (skill-level integration), not the standalone server
-signalwire.mcp_gateway.mcp_manager.MCPManager.get_service_tools: standalone MCP gateway server; Rust ships the mcp_gateway *skill* (skill-level integration), not the standalone server
-signalwire.mcp_gateway.mcp_manager.MCPManager.list_services: standalone MCP gateway server; Rust ships the mcp_gateway *skill* (skill-level integration), not the standalone server
-signalwire.mcp_gateway.mcp_manager.MCPManager.shutdown: standalone MCP gateway server; Rust ships the mcp_gateway *skill* (skill-level integration), not the standalone server
-signalwire.mcp_gateway.mcp_manager.MCPManager.validate_services: standalone MCP gateway server; Rust ships the mcp_gateway *skill* (skill-level integration), not the standalone server
-signalwire.mcp_gateway.mcp_manager.MCPService: standalone MCP gateway server; Rust ships the mcp_gateway *skill* (skill-level integration), not the standalone server
-signalwire.mcp_gateway.mcp_manager.MCPService.__hash__: standalone MCP gateway server; Rust ships the mcp_gateway *skill* (skill-level integration), not the standalone server
-signalwire.mcp_gateway.mcp_manager.MCPService.__post_init__: standalone MCP gateway server; Rust ships the mcp_gateway *skill* (skill-level integration), not the standalone server
-signalwire.mcp_gateway.session_manager.Session: standalone MCP gateway server; Rust ships the mcp_gateway *skill* (skill-level integration), not the standalone server
-signalwire.mcp_gateway.session_manager.Session.is_alive: standalone MCP gateway server; Rust ships the mcp_gateway *skill* (skill-level integration), not the standalone server
-signalwire.mcp_gateway.session_manager.Session.is_expired: standalone MCP gateway server; Rust ships the mcp_gateway *skill* (skill-level integration), not the standalone server
-signalwire.mcp_gateway.session_manager.Session.touch: standalone MCP gateway server; Rust ships the mcp_gateway *skill* (skill-level integration), not the standalone server
-signalwire.mcp_gateway.session_manager.SessionManager: standalone MCP gateway server; Rust ships the mcp_gateway *skill* (skill-level integration), not the standalone server
-signalwire.mcp_gateway.session_manager.SessionManager.__init__: standalone MCP gateway server; Rust ships the mcp_gateway *skill* (skill-level integration), not the standalone server
-signalwire.mcp_gateway.session_manager.SessionManager.close_session: standalone MCP gateway server; Rust ships the mcp_gateway *skill* (skill-level integration), not the standalone server
-signalwire.mcp_gateway.session_manager.SessionManager.create_session: standalone MCP gateway server; Rust ships the mcp_gateway *skill* (skill-level integration), not the standalone server
-signalwire.mcp_gateway.session_manager.SessionManager.get_service_session_count: standalone MCP gateway server; Rust ships the mcp_gateway *skill* (skill-level integration), not the standalone server
-signalwire.mcp_gateway.session_manager.SessionManager.get_session: standalone MCP gateway server; Rust ships the mcp_gateway *skill* (skill-level integration), not the standalone server
-signalwire.mcp_gateway.session_manager.SessionManager.list_sessions: standalone MCP gateway server; Rust ships the mcp_gateway *skill* (skill-level integration), not the standalone server
-signalwire.mcp_gateway.session_manager.SessionManager.shutdown: standalone MCP gateway server; Rust ships the mcp_gateway *skill* (skill-level integration), not the standalone server
-signalwire.pom.pom_tool.detect_file_format: Prompt Object Model internal helper classes; Rust accomplishes the same via JSON values on AgentBase (prompt_add_section, prompt_add_subsection, prompt_add_to_section)
-signalwire.pom.pom_tool.load_pom: Prompt Object Model internal helper classes; Rust accomplishes the same via JSON values on AgentBase (prompt_add_section, prompt_add_subsection, prompt_add_to_section)
-signalwire.pom.pom_tool.main: Prompt Object Model internal helper classes; Rust accomplishes the same via JSON values on AgentBase (prompt_add_section, prompt_add_subsection, prompt_add_to_section)
-signalwire.pom.pom_tool.render_pom: Prompt Object Model internal helper classes; Rust accomplishes the same via JSON values on AgentBase (prompt_add_section, prompt_add_subsection, prompt_add_to_section)
 signalwire.prefabs.concierge.ConciergeAgent.on_summary: Python ConciergeAgent internals; Rust ships the canonical prefab
 signalwire.prefabs.faq_bot.FAQBotAgent.on_summary: Python FAQBotAgent internals; Rust ships the canonical prefab
 signalwire.prefabs.receptionist.ReceptionistAgent.on_summary: Python ReceptionistAgent internals; Rust ships the canonical prefab
 signalwire.prefabs.survey.SurveyAgent.on_summary: Python SurveyAgent internals; Rust ships the canonical prefab
+signalwire.relay.client.RelayClient.__aenter__: impossible: Python async context-manager protocol dunder (__aenter__/__aexit__) — no Rust equivalent; TS/PHP cousins also omit these protocol methods (re-audited L18)
+signalwire.relay.client.RelayClient.__aexit__: impossible: Python async context-manager protocol dunder (__aenter__/__aexit__) — no Rust equivalent; TS/PHP cousins also omit these protocol methods (re-audited L18)
+signalwire.relay.client.RelayClient.__del__: impossible: Python finalizer dunder (__del__) — Rust uses Drop, not a reference-counted finalizer method on the public surface; TS/PHP cousins also omit it (re-audited L18)
 signalwire.relay.client.RelayClient.relay_protocol: impossible: Python abstract relay-protocol property hook — Rust models the RELAY protocol via concrete client methods, no abstract protocol accessor; TS/PHP cousins also omit it (re-audited L18)
 signalwire.rest.call_handler.PhoneCallHandler: Python PhoneCallHandler enum exposing the 11 wire values; Rust ships the same constants on rest::PhoneCallHandler at the rest module — but the per-symbol enumerator may not have it mapped
 signalwire.rest.namespaces.addresses.AddressesResource: Python REST sub-namespace helper class methods; Rust ships the namespace-level access points and primary CRUD methods, leaving Python-internal helper methods as language-private
@@ -569,154 +361,9 @@ signalwire.rest.namespaces.video.VideoStreams: Python REST sub-namespace helper 
 signalwire.rest.namespaces.video.VideoStreams.delete: Python REST sub-namespace helper class methods; Rust ships the namespace-level access points and primary CRUD methods, leaving Python-internal helper methods as language-private
 signalwire.rest.namespaces.video.VideoStreams.get: Python REST sub-namespace helper class methods; Rust ships the namespace-level access points and primary CRUD methods, leaving Python-internal helper methods as language-private
 signalwire.rest.namespaces.video.VideoStreams.update: Python REST sub-namespace helper class methods; Rust ships the namespace-level access points and primary CRUD methods, leaving Python-internal helper methods as language-private
-signalwire.search.document_processor.DocumentProcessor: search-related; not ported per skip list
-signalwire.search.document_processor.DocumentProcessor.__init__: search-related; not ported per skip list
-signalwire.search.document_processor.DocumentProcessor.create_chunks: search-related; not ported per skip list
-signalwire.search.index_builder.IndexBuilder: search-related; not ported per skip list
-signalwire.search.index_builder.IndexBuilder.__init__: search-related; not ported per skip list
-signalwire.search.index_builder.IndexBuilder.build_index: search-related; not ported per skip list
-signalwire.search.index_builder.IndexBuilder.build_index_from_sources: search-related; not ported per skip list
-signalwire.search.index_builder.IndexBuilder.validate_index: search-related; not ported per skip list
-signalwire.search.migration.SearchIndexMigrator: search-related; not ported per skip list
-signalwire.search.migration.SearchIndexMigrator.__init__: search-related; not ported per skip list
-signalwire.search.migration.SearchIndexMigrator.get_index_info: search-related; not ported per skip list
-signalwire.search.migration.SearchIndexMigrator.migrate_pgvector_to_sqlite: search-related; not ported per skip list
-signalwire.search.migration.SearchIndexMigrator.migrate_sqlite_to_pgvector: search-related; not ported per skip list
-signalwire.search.models.resolve_model_alias: search-related; not ported per skip list
-signalwire.search.pgvector_backend.PgVectorBackend.close: search-related; not ported per skip list
-signalwire.search.pgvector_backend.PgVectorBackend.create_schema: search-related; not ported per skip list
-signalwire.search.pgvector_backend.PgVectorBackend.delete_collection: search-related; not ported per skip list
-signalwire.search.pgvector_backend.PgVectorBackend.list_collections: search-related; not ported per skip list
-signalwire.search.pgvector_backend.PgVectorBackend.store_chunks: search-related; not ported per skip list
-signalwire.search.pgvector_backend.PgVectorSearchBackend: search-related; not ported per skip list
-signalwire.search.pgvector_backend.PgVectorSearchBackend.__init__: search-related; not ported per skip list
-signalwire.search.pgvector_backend.PgVectorSearchBackend.close: search-related; not ported per skip list
-signalwire.search.pgvector_backend.PgVectorSearchBackend.fetch_candidates: search-related; not ported per skip list
-signalwire.search.pgvector_backend.PgVectorSearchBackend.get_stats: search-related; not ported per skip list
-signalwire.search.pgvector_backend.PgVectorSearchBackend.search: search-related; not ported per skip list
-signalwire.search.query_processor.ensure_nltk_resources: search-related; not ported per skip list
-signalwire.search.query_processor.get_wordnet_pos: search-related; not ported per skip list
-signalwire.search.query_processor.load_spacy_model: search-related; not ported per skip list
-signalwire.search.query_processor.remove_duplicate_words: search-related; not ported per skip list
-signalwire.search.query_processor.set_global_model: search-related; not ported per skip list
-signalwire.search.query_processor.vectorize_query: search-related; not ported per skip list
-signalwire.search.search_engine.SearchEngine: search-related; not ported per skip list
-signalwire.search.search_engine.SearchEngine.__init__: search-related; not ported per skip list
-signalwire.search.search_engine.SearchEngine.get_stats: search-related; not ported per skip list
-signalwire.search.search_engine.SearchEngine.search: search-related; not ported per skip list
-signalwire.search.search_service.SearchService.search_direct: search-related; not ported per skip list
-signalwire.search.search_service.SearchService.start: search-related; not ported per skip list
-signalwire.search.search_service.SearchService.stop: search-related; not ported per skip list
 signalwire.skills.api_ninjas_trivia.skill.ApiNinjasTriviaSkill.get_tools: Python api_ninjas_trivia skill internals; Rust ships the canonical skill
-signalwire.skills.google_maps.skill.GoogleMapsClient: Python-internal Google Maps client helper; Rust google_maps skill issues HTTP directly
-signalwire.skills.google_maps.skill.GoogleMapsClient.__init__: Python-internal Google Maps client helper; Rust google_maps skill issues HTTP directly
-signalwire.skills.google_maps.skill.GoogleMapsClient.compute_route: Python-internal Google Maps client helper; Rust google_maps skill issues HTTP directly
-signalwire.skills.google_maps.skill.GoogleMapsClient.validate_address: Python-internal Google Maps client helper; Rust google_maps skill issues HTTP directly
-signalwire.skills.mcp_gateway.skill.MCPGatewaySkill.get_global_data: skill-level MCP wiring is exposed via the mcp_gateway skill in Rust; the Python sub-module helpers (skill.MCPGatewaySkill internals) are language-private
-signalwire.skills.mcp_gateway.skill.MCPGatewaySkill.get_hints: skill-level MCP wiring is exposed via the mcp_gateway skill in Rust; the Python sub-module helpers (skill.MCPGatewaySkill internals) are language-private
-signalwire.skills.mcp_gateway.skill.MCPGatewaySkill.get_parameter_schema: skill-level MCP wiring is exposed via the mcp_gateway skill in Rust; the Python sub-module helpers (skill.MCPGatewaySkill internals) are language-private
-signalwire.skills.mcp_gateway.skill.MCPGatewaySkill.get_prompt_sections: skill-level MCP wiring is exposed via the mcp_gateway skill in Rust; the Python sub-module helpers (skill.MCPGatewaySkill internals) are language-private
-signalwire.skills.mcp_gateway.skill.MCPGatewaySkill.register_tools: skill-level MCP wiring is exposed via the mcp_gateway skill in Rust; the Python sub-module helpers (skill.MCPGatewaySkill internals) are language-private
-signalwire.skills.mcp_gateway.skill.MCPGatewaySkill.setup: skill-level MCP wiring is exposed via the mcp_gateway skill in Rust; the Python sub-module helpers (skill.MCPGatewaySkill internals) are language-private
 signalwire.skills.play_background_file.skill.PlayBackgroundFileSkill.get_tools: Python play_background_file internals; Rust ships the canonical skill
+signalwire.skills.registry.SkillRegistry.logger: impossible: see AgentServer.logger — Rust uses module-level ``tracing`` macros, no per-instance logger attribute on SkillRegistry.
 signalwire.skills.weather_api.skill.WeatherApiSkill.get_tools: Python weather_api skill internals; Rust ships the canonical skill
-signalwire.skills.web_search.skill.GoogleSearchScraper: Python-internal scraper helper; Rust web_search skill issues HTTP directly via its skill handler
-signalwire.skills.web_search.skill.GoogleSearchScraper.__init__: Python-internal scraper helper; Rust web_search skill issues HTTP directly via its skill handler
-signalwire.skills.web_search.skill.GoogleSearchScraper.extract_html_content: Python-internal scraper helper; Rust web_search skill issues HTTP directly via its skill handler
-signalwire.skills.web_search.skill.GoogleSearchScraper.extract_reddit_content: Python-internal scraper helper; Rust web_search skill issues HTTP directly via its skill handler
-signalwire.skills.web_search.skill.GoogleSearchScraper.extract_text_from_url: Python-internal scraper helper; Rust web_search skill issues HTTP directly via its skill handler
-signalwire.skills.web_search.skill.GoogleSearchScraper.is_reddit_url: Python-internal scraper helper; Rust web_search skill issues HTTP directly via its skill handler
-signalwire.skills.web_search.skill.GoogleSearchScraper.search_and_scrape: Python-internal scraper helper; Rust web_search skill issues HTTP directly via its skill handler
-signalwire.skills.web_search.skill.GoogleSearchScraper.search_and_scrape_best: Python-internal scraper helper; Rust web_search skill issues HTTP directly via its skill handler
-signalwire.skills.web_search.skill.GoogleSearchScraper.search_google: Python-internal scraper helper; Rust web_search skill issues HTTP directly via its skill handler
-signalwire.skills.web_search.skill_improved.GoogleSearchScraper: Python-experimental WebSearch variants; Rust ships the canonical web_search skill
-signalwire.skills.web_search.skill_improved.GoogleSearchScraper.__init__: Python-experimental WebSearch variants; Rust ships the canonical web_search skill
-signalwire.skills.web_search.skill_improved.GoogleSearchScraper.extract_text_from_url: Python-experimental WebSearch variants; Rust ships the canonical web_search skill
-signalwire.skills.web_search.skill_improved.GoogleSearchScraper.search_and_scrape: Python-experimental WebSearch variants; Rust ships the canonical web_search skill
-signalwire.skills.web_search.skill_improved.GoogleSearchScraper.search_and_scrape_best: Python-experimental WebSearch variants; Rust ships the canonical web_search skill
-signalwire.skills.web_search.skill_improved.GoogleSearchScraper.search_google: Python-experimental WebSearch variants; Rust ships the canonical web_search skill
-signalwire.skills.web_search.skill_improved.WebSearchSkill: Python-experimental WebSearch variants; Rust ships the canonical web_search skill
-signalwire.skills.web_search.skill_improved.WebSearchSkill.get_global_data: Python-experimental WebSearch variants; Rust ships the canonical web_search skill
-signalwire.skills.web_search.skill_improved.WebSearchSkill.get_hints: Python-experimental WebSearch variants; Rust ships the canonical web_search skill
-signalwire.skills.web_search.skill_improved.WebSearchSkill.get_instance_key: Python-experimental WebSearch variants; Rust ships the canonical web_search skill
-signalwire.skills.web_search.skill_improved.WebSearchSkill.get_parameter_schema: Python-experimental WebSearch variants; Rust ships the canonical web_search skill
-signalwire.skills.web_search.skill_improved.WebSearchSkill.get_prompt_sections: Python-experimental WebSearch variants; Rust ships the canonical web_search skill
-signalwire.skills.web_search.skill_improved.WebSearchSkill.register_tools: Python-experimental WebSearch variants; Rust ships the canonical web_search skill
-signalwire.skills.web_search.skill_improved.WebSearchSkill.setup: Python-experimental WebSearch variants; Rust ships the canonical web_search skill
-signalwire.skills.web_search.skill_original.GoogleSearchScraper: Python-experimental WebSearch variants; Rust ships the canonical web_search skill
-signalwire.skills.web_search.skill_original.GoogleSearchScraper.__init__: Python-experimental WebSearch variants; Rust ships the canonical web_search skill
-signalwire.skills.web_search.skill_original.GoogleSearchScraper.extract_text_from_url: Python-experimental WebSearch variants; Rust ships the canonical web_search skill
-signalwire.skills.web_search.skill_original.GoogleSearchScraper.search_and_scrape: Python-experimental WebSearch variants; Rust ships the canonical web_search skill
-signalwire.skills.web_search.skill_original.GoogleSearchScraper.search_google: Python-experimental WebSearch variants; Rust ships the canonical web_search skill
-signalwire.skills.web_search.skill_original.WebSearchSkill: Python-experimental WebSearch variants; Rust ships the canonical web_search skill
-signalwire.skills.web_search.skill_original.WebSearchSkill.get_global_data: Python-experimental WebSearch variants; Rust ships the canonical web_search skill
-signalwire.skills.web_search.skill_original.WebSearchSkill.get_hints: Python-experimental WebSearch variants; Rust ships the canonical web_search skill
-signalwire.skills.web_search.skill_original.WebSearchSkill.get_instance_key: Python-experimental WebSearch variants; Rust ships the canonical web_search skill
-signalwire.skills.web_search.skill_original.WebSearchSkill.get_parameter_schema: Python-experimental WebSearch variants; Rust ships the canonical web_search skill
-signalwire.skills.web_search.skill_original.WebSearchSkill.get_prompt_sections: Python-experimental WebSearch variants; Rust ships the canonical web_search skill
-signalwire.skills.web_search.skill_original.WebSearchSkill.register_tools: Python-experimental WebSearch variants; Rust ships the canonical web_search skill
-signalwire.skills.web_search.skill_original.WebSearchSkill.setup: Python-experimental WebSearch variants; Rust ships the canonical web_search skill
 signalwire.web.web_service.WebService: Python WebService internals; Rust integrates static file serving into AgentServer
-signalwire.relay.client.RelayClient.__aenter__
-signalwire.relay.client.RelayClient.__aexit__
-signalwire.relay.client.RelayClient.__del__
-
-## Python async-context-manager dunders (Python-only)
-
-signalwire.relay.client.RelayClient.__aenter__: impossible: Python async context-manager protocol dunder (__aenter__/__aexit__) — no Rust equivalent; TS/PHP cousins also omit these protocol methods (re-audited L18)
-signalwire.relay.client.RelayClient.__aexit__: impossible: Python async context-manager protocol dunder (__aenter__/__aexit__) — no Rust equivalent; TS/PHP cousins also omit these protocol methods (re-audited L18)
-signalwire.relay.client.RelayClient.__del__: impossible: Python finalizer dunder (__del__) — Rust uses Drop, not a reference-counted finalizer method on the public surface; TS/PHP cousins also omit it (re-audited L18)
-
-## Python state-attribute accessors (Python-only)
-
-Python's reflection adapter emits zero-arg accessors for public instance
-attributes (e.g. ``self.app``, ``self.logger``) as if they were getter
-methods. Rust does not expose these as accessor methods — internal state
-is private and accessed through dedicated APIs where needed. This is a
-Rust idiom (private fields with no auto-generated getters).
-
-signalwire.agent_server.AgentServer.app: Python's AgentServer exposes its FastAPI instance as a public attribute; Rust keeps the underlying axum/poem app private (server runs the app internally rather than handing it back).
-signalwire.agent_server.AgentServer.logger: Python exposes ``self.logger`` as a public attribute; Rust uses tracing::info!()/log::info!() macros directly (no struct-attached logger).
-signalwire.core.agent_base.AgentBase.skill_manager: Python exposes ``self.skill_manager`` as a public attribute; Rust holds the SkillManager privately and exposes typed methods on AgentBase (add_skill, list_skills, etc.) instead.
-signalwire.core.skill_manager.SkillManager.logger: Python exposes ``self.logger`` as a public attribute on SkillManager; Rust uses tracing macros directly.
-signalwire.core.swml_service.SWMLService.security: Python exposes ``self.security`` as the SecurityConfig attribute; Rust holds security configuration privately and exposes the relevant methods (get_basic_auth_credentials, validate_basic_auth) instead.
-signalwire.core.swml_service.SWMLService.verb_registry: Python exposes ``self.verb_registry`` as the VerbHandlerRegistry attribute; Rust holds the verb registry privately and exposes verb-registration methods on SWMLService instead.
-signalwire.skills.registry.SkillRegistry.logger: Python exposes ``self.logger`` as a public attribute on SkillRegistry; Rust uses tracing macros directly.
-signalwire.core.security.webhook_middleware.make_webhook_validation_dependency: impossible: FastAPI dependency-factory (make_webhook_validation_dependency returns a Depends() callable) — a framework-specific DI primitive with no Rust equivalent; TS/PHP cousins also omit it (re-audited L18)
-
-## AIParams fields hidden via x-sdk-overlay.yaml (SDK-surface policy)
-
-The following 5 fields exist on the SPEC schema ``AIParams`` (schema.json ``$defs``
-+ calling/fabric ``components/schemas``) but are DROPPED from the generated Rust
-surface by ``porting-sdk/rest-apis/x-sdk-overlay.yaml`` (the single authoritative
-SDK-surface policy overlay). They remain on the wire; the SDK simply does not expose
-them as struct fields. These are struct-field-level drops on a method-less type, not
-Python symbol-level omissions, so they carry no ``diff_port_surface`` symbol line
-(SURFACE-DIFF is clean against the oracle, which drops them identically). Recorded
-here for provenance:
-
-- audible_debug: hidden via x-sdk-overlay.yaml: server-internal AI param, dropped from SDK surface per overlay policy (approved)
-- audible_latency: hidden via x-sdk-overlay.yaml: server-internal AI param, dropped from SDK surface per overlay policy (approved)
-- verbose_logs: hidden via x-sdk-overlay.yaml: server-internal AI param, dropped from SDK surface per overlay policy (approved)
-- enable_accounting: hidden via x-sdk-overlay.yaml: server-internal AI param, dropped from SDK surface per overlay policy (approved)
-- cache_mode: hidden via x-sdk-overlay.yaml: server-internal AI param, dropped from SDK surface per overlay policy (approved)
-
-(``languages_enabled`` is NOT dropped — it is kept and marked ``#[deprecated]`` per
-the overlay's ``deprecated`` list, so it is not ledgered here.)
-
-## Abstract RELAY action mixin bases (§H — flattened, TS/PHP flatten identically)
-
-## AI Chat client (signalwire.ai_chat.client) — Rust lifecycle idiom
-
-The Rust `AIChatClient` implements every AI Chat METHOD and error identity the
-reference does (create_conversation/chat/end/delete/log/summarize wire-verified
-by the AI-CHAT gate; the 6 error classes are projected onto the `AIChatError`
-struct + `AIChatErrorKind` enum in the surface enumerator; construction folds the
-`AIChatClient::builder()` associated fn onto `__init__`; `close()` is a real no-op
-member completing the lifecycle contract; `AIChatError.__init__` folds onto the
-struct constructor in the signature enumerator). The ONLY members below are the
-two async-context-manager dunders, which Rust genuinely cannot express — the OO
-cousin (TS) omits them identically.
-
-signalwire.ai_chat.client.AIChatClient.__aenter__: impossible: Rust has no async-context-manager (`async with`) protocol; the pooled `reqwest::Client` is used directly. No `__aenter__` analogue exists (TS cousin omits it too).
-signalwire.ai_chat.client.AIChatClient.__aexit__: impossible: Rust has no async-context-manager protocol (see `__aenter__`); the client is released on drop. No `__aexit__` analogue exists (TS cousin omits it too).
+signalwire.web.web_service.WebService.security: impossible: Python's WebService ``security`` is a SecurityConfig attribute; Rust holds auth state privately and exposes only the operations, mirroring SWMLService.security.

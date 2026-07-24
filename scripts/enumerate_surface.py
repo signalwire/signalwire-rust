@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import subprocess
 import sys
@@ -38,6 +39,14 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SRC_DIR = REPO_ROOT / "src"
+
+# porting-sdk adjacency (mirrors enumerate_signatures.py). Used only to read the
+# reference signature oracle for the composition-attribute enrich below.
+PSDK = (REPO_ROOT.parent / "porting-sdk").resolve()
+if not PSDK.is_dir():
+    _env_psdk = os.environ.get("PORTING_SDK")
+    if _env_psdk:
+        PSDK = Path(_env_psdk).resolve()
 
 # Map Rust class name → Python canonical module path. Mirrors the C++
 # port's CLASS_MODULE_MAP for consistency.
@@ -436,7 +445,8 @@ METHOD_RENAMES: dict[str, dict[str, str]] = {
     # attribute is not an enumerated method) → drop.
     "PomBuilder": {
         "to_value": "to_dict",
-        "pom": None,
+        # `pom` returns the wrapped PromptObjectModel — the reference now records
+        # PomBuilder.pom as a composition attribute, so surface it (fold), don't drop.
     },
     # SessionManager: `set_debug_mode` is the Rust setter for the debug-mode
     # gate on `debug_token` (Python sets `_debug_mode` at construction / as a
@@ -1230,6 +1240,19 @@ MODULE_METHOD_DROPS: dict[str, set[str]] = {
     # identical full-validate pass is a no-op there). Same pub(crate)-drop as
     # shared_default.
     "signalwire.utils.schema_utils": {"shared_default", "validate_verb_top_keys"},
+    # AgentBase flattens five COMPOSITION-DELEGATE reads onto itself as a
+    # convenience, but the Python reference files each on the HELPER object AgentBase
+    # holds — render_swml -> SwmlRenderer, get_contexts / get_raw_prompt ->
+    # PromptManager, create_tool_token -> SessionManager, get_global_data ->
+    # SkillBase. Rust ALSO emits each on its delegate class (SwmlRenderer.render_swml
+    # etc., which match the reference 1:1), so the copy re-exposed on AgentBase is a
+    # duplicate that reads as a phantom addition after the agentbase-family fold.
+    # Drop the AgentBase copy — the delegate carries the reference-matching surface;
+    # this reconciles the composition-flatten idiom in EMIT, not an allow-list entry.
+    "signalwire.core.agent_base": {
+        "render_swml", "get_contexts", "get_raw_prompt",
+        "create_tool_token", "get_global_data",
+    },
 }
 # Module-level FREE FUNCTIONS to drop — `pub(crate)` crate-internal helpers the
 # public-fn regex captures but that are NOT public crate API (external callers
@@ -1277,6 +1300,110 @@ SKILL_INTERFACE_PROJECTION: dict[tuple[str, str], list[str]] = {
     ("signalwire.skills.web_search.skill", "WebSearchSkill"): ["get_global_data", "get_hints", "get_instance_key", "get_parameter_schema", "get_prompt_sections", "register_tools", "setup"],
     ("signalwire.skills.wikipedia_search.skill", "WikipediaSearchSkill"): ["get_hints", "get_parameter_schema", "get_prompt_sections", "register_tools", "setup"],
 }
+
+
+
+
+# Public struct FIELDS that the reference oracle records as composition-attribute
+# members but which Rust exposes as bare ``pub`` fields (not ``pub fn``), so the
+# method-only parser never captures them. Project them onto the class when the class
+# is present (an absent class stays a real gap). These are the field twins of the
+# reference's list-of-SDK-class composition attributes (PromptObjectModel.sections /
+# Section.subsections hold ``Vec<Section>``), reconciled in EMIT, not omitted.
+PUBLIC_FIELD_MEMBERS: dict[tuple[str, str], set[str]] = {
+    ("signalwire.pom.pom", "PromptObjectModel"): {"sections"},
+    ("signalwire.pom.pom", "Section"): {"subsections"},
+}
+
+def _load_json(path: Path) -> dict:
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+
+
+def _reference_composition_attrs() -> dict[tuple[str, str], set[str]]:
+    """Return the reference oracle's COMPOSITION-ATTRIBUTE members, keyed by
+    (module, class). Mirrors porting-sdk enumerate_python._enrich_composition_attributes:
+    a member is a composition attribute iff its signature is self-only AND returns an
+    SDK class (bare ``class:signalwire.…`` or ``optional<…>``/``list<…>``-wrapped; a
+    ``union<…>`` return is EXCLUDED — those are verb SETTERS, a distinct idiom class).
+    Read from the reference signature oracle (porting-sdk/python_signatures.json).
+    Empty if the oracle is unavailable (degraded env) — the enrich then no-ops, so the
+    surface never HARD-depends on porting-sdk adjacency."""
+    sig = _load_json(PSDK / "python_signatures.json")
+    out: dict[tuple[str, str], set[str]] = {}
+
+    def _is_comp(ret: object) -> bool:
+        if not isinstance(ret, str):
+            return False
+        if ret.startswith("union<"):
+            return False
+        return "class:signalwire." in ret
+
+    for mod, inv in sig.get("modules", {}).items():
+        for cls, ce in inv.get("classes", {}).items():
+            methods = ce.get("methods", {})
+            if not isinstance(methods, dict):
+                continue
+            comp = {
+                m for m, ms in methods.items()
+                if isinstance(ms, dict)
+                and [p for p in ms.get("params", []) if p.get("kind") != "self"] == []
+                and _is_comp(ms.get("returns"))
+            }
+            if comp:
+                out[(mod, cls)] = comp
+    return out
+
+
+def _port_signature_members() -> dict[tuple[str, str], set[str]]:
+    """Return (module, class) -> {member names} recorded in this port's OWN committed
+    signature oracle (port_signatures.json). Used to gate the composition-attr enrich:
+    a reference composition attribute is surfaced on the port ONLY when the port's
+    signature enumeration ALSO records that member on that class — i.e. the port
+    genuinely has the field/accessor. This keeps the surface and signature oracles
+    consistent BY CONSTRUCTION and never invents surface the port lacks."""
+    sig = _load_json(REPO_ROOT / "port_signatures.json")
+    out: dict[tuple[str, str], set[str]] = {}
+    for mod, inv in sig.get("modules", {}).items():
+        for cls, ce in inv.get("classes", {}).items():
+            methods = ce.get("methods", {})
+            if isinstance(methods, dict) and methods:
+                out[(mod, cls)] = set(methods.keys())
+    return out
+
+
+def _enrich_composition_attributes(modules: dict) -> None:
+    """Surface composition-attribute members (fields that HOLD an SDK class) on the
+    port's generated-type / dataclass-twin structs, matching the reference oracle's
+    ``_enrich_composition_attributes``. Rust records a struct's fields METHOD-LESS
+    (a field is not a `pub fn`), so classes like ``swml_verbs_generated.AIObject`` or
+    ``post_prompt_generated.PostPrompt`` come out empty and (a) fold to the ``gen-type``
+    pseudo-module via the SURFACE-DIFF method-less leaf fold while the reference — now
+    carrying comp-attr members — does NOT, and (b) miss the members themselves. Both
+    read as phantom omissions. Importing the reference's comp-attr members onto the
+    matching port class (gated on the port's own signature oracle recording that member)
+    reconciles the idiom in EMIT: the port class gains the same members, stops folding
+    to gen-type, and matches the reference. Class-typed field surface is exactly what a
+    getter-idiom port would expose explicitly; recording it here is a projection, not
+    invented surface (the port's signature oracle already carries every added member)."""
+    ref_comp = _reference_composition_attrs()
+    if not ref_comp:
+        return
+    port_members = _port_signature_members()
+    for (mod, cls), comp in ref_comp.items():
+        have = port_members.get((mod, cls))
+        if not have:
+            continue
+        present = comp & have  # only members the port genuinely records
+        if not present:
+            continue
+        entry = modules.get(mod)
+        if entry is None or cls not in entry["classes"]:
+            continue  # class not emitted by the port → a real gap, leave it
+        existing = set(entry["classes"][cls])
+        entry["classes"][cls] = sorted(existing | present)
 
 
 def build_surface() -> dict:
@@ -1535,6 +1662,19 @@ def build_surface() -> dict:
         existing = set(modules[mod_name]["classes"][cls])
         existing.update(proj)
         modules[mod_name]["classes"][cls] = sorted(existing)
+
+    # Composition-attribute enrich: surface class-typed struct fields (which Rust
+    # records method-less) as members, matching the reference oracle so they stop
+    # reading as phantom omissions / gen-type-fold divergences.
+    _enrich_composition_attributes(modules)
+
+    # Public-field members: promote bare ``pub`` struct fields the reference records
+    # as composition attributes (the ``pub fn`` parser misses fields).
+    for (mod_name, cls), fields in PUBLIC_FIELD_MEMBERS.items():
+        entry = modules.get(mod_name)
+        if entry is None or cls not in entry["classes"]:
+            continue
+        entry["classes"][cls] = sorted(set(entry["classes"][cls]) | fields)
 
     # Stable sort + cleanup
     out_modules: dict = {}
