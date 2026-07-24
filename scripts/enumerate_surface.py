@@ -581,7 +581,49 @@ METHOD_RENAMES: dict[str, dict[str, str]] = {
     "McpGateway": {
         "required_packages": None,
     },
+    # AIChatClient: fold the Rust construction/accessor idiom onto the Python
+    # reference shape (EMISSION COVERS IDIOM).
+    #   * `builder()` (associated fn returning AIChatClientBuilder) IS the Rust
+    #     construction idiom — Python constructs via `__init__` with the same
+    #     keyword args the builder's setters take. Fold it onto `__init__`
+    #     (the builder struct itself is suppressed via AI_CHAT_SUPPRESS_CLASSES).
+    #   * `url()` / `project()` are read-only field getters. The Python reference
+    #     reads these as plain instance attributes (`client.url` / `client.project`),
+    #     which the surface oracle does NOT record as members of AIChatClient —
+    #     so drop the Rust getters (they are the attribute-access idiom, not surface).
+    # The async methods (chat/create_conversation/delete/end/log/summarize) pass
+    # through unchanged and match the oracle. `close()` is a real member — a
+    # well-defined no-op that completes the lifecycle contract (reqwest::Client is
+    # pooled/RAII-freed, so there is nothing to release), folding the reference
+    # `close` onto a genuine method. The ONLY members the oracle records that Rust
+    # cannot express are `__aenter__`/`__aexit__` (no async-context-manager
+    # protocol) — those remain in PORT_OMISSIONS.md as `impossible:`.
+    "AIChatClient": {
+        "builder": "__init__",
+        "url": None,
+        "project": None,
+    },
 }
+
+
+# Port-only structs the Rust ai_chat client exposes purely as the CONSTRUCTION /
+# OPTIONS idiom for AIChatClient — folded away entirely so the surface matches the
+# Python reference (EMISSION COVERS IDIOM), NOT recorded as additions:
+#   * AIChatClientBuilder    — the fluent constructor behind `AIChatClient::builder()`;
+#                              its setters ARE the Python `__init__` kwargs. `builder`
+#                              is folded onto `__init__` (METHOD_RENAMES above); the
+#                              builder struct + its setters carry no independent surface.
+#   * CreateOptions / ChatOptions / SummarizeOptions — typed options-objects that
+#                              collapse each method's optional kwargs into one value;
+#                              they ARE those methods' optional parameters, not
+#                              standalone reference surface.
+# The Python surface oracle records none of these as classes, so suppress them.
+AI_CHAT_SUPPRESS_CLASSES: frozenset[str] = frozenset({
+    "AIChatClientBuilder",
+    "CreateOptions",
+    "ChatOptions",
+    "SummarizeOptions",
+})
 
 
 # Rust class name → Python canonical class name (when they differ).
@@ -904,6 +946,14 @@ def _parse_file(path: Path) -> tuple[set[str], dict[str, set[str]], set[str]]:
             impl_trait_name.pop()
 
     return free_fns, dict(methods), classes
+
+
+# Crate-root `pub use` re-exports that must NOT be emitted as top-level
+# `signalwire` module symbols because the reference oracle does not record
+# them at the root. AIChatClient is a re-exported CLASS already enumerated
+# under signalwire.ai_chat.client (the oracle lists it once, at its module),
+# so the crate-root re-export is a duplicate, folded away in the emitter.
+_LIB_REEXPORT_TOPLEVEL_DROP = {"AIChatClient"}
 
 
 def _parse_lib_reexports(path: Path) -> set[str]:
@@ -1235,6 +1285,10 @@ def build_surface() -> dict:
     files = _walk_source_files()
     sidecar = load_rest_sidecar()
     sidecar_classes, suppressed_classes = _sidecar_class_index(sidecar)
+    # Fold the ai_chat construction/options structs away entirely (see
+    # AI_CHAT_SUPPRESS_CLASSES): they are the builder + options-object idiom for
+    # AIChatClient, not independent reference surface.
+    suppressed_classes = suppressed_classes | AI_CHAT_SUPPRESS_CLASSES
 
     # Generated-type pass (§D3/§H): route each generated-type FILE by path and
     # emit every declared struct/enum METHOD-LESS to the oracle module. Done first
@@ -1250,6 +1304,49 @@ def build_surface() -> dict:
         for cls in sorted(classes):
             # Method-less: record the bare type name with an empty method list.
             modules[gen_mod]["classes"].setdefault(cls, [])
+
+    # AI Chat data types (signalwire.ai_chat.client): ChatLog / ChatResponse /
+    # ConversationInfo are plain public-field Rust structs (no `pub fn`), the
+    # 1:1 twins of the reference's `@dataclass` result models — which the Python
+    # surface oracle records METHOD-LESS. A field-only struct carries no methods,
+    # so the normal method-keyed passes below never record them; emit them here
+    # method-less (like the generated-type pass) so the surface matches the
+    # reference dataclasses instead of leaving them absent. The method-BEARING
+    # ai_chat types (AIChatClient / the builder / the *Options structs) are left
+    # to the normal passes so their method lists are captured. The error family
+    # (AIChatError / AIChatErrorKind) is a Rust enum-fold of Python's 6 error
+    # CLASSES and is reconciled via PORT_OMISSIONS.md, not emitted here.
+    _AI_CHAT_CLIENT_REL = Path("src/ai_chat/client.rs")
+    _AI_CHAT_DATACLASS_TWINS = ("ChatLog", "ChatResponse", "ConversationInfo")
+    # The Python error family is a class hierarchy (base AIChatError + 5
+    # subclasses). Rust folds it into one `AIChatError` struct whose kind is an
+    # `AIChatErrorKind` enum; each Python error CLASS corresponds to an enum
+    # VARIANT. Project those variant identities back onto the reference's error
+    # class names (method-less) so the surface RECONCILES in emit (rename/
+    # projection, not omission) rather than leaving 6 classes absent. The port
+    # struct/enum genuinely carry these identities (AIChatErrorKind::{Api,
+    # Authentication, ConversationNotFound, RateLimit, ChatInProgress, Summary}).
+    _AI_CHAT_ERROR_CLASSES = (
+        "AIChatError", "AuthenticationError", "ConversationNotFoundError",
+        "RateLimitError", "ChatInProgressError", "SummaryError",
+    )
+    for path in files:
+        if path.relative_to(REPO_ROOT) != _AI_CHAT_CLIENT_REL:
+            continue
+        _free, _methods, classes = _parse_file(path)
+        for cls in _AI_CHAT_DATACLASS_TWINS:
+            if cls in classes:
+                modules["signalwire.ai_chat.client"]["classes"].setdefault(cls, [])
+        for cls in _AI_CHAT_ERROR_CLASSES:
+            modules["signalwire.ai_chat.client"]["classes"].setdefault(cls, [])
+        # The reference surface records `__init__` on the BASE `AIChatError` only
+        # (the 5 subclasses stay method-less). Rust's `AIChatError` struct carries
+        # a real field-wise constructor (code, message) — project `__init__` onto
+        # the base so the surface reconciles in emit (rename/projection), folding
+        # the former AIChatError.__init__ omission.
+        if "__init__" not in modules["signalwire.ai_chat.client"]["classes"]["AIChatError"]:
+            modules["signalwire.ai_chat.client"]["classes"]["AIChatError"].append("__init__")
+        break
 
     # First pass: collect class declarations + their files (module mapping)
     class_defining_files: dict[str, Path] = {}
@@ -1273,6 +1370,15 @@ def build_surface() -> dict:
     lib_path = SRC_DIR / "lib.rs"
     if lib_path.is_file():
         for name in sorted(_parse_lib_reexports(lib_path)):
+            # AIChatClient is a CLASS already enumerated under
+            # signalwire.ai_chat.client; the crate-root `pub use ...AIChatClient`
+            # re-exports that same class for `use signalwire::*`. Python's oracle
+            # does NOT double-list a re-exported class at the top-level `signalwire`
+            # module (RestClient appears there as a factory fn, but AIChatClient is
+            # not recorded twice), so emitting it here would be a duplicate. Fold it
+            # away (idiom in the emitter, Rule 2) rather than record a PORT_ADDITION.
+            if name in _LIB_REEXPORT_TOPLEVEL_DROP:
+                continue
             if name not in modules["signalwire"]["functions"]:
                 modules["signalwire"]["functions"].append(name)
         # keep functions sorted for determinism

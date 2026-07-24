@@ -148,6 +148,13 @@ pub mod serverless;
 #[allow(missing_docs)]
 pub mod web;
 
+/// Async client for the SignalWire AI Chat service (JSON-RPC over HTTP Basic).
+///
+/// This is the crate's one async surface — see [`ai_chat::AIChatClient`]. It is
+/// built on `tokio` + `reqwest` because a chat turn awaits a full LLM round trip
+/// on an event loop, mirroring the async-first python reference.
+pub mod ai_chat;
+
 // ─── Top-level re-exports for parity with Python's `signalwire` package
 //
 // Python's `signalwire/__init__.py` re-exports a fixed set of names so
@@ -160,6 +167,7 @@ pub use agent::{AgentBase, AgentOptions};
 // The typed error returned by `"level".parse::<logging::Level>()` — re-exported
 // at the crate root so callers can name it (`signalwire::ParseLevelError`)
 // without reaching into the `logging` module.
+pub use ai_chat::AIChatClient;
 pub use logging::ParseLevelError;
 pub use prefabs::{
     BedrockAgent, BedrockOptions, ConciergeAgent, FAQBotAgent, InfoGathererAgent,

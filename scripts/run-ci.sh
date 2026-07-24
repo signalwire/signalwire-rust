@@ -382,7 +382,7 @@ cargo build --quiet \
 # instant exec and the measurement excludes build time. Same rationale as the
 # BEHAVIORAL-* dump prebuild above. envelope-dump prebuilt for the same reason
 # (ENVELOPE gate runs a dump-cmd).
-cargo build --quiet --example wait_liveness_dump --bin envelope-dump 2>/dev/null || true
+cargo build --quiet --example wait_liveness_dump --bin envelope-dump --bin ai-chat-dump 2>/dev/null || true
 
 sched_gate BEHAVIORAL-WIRE desc="diff_port_wire vs python oracle (Layer D)" \
     -- python3 "$PORTING_SDK_DIR/scripts/diff_port_wire.py" \
@@ -418,6 +418,17 @@ sched_gate ENVELOPE desc="diff_port_envelope vs python oracle: conn-refused type
     -- python3 "$PORTING_SDK_DIR/scripts/diff_port_envelope.py" \
         --port rust \
         --dump-cmd 'cargo run -q --bin envelope-dump 2>/dev/null'
+
+# AI-CHAT (COORDINATED pass rust:ai-chat-client <-> porting-sdk:ai-chat-client):
+# wire-behavioral gate for the AIChatClient. Drives the ai-chat-dump binary through
+# the shared ai_chat_corpus against porting-sdk's in-process mock_ai_chat and asserts
+# the client speaks the AI Chat JSON-RPC protocol per the vendored spec
+# (ai-chat-specs/ai-chat.yaml). The gate script (diff_port_ai_chat.py) + mock live on
+# the porting-sdk `ai-chat-client` branch, so during the coordinated pass
+# PORTING_SDK_REF pins that branch; until it lands on porting-sdk main this gate
+# skip-passes (the differ script is simply absent).
+sched_gate AI-CHAT desc="AIChatClient speaks the AI Chat protocol per the vendored spec (mock_ai_chat wire-behavioral)" \
+    -- bash -c 'if [ -f "$1/scripts/diff_port_ai_chat.py" ]; then python3 "$1/scripts/diff_port_ai_chat.py" --port rust --dump-cmd "cargo run -q --bin ai-chat-dump 2>/dev/null"; else echo "[ai-chat] diff_port_ai_chat.py not on porting-sdk main yet — skip-pass (coordinated-branch dep: porting-sdk ai-chat-client)"; fi' _ "$PORTING_SDK_DIR"
 
 sched_gate SKILL-CONTRACT desc="diff_skill_contracts vs python reference" \
     -- python3 "$PORTING_SDK_DIR/scripts/diff_skill_contracts.py" \

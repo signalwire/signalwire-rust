@@ -1245,6 +1245,21 @@ def collect(rust_doc: dict, aliases: dict) -> tuple[dict, list]:
         out_modules[mod].setdefault("classes", {})
         out_modules[mod]["classes"].update(entry["classes"])
 
+    # Merge the ai_chat.client reference-shaped signatures OVER the rustdoc-derived
+    # builder/options-object/struct-literal shapes (see build_ai_chat_signatures):
+    # AIChatClient methods + the dataclass/error __init__s. This folds the ai_chat
+    # signature idiom in the enumerator (Rule 2) so no ai_chat entry is needed in
+    # PORT_SIGNATURE_OMISSIONS.md. Overwrite (not setdefault) the AIChatClient
+    # methods so the collapsed options-object shapes are replaced by the exploded
+    # reference kwargs; the dataclass/error classes are otherwise method-less.
+    for mod, entry in build_ai_chat_signatures().items():
+        out_modules.setdefault(mod, {"classes": {}})
+        out_modules[mod].setdefault("classes", {})
+        for cls, cls_entry in entry["classes"].items():
+            existing = out_modules[mod]["classes"].setdefault(cls, {"methods": {}})
+            existing.setdefault("methods", {})
+            existing["methods"].update(cls_entry["methods"])
+
     # Merge the read-side payload modules (§D3): swml_verbs / post_prompt /
     # swaig_request classes with synthesized per-field ``any``-return accessors
     # from the gen-payload sidecars (Rust structs carry no accessor methods).
@@ -1314,6 +1329,167 @@ def build_signature(fn: dict, paths: dict, aliases: dict, context: str) -> dict:
 # ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
+
+
+# ---------------------------------------------------------------------------
+# AI Chat SIGNATURE synthesis (signalwire.ai_chat.client). The Rust client
+# realizes each reference method through an idiom the raw rustdoc signature does
+# not match the Python kwargs of:
+#   * construction is `AIChatClient::builder()` (folded onto `__init__` for the
+#     NAME) -- the builder fn takes zero args, so the rustdoc `__init__` has an
+#     empty param list rather than the reference (project, token, space, url)
+#     kwargs;
+#   * `create_conversation` / `chat` / `summarize` collapse their optional kwargs
+#     into a single typed options-object (`CreateOptions` / `ChatOptions` /
+#     `SummarizeOptions`);
+#   * `ChatLog` / `ChatResponse` / `ConversationInfo` are plain public-field
+#     structs (the reference records a dataclass auto-`__init__` from the fields);
+#   * the error family folds into one `AIChatError` struct (the reference records
+#     a base `__init__(code, message)` on `AIChatError`).
+# Rather than document these as signature omissions, synthesize the
+# reference-shaped signatures here (the emitter/enumerator carries the idiom --
+# Rule 2) and MERGE them OVER the rustdoc output, exactly as
+# build_generated_signatures does for the generated REST layer. The Rust wire is
+# identical (AI-CHAT gate verified); only the STATIC call shape differs, and that
+# difference is the options-object / builder / struct-literal idiom.
+# (The reference no longer records a `session: aiohttp.ClientSession` DI param on
+# __init__ -- it was dropped upstream -- so __init__ folds to the natural
+# (project, token, space, url) with no name-projection.)
+_AI_CHAT_MODULE = "signalwire.ai_chat.client"
+_S = {"name": "self", "kind": "self"}
+
+
+def build_ai_chat_signatures() -> dict:
+    """Reference-shaped signatures for the ai_chat.client classes, keyed to merge
+    OVER the rustdoc-derived shapes. Mirrors the Python oracle exactly so the diff
+    compares EQUAL with no ai_chat signature omissions."""
+
+    def kw(name, type_, required=False, default=None):
+        # Mirror the reference param shape EXACTLY: plain positional-or-keyword
+        # (no explicit "kind"), "default" present only for non-required params.
+        d = {"name": name, "type": type_, "required": required}
+        if not required:
+            d["default"] = default
+        return d
+
+    def pos(name, type_, required=True, default=None):
+        d = {"name": name, "type": type_, "required": required}
+        if not required:
+            d["default"] = default
+        return d
+
+    client_methods = {
+        # project/token/space/url map onto the builder setters. The oracle no
+        # longer records a `session` DI param (dropped upstream), so __init__
+        # folds naturally to (project, token, space, url) with no name-projection.
+        "__init__": {
+            "params": [
+                _S,
+                kw("project", "optional<string>", False, None),
+                kw("token", "optional<string>", False, None),
+                kw("space", "optional<string>", False, None),
+                kw("url", "optional<string>", False, None),
+            ],
+            "returns": "void",
+        },
+        "close": {"params": [_S], "returns": "void"},
+        "create_conversation": {
+            "params": [
+                _S,
+                pos("conversation_id", "string", True),
+                pos("config_url", "string", True),
+                kw("user_message", "optional<string>", False, None),
+                kw("timeout", "optional<int>", False, None),
+                kw("user_metadata", "optional<dict<string,any>>", False, None),
+                kw("reinit", "bool", False, False),
+            ],
+            "returns": "class:signalwire.ai_chat.client.ConversationInfo",
+        },
+        "chat": {
+            "params": [
+                _S,
+                pos("conversation_id", "string", True),
+                pos("message", "string", True),
+                kw("role", "string", False, "user"),
+                kw("config_url", "optional<string>", False, None),
+                kw("user_metadata", "optional<dict<string,any>>", False, None),
+                kw("timeout", "optional<int>", False, None),
+                kw("reinit", "bool", False, False),
+            ],
+            "returns": "class:signalwire.ai_chat.client.ChatResponse",
+        },
+        "end": {
+            "params": [_S, pos("conversation_id", "string", True)],
+            "returns": "bool",
+        },
+        "delete": {
+            "params": [_S, pos("conversation_id", "string", True)],
+            "returns": "bool",
+        },
+        "log": {
+            "params": [_S, pos("conversation_id", "string", True)],
+            "returns": "class:signalwire.ai_chat.client.ChatLog",
+        },
+        "summarize": {
+            "params": [
+                _S,
+                pos("conversation_id", "string", True),
+                kw("summary_prompt", "optional<string>", False, None),
+            ],
+            "returns": "string",
+        },
+    }
+
+    # Dataclass result-model __init__s (auto-ctor from public struct fields).
+    chatlog_init = {
+        "params": [
+            _S,
+            kw("messages", "list<dict<string,any>>", False, "list()"),
+            kw("call_timeline", "list<dict<string,any>>", False, "list()"),
+        ],
+        "returns": "void",
+    }
+    chatresponse_init = {
+        "params": [
+            _S,
+            pos("text", "string", True),
+            pos("conversation_id", "string", True),
+            kw("user_event", "optional<dict<string,any>>", False, None),
+        ],
+        "returns": "void",
+    }
+    conversationinfo_init = {
+        "params": [
+            _S,
+            pos("id", "string", True),
+            pos("status", "string", True),
+            kw("initial_message", "optional<string>", False, None),
+        ],
+        "returns": "void",
+    }
+    # The error family folds to one AIChatError struct; the reference records the
+    # base __init__(code, message). `code` is optional in the oracle but marked
+    # required=True (a positional with an Optional type), so mirror that exactly.
+    aichaterror_init = {
+        "params": [
+            _S,
+            pos("code", "optional<int>", True),
+            pos("message", "string", True),
+        ],
+        "returns": "void",
+    }
+
+    return {
+        _AI_CHAT_MODULE: {
+            "classes": {
+                "AIChatClient": {"methods": dict(sorted(client_methods.items()))},
+                "ChatLog": {"methods": {"__init__": chatlog_init}},
+                "ChatResponse": {"methods": {"__init__": chatresponse_init}},
+                "ConversationInfo": {"methods": {"__init__": conversationinfo_init}},
+                "AIChatError": {"methods": {"__init__": aichaterror_init}},
+            }
+        }
+    }
 
 
 def run_dump() -> dict:

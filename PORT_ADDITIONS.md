@@ -1226,3 +1226,4 @@ signalwire.skills.mcp_gateway.skill.MCPGatewaySkill.get_parameter_schema: mcp_ga
 signalwire.skills.mcp_gateway.skill.MCPGatewaySkill.get_prompt_sections: mcp_gateway CLIENT skill — canonical on porting-sdk wave/1-aplus (oracle commit f4d2154); recorded here only while PR CI's porting-sdk is main (oracle behind). Matches the reference on wave/1-aplus.
 signalwire.skills.mcp_gateway.skill.MCPGatewaySkill.register_tools: mcp_gateway CLIENT skill — canonical on porting-sdk wave/1-aplus (oracle commit f4d2154); recorded here only while PR CI's porting-sdk is main (oracle behind). Matches the reference on wave/1-aplus.
 signalwire.skills.mcp_gateway.skill.MCPGatewaySkill.setup: mcp_gateway CLIENT skill — canonical on porting-sdk wave/1-aplus (oracle commit f4d2154); recorded here only while PR CI's porting-sdk is main (oracle behind). Matches the reference on wave/1-aplus.
+

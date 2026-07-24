@@ -1,6 +1,6 @@
 {
   "version": "1",
-  "generated_from": "signalwire-rust @ 26ecf8c7b9225c9e406df62fa38fb3077bb1256e",
+  "generated_from": "signalwire-rust @ 230481360a8e0e7ad7ed2e8404643470b70d1469",
   "modules": {
     "signalwire": {
       "classes": {
@@ -83,6 +83,32 @@
         "BedrockOptions": [
           "with_name"
         ]
+      },
+      "functions": []
+    },
+    "signalwire.ai_chat.client": {
+      "classes": {
+        "AIChatClient": [
+          "__init__",
+          "chat",
+          "close",
+          "create_conversation",
+          "delete",
+          "end",
+          "log",
+          "summarize"
+        ],
+        "AIChatError": [
+          "__init__"
+        ],
+        "AuthenticationError": [],
+        "ChatInProgressError": [],
+        "ChatLog": [],
+        "ChatResponse": [],
+        "ConversationInfo": [],
+        "ConversationNotFoundError": [],
+        "RateLimitError": [],
+        "SummaryError": []
       },
       "functions": []
     },
