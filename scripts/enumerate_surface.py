@@ -792,6 +792,24 @@ def _sidecar_class_index(sidecar: dict) -> tuple[dict, set]:
     return idx, set(sidecar.get("suppress_structs", []))
 
 
+def _collect_crud_bases(sidecar: dict) -> dict:
+    """Return ``{"module.Class": {base}}`` for every generated REST resource — the port's
+    OWN crud_bases map, sourced from the generator sidecar (rest_signatures.json), NOT
+    hand-written. Emitted as a top-level ``crud_bases`` map in port_surface.json so the
+    surface diff (``diff_port_surface._fold_crud_methods``) matches this port's CRUD
+    resources STRUCTURALLY: the diff folds a CRUD method (list/create/get/update/delete/
+    paginate) on any class EITHER the reference or the port declares a crud_base for. Rust
+    ships resources beyond the reference's 25 (Messages, PubSub, ImportedNumbers, ...) and
+    routes them onto the canonical oracle module.Class paths (via the sidecar), so declaring
+    them here folds their CRUD without a per-op allow-list. The diff reads only the class
+    keys (not ``bind``); ``base`` is carried for parity with java/dotnet's map + provenance."""
+    out: dict[str, dict] = {}
+    for _n, r in sidecar.get("resources", {}).items():
+        key = f"{r['module']}.{r['class']}"
+        out[key] = {"base": r["base"]}
+    return dict(sorted(out.items()))
+
+
 def _git_sha() -> str:
     try:
         out = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=REPO_ROOT, text=True)
@@ -1685,10 +1703,13 @@ def build_surface() -> dict:
             "functions": sorted(set(entry["functions"])),
         }
 
+    crud_bases = _collect_crud_bases(sidecar)
+
     return {
         "version": "1",
         "generated_from": f"signalwire-rust @ {sha}",
         "modules": out_modules,
+        "crud_bases": crud_bases,
     }
 
 

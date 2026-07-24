@@ -1,6 +1,6 @@
 {
   "version": "1",
-  "generated_from": "signalwire-rust @ 3442816806b95908a612599e18febbf93289c284",
+  "generated_from": "signalwire-rust @ 4dcad81d2c09cee64dcf5a7cf6a1b792f35a51de",
   "modules": {
     "signalwire": {
       "classes": {
@@ -3789,6 +3789,155 @@
         ]
       },
       "functions": []
+    }
+  },
+  "crud_bases": {
+    "signalwire.rest.namespaces.calling_resources_generated.Calling": {
+      "base": "command-dispatch"
+    },
+    "signalwire.rest.namespaces.chat_resources_generated.Chat": {
+      "base": "BaseResource"
+    },
+    "signalwire.rest.namespaces.datasphere_resources_generated.DatasphereDocuments": {
+      "base": "CrudResource"
+    },
+    "signalwire.rest.namespaces.fabric_resources_generated.AiAgents": {
+      "base": "FabricResource"
+    },
+    "signalwire.rest.namespaces.fabric_resources_generated.CallFlows": {
+      "base": "FabricResource"
+    },
+    "signalwire.rest.namespaces.fabric_resources_generated.ConferenceRooms": {
+      "base": "FabricResource"
+    },
+    "signalwire.rest.namespaces.fabric_resources_generated.CxmlApplications": {
+      "base": "BaseResource"
+    },
+    "signalwire.rest.namespaces.fabric_resources_generated.CxmlScripts": {
+      "base": "FabricResource"
+    },
+    "signalwire.rest.namespaces.fabric_resources_generated.CxmlWebhooks": {
+      "base": "FabricResource"
+    },
+    "signalwire.rest.namespaces.fabric_resources_generated.FabricAddresses": {
+      "base": "ReadResource"
+    },
+    "signalwire.rest.namespaces.fabric_resources_generated.FabricTokens": {
+      "base": "BaseResource"
+    },
+    "signalwire.rest.namespaces.fabric_resources_generated.FreeswitchConnectors": {
+      "base": "FabricResource"
+    },
+    "signalwire.rest.namespaces.fabric_resources_generated.GenericResources": {
+      "base": "BaseResource"
+    },
+    "signalwire.rest.namespaces.fabric_resources_generated.RelayApplications": {
+      "base": "FabricResource"
+    },
+    "signalwire.rest.namespaces.fabric_resources_generated.SipEndpoints": {
+      "base": "FabricResource"
+    },
+    "signalwire.rest.namespaces.fabric_resources_generated.SipGateways": {
+      "base": "FabricResource"
+    },
+    "signalwire.rest.namespaces.fabric_resources_generated.Subscribers": {
+      "base": "FabricResource"
+    },
+    "signalwire.rest.namespaces.fabric_resources_generated.SwmlScripts": {
+      "base": "FabricResource"
+    },
+    "signalwire.rest.namespaces.fabric_resources_generated.SwmlWebhooks": {
+      "base": "FabricResource"
+    },
+    "signalwire.rest.namespaces.fax_resources_generated.FaxLogs": {
+      "base": "ReadResource"
+    },
+    "signalwire.rest.namespaces.logs_resources_generated.ConferenceLogs": {
+      "base": "BaseResource"
+    },
+    "signalwire.rest.namespaces.message_resources_generated.MessageLogs": {
+      "base": "ReadResource"
+    },
+    "signalwire.rest.namespaces.messages_resources_generated.Messages": {
+      "base": "BaseResource"
+    },
+    "signalwire.rest.namespaces.project_resources_generated.ProjectTokens": {
+      "base": "BaseResource"
+    },
+    "signalwire.rest.namespaces.projects_resources_generated.Projects": {
+      "base": "CrudResource"
+    },
+    "signalwire.rest.namespaces.pubsub_resources_generated.PubSub": {
+      "base": "BaseResource"
+    },
+    "signalwire.rest.namespaces.relay_rest_resources_generated.Addresses": {
+      "base": "BaseResource"
+    },
+    "signalwire.rest.namespaces.relay_rest_resources_generated.ImportedNumbers": {
+      "base": "BaseResource"
+    },
+    "signalwire.rest.namespaces.relay_rest_resources_generated.Lookup": {
+      "base": "BaseResource"
+    },
+    "signalwire.rest.namespaces.relay_rest_resources_generated.Mfa": {
+      "base": "BaseResource"
+    },
+    "signalwire.rest.namespaces.relay_rest_resources_generated.NumberGroups": {
+      "base": "CrudResource"
+    },
+    "signalwire.rest.namespaces.relay_rest_resources_generated.PhoneNumbers": {
+      "base": "CrudResource"
+    },
+    "signalwire.rest.namespaces.relay_rest_resources_generated.Queues": {
+      "base": "CrudResource"
+    },
+    "signalwire.rest.namespaces.relay_rest_resources_generated.Recordings": {
+      "base": "BaseResource"
+    },
+    "signalwire.rest.namespaces.relay_rest_resources_generated.RegistryBrands": {
+      "base": "BaseResource"
+    },
+    "signalwire.rest.namespaces.relay_rest_resources_generated.RegistryCampaigns": {
+      "base": "BaseResource"
+    },
+    "signalwire.rest.namespaces.relay_rest_resources_generated.RegistryNumbers": {
+      "base": "BaseResource"
+    },
+    "signalwire.rest.namespaces.relay_rest_resources_generated.RegistryOrders": {
+      "base": "BaseResource"
+    },
+    "signalwire.rest.namespaces.relay_rest_resources_generated.ShortCodes": {
+      "base": "BaseResource"
+    },
+    "signalwire.rest.namespaces.relay_rest_resources_generated.SipProfile": {
+      "base": "BaseResource"
+    },
+    "signalwire.rest.namespaces.relay_rest_resources_generated.VerifiedCallers": {
+      "base": "CrudResource"
+    },
+    "signalwire.rest.namespaces.video_resources_generated.VideoConferenceTokens": {
+      "base": "BaseResource"
+    },
+    "signalwire.rest.namespaces.video_resources_generated.VideoConferences": {
+      "base": "CrudResource"
+    },
+    "signalwire.rest.namespaces.video_resources_generated.VideoRoomRecordings": {
+      "base": "BaseResource"
+    },
+    "signalwire.rest.namespaces.video_resources_generated.VideoRoomSessions": {
+      "base": "ReadResource"
+    },
+    "signalwire.rest.namespaces.video_resources_generated.VideoRoomTokens": {
+      "base": "BaseResource"
+    },
+    "signalwire.rest.namespaces.video_resources_generated.VideoRooms": {
+      "base": "CrudResource"
+    },
+    "signalwire.rest.namespaces.video_resources_generated.VideoStreams": {
+      "base": "BaseResource"
+    },
+    "signalwire.rest.namespaces.voice_resources_generated.VoiceLogs": {
+      "base": "ReadResource"
     }
   }
 }
