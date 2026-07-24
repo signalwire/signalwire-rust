@@ -55,6 +55,7 @@ from enumerate_surface import (  # type: ignore
     METHOD_RENAMES, SURFACE_PROJECTIONS, PROJECTION_DONOR_STRIPS,
     FORCE_CLASS_METHODS, SKILLBASE_IDIOM_METHOD_DROPS, SKILL_INTERFACE_METHODS,
     SKILL_INTERFACE_PROJECTION, PUBLIC_SURFACE_TRAITS, MODULE_METHOD_DROPS,
+    MODULE_METHOD_DROP_EXCEPTIONS,
 )
 
 
@@ -1222,8 +1223,10 @@ def collect(rust_doc: dict, aliases: dict) -> tuple[dict, list]:
         entry = out_modules.get(mod_name)
         if not entry:
             continue
+        exceptions = MODULE_METHOD_DROP_EXCEPTIONS.get(mod_name, {})
         for _cls, _c in entry.get("classes", {}).items():
-            for n in drop:
+            cls_drop = drop - exceptions.get(_cls, set())
+            for n in cls_drop:
                 _c["methods"].pop(n, None)
 
     # Project Rust ``params: serde_json::Value`` trailing arguments onto
@@ -1440,7 +1443,15 @@ def build_ai_chat_signatures() -> dict:
         },
     }
 
-    # Dataclass result-model __init__s (auto-ctor from public struct fields).
+    # Dataclass result-model __init__s (auto-ctor from public struct fields) plus
+    # the per-field 0-param read accessors the reference dataclass records for each
+    # public field. Rust exposes these as bare `pub` struct fields (a field is not a
+    # `pub fn`, so rustdoc misses them); synthesize the field-read accessor shape
+    # here (self-only, returns the field type) exactly as the oracle records it —
+    # CLASS B field-emit via the enumerator (Rule 2), no signature omission needed.
+    def acc(ret):
+        return {"params": [_S], "returns": ret}
+
     chatlog_init = {
         "params": [
             _S,
@@ -1448,6 +1459,11 @@ def build_ai_chat_signatures() -> dict:
             kw("call_timeline", "list<dict<string,any>>", False, "list()"),
         ],
         "returns": "void",
+    }
+    chatlog_methods = {
+        "__init__": chatlog_init,
+        "messages": acc("list<dict<string,any>>"),
+        "call_timeline": acc("list<dict<string,any>>"),
     }
     chatresponse_init = {
         "params": [
@@ -1458,6 +1474,12 @@ def build_ai_chat_signatures() -> dict:
         ],
         "returns": "void",
     }
+    chatresponse_methods = {
+        "__init__": chatresponse_init,
+        "text": acc("string"),
+        "conversation_id": acc("string"),
+        "user_event": acc("optional<dict<string,any>>"),
+    }
     conversationinfo_init = {
         "params": [
             _S,
@@ -1466,6 +1488,12 @@ def build_ai_chat_signatures() -> dict:
             kw("initial_message", "optional<string>", False, None),
         ],
         "returns": "void",
+    }
+    conversationinfo_methods = {
+        "__init__": conversationinfo_init,
+        "id": acc("string"),
+        "status": acc("string"),
+        "initial_message": acc("optional<string>"),
     }
     # The error family folds to one AIChatError struct; the reference records the
     # base __init__(code, message). `code` is optional in the oracle but marked
@@ -1483,9 +1511,9 @@ def build_ai_chat_signatures() -> dict:
         _AI_CHAT_MODULE: {
             "classes": {
                 "AIChatClient": {"methods": dict(sorted(client_methods.items()))},
-                "ChatLog": {"methods": {"__init__": chatlog_init}},
-                "ChatResponse": {"methods": {"__init__": chatresponse_init}},
-                "ConversationInfo": {"methods": {"__init__": conversationinfo_init}},
+                "ChatLog": {"methods": dict(sorted(chatlog_methods.items()))},
+                "ChatResponse": {"methods": dict(sorted(chatresponse_methods.items()))},
+                "ConversationInfo": {"methods": dict(sorted(conversationinfo_methods.items()))},
                 "AIChatError": {"methods": {"__init__": aichaterror_init}},
             }
         }

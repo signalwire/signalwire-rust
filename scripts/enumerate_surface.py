@@ -357,6 +357,14 @@ def gen_type_module_for_file(rel: Path) -> str | None:
 # this mapping the surface diff would mark the rename as a "missing"
 # Python method + an "extra" Rust method.
 METHOD_RENAMES: dict[str, dict[str, str]] = {
+    # signalwire.relay.event.CollectEvent: the reference dataclass field is the
+    # bare `final`. Rust cannot name a method `final` (reserved word) without a
+    # raw identifier, so the accessor is spelled `is_final`; fold it to the
+    # reference field name (Rule 2: reserved-word rename via the enumerator, wire
+    # key preserved — the accessor reads params["final"]).
+    "CollectEvent": {
+        "is_final": "final",
+    },
     # signalwire.pom.pom: Rust's `to_value` returns a `serde_json::Value`
     # which is the natural Rust analogue of Python's `to_dict` (dict);
     # both serialise the same way through `to_json` / `to_yaml`.
@@ -1236,6 +1244,17 @@ STATIC_METHOD_TO_FREE_FN: dict[tuple[str, str], tuple[str, str]] = {
 # reference does not expose them. The typed RELAY event wrappers carry Rust
 # `base`/`event`/`event_type` views over the generic Event; Python's event
 # subclasses expose only `from_payload`.
+# Per-(module, class) EXCEPTIONS to MODULE_METHOD_DROPS: a method that would
+# otherwise be dropped module-wide but which the reference DOES record on this
+# specific class, so it must be kept. `event_type` is the reference `RelayEvent`
+# dataclass field (the base event's wire type) — the oracle records it ONLY on
+# RelayEvent, not on the typed subclasses (which merely inherit it) — so keep it
+# on RelayEvent while still dropping the Rust-only `base`/`event` views and the
+# subclasses' inherited `event_type`.
+MODULE_METHOD_DROP_EXCEPTIONS: dict[str, dict[str, set[str]]] = {
+    "signalwire.relay.event": {"RelayEvent": {"event_type"}},
+}
+
 MODULE_METHOD_DROPS: dict[str, set[str]] = {
     "signalwire.relay.event": {"base", "event", "event_type"},
     # `clone_box` is Clone-support plumbing on the SWMLVerbHandler trait (it
@@ -1331,6 +1350,16 @@ SKILL_INTERFACE_PROJECTION: dict[tuple[str, str], list[str]] = {
 PUBLIC_FIELD_MEMBERS: dict[tuple[str, str], set[str]] = {
     ("signalwire.pom.pom", "PromptObjectModel"): {"sections"},
     ("signalwire.pom.pom", "Section"): {"subsections"},
+    # ai_chat.client result-model DTOs: the reference records each public dataclass
+    # field as a composition-attribute member. Rust exposes them as bare `pub`
+    # struct fields (text/conversation_id/user_event on ChatResponse;
+    # messages/call_timeline on ChatLog; id/status/initial_message on
+    # ConversationInfo) — a field is not a `pub fn`, so the method parser misses
+    # them. Promote them here (CLASS B field-emit) so the surface matches; the
+    # signature twin is synthesized in build_ai_chat_signatures().
+    ("signalwire.ai_chat.client", "ChatResponse"): {"text", "conversation_id", "user_event"},
+    ("signalwire.ai_chat.client", "ChatLog"): {"messages", "call_timeline"},
+    ("signalwire.ai_chat.client", "ConversationInfo"): {"id", "status", "initial_message"},
 }
 
 def _load_json(path: Path) -> dict:
@@ -1654,13 +1683,16 @@ def build_surface() -> dict:
             existing.update(dunders)
             modules[mod_name]["classes"][cls] = sorted(existing)
 
-    # Drop module-scoped Rust-idiom accessor methods.
+    # Drop module-scoped Rust-idiom accessor methods (honoring per-class
+    # keep-exceptions where the reference records the method on that class).
     for mod_name, drop in MODULE_METHOD_DROPS.items():
         entry = modules.get(mod_name)
         if not entry:
             continue
+        exceptions = MODULE_METHOD_DROP_EXCEPTIONS.get(mod_name, {})
         for cls, ms in entry["classes"].items():
-            entry["classes"][cls] = sorted(set(ms) - drop)
+            cls_drop = drop - exceptions.get(cls, set())
+            entry["classes"][cls] = sorted(set(ms) - cls_drop)
 
     # SkillBase interface projection: every Rust skill implements `SkillBase`
     # and exposes its full interface (explicit overrides + trait defaults).

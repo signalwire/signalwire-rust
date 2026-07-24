@@ -137,6 +137,48 @@ fn str_field(params: &HashMap<String, Value>, key: &str) -> String {
         .to_string()
 }
 
+/// Read an integer field from an event's params map, defaulting to `0`
+/// (Python's `p.get(<key>, 0)`).
+fn int_field(params: &HashMap<String, Value>, key: &str) -> i64 {
+    params.get(key).and_then(Value::as_i64).unwrap_or(0)
+}
+
+/// Read a float field from an event's params map, defaulting to `0.0`
+/// (Python's `p.get(<key>, 0.0)`).
+fn float_field(params: &HashMap<String, Value>, key: &str) -> f64 {
+    params.get(key).and_then(Value::as_f64).unwrap_or(0.0)
+}
+
+/// Read a boolean field from an event's params map, defaulting to `false`
+/// (Python's `p.get(<key>, False)`).
+fn bool_field(params: &HashMap<String, Value>, key: &str) -> bool {
+    params.get(key).and_then(Value::as_bool).unwrap_or(false)
+}
+
+/// Read an object field from an event's params map as a JSON `Value`,
+/// defaulting to an empty object (Python's `p.get(<key>, {})`).
+fn dict_field(params: &HashMap<String, Value>, key: &str) -> Value {
+    params
+        .get(key)
+        .cloned()
+        .unwrap_or_else(|| Value::Object(serde_json::Map::new()))
+}
+
+/// Read a string-array field from an event's params map, defaulting to an
+/// empty list (Python's `p.get(<key>, [])`). Non-string array elements are
+/// skipped.
+fn str_list_field(params: &HashMap<String, Value>, key: &str) -> Vec<String> {
+    params
+        .get(key)
+        .and_then(Value::as_array)
+        .map(|arr| {
+            arr.iter()
+                .filter_map(|v| v.as_str().map(str::to_string))
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
 /// Base RELAY event — a typed view over the generic [`Event`].
 ///
 /// Concrete
@@ -219,6 +261,18 @@ impl RelayEvent {
     pub fn direction(&self) -> String {
         str_field(self.inner.params(), "direction")
     }
+
+    /// The raw event params map (Python `RelayEvent.params`).
+    #[must_use]
+    pub fn params(&self) -> &HashMap<String, Value> {
+        self.inner.params()
+    }
+
+    /// The event `timestamp` in float seconds (Python `RelayEvent.timestamp`).
+    #[must_use]
+    pub fn timestamp(&self) -> f64 {
+        self.inner.timestamp()
+    }
 }
 
 /// `calling.call.receive` — inbound call received.
@@ -249,6 +303,60 @@ impl CallReceiveEvent {
     #[must_use]
     pub fn event_type(&self) -> &str {
         self.base.event_type()
+    }
+
+    /// The `call_state`.
+    #[must_use]
+    pub fn call_state(&self) -> String {
+        str_field(self.base.event().params(), "call_state")
+    }
+
+    /// The call `direction`.
+    #[must_use]
+    pub fn direction(&self) -> String {
+        str_field(self.base.event().params(), "direction")
+    }
+
+    /// The `device` object.
+    #[must_use]
+    pub fn device(&self) -> Value {
+        dict_field(self.base.event().params(), "device")
+    }
+
+    /// The `node_id`.
+    #[must_use]
+    pub fn node_id(&self) -> String {
+        str_field(self.base.event().params(), "node_id")
+    }
+
+    /// The `project_id`.
+    #[must_use]
+    pub fn project_id(&self) -> String {
+        str_field(self.base.event().params(), "project_id")
+    }
+
+    /// The `context` (falling back to the wire `protocol` field, per Python).
+    #[must_use]
+    pub fn context(&self) -> String {
+        let params = self.base.event().params();
+        params
+            .get("context")
+            .or_else(|| params.get("protocol"))
+            .and_then(Value::as_str)
+            .unwrap_or_default()
+            .to_string()
+    }
+
+    /// The `segment_id`.
+    #[must_use]
+    pub fn segment_id(&self) -> String {
+        str_field(self.base.event().params(), "segment_id")
+    }
+
+    /// The `tag`.
+    #[must_use]
+    pub fn tag(&self) -> String {
+        str_field(self.base.event().params(), "tag")
     }
 }
 
@@ -299,6 +407,18 @@ impl CallStateEvent {
     pub fn direction(&self) -> String {
         str_field(self.base.event().params(), "direction")
     }
+
+    /// The `end_reason` from the event params.
+    #[must_use]
+    pub fn end_reason(&self) -> String {
+        str_field(self.base.event().params(), "end_reason")
+    }
+
+    /// The `device` object.
+    #[must_use]
+    pub fn device(&self) -> Value {
+        dict_field(self.base.event().params(), "device")
+    }
 }
 
 /// A `calling.*` error notification.
@@ -329,6 +449,18 @@ impl CallingErrorEvent {
     #[must_use]
     pub fn event_type(&self) -> &str {
         self.base.event_type()
+    }
+
+    /// The error `code`.
+    #[must_use]
+    pub fn code(&self) -> String {
+        str_field(self.base.event().params(), "code")
+    }
+
+    /// The error `message`.
+    #[must_use]
+    pub fn message(&self) -> String {
+        str_field(self.base.event().params(), "message")
     }
 }
 
@@ -426,6 +558,23 @@ impl ConferenceEvent {
     pub fn event_type(&self) -> &str {
         self.base.event_type()
     }
+    /// The `conference_id` field.
+    #[must_use]
+    pub fn conference_id(&self) -> String {
+        str_field(self.base.event().params(), "conference_id")
+    }
+
+    /// The `name` field.
+    #[must_use]
+    pub fn name(&self) -> String {
+        str_field(self.base.event().params(), "name")
+    }
+
+    /// The `status` field.
+    #[must_use]
+    pub fn status(&self) -> String {
+        str_field(self.base.event().params(), "status")
+    }
 }
 
 /// `calling.call.connect` — call connect result.
@@ -456,6 +605,17 @@ impl ConnectEvent {
     #[must_use]
     pub fn event_type(&self) -> &str {
         self.base.event_type()
+    }
+    /// The `connect_state` field.
+    #[must_use]
+    pub fn connect_state(&self) -> String {
+        str_field(self.base.event().params(), "connect_state")
+    }
+
+    /// The `peer` field.
+    #[must_use]
+    pub fn peer(&self) -> Value {
+        dict_field(self.base.event().params(), "peer")
     }
 }
 
@@ -488,6 +648,11 @@ impl DenoiseEvent {
     pub fn event_type(&self) -> &str {
         self.base.event_type()
     }
+    /// The `denoised` field.
+    #[must_use]
+    pub fn denoised(&self) -> bool {
+        bool_field(self.base.event().params(), "denoised")
+    }
 }
 
 /// `calling.call.detect` — detector result.
@@ -518,6 +683,17 @@ impl DetectEvent {
     #[must_use]
     pub fn event_type(&self) -> &str {
         self.base.event_type()
+    }
+    /// The `control_id` field.
+    #[must_use]
+    pub fn control_id(&self) -> String {
+        str_field(self.base.event().params(), "control_id")
+    }
+
+    /// The `detect` field.
+    #[must_use]
+    pub fn detect(&self) -> Value {
+        dict_field(self.base.event().params(), "detect")
     }
 }
 
@@ -550,6 +726,23 @@ impl DialEvent {
     pub fn event_type(&self) -> &str {
         self.base.event_type()
     }
+    /// The `tag` field.
+    #[must_use]
+    pub fn tag(&self) -> String {
+        str_field(self.base.event().params(), "tag")
+    }
+
+    /// The `dial_state` field.
+    #[must_use]
+    pub fn dial_state(&self) -> String {
+        str_field(self.base.event().params(), "dial_state")
+    }
+
+    /// The `call` field.
+    #[must_use]
+    pub fn call(&self) -> Value {
+        dict_field(self.base.event().params(), "call")
+    }
 }
 
 /// `calling.call.echo` — echo-command notification.
@@ -580,6 +773,11 @@ impl EchoEvent {
     #[must_use]
     pub fn event_type(&self) -> &str {
         self.base.event_type()
+    }
+    /// The `state` field.
+    #[must_use]
+    pub fn state(&self) -> String {
+        str_field(self.base.event().params(), "state")
     }
 }
 
@@ -612,6 +810,17 @@ impl FaxEvent {
     pub fn event_type(&self) -> &str {
         self.base.event_type()
     }
+    /// The `control_id` field.
+    #[must_use]
+    pub fn control_id(&self) -> String {
+        str_field(self.base.event().params(), "control_id")
+    }
+
+    /// The `fax` field.
+    #[must_use]
+    pub fn fax(&self) -> Value {
+        dict_field(self.base.event().params(), "fax")
+    }
 }
 
 /// A hold/unhold notification.
@@ -642,6 +851,11 @@ impl HoldEvent {
     #[must_use]
     pub fn event_type(&self) -> &str {
         self.base.event_type()
+    }
+    /// The `state` field.
+    #[must_use]
+    pub fn state(&self) -> String {
+        str_field(self.base.event().params(), "state")
     }
 }
 
@@ -674,6 +888,65 @@ impl MessageReceiveEvent {
     pub fn event_type(&self) -> &str {
         self.base.event_type()
     }
+    /// The `message_id` field.
+    #[must_use]
+    pub fn message_id(&self) -> String {
+        str_field(self.base.event().params(), "message_id")
+    }
+
+    /// The `context` field.
+    #[must_use]
+    pub fn context(&self) -> String {
+        str_field(self.base.event().params(), "context")
+    }
+
+    /// The `direction` field.
+    #[must_use]
+    pub fn direction(&self) -> String {
+        str_field(self.base.event().params(), "direction")
+    }
+
+    /// The `from_number` field.
+    #[must_use]
+    pub fn from_number(&self) -> String {
+        str_field(self.base.event().params(), "from_number")
+    }
+
+    /// The `to_number` field.
+    #[must_use]
+    pub fn to_number(&self) -> String {
+        str_field(self.base.event().params(), "to_number")
+    }
+
+    /// The `body` field.
+    #[must_use]
+    pub fn body(&self) -> String {
+        str_field(self.base.event().params(), "body")
+    }
+
+    /// The `media` field.
+    #[must_use]
+    pub fn media(&self) -> Vec<String> {
+        str_list_field(self.base.event().params(), "media")
+    }
+
+    /// The `segments` field.
+    #[must_use]
+    pub fn segments(&self) -> i64 {
+        int_field(self.base.event().params(), "segments")
+    }
+
+    /// The `message_state` field.
+    #[must_use]
+    pub fn message_state(&self) -> String {
+        str_field(self.base.event().params(), "message_state")
+    }
+
+    /// The `tags` field.
+    #[must_use]
+    pub fn tags(&self) -> Vec<String> {
+        str_list_field(self.base.event().params(), "tags")
+    }
 }
 
 /// `messaging.state` — message state transition.
@@ -704,6 +977,71 @@ impl MessageStateEvent {
     #[must_use]
     pub fn event_type(&self) -> &str {
         self.base.event_type()
+    }
+    /// The `message_id` field.
+    #[must_use]
+    pub fn message_id(&self) -> String {
+        str_field(self.base.event().params(), "message_id")
+    }
+
+    /// The `context` field.
+    #[must_use]
+    pub fn context(&self) -> String {
+        str_field(self.base.event().params(), "context")
+    }
+
+    /// The `direction` field.
+    #[must_use]
+    pub fn direction(&self) -> String {
+        str_field(self.base.event().params(), "direction")
+    }
+
+    /// The `from_number` field.
+    #[must_use]
+    pub fn from_number(&self) -> String {
+        str_field(self.base.event().params(), "from_number")
+    }
+
+    /// The `to_number` field.
+    #[must_use]
+    pub fn to_number(&self) -> String {
+        str_field(self.base.event().params(), "to_number")
+    }
+
+    /// The `body` field.
+    #[must_use]
+    pub fn body(&self) -> String {
+        str_field(self.base.event().params(), "body")
+    }
+
+    /// The `media` field.
+    #[must_use]
+    pub fn media(&self) -> Vec<String> {
+        str_list_field(self.base.event().params(), "media")
+    }
+
+    /// The `segments` field.
+    #[must_use]
+    pub fn segments(&self) -> i64 {
+        int_field(self.base.event().params(), "segments")
+    }
+
+    /// The `message_state` field.
+    #[must_use]
+    pub fn message_state(&self) -> String {
+        str_field(self.base.event().params(), "message_state")
+    }
+
+    /// The `reason` field.
+    #[must_use]
+    pub fn reason(&self) -> String {
+        str_field(self.base.event().params(), "reason")
+    }
+
+    /// The `tags` field.
+    #[must_use]
+    pub fn tags(&self) -> Vec<String> {
+        str_list_field(self.base.event().params(), "tags")
     }
 }
 
@@ -736,6 +1074,17 @@ impl PayEvent {
     pub fn event_type(&self) -> &str {
         self.base.event_type()
     }
+    /// The `control_id` field.
+    #[must_use]
+    pub fn control_id(&self) -> String {
+        str_field(self.base.event().params(), "control_id")
+    }
+
+    /// The `state` field.
+    #[must_use]
+    pub fn state(&self) -> String {
+        str_field(self.base.event().params(), "state")
+    }
 }
 
 /// `calling.call.play` — playback notification.
@@ -766,6 +1115,17 @@ impl PlayEvent {
     #[must_use]
     pub fn event_type(&self) -> &str {
         self.base.event_type()
+    }
+    /// The `control_id` field.
+    #[must_use]
+    pub fn control_id(&self) -> String {
+        str_field(self.base.event().params(), "control_id")
+    }
+
+    /// The `state` field.
+    #[must_use]
+    pub fn state(&self) -> String {
+        str_field(self.base.event().params(), "state")
     }
 }
 
@@ -916,6 +1276,12 @@ impl RecordEvent {
             .unwrap_or(0)
     }
 
+    /// The nested `record` object.
+    #[must_use]
+    pub fn record(&self) -> Value {
+        dict_field(self.base.event().params(), "record")
+    }
+
     /// Resolve a field with the `RecordEvent` fallback: the nested `record`
     /// object's key, else the flat top-level key.
     fn record_field(&self, key: &str) -> Option<Value> {
@@ -957,6 +1323,29 @@ impl ReferEvent {
     pub fn event_type(&self) -> &str {
         self.base.event_type()
     }
+    /// The `state` field.
+    #[must_use]
+    pub fn state(&self) -> String {
+        str_field(self.base.event().params(), "state")
+    }
+
+    /// The `sip_refer_to` field.
+    #[must_use]
+    pub fn sip_refer_to(&self) -> String {
+        str_field(self.base.event().params(), "sip_refer_to")
+    }
+
+    /// The `sip_refer_response_code` field.
+    #[must_use]
+    pub fn sip_refer_response_code(&self) -> String {
+        str_field(self.base.event().params(), "sip_refer_response_code")
+    }
+
+    /// The `sip_notify_response_code` field.
+    #[must_use]
+    pub fn sip_notify_response_code(&self) -> String {
+        str_field(self.base.event().params(), "sip_notify_response_code")
+    }
 }
 
 /// `calling.call.send_digits` — send-digits notification.
@@ -987,6 +1376,17 @@ impl SendDigitsEvent {
     #[must_use]
     pub fn event_type(&self) -> &str {
         self.base.event_type()
+    }
+    /// The `control_id` field.
+    #[must_use]
+    pub fn control_id(&self) -> String {
+        str_field(self.base.event().params(), "control_id")
+    }
+
+    /// The `state` field.
+    #[must_use]
+    pub fn state(&self) -> String {
+        str_field(self.base.event().params(), "state")
     }
 }
 
@@ -1019,6 +1419,29 @@ impl StreamEvent {
     pub fn event_type(&self) -> &str {
         self.base.event_type()
     }
+    /// The `control_id` field.
+    #[must_use]
+    pub fn control_id(&self) -> String {
+        str_field(self.base.event().params(), "control_id")
+    }
+
+    /// The `state` field.
+    #[must_use]
+    pub fn state(&self) -> String {
+        str_field(self.base.event().params(), "state")
+    }
+
+    /// The `url` field.
+    #[must_use]
+    pub fn url(&self) -> String {
+        str_field(self.base.event().params(), "url")
+    }
+
+    /// The `name` field.
+    #[must_use]
+    pub fn name(&self) -> String {
+        str_field(self.base.event().params(), "name")
+    }
 }
 
 /// `calling.call.tap` — media-tap notification.
@@ -1050,6 +1473,29 @@ impl TapEvent {
     pub fn event_type(&self) -> &str {
         self.base.event_type()
     }
+    /// The `control_id` field.
+    #[must_use]
+    pub fn control_id(&self) -> String {
+        str_field(self.base.event().params(), "control_id")
+    }
+
+    /// The `state` field.
+    #[must_use]
+    pub fn state(&self) -> String {
+        str_field(self.base.event().params(), "state")
+    }
+
+    /// The `tap` field.
+    #[must_use]
+    pub fn tap(&self) -> Value {
+        dict_field(self.base.event().params(), "tap")
+    }
+
+    /// The `device` field.
+    #[must_use]
+    pub fn device(&self) -> Value {
+        dict_field(self.base.event().params(), "device")
+    }
 }
 
 /// `calling.call.transcribe` — live-transcription notification.
@@ -1080,6 +1526,41 @@ impl TranscribeEvent {
     #[must_use]
     pub fn event_type(&self) -> &str {
         self.base.event_type()
+    }
+    /// The `control_id` field.
+    #[must_use]
+    pub fn control_id(&self) -> String {
+        str_field(self.base.event().params(), "control_id")
+    }
+
+    /// The `state` field.
+    #[must_use]
+    pub fn state(&self) -> String {
+        str_field(self.base.event().params(), "state")
+    }
+
+    /// The `url` field.
+    #[must_use]
+    pub fn url(&self) -> String {
+        str_field(self.base.event().params(), "url")
+    }
+
+    /// The `recording_id` field.
+    #[must_use]
+    pub fn recording_id(&self) -> String {
+        str_field(self.base.event().params(), "recording_id")
+    }
+
+    /// The `duration` field.
+    #[must_use]
+    pub fn duration(&self) -> f64 {
+        float_field(self.base.event().params(), "duration")
+    }
+
+    /// The `size` field.
+    #[must_use]
+    pub fn size(&self) -> i64 {
+        int_field(self.base.event().params(), "size")
     }
 }
 

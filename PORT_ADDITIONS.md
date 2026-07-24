@@ -348,7 +348,6 @@ signalwire.relay.event.CallStateEvent.call_id: Rust accessor for the `call_id` f
 signalwire.relay.event.CallStateEvent.call_state: Rust accessor for the `call_state` field; Python `CallStateEvent.call_state` dataclass field.
 signalwire.relay.event.CallStateEvent.direction: Rust accessor for the `direction` field; Python `CallStateEvent.direction` dataclass field.
 signalwire.relay.event.CollectEvent.control_id: Rust accessor for the `control_id` field; Python `CollectEvent.control_id` dataclass field.
-signalwire.relay.event.CollectEvent.is_final: Rust accessor for the tri-state `final` flag (named `is_final` to avoid the Rust `final` reserved-word clash); Python `CollectEvent.final` dataclass field.
 signalwire.relay.event.CollectEvent.result: Rust accessor for the `result` object; Python `CollectEvent.result` dataclass field.
 signalwire.relay.event.CollectEvent.state: Rust accessor for the `state` field; Python `CollectEvent.state` dataclass field.
 signalwire.relay.event.Event: Rust-idiomatic API; no direct Python equivalent in the auto-generated python_surface.json.
