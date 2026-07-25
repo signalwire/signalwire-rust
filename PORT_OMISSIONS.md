@@ -58,7 +58,6 @@ signature diff (unfolded per-class keys, incl. class-level coverage) read this f
 
 agentbase-family.skill_manager: impossible: Python AgentBase exposes ``self.skill_manager`` as a SkillManager attribute; Rust owns the SkillManager privately and exposes the skill operations as methods — no per-instance manager object surfaced.
 signalwire.agent_server.AgentServer.agents: impossible: Python exposes ``agents`` as a public dict attribute; Rust keeps the map private and exposes it via ``get_agents()`` (private-field + accessor idiom, matching go).
-signalwire.agent_server.AgentServer.logger: impossible: Python exposes ``self.logger`` as a per-instance logging.Logger attribute; Rust logging is module-level (``tracing``/``log`` macros), no per-instance logger struct field to surface (same divergence cpp/go record).
 signalwire.ai_chat.client.AIChatClient.__aenter__: impossible: Rust has no async-context-manager (`async with`) protocol; the pooled `reqwest::Client` is used directly. No `__aenter__` analogue exists (TS cousin omits it too).
 signalwire.ai_chat.client.AIChatClient.__aexit__: impossible: Rust has no async-context-manager protocol (see `__aenter__`); the client is released on drop. No `__aexit__` analogue exists (TS cousin omits it too).
 signalwire.core.agent.tools.decorator.ToolDecorator: impossible: Python decorator-protocol class (ToolDecorator / class-decorated-tool registration) — Rust has no decorator syntax and no class-decoration hook; TS/PHP cousins also omit it (re-audited L18)
@@ -71,9 +70,7 @@ signalwire.core.data_map.create_simple_api_tool: Python helper functions; Rust s
 signalwire.core.mixins.mcp_server_mixin.MCPServerMixin: impossible: Python decorator-protocol surface (the @tool / MCPServerMixin decorator factory) — Rust has no decorator syntax; the OO cousins TS/PHP also express tool registration without this decorator method (re-audited L18)
 signalwire.core.pom_builder.PomBuilder: Python POM builder helper class; Rust uses serde_json::Value directly
 signalwire.core.security.webhook_middleware.make_webhook_validation_dependency: impossible: FastAPI dependency-factory (make_webhook_validation_dependency returns a Depends() callable) — a framework-specific DI primitive with no Rust equivalent; TS/PHP cousins also omit it (re-audited L18)
-signalwire.core.skill_base.SkillBase.logger: impossible: see AgentServer.logger — Rust uses module-level ``tracing`` macros, no per-instance logger attribute on the SkillBase trait.
 signalwire.core.skill_manager.SkillManager.loaded_skills: impossible: Python exposes ``loaded_skills`` as a public dict attribute; Rust keeps the HashMap private and exposes it via ``list_loaded_skills()``.
-signalwire.core.skill_manager.SkillManager.logger: impossible: see AgentServer.logger — Rust uses module-level ``tracing`` macros, no per-instance logger attribute on SkillManager.
 signalwire.core.swaig_function.SWAIGFunction: Python SWAIGFunction wrapper class; Rust merges into ToolDef on Service
 signalwire.core.swml_builder.SWMLBuilder: Python SWMLBuilder helper class; Rust uses serde_json::Value directly
 signalwire.core.swml_handler.AIVerbHandler.build_config: Python SWML request-handler helper; Rust merges into Service::handle_request and AgentBase::handle_request
@@ -89,7 +86,6 @@ signalwire.relay.client.RelayClient.__del__: impossible: Python finalizer dunder
 signalwire.relay.client.RelayClient.relay_protocol: impossible: Python abstract relay-protocol property hook — Rust models the RELAY protocol via concrete client methods, no abstract protocol accessor; TS/PHP cousins also omit it (re-audited L18)
 signalwire.skills.api_ninjas_trivia.skill.ApiNinjasTriviaSkill.get_tools: Python api_ninjas_trivia skill internals; Rust ships the canonical skill
 signalwire.skills.play_background_file.skill.PlayBackgroundFileSkill.get_tools: Python play_background_file internals; Rust ships the canonical skill
-signalwire.skills.registry.SkillRegistry.logger: impossible: see AgentServer.logger — Rust uses module-level ``tracing`` macros, no per-instance logger attribute on SkillRegistry.
 signalwire.skills.weather_api.skill.WeatherApiSkill.get_tools: Python weather_api skill internals; Rust ships the canonical skill
 signalwire.web.web_service.WebService: Python WebService internals; Rust integrates static file serving into AgentServer
 signalwire.web.web_service.WebService.security: impossible: Python's WebService ``security`` is a SecurityConfig attribute; Rust holds auth state privately and exposes only the operations, mirroring SWMLService.security.
