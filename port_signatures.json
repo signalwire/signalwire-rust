@@ -506,18 +506,7 @@
           }
         },
         "BedrockOptions": {
-          "methods": {
-            "with_name": {
-              "params": [
-                {
-                  "name": "name",
-                  "type": "string",
-                  "required": true
-                }
-              ],
-              "returns": "any"
-            }
-          }
+          "methods": {}
         }
       }
     },
@@ -8240,11 +8229,17 @@
             "__init__": {
               "params": [
                 {
-                  "name": "self",
-                  "kind": "self"
+                  "name": "config_file",
+                  "type": "optional<string>",
+                  "required": true
+                },
+                {
+                  "name": "service_name",
+                  "type": "optional<string>",
+                  "required": true
                 }
               ],
-              "returns": "void"
+              "returns": "any"
             },
             "get_basic_auth": {
               "params": [
@@ -10173,6 +10168,15 @@
                 }
               ],
               "returns": "class:signalwire.utils.schema_utils.SchemaUtils"
+            },
+            "security": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "class:signalwire.securityconfig.SecurityConfig"
             },
             "serve": {
               "params": [
@@ -17845,18 +17849,8 @@
                   "kind": "self"
                 },
                 {
-                  "name": "name",
-                  "type": "string",
-                  "required": true
-                },
-                {
-                  "name": "venue_info",
-                  "type": "dict<string,any>",
-                  "required": true
-                },
-                {
-                  "name": "route",
-                  "type": "optional<string>",
+                  "name": "options",
+                  "type": "class:signalwire.conciergeoptions.ConciergeOptions",
                   "required": true
                 }
               ],
@@ -17974,28 +17968,8 @@
                   "kind": "self"
                 },
                 {
-                  "name": "name",
-                  "type": "string",
-                  "required": true
-                },
-                {
-                  "name": "faqs",
-                  "type": "list<class:signalwire.value.Value>",
-                  "required": true
-                },
-                {
-                  "name": "suggest_related",
-                  "type": "bool",
-                  "required": true
-                },
-                {
-                  "name": "persona",
-                  "type": "optional<string>",
-                  "required": true
-                },
-                {
-                  "name": "route",
-                  "type": "optional<string>",
+                  "name": "options",
+                  "type": "class:signalwire.faqbotoptions.FAQBotOptions",
                   "required": true
                 }
               ],
@@ -18085,18 +18059,8 @@
                   "kind": "self"
                 },
                 {
-                  "name": "name",
-                  "type": "string",
-                  "required": true
-                },
-                {
-                  "name": "questions",
-                  "type": "list<class:signalwire.value.Value>",
-                  "required": true
-                },
-                {
-                  "name": "route",
-                  "type": "optional<string>",
+                  "name": "options",
+                  "type": "class:signalwire.infogathereroptions.InfoGathererOptions",
                   "required": true
                 }
               ],
@@ -18220,23 +18184,8 @@
                   "kind": "self"
                 },
                 {
-                  "name": "name",
-                  "type": "string",
-                  "required": true
-                },
-                {
-                  "name": "departments",
-                  "type": "list<class:signalwire.value.Value>",
-                  "required": true
-                },
-                {
-                  "name": "greeting",
-                  "type": "optional<string>",
-                  "required": true
-                },
-                {
-                  "name": "route",
-                  "type": "optional<string>",
+                  "name": "options",
+                  "type": "class:signalwire.receptionistoptions.ReceptionistOptions",
                   "required": true
                 }
               ],
@@ -18307,18 +18256,8 @@
                   "kind": "self"
                 },
                 {
-                  "name": "name",
-                  "type": "string",
-                  "required": true
-                },
-                {
-                  "name": "questions",
-                  "type": "list<class:signalwire.value.Value>",
-                  "required": true
-                },
-                {
                   "name": "options",
-                  "type": "optional<dict<string,any>>",
+                  "type": "class:signalwire.surveyoptions.SurveyOptions",
                   "required": true
                 }
               ],
@@ -32175,12 +32114,32 @@
     },
     "signalwire.core.agent_base.AgentBase": {
       "params": {
+        "agent_id": {
+          "type": "optional<string>",
+          "required": false
+        },
         "auto_answer": {
           "type": "bool",
           "required": false
         },
         "basic_auth": {
           "type": "optional<tuple<string,string>>",
+          "required": false
+        },
+        "check_for_input_override": {
+          "type": "bool",
+          "required": false
+        },
+        "config_file": {
+          "type": "optional<string>",
+          "required": false
+        },
+        "default_webhook_url": {
+          "type": "optional<string>",
+          "required": false
+        },
+        "enable_post_prompt_override": {
+          "type": "bool",
           "required": false
         },
         "host": {
@@ -32191,6 +32150,10 @@
           "type": "string",
           "required": true
         },
+        "native_functions": {
+          "type": "optional<list<string>>",
+          "required": false
+        },
         "port": {
           "type": "optional<int>",
           "required": false
@@ -32199,12 +32162,40 @@
           "type": "bool",
           "required": false
         },
+        "record_format": {
+          "type": "string",
+          "required": false
+        },
+        "record_stereo": {
+          "type": "bool",
+          "required": false
+        },
         "route": {
           "type": "optional<string>",
           "required": false
         },
+        "schema_path": {
+          "type": "optional<string>",
+          "required": false
+        },
+        "schema_validation": {
+          "type": "bool",
+          "required": false
+        },
         "signing_key": {
           "type": "optional<string>",
+          "required": false
+        },
+        "suppress_logs": {
+          "type": "bool",
+          "required": false
+        },
+        "token_expiry_secs": {
+          "type": "int",
+          "required": false
+        },
+        "trust_proxy_for_signature": {
+          "type": "bool",
           "required": false
         },
         "use_pom": {
@@ -32313,6 +32304,18 @@
         }
       }
     },
+    "signalwire.core.security_config.SecurityConfig": {
+      "params": {
+        "config_file": {
+          "type": "optional<string>",
+          "required": true
+        },
+        "service_name": {
+          "type": "optional<string>",
+          "required": true
+        }
+      }
+    },
     "signalwire.core.swaig_function.SWAIGFunction": {
       "params": {
         "description": {
@@ -32347,6 +32350,10 @@
           "type": "optional<tuple<string,string>>",
           "required": false
         },
+        "config_file": {
+          "type": "optional<string>",
+          "required": false
+        },
         "host": {
           "type": "optional<string>",
           "required": false
@@ -32362,6 +32369,14 @@
         "route": {
           "type": "optional<string>",
           "required": false
+        },
+        "schema_path": {
+          "type": "optional<string>",
+          "required": false
+        },
+        "schema_validation": {
+          "type": "bool",
+          "required": false
         }
       }
     },
@@ -32375,17 +32390,37 @@
     },
     "signalwire.prefabs.concierge.ConciergeAgent": {
       "params": {
+        "amenities": {
+          "type": "dict<string,class:signalwire.value.Value>",
+          "required": true
+        },
+        "hours_of_operation": {
+          "type": "dict<string,string>",
+          "required": false
+        },
         "name": {
+          "type": "string",
+          "required": false
+        },
+        "route": {
+          "type": "string",
+          "required": false
+        },
+        "services": {
+          "type": "list<string>",
+          "required": true
+        },
+        "special_instructions": {
+          "type": "list<string>",
+          "required": false
+        },
+        "venue_name": {
           "type": "string",
           "required": true
         },
-        "route": {
+        "welcome_message": {
           "type": "optional<string>",
-          "required": true
-        },
-        "venue_info": {
-          "type": "dict<string,any>",
-          "required": true
+          "required": false
         }
       }
     },
@@ -32397,19 +32432,19 @@
         },
         "name": {
           "type": "string",
-          "required": true
+          "required": false
         },
         "persona": {
           "type": "optional<string>",
-          "required": true
+          "required": false
         },
         "route": {
-          "type": "optional<string>",
-          "required": true
+          "type": "string",
+          "required": false
         },
         "suggest_related": {
           "type": "bool",
-          "required": true
+          "required": false
         }
       }
     },
@@ -32417,15 +32452,15 @@
       "params": {
         "name": {
           "type": "string",
-          "required": true
+          "required": false
         },
         "questions": {
           "type": "list<class:signalwire.value.Value>",
-          "required": true
+          "required": false
         },
         "route": {
-          "type": "optional<string>",
-          "required": true
+          "type": "string",
+          "required": false
         }
       }
     },
@@ -32436,31 +32471,55 @@
           "required": true
         },
         "greeting": {
-          "type": "optional<string>",
-          "required": true
+          "type": "string",
+          "required": false
         },
         "name": {
           "type": "string",
-          "required": true
+          "required": false
         },
         "route": {
-          "type": "optional<string>",
-          "required": true
+          "type": "string",
+          "required": false
+        },
+        "voice": {
+          "type": "string",
+          "required": false
         }
       }
     },
     "signalwire.prefabs.survey.SurveyAgent": {
       "params": {
+        "brand_name": {
+          "type": "optional<string>",
+          "required": false
+        },
+        "conclusion": {
+          "type": "optional<string>",
+          "required": false
+        },
+        "introduction": {
+          "type": "optional<string>",
+          "required": false
+        },
+        "max_retries": {
+          "type": "int",
+          "required": false
+        },
         "name": {
           "type": "string",
-          "required": true
-        },
-        "options": {
-          "type": "optional<dict<string,any>>",
-          "required": true
+          "required": false
         },
         "questions": {
           "type": "list<class:signalwire.value.Value>",
+          "required": true
+        },
+        "route": {
+          "type": "string",
+          "required": false
+        },
+        "survey_name": {
+          "type": "string",
           "required": true
         }
       }

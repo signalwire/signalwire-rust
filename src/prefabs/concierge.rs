@@ -16,66 +16,177 @@ pub struct ConciergeAgent {
     amenities: HashMap<String, Value>,
 }
 
-impl ConciergeAgent {
-    /// Create a new `ConciergeAgent`.
-    ///
-    /// # Arguments
-    /// - `name` — agent name (defaults to `"concierge"` if empty).
-    /// - `venue_info` — map with `venue_name` (required), plus optional `services`,
-    ///   `amenities`, `hours_of_operation`, `special_instructions`, `welcome_message`.
-    /// - `route` — optional route (defaults to `"/concierge"`).
-    pub fn new(name: &str, venue_info: &Map<String, Value>, route: Option<&str>) -> Self {
-        let venue_name = venue_info
-            .get("venue_name")
-            .and_then(|v| v.as_str())
-            .unwrap_or("Venue")
-            .to_string();
+/// Options for constructing a [`ConciergeAgent`].
+///
+/// Field-for-field the Python reference's `__init__`
+/// (`prefabs/concierge.py:45-55`). `venue_name`, `services`, and `amenities`
+/// are the reference's REQUIRED positionals, so they are the arguments to
+/// [`ConciergeOptions::new`]; every other field carries the reference's
+/// default.
+#[must_use]
+pub struct ConciergeOptions {
+    /// Name of the venue or business.
+    pub venue_name: String,
+    /// Services offered.
+    pub services: Vec<String>,
+    /// Amenities with details, keyed by amenity name.
+    pub amenities: HashMap<String, Value>,
+    /// Operating hours, keyed by day.
+    pub hours_of_operation: HashMap<String, String>,
+    /// Special instructions surfaced in the prompt.
+    pub special_instructions: Vec<String>,
+    /// Custom welcome message; `None` generates one from `venue_name`.
+    pub welcome_message: Option<String>,
+    /// Agent name (reference default `"concierge"`).
+    pub name: String,
+    /// HTTP route (reference default `"/concierge"`).
+    pub route: String,
+}
 
-        let services: Vec<String> = venue_info
-            .get("services")
-            .and_then(|v| v.as_array())
-            .map(|arr| {
-                arr.iter()
-                    .filter_map(|v| v.as_str().map(std::string::ToString::to_string))
-                    .collect()
-            })
-            .unwrap_or_default();
+impl Default for ConciergeOptions {
+    fn default() -> Self {
+        ConciergeOptions {
+            venue_name: "Venue".to_string(),
+            services: Vec::new(),
+            amenities: HashMap::new(),
+            hours_of_operation: HashMap::new(),
+            special_instructions: Vec::new(),
+            welcome_message: None,
+            name: "concierge".to_string(),
+            route: "/concierge".to_string(),
+        }
+    }
+}
 
-        let amenities: HashMap<String, Value> = venue_info
-            .get("amenities")
-            .and_then(|v| v.as_object())
-            .map(|obj| obj.iter().map(|(k, v)| (k.clone(), v.clone())).collect())
-            .unwrap_or_default();
+impl ConciergeOptions {
+    /// Options for the reference's three required positionals, with every
+    /// other field at its default — the port of
+    /// `ConciergeAgent(venue_name, services, amenities)`.
+    pub fn new(venue_name: &str, services: Vec<String>, amenities: HashMap<String, Value>) -> Self {
+        ConciergeOptions {
+            venue_name: venue_name.to_string(),
+            services,
+            amenities,
+            ..Default::default()
+        }
+    }
 
-        let hours_of_operation: HashMap<String, String> = venue_info
+    /// Replace the venue/business name.
+    pub fn venue_name(mut self, venue_name: &str) -> Self {
+        self.venue_name = venue_name.to_string();
+        self
+    }
+
+    /// Set the services offered.
+    pub fn services(mut self, services: Vec<String>) -> Self {
+        self.services = services;
+        self
+    }
+
+    /// Set the amenities map.
+    pub fn amenities(mut self, amenities: HashMap<String, Value>) -> Self {
+        self.amenities = amenities;
+        self
+    }
+
+    /// Set the operating hours, keyed by day.
+    pub fn hours_of_operation(mut self, hours: HashMap<String, String>) -> Self {
+        self.hours_of_operation = hours;
+        self
+    }
+
+    /// Set the special instructions.
+    pub fn special_instructions(mut self, instructions: Vec<String>) -> Self {
+        self.special_instructions = instructions;
+        self
+    }
+
+    /// Set a custom welcome message.
+    pub fn welcome_message(mut self, message: &str) -> Self {
+        self.welcome_message = Some(message.to_string());
+        self
+    }
+
+    /// Set the agent name (default `"concierge"`).
+    pub fn name(mut self, name: &str) -> Self {
+        self.name = name.to_string();
+        self
+    }
+
+    /// Set the HTTP route (default `"/concierge"`).
+    pub fn route(mut self, route: &str) -> Self {
+        self.route = route.to_string();
+        self
+    }
+
+    /// Build options from the legacy `venue_info` map shape. Provided so
+    /// callers holding a JSON blob can still construct without unpacking it by
+    /// hand; the map's keys are the option names.
+    pub fn from_venue_info(venue_info: &Map<String, Value>) -> Self {
+        let mut opts = ConciergeOptions::default();
+        if let Some(v) = venue_info.get("venue_name").and_then(Value::as_str) {
+            opts.venue_name = v.to_string();
+        }
+        if let Some(arr) = venue_info.get("services").and_then(Value::as_array) {
+            opts.services = arr
+                .iter()
+                .filter_map(|v| v.as_str().map(std::string::ToString::to_string))
+                .collect();
+        }
+        if let Some(obj) = venue_info.get("amenities").and_then(Value::as_object) {
+            opts.amenities = obj.iter().map(|(k, v)| (k.clone(), v.clone())).collect();
+        }
+        if let Some(obj) = venue_info
             .get("hours_of_operation")
-            .and_then(|v| v.as_object())
-            .map(|obj| {
-                obj.iter()
-                    .map(|(k, v)| (k.clone(), v.as_str().unwrap_or("").to_string()))
-                    .collect()
-            })
-            .unwrap_or_default();
-
-        let special_instructions: Vec<String> = venue_info
+            .and_then(Value::as_object)
+        {
+            opts.hours_of_operation = obj
+                .iter()
+                .map(|(k, v)| (k.clone(), v.as_str().unwrap_or("").to_string()))
+                .collect();
+        }
+        if let Some(arr) = venue_info
             .get("special_instructions")
-            .and_then(|v| v.as_array())
-            .map(|arr| {
-                arr.iter()
-                    .filter_map(|v| v.as_str().map(std::string::ToString::to_string))
-                    .collect()
-            })
-            .unwrap_or_default();
+            .and_then(Value::as_array)
+        {
+            opts.special_instructions = arr
+                .iter()
+                .filter_map(|v| v.as_str().map(std::string::ToString::to_string))
+                .collect();
+        }
+        if let Some(v) = venue_info.get("welcome_message").and_then(Value::as_str) {
+            opts.welcome_message = Some(v.to_string());
+        }
+        opts
+    }
+}
 
-        let welcome_message = venue_info
-            .get("welcome_message")
-            .and_then(|v| v.as_str())
-            .map(std::string::ToString::to_string);
+impl ConciergeAgent {
+    /// Create a new `ConciergeAgent` from [`ConciergeOptions`].
+    ///
+    /// `ConciergeAgent::new(ConciergeOptions::new(venue_name, services,
+    /// amenities))` ports the reference's minimal
+    /// `ConciergeAgent(venue_name, services, amenities)`.
+    pub fn new(options: ConciergeOptions) -> Self {
+        let ConciergeOptions {
+            venue_name,
+            services,
+            amenities,
+            hours_of_operation,
+            special_instructions,
+            welcome_message,
+            name,
+            route,
+        } = options;
 
-        let agent_name = if name.is_empty() { "concierge" } else { name };
+        let agent_name = if name.is_empty() { "concierge" } else { &name };
 
         let mut opts = AgentOptions::new(agent_name);
-        opts.route = Some(route.unwrap_or("/concierge").to_string());
+        opts.route = Some(if route.is_empty() {
+            "/concierge".to_string()
+        } else {
+            route
+        });
         opts.use_pom = true;
 
         let mut agent = AgentBase::new(opts);
@@ -342,7 +453,7 @@ mod tests {
     #[test]
     fn test_concierge_construction() {
         let info = sample_venue_info();
-        let agent = ConciergeAgent::new("test", &info, None);
+        let agent = ConciergeAgent::new(ConciergeOptions::from_venue_info(&info).name("test"));
         assert_eq!(agent.agent().service().name(), "test");
         assert_eq!(agent.agent().service().route(), "/concierge");
         assert_eq!(agent.venue_name(), "Grand Hotel");
@@ -353,7 +464,7 @@ mod tests {
     #[test]
     fn test_concierge_has_tools() {
         let info = sample_venue_info();
-        let agent = ConciergeAgent::new("test", &info, None);
+        let agent = ConciergeAgent::new(ConciergeOptions::from_venue_info(&info).name("test"));
         let raw = serde_json::Map::new();
 
         let mut args = serde_json::Map::new();
@@ -376,14 +487,14 @@ mod tests {
     #[test]
     fn test_concierge_default_name() {
         let info = sample_venue_info();
-        let agent = ConciergeAgent::new("", &info, None);
+        let agent = ConciergeAgent::new(ConciergeOptions::from_venue_info(&info).name(""));
         assert_eq!(agent.agent().service().name(), "concierge");
     }
 
     #[test]
     fn test_check_availability_known_service() {
         let info = sample_venue_info();
-        let agent = ConciergeAgent::new("test", &info, None);
+        let agent = ConciergeAgent::new(ConciergeOptions::from_venue_info(&info).name("test"));
         let raw = Map::new();
         let mut args = Map::new();
         args.insert("service".to_string(), json!("Spa"));
@@ -396,7 +507,7 @@ mod tests {
     #[test]
     fn test_check_availability_unknown_service() {
         let info = sample_venue_info();
-        let agent = ConciergeAgent::new("test", &info, None);
+        let agent = ConciergeAgent::new(ConciergeOptions::from_venue_info(&info).name("test"));
         let raw = Map::new();
         let mut args = Map::new();
         args.insert("service".to_string(), json!("Skydiving"));
@@ -415,7 +526,7 @@ mod tests {
             "amenities".to_string(),
             json!({"pool": {"hours": "6am-10pm", "location": "Floor 3"}}),
         );
-        let agent = ConciergeAgent::new("test", &info, None);
+        let agent = ConciergeAgent::new(ConciergeOptions::from_venue_info(&info).name("test"));
         let raw = Map::new();
         let mut args = Map::new();
         args.insert("location".to_string(), json!("Pool"));
@@ -427,7 +538,7 @@ mod tests {
     #[test]
     fn test_get_directions_unknown_location() {
         let info = sample_venue_info();
-        let agent = ConciergeAgent::new("test", &info, None);
+        let agent = ConciergeAgent::new(ConciergeOptions::from_venue_info(&info).name("test"));
         let raw = Map::new();
         let mut args = Map::new();
         args.insert("location".to_string(), json!("Rooftop"));
@@ -440,7 +551,7 @@ mod tests {
         use std::sync::{Arc, Mutex};
 
         let info = sample_venue_info();
-        let mut agent = ConciergeAgent::new("test", &info, None);
+        let mut agent = ConciergeAgent::new(ConciergeOptions::from_venue_info(&info).name("test"));
 
         let captured = Arc::new(Mutex::new(String::new()));
         let captured_clone = Arc::clone(&captured);

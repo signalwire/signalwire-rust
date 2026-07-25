@@ -357,6 +357,17 @@ def gen_type_module_for_file(rel: Path) -> str | None:
 # this mapping the surface diff would mark the rename as a "missing"
 # Python method + an "extra" Rust method.
 METHOD_RENAMES: dict[str, dict[str, str]] = {
+    # signalwire.core.security_config.SecurityConfig: the reference has ONE
+    # constructor, `__init__(config_file=None, service_name=None)`. Rust has no
+    # default arguments and no constructor overloading, so the port spells the
+    # zero-argument form `new()` and the two-argument form
+    # `with_config_file(config_file, service_name)`. Both ARE that single
+    # reference `__init__` — `new` already folds onto `__init__` via the generic
+    # constructor mapping, so fold the second spelling onto it too rather than
+    # recording an addition for what is arity idiom.
+    "SecurityConfig": {
+        "with_config_file": "__init__",
+    },
     # signalwire.relay.event.CollectEvent: the reference dataclass field is the
     # bare `final`. Rust cannot name a method `final` (reserved word) without a
     # raw identifier, so the accessor is spelled `is_final`; fold it to the
@@ -641,6 +652,36 @@ AI_CHAT_SUPPRESS_CLASSES: frozenset[str] = frozenset({
     "CreateOptions",
     "ChatOptions",
     "SummarizeOptions",
+})
+
+
+# CONSTRUCTION-OPTIONS structs — the same fold as AI_CHAT_SUPPRESS_CLASSES above,
+# applied to the whole options-struct family (EMISSION COVERS IDIOM, AGENT_RULES
+# §2 / ALLOWLIST_DISCIPLINE §10).
+#
+# The reference constructs each of these classes with a wide keyword-argument
+# list. Rust has no keyword arguments and no default arguments, so the port
+# carries the SAME parameter set on an options struct that is passed to
+# `Class::new(options)`. That struct and its fluent setters ARE the reference
+# `__init__`'s kwargs — they add no capability the reference lacks, and the
+# Python surface oracle records no such class. Recording them as surface
+# ADDITIONS would be documenting idiom, which §0a forbids; they are folded here
+# instead, and the construction contract in `port_signatures.json` (which unfolds
+# each struct's FIELDS onto the class it constructs) is what actually proves the
+# parameter set matches the reference.
+#
+# Keep this in sync with `enumerate_signatures.py`'s `_OPTIONS_CONSTRUCTS`: an
+# options struct listed there must be folded here.
+OPTIONS_STRUCT_SUPPRESS_CLASSES: frozenset[str] = frozenset({
+    "AgentOptions",
+    "ServiceOptions",
+    "WebServiceOptions",
+    "BedrockOptions",
+    "ConciergeOptions",
+    "FAQBotOptions",
+    "InfoGathererOptions",
+    "ReceptionistOptions",
+    "SurveyOptions",
 })
 
 
@@ -1277,6 +1318,14 @@ MODULE_METHOD_DROPS: dict[str, set[str]] = {
     # identical full-validate pass is a no-op there). Same pub(crate)-drop as
     # shared_default.
     "signalwire.utils.schema_utils": {"shared_default", "validate_verb_top_keys"},
+    # `with_name` is a named-constructor convenience on `BedrockOptions`, which
+    # is itself folded away as construction idiom (see
+    # OPTIONS_STRUCT_SUPPRESS_CLASSES): the reference builds a `BedrockAgent`
+    # from kwargs, so neither the options struct nor its constructors are
+    # reference surface. Folding the class hides it from the SURFACE oracle;
+    # this entry hides the same method from the SIGNATURE oracle, which imports
+    # this table and enumerates classes independently of the surface fold.
+    "signalwire.agents.bedrock": {"with_name"},
     # AgentBase flattens five COMPOSITION-DELEGATE reads onto itself as a
     # convenience, but the Python reference files each on the HELPER object AgentBase
     # holds — render_swml -> SwmlRenderer, get_contexts / get_raw_prompt ->
@@ -1289,6 +1338,21 @@ MODULE_METHOD_DROPS: dict[str, set[str]] = {
     "signalwire.core.agent_base": {
         "render_swml", "get_contexts", "get_raw_prompt",
         "create_tool_token", "get_global_data",
+        # FIELD-READ idiom. The reference stores these construction params as
+        # plain instance attributes — `self.agent_id`, `self.native_functions`,
+        # `self._default_webhook_url`, `self._suppress_logs`,
+        # `self._trust_proxy_for_signature`, and the two `*_override` flags
+        # (`agent_base.py:225-254`). Python attribute reads are not methods, so
+        # the surface oracle records none of them. Rust has no public-field
+        # access on a struct with private fields, so the same read is spelled as
+        # a `&self` getter. The getter IS the attribute read — it adds no
+        # capability the reference lacks — so it folds here rather than being
+        # recorded as an addition (§2: idiom is hidden by what we EMIT). The
+        # construction contract in port_signatures.json is what proves the
+        # underlying params match the reference.
+        "agent_id", "native_functions", "default_webhook_url", "suppress_logs",
+        "enable_post_prompt_override", "check_for_input_override",
+        "trust_proxy_for_signature",
     },
 }
 # Module-level FREE FUNCTIONS to drop — `pub(crate)` crate-internal helpers the
@@ -1461,8 +1525,13 @@ def build_surface() -> dict:
     sidecar_classes, suppressed_classes = _sidecar_class_index(sidecar)
     # Fold the ai_chat construction/options structs away entirely (see
     # AI_CHAT_SUPPRESS_CLASSES): they are the builder + options-object idiom for
-    # AIChatClient, not independent reference surface.
-    suppressed_classes = suppressed_classes | AI_CHAT_SUPPRESS_CLASSES
+    # AIChatClient, not independent reference surface. Same fold for the
+    # construction-options struct family (see OPTIONS_STRUCT_SUPPRESS_CLASSES):
+    # each one IS its target class's reference `__init__` kwargs, unfolded onto
+    # that class by the construction contract in port_signatures.json.
+    suppressed_classes = (
+        suppressed_classes | AI_CHAT_SUPPRESS_CLASSES | OPTIONS_STRUCT_SUPPRESS_CLASSES
+    )
 
     # Generated-type pass (§D3/§H): route each generated-type FILE by path and
     # emit every declared struct/enum METHOD-LESS to the oracle module. Done first

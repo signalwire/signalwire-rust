@@ -1317,6 +1317,16 @@ _OPTIONS_CONSTRUCTS: dict[str, str] = {
     "WebServiceOptions": "signalwire.web.web_service.WebService",
     "BedrockOptions": "signalwire.agents.bedrock.BedrockAgent",
     "RequestOptions": "signalwire.rest._request_options.RequestOptions",
+    # Prefabs. The reference constructs each with a wide all-defaulted kwarg
+    # list (`FAQBotAgent(faqs=[], suggest_related=True, persona=None,
+    # name="faq_bot", route="/faq")`); Rust carries the same set on an options
+    # struct that derives its defaults from `Default`, so the zero-argument
+    # reference program ports as `FAQBotAgent::default()`.
+    "ConciergeOptions": "signalwire.prefabs.concierge.ConciergeAgent",
+    "FAQBotOptions": "signalwire.prefabs.faq_bot.FAQBotAgent",
+    "InfoGathererOptions": "signalwire.prefabs.info_gatherer.InfoGathererAgent",
+    "ReceptionistOptions": "signalwire.prefabs.receptionist.ReceptionistAgent",
+    "SurveyOptions": "signalwire.prefabs.survey.SurveyAgent",
 }
 
 # Field-name canonicalization (ADAPTER_CONTRACT rule 3: names are translated to

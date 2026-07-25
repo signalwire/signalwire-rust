@@ -1,6 +1,6 @@
 {
   "version": "1",
-  "generated_from": "signalwire-rust @ 0345cabafc83948660b91d59a3911fdf5438d76e",
+  "generated_from": "signalwire-rust @ ca443c90796c091e3333341144f1e50aaeeb9531",
   "modules": {
     "signalwire": {
       "classes": {
@@ -20,22 +20,6 @@
         "list_skills_with_params",
         "register_skill"
       ]
-    },
-    "signalwire.agent.agent_base": {
-      "classes": {
-        "AgentOptions": [
-          "__init__",
-          "auto_answer",
-          "basic_auth",
-          "host",
-          "port",
-          "record_call",
-          "route",
-          "signing_key",
-          "use_pom"
-        ]
-      },
-      "functions": []
     },
     "signalwire.agent_server": {
       "classes": {
@@ -79,9 +63,6 @@
           "temperature",
           "top_p",
           "voice_id"
-        ],
-        "BedrockOptions": [
-          "with_name"
         ]
       },
       "functions": []
@@ -873,6 +854,7 @@
           "routing_callback_paths",
           "run",
           "schema_utils",
+          "security",
           "serve",
           "set_on_swml_request_hook",
           "sleep",
@@ -3818,18 +3800,6 @@
         "is_valid_verb",
         "verb_count"
       ]
-    },
-    "signalwire.swml.service": {
-      "classes": {
-        "ServiceOptions": [
-          "__init__",
-          "basic_auth",
-          "host",
-          "port",
-          "route"
-        ]
-      },
-      "functions": []
     },
     "signalwire.utils": {
       "classes": {},

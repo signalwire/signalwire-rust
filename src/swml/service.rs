@@ -50,6 +50,20 @@ pub struct ServiceOptions {
     pub port: Option<u16>,
     pub basic_auth_user: Option<String>,
     pub basic_auth_password: Option<String>,
+    /// Path to a SWML schema file. `None` uses the embedded `schema.json`.
+    /// Forwarded to [`crate::utils::SchemaUtils`], mirroring the reference's
+    /// `SWMLService.__init__(schema_path=…)` → `SchemaUtils(schema_path=…)`.
+    pub schema_path: Option<String>,
+    /// Path to a JSON configuration file. Its `service` section supplies
+    /// `name`/`route`/`host`/`port` (constructor params win) and its
+    /// `security` section supplies basic-auth credentials — mirroring the
+    /// reference's `SWMLService.__init__(config_file=…)` →
+    /// `SecurityConfig(config_file=…)`.
+    pub config_file: Option<String>,
+    /// Enable SWML schema validation on `add_verb`. Defaults to `true`; can
+    /// also be disabled process-wide via `SWML_SKIP_SCHEMA_VALIDATION=1`.
+    /// Mirrors the reference's `SWMLService.__init__(schema_validation=True)`.
+    pub schema_validation: bool,
 }
 
 impl ServiceOptions {
@@ -63,6 +77,9 @@ impl ServiceOptions {
             port: None,
             basic_auth_user: None,
             basic_auth_password: None,
+            schema_path: None,
+            config_file: None,
+            schema_validation: true,
         }
     }
 
@@ -88,6 +105,24 @@ impl ServiceOptions {
     pub fn basic_auth(mut self, user: &str, password: &str) -> Self {
         self.basic_auth_user = Some(user.to_string());
         self.basic_auth_password = Some(password.to_string());
+        self
+    }
+
+    /// Load the SWML schema from `path` instead of the embedded `schema.json`.
+    pub fn schema_path(mut self, path: &str) -> Self {
+        self.schema_path = Some(path.to_string());
+        self
+    }
+
+    /// Read service + security configuration from the JSON file at `path`.
+    pub fn config_file(mut self, path: &str) -> Self {
+        self.config_file = Some(path.to_string());
+        self
+    }
+
+    /// Toggle SWML schema validation on `add_verb` (default `true`).
+    pub fn schema_validation(mut self, enabled: bool) -> Self {
+        self.schema_validation = enabled;
         self
     }
 }
@@ -137,6 +172,19 @@ pub struct Service {
     // `register_routing_callback`). Each maps a path to a callback that
     // inspects request data and returns an optional redirect route.
     routing_callbacks: HashMap<String, std::sync::Arc<RoutingCallback>>,
+
+    // Per-service `SchemaUtils`, present ONLY when this service was built with
+    // a non-default `schema_path` or `schema_validation`. `None` means the
+    // service uses the process-wide `SchemaUtils::shared_default()` — the fast
+    // path that parses the embedded 495 KB schema exactly once. `Arc` because
+    // `Service` is `Clone` and a `SchemaUtils` is expensive to duplicate.
+    schema_utils_override: Option<std::sync::Arc<crate::utils::SchemaUtils>>,
+
+    // Unified security configuration (SSL/CORS/auth). Built from defaults +
+    // `SWML_*` env + the optional `config_file`'s `security` section, mirroring
+    // the reference's `self.security = SecurityConfig(config_file=…)`
+    // (`swml_service.py:139`).
+    pub(crate) security: crate::core::security_config::SecurityConfig,
 }
 
 /// Routing-callback signature (Python `register_routing_callback`).
@@ -192,19 +240,30 @@ impl Service {
                 .unwrap_or(3000)
         });
 
-        // Auth: explicit > env > auto-generated
+        // Unified security config: defaults → SWML_* env → the config file's
+        // `security` section (highest priority), matching the reference's
+        // `SecurityConfig(config_file=…, service_name=…)`.
+        let security = crate::core::security_config::SecurityConfig::with_config_file(
+            options.config_file.as_deref(),
+            Some(options.name.as_str()),
+        );
+
+        // Auth: explicit > config-file/env (via SecurityConfig) > auto-generated
         let mut password_auto_generated = false;
         let (basic_auth_user, basic_auth_password) =
             if let (Some(u), Some(p)) = (options.basic_auth_user, options.basic_auth_password) {
                 (u, p)
-            } else if let (Ok(u), Ok(p)) = (
-                env::var("SWML_BASIC_AUTH_USER"),
-                env::var("SWML_BASIC_AUTH_PASSWORD"),
+            } else if let (Some(u), Some(p)) = (
+                security.basic_auth_user.clone(),
+                security.basic_auth_password.clone(),
             ) {
                 (u, p)
             } else {
                 password_auto_generated = true;
-                let user = env::var("SWML_BASIC_AUTH_USER").unwrap_or_else(|_| random_hex(16));
+                let user = security
+                    .basic_auth_user
+                    .clone()
+                    .unwrap_or_else(|| random_hex(16));
                 (user, random_hex(32))
             };
 
@@ -237,6 +296,20 @@ impl Service {
             ));
         }
 
+        // Only build an owned `SchemaUtils` when the caller actually asked for
+        // something other than the process-wide default. The shared default is
+        // parsed once; a per-service override costs a full 495 KB parse +
+        // verb-extract, so it must not happen for the (overwhelmingly common)
+        // default construction.
+        let schema_utils_override = if options.schema_path.is_some() || !options.schema_validation {
+            Some(std::sync::Arc::new(crate::utils::SchemaUtils::new(
+                options.schema_path,
+                options.schema_validation,
+            )))
+        } else {
+            None
+        };
+
         Service {
             name: options.name,
             route,
@@ -252,6 +325,8 @@ impl Service {
             verb_registry: crate::swml::handler::VerbHandlerRegistry::new(),
             manual_proxy_url: None,
             routing_callbacks: HashMap::new(),
+            schema_utils_override,
+            security,
         }
     }
 
@@ -505,15 +580,33 @@ impl Service {
     /// `SchemaUtils` helper bound to this Service.  Mirrors Python's
     /// `self.schema_utils` instance attribute on `SWMLService`.
     ///
-    /// Returns a borrow of the single process-wide default `SchemaUtils`
+    /// When the service was constructed with a custom `schema_path` or with
+    /// `schema_validation = false`, this returns that service's own owned
+    /// helper — the reference forwards both params into
+    /// `SchemaUtils(schema_path, schema_validation)` (`swml_service.py:186`).
+    ///
+    /// Otherwise it returns a borrow of the single process-wide default
     /// (`SchemaUtils::shared_default`) — the embedded 495 KB schema is parsed
     /// and verb-extracted exactly once, not per `add_verb`. Previously this
     /// built a fresh helper each call (deep-clone of the parsed 495 KB Value +
     /// full `$defs` verb-extract), which was ~1 ms/verb and dominated SWML
-    /// render time (`r5/deep_perf_baseline`: ~24 ms/doc).
+    /// render time (`r5/deep_perf_baseline`: ~24 ms/doc). Default-constructed
+    /// services keep that fast path exactly.
     #[must_use]
-    pub fn schema_utils(&self) -> &'static crate::utils::SchemaUtils {
-        crate::utils::SchemaUtils::shared_default()
+    pub fn schema_utils(&self) -> &crate::utils::SchemaUtils {
+        match &self.schema_utils_override {
+            Some(su) => su,
+            None => crate::utils::SchemaUtils::shared_default(),
+        }
+    }
+
+    /// The unified security configuration (SSL / CORS / allowed hosts /
+    /// basic-auth) resolved from defaults, `SWML_*` env vars, and the
+    /// `security` section of the optional `config_file`. Mirrors the
+    /// reference's `self.security` attribute on `SWMLService`.
+    #[must_use]
+    pub fn security(&self) -> &crate::core::security_config::SecurityConfig {
+        &self.security
     }
 
     pub fn document(&self) -> &Document {
@@ -1383,14 +1476,9 @@ mod tests {
     use super::*;
 
     fn default_options(name: &str) -> ServiceOptions {
-        ServiceOptions {
-            name: name.to_string(),
-            route: None,
-            host: None,
-            port: Some(3000),
-            basic_auth_user: Some("testuser".to_string()),
-            basic_auth_password: Some("testpass".to_string()),
-        }
+        ServiceOptions::new(name)
+            .port(3000)
+            .basic_auth("testuser", "testpass")
     }
 
     fn authed_headers(user: &str, pass: &str) -> HashMap<String, String> {
@@ -1410,14 +1498,11 @@ mod tests {
 
     #[test]
     fn test_explicit_auth() {
-        let svc = Service::new(ServiceOptions {
-            name: "svc".to_string(),
-            route: None,
-            host: None,
-            port: Some(3000),
-            basic_auth_user: Some("alice".to_string()),
-            basic_auth_password: Some("secret".to_string()),
-        });
+        let svc = Service::new(
+            ServiceOptions::new("svc")
+                .port(3000)
+                .basic_auth("alice", "secret"),
+        );
         let (u, p) = svc.basic_auth_credentials();
         assert_eq!(u, "alice");
         assert_eq!(p, "secret");
@@ -1430,14 +1515,7 @@ mod tests {
             env::set_var("SWML_BASIC_AUTH_USER", "envuser");
             env::set_var("SWML_BASIC_AUTH_PASSWORD", "envpass");
         }
-        let svc = Service::new(ServiceOptions {
-            name: "svc".to_string(),
-            route: None,
-            host: None,
-            port: Some(3000),
-            basic_auth_user: None,
-            basic_auth_password: None,
-        });
+        let svc = Service::new(ServiceOptions::new("svc").port(3000));
         let (u, p) = svc.basic_auth_credentials();
         assert_eq!(u, "envuser");
         assert_eq!(p, "envpass");
@@ -1453,14 +1531,7 @@ mod tests {
             env::remove_var("SWML_BASIC_AUTH_USER");
             env::remove_var("SWML_BASIC_AUTH_PASSWORD");
         }
-        let svc = Service::new(ServiceOptions {
-            name: "svc".to_string(),
-            route: None,
-            host: None,
-            port: Some(3000),
-            basic_auth_user: None,
-            basic_auth_password: None,
-        });
+        let svc = Service::new(ServiceOptions::new("svc").port(3000));
         let (u, p) = svc.basic_auth_credentials();
         // Auto-generated: 16 bytes -> 32 hex chars, 32 bytes -> 64 hex chars
         assert_eq!(u.len(), 32);
@@ -1669,14 +1740,12 @@ mod tests {
         unsafe {
             env::remove_var("SWML_PROXY_URL_BASE");
         }
-        let svc = Service::new(ServiceOptions {
-            name: "svc".to_string(),
-            route: None,
-            host: Some("127.0.0.1".to_string()),
-            port: Some(8080),
-            basic_auth_user: Some("u".to_string()),
-            basic_auth_password: Some("p".to_string()),
-        });
+        let svc = Service::new(
+            ServiceOptions::new("svc")
+                .host("127.0.0.1")
+                .port(8080)
+                .basic_auth("u", "p"),
+        );
         let result = svc.get_proxy_url_base(&HashMap::new());
         assert_eq!(result, "http://127.0.0.1:8080");
     }
@@ -1850,14 +1919,12 @@ mod tests {
 
     #[test]
     fn test_custom_route() {
-        let svc = Service::new(ServiceOptions {
-            name: "svc".to_string(),
-            route: Some("/api/v1".to_string()),
-            host: None,
-            port: Some(3000),
-            basic_auth_user: Some("u".to_string()),
-            basic_auth_password: Some("p".to_string()),
-        });
+        let svc = Service::new(
+            ServiceOptions::new("svc")
+                .route("/api/v1")
+                .port(3000)
+                .basic_auth("u", "p"),
+        );
         assert_eq!(svc.route(), "/api/v1");
 
         let headers = authed_headers("u", "p");

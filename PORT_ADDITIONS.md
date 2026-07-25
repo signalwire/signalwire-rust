@@ -82,16 +82,6 @@ signalwire.ParseLevelError: top-level re-export of the typed error returned by `
 signalwire.SWMLService: Rust idiom: pub use exposes types under signalwire::Foo so users can `use signalwire::AgentBase` directly. Python lists these too but the dotted-path enumerator records them differently.
 signalwire.SkillSpec: top-level re-export: Rust exposes SkillSpec at the crate root for ergonomic `signalwire::SkillSpec` access; Python's equivalent is internal to the skill registry. The struct itself is a Rust idiom — Python uses raw class objects passed to `register_skill(...)`.
 signalwire.SkillSpec.__init__: top-level re-export: Rust exposes SkillSpec at the crate root for ergonomic `signalwire::SkillSpec` access; Python's equivalent is internal to the skill registry. The struct itself is a Rust idiom — Python uses raw class objects passed to `register_skill(...)`.
-signalwire.agent.agent_base.AgentOptions: Idiomatic Rust uses options/builder structs (AgentOptions) rather than long kwargs. Python has the same parameters as keyword arguments to AgentBase.__init__.
-signalwire.agent.agent_base.AgentOptions.__init__: Idiomatic Rust uses options/builder structs (AgentOptions) rather than long kwargs. Python has the same parameters as keyword arguments to AgentBase.__init__.
-signalwire.agent.agent_base.AgentOptions.auto_answer: rust-builder-method — fluent setter for auto-answer; Python passes `auto_answer=` to `AgentBase.__init__`.
-signalwire.agent.agent_base.AgentOptions.basic_auth: rust-builder-method — fluent setter for Basic-Auth credentials; Python passes `basic_auth=(user,pass)` to `AgentBase.__init__`.
-signalwire.agent.agent_base.AgentOptions.host: rust-builder-method — fluent setter for the bind host; Python passes `host=` to `AgentBase.__init__`.
-signalwire.agent.agent_base.AgentOptions.port: rust-builder-method — fluent setter for the bind port; Python passes `port=` to `AgentBase.__init__`.
-signalwire.agent.agent_base.AgentOptions.record_call: rust-builder-method — fluent setter for call recording; Python passes `record_call=` to `AgentBase.__init__`.
-signalwire.agent.agent_base.AgentOptions.route: rust-builder-method — fluent setter for the agent's HTTP route; Python passes `route=` to `AgentBase.__init__`.
-signalwire.agent.agent_base.AgentOptions.signing_key: rust-builder-method — fluent setter for the webhook signing key; Python passes `agent.signing_key = ...` (attribute) or relies on the env var.
-signalwire.agent.agent_base.AgentOptions.use_pom: rust-builder-method — fluent setter for POM prompt rendering; Python passes `use_pom=` to `AgentBase.__init__`.
 signalwire.agent_server.AgentServer.get_agent_mut: Rust idiom of explicit accessor methods (host(), port(), …) and rust-private serve_static (which serve_static_files now aliases for Python parity).
 signalwire.agent_server.AgentServer.handle_request: Rust idiom of explicit accessor methods (host(), port(), …) and rust-private serve_static (which serve_static_files now aliases for Python parity).
 signalwire.agent_server.AgentServer.host: Rust idiom of explicit accessor methods (host(), port(), …) and rust-private serve_static (which serve_static_files now aliases for Python parity).
@@ -106,8 +96,6 @@ signalwire.agents.bedrock.BedrockAgent.render_swml: Read-only / mutable accessor
 signalwire.agents.bedrock.BedrockAgent.temperature: Read-only / mutable accessors that surface internal Bedrock state. Python uses attribute access (`self._voice_id`) directly.
 signalwire.agents.bedrock.BedrockAgent.top_p: Read-only / mutable accessors that surface internal Bedrock state. Python uses attribute access (`self._voice_id`) directly.
 signalwire.agents.bedrock.BedrockAgent.voice_id: Read-only / mutable accessors that surface internal Bedrock state. Python uses attribute access (`self._voice_id`) directly.
-signalwire.agents.bedrock.BedrockOptions: Same idiom as AgentOptions — Rust prefers options structs over long kwarg lists.
-signalwire.agents.bedrock.BedrockOptions.with_name: Same idiom as AgentOptions — Rust prefers options structs over long kwarg lists.
 signalwire.core.agent_base.AgentBase.add_function_include: These methods exist in Python's AgentBase too (often via a mixin). The Rust port hangs them directly off AgentBase, so the per-symbol enumerator emits them under signalwire.core.agent_base.AgentBase rather than under the originating mixin (signalwire.core.mixins.*). Python has the same surface.
 signalwire.core.agent_base.AgentBase.add_hint: These methods exist in Python's AgentBase too (often via a mixin). The Rust port hangs them directly off AgentBase, so the per-symbol enumerator emits them under signalwire.core.agent_base.AgentBase rather than under the originating mixin (signalwire.core.mixins.*). Python has the same surface.
 signalwire.core.agent_base.AgentBase.add_hints: These methods exist in Python's AgentBase too (often via a mixin). The Rust port hangs them directly off AgentBase, so the per-symbol enumerator emits them under signalwire.core.agent_base.AgentBase rather than under the originating mixin (signalwire.core.mixins.*). Python has the same surface.
@@ -576,12 +564,6 @@ signalwire.swml.schema.get_verb: Rust ships free functions for schema introspect
 signalwire.swml.schema.get_verb_names: Rust ships free functions for schema introspection. Python provides equivalents via signalwire.utils.schema_utils.SchemaUtils (which is in PORT_OMISSIONS.md).
 signalwire.swml.schema.is_valid_verb: Rust ships free functions for schema introspection. Python provides equivalents via signalwire.utils.schema_utils.SchemaUtils (which is in PORT_OMISSIONS.md).
 signalwire.swml.schema.verb_count: Rust ships free functions for schema introspection. Python provides equivalents via signalwire.utils.schema_utils.SchemaUtils (which is in PORT_OMISSIONS.md).
-signalwire.swml.service.ServiceOptions: rust-options-builder — construction options for `Service` (Python's `SWMLService`); now exposes a fluent builder, so the struct surfaces. Python uses `SWMLService.__init__` keyword arguments.
-signalwire.swml.service.ServiceOptions.__init__: rust-options-builder — name-only constructor for the service options builder. Python uses `SWMLService.__init__` directly.
-signalwire.swml.service.ServiceOptions.basic_auth: rust-builder-method — fluent setter for Basic-Auth credentials; Python passes `basic_auth=(user,pass)` to `SWMLService.__init__`.
-signalwire.swml.service.ServiceOptions.host: rust-builder-method — fluent setter for the bind host; Python passes `host=` to `SWMLService.__init__`.
-signalwire.swml.service.ServiceOptions.port: rust-builder-method — fluent setter for the bind port; Python passes `port=` to `SWMLService.__init__`.
-signalwire.swml.service.ServiceOptions.route: rust-builder-method — fluent setter for the service route; Python passes `route=` to `SWMLService.__init__`.
 signalwire.utils.schema_utils.SchemaUtils.generate_method_body: Python-source codegen helper; canonical Python signatures filter this method out (Python-only output shape)
 signalwire.utils.schema_utils.SchemaUtils.generate_method_signature: Python-source codegen helper; canonical Python signatures filter this method out (Python-only output shape)
 signalwire.utils.url_validator._set_resolver: port-only test helper: Rust exposes a `_set_resolver` function so the audit harness can inject DNS-resolver mocks for url_validator tests; Python's equivalent test path patches the resolver via `unittest.mock.patch`.

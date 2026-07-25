@@ -24,8 +24,8 @@ pub mod receptionist;
 pub mod survey;
 
 pub use bedrock::{BedrockAgent, BedrockOptions};
-pub use concierge::ConciergeAgent;
-pub use faq_bot::FAQBotAgent;
-pub use info_gatherer::InfoGathererAgent;
-pub use receptionist::ReceptionistAgent;
-pub use survey::SurveyAgent;
+pub use concierge::{ConciergeAgent, ConciergeOptions};
+pub use faq_bot::{FAQBotAgent, FAQBotOptions};
+pub use info_gatherer::{InfoGathererAgent, InfoGathererOptions};
+pub use receptionist::{ReceptionistAgent, ReceptionistOptions};
+pub use survey::{SurveyAgent, SurveyOptions};

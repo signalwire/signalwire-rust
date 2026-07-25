@@ -32,22 +32,92 @@ pub struct InfoGathererAgent {
     question_callback: Option<QuestionCallback>,
 }
 
+/// Options for constructing an [`InfoGathererAgent`].
+///
+/// Every field carries the Python reference's default
+/// (`prefabs/info_gatherer.py:41-46`), so `InfoGathererOptions::default()` is
+/// the exact equivalent of the valid reference program `InfoGathererAgent()`.
+#[must_use]
+pub struct InfoGathererOptions {
+    /// Questions to ask, each `{key_name, question_text, confirm?}`. Empty
+    /// means the questions are resolved dynamically per request (the
+    /// reference's `questions=None`).
+    pub questions: Vec<Value>,
+    /// Agent name (reference default `"info_gatherer"`).
+    pub name: String,
+    /// HTTP route (reference default `"/info_gatherer"`).
+    pub route: String,
+}
+
+impl Default for InfoGathererOptions {
+    fn default() -> Self {
+        InfoGathererOptions {
+            questions: Vec::new(),
+            name: "info_gatherer".to_string(),
+            route: "/info_gatherer".to_string(),
+        }
+    }
+}
+
+impl InfoGathererOptions {
+    /// Options carrying every reference default.
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Set the questions to ask (empty = dynamic mode).
+    pub fn questions(mut self, questions: Vec<Value>) -> Self {
+        self.questions = questions;
+        self
+    }
+
+    /// Set the agent name (default `"info_gatherer"`).
+    pub fn name(mut self, name: &str) -> Self {
+        self.name = name.to_string();
+        self
+    }
+
+    /// Set the HTTP route (default `"/info_gatherer"`).
+    pub fn route(mut self, route: &str) -> Self {
+        self.route = route.to_string();
+        self
+    }
+}
+
+impl Default for InfoGathererAgent {
+    /// The reference's zero-argument `InfoGathererAgent()`.
+    fn default() -> Self {
+        Self::new(InfoGathererOptions::default())
+    }
+}
+
 impl InfoGathererAgent {
-    /// Create a new `InfoGathererAgent`.
+    /// Create a new `InfoGathererAgent` from [`InfoGathererOptions`].
     ///
-    /// # Arguments
-    /// - `name` — agent name (defaults to `"info_gatherer"` if empty).
-    /// - `questions` — list of `{key_name, question_text, confirm?}` objects.
-    /// - `route` — optional route (defaults to `"/info_gatherer"`).
-    pub fn new(name: &str, questions: Vec<Value>, route: Option<&str>) -> Self {
+    /// Every option is defaulted, so
+    /// `InfoGathererAgent::new(InfoGathererOptions::default())` (equivalently
+    /// `InfoGathererAgent::default()`) ports the reference's zero-argument
+    /// `InfoGathererAgent()`, where `questions=None` means the questions are
+    /// determined dynamically via a callback.
+    pub fn new(options: InfoGathererOptions) -> Self {
+        let InfoGathererOptions {
+            questions,
+            name,
+            route,
+        } = options;
+
         let agent_name = if name.is_empty() {
             "info_gatherer"
         } else {
-            name
+            &name
         };
 
         let mut opts = AgentOptions::new(agent_name);
-        opts.route = Some(route.unwrap_or("/info_gatherer").to_string());
+        opts.route = Some(if route.is_empty() {
+            "/info_gatherer".to_string()
+        } else {
+            route
+        });
         opts.use_pom = true;
 
         let mut agent = AgentBase::new(opts);
@@ -368,7 +438,11 @@ mod tests {
 
     #[test]
     fn test_info_gatherer_construction() {
-        let agent = InfoGathererAgent::new("test", sample_questions(), None);
+        let agent = InfoGathererAgent::new(
+            InfoGathererOptions::new()
+                .name("test")
+                .questions(sample_questions()),
+        );
         assert_eq!(agent.agent().service().name(), "test");
         assert_eq!(agent.agent().service().route(), "/info_gatherer");
         assert_eq!(agent.questions().len(), 2);
@@ -376,7 +450,11 @@ mod tests {
 
     #[test]
     fn test_info_gatherer_has_tools() {
-        let agent = InfoGathererAgent::new("test", sample_questions(), None);
+        let agent = InfoGathererAgent::new(
+            InfoGathererOptions::new()
+                .name("test")
+                .questions(sample_questions()),
+        );
         let args = serde_json::Map::new();
         let raw = serde_json::Map::new();
         let result = agent
@@ -387,7 +465,11 @@ mod tests {
 
     #[test]
     fn test_info_gatherer_default_name() {
-        let agent = InfoGathererAgent::new("", sample_questions(), None);
+        let agent = InfoGathererAgent::new(
+            InfoGathererOptions::new()
+                .name("")
+                .questions(sample_questions()),
+        );
         assert_eq!(agent.agent().service().name(), "info_gatherer");
     }
 
@@ -406,7 +488,11 @@ mod tests {
 
     #[test]
     fn test_start_questions_returns_first() {
-        let agent = InfoGathererAgent::new("test", sample_questions(), None);
+        let agent = InfoGathererAgent::new(
+            InfoGathererOptions::new()
+                .name("test")
+                .questions(sample_questions()),
+        );
         let qs = sample_questions();
         let raw = global_data(&qs, 0, json!([]));
         let json_str = agent.start_questions(&Map::new(), &raw).to_json();
@@ -416,7 +502,11 @@ mod tests {
 
     #[test]
     fn test_start_questions_empty() {
-        let agent = InfoGathererAgent::new("test", sample_questions(), None);
+        let agent = InfoGathererAgent::new(
+            InfoGathererOptions::new()
+                .name("test")
+                .questions(sample_questions()),
+        );
         let raw = global_data(&[], 0, json!([]));
         let json_str = agent.start_questions(&Map::new(), &raw).to_json();
         assert!(json_str.contains("don't have any questions"));
@@ -424,7 +514,11 @@ mod tests {
 
     #[test]
     fn test_submit_answer_advances() {
-        let agent = InfoGathererAgent::new("test", sample_questions(), None);
+        let agent = InfoGathererAgent::new(
+            InfoGathererOptions::new()
+                .name("test")
+                .questions(sample_questions()),
+        );
         let qs = sample_questions();
         let raw = global_data(&qs, 0, json!([]));
         let mut args = Map::new();
@@ -447,7 +541,11 @@ mod tests {
     // set_global_data action so the whole state transition is proven.
     #[test]
     fn test_submit_answer_state_machine() {
-        let agent = InfoGathererAgent::new("test", sample_questions(), None);
+        let agent = InfoGathererAgent::new(
+            InfoGathererOptions::new()
+                .name("test")
+                .questions(sample_questions()),
+        );
         let qs = sample_questions();
         let raw = global_data(&qs, 0, json!([]));
         let mut args = Map::new();
@@ -481,7 +579,11 @@ mod tests {
 
     #[test]
     fn test_submit_answer_completes() {
-        let agent = InfoGathererAgent::new("test", sample_questions(), None);
+        let agent = InfoGathererAgent::new(
+            InfoGathererOptions::new()
+                .name("test")
+                .questions(sample_questions()),
+        );
         let qs = sample_questions();
         // Answer the final question (index 1 of 2).
         let raw = global_data(&qs, 1, json!([{"key_name": "name", "answer": "Alice"}]));
@@ -493,7 +595,11 @@ mod tests {
 
     #[test]
     fn test_submit_answer_out_of_bounds() {
-        let agent = InfoGathererAgent::new("test", sample_questions(), None);
+        let agent = InfoGathererAgent::new(
+            InfoGathererOptions::new()
+                .name("test")
+                .questions(sample_questions()),
+        );
         let qs = sample_questions();
         let raw = global_data(&qs, 5, json!([]));
         let mut args = Map::new();
@@ -504,7 +610,11 @@ mod tests {
 
     #[test]
     fn test_on_swml_request_static_mode_returns_none() {
-        let agent = InfoGathererAgent::new("test", sample_questions(), None);
+        let agent = InfoGathererAgent::new(
+            InfoGathererOptions::new()
+                .name("test")
+                .questions(sample_questions()),
+        );
         assert!(
             agent
                 .on_swml_request(None, &Map::new(), &HashMap::new())
@@ -515,7 +625,7 @@ mod tests {
     #[test]
     fn test_on_swml_request_dynamic_fallback() {
         // Empty questions => dynamic mode; no callback => fallback questions.
-        let agent = InfoGathererAgent::new("test", vec![], None);
+        let agent = InfoGathererAgent::new(InfoGathererOptions::new().name("test"));
         let out = agent
             .on_swml_request(None, &Map::new(), &HashMap::new())
             .expect("dynamic mode returns global_data");
@@ -526,7 +636,7 @@ mod tests {
 
     #[test]
     fn test_on_swml_request_dynamic_callback() {
-        let mut agent = InfoGathererAgent::new("test", vec![], None);
+        let mut agent = InfoGathererAgent::new(InfoGathererOptions::new().name("test"));
         agent.set_question_callback(Arc::new(|query, _body, _headers| {
             let set = query
                 .get("set")
@@ -554,7 +664,7 @@ mod tests {
 
     #[test]
     fn test_on_swml_request_dynamic_callback_empty_falls_back() {
-        let mut agent = InfoGathererAgent::new("test", vec![], None);
+        let mut agent = InfoGathererAgent::new(InfoGathererOptions::new().name("test"));
         agent.set_question_callback(Arc::new(|_q, _b, _h| vec![]));
         let out = agent
             .on_swml_request(None, &Map::new(), &HashMap::new())

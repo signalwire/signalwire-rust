@@ -10,7 +10,7 @@
 //!   curl "<http://localhost:3000/contact?set=onboarding>" (employee onboarding)
 
 use serde_json::json;
-use signalwire::prefabs::InfoGathererAgent;
+use signalwire::prefabs::{InfoGathererAgent, InfoGathererOptions};
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -49,9 +49,10 @@ fn main() {
     // Construct with the default question set, then swap it in per-request
     // via set_dynamic_config_callback.
     let mut agent = InfoGathererAgent::new(
-        "dynamic-contact-form",
-        sets["default"].clone(),
-        Some("/contact"),
+        InfoGathererOptions::new()
+            .name("dynamic-contact-form")
+            .route("/contact")
+            .questions(sets["default"].clone()),
     );
 
     agent
