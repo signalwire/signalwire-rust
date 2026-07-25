@@ -1289,7 +1289,200 @@ def collect(rust_doc: dict, aliases: dict) -> tuple[dict, list]:
         "version": "2",
         "generated_from": f"signalwire-rust via cargo rustdoc-json (FORMAT_VERSION {rust_doc.get('format_version')})",
         "modules": sorted_modules,
+        "construction": build_construction(
+            sorted_modules, index, paths, aliases, failures,
+        ),
     }, failures
+
+
+# ---------------------------------------------------------------------------
+# Construction contract (porting-sdk ALLOWLIST_DISCIPLINE.md §10)
+# ---------------------------------------------------------------------------
+
+# Rust expresses a wide many-optional-kwarg constructor as an OPTIONS STRUCT:
+# the reference's ``AgentBase.__init__(name, route, host, port, …)`` becomes
+# ``AgentBase::new(AgentOptions::new(name).route(…).host(…))``. The options
+# struct's public FIELDS are the construction parameter set — same capability,
+# different spelling — so they satisfy the construction contract rather than
+# being N port-only additions plus one blanket ``__init__`` signature omission.
+# The fluent ``with_*``/setter methods over those fields are the builder FACE of
+# the same struct and fold onto the field they set (they add no capability the
+# field does not already carry) — exactly the RequestOptions field+setter
+# precedent, which emits ONE member per field.
+#
+# Native Rust options-struct name -> the canonical Python class it constructs.
+_OPTIONS_CONSTRUCTS: dict[str, str] = {
+    "AgentOptions": "signalwire.core.agent_base.AgentBase",
+    "ServiceOptions": "signalwire.core.swml_service.SWMLService",
+    "WebServiceOptions": "signalwire.web.web_service.WebService",
+    "BedrockOptions": "signalwire.agents.bedrock.BedrockAgent",
+    "RequestOptions": "signalwire.rest._request_options.RequestOptions",
+}
+
+# Field-name canonicalization (ADAPTER_CONTRACT rule 3: names are translated to
+# Python-canonical form at adapter time). Rust splits the reference's
+# ``basic_auth: tuple[str, str]`` into two scalar fields because Rust struct
+# literals have no anonymous-tuple-field idiom; the pair IS the reference's
+# single configurable, so the user-half carries the canonical name and the
+# password-half folds onto it. Keyed by (canonical class, native field).
+_CONSTRUCTION_FIELD_RENAMES: dict[tuple[str, str], str | None] = {
+    ("signalwire.core.agent_base.AgentBase", "basic_auth_user"): "basic_auth",
+    ("signalwire.core.agent_base.AgentBase", "basic_auth_password"): None,
+    ("signalwire.core.swml_service.SWMLService", "basic_auth_user"): "basic_auth",
+    ("signalwire.core.swml_service.SWMLService", "basic_auth_password"): None,
+    ("signalwire.agents.bedrock.BedrockAgent", "basic_auth_user"): "basic_auth",
+    ("signalwire.agents.bedrock.BedrockAgent", "basic_auth_password"): None,
+}
+
+# The reference type for a canonicalized field whose Rust spelling is a
+# projection of a differently-shaped reference param (the basic_auth pair
+# above). Keyed the same way as the rename table, by the CANONICAL name.
+_CONSTRUCTION_FIELD_TYPES: dict[tuple[str, str], str] = {
+    ("signalwire.core.agent_base.AgentBase", "basic_auth"):
+        "optional<tuple<string,string>>",
+    ("signalwire.core.swml_service.SWMLService", "basic_auth"):
+        "optional<tuple<string,string>>",
+    ("signalwire.agents.bedrock.BedrockAgent", "basic_auth"):
+        "optional<tuple<string,string>>",
+}
+
+
+def build_construction(
+    modules: dict, index: dict, paths: dict, aliases: dict, failures: list,
+) -> dict:
+    """Return ``{"module.Class": {"params": {name: {type, required}}}}``.
+
+    A NAME-KEYED set (order/arity/mechanism are idiom; the named set is the
+    capability) — see porting-sdk ALLOWLIST_DISCIPLINE.md §10. Two sources, in
+    precedence order:
+
+      1. the class's own ``__init__`` (Rust ``new``) params, when construction
+         is a plain constructor;
+      2. its OPTIONS STRUCT's public fields, when construction goes through an
+         options struct (``AgentBase::new(AgentOptions…)``).
+
+    ``required`` mirrors the source. A Rust options-struct field is optional by
+    construction when it is ``Option<T>`` or the struct has a ``Default``/``new``
+    that fills it; only the non-``Option`` fields of a struct whose ``new`` takes
+    them are required. Where the reference marks a param required and the struct
+    does not (or vice versa), that is a real ``construction-required-flip`` for
+    review, not something to paper over here.
+    """
+    out: dict = {}
+
+    def _params_from_init(sig: dict) -> dict:
+        params: dict = {}
+        for p in sig.get("params", []):
+            if not isinstance(p, dict):
+                continue
+            if (p.get("kind") or "positional") in ("self", "cls", "var_keyword",
+                                                   "var_positional"):
+                continue
+            name = p.get("name")
+            if not name or name.startswith("_"):
+                continue
+            ptype = p.get("type", "any")
+            # A constructor that takes the options struct is the MECHANISM, not
+            # a configurable — its fields are unfolded below.
+            if isinstance(ptype, str) and ptype.startswith("class:"):
+                short = ptype.rsplit(".", 1)[-1]
+                if short in _OPTIONS_CONSTRUCTS:
+                    continue
+            params[name] = {
+                "type": ptype,
+                "required": bool(p.get("required", True)),
+            }
+        return params
+
+    for mod, entry in modules.items():
+        for cls, cinfo in entry.get("classes", {}).items():
+            init = cinfo.get("methods", {}).get("__init__")
+            if isinstance(init, dict):
+                params = _params_from_init(init)
+                if params:
+                    out[f"{mod}.{cls}"] = {"params": dict(sorted(params.items()))}
+
+    # Options-struct fields: each public field names one construction param.
+    def _get(id_):
+        return index.get(str(id_)) or index.get(id_)
+
+    for item in index.values():
+        struct_name = item.get("name")
+        target = _OPTIONS_CONSTRUCTS.get(struct_name or "")
+        if not target:
+            continue
+        inner = item.get("inner", {})
+        if "struct" not in inner:
+            continue
+        kind_inner = inner["struct"].get("kind") or {}
+        field_ids = (kind_inner.get("plain") or {}).get("fields") or []
+        # Which fields the struct's OWN constructor demands. `AgentOptions::new
+        # (name)` takes `name` and defaults the other nine; `WebServiceOptions`
+        # / `BedrockOptions` derive `Default` and demand nothing. Only a field
+        # the struct cannot be built without is REQUIRED — a defaulted scalar
+        # (`auto_answer: bool`) is optional even though its type is not
+        # `Option<T>`, exactly as the reference records it defaulted.
+        ctor_required: set[str] = set()
+        has_ctor = False
+        for impl_id in inner["struct"].get("impls", []):
+            impl_item = _get(impl_id)
+            if not impl_item:
+                continue
+            impl_inner = impl_item.get("inner", {}).get("impl", {})
+            if impl_inner.get("trait") is not None:
+                continue  # `Default` and friends demand nothing
+            for m_id in impl_inner.get("items", []):
+                m_item = _get(m_id)
+                if not m_item or m_item.get("name") != "new":
+                    continue
+                m_fn = (m_item.get("inner") or {}).get("function")
+                if not m_fn:
+                    continue
+                has_ctor = True
+                for pname, _ptype in (m_fn.get("sig") or {}).get("inputs", []):
+                    if pname not in ("self", "cls"):
+                        ctor_required.add(pname)
+        params = out.setdefault(target, {"params": {}})["params"]
+        for fid in field_ids:
+            f_item = _get(fid)
+            if not f_item or f_item.get("visibility") != "public":
+                continue
+            fname = f_item.get("name")
+            if not fname or fname.startswith("_"):
+                continue
+            key = (target, fname)
+            if key in _CONSTRUCTION_FIELD_RENAMES:
+                canonical = _CONSTRUCTION_FIELD_RENAMES[key]
+                if canonical is None:
+                    continue  # folded onto its sibling half
+                fname = canonical
+            f_type_node = (f_item.get("inner") or {}).get("struct_field")
+            ctx = f"{target}.{fname}"
+            override = _CONSTRUCTION_FIELD_TYPES.get((target, fname))
+            if override is not None:
+                ftype = override
+            else:
+                try:
+                    ftype = translate_rust_type(f_type_node, paths, aliases, ctx)
+                except TypeTranslationError as e:
+                    failures.append(str(e))
+                    continue
+            # An options-struct field is optional by construction unless the
+            # struct's own `new` demands it. `Option<T>` fields and defaulted
+            # scalars are settable-or-skippable; a struct with no inherent `new`
+            # (Default-only) demands nothing at all.
+            native = f_item.get("name")
+            required = (
+                has_ctor
+                and native in ctor_required
+                and not ftype.startswith("optional<")
+            )
+            # The class's own `__init__` (if any) already declared this name with
+            # its real required flag — a real ctor param's flag wins.
+            params.setdefault(fname, {"type": ftype, "required": required})
+        out[target]["params"] = dict(sorted(params.items()))
+
+    return dict(sorted(out.items()))
 
 
 def build_signature(fn: dict, paths: dict, aliases: dict, context: str) -> dict:
