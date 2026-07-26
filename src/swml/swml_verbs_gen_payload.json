@@ -142,6 +142,23 @@
       "text",
       "contexts"
     ],
+    "AiSidecar": [
+      "ai_sidecar"
+    ],
+    "AiSidecarConfig": [
+      "prompt",
+      "lang",
+      "model",
+      "direction",
+      "customer_role",
+      "url",
+      "SWAIG",
+      "permissions",
+      "global_data",
+      "hints",
+      "params",
+      "action"
+    ],
     "AllOfProperty": [
       "allOf"
     ],
@@ -817,6 +834,17 @@
     ],
     "Return": [
       "return"
+    ],
+    "RingbackConfig": [
+      "url",
+      "urls",
+      "volume",
+      "auto_answer",
+      "say_voice",
+      "say_language",
+      "say_gender",
+      "status_url",
+      "loop"
     ],
     "SIPRefer": [
       "sip_refer"
