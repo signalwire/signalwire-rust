@@ -42,11 +42,25 @@ SRC_DIR = REPO_ROOT / "src"
 
 # porting-sdk adjacency (mirrors enumerate_signatures.py). Used only to read the
 # reference signature oracle for the composition-attribute enrich below.
-PSDK = (REPO_ROOT.parent / "porting-sdk").resolve()
-if not PSDK.is_dir():
-    _env_psdk = os.environ.get("PORTING_SDK")
-    if _env_psdk:
-        PSDK = Path(_env_psdk).resolve()
+# Precedence: an EXPLICIT $PORTING_SDK wins, then the sibling layout, then the
+# CI layout (porting-sdk checked out INSIDE the port repo). The env var has to be
+# first: it is the only way a caller can point this at a specific checkout, and
+# consulting it only as a fallback silently ignores an explicit override whenever a
+# sibling also happens to exist — which is the normal local layout, so the override
+# would be dead exactly where it is most likely to be used.
+def _resolve_psdk() -> Path:
+    env = os.environ.get("PORTING_SDK")
+    if env:
+        return Path(env).resolve()
+    for candidate in (REPO_ROOT.parent / "porting-sdk", REPO_ROOT / "porting-sdk"):
+        if candidate.is_dir():
+            return candidate.resolve()
+    # Unresolvable: return the sibling path anyway so the oracle loader below
+    # fails LOUD naming the path it wanted, rather than degrading here.
+    return (REPO_ROOT.parent / "porting-sdk").resolve()
+
+
+PSDK = _resolve_psdk()
 
 # Map Rust class name → Python canonical module path. Mirrors the C++
 # port's CLASS_MODULE_MAP for consistency.

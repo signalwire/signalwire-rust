@@ -494,10 +494,16 @@ sched_gate FMT defer=1 desc="rustfmt via scripts/run-format.sh (local: auto-fix;
 sched_gate LINT defer=1 desc="cargo clippy --all-targets via scripts/run-lint.sh" \
     -- bash "$PORT_ROOT/scripts/run-lint.sh"
 
-sched_gate DOC-AUDIT res=surface desc="audit_docs vs port_surface.json" \
+# --native-names is load-bearing, not optional. port_surface.json holds the FOLDED
+# surface (reference spellings), so without the native-name sidecar every accessor
+# or options-struct member the enumerator folds becomes unresolvable in this crate's
+# own docs — which are correct, compiling code. See build_native_names() in
+# scripts/enumerate_surface.py.
+sched_gate DOC-AUDIT res=surface desc="audit_docs vs port_surface.json (+ native-name sidecar)" \
     -- python3 "$PORTING_SDK_DIR/scripts/audit_docs.py" \
         --root "$PORT_ROOT" \
         --surface "$PORT_ROOT/port_surface.json" \
+        --native-names "$PORT_ROOT/port_surface_native.json" \
         --ignore "$PORT_ROOT/DOC_AUDIT_IGNORE.md"
 
 sched_gate SURFACE-DIFF res=surface desc="diff_port_surface vs python_surface.json" \

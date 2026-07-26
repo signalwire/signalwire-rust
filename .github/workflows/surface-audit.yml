@@ -63,8 +63,17 @@ jobs:
         run: python3 -m pip install --quiet -r ${{ github.workspace }}/porting-sdk/scripts/requirements.txt
 
 
+      # PORTING_SDK is set EXPLICITLY rather than relying on the sibling-layout
+      # walk. The enumerator oracle-gates its field emission, so an unresolvable
+      # oracle is the difference between a correct snapshot and one missing every
+      # gated member — the trap that cost dotnet, go and cpp a CI investigation
+      # each (porting-sdk CAMPAIGN_STATE §4b, task #37). This layout happens to be
+      # sibling, so the walk would also resolve; naming it means a layout change
+      # cannot silently break the gate.
       - name: Enumerate Rust public API surface
         working-directory: signalwire-rust
+        env:
+          PORTING_SDK: ${{ github.workspace }}/porting-sdk
         run: python3 scripts/enumerate_surface.py
 
       - name: Diff against Python reference

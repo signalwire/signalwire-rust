@@ -364,8 +364,9 @@ mod tests {
     /// tests passed while the reference rejected every token with
     /// `binascii.Error('Incorrect padding')`.
     ///
-    /// Cross-checked with `porting-sdk/scripts/diff_port_token_interop.py`, which
-    /// validates a minted token through the reference's full sequence.
+    /// The cross-port token-interop check validates a minted token through the
+    /// reference implementation's full decode-and-verify sequence, so this test and
+    /// that one fail together if the encoding regresses.
     #[test]
     fn minted_token_is_padded_base64url_as_the_reference_requires() {
         let sm = SessionManager::with_secret(900, &"a".repeat(64));

@@ -39,14 +39,14 @@ import yaml
 
 HERE = Path(__file__).resolve().parent
 PORT_ROOT = HERE.parent
-PSDK = (PORT_ROOT.parent / "porting-sdk").resolve()
-if not PSDK.is_dir():
-    env_psdk = os.environ.get("PORTING_SDK")
-    if env_psdk:
-        PSDK = Path(env_psdk).resolve()
-
 sys.path.insert(0, str(HERE))
 from enumerate_surface import (  # type: ignore
+    # SHARE the resolved porting-sdk path rather than re-deriving it. Both
+    # enumerators read the same oracle, and a duplicated resolver is the shape
+    # that lets the two gates disagree about where the oracle lives — the same
+    # duplication hazard that made a rename table apply in one gate and not the
+    # other (go, typescript, php, and rust's own METHOD_RENAMES keying bug).
+    PSDK,
     CLASS_MODULE_MAP, _module_path_for_class, _translate_class,
     # Idiom-reconciliation tables mirrored from the SURFACE enumerator so the
     # two enumerators discover/name the SAME symbols (Rule 2: reconcile idiom

@@ -62,8 +62,12 @@ jobs:
         # reported "311 symbols missing from port" against a port that was correct.
         run: python3 -m pip install --quiet -r ${{ github.workspace }}/porting-sdk/scripts/requirements.txt
 
+      # PORTING_SDK named explicitly — see the equivalent step in
+      # surface-audit.yml for why the sibling walk is not relied on.
       - name: Enumerate Rust surface (input for audit_docs)
         working-directory: signalwire-rust
+        env:
+          PORTING_SDK: ${{ github.workspace }}/porting-sdk
         run: python3 scripts/enumerate_surface.py
 
       - name: Audit doc / example references
@@ -72,4 +76,5 @@ jobs:
           python3 ${{ github.workspace }}/porting-sdk/scripts/audit_docs.py \
               --root . \
               --surface port_surface.json \
+              --native-names port_surface_native.json \
               --ignore DOC_AUDIT_IGNORE.md
