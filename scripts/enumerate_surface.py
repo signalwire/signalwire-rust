@@ -2071,9 +2071,53 @@ def build_surface() -> dict:
     }
 
 
+def build_native_names() -> dict:
+    """Return the NATIVE-name sidecar: every member name the crate actually ships,
+    spelled as Rust spells it, BEFORE any fold runs.
+
+    DOC-AUDIT resolves a doc/example symbol against `port_surface.json`, which is
+    the FOLDED surface — reference spellings. Every fold therefore un-resolves the
+    port's own docs even though they are correct, compiling code: `svc.route(..)`
+    does not become `svc.set_route(..)` because the enumerator renamed one onto the
+    other, and `ConciergeOptions::from_venue_info` does not stop existing because
+    the options struct folds into its target's `__init__`. The docs were right; the
+    enumerated surface moved.
+
+    So the sidecar is deliberately the RAW walk: `_parse_file_full` output with no
+    METHOD_RENAMES, no MODULE_METHOD_DROPS, no class suppression. A name is in here
+    if and only if the source declares it, which is exactly the property that lets
+    a folded-away real member resolve while a genuinely-absent one stays
+    unresolved.
+
+    Emitted in the FLAT `{"native_names": [...]}` shape (`audit_docs.load_native_names`
+    accepts flat and nested; flat is what a name-only consumer needs).
+
+    ⚠ A sidecar resolves FOLD idiom; it does NOT certify a doc. It is name-keyed,
+    not class-scoped, so an unrelated class declaring the same name can let a
+    genuinely-broken doc reference resolve by coincidence. It is not a substitute
+    for checking that a method a doc names actually exists on the type the doc
+    calls it on.
+    """
+    names: set[str] = set()
+    for path in _walk_source_files():
+        free_fns, methods, classes, pub_fields = _parse_file_full(path)
+        names |= free_fns
+        names |= classes
+        for members in methods.values():
+            names |= members
+        for fields in pub_fields.values():
+            names |= fields
+    return {"native_names": sorted(names)}
+
+
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", default=str(REPO_ROOT / "port_surface.json"))
+    parser.add_argument(
+        "--native-output",
+        default=str(REPO_ROOT / "port_surface_native.json"),
+        help="Where to write the native-name sidecar DOC-AUDIT reads.",
+    )
     parser.add_argument(
         "--check",
         action="store_true",
@@ -2085,19 +2129,26 @@ def main(argv: list[str]) -> int:
     rendered = json.dumps(surface, indent=2, sort_keys=False) + "\n"
     out_path = Path(args.output)
 
+    native_rendered = json.dumps(build_native_names(), indent=2, sort_keys=False) + "\n"
+    native_path = Path(args.native_output)
+
     if args.check:
-        if not out_path.exists():
-            print(f"enumerate_surface: {out_path} does not exist", file=sys.stderr)
-            return 1
-        on_disk = out_path.read_text(encoding="utf-8")
-        if on_disk != rendered:
-            print(f"enumerate_surface: {out_path} is out of date — re-run without --check", file=sys.stderr)
-            return 1
+        for path, want in ((out_path, rendered), (native_path, native_rendered)):
+            if not path.exists():
+                print(f"enumerate_surface: {path} does not exist", file=sys.stderr)
+                return 1
+            if path.read_text(encoding="utf-8") != want:
+                print(
+                    f"enumerate_surface: {path} is out of date — re-run without --check",
+                    file=sys.stderr,
+                )
+                return 1
         print("enumerate_surface: up to date.")
         return 0
 
     out_path.write_text(rendered, encoding="utf-8")
-    print(f"enumerate_surface: wrote {out_path}")
+    native_path.write_text(native_rendered, encoding="utf-8")
+    print(f"enumerate_surface: wrote {out_path} and {native_path}")
     return 0
 
 

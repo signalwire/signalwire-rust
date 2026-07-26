@@ -102,12 +102,18 @@ surface_fresh_gate() {
     local committed="$PORT_ROOT/.sw-tmp/committed_surface.json"
     git show HEAD:port_surface.json > "$committed" 2>/dev/null \
         || cp "$PORT_ROOT/port_surface.json" "$committed"
-    python3 scripts/enumerate_surface.py || { git checkout -- port_surface.json; return 1; }
+    # The enumerator writes the native-name sidecar alongside the surface, so both
+    # are restored — leaving a regenerated sidecar behind would make the tree dirty
+    # for every later gate.
+    python3 scripts/enumerate_surface.py || {
+        git checkout -- port_surface.json port_surface_native.json
+        return 1
+    }
     python3 "$PORTING_SDK_DIR/scripts/check_surface_freshness.py" \
         --committed "$committed" \
         --fresh "$PORT_ROOT/port_surface.json"
     local rc=$?
-    git checkout -- port_surface.json
+    git checkout -- port_surface.json port_surface_native.json
     return $rc
 }
 

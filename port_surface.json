@@ -1,6 +1,6 @@
 {
   "version": "1",
-  "generated_from": "signalwire-rust @ a7d19331dbb21c41de63c29297ce68e0313b822a",
+  "generated_from": "signalwire-rust @ 876e8de59675dab88bf30075e6577a2006973251",
   "modules": {
     "signalwire": {
       "classes": {

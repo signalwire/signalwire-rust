@@ -31,6 +31,7 @@ exclude = [
     "port_signatures.json",
     "port_signatures.baseline.json",
     "port_surface.json",
+    "port_surface_native.json",
     "audit_coverage.json",
     "audit_coverage_baseline.json",
     "examples/emit_corpus.rs",
