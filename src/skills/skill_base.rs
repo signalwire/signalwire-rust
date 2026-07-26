@@ -1,3 +1,5 @@
+use std::sync::{Arc, Mutex};
+
 use serde_json::{Map, Value};
 
 use crate::agent::AgentBase;
@@ -30,6 +32,71 @@ pub(crate) fn default_parameter_schema() -> Value {
     })
 }
 
+/// The agent a skill (or a [`SkillManager`](crate::skills::SkillManager)) is
+/// attached to, as seen from the skill side — the reference's `self.agent`
+/// back-reference (`skill_base.py:39`, `skill_manager.py:22`).
+///
+/// This is a TRAIT rather than an `Arc<AgentBase>` for an ownership reason, not
+/// a stylistic one. `AgentBase` is plain owned state that every call site holds
+/// by value or `&mut` (`AgentServer` keeps a `HashMap<String, AgentBase>`), and
+/// its mutating surface takes `&mut self`. A shared strong back-reference from a
+/// skill into its agent would therefore require making every agent
+/// `Arc<Mutex<…>>`, which would serialize the whole render path behind one lock
+/// for the sake of a read-back. A trait handle carries the identity a caller
+/// actually needs and keeps the agent's ownership unchanged.
+///
+/// The MUTATING half of the reference's `self.agent` usage is already covered
+/// without it: `register_tools` receives `&mut AgentBase` directly, so a skill
+/// registers tools, hints, and prompt sections against the live agent exactly as
+/// the reference does.
+/// `Debug` is a supertrait so a skill built on [`SkillParams`] can still derive
+/// `Debug` with the handle stored inside it.
+pub trait SkillAgent: std::fmt::Debug + Send + Sync {
+    /// The agent's id (`AgentBase::agent_id`).
+    fn agent_id(&self) -> String;
+    /// The agent's name (`AgentBase::get_name`).
+    fn agent_name(&self) -> String;
+    /// The agent's HTTP route.
+    fn agent_route(&self) -> String;
+}
+
+/// The concrete [`SkillAgent`] the `SkillManager` hands each skill: an identity
+/// handle taken from the live [`AgentBase`] at load time.
+///
+/// Deliberately a snapshot of the agent's identity rather than a borrow. It is
+/// the same shape go's port uses (`skillAgent`) and for the same reason: the
+/// identity is what the back-reference is read FOR, while every mutating use
+/// already flows through the `&mut AgentBase` that `register_tools` receives.
+#[derive(Debug, Clone)]
+pub struct AgentHandle {
+    agent_id: String,
+    name: String,
+    route: String,
+}
+
+impl AgentHandle {
+    /// Capture the identity of `agent`.
+    pub fn of(agent: &AgentBase) -> Self {
+        AgentHandle {
+            agent_id: agent.agent_id().to_string(),
+            name: agent.get_name(),
+            route: agent.route().to_string(),
+        }
+    }
+}
+
+impl SkillAgent for AgentHandle {
+    fn agent_id(&self) -> String {
+        self.agent_id.clone()
+    }
+    fn agent_name(&self) -> String {
+        self.name.clone()
+    }
+    fn agent_route(&self) -> String {
+        self.route.clone()
+    }
+}
+
 /// Trait implemented by all skills (both builtin and custom).
 ///
 /// A skill encapsulates tools, hints, global data, and prompt sections that can
@@ -37,6 +104,31 @@ pub(crate) fn default_parameter_schema() -> Value {
 pub trait SkillBase: Send + Sync {
     /// Unique `snake_case` name of this skill (e.g. `"datetime"`).
     fn name(&self) -> &str;
+
+    /// The agent this skill was loaded into, or `None` before it is loaded.
+    ///
+    /// Mirrors the reference's `SkillBase.agent`, which the reference sets in
+    /// `__init__` (`skill_base.py:39`). Here the `SkillManager` hands it over at
+    /// load time, BEFORE `setup()` runs, so a skill's own setup can read which
+    /// agent it belongs to — the same ordering the reference gets from
+    /// constructing the skill with its agent.
+    ///
+    /// Reads through [`skill_state`](Self::skill_state), so every skill that
+    /// keeps a [`SkillParams`] gets this for free — no per-skill override, which
+    /// matters because the reference records `agent` on `SkillBase` ALONE and
+    /// each concrete skill inherits it. An override on all 18 builtins would
+    /// surface 18 copies the reference does not have.
+    fn agent(&self) -> Option<Arc<dyn SkillAgent>> {
+        self.skill_state().and_then(SkillParams::agent)
+    }
+
+    /// Attach the owning agent. Called by the `SkillManager` at load time; not
+    /// normally called directly.
+    fn set_agent(&self, agent: Arc<dyn SkillAgent>) {
+        if let Some(state) = self.skill_state() {
+            state.set_agent(agent);
+        }
+    }
 
     /// Human-readable description.
     fn description(&self) -> &str;
@@ -217,6 +309,26 @@ pub trait SkillBase: Send + Sync {
     /// Access the skill's configuration parameters.
     fn params(&self) -> &Map<String, Value>;
 
+    /// The skill's shared state block, when it keeps one.
+    ///
+    /// The hook that makes [`agent`](Self::agent) and
+    /// [`set_agent`](Self::set_agent) work without every skill re-implementing
+    /// them: a skill that stores a [`SkillParams`] returns it here (one line)
+    /// and inherits both. `None` — the default — means the skill manages its own
+    /// state and may override `agent`/`set_agent` directly.
+    ///
+    /// A `&self` hook suffices for BOTH directions because `SkillParams` holds
+    /// the handle behind a lock, so `set_agent` does not need `&mut self`. That
+    /// matters for more than convenience: the manager hands the agent over while
+    /// it also holds `&mut AgentBase`, and a `&mut self` path here would
+    /// force the two borrows to interleave.
+    ///
+    /// Plumbing, not contract: the enumerator drops it from the skill surface,
+    /// since the reference's skills have no counterpart.
+    fn skill_state(&self) -> Option<&SkillParams> {
+        None
+    }
+
     /// Validate that all required env vars are set. Returns missing var names.
     fn validate_env_vars(&self) -> Vec<String> {
         let mut missing = Vec::new();
@@ -248,18 +360,62 @@ pub trait SkillBase: Send + Sync {
 }
 
 /// Parameters holder used by the default `SkillBase` implementations.
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct SkillParams {
     pub params: Map<String, Value>,
+    /// The agent this skill was loaded into, set by the `SkillManager` at load
+    /// time (see [`SkillBase::agent`]). `None` until then.
+    ///
+    /// Behind a `Mutex` so the handover works through `&self`: the manager sets
+    /// it while simultaneously holding `&mut AgentBase`, and a `&mut self` path
+    /// would put those two borrows in conflict.
+    agent: Mutex<Option<Arc<dyn SkillAgent>>>,
+}
+
+impl Clone for SkillParams {
+    fn clone(&self) -> Self {
+        SkillParams {
+            params: self.params.clone(),
+            agent: Mutex::new(self.agent()),
+        }
+    }
 }
 
 impl SkillParams {
     pub fn new(params: Map<String, Value>) -> Self {
-        SkillParams { params }
+        SkillParams {
+            params,
+            agent: Mutex::new(None),
+        }
     }
 
     pub fn empty() -> Self {
-        SkillParams { params: Map::new() }
+        SkillParams {
+            params: Map::new(),
+            agent: Mutex::new(None),
+        }
+    }
+
+    /// The owning agent handle, or `None` before the skill is loaded.
+    ///
+    /// # Panics
+    /// Never in practice — a poisoned lock is recovered via `into_inner`.
+    pub fn agent(&self) -> Option<Arc<dyn SkillAgent>> {
+        self.agent
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .clone()
+    }
+
+    /// Record the owning agent. Called by the `SkillManager`.
+    ///
+    /// # Panics
+    /// Never in practice — a poisoned lock is recovered via `into_inner`.
+    pub fn set_agent(&self, agent: Arc<dyn SkillAgent>) {
+        *self
+            .agent
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner) = Some(agent);
     }
 
     pub fn get_str(&self, key: &str) -> Option<&str> {

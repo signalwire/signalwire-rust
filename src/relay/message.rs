@@ -26,6 +26,13 @@ pub struct Message {
     direction: Option<String>,
     from_number: Option<String>,
     to_number: Option<String>,
+    /// SMS segment count the server reports for this message. Declared
+    /// `integer` on BOTH `messaging.state.event` and `messaging.receive.event`
+    /// and carried as a construction param the reference reads back
+    /// (`message.py:53,65`). Not behind a `Mutex` because the reference only
+    /// ever assigns it at construction — a state event updates `state`/`reason`
+    /// alone (`message.py:109-110`).
+    segments: i64,
     body: Mutex<Option<String>>,
     media: Mutex<Vec<String>>,
     tags: Mutex<Vec<String>>,
@@ -65,6 +72,10 @@ impl Message {
                 .or_else(|| params.get("to"))
                 .and_then(|v| v.as_str())
                 .map(std::string::ToString::to_string),
+            segments: params
+                .get("segments")
+                .and_then(serde_json::Value::as_i64)
+                .unwrap_or(0),
             body: Mutex::new(
                 params
                     .get("body")
@@ -148,6 +159,12 @@ impl Message {
 
     pub fn to_number(&self) -> Option<&str> {
         self.to_number.as_deref()
+    }
+
+    /// How many SMS segments the server billed this message as. `0` when the
+    /// event carried no `segments` key (the reference's ctor default).
+    pub fn segments(&self) -> i64 {
+        self.segments
     }
 
     /// # Panics
@@ -392,6 +409,21 @@ mod tests {
             "tags": ["tag1"],
             "state": "queued",
         })
+    }
+
+    #[test]
+    fn test_segments_read_from_the_event_params() {
+        // `segments` is declared `integer` on messaging.state.event AND
+        // messaging.receive.event, and the reference carries it as a readable
+        // construction param (`message.py:53,65`). The port used to drop the key
+        // outright, so a caller could not learn the billed segment count.
+        let mut p = sample_params();
+        p.as_object_mut()
+            .unwrap()
+            .insert("segments".to_string(), json!(3));
+        assert_eq!(Message::new(&p).segments(), 3);
+        // Absent key -> the reference's ctor default.
+        assert_eq!(Message::new(&sample_params()).segments(), 0);
     }
 
     #[test]

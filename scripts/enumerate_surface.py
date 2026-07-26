@@ -216,6 +216,13 @@ CLASS_MODULE_MAP: dict[str, str] = {
 
     # relay
     "Client": "signalwire.relay.client",  # Rust's `relay::Client` == Python's `RelayClient`
+    # RelayError: Rust hosts the typed error at relay/error.rs; the Python
+    # reference records it under relay.client. Same case as HttpClient /
+    # SignalWireRestError above — route the MODULE so the class's real method set
+    # travels with it, rather than restating that set by hand in
+    # FORCE_CLASS_METHODS (a hand-written list cannot self-retire as the oracle
+    # grows, which is how `code`/`message` stayed invisible after B2 landed).
+    "RelayError": "signalwire.relay.client",
     "Call": "signalwire.relay.call",
     "Message": "signalwire.relay.message",
     "Action": "signalwire.relay.call",
@@ -556,15 +563,26 @@ METHOD_RENAMES: dict[str, dict[str, str]] = {
     "Client": {
         "execute_call_verb": None,
         "has_live_socket": None,
+        # Same arity idiom as SecurityConfig / AgentServer / PromptObjectModel:
+        # one reference `__init__(project, token, jwt_token, host, contexts, …)`
+        # needs two Rust spellings because Rust has no default arguments —
+        # `new(project, token, host)` with the JWT defaulted, and
+        # `with_jwt_token(project, token, host, jwt_token)` with it explicit. Fold
+        # the second onto the same `__init__`.
+        "with_jwt_token": "__init__",
     },
-    # SignalWireRestError: reference records only __init__. Drop the Rust
-    # field-accessor reads (message/status_code/response_body/url/method — all
-    # mirror the Python exception's instance attributes of the same names, which
-    # the reference surface does not enumerate as members).
+    # SignalWireRestError: the reference records `__init__` plus the ctor params it
+    # keeps as public instance attributes (`status_code` / `body` / `url` /
+    # `method` / `headers` / `request_id`). The same-named Rust readers pass
+    # straight through via the oracle-gated drop below; `body` is the one whose
+    # Rust spelling differs (`response_body`, chosen because the struct boxes the
+    # body together with the header map) and so folds via a RENAME rather than a
+    # drop — a drop keyed on the Rust spelling can never self-retire against an
+    # oracle that records the reference spelling.
     "SignalWireRestError": {
+        "response_body": "body",
         "message": None,
         "status_code": None,
-        "response_body": None,
         "url": None,
         "method": None,
     },
@@ -705,6 +723,24 @@ OPTIONS_STRUCT_SUPPRESS_CLASSES: frozenset[str] = frozenset({
     "InfoGathererOptions",
     "ReceptionistOptions",
     "SurveyOptions",
+})
+
+# BACK-REFERENCE handle types — the Rust spelling of a reference attribute that
+# holds the owning object, folded for the same reason as the options structs.
+#
+# `SkillBase.agent` / `SkillManager.agent` are reference members: the object a
+# skill was loaded into. Python stores the agent itself (`self.agent = agent`).
+# Rust cannot: `AgentBase` is plain owned state that every call site holds by
+# value or `&mut` (AgentServer keeps a `HashMap<String, AgentBase>`) and its
+# mutating surface takes `&mut self`, so a shared strong back-reference would
+# force every agent into an `Arc<Mutex<…>>` and serialize the render path behind
+# one lock. The port therefore hands over a `SkillAgent` handle
+# (`AgentHandle`). Those two types ARE the reference's `self.agent` in Rust
+# spelling — they add no capability, and the oracle records no such class — so
+# they fold here rather than being recorded as additions.
+BACK_REFERENCE_HANDLE_CLASSES: frozenset[str] = frozenset({
+    "SkillAgent",
+    "AgentHandle",
 })
 
 
@@ -1289,6 +1325,11 @@ SURFACE_BARE_CLASSES: dict[str, list[str]] = {
 # reference symbol so the surface compares EQUAL (Rule 2 — the real type
 # exists, just in the port's error module). {(python_module, class): [methods]}
 FORCE_CLASS_METHODS: dict[tuple[str, str], list[str]] = {
+    # `__init__` only: the class itself (with `code` / `message`, the reference's
+    # two readable ctor params) now arrives via CLASS_MODULE_MAP's
+    # RelayError -> signalwire.relay.client route, so the real method set travels
+    # with it. What remains to force is the reference's `__init__`, which Rust's
+    # enum has no counterpart for — a variant is constructed by naming it.
     ("signalwire.relay.client", "RelayError"): ["__init__"],
     # Python delegate classes (PromptManager / ToolRegistry) that Rust folds
     # onto AgentBase: their SURFACE_PROJECTIONS already project the method set,
@@ -1425,7 +1466,36 @@ MODULE_METHOD_DROPS: dict[str, set[str]] = {
         "enable_post_prompt_override", "check_for_input_override",
         "trust_proxy_for_signature",
     },
+    # `skill_state` is the `SkillBase` plumbing hook that lets the trait's
+    # `agent`/`set_agent` defaults reach the `SkillParams` a skill stores — the
+    # Rust stand-in for Python setting `self.agent` in `SkillBase.__init__`. The
+    # reference has no counterpart on the base and none on any concrete skill, so
+    # drop it from the skill surface. The CAPABILITY it backs (`agent`) is a real
+    # reference member and stays.
+    # `set_agent` is the WRITE half of the same thing. The reference has no setter
+    # because it takes the agent as a constructor argument — the ONE writable
+    # moment. Rust's load path cannot pass it to a registry factory that predates
+    # the agent, so the manager writes it immediately after construction and
+    # before `setup()`, which is the same single write at the same point in the
+    # lifecycle. That makes it construction idiom, not a second capability, so it
+    # folds here; the READ (`agent`) is the reference member and stays.
+    "signalwire.core.skill_base": {"skill_state", "set_agent"},
+    # `signalwire.skills.skill_base` is where Rust's SkillParams / SkillAgent /
+    # AgentHandle live. SkillParams is already an excused typed-helper class
+    # (PORT_ADDITIONS: "Python uses Dict[str, Any] directly"), and its `agent` /
+    # `set_agent` pair is the storage BEHIND SkillBase.agent — the same plumbing
+    # as `skill_state`, one layer down. Drop both for the same reason.
+    "signalwire.skills.skill_base": {"agent", "set_agent"},
 }
+# Every concrete skill module inherits the same `skill_state` drop. DERIVED from
+# the skill entries in CLASS_MODULE_MAP rather than hand-listed, so a new skill
+# picks it up automatically instead of surfacing a phantom addition that a later
+# lane has to chase.
+for _skill_module in {
+    m for m in CLASS_MODULE_MAP.values()
+    if m.startswith("signalwire.skills.") and m.endswith(".skill")
+}:
+    MODULE_METHOD_DROPS.setdefault(_skill_module, set()).add("skill_state")
 # Module-level FREE FUNCTIONS to drop — `pub(crate)` crate-internal helpers the
 # public-fn regex captures but that are NOT public crate API (external callers
 # cannot reach them), so they are not part of the reference surface.
@@ -1661,8 +1731,14 @@ def build_surface() -> dict:
     # construction-options struct family (see OPTIONS_STRUCT_SUPPRESS_CLASSES):
     # each one IS its target class's reference `__init__` kwargs, unfolded onto
     # that class by the construction contract in port_signatures.json.
+    # Back-reference handle types fold the same way (see
+    # BACK_REFERENCE_HANDLE_CLASSES): they are the Rust spelling of the
+    # reference's `self.agent` attribute, not surface of their own.
     suppressed_classes = (
-        suppressed_classes | AI_CHAT_SUPPRESS_CLASSES | OPTIONS_STRUCT_SUPPRESS_CLASSES
+        suppressed_classes
+        | AI_CHAT_SUPPRESS_CLASSES
+        | OPTIONS_STRUCT_SUPPRESS_CLASSES
+        | BACK_REFERENCE_HANDLE_CLASSES
     )
 
     # Generated-type pass (§D3/§H): route each generated-type FILE by path and

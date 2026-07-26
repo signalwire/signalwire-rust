@@ -232,6 +232,10 @@ impl SkillBase for McpGateway {
         &self.sp.params
     }
 
+    fn skill_state(&self) -> Option<&crate::skills::skill_base::SkillParams> {
+        Some(&self.sp)
+    }
+
     /// Python `REQUIRED_PACKAGES = ["requests"]`. Rust links its HTTP client
     /// (`ureq`) at build time, so this is purely declarative surface.
     fn required_packages(&self) -> Vec<String> {

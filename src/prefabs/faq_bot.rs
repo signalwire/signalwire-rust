@@ -86,6 +86,10 @@ pub struct FAQBotAgent {
     agent: AgentBase,
     faqs: Vec<Value>,
     suggest_related: bool,
+    /// Resolved personality description — the caller's `persona` or the
+    /// reference default (`faq_bot.py:76-79`). Retained so a caller can read
+    /// back the personality the agent is actually running with.
+    persona: String,
 }
 
 impl FAQBotAgent {
@@ -104,11 +108,11 @@ impl FAQBotAgent {
         } = options;
 
         let agent_name = if name.is_empty() { "faq_bot" } else { &name };
-        let persona_text = persona.unwrap_or_else(|| {
+        let persona = persona.unwrap_or_else(|| {
             "You are a helpful FAQ bot that provides accurate answers to common questions."
                 .to_string()
         });
-        let persona_text = persona_text.as_str();
+        let persona_text = persona.as_str();
 
         let mut opts = AgentOptions::new(agent_name);
         opts.route = Some(if route.is_empty() {
@@ -242,6 +246,7 @@ impl FAQBotAgent {
             agent,
             faqs,
             suggest_related,
+            persona,
         }
     }
 
@@ -259,6 +264,12 @@ impl FAQBotAgent {
 
     pub fn suggest_related(&self) -> bool {
         self.suggest_related
+    }
+
+    /// The bot's personality description — the caller's value or the reference
+    /// default (`faq_bot.py:76-79`).
+    pub fn persona(&self) -> &str {
+        &self.persona
     }
 
     /// Search for FAQs matching a specific query and/or category.
@@ -368,6 +379,35 @@ mod tests {
         assert_eq!(agent.agent().service().route(), "/faq");
         assert_eq!(agent.faqs().len(), 3);
         assert!(agent.suggest_related());
+    }
+
+    #[test]
+    fn test_persona_is_retained_and_rendered() {
+        // `faq_bot.py:76-79` keeps the resolved persona as a public attribute; the
+        // port rendered it into the prompt and dropped it.
+        let agent = FAQBotAgent::new(
+            FAQBotOptions::new(sample_faqs())
+                .name("test")
+                .persona("You are a terse, precise archivist."),
+        );
+        assert_eq!(agent.persona(), "You are a terse, precise archivist.");
+        let prompt = agent.agent().get_prompt().to_string();
+        assert!(prompt.contains("terse, precise archivist"), "{prompt}");
+
+        // Unset -> the reference's default, and reader == rendered text.
+        let plain = FAQBotAgent::new(FAQBotOptions::new(sample_faqs()).name("test"));
+        assert_eq!(
+            plain.persona(),
+            "You are a helpful FAQ bot that provides accurate answers to common questions."
+        );
+        assert!(
+            plain
+                .agent()
+                .get_prompt()
+                .to_string()
+                .contains(plain.persona()),
+            "the rendered persona is not the one the reader returns"
+        );
     }
 
     #[test]

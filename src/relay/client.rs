@@ -195,6 +195,13 @@ pub struct Client {
     // ── identity / auth ───────────────────────────────────────────────
     pub project: String,
     pub token: String,
+    /// RELAY JWT, the ALTERNATIVE to project/token authentication. When set, the
+    /// `signalwire.connect` handshake sends `{"jwt_token": …}` and omits
+    /// project/token entirely — the project id is inside the token
+    /// (`client.py:397-401`). Empty string means "not using JWT auth", matching
+    /// the reference, which defaults it from `SIGNALWIRE_JWT_TOKEN` and treats
+    /// the empty value as absent (`client.py:173,177`).
+    pub jwt_token: String,
     pub host: String,
     pub contexts: Mutex<Vec<String>>,
     pub connected: Mutex<bool>,
@@ -247,9 +254,23 @@ pub struct Client {
 
 impl Client {
     pub fn new(project: &str, token: &str, host: &str) -> Self {
+        Self::with_jwt_token(project, token, host, "")
+    }
+
+    /// Build a client that authenticates with a RELAY **JWT** instead of a
+    /// project/token pair — the reference's `RelayClient(jwt_token=…)`
+    /// (`client.py:166,173`). Pass `""` for `project`/`token`: with a JWT the
+    /// project id travels inside the token, and the connect handshake omits
+    /// project/token entirely (`client.py:397-401`).
+    ///
+    /// Rust has neither default arguments nor constructor overloading, so this
+    /// is the explicit-argument spelling of the same single reference
+    /// constructor that [`Client::new`] spells with the JWT defaulted.
+    pub fn with_jwt_token(project: &str, token: &str, host: &str, jwt_token: &str) -> Self {
         Client {
             project: project.to_string(),
             token: token.to_string(),
+            jwt_token: jwt_token.to_string(),
             host: host.to_string(),
             contexts: Mutex::new(Vec::new()),
             connected: Mutex::new(false),
@@ -279,23 +300,37 @@ impl Client {
         }
     }
 
-    /// Create from env vars `SIGNALWIRE_PROJECT_ID`, `SIGNALWIRE_API_TOKEN`, `SIGNALWIRE_SPACE`.
+    /// Create from the environment: `SIGNALWIRE_SPACE` plus EITHER
+    /// `SIGNALWIRE_JWT_TOKEN` or the `SIGNALWIRE_PROJECT_ID` +
+    /// `SIGNALWIRE_API_TOKEN` pair.
+    ///
+    /// JWT is the ALTERNATIVE to project/token, not an addition: when
+    /// `SIGNALWIRE_JWT_TOKEN` is set and non-empty, project/token are not
+    /// required because the project id lives inside the token — exactly the
+    /// reference's credential contract (`client.py:173,176-197`).
     ///
     /// # Errors
     ///
-    /// Returns `Err(RelayError::missing_env(...))` if any of the three
-    /// required environment variables — `SIGNALWIRE_PROJECT_ID`,
-    /// `SIGNALWIRE_API_TOKEN`, or `SIGNALWIRE_SPACE` — is unset (or not
-    /// valid UTF-8). No network I/O occurs here, so this is purely a
-    /// configuration-presence check.
+    /// `Err(RelayError::missing_env(...))` naming the specific missing variable:
+    /// `SIGNALWIRE_SPACE` always, and — only when no JWT is present —
+    /// `SIGNALWIRE_PROJECT_ID` / `SIGNALWIRE_API_TOKEN` individually, so the
+    /// caller learns which credential to supply rather than a combined message.
+    /// No network I/O occurs here; this is purely a configuration-presence check.
     pub fn from_env() -> Result<Self, RelayError> {
-        let project = std::env::var("SIGNALWIRE_PROJECT_ID")
-            .map_err(|_| RelayError::missing_env("SIGNALWIRE_PROJECT_ID"))?;
-        let token = std::env::var("SIGNALWIRE_API_TOKEN")
-            .map_err(|_| RelayError::missing_env("SIGNALWIRE_API_TOKEN"))?;
         let host = std::env::var("SIGNALWIRE_SPACE")
             .map_err(|_| RelayError::missing_env("SIGNALWIRE_SPACE"))?;
-        Ok(Self::new(&project, &token, &host))
+        let jwt_token = std::env::var("SIGNALWIRE_JWT_TOKEN").unwrap_or_default();
+        let project = std::env::var("SIGNALWIRE_PROJECT_ID").unwrap_or_default();
+        let token = std::env::var("SIGNALWIRE_API_TOKEN").unwrap_or_default();
+        if jwt_token.is_empty() {
+            if project.is_empty() {
+                return Err(RelayError::missing_env("SIGNALWIRE_PROJECT_ID"));
+            }
+            if token.is_empty() {
+                return Err(RelayError::missing_env("SIGNALWIRE_API_TOKEN"));
+            }
+        }
+        Ok(Self::with_jwt_token(&project, &token, &host, &jwt_token))
     }
 
     // ══════════════════════════════════════════════════════════════════
@@ -446,15 +481,20 @@ impl Client {
                 "minor": constants::PROTOCOL_VERSION_MINOR,
                 "revision": constants::PROTOCOL_VERSION_REVISION,
             },
-            "project": self.project,
-            "token": self.token,
-            "authentication": {
-                "project": self.project,
-                "token": self.token,
-            },
+            "authentication": self.authentication_params(),
             "agent": self.agent,
             "event_acks": true,
         });
+        // Mirror project/token at the TOP LEVEL as well, for the audit fixture
+        // (Python sends them only under `authentication`). JWT auth has no
+        // top-level form — the reference sends `{"jwt_token": …}` inside
+        // `authentication` alone — so only the project/token path mirrors.
+        if self.jwt_token.is_empty()
+            && let Value::Object(ref mut obj) = params
+        {
+            obj.insert("project".to_string(), json!(self.project));
+            obj.insert("token".to_string(), json!(self.token));
+        }
         // Include current contexts on the connect frame so the audit
         // fixture (and Python's RELAY) sees the subscription on the
         // initial handshake. Subsequent `signalwire.receive` calls
@@ -564,14 +604,25 @@ impl Client {
                     "minor": constants::PROTOCOL_VERSION_MINOR,
                     "revision": constants::PROTOCOL_VERSION_REVISION,
                 },
-                "authentication": {
-                    "project": self.project,
-                    "token": self.token,
-                },
+                "authentication": self.authentication_params(),
                 "agent": self.agent,
             },
         });
         self.send(&msg);
+    }
+
+    /// The `authentication` object for the `signalwire.connect` frame.
+    ///
+    /// JWT and project/token are MUTUALLY EXCLUSIVE on the wire: with a JWT the
+    /// reference sends `{"jwt_token": …}` and nothing else, because the project
+    /// id is inside the token (`client.py:397-401`). Sending both would present
+    /// two identities on one handshake.
+    fn authentication_params(&self) -> Value {
+        if self.jwt_token.is_empty() {
+            json!({"project": self.project, "token": self.token})
+        } else {
+            json!({"jwt_token": self.jwt_token})
+        }
     }
 
     /// Gracefully close the connection. Signals the reader thread to
@@ -1199,6 +1250,14 @@ impl Client {
                     .and_then(|v| v.as_str())
                     .unwrap_or("execute failed")
                     .to_string(),
+                // Carry the JSON-RPC `error.code` the frame already provides.
+                // Accepts both the numeric form and the string form RELAY uses
+                // for result codes (`"404"`), same as `classify_verb_outcome`.
+                code: err.get("code").and_then(|c| match c {
+                    Value::Number(n) => n.as_i64(),
+                    Value::String(s) => s.parse().ok(),
+                    _ => None,
+                }),
             }),
             Err(_) => {
                 self.pending.lock().unwrap().remove(&id);
@@ -1345,6 +1404,11 @@ impl Client {
         Some(Err(RelayError::Rpc {
             method: method.to_string(),
             message: message.to_string(),
+            // `numeric` is the code this function already parsed to make the
+            // 2xx / 404 / 410 decisions above; it was being discarded, so a
+            // caller could not tell (say) a 401 from a 500 without matching on
+            // the message text. Carry it.
+            code: numeric,
         }))
     }
 
@@ -2280,6 +2344,35 @@ mod tests {
             msgs[0]["params"]["authentication"]["project"],
             "test-project"
         );
+    }
+
+    #[test]
+    fn test_jwt_auth_replaces_project_token_on_the_connect_frame() {
+        // JWT is the ALTERNATIVE to project/token, not an addition: the reference
+        // sends `{"jwt_token": …}` alone, because the project id is inside the
+        // token (`client.py:397-401`). Before this the port had no JWT path at
+        // all, so a caller holding only a JWT could not connect.
+        let c = Client::with_jwt_token("", "", "example.signalwire.com", "JWT-ABC");
+        assert_eq!(c.jwt_token, "JWT-ABC");
+        c.authenticate();
+        let msgs = c.sent_messages.lock().unwrap();
+        let auth = &msgs[0]["params"]["authentication"];
+        assert_eq!(auth["jwt_token"], "JWT-ABC");
+        assert!(
+            auth.get("project").is_none() && auth.get("token").is_none(),
+            "JWT and project/token are mutually exclusive on the wire: {auth}"
+        );
+    }
+
+    #[test]
+    fn test_no_jwt_keeps_the_project_token_frame() {
+        let c = make_client();
+        assert_eq!(c.jwt_token, "");
+        c.authenticate();
+        let msgs = c.sent_messages.lock().unwrap();
+        let auth = &msgs[0]["params"]["authentication"];
+        assert_eq!(auth["project"], "test-project");
+        assert!(auth.get("jwt_token").is_none());
     }
 
     #[test]

@@ -250,7 +250,6 @@ signalwire.prefabs.receptionist.ReceptionistAgent.greeting: Rust prefabs (InfoGa
 signalwire.prefabs.survey.SurveyAgent.agent: Rust prefabs (InfoGathererAgent, SurveyAgent, ReceptionistAgent, FAQBotAgent, ConciergeAgent) wrap an AgentBase via composition + Deref. The agent / agent_mut accessors expose the wrapped AgentBase explicitly. Python prefabs subclass AgentBase so attribute access is direct.
 signalwire.prefabs.survey.SurveyAgent.agent_mut: Rust prefabs (InfoGathererAgent, SurveyAgent, ReceptionistAgent, FAQBotAgent, ConciergeAgent) wrap an AgentBase via composition + Deref. The agent / agent_mut accessors expose the wrapped AgentBase explicitly. Python prefabs subclass AgentBase so attribute access is direct.
 signalwire.prefabs.survey.SurveyAgent.survey_name: Rust prefabs (InfoGathererAgent, SurveyAgent, ReceptionistAgent, FAQBotAgent, ConciergeAgent) wrap an AgentBase via composition + Deref. The agent / agent_mut accessors expose the wrapped AgentBase explicitly. Python prefabs subclass AgentBase so attribute access is direct.
-signalwire.prefabs.survey.SurveyAgent.survey_questions: Rust prefabs (InfoGathererAgent, SurveyAgent, ReceptionistAgent, FAQBotAgent, ConciergeAgent) wrap an AgentBase via composition + Deref. The agent / agent_mut accessors expose the wrapped AgentBase explicitly. Python prefabs subclass AgentBase so attribute access is direct.
 signalwire.relay.action.__init__: Rust action.rs file-private helpers; module-level identifiers that don't have a Python equivalent.
 signalwire.relay.action.action: Rust action.rs file-private helpers; module-level identifiers that don't have a Python equivalent.
 signalwire.relay.call.AIAction.action: Rust Action subclasses expose an ``action()`` accessor that returns the underlying Action struct (the inner state shared across all action variants). Python uses inheritance, so this accessor does not exist as a method.
@@ -329,9 +328,8 @@ signalwire.relay.device.Device.matrix: Build the serial/parallel device matrix (
 signalwire.relay.device.Device.phone: Convenience constructor for a `phone` device (`{to_number, from_number}`). See section preamble.
 signalwire.relay.device.Device.sip: Convenience constructor for a `sip` device (`{to, from}`). See section preamble.
 signalwire.relay.device.Device.to_value: Serialise to the wire device object `{"type":…,"params":{…}}`, byte-identical to the hand-written form. See section preamble.
-signalwire.relay.error.RelayError: rust-typed-error — closed RELAY failure set replacing `Result<_, String>` on the relay client surface; mirrors the REST `SignalWireRestError` exemplar. Python raises a single stringly exception.
-signalwire.relay.error.RelayError.missing_env: rust-error-ctor — convenience constructor for the `MissingEnv` variant naming the unset variable. No Python equivalent.
-signalwire.relay.error.RelayError.transport: rust-error-ctor — convenience constructor for the `Transport` variant from a context + any `Display` cause; used by the client's `map_err` sites. No Python equivalent.
+signalwire.relay.client.RelayError.missing_env: rust-error-ctor — convenience constructor for the `MissingEnv` variant naming the unset variable. No Python equivalent.
+signalwire.relay.client.RelayError.transport: rust-error-ctor — convenience constructor for the `Transport` variant from a context + any `Display` cause; used by the client's `map_err` sites. No Python equivalent.
 signalwire.relay.event.CallStateEvent.call_id: Rust accessor for the `call_id` field; Python `CallStateEvent.call_id` dataclass field.
 signalwire.relay.event.CallStateEvent.call_state: Rust accessor for the `call_state` field; Python `CallStateEvent.call_state` dataclass field.
 signalwire.relay.event.CallStateEvent.direction: Rust accessor for the `direction` field; Python `CallStateEvent.direction` dataclass field.

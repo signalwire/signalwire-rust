@@ -14,6 +14,11 @@ pub struct ConciergeAgent {
     venue_name: String,
     services: Vec<String>,
     amenities: HashMap<String, Value>,
+    /// Resolved operating hours (`concierge.py:78`) — retained so a caller can
+    /// read back what the agent will tell users.
+    hours_of_operation: HashMap<String, String>,
+    /// Extra instruction bullets the caller supplied (`concierge.py:79`).
+    special_instructions: Vec<String>,
 }
 
 /// Options for constructing a [`ConciergeAgent`].
@@ -179,6 +184,19 @@ impl ConciergeAgent {
             route,
         } = options;
 
+        // The reference defaults `hours_of_operation` to `{"default": "9 AM - 5 PM"}`
+        // (`concierge.py:78`) and stores the RESOLVED map as `self.hours_of_operation`,
+        // which is both what it renders and what a caller reads back. Resolve it
+        // here so the reader below and the prompt agree with the reference rather
+        // than a caller seeing an empty map for a venue that advertises hours.
+        let hours_of_operation = if hours_of_operation.is_empty() {
+            let mut default = HashMap::new();
+            default.insert("default".to_string(), "9 AM - 5 PM".to_string());
+            default
+        } else {
+            hours_of_operation
+        };
+
         let agent_name = if name.is_empty() { "concierge" } else { &name };
 
         let mut opts = AgentOptions::new(agent_name);
@@ -196,10 +214,15 @@ impl ConciergeAgent {
             .unwrap_or_else(|| format!("Welcome to {venue_name}. How can I assist you today?"));
 
         // Global data
+        // `hours` mirrors the reference's fourth global-data key
+        // (`concierge.py:168`, `"hours": self.hours_of_operation`). Without it the
+        // AI cannot see the operating hours the caller configured, even though the
+        // prompt names them — the tool side reads global_data, not the prompt.
         agent.set_global_data(json!({
             "venue_name": venue_name,
             "services": services,
             "amenities": amenities,
+            "hours": hours_of_operation,
         }));
 
         // Role section
@@ -323,6 +346,8 @@ impl ConciergeAgent {
             venue_name,
             services,
             amenities,
+            hours_of_operation,
+            special_instructions,
         }
     }
 
@@ -344,6 +369,18 @@ impl ConciergeAgent {
 
     pub fn amenities(&self) -> &HashMap<String, Value> {
         &self.amenities
+    }
+
+    /// The venue's operating hours, keyed by label — the caller's map or the
+    /// reference default `{"default": "9 AM - 5 PM"}` (`concierge.py:78`).
+    pub fn hours_of_operation(&self) -> &HashMap<String, String> {
+        &self.hours_of_operation
+    }
+
+    /// Extra instruction bullets folded into the agent's prompt
+    /// (`concierge.py:79`).
+    pub fn special_instructions(&self) -> &[String] {
+        &self.special_instructions
     }
 
     /// Check availability for a service on a specific date and time.
@@ -459,6 +496,57 @@ mod tests {
         assert_eq!(agent.venue_name(), "Grand Hotel");
         assert_eq!(agent.services().len(), 3);
         assert_eq!(agent.amenities().len(), 2);
+    }
+
+    #[test]
+    fn test_hours_and_special_instructions_are_retained_and_reach_the_wire() {
+        let info = sample_venue_info();
+        let agent = ConciergeAgent::new(
+            ConciergeOptions::from_venue_info(&info)
+                .name("test")
+                .special_instructions(vec!["Escort VIPs personally".to_string()]),
+        );
+
+        // READBACK: the reference keeps both as public attributes
+        // (`concierge.py:78-79`); the port accepted them and kept neither.
+        assert_eq!(agent.hours_of_operation().len(), 2);
+        assert_eq!(
+            agent.hours_of_operation().get("Monday-Friday"),
+            Some(&"24 hours".to_string())
+        );
+        assert_eq!(agent.special_instructions(), ["Escort VIPs personally"]);
+
+        // WIRE: `hours` is the reference's fourth global-data key
+        // (`concierge.py:168`). Without it the AI cannot see the hours the caller
+        // configured, so assert the rendered global data, not just the field.
+        let gd = agent.agent().get_global_data();
+        assert_eq!(gd["hours"]["Monday-Friday"], "24 hours");
+
+        // And the instruction text actually reaches the prompt.
+        let prompt = agent.agent().get_prompt().to_string();
+        assert!(
+            prompt.contains("Escort VIPs personally"),
+            "special_instructions missing from the prompt: {prompt}"
+        );
+    }
+
+    #[test]
+    fn test_hours_of_operation_defaults_like_the_reference() {
+        // `concierge.py:78` defaults to `{"default": "9 AM - 5 PM"}` and renders
+        // it; the port defaulted to an empty map and skipped the section, so a
+        // venue that configured nothing advertised no hours at all.
+        let agent = ConciergeAgent::new(
+            ConciergeOptions::new("Bare Venue", vec!["Front Desk".to_string()], HashMap::new())
+                .name("test"),
+        );
+        assert_eq!(
+            agent.hours_of_operation().get("default"),
+            Some(&"9 AM - 5 PM".to_string())
+        );
+        assert_eq!(
+            agent.agent().get_global_data()["hours"]["default"],
+            "9 AM - 5 PM"
+        );
     }
 
     #[test]

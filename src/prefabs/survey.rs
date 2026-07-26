@@ -9,6 +9,17 @@ pub struct SurveyAgent {
     agent: AgentBase,
     survey_name: String,
     survey_questions: Vec<Value>,
+    /// Resolved brand name — the caller's value or the reference default
+    /// `"Our Company"` (`survey.py:93`). Retained so a caller can read back
+    /// what the agent is actually representing; the reference keeps it as
+    /// `self.brand_name`.
+    brand_name: String,
+    /// Resolved retry budget (`survey.py:94`).
+    max_retries: i64,
+    /// Resolved introduction text (`survey.py:97-100`).
+    introduction: String,
+    /// Resolved conclusion text (`survey.py:101-103`).
+    conclusion: String,
 }
 
 /// Options for constructing a [`SurveyAgent`].
@@ -135,7 +146,13 @@ impl SurveyAgent {
         let conclusion = conclusion.unwrap_or_else(|| {
             "Thank you for completing our survey. Your feedback is valuable to us.".to_string()
         });
-        let introduction = introduction.unwrap_or_default();
+        // The reference resolves the introduction ONCE, at construction, and the
+        // resolved value is both what it renders and what `self.introduction`
+        // reads back (`survey.py:97-100`). Resolving it here rather than at the
+        // render site keeps the reader and the prompt in agreement.
+        let introduction = introduction.unwrap_or_else(|| {
+            format!("Welcome to our {survey_name}. We appreciate your participation.")
+        });
 
         let agent_name = if name.is_empty() { "survey" } else { &name };
 
@@ -169,11 +186,7 @@ impl SurveyAgent {
         );
 
         // Introduction section
-        let intro_text = if introduction.is_empty() {
-            format!("Welcome to the {survey_name}.")
-        } else {
-            introduction.clone()
-        };
+        let intro_text = introduction.clone();
 
         let retry_instruction =
             format!("If a response is invalid, explain and retry up to {max_retries} times.");
@@ -331,6 +344,10 @@ impl SurveyAgent {
             agent,
             survey_name,
             survey_questions: questions,
+            brand_name,
+            max_retries,
+            introduction,
+            conclusion,
         }
     }
 
@@ -346,8 +363,31 @@ impl SurveyAgent {
         &self.survey_name
     }
 
-    pub fn survey_questions(&self) -> &[Value] {
+    /// The survey's questions, as configured. Mirrors the reference's
+    /// `self.questions` (`survey.py:92`).
+    pub fn questions(&self) -> &[Value] {
         &self.survey_questions
+    }
+
+    /// The brand the agent represents — the caller's `brand_name` or the
+    /// reference default `"Our Company"` (`survey.py:93`).
+    pub fn brand_name(&self) -> &str {
+        &self.brand_name
+    }
+
+    /// How many times an invalid answer is re-asked (`survey.py:94`).
+    pub fn max_retries(&self) -> i64 {
+        self.max_retries
+    }
+
+    /// The resolved introduction text (`survey.py:97-100`).
+    pub fn introduction(&self) -> &str {
+        &self.introduction
+    }
+
+    /// The resolved conclusion text (`survey.py:101-103`).
+    pub fn conclusion(&self) -> &str {
+        &self.conclusion
     }
 
     /// Validate whether a response meets the requirements for a question.
@@ -495,8 +535,63 @@ mod tests {
         );
         assert_eq!(agent.agent().service().name(), "test_survey");
         assert_eq!(agent.agent().service().route(), "/survey");
-        assert_eq!(agent.survey_questions().len(), 3);
+        assert_eq!(agent.questions().len(), 3);
         assert_eq!(agent.survey_name(), "test_survey");
+    }
+
+    #[test]
+    fn test_survey_config_is_retained_and_rendered() {
+        let agent = SurveyAgent::new(
+            SurveyOptions::new("test_survey", sample_questions())
+                .name("test")
+                .brand_name("Acme")
+                .max_retries(5)
+                .introduction("Hi there")
+                .conclusion("All done"),
+        );
+        // READBACK: the reference keeps all four (`survey.py:92-103`); the port
+        // consumed each into prompt text and kept none.
+        assert_eq!(agent.brand_name(), "Acme");
+        assert_eq!(agent.max_retries(), 5);
+        assert_eq!(agent.introduction(), "Hi there");
+        assert_eq!(agent.conclusion(), "All done");
+
+        // And they reach the rendered prompt / global data, not just the fields.
+        let prompt = agent.agent().get_prompt().to_string();
+        assert!(prompt.contains("Acme"), "brand_name missing: {prompt}");
+        assert!(
+            prompt.contains("Hi there"),
+            "introduction missing: {prompt}"
+        );
+        assert!(prompt.contains("All done"), "conclusion missing: {prompt}");
+        assert!(
+            prompt.contains("retry up to 5 times"),
+            "max_retries missing: {prompt}"
+        );
+        let gd = agent.agent().get_global_data();
+        assert_eq!(gd["brand_name"], "Acme");
+        assert_eq!(gd["max_retries"], 5);
+    }
+
+    #[test]
+    fn test_survey_defaults_resolve_once_like_the_reference() {
+        // The reference resolves each default IN the constructor, so the value it
+        // renders is the value it reads back (`survey.py:93-103`). The port used
+        // to leave `introduction` empty and substitute DIFFERENT text at the
+        // render site, so reader and prompt disagreed.
+        let agent =
+            SurveyAgent::new(SurveyOptions::new("Customer Poll", sample_questions()).name("test"));
+        assert_eq!(agent.brand_name(), "Our Company");
+        assert_eq!(agent.max_retries(), 2);
+        assert_eq!(
+            agent.introduction(),
+            "Welcome to our Customer Poll. We appreciate your participation."
+        );
+        let prompt = agent.agent().get_prompt().to_string();
+        assert!(
+            prompt.contains(agent.introduction()),
+            "the rendered introduction is not the one the reader returns: {prompt}"
+        );
     }
 
     #[test]

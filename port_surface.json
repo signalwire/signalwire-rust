@@ -1,6 +1,6 @@
 {
   "version": "1",
-  "generated_from": "signalwire-rust @ 71356a08f2269553685bf8da72018e9ed0d0651a",
+  "generated_from": "signalwire-rust @ a7d19331dbb21c41de63c29297ce68e0313b822a",
   "modules": {
     "signalwire": {
       "classes": {
@@ -699,6 +699,7 @@
       "classes": {
         "SkillBase": [
           "__init__",
+          "agent",
           "cleanup",
           "define_tool",
           "description",
@@ -728,6 +729,7 @@
       "classes": {
         "SkillManager": [
           "__init__",
+          "agent",
           "get_skill",
           "has_skill",
           "list_loaded_skills",
@@ -1303,8 +1305,10 @@
           "amenities",
           "check_availability",
           "get_directions",
+          "hours_of_operation",
           "on_summary",
           "services",
+          "special_instructions",
           "venue_name"
         ]
       },
@@ -1318,6 +1322,7 @@
           "agent_mut",
           "faqs",
           "on_summary",
+          "persona",
           "search_faqs",
           "suggest_related"
         ]
@@ -1358,10 +1363,14 @@
           "__init__",
           "agent",
           "agent_mut",
+          "brand_name",
+          "conclusion",
+          "introduction",
           "log_response",
+          "max_retries",
           "on_summary",
+          "questions",
           "survey_name",
-          "survey_questions",
           "validate_response"
         ]
       },
@@ -1383,6 +1392,7 @@
         ],
         "Action": [
           "__init__",
+          "call",
           "call_id",
           "control_id",
           "events",
@@ -1572,6 +1582,7 @@
           "host",
           "is_connected",
           "is_running",
+          "jwt_token",
           "on_call",
           "on_event",
           "on_message",
@@ -1593,7 +1604,11 @@
           "unreceive"
         ],
         "RelayError": [
-          "__init__"
+          "__init__",
+          "code",
+          "message",
+          "missing_env",
+          "transport"
         ]
       },
       "functions": [
@@ -1616,15 +1631,6 @@
           "phone",
           "sip",
           "to_value"
-        ]
-      },
-      "functions": []
-    },
-    "signalwire.relay.error": {
-      "classes": {
-        "RelayError": [
-          "missing_env",
-          "transport"
         ]
       },
       "functions": []
@@ -1837,6 +1843,7 @@
           "reason",
           "resolve",
           "result",
+          "segments",
           "state",
           "tags",
           "to_number",
@@ -2040,6 +2047,7 @@
         ],
         "SignalWireRestError": [
           "__init__",
+          "body",
           "headers",
           "is_transport",
           "method",

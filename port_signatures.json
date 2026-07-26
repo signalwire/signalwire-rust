@@ -8548,6 +8548,15 @@
       "classes": {
         "SkillBase": {
           "methods": {
+            "agent": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "optional<any>"
+            },
             "cleanup": {
               "params": [
                 {
@@ -8740,6 +8749,15 @@
                 }
               ],
               "returns": "void"
+            },
+            "agent": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "optional<any>"
             },
             "get_skill": {
               "params": [
@@ -18086,6 +18104,15 @@
               ],
               "returns": "class:signalwire.core.function_result.FunctionResult"
             },
+            "hours_of_operation": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "dict<string,string>"
+            },
             "on_summary": {
               "params": [
                 {
@@ -18101,6 +18128,15 @@
               "returns": "any"
             },
             "services": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "list<string>"
+            },
+            "special_instructions": {
               "params": [
                 {
                   "name": "self",
@@ -18180,6 +18216,15 @@
                 }
               ],
               "returns": "any"
+            },
+            "persona": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "string"
             },
             "search_faqs": {
               "params": [
@@ -18446,6 +18491,33 @@
               ],
               "returns": "class:signalwire.core.agent_base.AgentBase"
             },
+            "brand_name": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "string"
+            },
+            "conclusion": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "string"
+            },
+            "introduction": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "string"
+            },
             "log_response": {
               "params": [
                 {
@@ -18465,6 +18537,15 @@
               ],
               "returns": "class:signalwire.core.function_result.FunctionResult"
             },
+            "max_retries": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "int"
+            },
             "on_summary": {
               "params": [
                 {
@@ -18479,6 +18560,15 @@
               ],
               "returns": "any"
             },
+            "questions": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "list<class:signalwire.value.Value>"
+            },
             "survey_name": {
               "params": [
                 {
@@ -18487,15 +18577,6 @@
                 }
               ],
               "returns": "string"
-            },
-            "survey_questions": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "list<class:signalwire.value.Value>"
             },
             "validate_response": {
               "params": [
@@ -18593,6 +18674,15 @@
                 }
               ],
               "returns": "void"
+            },
+            "call": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "optional<class:signalwire.relay.call.Call>"
             },
             "call_id": {
               "params": [
@@ -20425,10 +20515,6 @@
             "__init__": {
               "params": [
                 {
-                  "name": "self",
-                  "kind": "self"
-                },
-                {
                   "name": "project",
                   "type": "string",
                   "required": true
@@ -20442,9 +20528,14 @@
                   "name": "host",
                   "type": "string",
                   "required": true
+                },
+                {
+                  "name": "jwt_token",
+                  "type": "string",
+                  "required": true
                 }
               ],
-              "returns": "void"
+              "returns": "any"
             },
             "authenticate": {
               "params": [
@@ -20691,6 +20782,15 @@
                 }
               ],
               "returns": "bool"
+            },
+            "jwt_token": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "string"
             },
             "on_call": {
               "params": [
@@ -21012,6 +21112,49 @@
         },
         "RelayError": {
           "methods": {
+            "code": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "optional<int>"
+            },
+            "message": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "string"
+            },
+            "missing_env": {
+              "params": [
+                {
+                  "name": "var",
+                  "type": "string",
+                  "required": true
+                }
+              ],
+              "returns": "any"
+            },
+            "transport": {
+              "params": [
+                {
+                  "name": "context",
+                  "type": "string",
+                  "required": true
+                },
+                {
+                  "name": "source",
+                  "type": "any",
+                  "required": true
+                }
+              ],
+              "returns": "any"
+            },
             "__init__": {
               "params": [
                 {
@@ -22426,7 +22569,7 @@
                   "kind": "self"
                 }
               ],
-              "returns": "optional<string>"
+              "returns": "optional<class:signalwire.value.Value>"
             },
             "dispatch_event": {
               "params": [
@@ -22467,7 +22610,7 @@
                   "kind": "self"
                 }
               ],
-              "returns": "list<string>"
+              "returns": "optional<class:signalwire.value.Value>"
             },
             "message_id": {
               "params": [
@@ -22546,6 +22689,15 @@
                 }
               ],
               "returns": "optional<class:signalwire.value.Value>"
+            },
+            "segments": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "int"
             },
             "state": {
               "params": [
@@ -23204,6 +23356,15 @@
                 }
               ],
               "returns": "void"
+            },
+            "body": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "string"
             },
             "headers": {
               "params": [
@@ -33142,6 +33303,10 @@
     "signalwire.relay.client.RelayClient": {
       "params": {
         "host": {
+          "type": "string",
+          "required": true
+        },
+        "jwt_token": {
           "type": "string",
           "required": true
         },

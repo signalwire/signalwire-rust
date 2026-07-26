@@ -54,13 +54,19 @@ pub enum RelayError {
     },
 
     /// The server returned a JSON-RPC error for a request (e.g. a failed
-    /// `messaging.send` / `calling.dial`). Carries the inner method and the
-    /// server's error message.
+    /// `messaging.send` / `calling.dial`). Carries the inner method, the
+    /// server's error message, and the server's numeric error code.
     Rpc {
         /// The RELAY method that failed (e.g. `messaging.send`).
         method: String,
         /// The server's error message.
         message: String,
+        /// The server's error code, as the reference's `RelayError.code`
+        /// (`client.py:1330-1332`). Negative values are the reference's
+        /// client-side sentinels (`-1` for a timeout / closed connection); a
+        /// JSON-RPC `error.code` or a non-2xx result `code` is carried
+        /// verbatim. `None` when the frame carried no parseable code.
+        code: Option<i64>,
     },
 
     /// A blocking call did not receive its response within the deadline.
@@ -99,6 +105,45 @@ impl RelayError {
     pub fn missing_env(var: impl Into<String>) -> Self {
         RelayError::MissingEnv { var: var.into() }
     }
+
+    /// The server-reported error code, mirroring the reference's
+    /// `RelayError.code` (`client.py:1330-1332`).
+    ///
+    /// Only a [`RelayError::Rpc`] carries a code the *server* chose. The
+    /// remaining variants are client-side conditions the reference also raises
+    /// as `RelayError`, and it uses the sentinel `-1` for each of them
+    /// (`client.py:798,829,836,842,1218`), so they report `Some(-1)` here for
+    /// the same reason: a caller switching on the code must be able to tell a
+    /// transport/timeout failure from a server rejection without parsing the
+    /// message text.
+    ///
+    /// `None` only when an `Rpc` frame carried no parseable `code`.
+    pub fn code(&self) -> Option<i64> {
+        match self {
+            RelayError::Rpc { code, .. } => *code,
+            _ => Some(-1),
+        }
+    }
+
+    /// The server's (or the client-side condition's) error message, undecorated
+    /// — mirroring the reference's `RelayError.message`, which holds the raw
+    /// server text and leaves the `"RELAY error {code}: {message}"` decoration
+    /// to `Display` (`client.py:1331-1333`).
+    ///
+    /// This is deliberately NOT `to_string()`: `Display` prefixes `RelayError:`
+    /// and per-variant context, and a caller that wants to surface or re-wrap
+    /// the server's own wording needs it unwrapped.
+    pub fn message(&self) -> &str {
+        match self {
+            RelayError::MissingEnv { var } => var,
+            RelayError::Transport { source, .. } => source,
+            RelayError::Auth { message }
+            | RelayError::Rpc { message, .. }
+            | RelayError::InvalidArgument { message } => message,
+            RelayError::Timeout { what } => what,
+            RelayError::DialFailed { reason } => reason,
+        }
+    }
 }
 
 impl fmt::Display for RelayError {
@@ -113,9 +158,17 @@ impl fmt::Display for RelayError {
             RelayError::Auth { message } => {
                 write!(f, "RelayError: auth error: {message}")
             }
-            RelayError::Rpc { method, message } => {
-                write!(f, "RelayError: {method} failed: {message}")
-            }
+            // Includes the code when the server supplied one, matching the
+            // reference's `f"RELAY error {code}: {message}"` (`client.py:1333`)
+            // while keeping the method context this port already carried.
+            RelayError::Rpc {
+                method,
+                message,
+                code,
+            } => match code {
+                Some(c) => write!(f, "RelayError: {method} failed ({c}): {message}"),
+                None => write!(f, "RelayError: {method} failed: {message}"),
+            },
             RelayError::Timeout { what } => {
                 write!(f, "RelayError: timed out waiting for {what}")
             }
@@ -174,10 +227,38 @@ mod tests {
         assert!(
             RelayError::Rpc {
                 method: "messaging.send".into(),
-                message: "rejected".into()
+                message: "rejected".into(),
+                code: Some(422),
             }
             .to_string()
             .contains("messaging.send")
+        );
+    }
+
+    #[test]
+    fn test_code_and_message_readback() {
+        // The reference's `RelayError(code, message)` keeps BOTH readable
+        // (`client.py:1330-1332`); a caller dispatching on the server's code must
+        // not have to parse `Display` text to get it.
+        let rpc = RelayError::Rpc {
+            method: "calling.play".into(),
+            message: "not authorized".into(),
+            code: Some(401),
+        };
+        assert_eq!(rpc.code(), Some(401));
+        assert_eq!(rpc.message(), "not authorized");
+        // `message()` is the RAW server text, not the decorated Display form.
+        assert!(rpc.to_string().contains("401"));
+        assert_ne!(rpc.message(), rpc.to_string());
+
+        // Client-side conditions use the reference's `-1` sentinel
+        // (`client.py:798,829,836,842,1218`).
+        assert_eq!(
+            RelayError::Timeout {
+                what: "signalwire.connect".into()
+            }
+            .code(),
+            Some(-1)
         );
     }
 

@@ -33,6 +33,10 @@ impl SkillBase for CustomSkills {
         &self.sp.params
     }
 
+    fn skill_state(&self) -> Option<&crate::skills::skill_base::SkillParams> {
+        Some(&self.sp)
+    }
+
     fn setup(&mut self) -> bool {
         true
     }
