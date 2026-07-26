@@ -147,6 +147,13 @@ impl SchemaUtils {
         su
     }
 
+    /// The schema file path this instance was constructed with, if any.
+    /// Reference attribute `SchemaUtils.schema_path`.
+    #[must_use]
+    pub fn schema_path(&self) -> Option<&str> {
+        self.schema_path.as_deref()
+    }
+
     /// Whether full JSON Schema validation is wired up.  Mirrors
     /// Python's `full_validation_available` property.
     pub fn full_validation_available(&self) -> bool {

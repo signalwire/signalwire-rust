@@ -32,6 +32,14 @@ impl<'a> SwmlBuilder<'a> {
         self.service
     }
 
+    /// The service this builder delegates to. The reference stores its single
+    /// ctor arg as the public attribute `SWMLBuilder.service`
+    /// (`swml_builder.py`), so a caller can reach the service they handed in.
+    #[must_use]
+    pub fn service(&self) -> &Service {
+        self.service
+    }
+
     /// Add an `answer` verb to the main section.
     pub fn answer(&mut self, max_duration: Option<i64>, codecs: Option<&str>) -> &mut Self {
         let mut config = Map::new();

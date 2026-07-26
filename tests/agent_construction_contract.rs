@@ -206,10 +206,17 @@ fn config_file_supplies_basic_auth_credentials() {
 #[test]
 fn token_expiry_secs_reaches_the_session_manager() {
     /// Decode the base64url token and read its `{call_id}.{fn}.{expiry}.…` field.
+    ///
+    /// PADDED `URL_SAFE`, matching the reference: it mints with
+    /// `base64.urlsafe_b64encode` (which pads) and validates with
+    /// `base64.urlsafe_b64decode` (which REQUIRES padding). This test previously used
+    /// `URL_SAFE_NO_PAD` — encoding rust's own wrong convention, so it passed while the
+    /// tokens were unusable to every other implementation. A test that decodes with the
+    /// same non-standard engine the mint used can never catch an encoding divergence.
     fn token_expiry(token: &str) -> u64 {
-        let raw = base64::engine::general_purpose::URL_SAFE_NO_PAD
+        let raw = base64::engine::general_purpose::URL_SAFE
             .decode(token)
-            .expect("token is base64url");
+            .expect("token is padded base64url, as the reference mints it");
         let decoded = String::from_utf8(raw).expect("token is utf-8");
         decoded
             .split('.')

@@ -1,5 +1,13 @@
 use base64::Engine;
-use base64::engine::general_purpose::URL_SAFE_NO_PAD;
+// PADDED urlsafe base64, deliberately. The reference mints the token with
+// `base64.urlsafe_b64encode(...)` (session_manager.py) which PADS, and validates with
+// `base64.urlsafe_b64decode(...)` which REQUIRES correct padding and raises
+// binascii.Error on a stripped '='. Emitting NO_PAD here produced tokens the reference
+// — and every correctly-padded port — rejected outright, while rust's own round-trip
+// tests passed because they decoded with the same NO_PAD engine. Verified with
+// porting-sdk/scripts/diff_port_token_interop.py, which reported
+// "Incorrect padding ... It DOES decode with 1 '=' appended".
+use base64::engine::general_purpose::URL_SAFE;
 use hmac::{Hmac, KeyInit, Mac};
 use rand::RngExt;
 use sha2::Sha256;
@@ -12,19 +20,28 @@ type HmacSha256 = Hmac<Sha256>;
 /// preventing replay attacks and cross-function/cross-call misuse.
 #[derive(Clone)]
 pub struct SessionManager {
-    secret: Vec<u8>,
+    /// The signing key, as the reference holds it: a STRING whose UTF-8 bytes are
+    /// the HMAC key (`self.secret_key.encode()`, `session_manager.py:79` and `:152`).
+    secret_key: String,
     token_expiry_secs: u64,
     /// Whether `debug_token` returns component details (Python `_debug_mode`).
     debug_mode: bool,
 }
 
 impl SessionManager {
-    /// Create a new session manager with a random 32-byte secret.
+    /// Create a new session manager with a randomly generated secret.
+    ///
+    /// The secret is a 64-character LOWERCASE HEX STRING, matching the
+    /// reference's `secrets.token_hex(32)` default (`session_manager.py:40`), and
+    /// the HMAC key is that string's 64 UTF-8 bytes. Generating 32 RAW bytes
+    /// instead — which this did — produces a key the reference and every other
+    /// port disagree with, so a token minted here did not validate there.
     pub fn new(token_expiry_secs: u64) -> Self {
-        let mut rng = rand::rng();
-        let secret: Vec<u8> = (0..32).map(|_| rng.random()).collect();
+        // Reuse the module's hex_encode rather than a second inline hex loop — it is the
+        // same 64-char lowercase output and clippy rejects format!-in-an-iterator.
+        let secret_key = hex_encode(&random_bytes(32));
         SessionManager {
-            secret,
+            secret_key,
             token_expiry_secs,
             debug_mode: false,
         }
@@ -50,7 +67,7 @@ impl SessionManager {
     #[must_use]
     pub fn with_secret(token_expiry_secs: u64, secret_key: &str) -> Self {
         SessionManager {
-            secret: secret_key.as_bytes().to_vec(),
+            secret_key: secret_key.to_string(),
             token_expiry_secs,
             debug_mode: false,
         }
@@ -59,6 +76,15 @@ impl SessionManager {
     /// Get the configured token expiry in seconds.
     pub fn token_expiry_secs(&self) -> u64 {
         self.token_expiry_secs
+    }
+
+    /// The signing secret. The reference exposes this as the public instance
+    /// attribute `SessionManager.secret_key` (`session_manager.py:40`), which is
+    /// what lets a caller mint a manager, read its generated key, and hand that
+    /// same key to a peer that must validate the tokens.
+    #[must_use]
+    pub fn secret_key(&self) -> &str {
+        &self.secret_key
     }
 
     /// Create or confirm a session, returning the call ID.
@@ -82,14 +108,14 @@ impl SessionManager {
 
         let payload = format!("{call_id}.{function_name}.{expiry}.{nonce}.{signature}");
 
-        URL_SAFE_NO_PAD.encode(payload.as_bytes())
+        URL_SAFE.encode(payload.as_bytes())
     }
 
     /// Validate a token against the expected function name and call ID.
     ///
     /// Uses timing-safe comparison for all security-critical fields.
     pub fn validate_token(&self, function_name: &str, call_id: &str, token: &str) -> bool {
-        let Ok(decoded) = URL_SAFE_NO_PAD.decode(token) else {
+        let Ok(decoded) = URL_SAFE.decode(token) else {
             return false;
         };
 
@@ -201,7 +227,7 @@ impl SessionManager {
         if !self.debug_mode {
             return json!({"error": "debug mode not enabled"});
         }
-        let Ok(decoded) = URL_SAFE_NO_PAD.decode(token) else {
+        let Ok(decoded) = URL_SAFE.decode(token) else {
             return json!({"valid_format": false, "error": "invalid base64", "token_length": token.len()});
         };
         let Ok(decoded_str) = String::from_utf8(decoded) else {
@@ -258,7 +284,11 @@ impl SessionManager {
     // ── Private helpers ──────────────────────────────────────────────────
 
     fn hmac_hex(&self, message: &str) -> String {
-        let mut mac = HmacSha256::new_from_slice(&self.secret).expect("HMAC key should be valid");
+        // Key with the secret STRING's UTF-8 bytes, matching the reference's
+        // `self.secret_key.encode()` — this is what makes a token minted here
+        // validate against the reference and every other port.
+        let mut mac = HmacSha256::new_from_slice(self.secret_key.as_bytes())
+            .expect("HMAC key should be valid");
         mac.update(message.as_bytes());
         let result = mac.finalize().into_bytes();
         hex_encode(&result)
@@ -323,6 +353,65 @@ fn current_time_secs() -> u64 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// A token this port mints must be decodable by the REFERENCE's decoder, which is
+    /// `base64.urlsafe_b64decode` and REQUIRES correct padding.
+    ///
+    /// This is deliberately asserted with a STANDARD padded engine rather than with
+    /// `URL_SAFE_NO_PAD` — the engine this file used to mint with. A round-trip test that
+    /// decodes with the same non-standard engine the mint used proves only
+    /// self-consistency, which is exactly why the unpadded tokens shipped: rust's own
+    /// tests passed while the reference rejected every token with
+    /// `binascii.Error('Incorrect padding')`.
+    ///
+    /// Cross-checked with `porting-sdk/scripts/diff_port_token_interop.py`, which
+    /// validates a minted token through the reference's full sequence.
+    #[test]
+    fn minted_token_is_padded_base64url_as_the_reference_requires() {
+        let sm = SessionManager::with_secret(900, &"a".repeat(64));
+        let token = sm.create_token("get_weather", "call-abc");
+
+        // The reference's decoder. A stripped '=' makes this fail.
+        let raw = URL_SAFE
+            .decode(&token)
+            .expect("a minted token must decode under PADDED urlsafe base64");
+
+        // And the envelope must be the reference's 5-part dot-joined payload.
+        let decoded = String::from_utf8(raw).expect("payload is utf-8 text, not raw bytes");
+        let parts: Vec<&str> = decoded.split('.').collect();
+        assert_eq!(
+            parts.len(),
+            5,
+            "reference envelope is call_id.function.expiry.nonce.signature, got {decoded:?}"
+        );
+
+        // Length%4 == 0 is the observable signature of correct padding.
+        assert_eq!(
+            token.len() % 4,
+            0,
+            "padded base64 length must be a multiple of 4; got {} for {token:?}",
+            token.len()
+        );
+    }
+
+    /// The generated secret must be the reference's shape: `secrets.token_hex(32)` — a
+    /// 64-character lowercase hex STRING whose UTF-8 bytes are the HMAC key. 32 RAW
+    /// bytes produce a key no other implementation agrees with.
+    #[test]
+    fn generated_secret_is_a_64_char_lowercase_hex_string() {
+        let sm = SessionManager::new(900);
+        let key = sm.secret_key();
+        assert_eq!(
+            key.len(),
+            64,
+            "expected token_hex(32) = 64 chars, got {key:?}"
+        );
+        assert!(
+            key.chars()
+                .all(|c| c.is_ascii_digit() || ('a'..='f').contains(&c)),
+            "expected lowercase hex, got {key:?}"
+        );
+    }
 
     #[test]
     fn test_construction() {
@@ -414,14 +503,14 @@ mod tests {
     #[test]
     fn test_wrong_part_count() {
         let sm = SessionManager::with_defaults();
-        let bad_payload = URL_SAFE_NO_PAD.encode(b"a.b.c"); // only 3 parts
+        let bad_payload = URL_SAFE.encode(b"a.b.c"); // only 3 parts
         assert!(!sm.validate_token("func", "call-1", &bad_payload));
     }
 
     #[test]
     fn test_invalid_expiry() {
         let sm = SessionManager::with_defaults();
-        let bad_payload = URL_SAFE_NO_PAD.encode(b"call-1.func.notanumber.nonce.sig");
+        let bad_payload = URL_SAFE.encode(b"call-1.func.notanumber.nonce.sig");
         assert!(!sm.validate_token("func", "call-1", &bad_payload));
     }
 
@@ -501,7 +590,7 @@ mod tests {
     fn test_debug_token_bad_format() {
         let mut sm = SessionManager::with_defaults();
         sm.set_debug_mode(true);
-        let bad = URL_SAFE_NO_PAD.encode(b"a.b.c");
+        let bad = URL_SAFE.encode(b"a.b.c");
         let dbg = sm.debug_token(&bad);
         assert_eq!(dbg["valid_format"], false);
         assert_eq!(dbg["parts_count"], 3);
@@ -523,7 +612,7 @@ mod tests {
     fn test_contract7_decoded_token_has_five_fields_and_nonce() {
         let sm = SessionManager::with_defaults();
         let token = sm.create_token("my_function", "call-abc");
-        let decoded = URL_SAFE_NO_PAD.decode(&token).expect("token is base64url");
+        let decoded = URL_SAFE.decode(&token).expect("token is base64url");
         let decoded_str = String::from_utf8(decoded).expect("utf-8");
         let parts: Vec<&str> = decoded_str.split('.').collect();
         assert_eq!(parts.len(), 5, "token must have exactly 5 dot-fields");
@@ -550,7 +639,7 @@ mod tests {
         // source of difference.
         let sm = SessionManager::new(100_000);
         let decode = |t: &str| -> Vec<String> {
-            let s = String::from_utf8(URL_SAFE_NO_PAD.decode(t).unwrap()).unwrap();
+            let s = String::from_utf8(URL_SAFE.decode(t).unwrap()).unwrap();
             s.split('.').map(str::to_string).collect()
         };
         let t1 = sm.create_token("func", "call-1");
@@ -582,7 +671,7 @@ mod tests {
         let signature = sm.hmac_hex(&message);
         // Canonical token body: {call_id}.{function_name}.{expiry}.{nonce}.{sig}
         let body = format!("{call_id}.{function_name}.{expiry}.{nonce}.{signature}");
-        let token = URL_SAFE_NO_PAD.encode(body.as_bytes());
+        let token = URL_SAFE.encode(body.as_bytes());
         assert!(
             sm.validate_token(function_name, call_id, &token),
             "a python-oracle-format token must validate in-port"
@@ -604,7 +693,7 @@ mod tests {
         let flipped = if last == 'a' { 'b' } else { 'a' };
         signature.push(flipped);
         let body = format!("{call_id}.{function_name}.{expiry}.{nonce}.{signature}");
-        let token = URL_SAFE_NO_PAD.encode(body.as_bytes());
+        let token = URL_SAFE.encode(body.as_bytes());
         assert!(
             !sm.validate_token(function_name, call_id, &token),
             "a token with a tampered signature must be rejected"

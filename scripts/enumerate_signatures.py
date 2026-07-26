@@ -55,7 +55,7 @@ from enumerate_surface import (  # type: ignore
     METHOD_RENAMES, SURFACE_PROJECTIONS, PROJECTION_DONOR_STRIPS,
     FORCE_CLASS_METHODS, SKILLBASE_IDIOM_METHOD_DROPS, SKILL_INTERFACE_METHODS,
     SKILL_INTERFACE_PROJECTION, PUBLIC_SURFACE_TRAITS, MODULE_METHOD_DROPS,
-    MODULE_METHOD_DROP_EXCEPTIONS,
+    MODULE_METHOD_DROP_EXCEPTIONS, PUBLIC_FIELD_RENAMES,
 )
 
 
@@ -621,22 +621,74 @@ def _module_from_rustdoc_path(paths: dict, iid) -> str | None:
     return ".".join(p[:-1])
 
 
-def _apply_method_renames(cls_name: str, methods: dict) -> dict:
+_SIG_ORACLE_MEMBERS: dict[tuple[str, str], set[str]] | None = None
+
+
+def _sig_oracle_members() -> dict[tuple[str, str], set[str]]:
+    """(module, class) -> the members the reference SIGNATURE oracle records.
+
+    The authority for the oracle-gated idiom drops below. This is the SIGNATURE
+    twin of ``enumerate_surface._oracle_class_members``; every oracle exclusion
+    must be gated in BOTH enumerators in lockstep or the two gates become
+    mutually exclusive (that happened once fleet-wide and three lanes root-caused
+    it independently — porting-sdk CAMPAIGN_STATE §9.4).
+
+    FAILS LOUD on an unresolvable oracle: a silently-empty oracle would make
+    every gated drop apply again and emit a valid-looking snapshot missing the
+    members, which is the resolver trap that cost dotnet/go/cpp a full CI
+    investigation each.
+    """
+    global _SIG_ORACLE_MEMBERS
+    if _SIG_ORACLE_MEMBERS is None:
+        ref = _load_python_reference()
+        if not ref.get("modules"):
+            raise SystemExit(
+                "enumerate_signatures: cannot read the reference signature oracle at "
+                f"{PSDK / 'python_signatures.json'}.\n"
+                "  Set $PORTING_SDK to the porting-sdk checkout, or clone it as a sibling\n"
+                "  of this repo. Refusing to emit a snapshot with the oracle-gated members\n"
+                "  silently dropped."
+            )
+        out: dict[tuple[str, str], set[str]] = {}
+        for mod, inv in ref.get("modules", {}).items():
+            for cls, ce in (inv.get("classes") or {}).items():
+                methods = ce.get("methods")
+                if isinstance(methods, dict):
+                    out[(mod, cls)] = set(methods.keys())
+        _SIG_ORACLE_MEMBERS = out
+    return _SIG_ORACLE_MEMBERS
+
+
+def _apply_method_renames(cls_name: str, methods: dict, module: str | None = None,
+                          py_cls: str | None = None) -> dict:
     """Apply the surface enumerator's METHOD_RENAMES table to a class's method
     dict (Rust name -> Python name; None -> drop). Mirrors the surface pass so a
     Rust-idiom method name (``to_value`` -> ``to_dict``) and its dropped
     borrow-checker companions (``*_mut`` / ``from_value`` / ...) line up
     identically on both enumerators. Signatures are carried through unchanged
-    (only the key is renamed)."""
+    (only the key is renamed).
+
+    A ``None`` drop is ORACLE-GATED, exactly as in the surface enumerator: the
+    drop asserts "the reference records no such member here", so when the oracle
+    DOES record it the drop is stale and the Rust accessor IS that member. Pass
+    ``module``/``py_cls`` (the CANONICAL post-translate key — the same key space
+    the emitter writes into) to enable the gate; without them the drop is
+    unconditional, preserving the pre-gate behaviour for callers that have no
+    canonical key yet."""
     table = METHOD_RENAMES.get(cls_name, {})
     if not table:
         return methods
+    recorded: set[str] = set()
+    if module is not None and py_cls is not None:
+        recorded = _sig_oracle_members().get((module, py_cls), set())
     out: dict = {}
     for name, sig in methods.items():
         if name in table:
             target = table[name]
             if target is None:
-                continue  # drop
+                if name in recorded:
+                    out[name] = sig  # stale drop — the reference has this member
+                continue
             out[target] = sig
         else:
             out[name] = sig
@@ -928,11 +980,66 @@ def collect(rust_doc: dict, aliases: dict) -> tuple[dict, list]:
                     continue
                 methods_out[method_canonical] = sig
 
+        # PUBLIC-FIELD ACCESSOR SYNTHESIS, oracle-gated — the SIGNATURE twin of the
+        # surface enumerator's public-field emission. A bare ``pub`` struct field is
+        # a public read of that member, but a field is not a ``pub fn``, so the
+        # impl-block walk above never records it. Synthesize the reference's
+        # field-read shape (self-only, returns the field's translated type) for
+        # every public field the reference oracle records on THIS class.
+        #
+        # Oracle-gated for the same two reasons as the surface side: it cannot
+        # over-emit (nothing the reference lacks can appear), and it cannot go stale
+        # (a newly-recorded oracle member starts emitting with no table to edit).
+        if "struct" in inner:
+            # ``kind`` is a dict for a plain (named-field) struct and a bare
+            # string for a unit/tuple struct — only the former has named fields.
+            _sk = kind_inner.get("kind")
+            _plain = _sk.get("plain") if isinstance(_sk, dict) else None
+            _field_ids = (_plain or {}).get("fields") or []
+            _recorded = _sig_oracle_members().get((mod, canonical_name), set())
+            for _fid in _field_ids:
+                _f = get(_fid)
+                if not _f or _f.get("visibility") != "public":
+                    continue
+                _fname = _f.get("name")
+                if not _fname or _fname.startswith("_"):
+                    continue
+                # Fold field-spelling idiom before the gate (shared table, keyed
+                # by the RUST struct name — same key space, both enumerators).
+                _fname = PUBLIC_FIELD_RENAMES.get(struct_name, {}).get(_fname, _fname)
+                if _fname not in _recorded:
+                    continue
+                if _fname in methods_out:
+                    continue  # a real accessor method already carries this name
+                _fnode = (_f.get("inner") or {}).get("struct_field")
+                try:
+                    _ftype = translate_rust_type(
+                        _fnode, paths, aliases, f"{mod}.{canonical_name}.{_fname}",
+                    )
+                except TypeTranslationError as e:
+                    failures.append(str(e))
+                    continue
+                methods_out[_fname] = {"params": [_S], "returns": _ftype}
+
         # Apply the surface enumerator's per-class method renames (``to_value`` ->
         # ``to_dict``, drop borrow-checker/idiom companions) so both enumerators
         # name the SAME methods (Rule 2). Without this, ``to_value`` surfaces as
         # missing-reference AND ``to_dict`` as missing-port on every POM/Context.
-        methods_out = _apply_method_renames(canonical_name, methods_out)
+        #
+        # ⚠ KEY SPACE. ``METHOD_RENAMES`` is keyed by the RUST struct name, and the
+        # surface enumerator looks it up PRE-translate. This call used
+        # ``canonical_name`` (POST-translate), so for every class CLASS_RENAME_MAP
+        # aliases — SwaigFunction→SWAIGFunction, Client→RelayClient,
+        # Service→SWMLService, SwmlBuilder→SWMLBuilder, AiVerbHandler→AIVerbHandler,
+        # McpGateway→MCPGatewaySkill, WikipediaSearch→WikipediaSearchSkill — the
+        # table silently never applied HERE while it did on the surface side, so a
+        # name folded in one gate and not the other. Look up by ``struct_name``
+        # (pre-alias, matching the table's key space) and pass the canonical
+        # (module, class) separately for the ORACLE GATE, which must be keyed by
+        # the name the emitter EMITS. Never mix the two spaces.
+        methods_out = _apply_method_renames(
+            struct_name, methods_out, module=mod, py_cls=canonical_name,
+        )
 
         if not methods_out:
             continue
@@ -1226,7 +1333,12 @@ def collect(rust_doc: dict, aliases: dict) -> tuple[dict, list]:
         exceptions = MODULE_METHOD_DROP_EXCEPTIONS.get(mod_name, {})
         for _cls, _c in entry.get("classes", {}).items():
             cls_drop = drop - exceptions.get(_cls, set())
-            for n in cls_drop:
+            # ORACLE-GATED, in lockstep with the surface enumerator's identical
+            # gate: a module-scoped idiom drop applies only to a name the
+            # reference does NOT record on that class, so it self-retires as the
+            # oracle grows instead of needing a hand edit.
+            recorded = _sig_oracle_members().get((mod_name, _cls), set())
+            for n in cls_drop - recorded:
                 _c["methods"].pop(n, None)
 
     # Project Rust ``params: serde_json::Value`` trailing arguments onto

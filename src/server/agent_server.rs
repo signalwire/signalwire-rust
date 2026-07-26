@@ -60,11 +60,26 @@ pub struct AgentServer {
     /// dispatch when its path matches. Returning `Some(route)` redirects
     /// to that agent; `None` falls through.
     global_routing_callbacks: HashMap<String, GlobalRoutingCallback>,
+    /// The configured logging level, lower-cased. Mirrors the reference's
+    /// `log_level` ctor param, which it stores as `self.log_level`
+    /// (`agent_server.py:63`) and passes to the server at `:716`/`:721`.
+    log_level: String,
     logger: Logger,
 }
 
 impl AgentServer {
+    /// Create a server bound to `host`:`port` with the default `"info"` log
+    /// level. See [`AgentServer::with_log_level`] to set it.
     pub fn new(host: Option<&str>, port: Option<u16>) -> Self {
+        Self::with_log_level(host, port, None)
+    }
+
+    /// Create a server with an explicit logging level (`debug` / `info` /
+    /// `warn` / `error`), defaulting to `"info"` when `None` — the reference's
+    /// `AgentServer(host, port, log_level="info")`. An unparseable level leaves
+    /// the logger at its env-derived level, exactly as the reference's uvicorn
+    /// hand-off tolerates an unknown string.
+    pub fn with_log_level(host: Option<&str>, port: Option<u16>, log_level: Option<&str>) -> Self {
         let host = host.unwrap_or("0.0.0.0").to_string();
         let port = port.unwrap_or_else(|| {
             env::var("PORT")
@@ -72,6 +87,15 @@ impl AgentServer {
                 .and_then(|s| s.parse::<u16>().ok())
                 .unwrap_or(3000)
         });
+        let log_level = log_level.unwrap_or("info").to_lowercase();
+
+        let mut logger = Logger::new("agent_server");
+        // NOTE: `Level` has BOTH an inherent `from_str(&str) -> Option<Level>` and a
+        // `FromStr` impl returning `Result`. The inherent method wins at a direct call
+        // site like this one, so match on `Some`, not `Ok`.
+        if let Some(level) = crate::logging::Level::from_str(&log_level) {
+            logger.level = level;
+        }
 
         AgentServer {
             host,
@@ -82,8 +106,15 @@ impl AgentServer {
             sip_username_mapping: HashMap::new(),
             static_routes: HashMap::new(),
             global_routing_callbacks: HashMap::new(),
-            logger: Logger::new("agent_server"),
+            log_level,
+            logger,
         }
+    }
+
+    /// The configured logging level (reference attribute `AgentServer.log_level`).
+    #[must_use]
+    pub fn log_level(&self) -> &str {
+        &self.log_level
     }
 
     // ======================================================================

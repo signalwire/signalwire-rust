@@ -189,6 +189,21 @@ impl WebService {
     pub fn cors_enabled(&self) -> bool {
         self.enable_cors
     }
+
+    /// The extension allow-list, if one was configured. `None` means "allow
+    /// anything not blocked" (reference attribute
+    /// `WebService.allowed_extensions`).
+    #[must_use]
+    pub fn allowed_extensions(&self) -> Option<&[String]> {
+        self.allowed_extensions.as_deref()
+    }
+
+    /// The extension block-list. Defaults to `DEFAULT_BLOCKED` when the caller
+    /// passes none (reference attribute `WebService.blocked_extensions`).
+    #[must_use]
+    pub fn blocked_extensions(&self) -> &[String] {
+        &self.blocked_extensions
+    }
 }
 
 /// Normalize a route to a leading-slash form.

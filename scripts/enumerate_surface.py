@@ -432,9 +432,12 @@ METHOD_RENAMES: dict[str, dict[str, str]] = {
         "questions": None,
         "completion_action": None,
     },
+    # GatherQuestion: `to_value` == Python's `to_dict`. `question_type` is the
+    # RESERVED-WORD rename of the reference attribute `type` (`type` is a Rust
+    # keyword) — folded here, wire key `"type"` preserved (AGENT_RULES §5).
     "GatherQuestion": {
         "to_value": "to_dict",
-        "key": None,
+        "question_type": "type",
     },
     # SWMLBuilder: Rust exposes a generic `verb` accessor + `sleep` shortcut +
     # `service_mut`/`validate_ai` helpers that the Python reference does not
@@ -474,19 +477,18 @@ METHOD_RENAMES: dict[str, dict[str, str]] = {
         "set_debug_mode": None,
     },
     # WebService: the reference records __init__/add_directory/remove_directory/
-    # start/stop. The Rust read accessors (port/directories/is_running/
-    # is_file_allowed/basic_auth/directory_browsing_enabled/max_file_size/
-    # cors_enabled) are field-accessor idiom over Python's instance attrs and
-    # private helpers — not enumerated methods. Drop them.
+    # start/stop PLUS every construction param as a public instance attribute
+    # (port / directories / enable_directory_browsing / allowed_extensions /
+    # blocked_extensions / max_file_size / enable_cors). The same-named Rust
+    # readers pass straight through; two are spelled differently and fold via a
+    # RENAME rather than a drop. `is_running` / `is_file_allowed` / `basic_auth`
+    # are Rust-only reads of private reference state, dropped.
     "WebService": {
-        "port": None,
-        "directories": None,
         "is_running": None,
         "is_file_allowed": None,
         "basic_auth": None,
-        "directory_browsing_enabled": None,
-        "max_file_size": None,
-        "cors_enabled": None,
+        "directory_browsing_enabled": "enable_directory_browsing",
+        "cors_enabled": "enable_cors",
     },
     # AuthHandler: `with_bearer_token`/`with_api_key` are Rust builder-idiom
     # setters enabling the optional auth methods (Python reads bearer_token /
@@ -496,20 +498,25 @@ METHOD_RENAMES: dict[str, dict[str, str]] = {
         "with_bearer_token": None,
         "with_api_key": None,
     },
-    # SwaigFunction (== SWAIGFunction): Rust `call` == Python's `__call__`
-    # dunder. The builder setters (secure/required/webhook_url/fillers/
-    # wait_file/extra_field) and read accessors (name/is_external/is_secure)
-    # are the Rust-idiom face of Python's __init__ kwargs / instance attrs —
-    # not enumerated methods on the reference. Drop them.
+    # SwaigFunction (== SWAIGFunction): Rust `call` == Python's `__call__` dunder.
+    # The reference records every construction param as a readable instance
+    # attribute (secure / required / webhook_url / fillers / wait_file /
+    # wait_file_loops / name / description / parameters / handler /
+    # is_typed_handler), and Rust spells each read as a `&self` getter of the same
+    # name — so those pass straight through, no entry needed. What remains to drop
+    # is only the writer/idiom surface with no reference counterpart under any
+    # spelling: the `set_*` builder setters, `extra_field`, and the two derived
+    # predicates (`is_external` = "webhook_url is some", `is_secure` = an alias of
+    # the `secure` reader).
     "SwaigFunction": {
         "call": "__call__",
-        "secure": None,
-        "required": None,
-        "webhook_url": None,
-        "fillers": None,
-        "wait_file": None,
+        "set_secure": None,
+        "set_required": None,
+        "set_webhook_url": None,
+        "set_fillers": None,
+        "set_wait_file": None,
+        "set_is_typed_handler": None,
         "extra_field": None,
-        "name": None,
         "is_external": None,
         "is_secure": None,
     },
@@ -761,6 +768,12 @@ RE_PUB_STRUCT = re.compile(r"^\s*pub(?:\s*\([^)]*\))?\s+struct\s+(\w+)\b")
 # Rust-only `action`/`collect_result` accessors are dropped via METHOD_RENAMES.
 RE_ACTION_SUBCLASS = re.compile(r"^\s*action_subclass!\(\s*(\w+)\s*,")
 RE_PUB_ENUM = re.compile(r"^\s*pub(?:\s*\([^)]*\))?\s+enum\s+(\w+)\b")
+# A fully-public struct FIELD: `pub name: Type,`. Restricted to a bare `pub`
+# (no `pub(crate)` / `pub(super)`): a restricted field is not reachable by an
+# external caller, so it is not surface. This is the FIELD analog of RE_PUB_FN's
+# publicness rule — except RE_PUB_FN deliberately permits `pub(...)` and relies
+# on drop tables, whereas a field has no such history to preserve.
+RE_PUB_FIELD = re.compile(r"^\s*pub\s+(\w+)\s*:")
 RE_PUB_TRAIT = re.compile(r"^\s*pub(?:\s*\([^)]*\))?\s+trait\s+(\w+)\b")
 RE_PUB_TYPE = re.compile(r"^\s*pub(?:\s*\([^)]*\))?\s+type\s+(\w+)\b")
 # Generic params / args can themselves contain one level of nested angle
@@ -906,13 +919,28 @@ def _parse_file(path: Path) -> tuple[set[str], dict[str, set[str]], set[str]]:
     class_methods: {class_name: {method_names...}} for impl blocks
     defined_classes: pub struct/enum/trait/type names declared in this file
     """
+    free_fns, methods, classes, _fields = _parse_file_full(path)
+    return free_fns, methods, classes
+
+
+def _parse_file_full(
+    path: Path,
+) -> tuple[set[str], dict[str, set[str]], set[str], dict[str, set[str]]]:
+    """As ``_parse_file`` plus ``pub_fields``: {struct_name: {pub field names}}.
+
+    A Rust ``pub`` struct field is a PUBLIC READ (and write) of that member —
+    exactly what Python spells as an instance attribute. The method-only regex
+    never captured them, so every such field was invisible to the surface; see
+    ``_emit_public_fields`` for how they are emitted (oracle-gated).
+    """
     free_fns: set[str] = set()
     methods: dict[str, set[str]] = defaultdict(set)
     classes: set[str] = set()
+    pub_fields: dict[str, set[str]] = defaultdict(set)
     try:
         text = path.read_text(encoding="utf-8", errors="replace")
     except OSError:
-        return free_fns, dict(methods), classes
+        return free_fns, dict(methods), classes, dict(pub_fields)
 
     lines = text.splitlines()
     impl_stack: list[str] = []  # current impl block class names (for nested-mod safety)
@@ -923,6 +951,10 @@ def _parse_file(path: Path) -> tuple[set[str], dict[str, set[str]], set[str]]:
 
     in_test_mod = False
     test_mod_brace = 0
+
+    # Current `pub struct X { ... }` body, for pub-field capture.
+    cur_struct: str | None = None
+    struct_brace = 0
 
     for line in lines:
         stripped = line.strip()
@@ -952,6 +984,16 @@ def _parse_file(path: Path) -> tuple[set[str], dict[str, set[str]], set[str]]:
             m = regex.match(line)
             if m:
                 bucket.add(m.group(1))
+
+        # Enter / capture a `pub struct X { ... }` body for its PUBLIC FIELDS.
+        m_struct = RE_PUB_STRUCT.match(line)
+        if m_struct and "{" in line:
+            cur_struct = m_struct.group(1)
+            struct_brace = cur_brace
+        elif cur_struct is not None and cur_brace == struct_brace + 1:
+            m_field = RE_PUB_FIELD.match(line)
+            if m_field:
+                pub_fields[cur_struct].add(m_field.group(1))
 
         # Detect `action_subclass!(Name, ...)` macro-generated RELAY action
         # subclasses: register the class + its macro-provided `__init__` and
@@ -1021,8 +1063,11 @@ def _parse_file(path: Path) -> tuple[set[str], dict[str, set[str]], set[str]]:
             brace_depth_for_impl.pop()
             in_trait_for_impl.pop()
             impl_trait_name.pop()
+        # Leave a closed struct body
+        if cur_struct is not None and cur_brace <= struct_brace:
+            cur_struct = None
 
-    return free_fns, dict(methods), classes
+    return free_fns, dict(methods), classes, dict(pub_fields)
 
 
 # Crate-root `pub use` re-exports that must NOT be emitted as top-level
@@ -1232,8 +1277,18 @@ FORCE_CLASS_METHODS: dict[tuple[str, str], list[str]] = {
     # Python delegate classes (PromptManager / ToolRegistry) that Rust folds
     # onto AgentBase: their SURFACE_PROJECTIONS already project the method set,
     # but the reference also records a bare __init__ on each. Emit it.
-    ("signalwire.core.agent.prompt.manager", "PromptManager"): ["__init__"],
-    ("signalwire.core.agent.tools.registry", "ToolRegistry"): ["__init__"],
+    #
+    # `agent` is the reference's back-reference to the OWNING agent — the
+    # reference builds each helper as `PromptManager(self)` / `ToolRegistry(self)`
+    # and stores it as `self.agent`, a ctor param class B2 records. Rust does not
+    # extract the helpers as separate objects AT ALL: their methods are declared
+    # directly on AgentBase (which is what the projections above encode), so the
+    # manager and its agent are the SAME object and the back-reference is `self`.
+    # Reaching the agent from the manager is therefore as available in Rust as in
+    # Python — it is already in hand — so this is the composition-flatten idiom
+    # folded in EMIT, not a capability the port lacks.
+    ("signalwire.core.agent.prompt.manager", "PromptManager"): ["__init__", "agent"],
+    ("signalwire.core.agent.tools.registry", "ToolRegistry"): ["__init__", "agent"],
     # SkillBase (a Rust trait — no constructor) + SkillRegistry (Rust uses
     # static methods, no `new`): the reference records `__init__` on both.
     ("signalwire.core.skill_base", "SkillBase"): ["__init__"],
@@ -1405,32 +1460,89 @@ SKILL_INTERFACE_PROJECTION: dict[tuple[str, str], list[str]] = {
 
 
 
-# Public struct FIELDS that the reference oracle records as composition-attribute
-# members but which Rust exposes as bare ``pub`` fields (not ``pub fn``), so the
-# method-only parser never captures them. Project them onto the class when the class
-# is present (an absent class stays a real gap). These are the field twins of the
-# reference's list-of-SDK-class composition attributes (PromptObjectModel.sections /
-# Section.subsections hold ``Vec<Section>``), reconciled in EMIT, not omitted.
-PUBLIC_FIELD_MEMBERS: dict[tuple[str, str], set[str]] = {
-    ("signalwire.pom.pom", "PromptObjectModel"): {"sections"},
-    ("signalwire.pom.pom", "Section"): {"subsections"},
-    # ai_chat.client result-model DTOs: the reference records each public dataclass
-    # field as a composition-attribute member. Rust exposes them as bare `pub`
-    # struct fields (text/conversation_id/user_event on ChatResponse;
-    # messages/call_timeline on ChatLog; id/status/initial_message on
-    # ConversationInfo) — a field is not a `pub fn`, so the method parser misses
-    # them. Promote them here (CLASS B field-emit) so the surface matches; the
-    # signature twin is synthesized in build_ai_chat_signatures().
-    ("signalwire.ai_chat.client", "ChatResponse"): {"text", "conversation_id", "user_event"},
-    ("signalwire.ai_chat.client", "ChatLog"): {"messages", "call_timeline"},
-    ("signalwire.ai_chat.client", "ConversationInfo"): {"id", "status", "initial_message"},
+# Public struct FIELD renames: {rust_struct_name: {rust_field: reference_name}}.
+# The field analog of METHOD_RENAMES, for a field whose Rust spelling differs from
+# the name the reference records. Keyed by the RUST struct name (pre-alias, the same
+# key space as METHOD_RENAMES) and applied BEFORE the oracle gate, so the gate sees
+# the reference spelling. SHARED with enumerate_signatures.py by import — a table
+# duplicated across the two enumerators is guaranteed future drift.
+PUBLIC_FIELD_RENAMES: dict[str, dict[str, str]] = {
+    # `numberedBullets` is a WIRE KEY, recorded camelCase VERBATIM by the oracle
+    # because it round-trips through the POM dict that way (`pom.py:345,361,371`)
+    # — not reference sloppiness, so it must not be case-converted. Rust spells
+    # the FIELD snake_case per its own convention while emitting the camelCase
+    # wire key (`src/pom/mod.rs:426` asserts `v["numberedBullets"]`). Fold the
+    # spelling here; the wire key is already correct.
+    "Section": {"numbered_bullets": "numberedBullets"},
 }
+
+
+# NOTE: the former hand-listed ``PUBLIC_FIELD_MEMBERS`` table lived here. It named
+# 9 fields on 5 classes (PromptObjectModel.sections, Section.subsections, and the
+# three ai_chat result-model DTOs). It was a stale exclusion by construction — every
+# public field NOT on the list was invisible to the surface, so the moment the oracle
+# recorded more of them (class B2) the table under-emitted with nothing to signal it.
+# Replaced by the general ORACLE-GATED public-field emission in ``build_surface``:
+# derive from the authority instead of restating it by hand.
+
 
 def _load_json(path: Path) -> dict:
     try:
         return json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
         return {}
+
+
+def _load_reference_surface() -> dict:
+    """Load the reference SURFACE oracle (porting-sdk/python_surface.json).
+
+    FAIL LOUD on an unresolvable oracle. A silently-empty oracle produces a
+    valid-LOOKING snapshot that is missing every oracle-gated member (the trap
+    that cost dotnet, go and cpp a full CI investigation each — porting-sdk
+    CAMPAIGN_STATE §4b), so an unreadable oracle is an error, not a degraded mode.
+    """
+    path = PSDK / "python_surface.json"
+    data = _load_json(path)
+    if not data.get("modules"):
+        raise SystemExit(
+            f"enumerate_surface: cannot read the reference surface oracle at {path}.\n"
+            "  Set $PORTING_SDK to the porting-sdk checkout, or clone it as a sibling\n"
+            "  of this repo. Refusing to emit a snapshot with the oracle-gated members\n"
+            "  silently missing."
+        )
+    return data
+
+
+def _oracle_class_members() -> dict[tuple[str, str], set[str]]:
+    """(module, class) -> the member names the reference SURFACE oracle records.
+
+    The AUTHORITY for every oracle-gated decision below. Deriving from it (rather
+    than restating it in a hand-maintained table) is what makes those tables
+    self-retiring: as the oracle grows — e.g. class B2 recording public
+    ``__init__`` attributes that are also ctor params — a stale exclusion stops
+    applying on its own instead of needing a hand edit.
+    """
+    ref = _load_reference_surface()
+    out: dict[tuple[str, str], set[str]] = {}
+    for mod, inv in ref.get("modules", {}).items():
+        for cls, members in inv.get("classes", {}).items():
+            if isinstance(members, list):
+                out[(mod, cls)] = set(members)
+    return out
+
+
+def _oracle_records(oracle: dict[tuple[str, str], set[str]],
+                    module: str, cls: str, member: str) -> bool:
+    """True when the reference records ``member`` on ``module.cls``.
+
+    Used to GATE every idiom drop: a drop expresses "the reference does not have
+    this name here", so the moment the reference DOES have it the drop is simply
+    wrong and must not apply. Keyed by the CANONICAL (post-translate) module and
+    class — the same key space the emitter writes into — because a table keyed in
+    one space and looked up in another silently drops members and nothing reds
+    (three ports hit that; CAMPAIGN_STATE §11).
+    """
+    return member in oracle.get((module, cls), ())
 
 
 def _reference_composition_attrs() -> dict[tuple[str, str], set[str]]:
@@ -1520,6 +1632,10 @@ def _enrich_composition_attributes(modules: dict) -> None:
 def build_surface() -> dict:
     modules: dict[str, dict] = defaultdict(lambda: {"classes": defaultdict(list), "functions": []})
     sha = _git_sha()
+    # The reference surface oracle — the single AUTHORITY for every gated
+    # decision below (idiom drops, public-field emission). Fails loud when
+    # unresolvable rather than silently emitting less.
+    oracle = _oracle_class_members()
     files = _walk_source_files()
     sidecar = load_rest_sidecar()
     sidecar_classes, suppressed_classes = _sidecar_class_index(sidecar)
@@ -1593,10 +1709,13 @@ def build_surface() -> dict:
 
     # First pass: collect class declarations + their files (module mapping)
     class_defining_files: dict[str, Path] = {}
+    all_pub_fields: dict[str, set[str]] = defaultdict(set)
     for path in files:
         if path in gen_type_files:
             continue
-        free_fns, methods, classes = _parse_file(path)
+        free_fns, methods, classes, pub_fields = _parse_file_full(path)
+        for struct_name, fnames in pub_fields.items():
+            all_pub_fields[struct_name].update(fnames)
         rel = path.relative_to(REPO_ROOT)
         for cls in classes:
             class_defining_files.setdefault(cls, rel)
@@ -1668,7 +1787,12 @@ def build_surface() -> dict:
                     target = rename_table[m]
                     if target is not None:
                         renamed_methods.add(target)
-                    # `None` → drop
+                    elif _oracle_records(oracle, module_path, translated, m):
+                        # ORACLE-GATED DROP. The drop said "the reference has no
+                        # such member here"; the oracle now says it does, so the
+                        # drop is stale and the Rust accessor IS that member.
+                        renamed_methods.add(m)
+                    # `None` and unrecorded by the oracle → drop
                 else:
                     renamed_methods.add(m)
             existing = set(modules[module_path]["classes"].get(translated, []))
@@ -1761,6 +1885,13 @@ def build_surface() -> dict:
         exceptions = MODULE_METHOD_DROP_EXCEPTIONS.get(mod_name, {})
         for cls, ms in entry["classes"].items():
             cls_drop = drop - exceptions.get(cls, set())
+            # ORACLE-GATED, same rule as the METHOD_RENAMES `None` drops: a
+            # module-scoped idiom drop only applies to a name the reference does
+            # NOT record on that class, so it self-retires as the oracle grows.
+            cls_drop = {
+                m for m in cls_drop
+                if not _oracle_records(oracle, mod_name, cls, m)
+            }
             entry["classes"][cls] = sorted(set(ms) - cls_drop)
 
     # SkillBase interface projection: every Rust skill implements `SkillBase`
@@ -1787,13 +1918,47 @@ def build_surface() -> dict:
     # reading as phantom omissions / gen-type-fold divergences.
     _enrich_composition_attributes(modules)
 
-    # Public-field members: promote bare ``pub`` struct fields the reference records
-    # as composition attributes (the ``pub fn`` parser misses fields).
-    for (mod_name, cls), fields in PUBLIC_FIELD_MEMBERS.items():
-        entry = modules.get(mod_name)
-        if entry is None or cls not in entry["classes"]:
-            continue
-        entry["classes"][cls] = sorted(set(entry["classes"][cls]) | fields)
+    # PUBLIC-FIELD EMISSION, oracle-gated. A bare ``pub`` struct field is a public
+    # read of that member — the Rust spelling of the Python instance attribute the
+    # reference exposes — but a field is not a ``pub fn``, so the method-keyed
+    # passes above never see it. Emit a field ONLY when the reference oracle
+    # records that same NAME on that same CLASS.
+    #
+    # Two properties make this safe and stale-proof, which is why it replaced the
+    # hand-listed table that used to sit here:
+    #   * it cannot OVER-emit — the oracle is the gate, so nothing the reference
+    #     lacks can appear, and no invented surface is possible;
+    #   * it cannot go STALE — as the oracle grows (class B2 recording public
+    #     ``__init__`` attributes that are also ctor params), the newly-recorded
+    #     names start emitting on their own with no table to edit.
+    # It COMPLETES a class the walker already found; it never registers a new one
+    # (a field-only struct absent from the surface stays a real gap).
+    for mod_name, entry in modules.items():
+        for cls in list(entry["classes"]):
+            rust_cls = cls
+            fields = all_pub_fields.get(cls) or set()
+            if not fields:
+                # The emitted class name may be the translated/renamed one; the
+                # field table is keyed by the RUST struct name. Look up pre-alias
+                # so an aliased class does not silently lose its fields — the
+                # table-keying bug that dropped 17 symbols in typescript.
+                for rust_name, py_name in CLASS_RENAME_MAP.items():
+                    if py_name == cls and all_pub_fields.get(rust_name):
+                        rust_cls, fields = rust_name, all_pub_fields[rust_name]
+                        break
+            if not fields:
+                continue
+            # Fold field-spelling idiom BEFORE the gate, so the gate compares the
+            # reference spelling (keyed by the RUST struct name, pre-alias).
+            frenames = PUBLIC_FIELD_RENAMES.get(rust_cls, {})
+            if frenames:
+                fields = {frenames.get(f, f) for f in fields}
+            recorded = oracle.get((mod_name, cls))
+            if not recorded:
+                continue
+            emit = fields & recorded
+            if emit:
+                entry["classes"][cls] = sorted(set(entry["classes"][cls]) | emit)
 
     # Stable sort + cleanup
     out_modules: dict = {}

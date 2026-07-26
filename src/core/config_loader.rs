@@ -62,6 +62,13 @@ impl ConfigLoader {
         }
     }
 
+    /// The config search paths this loader was constructed with.
+    /// Reference attribute `ConfigLoader.config_paths`.
+    #[must_use]
+    pub fn config_paths(&self) -> &[String] {
+        &self.config_paths
+    }
+
     /// Whether a configuration file was loaded.
     #[must_use]
     pub fn has_config(&self) -> bool {

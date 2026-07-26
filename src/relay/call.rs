@@ -27,6 +27,17 @@ pub struct Call {
     pub call_id: Option<String>,
     pub node_id: Option<String>,
     pub tag: Option<String>,
+    /// The project this call belongs to. Reference ctor param stored as
+    /// `self.project_id` (`relay/call.py:357`).
+    pub project_id: Option<String>,
+    /// `"inbound"` / `"outbound"`. Reference ctor param stored as
+    /// `self.direction` (`relay/call.py:360`), and part of its `__repr__`
+    /// (`:1632`). The wire frame carries it on `calling.call.receive` /
+    /// `calling.call.state`; the port read it from neither.
+    pub direction: Option<String>,
+    /// The call segment. Reference ctor param stored as `self.segment_id`
+    /// (`relay/call.py:363`).
+    pub segment_id: Option<String>,
 
     // ── state ─────────────────────────────────────────────────────────
     pub state: Mutex<String>,
@@ -73,6 +84,18 @@ impl Call {
                 .map(std::string::ToString::to_string),
             tag: params
                 .get("tag")
+                .and_then(|v| v.as_str())
+                .map(std::string::ToString::to_string),
+            project_id: params
+                .get("project_id")
+                .and_then(|v| v.as_str())
+                .map(std::string::ToString::to_string),
+            direction: params
+                .get("direction")
+                .and_then(|v| v.as_str())
+                .map(std::string::ToString::to_string),
+            segment_id: params
+                .get("segment_id")
                 .and_then(|v| v.as_str())
                 .map(std::string::ToString::to_string),
             state: Mutex::new(
