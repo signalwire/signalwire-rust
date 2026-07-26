@@ -1,6 +1,6 @@
 {
   "version": "1",
-  "generated_from": "signalwire-rust @ 876e8de59675dab88bf30075e6577a2006973251",
+  "generated_from": "signalwire-rust @ 70a46702337de1c1ffffad4615670742dbbcd938",
   "modules": {
     "signalwire": {
       "classes": {
@@ -930,6 +930,10 @@
         "AIPromptText": [
           "contexts"
         ],
+        "AiSidecar": [],
+        "AiSidecarConfig": [
+          "SWAIG"
+        ],
         "AllOfProperty": [
           "allOf"
         ],
@@ -1145,6 +1149,7 @@
         "Request": [],
         "RequestConfig": [],
         "Return": [],
+        "RingbackConfig": [],
         "SIPRefer": [],
         "SMSWithBody": [],
         "SMSWithMedia": [],
