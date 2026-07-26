@@ -70,11 +70,34 @@ fn schema_validation_false_accepts_a_config_validation_would_reject() {
 }
 
 /// The default is validation ON — the same config must be rejected.
+///
+/// Asserts on the CAPTURED failure rather than via `#[should_panic]`: the
+/// attribute proves only that something panicked somewhere, and it makes the
+/// test body assertion-free, so it would still pass if the rejection came from
+/// an unrelated fault. Catching the payload lets the test name the verb, which
+/// is what distinguishes "the schema rejected this config" from "something
+/// else blew up".
 #[test]
-#[should_panic(expected = "Schema validation failed")]
 fn schema_validation_defaults_on_and_rejects() {
-    let mut agent = AgentBase::new(AgentOptions::new("validate"));
-    agent.add_verb("answer", json!({"zzz_unknown_key": 1}));
+    let failure = std::panic::catch_unwind(|| {
+        let mut agent = AgentBase::new(AgentOptions::new("validate"));
+        agent.add_verb("answer", json!({"zzz_unknown_key": 1}));
+    })
+    .expect_err("validation is ON by default, so the unknown key must be rejected");
+
+    let message = failure
+        .downcast_ref::<String>()
+        .map(String::as_str)
+        .or_else(|| failure.downcast_ref::<&str>().copied())
+        .unwrap_or("");
+    assert!(
+        message.contains("Schema validation failed"),
+        "the rejection must come from schema validation, got: {message}"
+    );
+    assert!(
+        message.contains("answer"),
+        "the failure must name the rejected verb, got: {message}"
+    );
 }
 
 /// Same contract one layer down, on `Service` — the reference forwards
