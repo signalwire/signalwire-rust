@@ -91,7 +91,7 @@ impl SkillBase for Math {
 
                 result
             }),
-            false,
+            true,
         );
     }
 

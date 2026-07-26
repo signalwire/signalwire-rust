@@ -110,7 +110,7 @@ agent.define_tool(
             .unwrap_or("unknown");
         FunctionResult::with_response(&format!("Order {order_id} is shipped."))
     }),
-    false, // not secure (no HMAC)
+    true, // secure: the rendered webhook carries a per-tool HMAC __token
 );
 ```
 

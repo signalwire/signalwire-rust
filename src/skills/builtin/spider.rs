@@ -77,7 +77,7 @@ impl SkillBase for Spider {
                 r.set_response(&format!("Scraped content from {url_arg}:\n{extracted}"));
                 r
             }),
-            false,
+            true,
         );
 
         agent.define_tool(
@@ -114,7 +114,7 @@ impl SkillBase for Spider {
                 r.set_response(&format!("Crawled {start_url}:\n{extracted}"));
                 r
             }),
-            false,
+            true,
         );
 
         agent.define_tool(
@@ -148,7 +148,7 @@ impl SkillBase for Spider {
                 r.set_response(&format!("Extracted from {url_arg}:\n{extracted}"));
                 r
             }),
-            false,
+            true,
         );
     }
 

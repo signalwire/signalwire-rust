@@ -5,7 +5,6 @@ use serde_json::{Map, Value, json};
 
 use crate::contexts::ContextBuilder;
 use crate::security::SessionManager;
-#[cfg(test)]
 use crate::swaig::FunctionResult;
 use crate::swml::service::{Service, ServiceOptions};
 
@@ -2342,6 +2341,35 @@ impl AgentBase {
             return json_response(400, &json!({"error": "Missing function name"}));
         }
 
+        // Validate the per-tool security token when one was supplied. The
+        // reference reads `__token` (falling back to the legacy `token`) off the
+        // query string and, on a mismatch, refuses to execute a SECURE function —
+        // returning a spoken refusal rather than an HTTP error
+        // (`agent_base.py:1414-1444`). An INSECURE function is dispatched even with
+        // a bad token, exactly as the reference does.
+        if let Some(token) = swaig_request_token(data) {
+            let call_id = data
+                .get("call_id")
+                .and_then(Value::as_str)
+                .or_else(|| data.get("call").and_then(|c| c.get("call_id"))?.as_str());
+            if let Some(call_id) = call_id
+                && self.has_function(function_name)
+                && !self.validate_tool_token(function_name, &token, call_id)
+                && self
+                    .get_function(function_name)
+                    .is_some_and(|tool| tool.secure)
+            {
+                return json_response(
+                    200,
+                    &FunctionResult::with_response(
+                        "I'm sorry, the security token for this function is invalid \
+                         or expired. I cannot execute this action.",
+                    )
+                    .to_value(),
+                );
+            }
+        }
+
         let args = data["argument"]["parsed"]
             .as_array()
             .and_then(|arr| arr.first())
@@ -2379,6 +2407,13 @@ impl AgentBase {
     fn build_swaig_block(&self, headers: &HashMap<String, String>) -> Map<String, Value> {
         let mut swaig = Map::new();
 
+        // Every render is scoped to a call. The reference GENERATES a call_id when
+        // the caller supplied none (`agent_base.py:958` →
+        // `_session_manager.create_session()`), so a `secure` tool ALWAYS renders
+        // with a per-tool token. Mirror that: mint the render's call_id up front so
+        // the secure branch below always has one.
+        let call_id = self.session_manager.create_session(None);
+
         let mut functions = Vec::new();
         for name in &self.tool_order {
             if let Some(tool) = self.tools.get(name) {
@@ -2387,11 +2422,22 @@ impl AgentBase {
                 // Add web_hook_url for tools with handlers
                 if tool.handler.is_some() {
                     if let Some(ref wh_url) = self.webhook_url {
+                        // EXTERNAL webhook: the reference uses the provided URL
+                        // verbatim and never appends a token (agent_base.py:1085).
                         if let Value::Object(map) = &mut func_def {
                             map.insert("web_hook_url".to_string(), json!(wh_url));
                         }
                     } else {
-                        let url = self.build_swaig_webhook_url(headers);
+                        // LOCAL webhook. A `secure` tool carries a per-tool
+                        // `__token` — the WIRE manifestation of `secure` the
+                        // platform validates on the callback (agent_base.py:1040 +
+                        // 1097). An insecure tool carries none.
+                        let mut url = self.build_swaig_webhook_url(headers);
+                        if tool.secure {
+                            let token = self.create_tool_token(name, &call_id);
+                            let sep = if url.contains('?') { '&' } else { '?' };
+                            url = format!("{url}{sep}__token={token}");
+                        }
                         if let Value::Object(map) = &mut func_def {
                             map.insert("web_hook_url".to_string(), json!(url));
                         }
@@ -2579,6 +2625,23 @@ impl AgentBase {
             let _ = request.respond(response);
         }
     }
+}
+
+/// The per-tool security token supplied on a SWAIG callback, if any.
+///
+/// The platform appends the token the render minted as a `__token` query
+/// parameter (see `build_swaig_block`). The reference reads
+/// `query_params["__token"]`, falling back to the legacy unprefixed `token`
+/// (`agent_base.py:1414`); the HTTP adapter surfaces the parsed query string on
+/// the request body under `query_params`.
+fn swaig_request_token(data: &Value) -> Option<String> {
+    let params = data.get("query_params")?.as_object()?;
+    params
+        .get("__token")
+        .or_else(|| params.get("token"))
+        .and_then(Value::as_str)
+        .filter(|t| !t.is_empty())
+        .map(str::to_string)
 }
 
 /// Build a JSON HTTP response tuple.
@@ -4053,6 +4116,213 @@ mod tests {
         assert!(
             !a.validate_tool_token("test_tool", &token, "call_B"),
             "expected false when token bound to a different call_id"
+        );
+    }
+
+    // ── The `__token` wire manifestation of `secure` ─────────────────────
+    //
+    // Parity: signalwire-python `agent_base.py:1040`/`1097` — a SECURE tool's
+    // rendered SWAIG webhook carries the per-tool `__token`; an INSECURE one
+    // does not. This is the wire property the cross-port SECURE-DEFAULT gate
+    // (porting-sdk `diff_port_secure_default.py`) compares.
+
+    /// The `web_hook_url` the render emitted for `tool_name`, if any.
+    fn rendered_webhook_url(doc: &Value, tool_name: &str) -> Option<String> {
+        doc["sections"]["main"]
+            .as_array()?
+            .iter()
+            .find_map(|sec| sec.get("ai"))?["SWAIG"]["functions"]
+            .as_array()?
+            .iter()
+            .find(|f| f["function"].as_str() == Some(tool_name))?["web_hook_url"]
+            .as_str()
+            .map(str::to_string)
+    }
+
+    fn agent_with_secure_and_insecure_tools() -> AgentBase {
+        let mut a = AgentBase::new(default_options());
+        a.define_tool(
+            "secure_tool",
+            "s",
+            json!({}),
+            Box::new(|_a, _r| FunctionResult::with_response("ok")),
+            true,
+        );
+        a.define_tool(
+            "insecure_tool",
+            "i",
+            json!({}),
+            Box::new(|_a, _r| FunctionResult::with_response("ok")),
+            false,
+        );
+        a
+    }
+
+    #[test]
+    fn test_render_emits_token_only_for_secure_tools() {
+        let a = agent_with_secure_and_insecure_tools();
+        let doc = a.render_swml(&HashMap::new());
+
+        let secure_url = rendered_webhook_url(&doc, "secure_tool")
+            .expect("secure tool must render a web_hook_url");
+        assert!(
+            secure_url.contains("__token="),
+            "a secure tool's rendered webhook must carry the per-tool __token, got {secure_url}"
+        );
+
+        let insecure_url = rendered_webhook_url(&doc, "insecure_tool")
+            .expect("insecure tool must render a web_hook_url");
+        assert!(
+            !insecure_url.contains("__token="),
+            "an insecure tool must carry NO __token, got {insecure_url}"
+        );
+    }
+
+    #[test]
+    fn test_render_token_validates_for_its_own_call() {
+        use base64::Engine as _;
+        use base64::engine::general_purpose::URL_SAFE_NO_PAD;
+
+        // The token the render minted must verify against the call_id it was
+        // minted for — i.e. it is a real SessionManager token, not a placeholder.
+        let a = agent_with_secure_and_insecure_tools();
+        let doc = a.render_swml(&HashMap::new());
+        let url = rendered_webhook_url(&doc, "secure_tool").expect("web_hook_url");
+        let token = url
+            .split("__token=")
+            .nth(1)
+            .expect("__token present")
+            .split('&')
+            .next()
+            .expect("token value");
+
+        // The token payload is `{call_id}.{function}.{expiry}.{nonce}.{hmac}`
+        // base64url-encoded; recover the render's call_id and confirm the pair
+        // validates (i.e. it is a real SessionManager token, not a placeholder).
+        let payload = String::from_utf8(
+            URL_SAFE_NO_PAD
+                .decode(token)
+                .expect("token is base64url-encoded"),
+        )
+        .expect("token payload is utf-8");
+        let call_id = payload.split('.').next().expect("token carries a call_id");
+        assert!(!call_id.is_empty(), "the render must mint a call_id");
+        assert!(
+            a.validate_tool_token("secure_tool", token, call_id),
+            "the render-minted token must validate for its own call_id"
+        );
+    }
+
+    // ── SWAIG dispatch token validation ──────────────────────────────────
+    //
+    // Parity: signalwire-python `agent_base.py:1414-1444` — a bad token on a
+    // SECURE function refuses execution with a spoken message; an INSECURE
+    // function is dispatched regardless.
+
+    fn swaig_body(function: &str, token: Option<&str>) -> String {
+        let mut body = json!({
+            "function": function,
+            "call_id": "call_dispatch",
+            "argument": {"parsed": [{}]},
+        });
+        if let Some(t) = token {
+            body["query_params"] = json!({"__token": t});
+        }
+        body.to_string()
+    }
+
+    #[test]
+    fn test_swaig_dispatch_rejects_bad_token_on_secure_function() {
+        let a = agent_with_secure_and_insecure_tools();
+        let (status, _, body) = a.handle_request(
+            "POST",
+            "/swaig",
+            &authed_headers(),
+            &swaig_body("secure_tool", Some("garbage_token")),
+        );
+        assert_eq!(status, 200, "the reference refuses in-band, not via HTTP");
+        assert!(
+            body.contains("security token for this function is invalid"),
+            "expected the token-refusal response, got {body}"
+        );
+    }
+
+    #[test]
+    fn test_swaig_dispatch_accepts_valid_token_on_secure_function() {
+        let a = agent_with_secure_and_insecure_tools();
+        let token = a.create_tool_token("secure_tool", "call_dispatch");
+        let (status, _, body) = a.handle_request(
+            "POST",
+            "/swaig",
+            &authed_headers(),
+            &swaig_body("secure_tool", Some(&token)),
+        );
+        assert_eq!(status, 200);
+        assert!(
+            !body.contains("security token for this function is invalid"),
+            "a valid token must dispatch to the handler, got {body}"
+        );
+        assert!(
+            body.contains("ok"),
+            "expected the handler's response: {body}"
+        );
+    }
+
+    #[test]
+    fn test_swaig_dispatch_ignores_bad_token_on_insecure_function() {
+        // The reference only refuses when the function is SECURE.
+        let a = agent_with_secure_and_insecure_tools();
+        let (status, _, body) = a.handle_request(
+            "POST",
+            "/swaig",
+            &authed_headers(),
+            &swaig_body("insecure_tool", Some("garbage_token")),
+        );
+        assert_eq!(status, 200);
+        assert!(
+            body.contains("ok"),
+            "an insecure function dispatches even with a bad token, got {body}"
+        );
+    }
+
+    #[test]
+    fn test_swaig_dispatch_reads_nested_call_call_id() {
+        // The reference falls back to `body["call"]["call_id"]` when the flat
+        // `call_id` is absent (agent_base.py:1744-1747). A token minted for that
+        // call must validate through the nested path too.
+        let a = agent_with_secure_and_insecure_tools();
+        let token = a.create_tool_token("secure_tool", "call_nested");
+        let body = json!({
+            "function": "secure_tool",
+            "call": {"call_id": "call_nested"},
+            "argument": {"parsed": [{}]},
+            "query_params": {"__token": token},
+        });
+        let (status, _, out) =
+            a.handle_request("POST", "/swaig", &authed_headers(), &body.to_string());
+        assert_eq!(status, 200);
+        assert!(
+            !out.contains("security token for this function is invalid"),
+            "the nested call.call_id must be read, so this valid token dispatches: {out}"
+        );
+        assert!(out.contains("ok"), "expected the handler's response: {out}");
+    }
+
+    #[test]
+    fn test_swaig_dispatch_without_token_still_works() {
+        // No token supplied → no validation performed (the reference gates the
+        // whole check on `if token:`).
+        let a = agent_with_secure_and_insecure_tools();
+        let (status, _, body) = a.handle_request(
+            "POST",
+            "/swaig",
+            &authed_headers(),
+            &swaig_body("secure_tool", None),
+        );
+        assert_eq!(status, 200);
+        assert!(
+            body.contains("ok"),
+            "expected the handler's response: {body}"
         );
     }
 }

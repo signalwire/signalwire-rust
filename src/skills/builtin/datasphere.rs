@@ -154,7 +154,7 @@ impl SkillBase for Datasphere {
                 r.set_response(&formatted);
                 r
             }),
-            false,
+            true,
         );
     }
 

@@ -247,7 +247,7 @@ impl SkillBase for WebSearch {
                 r.set_response(&formatted);
                 r
             }),
-            false,
+            true,
         );
     }
 

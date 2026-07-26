@@ -92,7 +92,7 @@ impl SkillBase for InfoGatherer {
 
                 result
             }),
-            false,
+            true,
         );
 
         // submit_answer tool
@@ -164,7 +164,7 @@ impl SkillBase for InfoGatherer {
 
                 result
             }),
-            false,
+            true,
         );
     }
 

@@ -749,6 +749,29 @@ impl Client {
         self.sent_messages.lock().unwrap().clone()
     }
 
+    /// Apply the SECOND scrub layer to an already key-shape-scrubbed frame
+    /// rendering: mask THIS connection's live credential VALUES verbatim, wherever
+    /// they appear.
+    ///
+    /// [`scrub_value`] masks by key name (the reference `_scrub_frame` contract),
+    /// which is not sufficient on its own — the server echoes the project back
+    /// inside the connect response's `identity` field, which is not a sensitive
+    /// key, so a key-shape-only scrub prints the live project id in the clear at
+    /// debug level. See [`mask_verbatim`].
+    ///
+    /// # Panics
+    /// Panics if an internal mutex is poisoned (another thread panicked while
+    /// holding the lock). This does not occur under normal operation.
+    fn scrub_for_log(&self, text: &str) -> String {
+        let auth_state = self.authorization_state.lock().unwrap().clone();
+        let values = [
+            self.project.clone(),
+            self.token.clone(),
+            auth_state.unwrap_or_default(),
+        ];
+        mask_verbatim(text, &values)
+    }
+
     /// Send a raw JSON message through the transport.
     ///
     /// Records the frame in `sent_messages` (used by tests and for debug
@@ -765,9 +788,13 @@ impl Client {
     pub fn send(&self, msg: &Value) {
         // SECRET-SCRUB: never log the raw frame — it carries project/token/
         // jwt_token/authorization_state on the connect + re-auth frames. Route
-        // through scrub_frame_value so the wire shape is visible but the
-        // credential VALUES are masked (mirrors python's `>> {_scrub_frame(...)}`).
-        self.logger.debug(&format!(">> {}", scrub_frame_value(msg)));
+        // through scrub_for_log so the wire shape is visible but the credential
+        // VALUES are masked (mirrors python's `>> {_scrub_frame(...)}`, plus the
+        // live-value layer for credentials echoed under non-sensitive keys).
+        self.logger.debug(&format!(
+            ">> {}",
+            self.scrub_for_log(&scrub_frame_value(msg))
+        ));
         {
             // Bounded ring: retain only the most recent SENT_LOG_CAP frames so a
             // long-running session cannot grow this inspection log without limit.
@@ -808,10 +835,12 @@ impl Client {
     pub fn handle_message(self: &Arc<Self>, raw: &str) {
         // SECRET-SCRUB: never log the raw inbound frame — a re-auth
         // (`signalwire.authorization.state`) frame carries the authorization_state
-        // blob, and a connect echo could carry credentials. Route through
-        // scrub_frame_raw so the values are masked (mirrors python's
-        // `<< {_scrub_frame(raw)}`).
-        self.logger.debug(&format!("<< {}", scrub_frame_raw(raw)));
+        // blob, and the connect RESPONSE echoes the project back inside `identity`.
+        // Route through scrub_for_log so both the key-shape and the live-value
+        // layers apply (mirrors python's `<< {_scrub_frame(raw)}` plus the fleet's
+        // echoed-credential layer).
+        self.logger
+            .debug(&format!("<< {}", self.scrub_for_log(&scrub_frame_raw(raw))));
 
         let data: Value = if let Ok(d) = serde_json::from_str(raw) {
             d
@@ -883,8 +912,13 @@ impl Client {
                 .lock()
                 .unwrap()
                 .clone_from(&auth_state);
+            // SECRET-SCRUB: the re-auth blob is a CREDENTIAL. Log only that it was
+            // updated — never the value (the reference logs "Updated
+            // authorization_state for reconnection", client.py:1003). Interpolating
+            // `auth_state` here leaked it verbatim at info level, defeating the
+            // frame-log scrubbing two sites above.
             self.logger
-                .info(&format!("Authorization state: {auth_state:?}"));
+                .info("Updated authorization_state for reconnection");
             return;
         }
 
@@ -1911,6 +1945,34 @@ fn scrub_frame_raw(raw: &str) -> String {
     }
 }
 
+/// Mask every verbatim occurrence of `values` in `text`, longest value first.
+///
+/// The second scrub layer. [`scrub_value`] masks by KEY NAME, mirroring the
+/// reference's `_scrub_frame` — but the server can echo a live credential back
+/// inside a field that is NOT a sensitive key, so a key-shape-only scrub leaks it.
+/// The canonical case: the connect response's `identity` is derived from the
+/// project id (`mock-relay-identity-<project>`; a real relay identity likewise
+/// embeds it), so `{"identity": "…-PJ-LIVE"}` survives a key-shape scrub with the
+/// project in plain sight. Replacing the credential VALUES verbatim, regardless of
+/// surrounding field, closes that hole (the fleet contract — php
+/// `Client::scrubForLog`).
+///
+/// Longest-first so a value that is a substring of another is not partially
+/// masked ahead of its container. Empty values are skipped so we never mask `""`
+/// and mangle unrelated frames.
+fn mask_verbatim(text: &str, values: &[String]) -> String {
+    let mut ordered: Vec<&String> = values.iter().filter(|v| !v.is_empty()).collect();
+    if ordered.is_empty() {
+        return text.to_string();
+    }
+    ordered.sort_by_key(|v| std::cmp::Reverse(v.len()));
+    let mut out = text.to_string();
+    for v in ordered {
+        out = out.replace(v.as_str(), SCRUB_MASK);
+    }
+    out
+}
+
 /// Generate a simple UUID v4.
 fn generate_uuid() -> String {
     use rand::RngExt;
@@ -1983,6 +2045,47 @@ mod tests {
         let out = scrub_frame_raw("token=PT-LIVE-SECRET not-json");
         assert!(!out.contains("PT-LIVE-SECRET"));
         assert!(out.contains("redacted"));
+    }
+
+    /// The SECOND scrub layer. A key-shape scrub alone leaves a credential echoed
+    /// under a NON-sensitive key in the clear — the connect response's `identity`
+    /// is derived from the project id, so `{"identity":"…-PJ-LIVE"}` survives
+    /// `scrub_value` untouched. `mask_verbatim` closes that hole.
+    #[test]
+    fn test_mask_verbatim_masks_credential_echoed_under_a_non_sensitive_key() {
+        let raw = r#"{"result":{"identity":"mock-relay-identity-PJ-LIVE","project":"PJ-LIVE"}}"#;
+        // Key-shape only: the `project` VALUE is masked, but `identity` leaks it.
+        let key_shape_only = scrub_frame_raw(raw);
+        assert!(
+            key_shape_only.contains("PJ-LIVE"),
+            "precondition: the key-shape scrub alone leaves the identity echo — \
+             if this ever stops being true the second layer's rationale changed: \
+             {key_shape_only}"
+        );
+        // With the verbatim layer the project never survives, in ANY field.
+        let out = mask_verbatim(&key_shape_only, &["PJ-LIVE".to_string()]);
+        assert!(!out.contains("PJ-LIVE"), "project leaked: {out}");
+        assert!(out.contains("identity"), "structure must survive: {out}");
+    }
+
+    #[test]
+    fn test_mask_verbatim_masks_longest_first() {
+        // A value that is a SUBSTRING of another must not be masked ahead of its
+        // container, which would leave the container's remaining bytes exposed.
+        let out = mask_verbatim(
+            "tok=ABCDEF and short=ABC",
+            &["ABC".to_string(), "ABCDEF".to_string()],
+        );
+        assert!(!out.contains("ABCDEF"), "long value leaked: {out}");
+        assert!(!out.contains("DEF"), "long value partially leaked: {out}");
+    }
+
+    #[test]
+    fn test_mask_verbatim_skips_empty_values() {
+        // An empty credential must never be "masked" — that would replace every
+        // character boundary and mangle an unrelated frame.
+        let out = mask_verbatim("{\"a\":1}", &[String::new(), String::new()]);
+        assert_eq!(out, "{\"a\":1}");
     }
 
     // -- RUST-3 honest connection-loss --

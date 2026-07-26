@@ -197,6 +197,8 @@ section at the top of this file.
 args: stdlib std::env::args
 as_ref: stdlib AsRef::as_ref / Option::as_ref
 current_dir: stdlib std::env::current_dir
+current_exe: stdlib std::env::current_exe (the secret-scrub dump re-execs its own binary to capture the SDK Logger's real fd-2 output)
+env: stdlib std::process::Command::env (set a child env var on the secret-scrub dump's re-exec)
 exit: stdlib std::process::exit
 from_millis: stdlib std::time::Duration::from_millis
 from_secs: stdlib std::time::Duration::from_secs
@@ -204,12 +206,18 @@ from_slice: serde_json::from_slice
 from_utf8: stdlib String::from_utf8
 from_utf8_lossy: stdlib String::from_utf8_lossy
 new: builder/constructor associated fn (AgentBase::new / AgentOptions::new / Duration::new / etc.) — the generic `new` associated-function name is not recorded as a surface method
+null: stdlib std::process::Stdio::null
+piped: stdlib std::process::Stdio::piped
 set_hook: stdlib std::panic::set_hook (silence the panic backtrace for expected fail-loud add_verb panics in the strict-render dump)
 set_var: stdlib std::env::set_var
 spawn: stdlib std::thread::spawn
+stderr: stdlib std::process::Command::stderr
+stdin: stdlib std::process::Command::stdin
+stdout: stdlib std::process::Command::stdout
 to_string_pretty: serde_json::to_string_pretty
 try_from: stdlib TryFrom::try_from (e.g. usize::try_from)
 var: stdlib std::env::var
+var_os: stdlib std::env::var_os
 with_capacity: stdlib String::with_capacity / Vec::with_capacity
 
 ## External-crate / stdlib methods + serde variants (newly surfaced by the widened DOC-AUDIT)
@@ -233,6 +241,9 @@ inbound_call: test-harness free fn relay_mocktest::inbound_call (drive an inboun
 scope: test-harness free fn relay_mocktest::scope (read the thread-local mock session scope; not port surface)
 set_scope: test-harness free fn relay_mocktest::set_scope (set the thread-local mock session scope on a spawned pusher thread; not port surface)
 sent_messages: RelayClient::sent_messages read accessor — a real port method (see PORT_ADDITIONS.md) the surface enumerator does not emit (Client method fold), referenced in the wire-relay dump example
+ensure_redirect: test-harness free fn relay_mocktest::ensure_redirect (point connect() at the mock via the SIGNALWIRE_RELAY_* redirect vars; not port surface)
+harness: test-harness free fn relay_mocktest::harness (resolve/spawn the shared mock_relay and read its ports; not port surface)
+scope_to_client: test-harness free fn relay_mocktest::scope_to_client (bind the thread-local mock session scope to a connected client; not port surface)
 
 ## Doc-local fn definitions — language-level entry-point / helper, not port surface
 

@@ -206,7 +206,7 @@ impl McpGateway {
                     raw_data,
                 )
             }),
-            false,
+            true,
         );
     }
 }

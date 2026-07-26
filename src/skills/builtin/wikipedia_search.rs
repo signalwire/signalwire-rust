@@ -139,7 +139,7 @@ impl SkillBase for WikipediaSearch {
                 r.set_response(&formatted);
                 r
             }),
-            false,
+            true,
         );
     }
 

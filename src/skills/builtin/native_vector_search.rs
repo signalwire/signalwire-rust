@@ -203,7 +203,7 @@ impl SkillBase for NativeVectorSearch {
                 }
                 result
             }),
-            false,
+            true,
         );
     }
 

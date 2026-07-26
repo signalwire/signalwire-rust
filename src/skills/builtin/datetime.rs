@@ -85,7 +85,7 @@ impl SkillBase for Datetime {
                 }
                 result
             }),
-            false,
+            true,
         );
 
         // get_current_date
@@ -119,7 +119,7 @@ impl SkillBase for Datetime {
                 }
                 result
             }),
-            false,
+            true,
         );
     }
 

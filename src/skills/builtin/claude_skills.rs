@@ -296,7 +296,7 @@ impl SkillBase for ClaudeSkills {
 
                     FunctionResult::with_response(&content)
                 }),
-                false,
+                true,
             );
         }
     }
