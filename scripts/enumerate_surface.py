@@ -368,6 +368,17 @@ METHOD_RENAMES: dict[str, dict[str, str]] = {
     "SecurityConfig": {
         "with_config_file": "__init__",
     },
+    # signalwire.agent_server.AgentServer: same arity idiom as SecurityConfig
+    # above. The reference has ONE constructor,
+    # `__init__(host=None, port=None, log_level="info")`. Rust has no default
+    # arguments and no ctor overloading, so `new(host, port)` and
+    # `with_log_level(host, port, log_level)` are the two spellings of that
+    # single `__init__` — `new` folds via the generic constructor mapping, so
+    # fold the explicit-level spelling onto it too. `log_level` itself is a
+    # public read accessor and passes straight through.
+    "AgentServer": {
+        "with_log_level": "__init__",
+    },
     # signalwire.relay.event.CollectEvent: the reference dataclass field is the
     # bare `final`. Rust cannot name a method `final` (reserved word) without a
     # raw identifier, so the accessor is spelled `is_final`; fold it to the
@@ -384,7 +395,12 @@ METHOD_RENAMES: dict[str, dict[str, str]] = {
     # `_from_dict`, also internal). Skip it from the surface.
     # `find_section_mut` is the Rust borrow-checker companion to
     # `find_section`; collapse both to Python's single `find_section`.
+    # `with_debug` is the same arity idiom as SecurityConfig/AgentServer above:
+    # the reference constructor is `__init__(debug=False)`, and Rust needs two
+    # spellings for the defaulted and explicit forms. `new()` folds to
+    # `__init__` generically; fold `with_debug(debug)` onto it too.
     "PromptObjectModel": {
+        "with_debug": "__init__",
         "to_value": "to_dict",
         "from_value": None,
         "find_section_mut": None,

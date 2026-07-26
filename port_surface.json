@@ -1,6 +1,6 @@
 {
   "version": "1",
-  "generated_from": "signalwire-rust @ 336b65b8417ee77700af80e52dc88a992f9e2008",
+  "generated_from": "signalwire-rust @ 71356a08f2269553685bf8da72018e9ed0d0651a",
   "modules": {
     "signalwire": {
       "classes": {
@@ -31,6 +31,7 @@
           "handle_request",
           "host",
           "is_sip_routing_enabled",
+          "log_level",
           "port",
           "register",
           "register_global_routing_callback",
@@ -111,6 +112,7 @@
       "classes": {
         "PromptManager": [
           "__init__",
+          "agent",
           "define_contexts",
           "get_contexts",
           "get_post_prompt",
@@ -131,6 +133,7 @@
       "classes": {
         "ToolRegistry": [
           "__init__",
+          "agent",
           "define_tool",
           "get_all_functions",
           "get_function",
@@ -257,6 +260,7 @@
           "flask_decorator",
           "get_auth_info",
           "get_fastapi_dependency",
+          "security_config",
           "verify_api_key",
           "verify_basic_auth",
           "verify_bearer_token"
@@ -268,6 +272,7 @@
       "classes": {
         "ConfigLoader": [
           "__init__",
+          "config_paths",
           "find_config_file",
           "get",
           "get_config",
@@ -325,8 +330,14 @@
         ],
         "GatherQuestion": [
           "__init__",
+          "confirm",
+          "functions",
+          "isolated",
           "key",
-          "to_dict"
+          "prompt",
+          "question",
+          "to_dict",
+          "type"
         ],
         "Step": [
           "__init__",
@@ -367,6 +378,7 @@
           "fallback_output",
           "for_each",
           "foreach",
+          "function_name",
           "global_error_keys",
           "output",
           "parameter",
@@ -404,10 +416,12 @@
           "join_room",
           "pay",
           "play_background_file",
+          "post_process",
           "record_call",
           "remove_global_data",
           "remove_metadata",
           "replace_in_history",
+          "response",
           "rpc_ai_message",
           "rpc_ai_unhold",
           "rpc_dial",
@@ -640,6 +654,7 @@
           "end_session",
           "generate_token",
           "get_session_metadata",
+          "secret_key",
           "set_session_metadata",
           "token_expiry_secs",
           "validate_token",
@@ -738,14 +753,19 @@
         "SWAIGFunction": [
           "__call__",
           "__init__",
+          "description",
           "execute",
           "fillers",
+          "handler",
+          "is_typed_handler",
           "name",
+          "parameters",
           "required",
           "secure",
           "to_swaig",
           "validate_args",
           "wait_file",
+          "wait_file_loops",
           "webhook_url"
         ]
       },
@@ -788,7 +808,8 @@
           "play",
           "render",
           "reset",
-          "say"
+          "say",
+          "service"
         ]
       },
       "functions": []
@@ -1244,6 +1265,7 @@
           "__init__",
           "add_pom_as_subsection",
           "add_section",
+          "debug",
           "find_section",
           "from_json",
           "from_yaml",
@@ -1262,6 +1284,7 @@
           "body",
           "bullets",
           "numbered",
+          "numberedBullets",
           "render_markdown",
           "render_xml",
           "subsections",
@@ -1404,6 +1427,7 @@
           "detect_digit",
           "detect_fax",
           "device",
+          "direction",
           "disconnect",
           "dispatch_event",
           "echo",
@@ -1427,6 +1451,7 @@
           "play_ringtone",
           "play_silence",
           "play_tts",
+          "project_id",
           "prompt_audio",
           "prompt_tts",
           "queue_enter",
@@ -1436,6 +1461,7 @@
           "refer",
           "refer_call",
           "resolve_all_actions",
+          "segment_id",
           "send_digits",
           "send_fax",
           "sent_commands",
@@ -3850,6 +3876,7 @@
           "get_verb_properties",
           "get_verb_required_properties",
           "load_schema",
+          "schema_path",
           "validate_document",
           "validate_verb"
         ],
@@ -3873,7 +3900,11 @@
         "WebService": [
           "__init__",
           "add_directory",
+          "allowed_extensions",
+          "blocked_extensions",
           "directories",
+          "enable_cors",
+          "enable_directory_browsing",
           "max_file_size",
           "port",
           "remove_directory",
