@@ -648,6 +648,16 @@ METHOD_RENAMES: dict[str, dict[str, str]] = {
         "required_packages": None,
         "get_skill_namespace": None,
     },
+    # Action: the reference records the DERIVED public ctor attribute
+    # `completed` (a bool state flag, `False` at construction, flipped `True`
+    # when the action resolves — `relay/call.py:90,102`). Rust models the same
+    # caller-observable value behind a `Mutex<bool>` and reads it with the
+    # idiomatic Rust boolean-predicate spelling `is_done()`. Same value, same
+    # semantics, different spelling — fold via a RENAME so the two compare
+    # equal (a drop would be a permanent blind spot).
+    "Action": {
+        "is_done": "completed",
+    },
     # StandaloneCollectAction: `action`/`collect_result` are Rust-only views
     # (Deref-to-Action companion + a result accessor). The reference records
     # only __init__ + start_input_timers. Drop the Rust extras.

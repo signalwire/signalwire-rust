@@ -10002,6 +10002,15 @@
               ],
               "returns": "class:signalwire.core.swml_builder.Document"
             },
+            "domain": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "optional<string>"
+            },
             "extract_sip_username": {
               "params": [
                 {
@@ -10339,6 +10348,33 @@
                 }
               ],
               "returns": "void"
+            },
+            "ssl_cert_path": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "optional<string>"
+            },
+            "ssl_enabled": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "bool"
+            },
+            "ssl_key_path": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "optional<string>"
             },
             "stop": {
               "params": [
@@ -18903,6 +18939,15 @@
               ],
               "returns": "string"
             },
+            "completed": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "bool"
+            },
             "control_id": {
               "params": [
                 {
@@ -18953,15 +18998,6 @@
                 }
               ],
               "returns": "void"
-            },
-            "is_done": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "bool"
             },
             "node_id": {
               "params": [
@@ -32260,6 +32296,15 @@
                 }
               ],
               "returns": "void"
+            },
+            "remove_xpaths": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "list<string>"
             }
           }
         }

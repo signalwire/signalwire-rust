@@ -1,6 +1,6 @@
 {
   "version": "1",
-  "generated_from": "signalwire-rust @ 70a46702337de1c1ffffad4615670742dbbcd938",
+  "generated_from": "signalwire-rust @ d79b754a2aaa70df3fc44764da75c4dee714df51",
   "modules": {
     "signalwire": {
       "classes": {
@@ -860,6 +860,7 @@
           "define_tool",
           "document",
           "document_mut",
+          "domain",
           "extract_sip_username",
           "full_validation_enabled",
           "get_all_functions",
@@ -895,6 +896,9 @@
           "serve",
           "set_on_swml_request_hook",
           "sleep",
+          "ssl_cert_path",
+          "ssl_enabled",
+          "ssl_key_path",
           "stop",
           "tool_definition",
           "validate_basic_auth"
@@ -1399,11 +1403,11 @@
           "__init__",
           "call",
           "call_id",
+          "completed",
           "control_id",
           "events",
           "execute_subcommand",
           "handle_event",
-          "is_done",
           "node_id",
           "on_completed",
           "payload",
@@ -3725,6 +3729,7 @@
           "get_instance_key",
           "get_parameter_schema",
           "register_tools",
+          "remove_xpaths",
           "setup"
         ]
       },

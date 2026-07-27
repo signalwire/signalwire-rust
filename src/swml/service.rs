@@ -609,6 +609,48 @@ impl Service {
         &self.security
     }
 
+    /// Whether TLS is enabled for this service.
+    ///
+    /// Derived from the resolved [`security`](Self::security) config, mirroring
+    /// the reference's `self.ssl_enabled = self.security.ssl_enabled`
+    /// (`swml_service.py:143`). The reference exposes it as a public instance
+    /// attribute on `SWMLService`; Rust exposes the same caller-observable
+    /// value as a reader.
+    #[must_use]
+    pub fn ssl_enabled(&self) -> bool {
+        self.security.ssl_enabled
+    }
+
+    /// The serving domain, when configured.
+    ///
+    /// Derived from the resolved [`security`](Self::security) config, mirroring
+    /// the reference's `self.domain = self.security.domain`
+    /// (`swml_service.py:144`).
+    #[must_use]
+    pub fn domain(&self) -> Option<&str> {
+        self.security.domain.as_deref()
+    }
+
+    /// Path to the TLS certificate, when configured.
+    ///
+    /// Derived from the resolved [`security`](Self::security) config, mirroring
+    /// the reference's `self.ssl_cert_path = self.security.ssl_cert_path`
+    /// (`swml_service.py:145`).
+    #[must_use]
+    pub fn ssl_cert_path(&self) -> Option<&str> {
+        self.security.ssl_cert_path.as_deref()
+    }
+
+    /// Path to the TLS private key, when configured.
+    ///
+    /// Derived from the resolved [`security`](Self::security) config, mirroring
+    /// the reference's `self.ssl_key_path = self.security.ssl_key_path`
+    /// (`swml_service.py:146`).
+    #[must_use]
+    pub fn ssl_key_path(&self) -> Option<&str> {
+        self.security.ssl_key_path.as_deref()
+    }
+
     pub fn document(&self) -> &Document {
         &self.document
     }
@@ -1494,6 +1536,30 @@ mod tests {
         assert_eq!(svc.route(), "/");
         assert_eq!(svc.host(), "0.0.0.0");
         assert_eq!(svc.port(), 3000);
+    }
+
+    /// Reference parity (`swml_service.py:143-146`): `SWMLService` exposes
+    /// `ssl_enabled` / `domain` / `ssl_cert_path` / `ssl_key_path` as derived
+    /// reads off the resolved security config. Assert they track `security()`
+    /// exactly rather than holding an independent copy.
+    #[test]
+    fn test_ssl_accessors_derive_from_security_config() {
+        let svc = Service::new(default_options("ssl-derive"));
+        assert_eq!(svc.ssl_enabled(), svc.security().ssl_enabled);
+        assert_eq!(svc.domain(), svc.security().domain.as_deref());
+        assert_eq!(svc.ssl_cert_path(), svc.security().ssl_cert_path.as_deref());
+        assert_eq!(svc.ssl_key_path(), svc.security().ssl_key_path.as_deref());
+    }
+
+    /// Secure-by-default: with no SSL configuration the service reports TLS
+    /// off and no cert/key/domain — matching `SecurityConfig::default()`.
+    #[test]
+    fn test_ssl_accessors_default_off() {
+        let svc = Service::new(default_options("ssl-default"));
+        assert!(!svc.ssl_enabled());
+        assert_eq!(svc.ssl_cert_path(), None);
+        assert_eq!(svc.ssl_key_path(), None);
+        assert_eq!(svc.domain(), None);
     }
 
     #[test]

@@ -2199,6 +2199,7 @@
     "remove_pending_dial",
     "remove_skill",
     "remove_step",
+    "remove_xpaths",
     "render",
     "render_document",
     "render_function_response_swml",
