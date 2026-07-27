@@ -1,6 +1,6 @@
 {
   "version": "1",
-  "generated_from": "signalwire-rust @ d79b754a2aaa70df3fc44764da75c4dee714df51",
+  "generated_from": "signalwire-rust @ 2f29d15863e1799dcf312d64333c72b3596b1ac9",
   "modules": {
     "signalwire": {
       "classes": {
@@ -1408,6 +1408,7 @@
           "events",
           "execute_subcommand",
           "handle_event",
+          "is_done",
           "node_id",
           "on_completed",
           "payload",

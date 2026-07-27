@@ -129,6 +129,21 @@ impl Action {
         *self.completed.lock().unwrap()
     }
 
+    /// The reference's derived public ctor attribute `Action.completed` — a
+    /// bool state flag, `false` at construction and flipped `true` when the
+    /// action resolves (`relay/call.py:90,102`).
+    ///
+    /// The reference exposes this value under two spellings: the attribute
+    /// `completed` and the `is_done` property. Both are part of the contract,
+    /// so both are real readers here (same shape as the go and C++ ports).
+    ///
+    /// # Panics
+    /// Panics if an internal mutex is poisoned (i.e. another thread panicked
+    /// while holding the lock). This does not occur under normal operation.
+    pub fn completed(&self) -> bool {
+        self.is_done()
+    }
+
     /// # Panics
     /// Panics if an internal mutex is poisoned (i.e. another thread panicked
     /// while holding the lock). This does not occur under normal operation.

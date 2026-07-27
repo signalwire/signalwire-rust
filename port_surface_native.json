@@ -1325,6 +1325,7 @@
     "company_name",
     "company_vertical",
     "company_website",
+    "completed",
     "completion_action",
     "conclusion",
     "cond",

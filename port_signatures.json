@@ -18999,6 +18999,15 @@
               ],
               "returns": "void"
             },
+            "is_done": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "bool"
+            },
             "node_id": {
               "params": [
                 {
@@ -22815,7 +22824,7 @@
                   "kind": "self"
                 }
               ],
-              "returns": "optional<string>"
+              "returns": "optional<class:signalwire.value.Value>"
             },
             "dispatch_event": {
               "params": [
@@ -22856,7 +22865,7 @@
                   "kind": "self"
                 }
               ],
-              "returns": "list<string>"
+              "returns": "optional<class:signalwire.value.Value>"
             },
             "message_id": {
               "params": [
