@@ -2427,11 +2427,20 @@ impl AgentBase {
                         if let Value::Object(map) = &mut func_def {
                             map.insert("web_hook_url".to_string(), json!(wh_url));
                         }
-                    } else {
-                        // LOCAL webhook. A `secure` tool carries a per-tool
-                        // `__token` — the WIRE manifestation of `secure` the
-                        // platform validates on the callback (agent_base.py:1040 +
-                        // 1097). An insecure tool carries none.
+                    } else if tool.secure || !self.swaig_query_params.is_empty() {
+                        // LOCAL webhook, emitted ONLY when there is something to
+                        // carry: a per-tool `__token` (the WIRE manifestation of
+                        // `secure` the platform validates on the callback) or the
+                        // agent's SWAIG query params. Mirrors the reference's
+                        // `elif token or agent_to_use._swaig_query_params:`
+                        // (agent_base.py:1087).
+                        //
+                        // An INSECURE tool with no query params gets NO
+                        // `web_hook_url` key AT ALL — not an empty string, not a
+                        // tokenless URL. It falls back to the shared
+                        // `SWAIG.defaults.web_hook_url`. Emitting a per-tool
+                        // callback here would publish an UNAUTHENTICATED,
+                        // function-specific endpoint.
                         let mut url = self.build_swaig_webhook_url(headers);
                         if tool.secure {
                             let token = self.create_tool_token(name, &call_id);
@@ -2450,6 +2459,23 @@ impl AgentBase {
 
         if !functions.is_empty() {
             swaig.insert("functions".to_string(), Value::Array(functions));
+            // The SHARED fallback callback, emitted WHENEVER functions exist
+            // (reference agent_base.py:1109-1113). This is what an INSECURE tool
+            // — which correctly carries no per-tool `web_hook_url` — actually
+            // dispatches to; without it such a tool would render with NO
+            // reachable callback at all.
+            //
+            // Composed like the reference (agent_base.py:972-979): the local
+            // `/swaig` URL carrying the agent's SWAIG query params, replaced
+            // wholesale by the `set_web_hook_url` override when one is set.
+            let default_webhook_url = self
+                .web_hook_url_override
+                .clone()
+                .unwrap_or_else(|| self.build_swaig_webhook_url(headers));
+            swaig.insert(
+                "defaults".to_string(),
+                json!({"web_hook_url": default_webhook_url}),
+            );
         }
 
         if !self.native_functions.is_empty() {
@@ -3729,12 +3755,15 @@ mod tests {
     fn test_build_ai_verb_swaig_functions() {
         let mut agent = AgentBase::new(default_options());
         agent.manual_set_proxy_url("https://proxy.example.com");
+        // SECURE (the define_tool default) — only a tool with a token (or SWAIG
+        // query params) gets its own per-tool web_hook_url; see
+        // test_render_emits_token_only_for_secure_tools for the insecure side.
         agent.define_tool(
             "lookup",
             "Look up info",
             json!({}),
             Box::new(|_args, _raw| FunctionResult::with_response("result")),
-            false,
+            true,
         );
         let ai = agent.build_ai_verb(&HashMap::new());
         let funcs = ai["SWAIG"]["functions"].as_array().unwrap();
@@ -4126,15 +4155,20 @@ mod tests {
     // does not. This is the wire property the cross-port SECURE-DEFAULT gate
     // (porting-sdk `diff_port_secure_default.py`) compares.
 
-    /// The `web_hook_url` the render emitted for `tool_name`, if any.
-    fn rendered_webhook_url(doc: &Value, tool_name: &str) -> Option<String> {
+    /// The rendered `SWAIG.functions[]` entry for `tool_name`, if any.
+    fn rendered_entry<'a>(doc: &'a Value, tool_name: &str) -> Option<&'a Value> {
         doc["sections"]["main"]
             .as_array()?
             .iter()
             .find_map(|sec| sec.get("ai"))?["SWAIG"]["functions"]
             .as_array()?
             .iter()
-            .find(|f| f["function"].as_str() == Some(tool_name))?["web_hook_url"]
+            .find(|f| f["function"].as_str() == Some(tool_name))
+    }
+
+    /// The `web_hook_url` the render emitted for `tool_name`, if any.
+    fn rendered_webhook_url(doc: &Value, tool_name: &str) -> Option<String> {
+        rendered_entry(doc, tool_name)?["web_hook_url"]
             .as_str()
             .map(str::to_string)
     }
@@ -4170,11 +4204,101 @@ mod tests {
             "a secure tool's rendered webhook must carry the per-tool __token, got {secure_url}"
         );
 
-        let insecure_url = rendered_webhook_url(&doc, "insecure_tool")
-            .expect("insecure tool must render a web_hook_url");
+        // The reference emits NO web_hook_url KEY AT ALL for an insecure tool
+        // with no token and no SWAIG query params (agent_base.py:1084-1099: the
+        // `elif token or _swaig_query_params` has no else). A per-tool callback
+        // here would be an UNAUTHENTICATED function-specific endpoint; the
+        // insecure tool falls back to the shared SWAIG defaults instead.
         assert!(
-            !insecure_url.contains("__token="),
-            "an insecure tool must carry NO __token, got {insecure_url}"
+            rendered_entry(&doc, "insecure_tool")
+                .expect("insecure tool must still render a function entry")
+                .get("web_hook_url")
+                .is_none(),
+            "an insecure tool must have NO web_hook_url key at all, got {:?}",
+            rendered_webhook_url(&doc, "insecure_tool")
+        );
+    }
+
+    /// The shared `ai.SWAIG.defaults` block the render emitted, if any.
+    fn rendered_swaig_defaults(doc: &Value) -> Option<&Value> {
+        let ai = doc["sections"]["main"]
+            .as_array()?
+            .iter()
+            .find_map(|sec| sec.get("ai"))?;
+        ai["SWAIG"].get("defaults")
+    }
+
+    #[test]
+    fn test_render_emits_shared_swaig_defaults_webhook() {
+        // The reference adds `SWAIG.defaults.web_hook_url` WHENEVER functions
+        // exist (agent_base.py:1109-1113). This is the endpoint an INSECURE tool
+        // — which correctly has no per-tool web_hook_url — actually dispatches
+        // to. Without it, dropping the per-tool key would leave an insecure tool
+        // with NO reachable callback at all, which the SECURE-DEFAULT gate
+        // cannot see (it inspects only the functions[] entries).
+        let a = agent_with_secure_and_insecure_tools();
+        let doc = a.render_swml(&HashMap::new());
+
+        let defaults =
+            rendered_swaig_defaults(&doc).expect("functions exist, so SWAIG.defaults must be too");
+        let url = defaults["web_hook_url"]
+            .as_str()
+            .expect("SWAIG.defaults.web_hook_url must be a string");
+        assert!(
+            url.contains("/swaig"),
+            "the shared fallback must point at the agent's /swaig endpoint, got {url}"
+        );
+        // The SHARED endpoint is not per-tool, so it carries no per-tool token.
+        assert!(
+            !url.contains("__token="),
+            "the shared defaults endpoint is not per-tool and carries no __token, got {url}"
+        );
+    }
+
+    #[test]
+    fn test_swaig_defaults_honors_web_hook_url_override() {
+        // agent_base.py:975-979 — `set_web_hook_url` replaces the composed
+        // default wholesale.
+        let mut a = agent_with_secure_and_insecure_tools();
+        a.set_web_hook_url("https://override.example.com/swaig");
+        let doc = a.render_swml(&HashMap::new());
+
+        assert_eq!(
+            rendered_swaig_defaults(&doc).expect("SWAIG.defaults")["web_hook_url"],
+            "https://override.example.com/swaig"
+        );
+    }
+
+    #[test]
+    fn test_no_swaig_defaults_when_no_functions() {
+        // The reference emits `defaults` only INSIDE `if functions:`.
+        let mut a = AgentBase::new(default_options());
+        a.set_prompt_text("no tools");
+        let doc = a.render_swml(&HashMap::new());
+        assert!(
+            rendered_swaig_defaults(&doc).is_none(),
+            "no functions means no SWAIG.defaults block"
+        );
+    }
+
+    #[test]
+    fn test_insecure_tool_gets_webhook_when_swaig_query_params_exist() {
+        // The reference's guard is `token OR _swaig_query_params` — with query
+        // params configured, even an insecure tool gets a local URL (carrying the
+        // params, and still no __token).
+        let mut a = agent_with_secure_and_insecure_tools();
+        a.add_swaig_query_params(HashMap::from([("tenant".to_string(), "acme".to_string())]));
+        let doc = a.render_swml(&HashMap::new());
+
+        let url = rendered_webhook_url(&doc, "insecure_tool")
+            .expect("query params must produce a local web_hook_url even when insecure");
+        assert!(
+            url.contains("tenant=acme"),
+            "the SWAIG query params must ride on the URL, got {url}"
+        );
+        assert!(
+            !url.contains("__token="),
+            "an insecure tool must carry NO __token, got {url}"
         );
     }
 
