@@ -186,6 +186,10 @@ impl SkillBase for ClaudeSkills {
         &self.sp.params
     }
 
+    fn skill_state(&self) -> Option<&crate::skills::skill_base::SkillParams> {
+        Some(&self.sp)
+    }
+
     fn setup(&mut self) -> bool {
         let Some(skills_path) = self.sp.get_str("skills_path") else {
             return false;
@@ -296,7 +300,7 @@ impl SkillBase for ClaudeSkills {
 
                     FunctionResult::with_response(&content)
                 }),
-                false,
+                true,
             );
         }
     }

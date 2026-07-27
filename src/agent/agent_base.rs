@@ -5,7 +5,6 @@ use serde_json::{Map, Value, json};
 
 use crate::contexts::ContextBuilder;
 use crate::security::SessionManager;
-#[cfg(test)]
 use crate::swaig::FunctionResult;
 use crate::swml::service::{Service, ServiceOptions};
 
@@ -47,6 +46,7 @@ pub use crate::swml::service::{FunctionHandler, ToolDef};
 /// AgentOptions::new("oops").route("/x");
 /// ```
 #[must_use]
+#[allow(clippy::struct_excessive_bools)] // orthogonal reference kwargs, 1:1
 pub struct AgentOptions {
     pub name: String,
     pub route: Option<String>,
@@ -66,6 +66,54 @@ pub struct AgentOptions {
     /// set, the agent logs a prominent warning at startup and accepts
     /// unsigned requests — see the webhook validator.
     pub signing_key: Option<String>,
+
+    // ── Forwarded to `Service` (the reference's `super().__init__`,
+    //    `agent_base.py:205-207`) ──────────────────────────────────────────
+    /// Path to a SWML schema file; `None` uses the embedded `schema.json`.
+    /// Forwarded to `Service` → `SchemaUtils`.
+    pub schema_path: Option<String>,
+    /// Path to a JSON configuration file. Its `service` section supplies
+    /// `name`/`route`/`host`/`port` (explicit options win) and its `security`
+    /// section supplies SSL/CORS/basic-auth. Forwarded to `Service`.
+    pub config_file: Option<String>,
+    /// Enable SWML schema validation on `add_verb` (default `true`). Also
+    /// disablable process-wide via `SWML_SKIP_SCHEMA_VALIDATION=1`. Forwarded
+    /// to `Service` → `SchemaUtils`.
+    pub schema_validation: bool,
+
+    // ── Forwarded to `SessionManager` (`agent_base.py:247`) ───────────────
+    /// Seconds until a per-call SWAIG function token expires (default 3600).
+    pub token_expiry_secs: u64,
+
+    // ── Stored on the agent ──────────────────────────────────────────────
+    /// Recording container format for the `record_call` verb. The reference
+    /// default is `"mp4"` (`agent_base.py:131`).
+    pub record_format: String,
+    /// Whether `record_call` records in stereo. The reference default is
+    /// `true` (`agent_base.py:132`).
+    pub record_stereo: bool,
+    /// Default `web_hook_url` applied to every SWAIG function that does not
+    /// set its own, emitted as `ai.SWAIG.defaults.web_hook_url`.
+    pub default_webhook_url: Option<String>,
+    /// Stable identifier for this agent. `None` generates a UUID v4.
+    pub agent_id: Option<String>,
+    /// Server-side native functions listed in `ai.SWAIG.native_functions`.
+    pub native_functions: Option<Vec<String>>,
+    /// Suppress the agent's structured request/response logs.
+    pub suppress_logs: bool,
+    /// Enable the post-prompt override hook.
+    pub enable_post_prompt_override: bool,
+    /// Enable the check-for-input override hook.
+    pub check_for_input_override: bool,
+    /// Honor `X-Forwarded-Proto` / `X-Forwarded-Host` when reconstructing the
+    /// URL for webhook signature validation.
+    ///
+    /// Defaults to `false`: those headers are attacker-controllable, so an
+    /// attacker who can reach the agent directly could otherwise mint a
+    /// signature for a host they chose and have it accepted. Opt in only when
+    /// you control the proxy chain in front of the agent (reference
+    /// `agent_base.py` `trust_proxy_for_signature` docstring).
+    pub trust_proxy_for_signature: bool,
 }
 
 impl AgentOptions {
@@ -74,13 +122,26 @@ impl AgentOptions {
             name: name.to_string(),
             route: None,
             host: None,
-            port: Some(3000),
+            port: None,
             basic_auth_user: None,
             basic_auth_password: None,
             auto_answer: true,
             record_call: false,
             use_pom: true,
             signing_key: None,
+            schema_path: None,
+            config_file: None,
+            schema_validation: true,
+            token_expiry_secs: 3600,
+            record_format: "mp4".to_string(),
+            record_stereo: true,
+            default_webhook_url: None,
+            agent_id: None,
+            native_functions: None,
+            suppress_logs: false,
+            enable_post_prompt_override: false,
+            check_for_input_override: false,
+            trust_proxy_for_signature: false,
         }
     }
 
@@ -141,6 +202,139 @@ impl AgentOptions {
         self.signing_key = Some(signing_key.to_string());
         self
     }
+
+    /// Load the SWML schema from `path` instead of the embedded `schema.json`.
+    pub fn schema_path(mut self, path: &str) -> Self {
+        self.schema_path = Some(path.to_string());
+        self
+    }
+
+    /// Read service + security configuration from the JSON file at `path`.
+    pub fn config_file(mut self, path: &str) -> Self {
+        self.config_file = Some(path.to_string());
+        self
+    }
+
+    /// Toggle SWML schema validation on `add_verb` (default `true`).
+    pub fn schema_validation(mut self, enabled: bool) -> Self {
+        self.schema_validation = enabled;
+        self
+    }
+
+    /// Set the SWAIG function-token lifetime in seconds (default 3600).
+    pub fn token_expiry_secs(mut self, secs: u64) -> Self {
+        self.token_expiry_secs = secs;
+        self
+    }
+
+    /// Set the `record_call` container format (default `"mp4"`).
+    pub fn record_format(mut self, format: &str) -> Self {
+        self.record_format = format.to_string();
+        self
+    }
+
+    /// Toggle stereo recording for `record_call` (default `true`).
+    pub fn record_stereo(mut self, stereo: bool) -> Self {
+        self.record_stereo = stereo;
+        self
+    }
+
+    /// Set the default SWAIG `web_hook_url` for functions that do not set one.
+    pub fn default_webhook_url(mut self, url: &str) -> Self {
+        self.default_webhook_url = Some(url.to_string());
+        self
+    }
+
+    /// Pin this agent's id instead of generating a UUID v4.
+    pub fn agent_id(mut self, agent_id: &str) -> Self {
+        self.agent_id = Some(agent_id.to_string());
+        self
+    }
+
+    /// List the server-side native functions to advertise in
+    /// `ai.SWAIG.native_functions`.
+    pub fn native_functions(mut self, functions: Vec<String>) -> Self {
+        self.native_functions = Some(functions);
+        self
+    }
+
+    /// Suppress the agent's structured request/response logs (default `false`).
+    pub fn suppress_logs(mut self, suppress: bool) -> Self {
+        self.suppress_logs = suppress;
+        self
+    }
+
+    /// Enable the post-prompt override hook (default `false`).
+    pub fn enable_post_prompt_override(mut self, enabled: bool) -> Self {
+        self.enable_post_prompt_override = enabled;
+        self
+    }
+
+    /// Enable the check-for-input override hook (default `false`).
+    pub fn check_for_input_override(mut self, enabled: bool) -> Self {
+        self.check_for_input_override = enabled;
+        self
+    }
+
+    /// Honor `X-Forwarded-*` when reconstructing the URL for webhook signature
+    /// validation. Defaults to `false` — see
+    /// [`AgentOptions::trust_proxy_for_signature`].
+    pub fn trust_proxy_for_signature(mut self, trust: bool) -> Self {
+        self.trust_proxy_for_signature = trust;
+        self
+    }
+}
+
+/// The `service` section of a config file, used by [`AgentBase::new`] with
+/// constructor params taking precedence. Mirrors the reference's
+/// `AgentBase._load_service_config` (`agent_base.py:359-382`), which reads the
+/// `service` section and only consults it where the caller left the param at
+/// its default. Private, like its leading-underscore reference counterpart.
+fn load_service_config(config_file: Option<&str>, service_name: &str) -> Map<String, Value> {
+    let path = match config_file {
+        Some(p) => Some(p.to_string()),
+        None => {
+            crate::core::config_loader::ConfigLoader::find_config_file(Some(service_name), None)
+        }
+    };
+    let Some(path) = path else {
+        return Map::new();
+    };
+    let loader = crate::core::config_loader::ConfigLoader::new(Some(vec![path]));
+    if !loader.has_config() {
+        return Map::new();
+    }
+    // ConfigLoader::get_section returns a bare `Value` (an empty object when the
+    // section is absent), not an Option — so narrow it to a Map directly.
+    loader
+        .get_section("service")
+        .as_object()
+        .cloned()
+        .unwrap_or_default()
+}
+
+/// Generate a UUID v4 for the default `agent_id` (reference
+/// `agent_base.py:229` — `agent_id or str(uuid.uuid4())`).
+fn generate_uuid_v4() -> String {
+    use rand::RngExt;
+    let mut rng = rand::rng();
+    let mut data = [0u8; 16];
+    rng.fill(&mut data);
+    data[6] = (data[6] & 0x0f) | 0x40; // version 4
+    data[8] = (data[8] & 0x3f) | 0x80; // variant RFC 4122
+    let hex: String = data.iter().fold(String::with_capacity(32), |mut s, b| {
+        use std::fmt::Write as _;
+        let _ = write!(s, "{b:02x}");
+        s
+    });
+    format!(
+        "{}-{}-{}-{}-{}",
+        &hex[0..8],
+        &hex[8..12],
+        &hex[12..16],
+        &hex[16..20],
+        &hex[20..32]
+    )
 }
 
 /// Callback types for agent events.
@@ -276,23 +470,34 @@ pub struct AgentBase {
     web_hook_url_override: Option<String>,
     /// Whether debug routes are enabled ([`AgentBase::enable_debug_routes`]).
     debug_routes_enabled: bool,
+
+    // ── Construction params stored on the agent ─────────────────────────
+    /// Stable id for this agent — the `agent_id` option, or a generated
+    /// UUID v4 (reference `AgentBase.agent_id`, `agent_base.py:229`).
+    agent_id: String,
+    /// Default SWAIG `web_hook_url` (`_default_webhook_url`).
+    default_webhook_url: Option<String>,
+    /// Suppress structured request/response logs (`_suppress_logs`).
+    suppress_logs: bool,
+    /// Post-prompt override hook flag (`enable_post_prompt_override`).
+    enable_post_prompt_override: bool,
+    /// Check-for-input override hook flag (`check_for_input_override`).
+    check_for_input_override: bool,
+    /// Honor `X-Forwarded-*` during signature URL reconstruction
+    /// (`_trust_proxy_for_signature`). Default `false`.
+    trust_proxy_for_signature: bool,
 }
 
 impl Clone for AgentBase {
     fn clone(&self) -> Self {
-        // Build a fresh Service with the same config, then deep-copy the
-        // SWAIG tool registry into it so the clone has the same tools as
-        // the original (matches the dynamic-config "ephemeral copy" pattern).
-        let mut service = Service::new(ServiceOptions {
-            name: self.service.name().to_string(),
-            route: Some(self.service.route().to_string()),
-            host: Some(self.service.host().to_string()),
-            port: Some(self.service.port()),
-            basic_auth_user: Some(self.service.basic_auth_credentials().0.to_string()),
-            basic_auth_password: Some(self.service.basic_auth_credentials().1.to_string()),
-        });
-        service.tools.clone_from(&self.service.tools);
-        service.tool_order.clone_from(&self.service.tool_order);
+        // `Service` is itself `Clone`, so clone it directly rather than
+        // rebuilding from `ServiceOptions`. Rebuilding silently DROPPED the
+        // schema-utils override and the resolved `SecurityConfig` (an agent
+        // built with `schema_validation=false` came back with validation ON),
+        // and re-ran the config-file load. The direct clone carries the whole
+        // resolved service — tools and tool_order included — so the ephemeral
+        // dynamic-config copy is a faithful duplicate.
+        let service = self.service.clone();
         AgentBase {
             service,
             auto_answer: self.auto_answer,
@@ -337,6 +542,12 @@ impl Clone for AgentBase {
             mcp_server_enabled: self.mcp_server_enabled,
             web_hook_url_override: self.web_hook_url_override.clone(),
             debug_routes_enabled: self.debug_routes_enabled,
+            agent_id: self.agent_id.clone(),
+            default_webhook_url: self.default_webhook_url.clone(),
+            suppress_logs: self.suppress_logs,
+            enable_post_prompt_override: self.enable_post_prompt_override,
+            check_for_input_override: self.check_for_input_override,
+            trust_proxy_for_signature: self.trust_proxy_for_signature,
         }
     }
 }
@@ -360,13 +571,37 @@ impl std::ops::DerefMut for AgentBase {
 
 impl AgentBase {
     pub fn new(options: AgentOptions) -> Self {
+        // Config-file `service` section, applied with CONSTRUCTOR params
+        // taking precedence — the reference consults the file only where the
+        // caller left the param at its default (`agent_base.py:189-196`).
+        let service_config = load_service_config(options.config_file.as_deref(), &options.name);
+        let cfg_str = |key: &str| {
+            service_config
+                .get(key)
+                .and_then(Value::as_str)
+                .map(std::string::ToString::to_string)
+        };
+
+        let final_name = cfg_str("name").unwrap_or(options.name);
+        let final_route = options.route.or_else(|| cfg_str("route"));
+        let final_host = options.host.or_else(|| cfg_str("host"));
+        let final_port = options.port.or_else(|| {
+            service_config
+                .get("port")
+                .and_then(Value::as_u64)
+                .and_then(|p| u16::try_from(p).ok())
+        });
+
         let service = Service::new(ServiceOptions {
-            name: options.name,
-            route: options.route,
-            host: options.host,
-            port: options.port,
+            name: final_name,
+            route: final_route,
+            host: final_host,
+            port: final_port,
             basic_auth_user: options.basic_auth_user,
             basic_auth_password: options.basic_auth_password,
+            schema_path: options.schema_path,
+            config_file: options.config_file,
+            schema_validation: options.schema_validation,
         });
 
         // Resolve the signing key: explicit option, then environment.
@@ -390,8 +625,8 @@ impl AgentBase {
             service,
             auto_answer: options.auto_answer,
             record_call: options.record_call,
-            record_format: "wav".to_string(),
-            record_stereo: false,
+            record_format: options.record_format,
+            record_stereo: options.record_stereo,
             use_pom: options.use_pom,
             pom_sections: Vec::new(),
             prompt_text: String::new(),
@@ -404,7 +639,7 @@ impl AgentBase {
             params: Map::new(),
             global_data: Map::new(),
             sip_usernames: std::collections::BTreeSet::new(),
-            native_functions: Vec::new(),
+            native_functions: options.native_functions.unwrap_or_default(),
             internal_fillers: Vec::new(),
             internal_fillers_map: HashMap::new(),
             debug_events_level: None,
@@ -421,7 +656,7 @@ impl AgentBase {
             post_prompt_url: None,
             swaig_query_params: HashMap::new(),
             function_includes: Vec::new(),
-            session_manager: SessionManager::with_defaults(),
+            session_manager: SessionManager::new(options.token_expiry_secs),
             context_builder: None,
             skills: Vec::new(),
             manual_proxy_url: None,
@@ -430,7 +665,60 @@ impl AgentBase {
             mcp_server_enabled: false,
             web_hook_url_override: None,
             debug_routes_enabled: false,
+            agent_id: options.agent_id.unwrap_or_else(generate_uuid_v4),
+            default_webhook_url: options.default_webhook_url,
+            suppress_logs: options.suppress_logs,
+            enable_post_prompt_override: options.enable_post_prompt_override,
+            check_for_input_override: options.check_for_input_override,
+            trust_proxy_for_signature: options.trust_proxy_for_signature,
         }
+    }
+
+    /// This agent's stable identifier — the `agent_id` option, or the UUID v4
+    /// generated at construction. Mirrors the reference's `agent.agent_id`.
+    #[must_use]
+    pub fn agent_id(&self) -> &str {
+        &self.agent_id
+    }
+
+    /// The default SWAIG `web_hook_url` applied to functions that do not set
+    /// their own (`_default_webhook_url`).
+    #[must_use]
+    pub fn default_webhook_url(&self) -> Option<&str> {
+        self.default_webhook_url.as_deref()
+    }
+
+    /// Whether structured request/response logging is suppressed
+    /// (`_suppress_logs`).
+    #[must_use]
+    pub fn suppress_logs(&self) -> bool {
+        self.suppress_logs
+    }
+
+    /// Whether the post-prompt override hook is enabled.
+    #[must_use]
+    pub fn enable_post_prompt_override(&self) -> bool {
+        self.enable_post_prompt_override
+    }
+
+    /// Whether the check-for-input override hook is enabled.
+    #[must_use]
+    pub fn check_for_input_override(&self) -> bool {
+        self.check_for_input_override
+    }
+
+    /// Whether `X-Forwarded-*` headers are honored when reconstructing the URL
+    /// for webhook signature validation (`_trust_proxy_for_signature`).
+    #[must_use]
+    pub fn trust_proxy_for_signature(&self) -> bool {
+        self.trust_proxy_for_signature
+    }
+
+    /// The server-side native functions advertised in
+    /// `ai.SWAIG.native_functions`.
+    #[must_use]
+    pub fn native_functions(&self) -> &[String] {
+        &self.native_functions
     }
 
     /// Access the underlying service.
@@ -1920,12 +2208,13 @@ impl AgentBase {
     }
 
     /// Validate the SignalWire signature header against the URL the
-    /// platform POSTed to and the raw body. Reconstructs the public
-    /// URL via `Service::get_proxy_url_base` plus the request path
-    /// (so `X-Forwarded-*` headers and `SWML_PROXY_URL_BASE` are
-    /// honored). Returns `false` for missing header, missing key
-    /// (which shouldn't happen — caller already checked), or any
-    /// validator error.
+    /// platform POSTed to and the raw body. Reconstructs the public URL via
+    /// [`Self::resolve_signature_base`] plus the request path, so
+    /// `SWML_PROXY_URL_BASE` / `manual_set_proxy_url` always apply but the
+    /// spoofable `X-Forwarded-*` headers apply ONLY when the agent was built
+    /// with `trust_proxy_for_signature = true`. Returns `false` for missing
+    /// header, missing key (which shouldn't happen — caller already checked),
+    /// or any validator error.
     fn verify_request_signature(
         &self,
         signing_key: &str,
@@ -1944,7 +2233,7 @@ impl AgentBase {
             None => return false,
         };
 
-        let url_base = self.resolve_proxy_base(headers);
+        let url_base = self.resolve_signature_base(headers);
         // Strip a trailing slash on the base so we don't double-up.
         let base = url_base.trim_end_matches('/');
         let full_url = format!("{base}{path}");
@@ -2052,6 +2341,35 @@ impl AgentBase {
             return json_response(400, &json!({"error": "Missing function name"}));
         }
 
+        // Validate the per-tool security token when one was supplied. The
+        // reference reads `__token` (falling back to the legacy `token`) off the
+        // query string and, on a mismatch, refuses to execute a SECURE function —
+        // returning a spoken refusal rather than an HTTP error
+        // (`agent_base.py:1414-1444`). An INSECURE function is dispatched even with
+        // a bad token, exactly as the reference does.
+        if let Some(token) = swaig_request_token(data) {
+            let call_id = data
+                .get("call_id")
+                .and_then(Value::as_str)
+                .or_else(|| data.get("call").and_then(|c| c.get("call_id"))?.as_str());
+            if let Some(call_id) = call_id
+                && self.has_function(function_name)
+                && !self.validate_tool_token(function_name, &token, call_id)
+                && self
+                    .get_function(function_name)
+                    .is_some_and(|tool| tool.secure)
+            {
+                return json_response(
+                    200,
+                    &FunctionResult::with_response(
+                        "I'm sorry, the security token for this function is invalid \
+                         or expired. I cannot execute this action.",
+                    )
+                    .to_value(),
+                );
+            }
+        }
+
         let args = data["argument"]["parsed"]
             .as_array()
             .and_then(|arr| arr.first())
@@ -2089,6 +2407,13 @@ impl AgentBase {
     fn build_swaig_block(&self, headers: &HashMap<String, String>) -> Map<String, Value> {
         let mut swaig = Map::new();
 
+        // Every render is scoped to a call. The reference GENERATES a call_id when
+        // the caller supplied none (`agent_base.py:958` →
+        // `_session_manager.create_session()`), so a `secure` tool ALWAYS renders
+        // with a per-tool token. Mirror that: mint the render's call_id up front so
+        // the secure branch below always has one.
+        let call_id = self.session_manager.create_session(None);
+
         let mut functions = Vec::new();
         for name in &self.tool_order {
             if let Some(tool) = self.tools.get(name) {
@@ -2097,11 +2422,22 @@ impl AgentBase {
                 // Add web_hook_url for tools with handlers
                 if tool.handler.is_some() {
                     if let Some(ref wh_url) = self.webhook_url {
+                        // EXTERNAL webhook: the reference uses the provided URL
+                        // verbatim and never appends a token (agent_base.py:1085).
                         if let Value::Object(map) = &mut func_def {
                             map.insert("web_hook_url".to_string(), json!(wh_url));
                         }
                     } else {
-                        let url = self.build_swaig_webhook_url(headers);
+                        // LOCAL webhook. A `secure` tool carries a per-tool
+                        // `__token` — the WIRE manifestation of `secure` the
+                        // platform validates on the callback (agent_base.py:1040 +
+                        // 1097). An insecure tool carries none.
+                        let mut url = self.build_swaig_webhook_url(headers);
+                        if tool.secure {
+                            let token = self.create_tool_token(name, &call_id);
+                            let sep = if url.contains('?') { '&' } else { '?' };
+                            url = format!("{url}{sep}__token={token}");
+                        }
                         if let Value::Object(map) = &mut func_def {
                             map.insert("web_hook_url".to_string(), json!(url));
                         }
@@ -2168,6 +2504,45 @@ impl AgentBase {
             return manual.clone();
         }
         self.service.get_proxy_url_base(headers)
+    }
+
+    /// Base URL used to reconstruct the URL a webhook signature was computed
+    /// over. Unlike [`Self::resolve_proxy_base`] — which builds the outbound
+    /// `web_hook_url` we ADVERTISE and may legitimately reflect the public
+    /// proxy hostname — this is a SECURITY decision on INBOUND, attacker-
+    /// influenced data.
+    ///
+    /// `X-Forwarded-Proto` / `X-Forwarded-Host` are set by whoever can reach
+    /// the agent. If we always honored them, an attacker able to reach the
+    /// agent directly could compute a valid signature over a hostname of their
+    /// choosing, inject it as `X-Forwarded-Host`, and have the agent validate
+    /// their request. The reference therefore defaults
+    /// `trust_proxy_for_signature=False` and only honors those headers when the
+    /// operator has explicitly opted in ("proxy headers are spoofable, so opt
+    /// in only when you control the proxy chain" —
+    /// `agent_base.py` `trust_proxy_for_signature` docstring).
+    ///
+    /// An explicit `manual_set_proxy_url` / `SWML_PROXY_URL_BASE` is operator-
+    /// supplied configuration, not request data, so both are honored either way.
+    fn resolve_signature_base(&self, headers: &HashMap<String, String>) -> String {
+        if let Some(ref manual) = self.manual_proxy_url {
+            return manual.clone();
+        }
+        if self.trust_proxy_for_signature {
+            return self.service.get_proxy_url_base(headers);
+        }
+        // Untrusted path: strip the spoofable forwarded headers before asking
+        // the service to derive a base, so only operator-supplied config
+        // (SWML_PROXY_URL_BASE) and the service's own host:port can win.
+        let filtered: HashMap<String, String> = headers
+            .iter()
+            .filter(|(k, _)| {
+                let k = k.to_ascii_lowercase();
+                k != "x-forwarded-proto" && k != "x-forwarded-host" && k != "x-original-url"
+            })
+            .map(|(k, v)| (k.clone(), v.clone()))
+            .collect();
+        self.service.get_proxy_url_base(&filtered)
     }
 
     // ══════════════════════════════════════════════════════════════════════
@@ -2250,6 +2625,23 @@ impl AgentBase {
             let _ = request.respond(response);
         }
     }
+}
+
+/// The per-tool security token supplied on a SWAIG callback, if any.
+///
+/// The platform appends the token the render minted as a `__token` query
+/// parameter (see `build_swaig_block`). The reference reads
+/// `query_params["__token"]`, falling back to the legacy unprefixed `token`
+/// (`agent_base.py:1414`); the HTTP adapter surfaces the parsed query string on
+/// the request body under `query_params`.
+fn swaig_request_token(data: &Value) -> Option<String> {
+    let params = data.get("query_params")?.as_object()?;
+    params
+        .get("__token")
+        .or_else(|| params.get("token"))
+        .and_then(Value::as_str)
+        .filter(|t| !t.is_empty())
+        .map(str::to_string)
 }
 
 /// Build a JSON HTTP response tuple.
@@ -3724,6 +4116,213 @@ mod tests {
         assert!(
             !a.validate_tool_token("test_tool", &token, "call_B"),
             "expected false when token bound to a different call_id"
+        );
+    }
+
+    // ── The `__token` wire manifestation of `secure` ─────────────────────
+    //
+    // Parity: signalwire-python `agent_base.py:1040`/`1097` — a SECURE tool's
+    // rendered SWAIG webhook carries the per-tool `__token`; an INSECURE one
+    // does not. This is the wire property the cross-port SECURE-DEFAULT gate
+    // (porting-sdk `diff_port_secure_default.py`) compares.
+
+    /// The `web_hook_url` the render emitted for `tool_name`, if any.
+    fn rendered_webhook_url(doc: &Value, tool_name: &str) -> Option<String> {
+        doc["sections"]["main"]
+            .as_array()?
+            .iter()
+            .find_map(|sec| sec.get("ai"))?["SWAIG"]["functions"]
+            .as_array()?
+            .iter()
+            .find(|f| f["function"].as_str() == Some(tool_name))?["web_hook_url"]
+            .as_str()
+            .map(str::to_string)
+    }
+
+    fn agent_with_secure_and_insecure_tools() -> AgentBase {
+        let mut a = AgentBase::new(default_options());
+        a.define_tool(
+            "secure_tool",
+            "s",
+            json!({}),
+            Box::new(|_a, _r| FunctionResult::with_response("ok")),
+            true,
+        );
+        a.define_tool(
+            "insecure_tool",
+            "i",
+            json!({}),
+            Box::new(|_a, _r| FunctionResult::with_response("ok")),
+            false,
+        );
+        a
+    }
+
+    #[test]
+    fn test_render_emits_token_only_for_secure_tools() {
+        let a = agent_with_secure_and_insecure_tools();
+        let doc = a.render_swml(&HashMap::new());
+
+        let secure_url = rendered_webhook_url(&doc, "secure_tool")
+            .expect("secure tool must render a web_hook_url");
+        assert!(
+            secure_url.contains("__token="),
+            "a secure tool's rendered webhook must carry the per-tool __token, got {secure_url}"
+        );
+
+        let insecure_url = rendered_webhook_url(&doc, "insecure_tool")
+            .expect("insecure tool must render a web_hook_url");
+        assert!(
+            !insecure_url.contains("__token="),
+            "an insecure tool must carry NO __token, got {insecure_url}"
+        );
+    }
+
+    #[test]
+    fn test_render_token_validates_for_its_own_call() {
+        use base64::Engine as _;
+        use base64::engine::general_purpose::URL_SAFE_NO_PAD;
+
+        // The token the render minted must verify against the call_id it was
+        // minted for — i.e. it is a real SessionManager token, not a placeholder.
+        let a = agent_with_secure_and_insecure_tools();
+        let doc = a.render_swml(&HashMap::new());
+        let url = rendered_webhook_url(&doc, "secure_tool").expect("web_hook_url");
+        let token = url
+            .split("__token=")
+            .nth(1)
+            .expect("__token present")
+            .split('&')
+            .next()
+            .expect("token value");
+
+        // The token payload is `{call_id}.{function}.{expiry}.{nonce}.{hmac}`
+        // base64url-encoded; recover the render's call_id and confirm the pair
+        // validates (i.e. it is a real SessionManager token, not a placeholder).
+        let payload = String::from_utf8(
+            URL_SAFE_NO_PAD
+                .decode(token)
+                .expect("token is base64url-encoded"),
+        )
+        .expect("token payload is utf-8");
+        let call_id = payload.split('.').next().expect("token carries a call_id");
+        assert!(!call_id.is_empty(), "the render must mint a call_id");
+        assert!(
+            a.validate_tool_token("secure_tool", token, call_id),
+            "the render-minted token must validate for its own call_id"
+        );
+    }
+
+    // ── SWAIG dispatch token validation ──────────────────────────────────
+    //
+    // Parity: signalwire-python `agent_base.py:1414-1444` — a bad token on a
+    // SECURE function refuses execution with a spoken message; an INSECURE
+    // function is dispatched regardless.
+
+    fn swaig_body(function: &str, token: Option<&str>) -> String {
+        let mut body = json!({
+            "function": function,
+            "call_id": "call_dispatch",
+            "argument": {"parsed": [{}]},
+        });
+        if let Some(t) = token {
+            body["query_params"] = json!({"__token": t});
+        }
+        body.to_string()
+    }
+
+    #[test]
+    fn test_swaig_dispatch_rejects_bad_token_on_secure_function() {
+        let a = agent_with_secure_and_insecure_tools();
+        let (status, _, body) = a.handle_request(
+            "POST",
+            "/swaig",
+            &authed_headers(),
+            &swaig_body("secure_tool", Some("garbage_token")),
+        );
+        assert_eq!(status, 200, "the reference refuses in-band, not via HTTP");
+        assert!(
+            body.contains("security token for this function is invalid"),
+            "expected the token-refusal response, got {body}"
+        );
+    }
+
+    #[test]
+    fn test_swaig_dispatch_accepts_valid_token_on_secure_function() {
+        let a = agent_with_secure_and_insecure_tools();
+        let token = a.create_tool_token("secure_tool", "call_dispatch");
+        let (status, _, body) = a.handle_request(
+            "POST",
+            "/swaig",
+            &authed_headers(),
+            &swaig_body("secure_tool", Some(&token)),
+        );
+        assert_eq!(status, 200);
+        assert!(
+            !body.contains("security token for this function is invalid"),
+            "a valid token must dispatch to the handler, got {body}"
+        );
+        assert!(
+            body.contains("ok"),
+            "expected the handler's response: {body}"
+        );
+    }
+
+    #[test]
+    fn test_swaig_dispatch_ignores_bad_token_on_insecure_function() {
+        // The reference only refuses when the function is SECURE.
+        let a = agent_with_secure_and_insecure_tools();
+        let (status, _, body) = a.handle_request(
+            "POST",
+            "/swaig",
+            &authed_headers(),
+            &swaig_body("insecure_tool", Some("garbage_token")),
+        );
+        assert_eq!(status, 200);
+        assert!(
+            body.contains("ok"),
+            "an insecure function dispatches even with a bad token, got {body}"
+        );
+    }
+
+    #[test]
+    fn test_swaig_dispatch_reads_nested_call_call_id() {
+        // The reference falls back to `body["call"]["call_id"]` when the flat
+        // `call_id` is absent (agent_base.py:1744-1747). A token minted for that
+        // call must validate through the nested path too.
+        let a = agent_with_secure_and_insecure_tools();
+        let token = a.create_tool_token("secure_tool", "call_nested");
+        let body = json!({
+            "function": "secure_tool",
+            "call": {"call_id": "call_nested"},
+            "argument": {"parsed": [{}]},
+            "query_params": {"__token": token},
+        });
+        let (status, _, out) =
+            a.handle_request("POST", "/swaig", &authed_headers(), &body.to_string());
+        assert_eq!(status, 200);
+        assert!(
+            !out.contains("security token for this function is invalid"),
+            "the nested call.call_id must be read, so this valid token dispatches: {out}"
+        );
+        assert!(out.contains("ok"), "expected the handler's response: {out}");
+    }
+
+    #[test]
+    fn test_swaig_dispatch_without_token_still_works() {
+        // No token supplied → no validation performed (the reference gates the
+        // whole check on `if token:`).
+        let a = agent_with_secure_and_insecure_tools();
+        let (status, _, body) = a.handle_request(
+            "POST",
+            "/swaig",
+            &authed_headers(),
+            &swaig_body("secure_tool", None),
+        );
+        assert_eq!(status, 200);
+        assert!(
+            body.contains("ok"),
+            "expected the handler's response: {body}"
         );
     }
 }

@@ -206,7 +206,7 @@ impl McpGateway {
                     raw_data,
                 )
             }),
-            false,
+            true,
         );
     }
 }
@@ -230,6 +230,10 @@ impl SkillBase for McpGateway {
 
     fn params(&self) -> &Map<String, Value> {
         &self.sp.params
+    }
+
+    fn skill_state(&self) -> Option<&crate::skills::skill_base::SkillParams> {
+        Some(&self.sp)
     }
 
     /// Python `REQUIRED_PACKAGES = ["requests"]`. Rust links its HTTP client

@@ -4,7 +4,7 @@
 //! Concierge Agent — virtual concierge for venues.
 
 use serde_json::{Map, json};
-use signalwire::prefabs::ConciergeAgent;
+use signalwire::prefabs::{ConciergeAgent, ConciergeOptions};
 
 fn main() {
     let venue_name = "Oceanview Resort";
@@ -34,7 +34,11 @@ fn main() {
         }),
     );
 
-    let mut agent = ConciergeAgent::new("concierge", &venue_info, Some("/concierge"));
+    let mut agent = ConciergeAgent::new(
+        ConciergeOptions::from_venue_info(&venue_info)
+            .name("concierge")
+            .route("/concierge"),
+    );
 
     agent
         .agent_mut()

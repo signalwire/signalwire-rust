@@ -121,9 +121,17 @@ fn test_answer_with_500_result_yields_rpc_err() {
     let result = call.answer();
     match result {
         Ok(v) => panic!("a 500 verb result must fail, got Ok({v:?})"),
-        Err(RelayError::Rpc { method, message }) => {
+        Err(RelayError::Rpc {
+            method,
+            message,
+            code,
+        }) => {
             assert_eq!(method, "calling.answer", "the failing verb is carried");
             assert!(!message.is_empty(), "the server message is preserved");
+            // The server's code reaches the caller, so it can distinguish a 500
+            // from (say) a 401 without matching on the message text — the
+            // reference's `RelayError.code` (`client.py:1330-1332`).
+            assert_eq!(code, Some(500), "the server's result code is carried");
         }
         Err(other) => panic!("expected RelayError::Rpc, got {other:?}"),
     }

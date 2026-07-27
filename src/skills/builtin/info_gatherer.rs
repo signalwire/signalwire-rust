@@ -34,6 +34,10 @@ impl SkillBase for InfoGatherer {
         &self.sp.params
     }
 
+    fn skill_state(&self) -> Option<&crate::skills::skill_base::SkillParams> {
+        Some(&self.sp)
+    }
+
     fn setup(&mut self) -> bool {
         let questions = self.sp.get_array("questions");
         !questions.is_empty()
@@ -92,7 +96,7 @@ impl SkillBase for InfoGatherer {
 
                 result
             }),
-            false,
+            true,
         );
 
         // submit_answer tool
@@ -164,7 +168,7 @@ impl SkillBase for InfoGatherer {
 
                 result
             }),
-            false,
+            true,
         );
     }
 

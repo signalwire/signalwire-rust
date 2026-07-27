@@ -35,6 +35,10 @@ impl SkillBase for DatasphereServerless {
         &self.sp.params
     }
 
+    fn skill_state(&self) -> Option<&crate::skills::skill_base::SkillParams> {
+        Some(&self.sp)
+    }
+
     fn setup(&mut self) -> bool {
         for key in &["space_name", "project_id", "token", "document_id"] {
             if self.sp.get_str(key).is_none() {

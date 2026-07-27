@@ -57,6 +57,10 @@ impl SkillBase for WebSearch {
         &self.sp.params
     }
 
+    fn skill_state(&self) -> Option<&crate::skills::skill_base::SkillParams> {
+        Some(&self.sp)
+    }
+
     fn setup(&mut self) -> bool {
         // Either explicit params or env vars must supply the credentials.
         // The handler reads the same names at call time, so setup just
@@ -247,7 +251,7 @@ impl SkillBase for WebSearch {
                 r.set_response(&formatted);
                 r
             }),
-            false,
+            true,
         );
     }
 

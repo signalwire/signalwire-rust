@@ -135,6 +135,10 @@ impl SkillBase for NativeVectorSearch {
         &self.sp.params
     }
 
+    fn skill_state(&self) -> Option<&crate::skills::skill_base::SkillParams> {
+        Some(&self.sp)
+    }
+
     fn setup(&mut self) -> bool {
         true
     }
@@ -203,7 +207,7 @@ impl SkillBase for NativeVectorSearch {
                 }
                 result
             }),
-            false,
+            true,
         );
     }
 

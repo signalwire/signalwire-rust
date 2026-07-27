@@ -4,20 +4,34 @@ use std::sync::Arc;
 use serde_json::{Map, Value};
 
 use crate::agent::AgentBase;
-use crate::skills::skill_base::SkillBase;
+use crate::skills::skill_base::{AgentHandle, SkillAgent, SkillBase};
 use crate::skills::skill_registry::SkillRegistry;
 
 /// Manages loaded skills for an agent — validates, sets up, and merges skill
 /// contributions (tools, hints, global data, prompt sections) into the agent.
 pub struct SkillManager {
     loaded_skills: HashMap<String, Arc<dyn SkillBase>>,
+    /// The agent this manager loads skills into — the reference's
+    /// `SkillManager.agent` (`skill_manager.py:22`). The reference takes it in
+    /// the constructor; here it is captured on the first `load_skill` call,
+    /// because Rust's load path already receives the live `&mut AgentBase` and
+    /// requiring it at `new()` would force every agent into an `Arc<Mutex<…>>`
+    /// (see [`SkillAgent`]).
+    agent: Option<Arc<dyn SkillAgent>>,
 }
 
 impl SkillManager {
     pub fn new() -> Self {
         SkillManager {
             loaded_skills: HashMap::new(),
+            agent: None,
         }
+    }
+
+    /// The agent this manager is loading skills into, or `None` before the
+    /// first skill is loaded. Mirrors the reference's `SkillManager.agent`.
+    pub fn agent(&self) -> Option<Arc<dyn SkillAgent>> {
+        self.agent.clone()
     }
 
     /// Load a skill by registry name, creating it via the registry factory.
@@ -34,6 +48,12 @@ impl SkillManager {
         };
 
         let mut instance = factory(params);
+        // Hand the skill its agent BEFORE `setup()` runs, matching the
+        // reference's ordering (it constructs the skill AS `skill_class(agent,
+        // params)`, so `self.agent` is set before any skill code executes).
+        let handle: Arc<dyn SkillAgent> = Arc::new(AgentHandle::of(agent));
+        self.agent = Some(handle.clone());
+        instance.set_agent(handle);
         let instance_key = instance.get_instance_key();
 
         if self.loaded_skills.contains_key(&instance_key) && !instance.supports_multiple_instances()
@@ -107,6 +127,10 @@ impl SkillManager {
         mut instance: Box<dyn SkillBase>,
         agent: &mut AgentBase,
     ) -> (bool, String) {
+        // Same pre-`setup()` handover as `load_skill` above.
+        let handle: Arc<dyn SkillAgent> = Arc::new(AgentHandle::of(agent));
+        self.agent = Some(handle.clone());
+        instance.set_agent(handle);
         let instance_key = instance.get_instance_key();
 
         if self.loaded_skills.contains_key(&instance_key) && !instance.supports_multiple_instances()
@@ -223,6 +247,32 @@ mod tests {
         assert!(ok, "load_skill failed: {msg}");
         assert!(mgr.has_skill("datetime"));
         assert_eq!(mgr.list_skills(), vec!["datetime"]);
+    }
+
+    #[test]
+    fn test_agent_back_reference_reaches_the_manager_and_the_skill() {
+        // The reference constructs both WITH the agent (`skill_manager.py:22`,
+        // `skill_base.py:39`) and exposes it as `self.agent`. Neither existed
+        // here, so a loaded skill could not tell which agent it belonged to
+        // outside the `register_tools` call.
+        let mut mgr = SkillManager::new();
+        assert!(mgr.agent().is_none(), "no agent before the first load");
+
+        let mut agent = AgentBase::new(AgentOptions::new("host-agent"));
+        let expected_id = agent.agent_id().to_string();
+        let (ok, msg) = mgr.load_skill("datetime", Map::new(), &mut agent);
+        assert!(ok, "load_skill failed: {msg}");
+
+        let mgr_agent = mgr.agent().expect("manager kept its agent");
+        assert_eq!(mgr_agent.agent_name(), "host-agent");
+        assert_eq!(mgr_agent.agent_id(), expected_id);
+
+        let skill_agent = mgr
+            .get_skill("datetime")
+            .expect("skill loaded")
+            .agent()
+            .expect("skill received its agent");
+        assert_eq!(skill_agent.agent_id(), expected_id);
     }
 
     #[test]

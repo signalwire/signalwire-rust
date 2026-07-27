@@ -50,6 +50,10 @@ impl SkillBase for ApiNinjasTrivia {
         &self.sp.params
     }
 
+    fn skill_state(&self) -> Option<&crate::skills::skill_base::SkillParams> {
+        Some(&self.sp)
+    }
+
     fn setup(&mut self) -> bool {
         self.sp.get_str("api_key").is_some() || std::env::var("API_NINJAS_KEY").is_ok()
     }

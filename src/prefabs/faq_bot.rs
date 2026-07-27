@@ -6,36 +6,120 @@ use crate::agent::{AgentBase, AgentOptions};
 use crate::prefabs::PrefabSummaryCallback;
 use crate::swaig::FunctionResult;
 
+/// Options for constructing an [`FAQBotAgent`].
+///
+/// Mirrors the Python reference's `__init__` (`prefabs/faq_bot.py:48-55`)
+/// param-for-param. `faqs` is the reference's one REQUIRED positional, so it is
+/// the sole argument to [`FAQBotOptions::new`]; every other field carries the
+/// reference's default. `FAQBotOptions::new(faqs)` is therefore the exact
+/// equivalent of the minimal valid reference program `FAQBotAgent(faqs)`.
+#[must_use]
+pub struct FAQBotOptions {
+    /// FAQ entries, each `{question, answer, categories?}`.
+    pub faqs: Vec<Value>,
+    /// Whether to suggest related questions (reference default `true`).
+    pub suggest_related: bool,
+    /// Custom personality description. `None` uses the reference's wording.
+    pub persona: Option<String>,
+    /// Agent name (reference default `"faq_bot"`).
+    pub name: String,
+    /// HTTP route (reference default `"/faq"`).
+    pub route: String,
+}
+
+impl Default for FAQBotOptions {
+    fn default() -> Self {
+        FAQBotOptions {
+            faqs: Vec::new(),
+            suggest_related: true,
+            persona: None,
+            name: "faq_bot".to_string(),
+            route: "/faq".to_string(),
+        }
+    }
+}
+
+impl FAQBotOptions {
+    /// Options for `faqs`, with every other field at its reference default —
+    /// the port of the reference's `FAQBotAgent(faqs)`. `faqs` is required
+    /// because the reference declares it as a positional with no default.
+    pub fn new(faqs: Vec<Value>) -> Self {
+        FAQBotOptions {
+            faqs,
+            ..Default::default()
+        }
+    }
+
+    /// Replace the FAQ entries.
+    pub fn faqs(mut self, faqs: Vec<Value>) -> Self {
+        self.faqs = faqs;
+        self
+    }
+
+    /// Toggle related-question suggestions (default `true`).
+    pub fn suggest_related(mut self, suggest: bool) -> Self {
+        self.suggest_related = suggest;
+        self
+    }
+
+    /// Override the bot's persona description.
+    pub fn persona(mut self, persona: &str) -> Self {
+        self.persona = Some(persona.to_string());
+        self
+    }
+
+    /// Set the agent name (default `"faq_bot"`).
+    pub fn name(mut self, name: &str) -> Self {
+        self.name = name.to_string();
+        self
+    }
+
+    /// Set the HTTP route (default `"/faq"`).
+    pub fn route(mut self, route: &str) -> Self {
+        self.route = route.to_string();
+        self
+    }
+}
+
 /// A pre-built FAQ bot agent that provides answers from a knowledge base.
 pub struct FAQBotAgent {
     agent: AgentBase,
     faqs: Vec<Value>,
     suggest_related: bool,
+    /// Resolved personality description — the caller's `persona` or the
+    /// reference default (`faq_bot.py:76-79`). Retained so a caller can read
+    /// back the personality the agent is actually running with.
+    persona: String,
 }
 
 impl FAQBotAgent {
-    /// Create a new `FAQBotAgent`.
+    /// Create a new `FAQBotAgent` from [`FAQBotOptions`].
     ///
-    /// # Arguments
-    /// - `name` — agent name (defaults to `"faq_bot"` if empty).
-    /// - `faqs` — list of `{question, answer}` pairs.
-    /// - `suggest_related` — whether to suggest related questions.
-    /// - `persona` — optional persona description.
-    /// - `route` — optional route (defaults to `"/faq"`).
-    pub fn new(
-        name: &str,
-        faqs: Vec<Value>,
-        suggest_related: bool,
-        persona: Option<&str>,
-        route: Option<&str>,
-    ) -> Self {
-        let agent_name = if name.is_empty() { "faq_bot" } else { name };
-        let persona_text = persona.unwrap_or(
-            "You are a helpful FAQ bot that provides accurate answers to common questions.",
-        );
+    /// Every option is defaulted, so `FAQBotAgent::new(FAQBotOptions::default())`
+    /// (equivalently `FAQBotAgent::default()`) is the port of the reference's
+    /// zero-argument `FAQBotAgent()`.
+    pub fn new(options: FAQBotOptions) -> Self {
+        let FAQBotOptions {
+            faqs,
+            suggest_related,
+            persona,
+            name,
+            route,
+        } = options;
+
+        let agent_name = if name.is_empty() { "faq_bot" } else { &name };
+        let persona = persona.unwrap_or_else(|| {
+            "You are a helpful FAQ bot that provides accurate answers to common questions."
+                .to_string()
+        });
+        let persona_text = persona.as_str();
 
         let mut opts = AgentOptions::new(agent_name);
-        opts.route = Some(route.unwrap_or("/faq").to_string());
+        opts.route = Some(if route.is_empty() {
+            "/faq".to_string()
+        } else {
+            route
+        });
         opts.use_pom = true;
 
         let mut agent = AgentBase::new(opts);
@@ -162,6 +246,7 @@ impl FAQBotAgent {
             agent,
             faqs,
             suggest_related,
+            persona,
         }
     }
 
@@ -179,6 +264,12 @@ impl FAQBotAgent {
 
     pub fn suggest_related(&self) -> bool {
         self.suggest_related
+    }
+
+    /// The bot's personality description — the caller's value or the reference
+    /// default (`faq_bot.py:76-79`).
+    pub fn persona(&self) -> &str {
+        &self.persona
     }
 
     /// Search for FAQs matching a specific query and/or category.
@@ -283,7 +374,7 @@ mod tests {
 
     #[test]
     fn test_faq_bot_construction() {
-        let agent = FAQBotAgent::new("test", sample_faqs(), true, None, None);
+        let agent = FAQBotAgent::new(FAQBotOptions::new(sample_faqs()).name("test"));
         assert_eq!(agent.agent().service().name(), "test");
         assert_eq!(agent.agent().service().route(), "/faq");
         assert_eq!(agent.faqs().len(), 3);
@@ -291,8 +382,37 @@ mod tests {
     }
 
     #[test]
+    fn test_persona_is_retained_and_rendered() {
+        // `faq_bot.py:76-79` keeps the resolved persona as a public attribute; the
+        // port rendered it into the prompt and dropped it.
+        let agent = FAQBotAgent::new(
+            FAQBotOptions::new(sample_faqs())
+                .name("test")
+                .persona("You are a terse, precise archivist."),
+        );
+        assert_eq!(agent.persona(), "You are a terse, precise archivist.");
+        let prompt = agent.agent().get_prompt().to_string();
+        assert!(prompt.contains("terse, precise archivist"), "{prompt}");
+
+        // Unset -> the reference's default, and reader == rendered text.
+        let plain = FAQBotAgent::new(FAQBotOptions::new(sample_faqs()).name("test"));
+        assert_eq!(
+            plain.persona(),
+            "You are a helpful FAQ bot that provides accurate answers to common questions."
+        );
+        assert!(
+            plain
+                .agent()
+                .get_prompt()
+                .to_string()
+                .contains(plain.persona()),
+            "the rendered persona is not the one the reader returns"
+        );
+    }
+
+    #[test]
     fn test_faq_bot_has_search_tool() {
-        let agent = FAQBotAgent::new("test", sample_faqs(), true, None, None);
+        let agent = FAQBotAgent::new(FAQBotOptions::new(sample_faqs()).name("test"));
         let mut args = serde_json::Map::new();
         args.insert("query".to_string(), json!("hours"));
         let result = agent
@@ -305,7 +425,11 @@ mod tests {
 
     #[test]
     fn test_faq_bot_no_match() {
-        let agent = FAQBotAgent::new("test", sample_faqs(), false, None, None);
+        let agent = FAQBotAgent::new(
+            FAQBotOptions::new(sample_faqs())
+                .name("test")
+                .suggest_related(false),
+        );
         let mut args = serde_json::Map::new();
         args.insert("query".to_string(), json!("quantum physics"));
         let result = agent
@@ -326,7 +450,7 @@ mod tests {
 
     #[test]
     fn test_search_faqs_query_match() {
-        let agent = FAQBotAgent::new("test", categorized_faqs(), true, None, None);
+        let agent = FAQBotAgent::new(FAQBotOptions::new(categorized_faqs()).name("test"));
         let raw = Map::new();
         let mut args = Map::new();
         args.insert("query".to_string(), json!("hours"));
@@ -337,7 +461,7 @@ mod tests {
 
     #[test]
     fn test_search_faqs_category_match() {
-        let agent = FAQBotAgent::new("test", categorized_faqs(), true, None, None);
+        let agent = FAQBotAgent::new(FAQBotOptions::new(categorized_faqs()).name("test"));
         let raw = Map::new();
         let mut args = Map::new();
         args.insert("category".to_string(), json!("billing"));
@@ -347,7 +471,7 @@ mod tests {
 
     #[test]
     fn test_search_faqs_no_match() {
-        let agent = FAQBotAgent::new("test", categorized_faqs(), true, None, None);
+        let agent = FAQBotAgent::new(FAQBotOptions::new(categorized_faqs()).name("test"));
         let raw = Map::new();
         let mut args = Map::new();
         args.insert("query".to_string(), json!("nonexistent topic"));
@@ -359,7 +483,7 @@ mod tests {
     fn test_faq_bot_on_summary_fires() {
         use std::sync::{Arc, Mutex};
 
-        let mut agent = FAQBotAgent::new("test", sample_faqs(), true, None, None);
+        let mut agent = FAQBotAgent::new(FAQBotOptions::new(sample_faqs()).name("test"));
         let captured = Arc::new(Mutex::new(String::new()));
         let captured_clone = Arc::clone(&captured);
         agent.on_summary(Box::new(move |summary, _data, _headers| {

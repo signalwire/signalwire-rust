@@ -99,6 +99,25 @@ impl Action {
         &self.call_id
     }
 
+    /// The [`Call`](super::call::Call) this action was started on — the
+    /// reference's `Action.call` back-reference (`call.py:77,82`).
+    ///
+    /// Resolved through the owning client's live call registry rather than
+    /// stored directly. The Call owns its Actions, so a strong field would be a
+    /// reference cycle, and a `Weak<Call>` would go dangling the moment the
+    /// registry dropped the call — leaving a caller unable to distinguish "the
+    /// call ended" from "the handle was never wired". Going through the registry
+    /// makes the answer live: `Some` while the call is active, `None` once it
+    /// has ended or when this action was built without a client (the in-memory
+    /// record-only mode).
+    ///
+    /// # Panics
+    /// Panics if the internal mutex is poisoned (another thread panicked while
+    /// holding the lock). This does not occur under normal operation.
+    pub fn call(&self) -> Option<Arc<super::call::Call>> {
+        self.client()?.get_call(&self.call_id)
+    }
+
     pub fn node_id(&self) -> &str {
         &self.node_id
     }
@@ -669,6 +688,38 @@ mod tests {
         assert!(!a.is_done());
         assert!(a.state().is_none());
         assert!(a.result().is_none());
+    }
+
+    #[test]
+    fn test_call_back_reference_resolves_through_the_client_registry() {
+        // The reference's `Action.call` is the Call the action was started on
+        // (`call.py:77,82`). Resolving it through the client's live registry
+        // rather than storing a handle means it answers truthfully: `Some` while
+        // the call is registered, `None` once it is gone — and no reference cycle
+        // between a Call and the Actions it owns.
+        let client = Arc::new(super::Client::new("p", "t", "example.signalwire.com"));
+        let call = Arc::new(super::super::call::Call::new(
+            &serde_json::json!({"call_id": "call-1", "node_id": "node-1"}),
+        ));
+        client
+            .calls
+            .lock()
+            .unwrap()
+            .insert("call-1".to_string(), call);
+
+        let a = Action::new("ctrl-1", "call-1", "node-1");
+        assert!(
+            a.call().is_none(),
+            "unattached action has no owning call to report"
+        );
+
+        a.set_client(&client);
+        let resolved = a.call().expect("attached action resolves its call");
+        assert_eq!(resolved.call_id.as_deref(), Some("call-1"));
+
+        // The call ending is reported as `None`, not a dangling handle.
+        client.calls.lock().unwrap().remove("call-1");
+        assert!(a.call().is_none());
     }
 
     #[test]

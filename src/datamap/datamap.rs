@@ -35,6 +35,14 @@ impl DataMap {
         }
     }
 
+    /// The tool name this data-map defines. The reference stores its single ctor
+    /// arg as the public attribute `DataMap.function_name` (`data_map.py:72`) and
+    /// renders it as the `"function"` wire key (`:436`).
+    #[must_use]
+    pub fn function_name(&self) -> &str {
+        &self.function_name
+    }
+
     // ── Fluent setters ───────────────────────────────────────────────────
 
     /// Set the LLM-facing tool description (the "purpose"). **Prompt

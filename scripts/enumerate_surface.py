@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import subprocess
 import sys
@@ -38,6 +39,28 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SRC_DIR = REPO_ROOT / "src"
+
+# porting-sdk adjacency (mirrors enumerate_signatures.py). Used only to read the
+# reference signature oracle for the composition-attribute enrich below.
+# Precedence: an EXPLICIT $PORTING_SDK wins, then the sibling layout, then the
+# CI layout (porting-sdk checked out INSIDE the port repo). The env var has to be
+# first: it is the only way a caller can point this at a specific checkout, and
+# consulting it only as a fallback silently ignores an explicit override whenever a
+# sibling also happens to exist — which is the normal local layout, so the override
+# would be dead exactly where it is most likely to be used.
+def _resolve_psdk() -> Path:
+    env = os.environ.get("PORTING_SDK")
+    if env:
+        return Path(env).resolve()
+    for candidate in (REPO_ROOT.parent / "porting-sdk", REPO_ROOT / "porting-sdk"):
+        if candidate.is_dir():
+            return candidate.resolve()
+    # Unresolvable: return the sibling path anyway so the oracle loader below
+    # fails LOUD naming the path it wanted, rather than degrading here.
+    return (REPO_ROOT.parent / "porting-sdk").resolve()
+
+
+PSDK = _resolve_psdk()
 
 # Map Rust class name → Python canonical module path. Mirrors the C++
 # port's CLASS_MODULE_MAP for consistency.
@@ -207,6 +230,13 @@ CLASS_MODULE_MAP: dict[str, str] = {
 
     # relay
     "Client": "signalwire.relay.client",  # Rust's `relay::Client` == Python's `RelayClient`
+    # RelayError: Rust hosts the typed error at relay/error.rs; the Python
+    # reference records it under relay.client. Same case as HttpClient /
+    # SignalWireRestError above — route the MODULE so the class's real method set
+    # travels with it, rather than restating that set by hand in
+    # FORCE_CLASS_METHODS (a hand-written list cannot self-retire as the oracle
+    # grows, which is how `code`/`message` stayed invisible after B2 landed).
+    "RelayError": "signalwire.relay.client",
     "Call": "signalwire.relay.call",
     "Message": "signalwire.relay.message",
     "Action": "signalwire.relay.call",
@@ -348,6 +378,36 @@ def gen_type_module_for_file(rel: Path) -> str | None:
 # this mapping the surface diff would mark the rename as a "missing"
 # Python method + an "extra" Rust method.
 METHOD_RENAMES: dict[str, dict[str, str]] = {
+    # signalwire.core.security_config.SecurityConfig: the reference has ONE
+    # constructor, `__init__(config_file=None, service_name=None)`. Rust has no
+    # default arguments and no constructor overloading, so the port spells the
+    # zero-argument form `new()` and the two-argument form
+    # `with_config_file(config_file, service_name)`. Both ARE that single
+    # reference `__init__` — `new` already folds onto `__init__` via the generic
+    # constructor mapping, so fold the second spelling onto it too rather than
+    # recording an addition for what is arity idiom.
+    "SecurityConfig": {
+        "with_config_file": "__init__",
+    },
+    # signalwire.agent_server.AgentServer: same arity idiom as SecurityConfig
+    # above. The reference has ONE constructor,
+    # `__init__(host=None, port=None, log_level="info")`. Rust has no default
+    # arguments and no ctor overloading, so `new(host, port)` and
+    # `with_log_level(host, port, log_level)` are the two spellings of that
+    # single `__init__` — `new` folds via the generic constructor mapping, so
+    # fold the explicit-level spelling onto it too. `log_level` itself is a
+    # public read accessor and passes straight through.
+    "AgentServer": {
+        "with_log_level": "__init__",
+    },
+    # signalwire.relay.event.CollectEvent: the reference dataclass field is the
+    # bare `final`. Rust cannot name a method `final` (reserved word) without a
+    # raw identifier, so the accessor is spelled `is_final`; fold it to the
+    # reference field name (Rule 2: reserved-word rename via the enumerator, wire
+    # key preserved — the accessor reads params["final"]).
+    "CollectEvent": {
+        "is_final": "final",
+    },
     # signalwire.pom.pom: Rust's `to_value` returns a `serde_json::Value`
     # which is the natural Rust analogue of Python's `to_dict` (dict);
     # both serialise the same way through `to_json` / `to_yaml`.
@@ -356,7 +416,12 @@ METHOD_RENAMES: dict[str, dict[str, str]] = {
     # `_from_dict`, also internal). Skip it from the surface.
     # `find_section_mut` is the Rust borrow-checker companion to
     # `find_section`; collapse both to Python's single `find_section`.
+    # `with_debug` is the same arity idiom as SecurityConfig/AgentServer above:
+    # the reference constructor is `__init__(debug=False)`, and Rust needs two
+    # spellings for the defaulted and explicit forms. `new()` folds to
+    # `__init__` generically; fold `with_debug(debug)` onto it too.
     "PromptObjectModel": {
+        "with_debug": "__init__",
         "to_value": "to_dict",
         "from_value": None,
         "find_section_mut": None,
@@ -404,9 +469,12 @@ METHOD_RENAMES: dict[str, dict[str, str]] = {
         "questions": None,
         "completion_action": None,
     },
+    # GatherQuestion: `to_value` == Python's `to_dict`. `question_type` is the
+    # RESERVED-WORD rename of the reference attribute `type` (`type` is a Rust
+    # keyword) — folded here, wire key `"type"` preserved (AGENT_RULES §5).
     "GatherQuestion": {
         "to_value": "to_dict",
-        "key": None,
+        "question_type": "type",
     },
     # SWMLBuilder: Rust exposes a generic `verb` accessor + `sleep` shortcut +
     # `service_mut`/`validate_ai` helpers that the Python reference does not
@@ -436,7 +504,8 @@ METHOD_RENAMES: dict[str, dict[str, str]] = {
     # attribute is not an enumerated method) → drop.
     "PomBuilder": {
         "to_value": "to_dict",
-        "pom": None,
+        # `pom` returns the wrapped PromptObjectModel — the reference now records
+        # PomBuilder.pom as a composition attribute, so surface it (fold), don't drop.
     },
     # SessionManager: `set_debug_mode` is the Rust setter for the debug-mode
     # gate on `debug_token` (Python sets `_debug_mode` at construction / as a
@@ -445,19 +514,18 @@ METHOD_RENAMES: dict[str, dict[str, str]] = {
         "set_debug_mode": None,
     },
     # WebService: the reference records __init__/add_directory/remove_directory/
-    # start/stop. The Rust read accessors (port/directories/is_running/
-    # is_file_allowed/basic_auth/directory_browsing_enabled/max_file_size/
-    # cors_enabled) are field-accessor idiom over Python's instance attrs and
-    # private helpers — not enumerated methods. Drop them.
+    # start/stop PLUS every construction param as a public instance attribute
+    # (port / directories / enable_directory_browsing / allowed_extensions /
+    # blocked_extensions / max_file_size / enable_cors). The same-named Rust
+    # readers pass straight through; two are spelled differently and fold via a
+    # RENAME rather than a drop. `is_running` / `is_file_allowed` / `basic_auth`
+    # are Rust-only reads of private reference state, dropped.
     "WebService": {
-        "port": None,
-        "directories": None,
         "is_running": None,
         "is_file_allowed": None,
         "basic_auth": None,
-        "directory_browsing_enabled": None,
-        "max_file_size": None,
-        "cors_enabled": None,
+        "directory_browsing_enabled": "enable_directory_browsing",
+        "cors_enabled": "enable_cors",
     },
     # AuthHandler: `with_bearer_token`/`with_api_key` are Rust builder-idiom
     # setters enabling the optional auth methods (Python reads bearer_token /
@@ -467,20 +535,25 @@ METHOD_RENAMES: dict[str, dict[str, str]] = {
         "with_bearer_token": None,
         "with_api_key": None,
     },
-    # SwaigFunction (== SWAIGFunction): Rust `call` == Python's `__call__`
-    # dunder. The builder setters (secure/required/webhook_url/fillers/
-    # wait_file/extra_field) and read accessors (name/is_external/is_secure)
-    # are the Rust-idiom face of Python's __init__ kwargs / instance attrs —
-    # not enumerated methods on the reference. Drop them.
+    # SwaigFunction (== SWAIGFunction): Rust `call` == Python's `__call__` dunder.
+    # The reference records every construction param as a readable instance
+    # attribute (secure / required / webhook_url / fillers / wait_file /
+    # wait_file_loops / name / description / parameters / handler /
+    # is_typed_handler), and Rust spells each read as a `&self` getter of the same
+    # name — so those pass straight through, no entry needed. What remains to drop
+    # is only the writer/idiom surface with no reference counterpart under any
+    # spelling: the `set_*` builder setters, `extra_field`, and the two derived
+    # predicates (`is_external` = "webhook_url is some", `is_secure` = an alias of
+    # the `secure` reader).
     "SwaigFunction": {
         "call": "__call__",
-        "secure": None,
-        "required": None,
-        "webhook_url": None,
-        "fillers": None,
-        "wait_file": None,
+        "set_secure": None,
+        "set_required": None,
+        "set_webhook_url": None,
+        "set_fillers": None,
+        "set_wait_file": None,
+        "set_is_typed_handler": None,
         "extra_field": None,
-        "name": None,
         "is_external": None,
         "is_secure": None,
     },
@@ -504,15 +577,26 @@ METHOD_RENAMES: dict[str, dict[str, str]] = {
     "Client": {
         "execute_call_verb": None,
         "has_live_socket": None,
+        # Same arity idiom as SecurityConfig / AgentServer / PromptObjectModel:
+        # one reference `__init__(project, token, jwt_token, host, contexts, …)`
+        # needs two Rust spellings because Rust has no default arguments —
+        # `new(project, token, host)` with the JWT defaulted, and
+        # `with_jwt_token(project, token, host, jwt_token)` with it explicit. Fold
+        # the second onto the same `__init__`.
+        "with_jwt_token": "__init__",
     },
-    # SignalWireRestError: reference records only __init__. Drop the Rust
-    # field-accessor reads (message/status_code/response_body/url/method — all
-    # mirror the Python exception's instance attributes of the same names, which
-    # the reference surface does not enumerate as members).
+    # SignalWireRestError: the reference records `__init__` plus the ctor params it
+    # keeps as public instance attributes (`status_code` / `body` / `url` /
+    # `method` / `headers` / `request_id`). The same-named Rust readers pass
+    # straight through via the oracle-gated drop below; `body` is the one whose
+    # Rust spelling differs (`response_body`, chosen because the struct boxes the
+    # body together with the header map) and so folds via a RENAME rather than a
+    # drop — a drop keyed on the Rust spelling can never self-retire against an
+    # oracle that records the reference spelling.
     "SignalWireRestError": {
+        "response_body": "body",
         "message": None,
         "status_code": None,
-        "response_body": None,
         "url": None,
         "method": None,
     },
@@ -626,6 +710,54 @@ AI_CHAT_SUPPRESS_CLASSES: frozenset[str] = frozenset({
 })
 
 
+# CONSTRUCTION-OPTIONS structs — the same fold as AI_CHAT_SUPPRESS_CLASSES above,
+# applied to the whole options-struct family (EMISSION COVERS IDIOM, AGENT_RULES
+# §2 / ALLOWLIST_DISCIPLINE §10).
+#
+# The reference constructs each of these classes with a wide keyword-argument
+# list. Rust has no keyword arguments and no default arguments, so the port
+# carries the SAME parameter set on an options struct that is passed to
+# `Class::new(options)`. That struct and its fluent setters ARE the reference
+# `__init__`'s kwargs — they add no capability the reference lacks, and the
+# Python surface oracle records no such class. Recording them as surface
+# ADDITIONS would be documenting idiom, which §0a forbids; they are folded here
+# instead, and the construction contract in `port_signatures.json` (which unfolds
+# each struct's FIELDS onto the class it constructs) is what actually proves the
+# parameter set matches the reference.
+#
+# Keep this in sync with `enumerate_signatures.py`'s `_OPTIONS_CONSTRUCTS`: an
+# options struct listed there must be folded here.
+OPTIONS_STRUCT_SUPPRESS_CLASSES: frozenset[str] = frozenset({
+    "AgentOptions",
+    "ServiceOptions",
+    "WebServiceOptions",
+    "BedrockOptions",
+    "ConciergeOptions",
+    "FAQBotOptions",
+    "InfoGathererOptions",
+    "ReceptionistOptions",
+    "SurveyOptions",
+})
+
+# BACK-REFERENCE handle types — the Rust spelling of a reference attribute that
+# holds the owning object, folded for the same reason as the options structs.
+#
+# `SkillBase.agent` / `SkillManager.agent` are reference members: the object a
+# skill was loaded into. Python stores the agent itself (`self.agent = agent`).
+# Rust cannot: `AgentBase` is plain owned state that every call site holds by
+# value or `&mut` (AgentServer keeps a `HashMap<String, AgentBase>`) and its
+# mutating surface takes `&mut self`, so a shared strong back-reference would
+# force every agent into an `Arc<Mutex<…>>` and serialize the render path behind
+# one lock. The port therefore hands over a `SkillAgent` handle
+# (`AgentHandle`). Those two types ARE the reference's `self.agent` in Rust
+# spelling — they add no capability, and the oracle records no such class — so
+# they fold here rather than being recorded as additions.
+BACK_REFERENCE_HANDLE_CLASSES: frozenset[str] = frozenset({
+    "SkillAgent",
+    "AgentHandle",
+})
+
+
 # Rust class name → Python canonical class name (when they differ).
 # Skill suffixes are required: Python names every skill class
 # `<Stem>Skill` (e.g. WikipediaSearchSkill); Rust uses just `<Stem>`.
@@ -702,6 +834,12 @@ RE_PUB_STRUCT = re.compile(r"^\s*pub(?:\s*\([^)]*\))?\s+struct\s+(\w+)\b")
 # Rust-only `action`/`collect_result` accessors are dropped via METHOD_RENAMES.
 RE_ACTION_SUBCLASS = re.compile(r"^\s*action_subclass!\(\s*(\w+)\s*,")
 RE_PUB_ENUM = re.compile(r"^\s*pub(?:\s*\([^)]*\))?\s+enum\s+(\w+)\b")
+# A fully-public struct FIELD: `pub name: Type,`. Restricted to a bare `pub`
+# (no `pub(crate)` / `pub(super)`): a restricted field is not reachable by an
+# external caller, so it is not surface. This is the FIELD analog of RE_PUB_FN's
+# publicness rule — except RE_PUB_FN deliberately permits `pub(...)` and relies
+# on drop tables, whereas a field has no such history to preserve.
+RE_PUB_FIELD = re.compile(r"^\s*pub\s+(\w+)\s*:")
 RE_PUB_TRAIT = re.compile(r"^\s*pub(?:\s*\([^)]*\))?\s+trait\s+(\w+)\b")
 RE_PUB_TYPE = re.compile(r"^\s*pub(?:\s*\([^)]*\))?\s+type\s+(\w+)\b")
 # Generic params / args can themselves contain one level of nested angle
@@ -782,6 +920,24 @@ def _sidecar_class_index(sidecar: dict) -> tuple[dict, set]:
     return idx, set(sidecar.get("suppress_structs", []))
 
 
+def _collect_crud_bases(sidecar: dict) -> dict:
+    """Return ``{"module.Class": {base}}`` for every generated REST resource — the port's
+    OWN crud_bases map, sourced from the generator sidecar (rest_signatures.json), NOT
+    hand-written. Emitted as a top-level ``crud_bases`` map in port_surface.json so the
+    surface diff (``diff_port_surface._fold_crud_methods``) matches this port's CRUD
+    resources STRUCTURALLY: the diff folds a CRUD method (list/create/get/update/delete/
+    paginate) on any class EITHER the reference or the port declares a crud_base for. Rust
+    ships resources beyond the reference's 25 (Messages, PubSub, ImportedNumbers, ...) and
+    routes them onto the canonical oracle module.Class paths (via the sidecar), so declaring
+    them here folds their CRUD without a per-op allow-list. The diff reads only the class
+    keys (not ``bind``); ``base`` is carried for parity with java/dotnet's map + provenance."""
+    out: dict[str, dict] = {}
+    for _n, r in sidecar.get("resources", {}).items():
+        key = f"{r['module']}.{r['class']}"
+        out[key] = {"base": r["base"]}
+    return dict(sorted(out.items()))
+
+
 def _git_sha() -> str:
     try:
         out = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=REPO_ROOT, text=True)
@@ -829,13 +985,28 @@ def _parse_file(path: Path) -> tuple[set[str], dict[str, set[str]], set[str]]:
     class_methods: {class_name: {method_names...}} for impl blocks
     defined_classes: pub struct/enum/trait/type names declared in this file
     """
+    free_fns, methods, classes, _fields = _parse_file_full(path)
+    return free_fns, methods, classes
+
+
+def _parse_file_full(
+    path: Path,
+) -> tuple[set[str], dict[str, set[str]], set[str], dict[str, set[str]]]:
+    """As ``_parse_file`` plus ``pub_fields``: {struct_name: {pub field names}}.
+
+    A Rust ``pub`` struct field is a PUBLIC READ (and write) of that member —
+    exactly what Python spells as an instance attribute. The method-only regex
+    never captured them, so every such field was invisible to the surface; see
+    ``_emit_public_fields`` for how they are emitted (oracle-gated).
+    """
     free_fns: set[str] = set()
     methods: dict[str, set[str]] = defaultdict(set)
     classes: set[str] = set()
+    pub_fields: dict[str, set[str]] = defaultdict(set)
     try:
         text = path.read_text(encoding="utf-8", errors="replace")
     except OSError:
-        return free_fns, dict(methods), classes
+        return free_fns, dict(methods), classes, dict(pub_fields)
 
     lines = text.splitlines()
     impl_stack: list[str] = []  # current impl block class names (for nested-mod safety)
@@ -846,6 +1017,10 @@ def _parse_file(path: Path) -> tuple[set[str], dict[str, set[str]], set[str]]:
 
     in_test_mod = False
     test_mod_brace = 0
+
+    # Current `pub struct X { ... }` body, for pub-field capture.
+    cur_struct: str | None = None
+    struct_brace = 0
 
     for line in lines:
         stripped = line.strip()
@@ -875,6 +1050,16 @@ def _parse_file(path: Path) -> tuple[set[str], dict[str, set[str]], set[str]]:
             m = regex.match(line)
             if m:
                 bucket.add(m.group(1))
+
+        # Enter / capture a `pub struct X { ... }` body for its PUBLIC FIELDS.
+        m_struct = RE_PUB_STRUCT.match(line)
+        if m_struct and "{" in line:
+            cur_struct = m_struct.group(1)
+            struct_brace = cur_brace
+        elif cur_struct is not None and cur_brace == struct_brace + 1:
+            m_field = RE_PUB_FIELD.match(line)
+            if m_field:
+                pub_fields[cur_struct].add(m_field.group(1))
 
         # Detect `action_subclass!(Name, ...)` macro-generated RELAY action
         # subclasses: register the class + its macro-provided `__init__` and
@@ -944,8 +1129,11 @@ def _parse_file(path: Path) -> tuple[set[str], dict[str, set[str]], set[str]]:
             brace_depth_for_impl.pop()
             in_trait_for_impl.pop()
             impl_trait_name.pop()
+        # Leave a closed struct body
+        if cur_struct is not None and cur_brace <= struct_brace:
+            cur_struct = None
 
-    return free_fns, dict(methods), classes
+    return free_fns, dict(methods), classes, dict(pub_fields)
 
 
 # Crate-root `pub use` re-exports that must NOT be emitted as top-level
@@ -1151,12 +1339,27 @@ SURFACE_BARE_CLASSES: dict[str, list[str]] = {
 # reference symbol so the surface compares EQUAL (Rule 2 — the real type
 # exists, just in the port's error module). {(python_module, class): [methods]}
 FORCE_CLASS_METHODS: dict[tuple[str, str], list[str]] = {
+    # `__init__` only: the class itself (with `code` / `message`, the reference's
+    # two readable ctor params) now arrives via CLASS_MODULE_MAP's
+    # RelayError -> signalwire.relay.client route, so the real method set travels
+    # with it. What remains to force is the reference's `__init__`, which Rust's
+    # enum has no counterpart for — a variant is constructed by naming it.
     ("signalwire.relay.client", "RelayError"): ["__init__"],
     # Python delegate classes (PromptManager / ToolRegistry) that Rust folds
     # onto AgentBase: their SURFACE_PROJECTIONS already project the method set,
     # but the reference also records a bare __init__ on each. Emit it.
-    ("signalwire.core.agent.prompt.manager", "PromptManager"): ["__init__"],
-    ("signalwire.core.agent.tools.registry", "ToolRegistry"): ["__init__"],
+    #
+    # `agent` is the reference's back-reference to the OWNING agent — the
+    # reference builds each helper as `PromptManager(self)` / `ToolRegistry(self)`
+    # and stores it as `self.agent`, a ctor param class B2 records. Rust does not
+    # extract the helpers as separate objects AT ALL: their methods are declared
+    # directly on AgentBase (which is what the projections above encode), so the
+    # manager and its agent are the SAME object and the back-reference is `self`.
+    # Reaching the agent from the manager is therefore as available in Rust as in
+    # Python — it is already in hand — so this is the composition-flatten idiom
+    # folded in EMIT, not a capability the port lacks.
+    ("signalwire.core.agent.prompt.manager", "PromptManager"): ["__init__", "agent"],
+    ("signalwire.core.agent.tools.registry", "ToolRegistry"): ["__init__", "agent"],
     # SkillBase (a Rust trait — no constructor) + SkillRegistry (Rust uses
     # static methods, no `new`): the reference records `__init__` on both.
     ("signalwire.core.skill_base", "SkillBase"): ["__init__"],
@@ -1208,6 +1411,17 @@ STATIC_METHOD_TO_FREE_FN: dict[tuple[str, str], tuple[str, str]] = {
 # reference does not expose them. The typed RELAY event wrappers carry Rust
 # `base`/`event`/`event_type` views over the generic Event; Python's event
 # subclasses expose only `from_payload`.
+# Per-(module, class) EXCEPTIONS to MODULE_METHOD_DROPS: a method that would
+# otherwise be dropped module-wide but which the reference DOES record on this
+# specific class, so it must be kept. `event_type` is the reference `RelayEvent`
+# dataclass field (the base event's wire type) — the oracle records it ONLY on
+# RelayEvent, not on the typed subclasses (which merely inherit it) — so keep it
+# on RelayEvent while still dropping the Rust-only `base`/`event` views and the
+# subclasses' inherited `event_type`.
+MODULE_METHOD_DROP_EXCEPTIONS: dict[str, dict[str, set[str]]] = {
+    "signalwire.relay.event": {"RelayEvent": {"event_type"}},
+}
+
 MODULE_METHOD_DROPS: dict[str, set[str]] = {
     "signalwire.relay.event": {"base", "event", "event_type"},
     # `clone_box` is Clone-support plumbing on the SWMLVerbHandler trait (it
@@ -1230,7 +1444,72 @@ MODULE_METHOD_DROPS: dict[str, set[str]] = {
     # identical full-validate pass is a no-op there). Same pub(crate)-drop as
     # shared_default.
     "signalwire.utils.schema_utils": {"shared_default", "validate_verb_top_keys"},
+    # `with_name` is a named-constructor convenience on `BedrockOptions`, which
+    # is itself folded away as construction idiom (see
+    # OPTIONS_STRUCT_SUPPRESS_CLASSES): the reference builds a `BedrockAgent`
+    # from kwargs, so neither the options struct nor its constructors are
+    # reference surface. Folding the class hides it from the SURFACE oracle;
+    # this entry hides the same method from the SIGNATURE oracle, which imports
+    # this table and enumerates classes independently of the surface fold.
+    "signalwire.agents.bedrock": {"with_name"},
+    # AgentBase flattens five COMPOSITION-DELEGATE reads onto itself as a
+    # convenience, but the Python reference files each on the HELPER object AgentBase
+    # holds — render_swml -> SwmlRenderer, get_contexts / get_raw_prompt ->
+    # PromptManager, create_tool_token -> SessionManager, get_global_data ->
+    # SkillBase. Rust ALSO emits each on its delegate class (SwmlRenderer.render_swml
+    # etc., which match the reference 1:1), so the copy re-exposed on AgentBase is a
+    # duplicate that reads as a phantom addition after the agentbase-family fold.
+    # Drop the AgentBase copy — the delegate carries the reference-matching surface;
+    # this reconciles the composition-flatten idiom in EMIT, not an allow-list entry.
+    "signalwire.core.agent_base": {
+        "render_swml", "get_contexts", "get_raw_prompt",
+        "create_tool_token", "get_global_data",
+        # FIELD-READ idiom. The reference stores these construction params as
+        # plain instance attributes — `self.agent_id`, `self.native_functions`,
+        # `self._default_webhook_url`, `self._suppress_logs`,
+        # `self._trust_proxy_for_signature`, and the two `*_override` flags
+        # (`agent_base.py:225-254`). Python attribute reads are not methods, so
+        # the surface oracle records none of them. Rust has no public-field
+        # access on a struct with private fields, so the same read is spelled as
+        # a `&self` getter. The getter IS the attribute read — it adds no
+        # capability the reference lacks — so it folds here rather than being
+        # recorded as an addition (§2: idiom is hidden by what we EMIT). The
+        # construction contract in port_signatures.json is what proves the
+        # underlying params match the reference.
+        "agent_id", "native_functions", "default_webhook_url", "suppress_logs",
+        "enable_post_prompt_override", "check_for_input_override",
+        "trust_proxy_for_signature",
+    },
+    # `skill_state` is the `SkillBase` plumbing hook that lets the trait's
+    # `agent`/`set_agent` defaults reach the `SkillParams` a skill stores — the
+    # Rust stand-in for Python setting `self.agent` in `SkillBase.__init__`. The
+    # reference has no counterpart on the base and none on any concrete skill, so
+    # drop it from the skill surface. The CAPABILITY it backs (`agent`) is a real
+    # reference member and stays.
+    # `set_agent` is the WRITE half of the same thing. The reference has no setter
+    # because it takes the agent as a constructor argument — the ONE writable
+    # moment. Rust's load path cannot pass it to a registry factory that predates
+    # the agent, so the manager writes it immediately after construction and
+    # before `setup()`, which is the same single write at the same point in the
+    # lifecycle. That makes it construction idiom, not a second capability, so it
+    # folds here; the READ (`agent`) is the reference member and stays.
+    "signalwire.core.skill_base": {"skill_state", "set_agent"},
+    # `signalwire.skills.skill_base` is where Rust's SkillParams / SkillAgent /
+    # AgentHandle live. SkillParams is already an excused typed-helper class
+    # (PORT_ADDITIONS: "Python uses Dict[str, Any] directly"), and its `agent` /
+    # `set_agent` pair is the storage BEHIND SkillBase.agent — the same plumbing
+    # as `skill_state`, one layer down. Drop both for the same reason.
+    "signalwire.skills.skill_base": {"agent", "set_agent"},
 }
+# Every concrete skill module inherits the same `skill_state` drop. DERIVED from
+# the skill entries in CLASS_MODULE_MAP rather than hand-listed, so a new skill
+# picks it up automatically instead of surfacing a phantom addition that a later
+# lane has to chase.
+for _skill_module in {
+    m for m in CLASS_MODULE_MAP.values()
+    if m.startswith("signalwire.skills.") and m.endswith(".skill")
+}:
+    MODULE_METHOD_DROPS.setdefault(_skill_module, set()).add("skill_state")
 # Module-level FREE FUNCTIONS to drop — `pub(crate)` crate-internal helpers the
 # public-fn regex captures but that are NOT public crate API (external callers
 # cannot reach them), so they are not part of the reference surface.
@@ -1279,16 +1558,202 @@ SKILL_INTERFACE_PROJECTION: dict[tuple[str, str], list[str]] = {
 }
 
 
+
+
+# Public struct FIELD renames: {rust_struct_name: {rust_field: reference_name}}.
+# The field analog of METHOD_RENAMES, for a field whose Rust spelling differs from
+# the name the reference records. Keyed by the RUST struct name (pre-alias, the same
+# key space as METHOD_RENAMES) and applied BEFORE the oracle gate, so the gate sees
+# the reference spelling. SHARED with enumerate_signatures.py by import — a table
+# duplicated across the two enumerators is guaranteed future drift.
+PUBLIC_FIELD_RENAMES: dict[str, dict[str, str]] = {
+    # `numberedBullets` is a WIRE KEY, recorded camelCase VERBATIM by the oracle
+    # because it round-trips through the POM dict that way (`pom.py:345,361,371`)
+    # — not reference sloppiness, so it must not be case-converted. Rust spells
+    # the FIELD snake_case per its own convention while emitting the camelCase
+    # wire key (`src/pom/mod.rs:426` asserts `v["numberedBullets"]`). Fold the
+    # spelling here; the wire key is already correct.
+    "Section": {"numbered_bullets": "numberedBullets"},
+}
+
+
+# NOTE: the former hand-listed ``PUBLIC_FIELD_MEMBERS`` table lived here. It named
+# 9 fields on 5 classes (PromptObjectModel.sections, Section.subsections, and the
+# three ai_chat result-model DTOs). It was a stale exclusion by construction — every
+# public field NOT on the list was invisible to the surface, so the moment the oracle
+# recorded more of them (class B2) the table under-emitted with nothing to signal it.
+# Replaced by the general ORACLE-GATED public-field emission in ``build_surface``:
+# derive from the authority instead of restating it by hand.
+
+
+def _load_json(path: Path) -> dict:
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+
+
+def _load_reference_surface() -> dict:
+    """Load the reference SURFACE oracle (porting-sdk/python_surface.json).
+
+    FAIL LOUD on an unresolvable oracle. A silently-empty oracle produces a
+    valid-LOOKING snapshot that is missing every oracle-gated member (the trap
+    that cost dotnet, go and cpp a full CI investigation each — porting-sdk
+    CAMPAIGN_STATE §4b), so an unreadable oracle is an error, not a degraded mode.
+    """
+    path = PSDK / "python_surface.json"
+    data = _load_json(path)
+    if not data.get("modules"):
+        raise SystemExit(
+            f"enumerate_surface: cannot read the reference surface oracle at {path}.\n"
+            "  Set $PORTING_SDK to the porting-sdk checkout, or clone it as a sibling\n"
+            "  of this repo. Refusing to emit a snapshot with the oracle-gated members\n"
+            "  silently missing."
+        )
+    return data
+
+
+def _oracle_class_members() -> dict[tuple[str, str], set[str]]:
+    """(module, class) -> the member names the reference SURFACE oracle records.
+
+    The AUTHORITY for every oracle-gated decision below. Deriving from it (rather
+    than restating it in a hand-maintained table) is what makes those tables
+    self-retiring: as the oracle grows — e.g. class B2 recording public
+    ``__init__`` attributes that are also ctor params — a stale exclusion stops
+    applying on its own instead of needing a hand edit.
+    """
+    ref = _load_reference_surface()
+    out: dict[tuple[str, str], set[str]] = {}
+    for mod, inv in ref.get("modules", {}).items():
+        for cls, members in inv.get("classes", {}).items():
+            if isinstance(members, list):
+                out[(mod, cls)] = set(members)
+    return out
+
+
+def _oracle_records(oracle: dict[tuple[str, str], set[str]],
+                    module: str, cls: str, member: str) -> bool:
+    """True when the reference records ``member`` on ``module.cls``.
+
+    Used to GATE every idiom drop: a drop expresses "the reference does not have
+    this name here", so the moment the reference DOES have it the drop is simply
+    wrong and must not apply. Keyed by the CANONICAL (post-translate) module and
+    class — the same key space the emitter writes into — because a table keyed in
+    one space and looked up in another silently drops members and nothing reds
+    (three ports hit that; CAMPAIGN_STATE §11).
+    """
+    return member in oracle.get((module, cls), ())
+
+
+def _reference_composition_attrs() -> dict[tuple[str, str], set[str]]:
+    """Return the reference oracle's COMPOSITION-ATTRIBUTE members, keyed by
+    (module, class). Mirrors porting-sdk enumerate_python._enrich_composition_attributes:
+    a member is a composition attribute iff its signature is self-only AND returns an
+    SDK class (bare ``class:signalwire.…`` or ``optional<…>``/``list<…>``-wrapped; a
+    ``union<…>`` return is EXCLUDED — those are verb SETTERS, a distinct idiom class).
+    Read from the reference signature oracle (porting-sdk/python_signatures.json).
+    Empty if the oracle is unavailable (degraded env) — the enrich then no-ops, so the
+    surface never HARD-depends on porting-sdk adjacency."""
+    sig = _load_json(PSDK / "python_signatures.json")
+    out: dict[tuple[str, str], set[str]] = {}
+
+    def _is_comp(ret: object) -> bool:
+        if not isinstance(ret, str):
+            return False
+        if ret.startswith("union<"):
+            return False
+        return "class:signalwire." in ret
+
+    for mod, inv in sig.get("modules", {}).items():
+        for cls, ce in inv.get("classes", {}).items():
+            methods = ce.get("methods", {})
+            if not isinstance(methods, dict):
+                continue
+            comp = {
+                m for m, ms in methods.items()
+                if isinstance(ms, dict)
+                and [p for p in ms.get("params", []) if p.get("kind") != "self"] == []
+                and _is_comp(ms.get("returns"))
+            }
+            if comp:
+                out[(mod, cls)] = comp
+    return out
+
+
+def _port_signature_members() -> dict[tuple[str, str], set[str]]:
+    """Return (module, class) -> {member names} recorded in this port's OWN committed
+    signature oracle (port_signatures.json). Used to gate the composition-attr enrich:
+    a reference composition attribute is surfaced on the port ONLY when the port's
+    signature enumeration ALSO records that member on that class — i.e. the port
+    genuinely has the field/accessor. This keeps the surface and signature oracles
+    consistent BY CONSTRUCTION and never invents surface the port lacks."""
+    sig = _load_json(REPO_ROOT / "port_signatures.json")
+    out: dict[tuple[str, str], set[str]] = {}
+    for mod, inv in sig.get("modules", {}).items():
+        for cls, ce in inv.get("classes", {}).items():
+            methods = ce.get("methods", {})
+            if isinstance(methods, dict) and methods:
+                out[(mod, cls)] = set(methods.keys())
+    return out
+
+
+def _enrich_composition_attributes(modules: dict) -> None:
+    """Surface composition-attribute members (fields that HOLD an SDK class) on the
+    port's generated-type / dataclass-twin structs, matching the reference oracle's
+    ``_enrich_composition_attributes``. Rust records a struct's fields METHOD-LESS
+    (a field is not a `pub fn`), so classes like ``swml_verbs_generated.AIObject`` or
+    ``post_prompt_generated.PostPrompt`` come out empty and (a) fold to the ``gen-type``
+    pseudo-module via the SURFACE-DIFF method-less leaf fold while the reference — now
+    carrying comp-attr members — does NOT, and (b) miss the members themselves. Both
+    read as phantom omissions. Importing the reference's comp-attr members onto the
+    matching port class (gated on the port's own signature oracle recording that member)
+    reconciles the idiom in EMIT: the port class gains the same members, stops folding
+    to gen-type, and matches the reference. Class-typed field surface is exactly what a
+    getter-idiom port would expose explicitly; recording it here is a projection, not
+    invented surface (the port's signature oracle already carries every added member)."""
+    ref_comp = _reference_composition_attrs()
+    if not ref_comp:
+        return
+    port_members = _port_signature_members()
+    for (mod, cls), comp in ref_comp.items():
+        have = port_members.get((mod, cls))
+        if not have:
+            continue
+        present = comp & have  # only members the port genuinely records
+        if not present:
+            continue
+        entry = modules.get(mod)
+        if entry is None or cls not in entry["classes"]:
+            continue  # class not emitted by the port → a real gap, leave it
+        existing = set(entry["classes"][cls])
+        entry["classes"][cls] = sorted(existing | present)
+
+
 def build_surface() -> dict:
     modules: dict[str, dict] = defaultdict(lambda: {"classes": defaultdict(list), "functions": []})
     sha = _git_sha()
+    # The reference surface oracle — the single AUTHORITY for every gated
+    # decision below (idiom drops, public-field emission). Fails loud when
+    # unresolvable rather than silently emitting less.
+    oracle = _oracle_class_members()
     files = _walk_source_files()
     sidecar = load_rest_sidecar()
     sidecar_classes, suppressed_classes = _sidecar_class_index(sidecar)
     # Fold the ai_chat construction/options structs away entirely (see
     # AI_CHAT_SUPPRESS_CLASSES): they are the builder + options-object idiom for
-    # AIChatClient, not independent reference surface.
-    suppressed_classes = suppressed_classes | AI_CHAT_SUPPRESS_CLASSES
+    # AIChatClient, not independent reference surface. Same fold for the
+    # construction-options struct family (see OPTIONS_STRUCT_SUPPRESS_CLASSES):
+    # each one IS its target class's reference `__init__` kwargs, unfolded onto
+    # that class by the construction contract in port_signatures.json.
+    # Back-reference handle types fold the same way (see
+    # BACK_REFERENCE_HANDLE_CLASSES): they are the Rust spelling of the
+    # reference's `self.agent` attribute, not surface of their own.
+    suppressed_classes = (
+        suppressed_classes
+        | AI_CHAT_SUPPRESS_CLASSES
+        | OPTIONS_STRUCT_SUPPRESS_CLASSES
+        | BACK_REFERENCE_HANDLE_CLASSES
+    )
 
     # Generated-type pass (§D3/§H): route each generated-type FILE by path and
     # emit every declared struct/enum METHOD-LESS to the oracle module. Done first
@@ -1350,10 +1815,13 @@ def build_surface() -> dict:
 
     # First pass: collect class declarations + their files (module mapping)
     class_defining_files: dict[str, Path] = {}
+    all_pub_fields: dict[str, set[str]] = defaultdict(set)
     for path in files:
         if path in gen_type_files:
             continue
-        free_fns, methods, classes = _parse_file(path)
+        free_fns, methods, classes, pub_fields = _parse_file_full(path)
+        for struct_name, fnames in pub_fields.items():
+            all_pub_fields[struct_name].update(fnames)
         rel = path.relative_to(REPO_ROOT)
         for cls in classes:
             class_defining_files.setdefault(cls, rel)
@@ -1425,7 +1893,12 @@ def build_surface() -> dict:
                     target = rename_table[m]
                     if target is not None:
                         renamed_methods.add(target)
-                    # `None` → drop
+                    elif _oracle_records(oracle, module_path, translated, m):
+                        # ORACLE-GATED DROP. The drop said "the reference has no
+                        # such member here"; the oracle now says it does, so the
+                        # drop is stale and the Rust accessor IS that member.
+                        renamed_methods.add(m)
+                    # `None` and unrecorded by the oracle → drop
                 else:
                     renamed_methods.add(m)
             existing = set(modules[module_path]["classes"].get(translated, []))
@@ -1509,13 +1982,23 @@ def build_surface() -> dict:
             existing.update(dunders)
             modules[mod_name]["classes"][cls] = sorted(existing)
 
-    # Drop module-scoped Rust-idiom accessor methods.
+    # Drop module-scoped Rust-idiom accessor methods (honoring per-class
+    # keep-exceptions where the reference records the method on that class).
     for mod_name, drop in MODULE_METHOD_DROPS.items():
         entry = modules.get(mod_name)
         if not entry:
             continue
+        exceptions = MODULE_METHOD_DROP_EXCEPTIONS.get(mod_name, {})
         for cls, ms in entry["classes"].items():
-            entry["classes"][cls] = sorted(set(ms) - drop)
+            cls_drop = drop - exceptions.get(cls, set())
+            # ORACLE-GATED, same rule as the METHOD_RENAMES `None` drops: a
+            # module-scoped idiom drop only applies to a name the reference does
+            # NOT record on that class, so it self-retires as the oracle grows.
+            cls_drop = {
+                m for m in cls_drop
+                if not _oracle_records(oracle, mod_name, cls, m)
+            }
+            entry["classes"][cls] = sorted(set(ms) - cls_drop)
 
     # SkillBase interface projection: every Rust skill implements `SkillBase`
     # and exposes its full interface (explicit overrides + trait defaults).
@@ -1536,6 +2019,53 @@ def build_surface() -> dict:
         existing.update(proj)
         modules[mod_name]["classes"][cls] = sorted(existing)
 
+    # Composition-attribute enrich: surface class-typed struct fields (which Rust
+    # records method-less) as members, matching the reference oracle so they stop
+    # reading as phantom omissions / gen-type-fold divergences.
+    _enrich_composition_attributes(modules)
+
+    # PUBLIC-FIELD EMISSION, oracle-gated. A bare ``pub`` struct field is a public
+    # read of that member — the Rust spelling of the Python instance attribute the
+    # reference exposes — but a field is not a ``pub fn``, so the method-keyed
+    # passes above never see it. Emit a field ONLY when the reference oracle
+    # records that same NAME on that same CLASS.
+    #
+    # Two properties make this safe and stale-proof, which is why it replaced the
+    # hand-listed table that used to sit here:
+    #   * it cannot OVER-emit — the oracle is the gate, so nothing the reference
+    #     lacks can appear, and no invented surface is possible;
+    #   * it cannot go STALE — as the oracle grows (class B2 recording public
+    #     ``__init__`` attributes that are also ctor params), the newly-recorded
+    #     names start emitting on their own with no table to edit.
+    # It COMPLETES a class the walker already found; it never registers a new one
+    # (a field-only struct absent from the surface stays a real gap).
+    for mod_name, entry in modules.items():
+        for cls in list(entry["classes"]):
+            rust_cls = cls
+            fields = all_pub_fields.get(cls) or set()
+            if not fields:
+                # The emitted class name may be the translated/renamed one; the
+                # field table is keyed by the RUST struct name. Look up pre-alias
+                # so an aliased class does not silently lose its fields — the
+                # table-keying bug that dropped 17 symbols in typescript.
+                for rust_name, py_name in CLASS_RENAME_MAP.items():
+                    if py_name == cls and all_pub_fields.get(rust_name):
+                        rust_cls, fields = rust_name, all_pub_fields[rust_name]
+                        break
+            if not fields:
+                continue
+            # Fold field-spelling idiom BEFORE the gate, so the gate compares the
+            # reference spelling (keyed by the RUST struct name, pre-alias).
+            frenames = PUBLIC_FIELD_RENAMES.get(rust_cls, {})
+            if frenames:
+                fields = {frenames.get(f, f) for f in fields}
+            recorded = oracle.get((mod_name, cls))
+            if not recorded:
+                continue
+            emit = fields & recorded
+            if emit:
+                entry["classes"][cls] = sorted(set(entry["classes"][cls]) | emit)
+
     # Stable sort + cleanup
     out_modules: dict = {}
     for mod_name in sorted(modules.keys()):
@@ -1545,16 +2075,63 @@ def build_surface() -> dict:
             "functions": sorted(set(entry["functions"])),
         }
 
+    crud_bases = _collect_crud_bases(sidecar)
+
     return {
         "version": "1",
         "generated_from": f"signalwire-rust @ {sha}",
         "modules": out_modules,
+        "crud_bases": crud_bases,
     }
+
+
+def build_native_names() -> dict:
+    """Return the NATIVE-name sidecar: every member name the crate actually ships,
+    spelled as Rust spells it, BEFORE any fold runs.
+
+    DOC-AUDIT resolves a doc/example symbol against `port_surface.json`, which is
+    the FOLDED surface — reference spellings. Every fold therefore un-resolves the
+    port's own docs even though they are correct, compiling code: `svc.route(..)`
+    does not become `svc.set_route(..)` because the enumerator renamed one onto the
+    other, and `ConciergeOptions::from_venue_info` does not stop existing because
+    the options struct folds into its target's `__init__`. The docs were right; the
+    enumerated surface moved.
+
+    So the sidecar is deliberately the RAW walk: `_parse_file_full` output with no
+    METHOD_RENAMES, no MODULE_METHOD_DROPS, no class suppression. A name is in here
+    if and only if the source declares it, which is exactly the property that lets
+    a folded-away real member resolve while a genuinely-absent one stays
+    unresolved.
+
+    Emitted in the FLAT `{"native_names": [...]}` shape (`audit_docs.load_native_names`
+    accepts flat and nested; flat is what a name-only consumer needs).
+
+    ⚠ A sidecar resolves FOLD idiom; it does NOT certify a doc. It is name-keyed,
+    not class-scoped, so an unrelated class declaring the same name can let a
+    genuinely-broken doc reference resolve by coincidence. It is not a substitute
+    for checking that a method a doc names actually exists on the type the doc
+    calls it on.
+    """
+    names: set[str] = set()
+    for path in _walk_source_files():
+        free_fns, methods, classes, pub_fields = _parse_file_full(path)
+        names |= free_fns
+        names |= classes
+        for members in methods.values():
+            names |= members
+        for fields in pub_fields.values():
+            names |= fields
+    return {"native_names": sorted(names)}
 
 
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", default=str(REPO_ROOT / "port_surface.json"))
+    parser.add_argument(
+        "--native-output",
+        default=str(REPO_ROOT / "port_surface_native.json"),
+        help="Where to write the native-name sidecar DOC-AUDIT reads.",
+    )
     parser.add_argument(
         "--check",
         action="store_true",
@@ -1566,19 +2143,26 @@ def main(argv: list[str]) -> int:
     rendered = json.dumps(surface, indent=2, sort_keys=False) + "\n"
     out_path = Path(args.output)
 
+    native_rendered = json.dumps(build_native_names(), indent=2, sort_keys=False) + "\n"
+    native_path = Path(args.native_output)
+
     if args.check:
-        if not out_path.exists():
-            print(f"enumerate_surface: {out_path} does not exist", file=sys.stderr)
-            return 1
-        on_disk = out_path.read_text(encoding="utf-8")
-        if on_disk != rendered:
-            print(f"enumerate_surface: {out_path} is out of date — re-run without --check", file=sys.stderr)
-            return 1
+        for path, want in ((out_path, rendered), (native_path, native_rendered)):
+            if not path.exists():
+                print(f"enumerate_surface: {path} does not exist", file=sys.stderr)
+                return 1
+            if path.read_text(encoding="utf-8") != want:
+                print(
+                    f"enumerate_surface: {path} is out of date — re-run without --check",
+                    file=sys.stderr,
+                )
+                return 1
         print("enumerate_surface: up to date.")
         return 0
 
     out_path.write_text(rendered, encoding="utf-8")
-    print(f"enumerate_surface: wrote {out_path}")
+    native_path.write_text(native_rendered, encoding="utf-8")
+    print(f"enumerate_surface: wrote {out_path} and {native_path}")
     return 0
 
 

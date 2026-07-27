@@ -64,11 +64,15 @@ agent.define_tool(
 
 ### How It Works
 
-1. At SWML render time, the SDK generates `token = HMAC-SHA256(secret, function_url)`
-2. The token is embedded in the SWAIG function definition
-3. When the platform POSTs to the function, it includes the token
-4. The SDK verifies `HMAC-SHA256(secret, url) == received_token`
-5. If verification fails, the request is rejected with 403
+1. At SWML render time, the SDK mints `token = HMAC-SHA256(secret, "call_id:function_name:expiry:nonce")`
+   for each secure tool and appends it to that tool's `web_hook_url` as a
+   `__token=<token>` query parameter. An insecure tool gets no `__token`.
+2. When the platform POSTs to the function, it passes the `__token` back
+3. The SDK re-derives the HMAC and compares it in constant time, also checking the
+   token's function name, call id, and expiry
+4. If verification fails on a **secure** function, the SDK refuses to execute it and
+   returns a spoken refusal rather than dispatching to the handler. An insecure
+   function is dispatched regardless — `secure: false` opts out of the check.
 
 ## SSL/TLS Configuration
 

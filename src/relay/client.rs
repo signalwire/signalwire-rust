@@ -195,6 +195,13 @@ pub struct Client {
     // ── identity / auth ───────────────────────────────────────────────
     pub project: String,
     pub token: String,
+    /// RELAY JWT, the ALTERNATIVE to project/token authentication. When set, the
+    /// `signalwire.connect` handshake sends `{"jwt_token": …}` and omits
+    /// project/token entirely — the project id is inside the token
+    /// (`client.py:397-401`). Empty string means "not using JWT auth", matching
+    /// the reference, which defaults it from `SIGNALWIRE_JWT_TOKEN` and treats
+    /// the empty value as absent (`client.py:173,177`).
+    pub jwt_token: String,
     pub host: String,
     pub contexts: Mutex<Vec<String>>,
     pub connected: Mutex<bool>,
@@ -247,9 +254,23 @@ pub struct Client {
 
 impl Client {
     pub fn new(project: &str, token: &str, host: &str) -> Self {
+        Self::with_jwt_token(project, token, host, "")
+    }
+
+    /// Build a client that authenticates with a RELAY **JWT** instead of a
+    /// project/token pair — the reference's `RelayClient(jwt_token=…)`
+    /// (`client.py:166,173`). Pass `""` for `project`/`token`: with a JWT the
+    /// project id travels inside the token, and the connect handshake omits
+    /// project/token entirely (`client.py:397-401`).
+    ///
+    /// Rust has neither default arguments nor constructor overloading, so this
+    /// is the explicit-argument spelling of the same single reference
+    /// constructor that [`Client::new`] spells with the JWT defaulted.
+    pub fn with_jwt_token(project: &str, token: &str, host: &str, jwt_token: &str) -> Self {
         Client {
             project: project.to_string(),
             token: token.to_string(),
+            jwt_token: jwt_token.to_string(),
             host: host.to_string(),
             contexts: Mutex::new(Vec::new()),
             connected: Mutex::new(false),
@@ -279,23 +300,37 @@ impl Client {
         }
     }
 
-    /// Create from env vars `SIGNALWIRE_PROJECT_ID`, `SIGNALWIRE_API_TOKEN`, `SIGNALWIRE_SPACE`.
+    /// Create from the environment: `SIGNALWIRE_SPACE` plus EITHER
+    /// `SIGNALWIRE_JWT_TOKEN` or the `SIGNALWIRE_PROJECT_ID` +
+    /// `SIGNALWIRE_API_TOKEN` pair.
+    ///
+    /// JWT is the ALTERNATIVE to project/token, not an addition: when
+    /// `SIGNALWIRE_JWT_TOKEN` is set and non-empty, project/token are not
+    /// required because the project id lives inside the token — exactly the
+    /// reference's credential contract (`client.py:173,176-197`).
     ///
     /// # Errors
     ///
-    /// Returns `Err(RelayError::missing_env(...))` if any of the three
-    /// required environment variables — `SIGNALWIRE_PROJECT_ID`,
-    /// `SIGNALWIRE_API_TOKEN`, or `SIGNALWIRE_SPACE` — is unset (or not
-    /// valid UTF-8). No network I/O occurs here, so this is purely a
-    /// configuration-presence check.
+    /// `Err(RelayError::missing_env(...))` naming the specific missing variable:
+    /// `SIGNALWIRE_SPACE` always, and — only when no JWT is present —
+    /// `SIGNALWIRE_PROJECT_ID` / `SIGNALWIRE_API_TOKEN` individually, so the
+    /// caller learns which credential to supply rather than a combined message.
+    /// No network I/O occurs here; this is purely a configuration-presence check.
     pub fn from_env() -> Result<Self, RelayError> {
-        let project = std::env::var("SIGNALWIRE_PROJECT_ID")
-            .map_err(|_| RelayError::missing_env("SIGNALWIRE_PROJECT_ID"))?;
-        let token = std::env::var("SIGNALWIRE_API_TOKEN")
-            .map_err(|_| RelayError::missing_env("SIGNALWIRE_API_TOKEN"))?;
         let host = std::env::var("SIGNALWIRE_SPACE")
             .map_err(|_| RelayError::missing_env("SIGNALWIRE_SPACE"))?;
-        Ok(Self::new(&project, &token, &host))
+        let jwt_token = std::env::var("SIGNALWIRE_JWT_TOKEN").unwrap_or_default();
+        let project = std::env::var("SIGNALWIRE_PROJECT_ID").unwrap_or_default();
+        let token = std::env::var("SIGNALWIRE_API_TOKEN").unwrap_or_default();
+        if jwt_token.is_empty() {
+            if project.is_empty() {
+                return Err(RelayError::missing_env("SIGNALWIRE_PROJECT_ID"));
+            }
+            if token.is_empty() {
+                return Err(RelayError::missing_env("SIGNALWIRE_API_TOKEN"));
+            }
+        }
+        Ok(Self::with_jwt_token(&project, &token, &host, &jwt_token))
     }
 
     // ══════════════════════════════════════════════════════════════════
@@ -446,15 +481,20 @@ impl Client {
                 "minor": constants::PROTOCOL_VERSION_MINOR,
                 "revision": constants::PROTOCOL_VERSION_REVISION,
             },
-            "project": self.project,
-            "token": self.token,
-            "authentication": {
-                "project": self.project,
-                "token": self.token,
-            },
+            "authentication": self.authentication_params(),
             "agent": self.agent,
             "event_acks": true,
         });
+        // Mirror project/token at the TOP LEVEL as well, for the audit fixture
+        // (Python sends them only under `authentication`). JWT auth has no
+        // top-level form — the reference sends `{"jwt_token": …}` inside
+        // `authentication` alone — so only the project/token path mirrors.
+        if self.jwt_token.is_empty()
+            && let Value::Object(ref mut obj) = params
+        {
+            obj.insert("project".to_string(), json!(self.project));
+            obj.insert("token".to_string(), json!(self.token));
+        }
         // Include current contexts on the connect frame so the audit
         // fixture (and Python's RELAY) sees the subscription on the
         // initial handshake. Subsequent `signalwire.receive` calls
@@ -564,14 +604,25 @@ impl Client {
                     "minor": constants::PROTOCOL_VERSION_MINOR,
                     "revision": constants::PROTOCOL_VERSION_REVISION,
                 },
-                "authentication": {
-                    "project": self.project,
-                    "token": self.token,
-                },
+                "authentication": self.authentication_params(),
                 "agent": self.agent,
             },
         });
         self.send(&msg);
+    }
+
+    /// The `authentication` object for the `signalwire.connect` frame.
+    ///
+    /// JWT and project/token are MUTUALLY EXCLUSIVE on the wire: with a JWT the
+    /// reference sends `{"jwt_token": …}` and nothing else, because the project
+    /// id is inside the token (`client.py:397-401`). Sending both would present
+    /// two identities on one handshake.
+    fn authentication_params(&self) -> Value {
+        if self.jwt_token.is_empty() {
+            json!({"project": self.project, "token": self.token})
+        } else {
+            json!({"jwt_token": self.jwt_token})
+        }
     }
 
     /// Gracefully close the connection. Signals the reader thread to
@@ -749,6 +800,29 @@ impl Client {
         self.sent_messages.lock().unwrap().clone()
     }
 
+    /// Apply the SECOND scrub layer to an already key-shape-scrubbed frame
+    /// rendering: mask THIS connection's live credential VALUES verbatim, wherever
+    /// they appear.
+    ///
+    /// [`scrub_value`] masks by key name (the reference `_scrub_frame` contract),
+    /// which is not sufficient on its own — the server echoes the project back
+    /// inside the connect response's `identity` field, which is not a sensitive
+    /// key, so a key-shape-only scrub prints the live project id in the clear at
+    /// debug level. See [`mask_verbatim`].
+    ///
+    /// # Panics
+    /// Panics if an internal mutex is poisoned (another thread panicked while
+    /// holding the lock). This does not occur under normal operation.
+    fn scrub_for_log(&self, text: &str) -> String {
+        let auth_state = self.authorization_state.lock().unwrap().clone();
+        let values = [
+            self.project.clone(),
+            self.token.clone(),
+            auth_state.unwrap_or_default(),
+        ];
+        mask_verbatim(text, &values)
+    }
+
     /// Send a raw JSON message through the transport.
     ///
     /// Records the frame in `sent_messages` (used by tests and for debug
@@ -765,9 +839,13 @@ impl Client {
     pub fn send(&self, msg: &Value) {
         // SECRET-SCRUB: never log the raw frame — it carries project/token/
         // jwt_token/authorization_state on the connect + re-auth frames. Route
-        // through scrub_frame_value so the wire shape is visible but the
-        // credential VALUES are masked (mirrors python's `>> {_scrub_frame(...)}`).
-        self.logger.debug(&format!(">> {}", scrub_frame_value(msg)));
+        // through scrub_for_log so the wire shape is visible but the credential
+        // VALUES are masked (mirrors python's `>> {_scrub_frame(...)}`, plus the
+        // live-value layer for credentials echoed under non-sensitive keys).
+        self.logger.debug(&format!(
+            ">> {}",
+            self.scrub_for_log(&scrub_frame_value(msg))
+        ));
         {
             // Bounded ring: retain only the most recent SENT_LOG_CAP frames so a
             // long-running session cannot grow this inspection log without limit.
@@ -808,10 +886,12 @@ impl Client {
     pub fn handle_message(self: &Arc<Self>, raw: &str) {
         // SECRET-SCRUB: never log the raw inbound frame — a re-auth
         // (`signalwire.authorization.state`) frame carries the authorization_state
-        // blob, and a connect echo could carry credentials. Route through
-        // scrub_frame_raw so the values are masked (mirrors python's
-        // `<< {_scrub_frame(raw)}`).
-        self.logger.debug(&format!("<< {}", scrub_frame_raw(raw)));
+        // blob, and the connect RESPONSE echoes the project back inside `identity`.
+        // Route through scrub_for_log so both the key-shape and the live-value
+        // layers apply (mirrors python's `<< {_scrub_frame(raw)}` plus the fleet's
+        // echoed-credential layer).
+        self.logger
+            .debug(&format!("<< {}", self.scrub_for_log(&scrub_frame_raw(raw))));
 
         let data: Value = if let Ok(d) = serde_json::from_str(raw) {
             d
@@ -883,8 +963,13 @@ impl Client {
                 .lock()
                 .unwrap()
                 .clone_from(&auth_state);
+            // SECRET-SCRUB: the re-auth blob is a CREDENTIAL. Log only that it was
+            // updated — never the value (the reference logs "Updated
+            // authorization_state for reconnection", client.py:1003). Interpolating
+            // `auth_state` here leaked it verbatim at info level, defeating the
+            // frame-log scrubbing two sites above.
             self.logger
-                .info(&format!("Authorization state: {auth_state:?}"));
+                .info("Updated authorization_state for reconnection");
             return;
         }
 
@@ -1165,6 +1250,14 @@ impl Client {
                     .and_then(|v| v.as_str())
                     .unwrap_or("execute failed")
                     .to_string(),
+                // Carry the JSON-RPC `error.code` the frame already provides.
+                // Accepts both the numeric form and the string form RELAY uses
+                // for result codes (`"404"`), same as `classify_verb_outcome`.
+                code: err.get("code").and_then(|c| match c {
+                    Value::Number(n) => n.as_i64(),
+                    Value::String(s) => s.parse().ok(),
+                    _ => None,
+                }),
             }),
             Err(_) => {
                 self.pending.lock().unwrap().remove(&id);
@@ -1311,6 +1404,11 @@ impl Client {
         Some(Err(RelayError::Rpc {
             method: method.to_string(),
             message: message.to_string(),
+            // `numeric` is the code this function already parsed to make the
+            // 2xx / 404 / 410 decisions above; it was being discarded, so a
+            // caller could not tell (say) a 401 from a 500 without matching on
+            // the message text. Carry it.
+            code: numeric,
         }))
     }
 
@@ -1911,6 +2009,34 @@ fn scrub_frame_raw(raw: &str) -> String {
     }
 }
 
+/// Mask every verbatim occurrence of `values` in `text`, longest value first.
+///
+/// The second scrub layer. [`scrub_value`] masks by KEY NAME, mirroring the
+/// reference's `_scrub_frame` — but the server can echo a live credential back
+/// inside a field that is NOT a sensitive key, so a key-shape-only scrub leaks it.
+/// The canonical case: the connect response's `identity` is derived from the
+/// project id (`mock-relay-identity-<project>`; a real relay identity likewise
+/// embeds it), so `{"identity": "…-PJ-LIVE"}` survives a key-shape scrub with the
+/// project in plain sight. Replacing the credential VALUES verbatim, regardless of
+/// surrounding field, closes that hole (the fleet contract — php
+/// `Client::scrubForLog`).
+///
+/// Longest-first so a value that is a substring of another is not partially
+/// masked ahead of its container. Empty values are skipped so we never mask `""`
+/// and mangle unrelated frames.
+fn mask_verbatim(text: &str, values: &[String]) -> String {
+    let mut ordered: Vec<&String> = values.iter().filter(|v| !v.is_empty()).collect();
+    if ordered.is_empty() {
+        return text.to_string();
+    }
+    ordered.sort_by_key(|v| std::cmp::Reverse(v.len()));
+    let mut out = text.to_string();
+    for v in ordered {
+        out = out.replace(v.as_str(), SCRUB_MASK);
+    }
+    out
+}
+
 /// Generate a simple UUID v4.
 fn generate_uuid() -> String {
     use rand::RngExt;
@@ -1983,6 +2109,47 @@ mod tests {
         let out = scrub_frame_raw("token=PT-LIVE-SECRET not-json");
         assert!(!out.contains("PT-LIVE-SECRET"));
         assert!(out.contains("redacted"));
+    }
+
+    /// The SECOND scrub layer. A key-shape scrub alone leaves a credential echoed
+    /// under a NON-sensitive key in the clear — the connect response's `identity`
+    /// is derived from the project id, so `{"identity":"…-PJ-LIVE"}` survives
+    /// `scrub_value` untouched. `mask_verbatim` closes that hole.
+    #[test]
+    fn test_mask_verbatim_masks_credential_echoed_under_a_non_sensitive_key() {
+        let raw = r#"{"result":{"identity":"mock-relay-identity-PJ-LIVE","project":"PJ-LIVE"}}"#;
+        // Key-shape only: the `project` VALUE is masked, but `identity` leaks it.
+        let key_shape_only = scrub_frame_raw(raw);
+        assert!(
+            key_shape_only.contains("PJ-LIVE"),
+            "precondition: the key-shape scrub alone leaves the identity echo — \
+             if this ever stops being true the second layer's rationale changed: \
+             {key_shape_only}"
+        );
+        // With the verbatim layer the project never survives, in ANY field.
+        let out = mask_verbatim(&key_shape_only, &["PJ-LIVE".to_string()]);
+        assert!(!out.contains("PJ-LIVE"), "project leaked: {out}");
+        assert!(out.contains("identity"), "structure must survive: {out}");
+    }
+
+    #[test]
+    fn test_mask_verbatim_masks_longest_first() {
+        // A value that is a SUBSTRING of another must not be masked ahead of its
+        // container, which would leave the container's remaining bytes exposed.
+        let out = mask_verbatim(
+            "tok=ABCDEF and short=ABC",
+            &["ABC".to_string(), "ABCDEF".to_string()],
+        );
+        assert!(!out.contains("ABCDEF"), "long value leaked: {out}");
+        assert!(!out.contains("DEF"), "long value partially leaked: {out}");
+    }
+
+    #[test]
+    fn test_mask_verbatim_skips_empty_values() {
+        // An empty credential must never be "masked" — that would replace every
+        // character boundary and mangle an unrelated frame.
+        let out = mask_verbatim("{\"a\":1}", &[String::new(), String::new()]);
+        assert_eq!(out, "{\"a\":1}");
     }
 
     // -- RUST-3 honest connection-loss --
@@ -2177,6 +2344,35 @@ mod tests {
             msgs[0]["params"]["authentication"]["project"],
             "test-project"
         );
+    }
+
+    #[test]
+    fn test_jwt_auth_replaces_project_token_on_the_connect_frame() {
+        // JWT is the ALTERNATIVE to project/token, not an addition: the reference
+        // sends `{"jwt_token": …}` alone, because the project id is inside the
+        // token (`client.py:397-401`). Before this the port had no JWT path at
+        // all, so a caller holding only a JWT could not connect.
+        let c = Client::with_jwt_token("", "", "example.signalwire.com", "JWT-ABC");
+        assert_eq!(c.jwt_token, "JWT-ABC");
+        c.authenticate();
+        let msgs = c.sent_messages.lock().unwrap();
+        let auth = &msgs[0]["params"]["authentication"];
+        assert_eq!(auth["jwt_token"], "JWT-ABC");
+        assert!(
+            auth.get("project").is_none() && auth.get("token").is_none(),
+            "JWT and project/token are mutually exclusive on the wire: {auth}"
+        );
+    }
+
+    #[test]
+    fn test_no_jwt_keeps_the_project_token_frame() {
+        let c = make_client();
+        assert_eq!(c.jwt_token, "");
+        c.authenticate();
+        let msgs = c.sent_messages.lock().unwrap();
+        let auth = &msgs[0]["params"]["authentication"];
+        assert_eq!(auth["project"], "test-project");
+        assert!(auth.get("jwt_token").is_none());
     }
 
     #[test]

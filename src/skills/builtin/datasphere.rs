@@ -45,6 +45,10 @@ impl SkillBase for Datasphere {
         &self.sp.params
     }
 
+    fn skill_state(&self) -> Option<&crate::skills::skill_base::SkillParams> {
+        Some(&self.sp)
+    }
+
     fn setup(&mut self) -> bool {
         for key in &["space_name", "project_id", "document_id"] {
             if self.sp.get_str(key).is_none() {
@@ -154,7 +158,7 @@ impl SkillBase for Datasphere {
                 r.set_response(&formatted);
                 r
             }),
-            false,
+            true,
         );
     }
 

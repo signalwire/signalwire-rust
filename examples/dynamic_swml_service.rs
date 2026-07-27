@@ -7,14 +7,12 @@ use serde_json::json;
 use signalwire::swml::service::{Service, ServiceOptions};
 
 fn main() {
-    let service = Service::new(ServiceOptions {
-        name: "dynamic-greeting".to_string(),
-        route: Some("/greeting".to_string()),
-        host: Some("0.0.0.0".to_string()),
-        port: Some(3000),
-        basic_auth_user: None,
-        basic_auth_password: None,
-    });
+    let service = Service::new(
+        ServiceOptions::new("dynamic-greeting")
+            .route("/greeting")
+            .host("0.0.0.0")
+            .port(3000),
+    );
 
     // Default SWML
     let default_doc = json!({

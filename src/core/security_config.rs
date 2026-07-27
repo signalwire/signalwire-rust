@@ -87,6 +87,100 @@ impl SecurityConfig {
         cfg
     }
 
+    /// Build a config from defaults, then env, then a JSON config file —
+    /// the config file having the HIGHEST priority, exactly as the reference's
+    /// `SecurityConfig.__init__(config_file, service_name)` orders it
+    /// (`security_config.py:68-75`: defaults → `load_from_env` → `_load_config_file`).
+    ///
+    /// When `config_file` is `None`, the loader searches for a
+    /// `<service_name>_config.json` / `config.json` the same way
+    /// `ConfigLoader.find_config_file` does.
+    #[must_use]
+    pub fn with_config_file(config_file: Option<&str>, service_name: Option<&str>) -> Self {
+        let mut cfg = SecurityConfig::new();
+        cfg.load_config_file(config_file, service_name);
+        cfg
+    }
+
+    /// Apply the `security` section of a JSON config file over the current
+    /// values. Mirrors the reference's `_load_config_file`
+    /// (`security_config.py:99-168`), key for key, including the nested
+    /// `auth.basic.{user,password}` credential path.
+    ///
+    /// Private, like its reference counterpart's leading underscore: it is an
+    /// implementation step of [`SecurityConfig::with_config_file`], not surface.
+    fn load_config_file(&mut self, config_file: Option<&str>, service_name: Option<&str>) {
+        let path = match config_file {
+            Some(p) => Some(p.to_string()),
+            None => crate::core::config_loader::ConfigLoader::find_config_file(service_name, None),
+        };
+        let Some(path) = path else { return };
+
+        let loader = crate::core::config_loader::ConfigLoader::new(Some(vec![path]));
+        if !loader.has_config() {
+            return;
+        }
+        let section = loader.get_section("security");
+        let Some(sec) = section.as_object() else {
+            return;
+        };
+        if sec.is_empty() {
+            return;
+        }
+
+        if let Some(v) = sec.get("ssl_enabled").and_then(Value::as_bool) {
+            self.ssl_enabled = v;
+        }
+        if let Some(v) = sec.get("ssl_cert_path").and_then(Value::as_str) {
+            self.ssl_cert_path = Some(v.to_string());
+        }
+        if let Some(v) = sec.get("ssl_key_path").and_then(Value::as_str) {
+            self.ssl_key_path = Some(v.to_string());
+        }
+        if let Some(v) = sec.get("domain").and_then(Value::as_str) {
+            self.domain = Some(v.to_string());
+        }
+        if let Some(v) = sec.get("ssl_verify_mode").and_then(Value::as_str) {
+            self.ssl_verify_mode = v.to_string();
+        }
+        if let Some(v) = sec.get("allowed_hosts") {
+            self.allowed_hosts = json_list(v);
+        }
+        if let Some(v) = sec.get("cors_origins") {
+            self.cors_origins = json_list(v);
+        }
+        if let Some(v) = sec.get("max_request_size").and_then(json_int) {
+            self.max_request_size = v;
+        }
+        if let Some(v) = sec.get("rate_limit").and_then(json_int) {
+            self.rate_limit = v;
+        }
+        if let Some(v) = sec.get("request_timeout").and_then(json_int) {
+            self.request_timeout = v;
+        }
+        if let Some(v) = sec.get("use_hsts").and_then(Value::as_bool) {
+            self.use_hsts = v;
+        }
+        if let Some(v) = sec.get("hsts_max_age").and_then(json_int) {
+            self.hsts_max_age = v;
+        }
+
+        // Authentication: `security.auth.basic.{user,password}`.
+        if let Some(basic) = sec
+            .get("auth")
+            .and_then(Value::as_object)
+            .and_then(|a| a.get("basic"))
+            .and_then(Value::as_object)
+        {
+            if let Some(u) = basic.get("user").and_then(Value::as_str) {
+                self.basic_auth_user = Some(u.to_string());
+            }
+            if let Some(p) = basic.get("password").and_then(Value::as_str) {
+                self.basic_auth_password = Some(p.to_string());
+            }
+        }
+    }
+
     /// Load configuration from `SWML_*` environment variables (overwriting the
     /// current values). Missing vars fall back to the secure defaults.
     pub fn load_from_env(&mut self) {
@@ -270,6 +364,27 @@ fn env_int(var: &str, default: i64) -> i64 {
         .ok()
         .and_then(|v| v.parse::<i64>().ok())
         .unwrap_or(default)
+}
+
+/// A config-file list value: either a JSON array of strings or a
+/// comma-separated string (the reference's `_parse_list` accepts both).
+fn json_list(value: &Value) -> Vec<String> {
+    match value {
+        Value::Array(items) => items
+            .iter()
+            .filter_map(|v| v.as_str().map(str::to_string))
+            .collect(),
+        Value::String(s) => parse_list(s),
+        _ => Vec::new(),
+    }
+}
+
+/// A config-file integer, accepting the JSON number or its string spelling
+/// (the reference wraps every one of these in `int(...)`).
+fn json_int(value: &Value) -> Option<i64> {
+    value
+        .as_i64()
+        .or_else(|| value.as_str().and_then(|s| s.parse::<i64>().ok()))
 }
 
 /// Generate a URL-safe random token of `n_bytes` entropy, base64url-encoded.

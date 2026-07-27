@@ -54,14 +54,11 @@ fn main() {
         .unwrap_or(1000);
     let samples: usize = 3;
 
-    let mut svc = Service::new(ServiceOptions {
-        name: "perf-bench".to_string(),
-        route: None,
-        host: None,
-        port: Some(3000),
-        basic_auth_user: Some("perf".to_string()),
-        basic_auth_password: Some("perf".to_string()),
-    });
+    let mut svc = Service::new(
+        ServiceOptions::new("perf-bench")
+            .port(3000)
+            .basic_auth("perf", "perf"),
+    );
 
     // Warm: parse/build the schema cache once (excluded from the per-doc number).
     let _ = render_one(&mut svc);

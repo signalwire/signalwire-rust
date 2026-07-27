@@ -34,6 +34,10 @@ impl SkillBase for Spider {
         &self.sp.params
     }
 
+    fn skill_state(&self) -> Option<&crate::skills::skill_base::SkillParams> {
+        Some(&self.sp)
+    }
+
     fn setup(&mut self) -> bool {
         true
     }
@@ -77,7 +81,7 @@ impl SkillBase for Spider {
                 r.set_response(&format!("Scraped content from {url_arg}:\n{extracted}"));
                 r
             }),
-            false,
+            true,
         );
 
         agent.define_tool(
@@ -114,7 +118,7 @@ impl SkillBase for Spider {
                 r.set_response(&format!("Crawled {start_url}:\n{extracted}"));
                 r
             }),
-            false,
+            true,
         );
 
         agent.define_tool(
@@ -148,7 +152,7 @@ impl SkillBase for Spider {
                 r.set_response(&format!("Extracted from {url_arg}:\n{extracted}"));
                 r
             }),
-            false,
+            true,
         );
     }
 

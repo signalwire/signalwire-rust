@@ -65,14 +65,11 @@ fn tls_sdk_server_serves_verified_https() {
     // Run the SDK's blocking HTTPS server on a background thread. The thread is
     // abandoned at process exit (test binary ends); that is fine for a test.
     std::thread::spawn(move || {
-        let svc = Service::new(ServiceOptions {
-            name: "tls-cap-test".to_string(),
-            route: None,
-            host: Some("127.0.0.1".to_string()),
-            port: Some(port),
-            basic_auth_user: None,
-            basic_auth_password: None,
-        });
+        let svc = Service::new(
+            ServiceOptions::new("tls-cap-test")
+                .host("127.0.0.1")
+                .port(port),
+        );
         svc.run();
     });
 

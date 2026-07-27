@@ -62,8 +62,52 @@ impl GatherQuestion {
         }
     }
 
+    // ---- Readers, one per construction parameter -------------------------
+    // The Python reference keeps every ctor arg as a public instance attribute
+    // (`GatherQuestion.key` / `.question` / `.type` / `.confirm` / `.prompt` /
+    // `.functions` / `.isolated`), so a caller can read back what they passed.
+
     pub fn key(&self) -> &str {
         &self.key
+    }
+
+    /// The question text presented to the caller.
+    #[must_use]
+    pub fn question(&self) -> &str {
+        &self.question
+    }
+
+    /// The answer type. The reference names this attribute `type`, which is a
+    /// Rust keyword — the field is spelled `question_type` and the enumerator's
+    /// rename table folds this reader onto the reference `type`. The wire key
+    /// (`"type"`, emitted by `to_value`) is unchanged.
+    #[must_use]
+    pub fn question_type(&self) -> &str {
+        &self.question_type
+    }
+
+    /// Whether the answer is read back to the caller for confirmation.
+    #[must_use]
+    pub fn confirm(&self) -> bool {
+        self.confirm
+    }
+
+    /// The per-question prompt override, if set.
+    #[must_use]
+    pub fn prompt(&self) -> Option<&str> {
+        self.prompt.as_deref()
+    }
+
+    /// The per-question function allow-list, if set.
+    #[must_use]
+    pub fn functions(&self) -> Option<&[String]> {
+        self.functions.as_deref()
+    }
+
+    /// The per-question `isolated` override. `None` inherits the gather default.
+    #[must_use]
+    pub fn isolated(&self) -> Option<bool> {
+        self.isolated
     }
 
     #[must_use]

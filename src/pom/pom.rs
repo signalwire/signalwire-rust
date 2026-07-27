@@ -71,6 +71,11 @@ pub struct PromptObjectModel {
     /// title (Python raises `ValueError` otherwise — see
     /// `add_section`).
     pub sections: Vec<Section>,
+    /// When true, `render_markdown` writes per-section numbering diagnostics.
+    /// Mirrors the reference's `PromptObjectModel(debug=False)` ctor param,
+    /// which it stores as the public attribute `self.debug` and consults at
+    /// `pom.py:509` and `:530`.
+    pub debug: bool,
 }
 
 impl PromptObjectModel {
@@ -79,6 +84,16 @@ impl PromptObjectModel {
     pub fn new() -> Self {
         PromptObjectModel {
             sections: Vec::new(),
+            debug: false,
+        }
+    }
+
+    /// Construct an empty model with debug rendering diagnostics enabled.
+    /// Mirrors the reference's `PromptObjectModel(debug=True)`.
+    pub fn with_debug(debug: bool) -> Self {
+        PromptObjectModel {
+            sections: Vec::new(),
+            debug,
         }
     }
 
@@ -307,9 +322,22 @@ impl PromptObjectModel {
     pub fn render_markdown(&self) -> String {
         let any_section_numbered = self.sections.iter().any(|s| s.numbered == Some(true));
 
+        // Debug diagnostics, mirroring the reference (`pom.py:509-513`).
+        if self.debug {
+            println!("Any section numbered: {any_section_numbered}");
+            for (i, section) in self.sections.iter().enumerate() {
+                println!(
+                    "Section {}: {:?}, numbered={:?}",
+                    i + 1,
+                    section.title,
+                    section.numbered
+                );
+            }
+        }
+
         let mut md: Vec<String> = Vec::new();
         let mut section_counter: usize = 0;
-        for section in &self.sections {
+        for (i, section) in self.sections.iter().enumerate() {
             let section_number: Vec<usize> = if section.title.is_some() {
                 section_counter += 1;
                 if any_section_numbered && section.numbered != Some(false) {
@@ -320,6 +348,13 @@ impl PromptObjectModel {
             } else {
                 Vec::new()
             };
+            // Per-section diagnostic, mirroring the reference (`pom.py:530-533`).
+            if self.debug {
+                println!(
+                    "Rendering section {i}: {:?} with section_number={section_number:?}",
+                    section.title
+                );
+            }
             md.push(section.render_markdown_at(2, &section_number));
         }
 

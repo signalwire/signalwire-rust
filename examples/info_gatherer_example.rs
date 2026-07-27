@@ -3,18 +3,19 @@
 //
 //! `InfoGatherer` Example — collect answers to a set of questions using the prefab.
 
-use signalwire::prefabs::InfoGathererAgent;
+use signalwire::prefabs::{InfoGathererAgent, InfoGathererOptions};
 
 fn main() {
     let mut agent = InfoGathererAgent::new(
-        "contact-form",
-        vec![
+        InfoGathererOptions::new()
+            .name("contact-form")
+            .route("/contact")
+            .questions(vec![
             serde_json::json!({"key_name": "name", "question_text": "What is your full name?"}),
             serde_json::json!({"key_name": "phone", "question_text": "What is your phone number?", "confirm": true}),
             serde_json::json!({"key_name": "age", "question_text": "What is your age?"}),
             serde_json::json!({"key_name": "reason", "question_text": "What are you contacting us about today?"}),
-        ],
-        Some("/contact"),
+            ]),
     );
 
     agent

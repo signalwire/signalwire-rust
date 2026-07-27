@@ -40,14 +40,12 @@ fn main() {
     // sidecar's LLM can POST tool calls back to /swaig.
     let public_url = "https://your-host.example.com/sales-sidecar";
 
-    let mut service = Service::new(ServiceOptions {
-        name: "sales-sidecar".to_string(),
-        route: Some("/sales-sidecar".to_string()),
-        host: Some("0.0.0.0".to_string()),
-        port: Some(3000),
-        basic_auth_user: None,
-        basic_auth_password: None,
-    });
+    let mut service = Service::new(
+        ServiceOptions::new("sales-sidecar")
+            .route("/sales-sidecar")
+            .host("0.0.0.0")
+            .port(3000),
+    );
 
     // 1. Emit SWML — answer, ai_sidecar, hangup.
     //

@@ -170,8 +170,9 @@ pub use agent::{AgentBase, AgentOptions};
 pub use ai_chat::AIChatClient;
 pub use logging::ParseLevelError;
 pub use prefabs::{
-    BedrockAgent, BedrockOptions, ConciergeAgent, FAQBotAgent, InfoGathererAgent,
-    ReceptionistAgent, SurveyAgent,
+    BedrockAgent, BedrockOptions, ConciergeAgent, ConciergeOptions, FAQBotAgent, FAQBotOptions,
+    InfoGathererAgent, InfoGathererOptions, ReceptionistAgent, ReceptionistOptions, SurveyAgent,
+    SurveyOptions,
 };
 pub use rest::RestClient;
 pub use server::AgentServer;

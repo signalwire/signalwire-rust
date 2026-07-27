@@ -52,9 +52,28 @@ jobs:
         uses: actions/setup-python@v6
         with:
           python-version: '3.14'
+      # Install the porting-sdk gate scripts' declared dependencies. NOT optional: the
+      # enumerator reaches the reference oracle through generate_rest.py, which needs
+      # PyYAML, and a bare `except Exception: return None` turned its absence into an EMPTY
+      # oracle — 266 oracle-gated members silently failed to emit and the diff reported
+      # "311 Python symbol(s) missing from port", blaming a port that was correct. A dev box
+      # has PyYAML, so the failure is CI-only by construction. One manifest, shared by all
+      # ten repos; check_script_deps.py fails if a script imports something it omits.
+      - name: Install porting-sdk script dependencies
+        run: python3 -m pip install --quiet -r ${{ github.workspace }}/porting-sdk/scripts/requirements.txt
 
+
+      # PORTING_SDK is set EXPLICITLY rather than relying on the sibling-layout
+      # walk. The enumerator oracle-gates its field emission, so an unresolvable
+      # oracle is the difference between a correct snapshot and one missing every
+      # gated member — the trap that cost dotnet, go and cpp a CI investigation
+      # each (porting-sdk CAMPAIGN_STATE §4b, task #37). This layout happens to be
+      # sibling, so the walk would also resolve; naming it means a layout change
+      # cannot silently break the gate.
       - name: Enumerate Rust public API surface
         working-directory: signalwire-rust
+        env:
+          PORTING_SDK: ${{ github.workspace }}/porting-sdk
         run: python3 scripts/enumerate_surface.py
 
       - name: Diff against Python reference

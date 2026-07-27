@@ -68,14 +68,12 @@ fn main() {
     println!("{}", serde_json::to_string_pretty(&vip_document()).unwrap());
 
     // In production, on_request() would check caller ID and time to choose the right document.
-    let service = Service::new(ServiceOptions {
-        name: "routing".to_string(),
-        route: Some("/routing".to_string()),
-        host: Some("0.0.0.0".to_string()),
-        port: Some(3000),
-        basic_auth_user: None,
-        basic_auth_password: None,
-    });
+    let service = Service::new(
+        ServiceOptions::new("routing")
+            .route("/routing")
+            .host("0.0.0.0")
+            .port(3000),
+    );
 
     println!("\nRouting service at http://localhost:3000/routing");
     service.run();

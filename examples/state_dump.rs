@@ -22,7 +22,7 @@ use std::collections::BTreeMap;
 use serde_json::{Map, Value, json};
 use signalwire::agent::AgentBase;
 use signalwire::agent::AgentOptions;
-use signalwire::prefabs::InfoGathererAgent;
+use signalwire::prefabs::{InfoGathererAgent, InfoGathererOptions};
 use signalwire::server::AgentServer;
 use signalwire::skills::skill_base::SkillBase;
 use signalwire::skills::skill_registry::SkillRegistry;
@@ -242,7 +242,12 @@ fn main() {
 
     // ---- InfoGatherer.submit_answer: records answer + advances index ----
     {
-        let ig = InfoGathererAgent::new("demo", questions(), Some("/demo"));
+        let ig = InfoGathererAgent::new(
+            InfoGathererOptions::new()
+                .name("demo")
+                .route("/demo")
+                .questions(questions()),
+        );
         out.insert(
             "infogatherer_submit_answer_first",
             submit_answer_delta(
@@ -257,7 +262,12 @@ fn main() {
         );
     }
     {
-        let ig = InfoGathererAgent::new("demo", questions(), Some("/demo"));
+        let ig = InfoGathererAgent::new(
+            InfoGathererOptions::new()
+                .name("demo")
+                .route("/demo")
+                .questions(questions()),
+        );
         out.insert(
             "infogatherer_submit_answer_last",
             submit_answer_delta(

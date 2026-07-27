@@ -7,14 +7,12 @@ use serde_json::json;
 use signalwire::swml::service::{Service, ServiceOptions};
 
 fn main() {
-    let mut service = Service::new(ServiceOptions {
-        name: "swml-demo".to_string(),
-        route: Some("/swml-demo".to_string()),
-        host: Some("0.0.0.0".to_string()),
-        port: Some(3000),
-        basic_auth_user: None,
-        basic_auth_password: None,
-    });
+    let mut service = Service::new(
+        ServiceOptions::new("swml-demo")
+            .route("/swml-demo")
+            .host("0.0.0.0")
+            .port(3000),
+    );
 
     // Build a complex SWML document
     service.document_mut().reset();

@@ -73,9 +73,18 @@ fn test_execute_unknown_method_yields_rpc_variant() {
     let result = client.execute_blocking("bogus.method", json!({"x": 1}));
     let err = result.expect_err("unknown method must fail");
     match &err {
-        RelayError::Rpc { method, message } => {
+        RelayError::Rpc {
+            method,
+            message,
+            code,
+        } => {
             assert_eq!(method, "bogus.method", "the failing method is carried");
             assert!(!message.is_empty(), "server message is preserved");
+            // The mock's JSON-RPC `error.code` reaches the caller.
+            assert!(
+                code.is_some(),
+                "the JSON-RPC error code is carried, not discarded"
+            );
         }
         other => panic!("expected RelayError::Rpc, got {other:?}"),
     }

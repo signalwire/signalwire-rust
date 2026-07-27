@@ -22,6 +22,7 @@ relative path; moving them under `eng/` would break the shared audit pipeline
 - port_signatures.json — regenerated + read at root by scripts/run-ci.sh, scripts/enumerate_signatures.py, and porting-sdk diff_port_signatures.py (orchestrator, 2026-07-06)
 - port_signatures.baseline.json — load-bearing SEMVER-DIFF release-floor file; mirrors port_signatures.json; must be at root (read by porting-sdk semver_diff.py), must not ship (Cargo.toml exclude) (orchestrator, 2026-07-13)
 - port_surface.json — regenerated + read at root by scripts/run-ci.sh, scripts/enumerate_surface.py, and porting-sdk audit_docs.py/ignore_ledger_verify.py (orchestrator, 2026-07-06)
+- port_surface_native.json — NATIVE-name sidecar written by scripts/enumerate_surface.py and read at exactly this path by porting-sdk suites/_doc_audit.py (`repo / "port_surface_native.json"` -> audit_docs --native-names); the path is the contract, so it must be at root; must not ship (Cargo.toml exclude) (b2-rust-tail, 2026-07-26)
 - ROOT_HYGIENE_ALLOW.md — this allowlist itself, required at root by porting-sdk root_hygiene.py (orchestrator, 2026-07-06)
 - SUPPRESSION_LEDGER.md — required audit-contract file read at repo root by porting-sdk suppression_ledger.py (`repo / "SUPPRESSION_LEDGER.md"`); ledgers the crate's 49 file-level #![allow] (orchestrator, 2026-07-09)
 - WIRE_VIOLATIONS_ALLOW.md — STRICT-MOCKS signed-exception ledger read by porting-sdk assert_no_wire_violations.py / examples_run.py / snippet_run.py at repo root (mike@signalwire.com, 2026-07-18)

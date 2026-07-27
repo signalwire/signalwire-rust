@@ -102,12 +102,18 @@ surface_fresh_gate() {
     local committed="$PORT_ROOT/.sw-tmp/committed_surface.json"
     git show HEAD:port_surface.json > "$committed" 2>/dev/null \
         || cp "$PORT_ROOT/port_surface.json" "$committed"
-    python3 scripts/enumerate_surface.py || { git checkout -- port_surface.json; return 1; }
+    # The enumerator writes the native-name sidecar alongside the surface, so both
+    # are restored — leaving a regenerated sidecar behind would make the tree dirty
+    # for every later gate.
+    python3 scripts/enumerate_surface.py || {
+        git checkout -- port_surface.json port_surface_native.json
+        return 1
+    }
     python3 "$PORTING_SDK_DIR/scripts/check_surface_freshness.py" \
         --committed "$committed" \
         --fresh "$PORT_ROOT/port_surface.json"
     local rc=$?
-    git checkout -- port_surface.json
+    git checkout -- port_surface.json port_surface_native.json
     return $rc
 }
 
@@ -322,6 +328,15 @@ sched_gate DRIFT deps=SIGNATURES desc="diff_port_signatures vs python reference"
 sched_gate SURFACE-FRESH res=surface desc="check_surface_freshness vs committed port_surface.json" \
     --fn surface_fresh_gate
 
+# TYPE-EROSION: a port may not erase a type the reference DECLARES. compare_param treats
+# `any` on EITHER side as matching anything, so a port emitting `any` silently satisfies
+# every reference declaration — an unlimited opt-out. ConciergeAgent.hours_of_operation is
+# declared optional<dict<string,string>> and go still shipped a bare string, with no gate
+# red. RATCHET, not a hard gate: dynamic languages cannot always express a type, so this
+# banks the current count and fails only on REGRESSION. Drive the number DOWN; never up.
+sched_gate TYPE-EROSION desc="port did not erase a reference-declared param type (ratchet 55)" \
+    -- python3 "$PORTING_SDK_DIR/scripts/diff_port_type_erosion.py" --port rust --repo "$PORT_ROOT" --max 55
+
 # RELAY-VERB-RESULT-LOCK: the ~52 calling.* verbs on relay::Call return
 # Result<_, RelayError> (RUST-1). DRIFT tolerates a reversion (the enumerator
 # unwraps Result<T,E>→T so a bare-return verb records the same concrete type),
@@ -384,6 +399,12 @@ cargo build --quiet \
 # (ENVELOPE gate runs a dump-cmd).
 cargo build --quiet --example wait_liveness_dump --bin envelope-dump --bin ai-chat-dump 2>/dev/null || true
 
+# SECURITY-GATE PREBUILD — same rationale: SECURE-DEFAULT's differ runs a
+# dump-cmd, and SECRET-SCRUB-LIVE's differ arms a wall-clock deadline the moment
+# it launches its dump (it also gets --prebuild-cmd below, belt-and-braces so the
+# exclusion is gate-local and independent of ordering).
+cargo build --quiet --example secure_default_dump --example secret_scrub_dump 2>/dev/null || true
+
 sched_gate BEHAVIORAL-WIRE desc="diff_port_wire vs python oracle (Layer D)" \
     -- python3 "$PORTING_SDK_DIR/scripts/diff_port_wire.py" \
         --port rust \
@@ -419,6 +440,38 @@ sched_gate ENVELOPE desc="diff_port_envelope vs python oracle: conn-refused type
         --port rust \
         --dump-cmd 'cargo run -q --bin envelope-dump 2>/dev/null'
 
+# SECURE-DEFAULT (A1 / PSDK-4a) — the wire manifestation of `secure`. Drives
+# AgentBase through the shared secure_default corpus: a default-secure tool and a
+# `secure = false` tool, renders the SWML, and compares the per-fixture
+# {secure_default_true, wire_reflects_secure} classification against the python
+# oracle. `wire_reflects_secure` is measured off the RENDERED document — a per-tool
+# `__token` must be present for the secure tool and absent for the insecure one — so
+# this gate proves the port does not silently ship tools as unauthenticated. A fast
+# in-process SWML render (no live mock) → per-PR tier.
+sched_gate SECURE-DEFAULT desc="define_tool's secure state reaches the wire as the per-tool __token (Layer D vs python oracle)" \
+    -- python3 "$PORTING_SDK_DIR/scripts/diff_port_secure_default.py" \
+        --port rust \
+        --dump-cmd 'cargo run -q --example secure_default_dump 2>/dev/null'
+
+# The three STATIC security source-checks (PSDK-5/6, A5). rust wired NONE of them
+# even though all three pass, so a regression at any of these sites would have
+# shipped silently. Cheap greps over the port's own source → per-PR.
+#   SECRET-SCRUB  — the raw-frame-log credential-leak SHAPE. The per-PR companion
+#                   to SECRET-SCRUB-LIVE below (static catches the shape, live
+#                   catches the leaks a shape grep cannot see).
+#   TLS-VERIFY    — no hardcoded TLS-verify-off construct in the builtin-skill /
+#                   HTTP-client source.
+#   CA-VAR        — the REST source reads SIGNALWIRE_REST_CA_FILE and the RELAY
+#                   source reads SIGNALWIRE_RELAY_CA_FILE (exact fleet names).
+sched_gate SECRET-SCRUB desc="no raw-frame credential-log shape in the relay/skill source (static leg)" \
+    -- python3 "$PORTING_SDK_DIR/scripts/secret_scrub.py" --port rust --repo .
+
+sched_gate TLS-VERIFY desc="no TLS-verify-off construct in the builtin-skill / HTTP-client source" \
+    -- python3 "$PORTING_SDK_DIR/scripts/tls_verify.py" --port rust --repo .
+
+sched_gate CA-VAR desc="REST reads SIGNALWIRE_REST_CA_FILE and RELAY reads SIGNALWIRE_RELAY_CA_FILE (exact fleet names)" \
+    -- python3 "$PORTING_SDK_DIR/scripts/ca_var_parity.py" --port rust --repo .
+
 # AI-CHAT (COORDINATED pass rust:ai-chat-client <-> porting-sdk:ai-chat-client):
 # wire-behavioral gate for the AIChatClient. Drives the ai-chat-dump binary through
 # the shared ai_chat_corpus against porting-sdk's in-process mock_ai_chat and asserts
@@ -441,10 +494,16 @@ sched_gate FMT defer=1 desc="rustfmt via scripts/run-format.sh (local: auto-fix;
 sched_gate LINT defer=1 desc="cargo clippy --all-targets via scripts/run-lint.sh" \
     -- bash "$PORT_ROOT/scripts/run-lint.sh"
 
-sched_gate DOC-AUDIT res=surface desc="audit_docs vs port_surface.json" \
+# --native-names is load-bearing, not optional. port_surface.json holds the FOLDED
+# surface (reference spellings), so without the native-name sidecar every accessor
+# or options-struct member the enumerator folds becomes unresolvable in this crate's
+# own docs — which are correct, compiling code. See build_native_names() in
+# scripts/enumerate_surface.py.
+sched_gate DOC-AUDIT res=surface desc="audit_docs vs port_surface.json (+ native-name sidecar)" \
     -- python3 "$PORTING_SDK_DIR/scripts/audit_docs.py" \
         --root "$PORT_ROOT" \
         --surface "$PORT_ROOT/port_surface.json" \
+        --native-names "$PORT_ROOT/port_surface_native.json" \
         --ignore "$PORT_ROOT/DOC_AUDIT_IGNORE.md"
 
 sched_gate SURFACE-DIFF res=surface desc="diff_port_surface vs python_surface.json" \
@@ -590,6 +649,24 @@ sched_gate WAIT-LIVENESS tier=nightly defer=1 desc="RELAY Action::wait() blocks-
     -- python3 "$PORTING_SDK_DIR/scripts/diff_port_wait_liveness.py" --port rust \
         --prebuild-cmd "cargo build --quiet --example wait_liveness_dump" \
         --dump-cmd "cargo run --quiet --example wait_liveness_dump"
+
+# SECRET-SCRUB-LIVE (PSDK-5) — the BEHAVIORAL leg of the credential-hygiene
+# contract, complementing the STATIC source grep. examples/secret_scrub_dump.rs
+# drives a real RELAY connect + an inbound authorization.state re-auth frame at
+# SIGNALWIRE_LOG_LEVEL=debug with the corpus sentinels, captures the SDK's OWN
+# debug output (via a child re-exec, since Logger writes to fd 2), and classifies
+# each sentinel {leaked}. The differ compares against the python golden (all
+# false). A static grep cannot express this: the leak we found here was NOT at a
+# frame-log site — it was the project id echoed back inside the connect response's
+# `identity` field, which survives a key-shape-only scrub.
+# Live debug-level relay drive → tier=nightly (per the enterprise report's
+# "static per-PR + behavioral nightly"), deferred behind the cheap wave.
+# --prebuild-cmd keeps a cold cargo build off the differ's wall-clock deadline,
+# same rationale as WAIT-LIVENESS above.
+sched_gate SECRET-SCRUB-LIVE tier=nightly defer=1 desc="no credential sentinel reaches the debug log on a live RELAY connect + re-auth drive" \
+    -- python3 "$PORTING_SDK_DIR/scripts/diff_port_secret_scrub.py" --port rust \
+        --prebuild-cmd "cargo build --quiet --example secret_scrub_dump" \
+        --dump-cmd "cargo run --quiet --example secret_scrub_dump"
 
 # STRICT-MOCKS (§2.2) — nightly re-run of the RELAY suite with MOCK_RELAY_STRICT=1.
 sched_gate STRICT-MOCKS tier=nightly defer=1 desc="RELAY suite passes with the mock in 400-on-violation strict mode (MOCK_RELAY_STRICT=1)" \

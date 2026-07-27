@@ -39,6 +39,7 @@ Read by `SecurityConfig` (`src/core/security_config.rs`); all are secure-by-defa
 |----------|-------------|
 | `SIGNALWIRE_PROJECT_ID` | Project identifier |
 | `SIGNALWIRE_API_TOKEN` | API token |
+| `SIGNALWIRE_JWT_TOKEN` | RELAY JWT — the **alternative** to `SIGNALWIRE_PROJECT_ID` + `SIGNALWIRE_API_TOKEN`, not an addition. When set, `Client::from_env` authenticates with the JWT alone (the project id is inside the token) and neither of those two is required; when unset, both are. The connect handshake sends one credential set or the other, never both |
 | `SIGNALWIRE_SPACE` | Space hostname (e.g. `example.signalwire.com`) |
 | `SIGNALWIRE_REST_BASE_URL` | Override the REST base URL (used by `RestClient::from_env`). When set, it replaces the `https://{SIGNALWIRE_SPACE}` resolution — point the client at a regional host, a proxy, or a local fixture without a code change; `SIGNALWIRE_SPACE` is then not required |
 | `SIGNALWIRE_RELAY_HOST` | Override the RELAY WebSocket host (advanced/testing) |

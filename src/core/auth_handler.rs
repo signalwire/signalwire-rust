@@ -29,6 +29,12 @@ pub struct AuthHandler {
     bearer_token: Option<String>,
     api_key: Option<String>,
     api_key_header: String,
+    /// The config this handler was built from. The reference keeps its ctor arg
+    /// as the public attribute `AuthHandler.security_config`
+    /// (`auth_handler.py:63`) and re-reads it on every auth decision
+    /// (`:77`, `:85`, `:90`, `:95`), so a caller can inspect the config the
+    /// handler is actually enforcing.
+    security_config: SecurityConfig,
 }
 
 impl AuthHandler {
@@ -45,7 +51,15 @@ impl AuthHandler {
             bearer_token: None,
             api_key: None,
             api_key_header: "X-API-Key".to_string(),
+            security_config: security_config.clone(),
         }
+    }
+
+    /// The security config this handler was built from
+    /// (reference attribute `AuthHandler.security_config`).
+    #[must_use]
+    pub fn security_config(&self) -> &SecurityConfig {
+        &self.security_config
     }
 
     /// Enable Bearer-token auth with the given token.

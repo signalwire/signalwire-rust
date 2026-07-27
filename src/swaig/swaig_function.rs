@@ -34,6 +34,7 @@ pub struct SwaigFunction {
     wait_file_loops: Option<i64>,
     webhook_url: Option<String>,
     required: Vec<String>,
+    is_typed_handler: bool,
     extra_swaig_fields: Map<String, Value>,
 }
 
@@ -55,43 +56,61 @@ impl SwaigFunction {
             wait_file_loops: None,
             webhook_url: None,
             required: Vec::new(),
+            is_typed_handler: false,
             extra_swaig_fields: Map::new(),
         }
     }
 
+    // ---- Builder setters ---------------------------------------------------
+    //
+    // Spelled `set_<x>` / `with_<x>`, this crate's writer convention (see
+    // `FunctionResult::set_response`, `Step::set_functions`). They used to take
+    // the BARE field name, which collided with the reader of the same name that
+    // the Python reference exposes as a plain instance attribute
+    // (`SWAIGFunction.secure` / `.required` / `.fillers` / …). Rust cannot host
+    // both spellings, so a caller could SET each of these and never READ it back.
+
     /// Set whether the function requires SWAIG token validation.
     #[must_use]
-    pub fn secure(mut self, secure: bool) -> Self {
+    pub fn set_secure(mut self, secure: bool) -> Self {
         self.secure = secure;
         self
     }
 
     /// Set the required parameter names.
     #[must_use]
-    pub fn required(mut self, required: Vec<String>) -> Self {
+    pub fn set_required(mut self, required: Vec<String>) -> Self {
         self.required = required;
         self
     }
 
     /// Set an external webhook URL (marks the function external).
     #[must_use]
-    pub fn webhook_url(mut self, url: &str) -> Self {
+    pub fn set_webhook_url(mut self, url: &str) -> Self {
         self.webhook_url = Some(url.to_string());
         self
     }
 
     /// Set filler phrases keyed by language code.
     #[must_use]
-    pub fn fillers(mut self, fillers: Value) -> Self {
+    pub fn set_fillers(mut self, fillers: Value) -> Self {
         self.fillers = Some(fillers);
         self
     }
 
     /// Set a wait-file URL and loop count.
     #[must_use]
-    pub fn wait_file(mut self, url: &str, loops: Option<i64>) -> Self {
+    pub fn set_wait_file(mut self, url: &str, loops: Option<i64>) -> Self {
         self.wait_file = Some(url.to_string());
         self.wait_file_loops = loops;
+        self
+    }
+
+    /// Mark the handler as a TYPED handler (built via
+    /// [`crate::agent::type_inference::create_typed_handler_wrapper`]).
+    #[must_use]
+    pub fn set_is_typed_handler(mut self, is_typed: bool) -> Self {
+        self.is_typed_handler = is_typed;
         self
     }
 
@@ -102,10 +121,76 @@ impl SwaigFunction {
         self
     }
 
+    // ---- Readers -----------------------------------------------------------
+    //
+    // One per construction parameter. The Python reference stores each ctor arg
+    // as a public instance attribute, so a caller can read back everything they
+    // passed; these are that same read in Rust's accessor spelling.
+
     /// The function name.
     #[must_use]
     pub fn name(&self) -> &str {
         &self.name
+    }
+
+    /// The LLM-facing description.
+    #[must_use]
+    pub fn description(&self) -> &str {
+        &self.description
+    }
+
+    /// The JSON-Schema parameters object.
+    #[must_use]
+    pub fn parameters(&self) -> &Value {
+        &self.parameters
+    }
+
+    /// The handler invoked when the model calls this tool.
+    #[must_use]
+    pub fn handler(&self) -> &SwaigHandler {
+        &self.handler
+    }
+
+    /// Whether the function requires SWAIG token validation.
+    #[must_use]
+    pub fn secure(&self) -> bool {
+        self.secure
+    }
+
+    /// Filler phrases keyed by language code, if configured.
+    #[must_use]
+    pub fn fillers(&self) -> Option<&Value> {
+        self.fillers.as_ref()
+    }
+
+    /// The wait-file URL, if configured.
+    #[must_use]
+    pub fn wait_file(&self) -> Option<&str> {
+        self.wait_file.as_deref()
+    }
+
+    /// The wait-file loop count, if configured.
+    #[must_use]
+    pub fn wait_file_loops(&self) -> Option<i64> {
+        self.wait_file_loops
+    }
+
+    /// The external webhook URL, if configured.
+    #[must_use]
+    pub fn webhook_url(&self) -> Option<&str> {
+        self.webhook_url.as_deref()
+    }
+
+    /// The required parameter names.
+    #[must_use]
+    pub fn required(&self) -> &[String] {
+        &self.required
+    }
+
+    /// Whether the handler is a typed handler.
+    #[must_use]
+    pub fn is_typed_handler(&self) -> bool {
+        self.is_typed_handler
     }
 
     /// Whether an external webhook URL is configured.
@@ -115,6 +200,9 @@ impl SwaigFunction {
     }
 
     /// Whether the function requires token validation.
+    ///
+    /// Alias of [`SwaigFunction::secure`], kept because internal call sites and
+    /// the security fixtures read through it.
     #[must_use]
     pub fn is_secure(&self) -> bool {
         self.secure
@@ -264,8 +352,8 @@ mod tests {
     #[test]
     fn test_to_swaig_wraps_bare_properties_with_required() {
         let props = json!({"text": {"type": "string"}});
-        let f =
-            SwaigFunction::new("t", echo_handler(), "d", props).required(vec!["text".to_string()]);
+        let f = SwaigFunction::new("t", echo_handler(), "d", props)
+            .set_required(vec!["text".to_string()]);
         let sw = f.to_swaig("https://x", None, None);
         assert_eq!(sw["parameters"]["type"], "object");
         assert_eq!(sw["parameters"]["required"], json!(["text"]));
@@ -274,8 +362,8 @@ mod tests {
     #[test]
     fn test_validate_args_required_missing() {
         let props = json!({"text": {"type": "string"}});
-        let f =
-            SwaigFunction::new("t", echo_handler(), "d", props).required(vec!["text".to_string()]);
+        let f = SwaigFunction::new("t", echo_handler(), "d", props)
+            .set_required(vec!["text".to_string()]);
         let (ok, errs) = f.validate_args(&Map::new());
         assert!(!ok);
         assert!(errs[0].contains("required"));
@@ -292,8 +380,8 @@ mod tests {
     #[test]
     fn test_external_and_secure_flags() {
         let f = SwaigFunction::new("t", echo_handler(), "d", json!({}))
-            .secure(true)
-            .webhook_url("https://ext");
+            .set_secure(true)
+            .set_webhook_url("https://ext");
         assert!(f.is_secure());
         assert!(f.is_external());
         assert_eq!(f.name(), "t");

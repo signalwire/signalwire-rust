@@ -41,14 +41,12 @@ fn main() {
         .and_then(|s| s.parse().ok())
         .unwrap_or(3000);
 
-    let mut service = Service::new(ServiceOptions {
-        name: "standalone-swaig".to_string(),
-        route: Some("/standalone".to_string()),
-        host: Some("0.0.0.0".to_string()),
-        port: Some(port),
-        basic_auth_user: None,
-        basic_auth_password: None,
-    });
+    let mut service = Service::new(
+        ServiceOptions::new("standalone-swaig")
+            .route("/standalone")
+            .host("0.0.0.0")
+            .port(port),
+    );
 
     // 1. Build a minimal SWML document. Any verbs are fine — the SWAIG
     //    HTTP surface is independent of what the document contains.

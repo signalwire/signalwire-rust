@@ -4,7 +4,7 @@
 //! Receptionist Agent — route calls to departments.
 
 use serde_json::json;
-use signalwire::prefabs::ReceptionistAgent;
+use signalwire::prefabs::{ReceptionistAgent, ReceptionistOptions};
 
 fn main() {
     let departments = vec![
@@ -34,10 +34,10 @@ fn main() {
         "Hello, thank you for calling ACME Corporation. How may I direct your call today?";
 
     let mut agent = ReceptionistAgent::new(
-        "acme-receptionist",
-        departments,
-        Some(greeting),
-        Some("/reception"),
+        ReceptionistOptions::new(departments)
+            .name("acme-receptionist")
+            .greeting(greeting)
+            .route("/reception"),
     );
 
     agent

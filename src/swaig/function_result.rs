@@ -130,6 +130,21 @@ impl FunctionResult {
         self
     }
 
+    /// The response text. The Python reference exposes this as the public
+    /// instance attribute `FunctionResult.response`, so a caller can read back
+    /// what `set_response` / `with_response` stored.
+    #[must_use]
+    pub fn response(&self) -> &str {
+        &self.response
+    }
+
+    /// Whether the AI re-processes this result before speaking
+    /// (reference attribute `FunctionResult.post_process`).
+    #[must_use]
+    pub fn post_process(&self) -> bool {
+        self.post_process
+    }
+
     pub fn add_action(&mut self, action: Value) -> &mut Self {
         self.actions.push(action);
         self
