@@ -156,7 +156,14 @@ CLASS_MODULE_MAP: dict[str, str] = {
     # CLASS_RENAME_MAP renames them to the Python ``...Namespace`` form,
     # which is what _translate_class returns and CLASS_MODULE_MAP keys
     # are looked up against.
-    "CallingNamespace": "signalwire.rest.namespaces.calling",
+    #
+    # ⚠ Only namespaces the reference STILL spells ``...Namespace`` belong
+    # here. ``Calling``/``Mfa``/``Queues``/``NumberGroups``/``SipProfile``
+    # were regenerated in the Python reference as short-named classes in
+    # ``*_resources_generated`` modules; their stale rename entries used to
+    # rewrite Rust's already-correct names into classes the reference no
+    # longer defines, which surfaced as five phantom RestClient
+    # return-mismatch drifts. See CLASS_RENAME_MAP below.
     "FabricNamespace": "signalwire.rest.namespaces.fabric",
     # Compat namespace + sub-resources
     "CompatNamespace": "signalwire.rest.namespaces.compat",
@@ -172,11 +179,6 @@ CLASS_MODULE_MAP: dict[str, str] = {
     "CompatRecordings": "signalwire.rest.namespaces.compat",
     "CompatTranscriptions": "signalwire.rest.namespaces.compat",
     "CompatTokens": "signalwire.rest.namespaces.compat",
-    # Standalone Relay namespaces newly modeled as proper structs.
-    "MfaResource": "signalwire.rest.namespaces.mfa",
-    "SipProfileResource": "signalwire.rest.namespaces.sip_profile",
-    "NumberGroupsResource": "signalwire.rest.namespaces.number_groups",
-    "QueuesResource": "signalwire.rest.namespaces.queues",
     "ProjectNamespace": "signalwire.rest.namespaces.project",
     "ProjectTokens": "signalwire.rest.namespaces.project",
     "DatasphereNamespace": "signalwire.rest.namespaces.datasphere",
@@ -769,14 +771,20 @@ CLASS_RENAME_MAP: dict[str, str] = {
     "AiVerbHandler": "AIVerbHandler",
     "SwaigFunction": "SWAIGFunction",
     "Client": "RelayClient",  # within relay/ module
-    "Calling": "CallingNamespace",
     "Fabric": "FabricNamespace",
+    # ⚠ Do NOT re-add renames for Calling / Mfa / Queues / NumberGroups /
+    # SipProfile. The Python reference generates those as SHORT-named classes
+    # (`Calling` in `calling_resources_generated`, `Mfa`/`Queues`/
+    # `NumberGroups`/`SipProfile` in `relay_rest_resources_generated`) — the
+    # exact names Rust already uses. The old `Calling → CallingNamespace`
+    # entries dated from a reference layout that no longer exists; because
+    # `translate_rust_type` builds every `class:` return through
+    # `_translate_class`, they rewrote `RestClient::calling()`'s correct
+    # return type into a class the oracle has never heard of, producing five
+    # phantom `return-mismatch` drifts. A rename is only ever correct when
+    # the REFERENCE genuinely spells the class differently.
     # Compat namespace + sub-resources (Rust short names → Python class names).
     "Compat": "CompatNamespace",
-    "Mfa": "MfaResource",
-    "SipProfile": "SipProfileResource",
-    "NumberGroups": "NumberGroupsResource",
-    "Queues": "QueuesResource",
     "Project": "ProjectNamespace",
     # Video / logs / registry namespace renames (Rust short → Python class)
     "Video": "VideoNamespace",

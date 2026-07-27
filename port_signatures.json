@@ -24034,7 +24034,7 @@
                   "kind": "self"
                 }
               ],
-              "returns": "class:signalwire.rest.namespaces.calling.CallingNamespace"
+              "returns": "class:signalwire.calling.Calling"
             },
             "chat": {
               "params": [
@@ -24119,7 +24119,7 @@
                   "kind": "self"
                 }
               ],
-              "returns": "class:signalwire.rest.namespaces.mfa.MfaResource"
+              "returns": "class:signalwire.mfa.Mfa"
             },
             "number_groups": {
               "params": [
@@ -24128,7 +24128,7 @@
                   "kind": "self"
                 }
               ],
-              "returns": "class:signalwire.rest.namespaces.number_groups.NumberGroupsResource"
+              "returns": "class:signalwire.numbergroups.NumberGroups"
             },
             "phone_numbers": {
               "params": [
@@ -24182,7 +24182,7 @@
                   "kind": "self"
                 }
               ],
-              "returns": "class:signalwire.rest.namespaces.queues.QueuesResource"
+              "returns": "class:signalwire.queues.Queues"
             },
             "recordings": {
               "params": [
@@ -24218,7 +24218,7 @@
                   "kind": "self"
                 }
               ],
-              "returns": "class:signalwire.rest.namespaces.sip_profile.SipProfileResource"
+              "returns": "class:signalwire.sipprofile.SipProfile"
             },
             "space": {
               "params": [
