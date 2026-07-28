@@ -1,9 +1,9 @@
 {
   "baseline_version": "3.0.0",
   "version": "2",
-  "generated_from": "signalwire-rust @ 461de63 (v3.0.0 release floor, commit-anchored) via cargo rustdoc-json (FORMAT_VERSION 57)",
-  "generated_from_tag": "461de63e23577a9c3492f689e2505abde97b269f",
-  "tag_sha": "461de63e23577a9c3492f689e2505abde97b269f",
+  "generated_from": "signalwire-rust @ 1178517 (v3.0.0 release floor, re-anchored for the synthesized-__init__ surface)",
+  "generated_from_tag": "1178517ff3b8f9f0d427129fa63b719283904cee",
+  "tag_sha": "1178517ff3b8f9f0d427129fa63b719283904cee",
   "modules": {
     "signalwire": {
       "functions": {
@@ -21704,6 +21704,15 @@
                 }
               ],
               "returns": "string"
+            },
+            "__init__": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "void"
             }
           }
         },
@@ -21763,6 +21772,15 @@
                 }
               ],
               "returns": "any"
+            },
+            "__init__": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "void"
             }
           }
         },
@@ -21795,6 +21813,15 @@
                 }
               ],
               "returns": "string"
+            },
+            "__init__": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "void"
             }
           }
         },
@@ -21845,6 +21872,15 @@
                 }
               ],
               "returns": "string"
+            },
+            "__init__": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "void"
             }
           }
         },
@@ -21886,6 +21922,15 @@
                 }
               ],
               "returns": "string"
+            },
+            "__init__": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "void"
             }
           }
         },
@@ -21918,6 +21963,15 @@
                 }
               ],
               "returns": "class:signalwire.value.Value"
+            },
+            "__init__": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "void"
             }
           }
         },
@@ -21941,6 +21995,15 @@
                 }
               ],
               "returns": "any"
+            },
+            "__init__": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "void"
             }
           }
         },
@@ -21973,6 +22036,15 @@
                 }
               ],
               "returns": "any"
+            },
+            "__init__": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "void"
             }
           }
         },
@@ -22014,6 +22086,15 @@
                 }
               ],
               "returns": "string"
+            },
+            "__init__": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "void"
             }
           }
         },
@@ -22037,6 +22118,15 @@
                 }
               ],
               "returns": "string"
+            },
+            "__init__": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "void"
             }
           }
         },
@@ -22184,6 +22274,15 @@
                 }
               ],
               "returns": "any"
+            },
+            "__init__": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "void"
             }
           }
         },
@@ -22207,6 +22306,15 @@
                 }
               ],
               "returns": "string"
+            },
+            "__init__": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "void"
             }
           }
         },
@@ -22311,6 +22419,15 @@
                 }
               ],
               "returns": "string"
+            },
+            "__init__": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "void"
             }
           }
         },
@@ -22424,6 +22541,15 @@
                 }
               ],
               "returns": "string"
+            },
+            "__init__": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "void"
             }
           }
         },
@@ -22456,6 +22582,15 @@
                 }
               ],
               "returns": "string"
+            },
+            "__init__": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "void"
             }
           }
         },
@@ -22488,6 +22623,15 @@
                 }
               ],
               "returns": "string"
+            },
+            "__init__": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "void"
             }
           }
         },
@@ -22556,6 +22700,15 @@
                 }
               ],
               "returns": "string"
+            },
+            "__init__": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "void"
             }
           }
         },
@@ -22624,6 +22777,15 @@
                 }
               ],
               "returns": "string"
+            },
+            "__init__": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "void"
             }
           }
         },
@@ -22674,6 +22836,15 @@
                 }
               ],
               "returns": "string"
+            },
+            "__init__": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "void"
             }
           }
         },
@@ -22751,6 +22922,15 @@
                 }
               ],
               "returns": "float"
+            },
+            "__init__": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "void"
             }
           }
         },
@@ -22783,6 +22963,15 @@
                 }
               ],
               "returns": "string"
+            },
+            "__init__": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "void"
             }
           }
         },
@@ -22833,6 +23022,15 @@
                 }
               ],
               "returns": "string"
+            },
+            "__init__": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "void"
             }
           }
         },
@@ -22883,6 +23081,15 @@
                 }
               ],
               "returns": "class:signalwire.value.Value"
+            },
+            "__init__": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "void"
             }
           }
         },
@@ -22951,6 +23158,15 @@
                 }
               ],
               "returns": "string"
+            },
+            "__init__": {
+              "params": [
+                {
+                  "name": "self",
+                  "kind": "self"
+                }
+              ],
+              "returns": "void"
             }
           }
         }
