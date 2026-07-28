@@ -46,7 +46,6 @@ impl Spider {
     }
 
     /// The `XPath` expressions whose elements are removed before text extraction.
-    /// Reference parity: `SpiderSkill.remove_xpaths`.
     #[must_use]
     pub fn remove_xpaths(&self) -> &[String] {
         &self.remove_xpaths
@@ -375,9 +374,8 @@ mod tests {
         assert!(skill.setup());
     }
 
-    /// Reference parity: `SpiderSkill.remove_xpaths` is PREFILLED at
-    /// construction with the 7 element expressions, not an empty list
-    /// (`skills/spider/skill.py:191-199`).
+    /// `remove_xpaths` is PREFILLED at construction with the 7 element
+    /// expressions, not an empty list.
     #[test]
     fn test_remove_xpaths_default_is_prefilled() {
         let skill = Spider::new(Map::new());

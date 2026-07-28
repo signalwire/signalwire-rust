@@ -1554,9 +1554,9 @@ mod tests {
         assert_eq!(svc.port(), 3000);
     }
 
-    /// Reference parity (`swml_service.py:143-146`): `SWMLService` exposes
-    /// `ssl_enabled` / `domain` / `ssl_cert_path` / `ssl_key_path` as derived
-    /// reads off the resolved security config. Assert they track `security()`
+    /// `SWMLService` exposes `ssl_enabled` / `domain` / `ssl_cert_path` /
+    /// `ssl_key_path` as derived reads off the resolved security config.
+    /// Assert they track `security()`
     /// exactly rather than holding an independent copy.
     #[test]
     fn test_ssl_accessors_derive_from_security_config() {
