@@ -418,7 +418,7 @@ pub struct AgentBase {
     /// `internal_fillers: Vec<String>` above to preserve backward
     /// compatibility.
     internal_fillers_map: HashMap<String, HashMap<String, Vec<String>>>,
-    debug_events_level: Option<String>,
+    debug_events_level: Option<i64>,
 
     // ── LLM params ──────────────────────────────────────────────────────
     prompt_llm_params: Map<String, Value>,
@@ -519,7 +519,7 @@ impl Clone for AgentBase {
             native_functions: self.native_functions.clone(),
             internal_fillers: self.internal_fillers.clone(),
             internal_fillers_map: self.internal_fillers_map.clone(),
-            debug_events_level: self.debug_events_level.clone(),
+            debug_events_level: self.debug_events_level,
             prompt_llm_params: self.prompt_llm_params.clone(),
             post_prompt_llm_params: self.post_prompt_llm_params.clone(),
             pre_answer_verbs: self.pre_answer_verbs.clone(),
@@ -1416,19 +1416,17 @@ impl AgentBase {
         self
     }
 
-    /// `level` is `Option<&str>` because the reference declares it optional
-    /// (`level: int = 1`): `None` is the omit-it call and, exactly like the
-    /// reference's no-arg call, still ENABLES debug events at the base tier.
+    /// Enable the debug-event webhook at `level`.
     ///
-    /// The string-label-vs-int-level TYPE divergence is the pre-existing
-    /// documented signature omission, so no static default is recorded here —
-    /// the string `"1"` is not the reference's int `1`, and recording it would
-    /// assert a default this port does not actually agree on.
-    pub fn enable_debug_events(&mut self, level: Option<&str>) -> &mut Self {
-        self.debug_events_level = Some(match level {
-            Some(l) => l.to_string(),
-            None => "1".to_string(),
-        });
+    /// `level` is `Option<i64>` because the reference declares it optional
+    /// (`level: int = 1`): `None` is the omit-it call and, exactly like the
+    /// reference's no-arg call, enables debug events at the base tier `1`.
+    ///
+    /// The level is an INTEGER tier, not a label: the reference emits it as
+    /// `params.debug_webhook_level` (`core/agent_base.py:1259`) and this port's
+    /// own `schema.json` types `debug_webhook_level` as `integer`.
+    pub fn enable_debug_events(&mut self, level: Option<i64>) -> &mut Self {
+        self.debug_events_level = Some(level.unwrap_or(1));
         self
     }
 
@@ -2098,8 +2096,13 @@ impl AgentBase {
         if !self.internal_fillers.is_empty() {
             merged_params.insert("internal_fillers".to_string(), json!(self.internal_fillers));
         }
-        if let Some(ref level) = self.debug_events_level {
-            merged_params.insert("debug_events".to_string(), json!(level));
+        if let Some(level) = self.debug_events_level {
+            // The wire key is `debug_webhook_level` and it carries an INTEGER
+            // tier — see the reference (`core/agent_base.py:1259`) and this
+            // crate's embedded `schema.json`, which types it as `integer` and
+            // has no `debug_events` param at all. `debug_events` is the webhook
+            // PATH segment, never a params key.
+            merged_params.insert("debug_webhook_level".to_string(), json!(level));
         }
         if !merged_params.is_empty() {
             ai.insert("params".to_string(), Value::Object(merged_params));
@@ -2819,8 +2822,14 @@ mod tests {
 
         let mut pom = agent.pom().unwrap();
         // Mutate the returned PromptObjectModel; agent state must be unaffected.
-        pom.add_section_with(Some("Injected".to_string()), "ib")
-            .unwrap();
+        pom.add_section_with(
+            Some("Injected".to_string()),
+            Some("ib".into()),
+            None,
+            None,
+            None,
+        )
+        .unwrap();
         pom.sections[0].title = Some("Hijacked".to_string());
 
         let fresh = agent.pom().unwrap();
@@ -3414,8 +3423,8 @@ mod tests {
     #[test]
     fn test_enable_debug_events() {
         let mut agent = AgentBase::new(default_options());
-        agent.enable_debug_events(Some("all"));
-        assert_eq!(agent.debug_events_level, Some("all".to_string()));
+        agent.enable_debug_events(Some(3));
+        assert_eq!(agent.debug_events_level, Some(3));
     }
 
     #[test]
@@ -3781,11 +3790,24 @@ mod tests {
         let mut agent = AgentBase::new(default_options());
         agent.set_param("temperature", json!(0.7));
         agent.add_internal_filler("one moment");
-        agent.enable_debug_events(Some("all"));
+        agent.enable_debug_events(Some(3));
         let ai = agent.build_ai_verb(&HashMap::new());
         assert_eq!(ai["params"]["temperature"], 0.7);
         assert_eq!(ai["params"]["internal_fillers"][0], "one moment");
-        assert_eq!(ai["params"]["debug_events"], "all");
+        // The reference emits `params.debug_webhook_level` as an INT
+        // (`core/agent_base.py:1259`); `debug_events` is the webhook PATH
+        // segment and must never appear as a params key.
+        assert_eq!(ai["params"]["debug_webhook_level"], 3);
+        assert!(ai["params"].get("debug_events").is_none());
+    }
+
+    #[test]
+    fn test_enable_debug_events_defaults_to_tier_one() {
+        let mut agent = AgentBase::new(default_options());
+        agent.enable_debug_events(None);
+        let ai = agent.build_ai_verb(&HashMap::new());
+        // The reference's `level: int = 1` default.
+        assert_eq!(ai["params"]["debug_webhook_level"], 1);
     }
 
     #[test]
@@ -4034,7 +4056,7 @@ mod tests {
             .add_hint("hint1")
             .add_hints(vec!["hint2", "hint3"])
             .set_param("temperature", json!(0.7))
-            .enable_debug_events(Some("all"))
+            .enable_debug_events(Some(3))
             .add_pre_answer_verb("play", json!({"url": "ring.mp3"}))
             .add_post_answer_verb("sleep", json!(1000));
 

@@ -1716,7 +1716,7 @@
                 },
                 {
                   "name": "level",
-                  "type": "optional<string>",
+                  "type": "optional<int>",
                   "required": false
                 }
               ],
@@ -5605,7 +5605,7 @@
                 },
                 {
                   "name": "level",
-                  "type": "optional<string>",
+                  "type": "optional<int>",
                   "required": false
                 }
               ],
@@ -6527,8 +6527,7 @@
                 {
                   "name": "body",
                   "type": "optional<string>",
-                  "required": false,
-                  "default": ""
+                  "required": false
                 },
                 {
                   "name": "bullets",
@@ -18080,6 +18079,30 @@
                   "name": "title",
                   "type": "optional<string>",
                   "required": false
+                },
+                {
+                  "name": "body",
+                  "type": "optional<string>",
+                  "required": false,
+                  "kind": "keyword"
+                },
+                {
+                  "name": "bullets",
+                  "type": "optional<union<list<string>,string>>",
+                  "required": false,
+                  "kind": "keyword"
+                },
+                {
+                  "name": "numbered",
+                  "type": "optional<bool>",
+                  "required": false,
+                  "kind": "keyword"
+                },
+                {
+                  "name": "numberedBullets",
+                  "type": "optional<bool>",
+                  "required": false,
+                  "kind": "keyword"
                 }
               ],
               "returns": "class:signalwire.pom.pom.Section"
@@ -18237,6 +18260,30 @@
                   "name": "title",
                   "type": "string",
                   "required": true
+                },
+                {
+                  "name": "body",
+                  "type": "optional<string>",
+                  "required": false,
+                  "kind": "keyword"
+                },
+                {
+                  "name": "bullets",
+                  "type": "optional<list<string>>",
+                  "required": false,
+                  "kind": "keyword"
+                },
+                {
+                  "name": "numbered",
+                  "type": "optional<bool>",
+                  "required": false,
+                  "kind": "keyword"
+                },
+                {
+                  "name": "numberedBullets",
+                  "type": "optional<bool>",
+                  "required": false,
+                  "kind": "keyword"
                 }
               ],
               "returns": "class:signalwire.pom.pom.Section"
@@ -23344,23 +23391,9 @@
                   "name": "path",
                   "type": "string",
                   "required": true
-                }
-              ],
-              "returns": "class:signalwire.value.Value"
-            },
-            "delete_with_options": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
                 },
                 {
-                  "name": "path",
-                  "type": "string",
-                  "required": true
-                },
-                {
-                  "name": "options",
+                  "name": "request_options",
                   "type": "optional<class:signalwire.rest._request_options.RequestOptions>",
                   "required": false
                 }
@@ -23382,28 +23415,9 @@
                   "name": "params",
                   "type": "dict<string,string>",
                   "required": true
-                }
-              ],
-              "returns": "class:signalwire.value.Value"
-            },
-            "get_with_options": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
                 },
                 {
-                  "name": "path",
-                  "type": "string",
-                  "required": true
-                },
-                {
-                  "name": "params",
-                  "type": "dict<string,string>",
-                  "required": true
-                },
-                {
-                  "name": "options",
+                  "name": "request_options",
                   "type": "optional<class:signalwire.rest._request_options.RequestOptions>",
                   "required": false
                 }
@@ -23422,31 +23436,12 @@
                   "required": true
                 },
                 {
-                  "name": "data",
-                  "type": "class:signalwire.value.Value",
-                  "required": true
-                }
-              ],
-              "returns": "class:signalwire.value.Value"
-            },
-            "patch_with_options": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
+                  "name": "body",
+                  "type": "optional<class:signalwire.value.Value>",
+                  "required": false
                 },
                 {
-                  "name": "path",
-                  "type": "string",
-                  "required": true
-                },
-                {
-                  "name": "data",
-                  "type": "class:signalwire.value.Value",
-                  "required": true
-                },
-                {
-                  "name": "options",
+                  "name": "request_options",
                   "type": "optional<class:signalwire.rest._request_options.RequestOptions>",
                   "required": false
                 }
@@ -23465,31 +23460,12 @@
                   "required": true
                 },
                 {
-                  "name": "data",
-                  "type": "class:signalwire.value.Value",
-                  "required": true
-                }
-              ],
-              "returns": "class:signalwire.value.Value"
-            },
-            "post_with_options": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                },
-                {
-                  "name": "path",
-                  "type": "string",
-                  "required": true
-                },
-                {
-                  "name": "data",
+                  "name": "body",
                   "type": "class:signalwire.value.Value",
                   "required": true
                 },
                 {
-                  "name": "options",
+                  "name": "request_options",
                   "type": "optional<class:signalwire.rest._request_options.RequestOptions>",
                   "required": false
                 }
@@ -23508,67 +23484,9 @@
                   "required": true
                 },
                 {
-                  "name": "data",
-                  "type": "class:signalwire.value.Value",
-                  "required": true
-                }
-              ],
-              "returns": "class:signalwire.value.Value"
-            },
-            "put_with_options": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                },
-                {
-                  "name": "path",
-                  "type": "string",
-                  "required": true
-                },
-                {
-                  "name": "data",
-                  "type": "class:signalwire.value.Value",
-                  "required": true
-                },
-                {
-                  "name": "options",
-                  "type": "optional<class:signalwire.rest._request_options.RequestOptions>",
+                  "name": "body",
+                  "type": "optional<class:signalwire.value.Value>",
                   "required": false
-                }
-              ],
-              "returns": "class:signalwire.value.Value"
-            },
-            "request_options": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "optional<class:signalwire.rest._request_options.RequestOptions>"
-            },
-            "with_options": {
-              "params": [
-                {
-                  "name": "project_id",
-                  "type": "string",
-                  "required": true
-                },
-                {
-                  "name": "token",
-                  "type": "string",
-                  "required": true
-                },
-                {
-                  "name": "base_url",
-                  "type": "string",
-                  "required": true
-                },
-                {
-                  "name": "transport",
-                  "type": "any",
-                  "required": true
                 },
                 {
                   "name": "request_options",
@@ -23576,7 +23494,7 @@
                   "required": false
                 }
               ],
-              "returns": "any"
+              "returns": "class:signalwire.value.Value"
             }
           }
         },

@@ -476,22 +476,25 @@ impl HttpClient {
     /// (transport failure), the API responds with a non-2xx status (e.g. 404
     /// for a missing resource or 422 when the payload fails validation), or a
     /// 2xx response body is not valid JSON. See [`get`](Self::get).
-    pub fn put(&self, path: &str, data: &Value) -> Result<Value, SignalWireRestError> {
+    pub fn put(&self, path: &str, data: Option<&Value>) -> Result<Value, SignalWireRestError> {
         self.put_with_options(path, data, None)
     }
 
     /// `PUT` with a per-request [`RequestOptions`] override.
+    ///
+    /// `data` is optional — `None` sends no request body, matching the
+    /// reference's `body=None` default.
     ///
     /// # Errors
     /// Same as [`put`](Self::put).
     pub fn put_with_options(
         &self,
         path: &str,
-        data: &Value,
+        data: Option<&Value>,
         options: Option<&RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        let body = serde_json::to_string(data).unwrap_or_else(|_| "{}".to_string());
-        self.request("PUT", path, &HashMap::new(), Some(&body), options)
+        let body = data.map(|d| serde_json::to_string(d).unwrap_or_else(|_| "{}".to_string()));
+        self.request("PUT", path, &HashMap::new(), body.as_deref(), options)
     }
 
     /// Issue a `PATCH` request to `path` with `data` serialized as the JSON body.
@@ -501,22 +504,25 @@ impl HttpClient {
     /// (transport failure), the API responds with a non-2xx status (e.g. 404
     /// for a missing resource or 422 when the payload fails validation), or a
     /// 2xx response body is not valid JSON. See [`get`](Self::get).
-    pub fn patch(&self, path: &str, data: &Value) -> Result<Value, SignalWireRestError> {
+    pub fn patch(&self, path: &str, data: Option<&Value>) -> Result<Value, SignalWireRestError> {
         self.patch_with_options(path, data, None)
     }
 
     /// `PATCH` with a per-request [`RequestOptions`] override.
+    ///
+    /// `data` is optional — `None` sends no request body, matching the
+    /// reference's `body=None` default.
     ///
     /// # Errors
     /// Same as [`patch`](Self::patch).
     pub fn patch_with_options(
         &self,
         path: &str,
-        data: &Value,
+        data: Option<&Value>,
         options: Option<&RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        let body = serde_json::to_string(data).unwrap_or_else(|_| "{}".to_string());
-        self.request("PATCH", path, &HashMap::new(), Some(&body), options)
+        let body = data.map(|d| serde_json::to_string(d).unwrap_or_else(|_| "{}".to_string()));
+        self.request("PATCH", path, &HashMap::new(), body.as_deref(), options)
     }
 
     /// Issue a `DELETE` request to `path`.
@@ -1079,7 +1085,7 @@ mod tests {
         stub.set_response(200, r#"{"updated":true}"#);
 
         let result = client
-            .put("/api/test/1", &json!({"name": "updated"}))
+            .put("/api/test/1", Some(&json!({"name": "updated"})))
             .unwrap();
         assert_eq!(result["updated"], true);
 
@@ -1093,7 +1099,7 @@ mod tests {
         stub.set_response(200, r#"{"patched":true}"#);
 
         let result = client
-            .patch("/api/test/1", &json!({"field": "val"}))
+            .patch("/api/test/1", Some(&json!({"field": "val"})))
             .unwrap();
         assert_eq!(result["patched"], true);
 

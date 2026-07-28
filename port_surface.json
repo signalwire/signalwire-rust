@@ -1,6 +1,6 @@
 {
   "version": "1",
-  "generated_from": "signalwire-rust @ 5723fd86babe682aa6822de035b7d45de76e0d96",
+  "generated_from": "signalwire-rust @ 46b8ef7e053b53dbf7ec2f3ebf9a0c51f5ff2093",
   "modules": {
     "signalwire": {
       "classes": {
@@ -1305,6 +1305,14 @@
       },
       "functions": []
     },
+    "signalwire.pom.section": {
+      "classes": {
+        "Bullets": [
+          "into_vec"
+        ]
+      },
+      "functions": []
+    },
     "signalwire.prefabs.concierge": {
       "classes": {
         "ConciergeAgent": [
@@ -2037,17 +2045,10 @@
         "HttpClient": [
           "__init__",
           "delete",
-          "delete_with_options",
           "get",
-          "get_with_options",
           "patch",
-          "patch_with_options",
           "post",
-          "post_with_options",
-          "put",
-          "put_with_options",
-          "request_options",
-          "with_options"
+          "put"
         ],
         "ReadResource": [
           "get",

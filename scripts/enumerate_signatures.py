@@ -670,6 +670,31 @@ def _sig_oracle_members() -> dict[tuple[str, str], set[str]]:
     return _SIG_ORACLE_MEMBERS
 
 
+_SIG_ORACLE_SIGNATURES: dict[tuple[str, str], dict] | None = None
+
+
+def _sig_oracle_signatures() -> dict[tuple[str, str], dict]:
+    """(module, class) -> {member: the reference's recorded SIGNATURE}.
+
+    The members twin above answers "does the reference have this member"; this
+    answers "and what does it look like", which is what the arity-idiom
+    collision resolver in ``_apply_method_renames`` needs to decide WHICH of two
+    Rust spellings of one reference method is the closer match. Same fail-loud
+    oracle resolution (``_sig_oracle_members`` raises first if unreadable)."""
+    global _SIG_ORACLE_SIGNATURES
+    if _SIG_ORACLE_SIGNATURES is None:
+        _sig_oracle_members()  # fail loud on an unresolvable oracle
+        ref = _load_python_reference()
+        out: dict[tuple[str, str], dict] = {}
+        for mod, inv in ref.get("modules", {}).items():
+            for cls, ce in (inv.get("classes") or {}).items():
+                methods = ce.get("methods")
+                if isinstance(methods, dict):
+                    out[(mod, cls)] = methods
+        _SIG_ORACLE_SIGNATURES = out
+    return _SIG_ORACLE_SIGNATURES
+
+
 def _apply_method_renames(cls_name: str, methods: dict, module: str | None = None,
                           py_cls: str | None = None) -> dict:
     """Apply the surface enumerator's METHOD_RENAMES table to a class's method
@@ -685,25 +710,98 @@ def _apply_method_renames(cls_name: str, methods: dict, module: str | None = Non
     ``module``/``py_cls`` (the CANONICAL post-translate key — the same key space
     the emitter writes into) to enable the gate; without them the drop is
     unconditional, preserving the pre-gate behaviour for callers that have no
-    canonical key yet."""
+    canonical key yet.
+
+    ARITY-IDIOM COLLISION (``add_section`` + ``add_section_with`` ->
+    ``add_section``): Rust has no default arguments and no overloading, so ONE
+    reference method with optional kwargs is spelled as a minimum-required
+    entry-point plus a richer ``_with`` / ``_full`` / ``_with_options``
+    companion. Both spellings ARE that single reference method. When a rename
+    makes two Rust methods land on the same reference name, the one whose
+    parameter list is CLOSER TO THE REFERENCE wins — otherwise the fold would be
+    dict-order dependent and would routinely keep the truncated spelling, which
+    is precisely the drift we are folding away. Ties keep the first arrival."""
     table = METHOD_RENAMES.get(cls_name, {})
-    if not table:
+    param_table = PUBLIC_FIELD_RENAMES.get(cls_name, {})
+    if not table and not param_table:
         return methods
     recorded: set[str] = set()
+    ref_members: dict = {}
     if module is not None and py_cls is not None:
         recorded = _sig_oracle_members().get((module, py_cls), set())
+        ref_members = _sig_oracle_signatures().get((module, py_cls), {})
     out: dict = {}
     for name, sig in methods.items():
+        sig = _apply_param_renames(sig, param_table)
         if name in table:
             target = table[name]
             if target is None:
                 if name in recorded:
                     out[name] = sig  # stale drop — the reference has this member
                 continue
-            out[target] = sig
         else:
-            out[name] = sig
+            target = name
+        if target in out and out[target] is not sig:
+            if _closer_to_reference(sig, out[target], ref_members.get(target)):
+                out[target] = sig
+            continue
+        out[target] = sig
     return out
+
+
+def _apply_param_renames(sig: dict, param_table: dict[str, str]) -> dict:
+    """Apply a class's ``PUBLIC_FIELD_RENAMES`` spelling map to a method's
+    PARAMETER names.
+
+    The same Rust-vs-reference spelling split that a struct FIELD has, its
+    methods' parameters have: ``Section.numbered_bullets`` is the field, and
+    ``add_subsection(.., numbered_bullets)`` is the parameter that sets it. The
+    reference records the camelCase WIRE key (``numberedBullets``) in both
+    places, so one table governs both — renaming only the field would leave the
+    parameter reading as drift for a spelling we have already adjudicated."""
+    if not param_table:
+        return sig
+    params = (sig or {}).get("params")
+    if not params or not any(p.get("name") in param_table for p in params):
+        return sig
+    out = dict(sig)
+    out["params"] = [
+        {**p, "name": param_table.get(p["name"], p["name"])} for p in params
+    ]
+    return out
+
+
+def _named_params(sig: dict) -> list[str]:
+    """The comparable parameter NAMES of a signature — the receiver (``self``)
+    is positional plumbing on both sides and never distinguishes two spellings
+    of the same method."""
+    return [p["name"] for p in (sig or {}).get("params", []) if p.get("kind") != "self"]
+
+
+def _closer_to_reference(candidate: dict, incumbent: dict, ref_sig: dict | None) -> bool:
+    """Does ``candidate`` match the reference signature better than ``incumbent``?
+
+    Two spellings of one reference method differ by ARITY — that is the whole
+    point of the idiom (``put`` / ``put_with_options``, ``add_section`` /
+    ``add_section_with``). So score on how close each spelling's arity is to the
+    reference's, and use the reference's own parameter NAMES only to break a tie.
+
+    Name-matching must NOT be the primary score: the extra parameter frequently
+    carries a Rust-idiom spelling (``options`` for the reference's
+    ``request_options``, ``data`` for ``body``), so both spellings hit the same
+    small set of shared names and a name-first rule silently keeps the TRUNCATED
+    one — reinstating the exact drift this fold exists to remove."""
+    cand = _named_params(candidate)
+    inc = _named_params(incumbent)
+    if not ref_sig:
+        # Nothing to aim at: the truncated spelling can only ever be a subset of
+        # the fuller one, so more parameters is strictly more capability.
+        return len(cand) > len(inc)
+    ref = _named_params(ref_sig)
+    cand_gap, inc_gap = abs(len(cand) - len(ref)), abs(len(inc) - len(ref))
+    if cand_gap != inc_gap:
+        return cand_gap < inc_gap
+    return len(set(ref) & set(cand)) > len(set(ref) & set(inc))
 
 
 # Rust parameter names used as the ``*args`` / ``**kwargs`` variadic-equivalent

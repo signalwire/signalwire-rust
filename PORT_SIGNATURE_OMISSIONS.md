@@ -237,16 +237,18 @@ signalwire.skills.weather_api.skill.WeatherApiSkill.__init__: Rust skill constru
 The Rust POM port follows the same shape as the Java/C++ ports: a small
 core type with field-mutating builders. Where Python collapses many
 optional kwargs into a single signature, Rust splits them into the
-canonical "minimum-required" entry-point + a `_full`/`_with` overload
-or per-field setters returning `&mut Self`. Per-method renderers do
-not expose the internal `level` / `section_number` recursion params at
-the public surface; those remain on a private `render_*_at` helper.
+canonical "minimum-required" entry-point + a `_full`/`_with` companion
+carrying the optional kwargs. That split is NOT an omission — both
+spellings are the one reference method, and the enumerator folds the
+richer one onto its reference name (`add_section_with` -> `add_section`,
+`add_subsection_full` -> `add_subsection`), so those two now compare
+EQUAL and their entries are retired. Per-method renderers do not expose
+the internal `level` / `section_number` recursion params at the public
+surface; those remain on a private `render_*_at` helper.
 
-signalwire.pom.pom.PromptObjectModel.add_pom_as_subsection: rust-typed-overload — Rust takes ``target_title: &str`` where Python's `target` is ``Union[str, Section]``. Rust avoids union dispatch; callers pass the title (matching the documented happy path).
-signalwire.pom.pom.PromptObjectModel.add_section: rust-builder-mut-ref — Rust ``add_section(title)`` returns ``&mut Section`` for further field configuration; the additional Python kwargs (body, bullets, numbered, numberedBullets) are set via the returned mutable reference (or via the convenience `add_section_with` overload for body).
-signalwire.pom.pom.PromptObjectModel.from_json: rust-typed-overload — Rust ``from_json(&str)`` takes a string only; the dict-input branch is covered by ``from_value(&Value)``. Rust does not collapse union inputs into one signature.
-signalwire.pom.pom.PromptObjectModel.from_yaml: rust-typed-overload — Rust ``from_yaml(&str)`` takes a string only; the dict-input branch is covered by ``from_value(&Value)``. Rust does not collapse union inputs into one signature.
-signalwire.pom.pom.Section.add_subsection: rust-builder-mut-ref — Rust ``add_subsection(title)`` returns ``&mut Section`` for chained configuration; the full Python signature is exposed via the ``add_subsection_full`` companion method (title, body, bullets, numbered, numbered_bullets).
+signalwire.pom.pom.PromptObjectModel.add_pom_as_subsection: impossible: borrow-checker — Rust takes ``target_title: &str`` where Python's `target` is ``Union[str, Section]``. The `Section` arm cannot be ported: the method needs ``&mut self`` to mutate the model, and the only way to hold a `Section` from that same model is a ``&mut Section`` borrowed OUT of it, so the two borrows are simultaneous and the call cannot be written. Python's own `Section` arm is a shortcut past its `find_section` lookup, and the title lookup reaches every section the shortcut could name — no reachable state is lost, only the aliasing spelling.
+signalwire.pom.pom.PromptObjectModel.from_json: rust-typed-parse-split — Rust ``from_json(&str)`` parses a JSON string; the reference's already-parsed dict/list arms are the public ``from_value(&Value)`` (`src/pom/pom.rs:156`, re-exported from `signalwire::pom`), which `from_json` itself delegates to. Rust has no runtime union dispatch, so "parse this text" and "adopt this parsed tree" are two entry points rather than one; both arms are reachable.
+signalwire.pom.pom.PromptObjectModel.from_yaml: rust-typed-parse-split — Rust ``from_yaml(&str)`` parses a YAML string; the reference's already-parsed dict arm is the same public ``from_value(&Value)`` that `from_yaml` delegates to. Same two-entry-point split as `from_json` above; both arms are reachable.
 signalwire.pom.pom.Section.render_markdown: rust-public-default — Rust public ``render_markdown()`` always renders at the conventional top-level (level=2, no section_number); the recursion-internal variant is the crate-private ``render_markdown_at(level, section_number)`` invoked by `PromptObjectModel`.
 signalwire.pom.pom.Section.render_xml: rust-public-default — Rust public ``render_xml()`` always renders at indent=0 with no section_number; the recursion-internal variant is the crate-private ``render_xml_at(indent, section_number)`` invoked by `PromptObjectModel`.
 
@@ -348,7 +350,6 @@ signalwire.core.mixins.ai_config_mixin.AIConfigMixin.add_internal_filler: idiom:
 signalwire.core.mixins.ai_config_mixin.AIConfigMixin.add_language: idiom: Rust `add_language(name, code, voice)` takes the core three args + fluent builders / `set_language_params` for the optional `speech_fillers/function_fillers/engine/model/params`; Python takes them all as one call. Builder/options idiom.
 signalwire.core.mixins.ai_config_mixin.AIConfigMixin.add_pattern_hint: idiom: Rust `add_pattern_hint(pattern: &str)` builds the pattern-hint from the pattern + fluent setters; Python `(hint, pattern, replace, ignore_case)` takes the whole rule inline. Builder idiom.
 signalwire.core.mixins.ai_config_mixin.AIConfigMixin.add_pronunciation: idiom: Rust `add_pronunciation(replace, with, ignore_case: bool)` matches Python `(replace, with_text, ignore_case=False)` on the wire — same SWML keys `replace` / `with` / `ignore_case` (bool, emitted only when true, per signalwire-agents schema.json `Pronounce`). The residual signature difference is pure idiom: the param is named `with` (the natural Rust spelling of the `with` wire key) rather than Python's `with_text`, and `ignore_case: bool` is a required positional (Rust has no default-argument syntax; the false default is the caller passing `false`). Wire-equal; no semantics divergence.
-signalwire.core.mixins.ai_config_mixin.AIConfigMixin.enable_debug_events: idiom: Rust `enable_debug_events(level: &str)` takes a string level label; Python `(level: int = 1)` an int. String-label vs int-level idiom (both select the same debug tier).
 signalwire.core.mixins.ai_config_mixin.AIConfigMixin.set_internal_fillers: idiom: Rust `set_internal_fillers(fillers: Vec<&str>)` sets a flat filler list (the nested-map form is `set_internal_fillers_map`); Python takes the full `dict<function,dict<language,list>>`. Flat-list idiom (the map variant carries the nested shape).
 signalwire.core.mixins.prompt_mixin.PromptMixin.define_contexts: idiom: Rust `define_contexts(&mut self) -> &mut ContextBuilder` returns the builder to configure in place; Python `(self, contexts)` accepts a pre-built contexts arg and may return AgentBase|ContextBuilder. Builder-return idiom (no contexts arg; concrete ContextBuilder return).
 signalwire.core.mixins.prompt_mixin.PromptMixin.prompt_add_section: idiom: Rust `prompt_add_section(title, body, bullets)` takes the core three args + fluent section builders for `numbered/numbered_bullets/subsections`; Python takes them all inline. Builder/options idiom.
@@ -405,8 +406,6 @@ Python's optional `request_options=` kwarg as a distinct `*_with_options` method
 (no default/keyword args) and Python's dataclass fields as chained builder
 setters, so the base verb / bare constructor signatures diverge by that one arg.
 
-signalwire.rest._base.HttpClient.put: idiom: Rust `put(&self, path, data: &Value) -> Result<Value, SignalWireRestError>`; the reference gained a `request_options` param (`(self, path, body, request_options)`). Rust threads the per-request override through the sibling `put_with_options` (no default-arg overloading) — the client-default RequestOptions still applies to plain `put`. Result + &Value-body idiom.
-signalwire.rest._base.HttpClient.patch: idiom: Rust `patch(&self, path, data: &Value) -> Result<Value, SignalWireRestError>`; the reference gained a `request_options` param (`(self, path, body, request_options)`). Rust threads the per-request override through the sibling `patch_with_options`. Result + &Value-body idiom.
 signalwire.rest._request_options.RequestOptions.abort_signal: idiom: `abort_signal` is a dataclass FIELD in Python (accessor `(self)`); Rust exposes it as a chained builder setter `abort_signal(self, signal)` that stores the field. Builder-setter idiom for the same optional field.
 signalwire.rest._request_options.RequestOptions.timeout: idiom: `timeout` is a dataclass FIELD in Python (accessor `(self)`); Rust exposes it as a chained builder setter `timeout(self, seconds)` that stores the same `Option<f64>` field. Builder-setter idiom for the same optional field (the field itself is the `pub timeout` struct member — same shape as `abort_signal`).
 signalwire.rest._request_options.RequestOptions.retries: idiom: `retries` is a dataclass FIELD in Python (accessor `(self)`); Rust exposes it as a chained builder setter `retries(self, retries)` that stores the same `Option<u32>` field. Builder-setter idiom for the same optional field (same shape as `abort_signal`).

@@ -170,7 +170,7 @@ impl<'a> ProjectTokens<'a> {
     ) -> Result<Value, SignalWireRestError> {
         self.client().patch_with_options(
             &self.path(&[token_id]),
-            &request.build(),
+            Some(&request.build()),
             request_options.as_ref(),
         )
     }

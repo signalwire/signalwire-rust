@@ -828,6 +828,13 @@ def emit_operation_method(spec: Spec, anchor: str, markup: dict, base: str,
     write_verb = verb in ("post", "put", "patch")
     verb_fn = {"post": "post", "put": "put", "patch": "patch"}.get(verb, verb)
 
+    # `put`/`patch` take an OPTIONAL body (`Option<&Value>`) because the
+    # reference's `put`/`patch` default `body=None`; `post` still takes it by
+    # plain reference. A generated operation always HAS a body to send, so it
+    # wraps in `Some(..)` for the two optional-body verbs.
+    def _body(expr: str) -> str:
+        return f"Some({expr})" if verb in ("put", "patch") else expr
+
     # Every generated method carries a trailing ``request_options:
     # Option<RequestOptions>`` (plan 4.2 / PY-9), forwarded to the client's
     # ``*_with_options`` variant (transport-only; NEVER serialized into the body).
@@ -847,7 +854,7 @@ def emit_operation_method(spec: Spec, anchor: str, markup: dict, base: str,
             lines.append("    /// Returns [`SignalWireRestError`] on transport failure, a non-2xx")
             lines.append("    /// status, or an unparseable response body.")
             lines.append(f"    pub fn {name}(&self, {', '.join(params)}) -> Result<Value, SignalWireRestError> {{")
-            lines.append(f"        self.client().{verb_fn}_with_options({path_expr}, &request.build(), {ro_fwd})")
+            lines.append(f"        self.client().{verb_fn}_with_options({path_expr}, {_body('&request.build()')}, {ro_fwd})")
             lines.append("    }")
         else:
             # §5.2 union body → a single positional body: Value.
@@ -858,7 +865,7 @@ def emit_operation_method(spec: Spec, anchor: str, markup: dict, base: str,
             lines.append("    /// Returns [`SignalWireRestError`] on transport failure, a non-2xx")
             lines.append("    /// status, or an unparseable response body.")
             lines.append(f"    pub fn {name}(&self, {', '.join(params)}) -> Result<Value, SignalWireRestError> {{")
-            lines.append(f"        self.client().{verb_fn}_with_options({path_expr}, body, {ro_fwd})")
+            lines.append(f"        self.client().{verb_fn}_with_options({path_expr}, {_body('body')}, {ro_fwd})")
             lines.append("    }")
     elif write_verb:
         params = id_params + [ro_param]
@@ -867,7 +874,7 @@ def emit_operation_method(spec: Spec, anchor: str, markup: dict, base: str,
         lines.append("    /// # Errors")
         lines.append("    /// Returns [`SignalWireRestError`] on transport failure, a non-2xx status.")
         lines.append(f"    pub fn {name}(&self, {', '.join(params)}) -> Result<Value, SignalWireRestError> {{")
-        lines.append(f"        self.client().{verb_fn}_with_options({path_expr}, &Value::Object(Map::new()), {ro_fwd})")
+        lines.append(f"        self.client().{verb_fn}_with_options({path_expr}, {_body('&Value::Object(Map::new())')}, {ro_fwd})")
         lines.append("    }")
     elif verb == "get":
         # §5.3 GET query door — a trailing params map + request_options.

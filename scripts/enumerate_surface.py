@@ -422,16 +422,25 @@ METHOD_RENAMES: dict[str, dict[str, str]] = {
     # the reference constructor is `__init__(debug=False)`, and Rust needs two
     # spellings for the defaulted and explicit forms. `new()` folds to
     # `__init__` generically; fold `with_debug(debug)` onto it too.
+    # `add_section_with(title, body)` is the SAME arity idiom one level down:
+    # the reference has ONE `add_section(title, body=..., bullets=..., ...)`, and
+    # Rust spells its minimum-required and body-carrying forms as two methods.
+    # Fold the richer spelling ONTO `add_section` rather than dropping it — a
+    # drop discards the only spelling that carries `body`, leaving the reference's
+    # optional kwargs looking unimplemented.
     "PromptObjectModel": {
         "with_debug": "__init__",
         "to_value": "to_dict",
         "from_value": None,
         "find_section_mut": None,
-        "add_section_with": None,
+        "add_section_with": "add_section",
     },
     "Section": {
         "to_value": "to_dict",
-        "add_subsection_full": None,
+        # Same fold as `add_section_with` above: `add_subsection_full` is the
+        # spelling of the reference's `add_subsection(title, body, bullets,
+        # numbered, numberedBullets)` that actually carries the optional kwargs.
+        "add_subsection_full": "add_subsection",
         # `render_markdown_at` / `render_xml_at` are `pub(crate)`
         # crate-internal helpers used by recursive rendering. They
         # show up in the public-fn regex (which permits `pub(...)`)
@@ -563,6 +572,18 @@ METHOD_RENAMES: dict[str, dict[str, str]] = {
     # the Rust-only accessors (project_id/token/base_url/auth_header), the
     # test-only `with_stub` constructor, and `list_all` (a Rust pagination
     # convenience not on the reference's HttpClient).
+    #
+    # `<verb>_with_options` is the arity idiom again: each reference verb ends in
+    # an optional `request_options=None`, and Rust (no default args) spells the
+    # defaulted form `put(path, data)` and the explicit form
+    # `put_with_options(path, data, options)`. Both ARE that one reference verb —
+    # the `_with_options` spelling is the one that carries `request_options`, so
+    # fold it onto the verb (the collision resolver keeps the closer match).
+    # `with_options` is the same idiom on the CONSTRUCTOR: the reference's
+    # `__init__` ends in `request_options=None`, and `new`/`with_options` are its
+    # two Rust spellings. `request_options` itself is the read accessor for that
+    # constructor field, which the reference exposes as a plain attribute rather
+    # than a recorded method → drop.
     "HttpClient": {
         "project_id": None,
         "token": None,
@@ -570,6 +591,13 @@ METHOD_RENAMES: dict[str, dict[str, str]] = {
         "auth_header": None,
         "with_stub": None,
         "list_all": None,
+        "get_with_options": "get",
+        "post_with_options": "post",
+        "put_with_options": "put",
+        "patch_with_options": "patch",
+        "delete_with_options": "delete",
+        "with_options": "__init__",
+        "request_options": None,
     },
     # relay::Client (RelayClient): `execute_call_verb` + `has_live_socket` are
     # `pub(crate)` crate-internal helpers the Call verbs route their frames
@@ -1582,6 +1610,17 @@ PUBLIC_FIELD_RENAMES: dict[str, dict[str, str]] = {
     # wire key (`src/pom/mod.rs:426` asserts `v["numberedBullets"]`). Fold the
     # spelling here; the wire key is already correct.
     "Section": {"numbered_bullets": "numberedBullets"},
+    # `PromptObjectModel.add_section` carries the same `numberedBullets` wire key
+    # as the `Section` it constructs — the reference spells it camelCase in BOTH
+    # places (`pom.py:402` and `pom.py:71`), so the fold has to cover both keys or
+    # the parameter reads as drift on one class and folds on the other.
+    "PromptObjectModel": {"numbered_bullets": "numberedBullets"},
+    # HttpClient verbs: Rust names the JSON payload `data` and the per-request
+    # override `options`; the reference names the same two `body` and
+    # `request_options`. Pure spelling — same position, same type, same wire
+    # effect — so it folds here rather than being excused (a rename keeps
+    # comparing; an omission would stop comparing the whole verb).
+    "HttpClient": {"data": "body", "options": "request_options"},
 }
 
 

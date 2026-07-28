@@ -81,7 +81,13 @@ impl PomBuilder {
                                     .collect::<Vec<_>>()
                             })
                             .unwrap_or_default();
-                        section.add_subsection_full(sub_title, sub_body, sub_bullets, None, false);
+                        section.add_subsection_full(
+                            sub_title,
+                            Some(sub_body.to_string()),
+                            Some(sub_bullets),
+                            None,
+                            None,
+                        );
                     }
                 }
             }
@@ -133,12 +139,12 @@ impl PomBuilder {
         bullets: Option<Vec<String>>,
     ) -> &mut Self {
         // `None` is the omit-it call; the reference default is "".
-        let body = body.unwrap_or("");
+        let body = body.map(str::to_string);
         if !self.has_section(parent_title) {
             self.add_section(parent_title, None, None, None, None, None);
         }
         if let Some(parent) = self.pom.find_section_mut(parent_title) {
-            parent.add_subsection_full(title, body, bullets.unwrap_or_default(), None, false);
+            parent.add_subsection_full(title, body, bullets, None, None);
         }
         self
     }

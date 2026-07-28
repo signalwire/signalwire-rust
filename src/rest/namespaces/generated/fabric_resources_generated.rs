@@ -1356,7 +1356,7 @@ impl<'a> CxmlApplications<'a> {
     ) -> Result<Value, SignalWireRestError> {
         self.client().put_with_options(
             &self.path(&[id]),
-            &request.build(),
+            Some(&request.build()),
             request_options.as_ref(),
         )
     }
@@ -2173,7 +2173,7 @@ impl<'a> Subscribers<'a> {
     ) -> Result<Value, SignalWireRestError> {
         self.client().patch_with_options(
             &self.path(&[subscriber_id, "sip_endpoints", id]),
-            &request.build(),
+            Some(&request.build()),
             request_options.as_ref(),
         )
     }

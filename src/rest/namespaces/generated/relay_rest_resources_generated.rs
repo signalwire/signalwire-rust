@@ -1991,7 +1991,7 @@ impl<'a> RegistryCampaigns<'a> {
     ) -> Result<Value, SignalWireRestError> {
         self.client().put_with_options(
             &self.path(&[id]),
-            &request.build(),
+            Some(&request.build()),
             request_options.as_ref(),
         )
     }
@@ -2208,7 +2208,7 @@ impl<'a> ShortCodes<'a> {
     ) -> Result<Value, SignalWireRestError> {
         self.client().put_with_options(
             &self.path(&[id]),
-            &request.build(),
+            Some(&request.build()),
             request_options.as_ref(),
         )
     }
@@ -2263,8 +2263,11 @@ impl<'a> SipProfile<'a> {
         request: SipProfileUpdateRequest,
         request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.client()
-            .put_with_options(self.base_path(), &request.build(), request_options.as_ref())
+        self.client().put_with_options(
+            self.base_path(),
+            Some(&request.build()),
+            request_options.as_ref(),
+        )
     }
 }
 
@@ -2391,7 +2394,7 @@ impl<'a> VerifiedCallers<'a> {
     ) -> Result<Value, SignalWireRestError> {
         self.client().put_with_options(
             &self.path(&[id, "verification"]),
-            &request.build(),
+            Some(&request.build()),
             request_options.as_ref(),
         )
     }

@@ -11,6 +11,60 @@
 
 use serde_json::{Map, Value, json};
 
+/// The bullet argument of [`crate::pom::PromptObjectModel::add_section`],
+/// spelling the reference's `bullets: list[str] | str` union.
+///
+/// Python accepts either a list of bullets or a single bullet string and
+/// normalises the latter to a one-element list (`pom.py:425`,
+/// `[bullets] if isinstance(bullets, str) else bullets or []`). Rust has no
+/// runtime union, so the two arms are a sum type; [`Bullets::into_vec`] applies
+/// exactly that normalisation.
+///
+/// `From` impls make the common calls read naturally — `"one bullet".into()`
+/// and `vec!["a", "b"].into()` both build the right arm.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Bullets {
+    /// A single bullet, normalised to a one-element list.
+    One(String),
+    /// An explicit list of bullets.
+    Many(Vec<String>),
+}
+
+impl Bullets {
+    /// Normalise either arm to the list form the model stores.
+    #[must_use]
+    pub fn into_vec(self) -> Vec<String> {
+        match self {
+            Bullets::One(s) => vec![s],
+            Bullets::Many(v) => v,
+        }
+    }
+}
+
+impl From<&str> for Bullets {
+    fn from(s: &str) -> Self {
+        Bullets::One(s.to_string())
+    }
+}
+
+impl From<String> for Bullets {
+    fn from(s: String) -> Self {
+        Bullets::One(s)
+    }
+}
+
+impl From<Vec<String>> for Bullets {
+    fn from(v: Vec<String>) -> Self {
+        Bullets::Many(v)
+    }
+}
+
+impl From<Vec<&str>> for Bullets {
+    fn from(v: Vec<&str>) -> Self {
+        Bullets::Many(v.into_iter().map(String::from).collect())
+    }
+}
+
 /// One node in a Prompt Object Model tree.
 ///
 /// Mirrors Python's `signalwire.pom.pom.Section`. Fields are owned
@@ -96,6 +150,10 @@ impl Section {
     /// Add a fully-specified subsection. Convenience that mirrors
     /// Python's keyword-argument form
     /// `add_subsection(title=..., body=..., bullets=..., numbered=..., numberedBullets=...)`.
+    /// Each omittable kwarg is an `Option` — Rust's spelling of "the
+    /// caller may leave this out" — and `None` reproduces the
+    /// reference's default (`body=""`, `bullets=[]`, `numbered=false`,
+    /// `numberedBullets=false`).
     ///
     /// # Panics
     ///
@@ -105,18 +163,18 @@ impl Section {
     pub fn add_subsection_full(
         &mut self,
         title: impl Into<String>,
-        body: impl Into<String>,
-        bullets: Vec<String>,
+        body: Option<String>,
+        bullets: Option<Vec<String>>,
         numbered: Option<bool>,
-        numbered_bullets: bool,
+        numbered_bullets: Option<bool>,
     ) -> &mut Section {
         let sub = Section {
             title: Some(title.into()),
-            body: body.into(),
-            bullets,
+            body: body.unwrap_or_default(),
+            bullets: bullets.unwrap_or_default(),
             subsections: Vec::new(),
             numbered,
-            numbered_bullets,
+            numbered_bullets: numbered_bullets.unwrap_or(false),
         };
         self.subsections.push(sub);
         self.subsections.last_mut().expect("just pushed")

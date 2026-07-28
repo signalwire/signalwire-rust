@@ -966,7 +966,7 @@ impl<'a> VideoStreams<'a> {
     ) -> Result<Value, SignalWireRestError> {
         self.client().put_with_options(
             &self.path(&[id]),
-            &request.build(),
+            Some(&request.build()),
             request_options.as_ref(),
         )
     }

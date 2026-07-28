@@ -199,9 +199,11 @@ impl<'a> CrudResource<'a> {
     ) -> Result<Value, SignalWireRestError> {
         let path = self.path(&[id]);
         if self.update_method.eq_ignore_ascii_case("PUT") {
-            self.client.put_with_options(&path, data, request_options)
+            self.client
+                .put_with_options(&path, Some(data), request_options)
         } else {
-            self.client.patch_with_options(&path, data, request_options)
+            self.client
+                .patch_with_options(&path, Some(data), request_options)
         }
     }
 

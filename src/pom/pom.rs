@@ -14,7 +14,7 @@ use std::fmt;
 
 use serde_json::Value;
 
-use crate::pom::section::Section;
+use crate::pom::section::{Bullets, Section};
 
 /// Error returned by the [`PromptObjectModel`] parse constructors
 /// ([`from_json`](PromptObjectModel::from_json) /
@@ -201,7 +201,12 @@ impl PromptObjectModel {
 
     /// Append a top-level section with title + body in one call.
     /// Convenience wrapper that mirrors Python's keyword-style
-    /// `add_section(title=..., body=...)`.
+    /// `add_section(title=..., body=..., bullets=..., numbered=...,
+    /// numberedBullets=...)` — the full optional-kwarg form. Each
+    /// omittable kwarg is an `Option`, which is how Rust spells
+    /// "the caller may leave this out": `None` reproduces the
+    /// reference's default (`body=""`, `bullets=[]`,
+    /// `numbered=None`, `numberedBullets=false`).
     ///
     /// # Errors
     ///
@@ -213,10 +218,16 @@ impl PromptObjectModel {
     pub fn add_section_with(
         &mut self,
         title: Option<String>,
-        body: impl Into<String>,
+        body: Option<String>,
+        bullets: Option<Bullets>,
+        numbered: Option<bool>,
+        numbered_bullets: Option<bool>,
     ) -> Result<&mut Section, String> {
         let sec = self.add_section(title)?;
-        sec.body = body.into();
+        sec.body = body.unwrap_or_default();
+        sec.bullets = bullets.map(Bullets::into_vec).unwrap_or_default();
+        sec.numbered = numbered;
+        sec.numbered_bullets = numbered_bullets.unwrap_or(false);
         Ok(sec)
     }
 
