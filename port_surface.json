@@ -1,6 +1,6 @@
 {
   "version": "1",
-  "generated_from": "signalwire-rust @ 46b8ef7e053b53dbf7ec2f3ebf9a0c51f5ff2093",
+  "generated_from": "signalwire-rust @ 3638a9346564f8c3688aae69b83b3376ca51458c",
   "modules": {
     "signalwire": {
       "classes": {
@@ -1301,14 +1301,6 @@
           "subsections",
           "title",
           "to_dict"
-        ]
-      },
-      "functions": []
-    },
-    "signalwire.pom.section": {
-      "classes": {
-        "Bullets": [
-          "into_vec"
         ]
       },
       "functions": []

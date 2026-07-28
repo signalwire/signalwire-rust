@@ -1179,6 +1179,11 @@ def _parse_file_full(
 # so the crate-root re-export is a duplicate, folded away in the emitter.
 _LIB_REEXPORT_TOPLEVEL_DROP = {"AIChatClient"}
 
+# Rust sum types that exist ONLY to spell a reference union type (no runtime
+# union in Rust). They are the TYPE of a reference-declared param, never new
+# capability, so they fold at the emitter instead of being PORT_ADDITIONs.
+UNION_SPELLING_CLASSES = frozenset({"Bullets"})
+
 
 def _parse_lib_reexports(path: Path) -> set[str]:
     """Pull `pub use ...::Name;` items from src/lib.rs.
@@ -1927,6 +1932,16 @@ def build_surface() -> dict:
             # of the oracle surface (the real resources are re-routed above via
             # the sidecar). Drop everything landing under that internal path.
             if module_path.startswith("signalwire.rest.namespaces.generated."):
+                continue
+            # UNION-SPELLING TYPES. Rust has no runtime union, so a reference
+            # param typed `list[str] | str` is spelled as a small sum type whose
+            # only job is to name the two arms (`Bullets`, with `into_vec` as the
+            # normalisation the reference does inline with
+            # `[b] if isinstance(b, str) else b or []`). The TYPE is the union;
+            # it carries no capability the reference lacks, and the oracle
+            # records the param as `union<list<string>,string>` — so it folds at
+            # the emitter (Rule 2) rather than being recorded as a PORT_ADDITION.
+            if cls in UNION_SPELLING_CLASSES:
                 continue
             translated = _translate_class(cls)
             # Apply per-class method renames. Keys map Rust → Python;
