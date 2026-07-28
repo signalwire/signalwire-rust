@@ -131,7 +131,10 @@ impl DataMap {
         expr.insert("pattern".to_string(), json!(pattern));
         expr.insert("output".to_string(), output);
         if let Some(nm) = nomatch_output {
-            expr.insert("nomatch_output".to_string(), nm);
+            // HYPHENATED wire key, matching the reference (data_map.py:202) and the
+            // behavioral manifest. An underscore is a key the server does not
+            // recognise, so the no-match branch would never fire.
+            expr.insert("nomatch-output".to_string(), nm);
         }
         self.expressions.push(Value::Object(expr));
         self
@@ -379,7 +382,12 @@ impl DataMap {
             let test_str = expr["string"].as_str().unwrap_or("");
             let pattern = expr["pattern"].as_str().unwrap_or("");
             let output = expr.get("output").cloned().unwrap_or(json!(null));
-            let nomatch = expr.get("nomatch_output").cloned();
+            // Accept either spelling on INPUT (these maps are caller-supplied), but
+            // expression() always EMITS the hyphenated reference key.
+            let nomatch = expr
+                .get("nomatch-output")
+                .or_else(|| expr.get("nomatch_output"))
+                .cloned();
             builder.expression(test_str, pattern, output, nomatch);
         }
 
@@ -478,7 +486,11 @@ mod tests {
         let mut dm = DataMap::new("func");
         dm.expression("${args.x}", "y", json!("hit"), Some(json!("miss")));
         let val = dm.to_swaig_function();
-        assert_eq!(val["data_map"]["expressions"][0]["nomatch_output"], "miss");
+        let expr = &val["data_map"]["expressions"][0];
+        // HYPHENATED key per the reference (data_map.py:202). An underscored key is
+        // one the server ignores, so the no-match branch would never fire.
+        assert_eq!(expr["nomatch-output"], "miss");
+        assert!(expr.get("nomatch_output").is_none());
     }
 
     #[test]
