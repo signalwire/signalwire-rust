@@ -333,7 +333,7 @@ mod tests {
         skill.register_tools(&mut agent);
         let mut args = Map::new();
         args.insert("expression".to_string(), json!("2 + 3"));
-        let result = agent.on_function_call("calculate", &args, &Map::new());
+        let result = agent.on_function_call("calculate", &args, Some(&Map::new()));
         assert!(result.is_some());
         let json_str = result.unwrap().to_json();
         assert!(json_str.contains('5'));

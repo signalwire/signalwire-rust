@@ -1,6 +1,6 @@
 {
   "version": "1",
-  "generated_from": "signalwire-rust @ e769e436aec4f5dc3d4b5f97c8fe7279c4fee04d",
+  "generated_from": "signalwire-rust @ 5723fd86babe682aa6822de035b7d45de76e0d96",
   "modules": {
     "signalwire": {
       "classes": {
@@ -2025,7 +2025,6 @@
           "delete_with_options",
           "get_with_options",
           "list_with_options",
-          "paginate_with_options",
           "path",
           "update",
           "update_with_options"

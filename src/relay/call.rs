@@ -570,7 +570,15 @@ impl Call {
     /// server rejects the verb with a non-2xx result code, or
     /// `Err(RelayError::Timeout)` if no response arrives within the
     /// deadline. A 404/410 "call gone" result is swallowed to `Ok`.
-    pub fn user_event(&self, params: Value) -> Result<Value, RelayError> {
+    ///
+    /// `params` is `Option<Value>` because the reference declares its payload
+    /// optional (`event: str | None = None`); `None` is the omit-it call and
+    /// sends an empty params object.
+    pub fn user_event(&self, params: Option<Value>) -> Result<Value, RelayError> {
+        let params = match params {
+            Some(p) => p,
+            None => serde_json::json!({}),
+        };
         self.execute("calling.user_event", params)
     }
 

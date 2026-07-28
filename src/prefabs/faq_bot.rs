@@ -415,9 +415,10 @@ mod tests {
         let agent = FAQBotAgent::new(FAQBotOptions::new(sample_faqs()).name("test"));
         let mut args = serde_json::Map::new();
         args.insert("query".to_string(), json!("hours"));
-        let result = agent
-            .agent()
-            .on_function_call("search_faqs", &args, &serde_json::Map::new());
+        let result =
+            agent
+                .agent()
+                .on_function_call("search_faqs", &args, Some(&serde_json::Map::new()));
         assert!(result.is_some());
         let json_str = result.unwrap().to_json();
         assert!(json_str.contains("9am to 5pm"));
@@ -432,9 +433,10 @@ mod tests {
         );
         let mut args = serde_json::Map::new();
         args.insert("query".to_string(), json!("quantum physics"));
-        let result = agent
-            .agent()
-            .on_function_call("search_faqs", &args, &serde_json::Map::new());
+        let result =
+            agent
+                .agent()
+                .on_function_call("search_faqs", &args, Some(&serde_json::Map::new()));
         assert!(result.is_some());
         let json_str = result.unwrap().to_json();
         assert!(json_str.contains("No FAQ found"));
@@ -504,7 +506,7 @@ mod tests {
             "POST",
             "/faq/post_prompt",
             &headers,
-            &body.to_string(),
+            Some(&body.to_string()),
         );
         assert_eq!(status, 200);
         assert_eq!(*captured.lock().unwrap(), "FAQ answered");

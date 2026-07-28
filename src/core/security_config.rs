@@ -290,8 +290,12 @@ impl SecurityConfig {
     }
 
     /// Security headers to add to responses (HSTS added when HTTPS + enabled).
+    ///
+    /// `is_https` is `Option<bool>` because the reference declares it optional
+    /// (`is_https: bool = False`); `None` takes `false`.
     #[must_use]
-    pub fn get_security_headers(&self, is_https: bool) -> HashMap<String, String> {
+    pub fn get_security_headers(&self, is_https: Option<bool>) -> HashMap<String, String> {
+        let is_https = is_https.unwrap_or(false);
         let mut headers = HashMap::new();
         headers.insert("X-Content-Type-Options".into(), "nosniff".into());
         headers.insert("X-Frame-Options".into(), "DENY".into());
@@ -439,13 +443,13 @@ mod tests {
     #[test]
     fn test_security_headers_hsts() {
         let cfg = SecurityConfig::default();
-        let plain = cfg.get_security_headers(false);
+        let plain = cfg.get_security_headers(None);
         assert_eq!(
             plain.get("X-Frame-Options").map(String::as_str),
             Some("DENY")
         );
         assert!(!plain.contains_key("Strict-Transport-Security"));
-        let https = cfg.get_security_headers(true);
+        let https = cfg.get_security_headers(Some(true));
         assert!(https.contains_key("Strict-Transport-Security"));
     }
 

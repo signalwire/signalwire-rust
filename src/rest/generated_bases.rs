@@ -183,27 +183,19 @@ impl<'a> ReadResource<'a> {
     ///
     /// Returns a lazy [`PaginatedIterator`] that follows the response's
     /// `links.next` cursor and yields each item under the `"data"` key. Mirrors
-    /// the Python reference's `ReadResource.paginate(**params)`; see
+    /// the Python reference's `ReadResource.paginate(*, request_options=None,
+    /// **params)`; see
     /// [`CrudResource::paginate`](super::CrudResource::paginate) for the full
     /// contract.
+    ///
+    /// `request_options` is a per-request [`RequestOptions`] override (plan 4.2)
+    /// forwarded to every page GET; `None` is the omit-it call, matching the
+    /// reference's default. Options are never serialized.
     #[must_use]
-    pub fn paginate(&self, params: &HashMap<String, String>) -> PaginatedIterator<'a> {
-        PaginatedIterator::new(
-            self.base.client(),
-            self.base.base_path(),
-            params.clone(),
-            "data",
-            None,
-        )
-    }
-
-    /// `paginate` with a per-request [`RequestOptions`] override (plan 4.2)
-    /// forwarded to every page GET. Options are never serialized.
-    #[must_use]
-    pub fn paginate_with_options(
+    pub fn paginate(
         &self,
-        params: &HashMap<String, String>,
         request_options: Option<RequestOptions>,
+        params: &HashMap<String, String>,
     ) -> PaginatedIterator<'a> {
         PaginatedIterator::new(
             self.base.client(),

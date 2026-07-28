@@ -1167,8 +1167,8 @@ def emit_resource(spec: Spec, anchor: str, markup: dict, structs: dict[str, str]
         lines.append("    /// `paginate` (delegated to the base): iterate every item across all")
         lines.append("    /// pages, following the response's `links.next` cursor.")
         lines.append("    #[must_use]")
-        lines.append("    pub fn paginate(&self, params: &HashMap<String, String>, request_options: Option<RequestOptions>) -> PaginatedIterator<'a> {")
-        lines.append("        self.base.paginate_with_options(params, request_options)")
+        lines.append("    pub fn paginate(&self, request_options: Option<RequestOptions>, params: &HashMap<String, String>) -> PaginatedIterator<'a> {")
+        lines.append("        self.base.paginate(request_options, params)")
         lines.append("    }")
     if "create" in provided:
         lines.append("")

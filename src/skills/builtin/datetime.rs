@@ -188,7 +188,7 @@ mod tests {
         // Tools are registered internally; we can verify through function call
         let args = Map::new();
         let raw = Map::new();
-        let result = agent.on_function_call("get_current_time", &args, &raw);
+        let result = agent.on_function_call("get_current_time", &args, Some(&raw));
         assert!(result.is_some());
     }
 
@@ -247,7 +247,7 @@ mod tests {
         let raw = Map::new();
 
         let time_res = agent
-            .on_function_call("get_current_time", &args, &raw)
+            .on_function_call("get_current_time", &args, Some(&raw))
             .unwrap();
         let resp = time_res.to_value()["response"]
             .as_str()
@@ -259,7 +259,7 @@ mod tests {
         );
 
         let date_res = agent
-            .on_function_call("get_current_date", &args, &raw)
+            .on_function_call("get_current_date", &args, Some(&raw))
             .unwrap();
         let dresp = date_res.to_value()["response"]
             .as_str()

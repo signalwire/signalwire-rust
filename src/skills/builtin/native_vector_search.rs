@@ -345,7 +345,7 @@ mod tests {
         let mut args = Map::new();
         args.insert("query".to_string(), json!("how do I configure widgets"));
         let result = agent
-            .on_function_call("search_knowledge", &args, &Map::new())
+            .on_function_call("search_knowledge", &args, Some(&Map::new()))
             .expect("search_knowledge tool should be registered");
         let response = result
             .to_value()
@@ -396,7 +396,7 @@ mod tests {
         let mut args = Map::new();
         args.insert("query".to_string(), json!("nonexistent topic"));
         let result = agent
-            .on_function_call("search_knowledge", &args, &Map::new())
+            .on_function_call("search_knowledge", &args, Some(&Map::new()))
             .expect("tool registered");
         let response = result
             .to_value()

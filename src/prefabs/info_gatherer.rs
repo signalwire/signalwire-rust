@@ -228,9 +228,21 @@ impl InfoGathererAgent {
     pub fn on_swml_request(
         &self,
         request_data: Option<&Map<String, Value>>,
-        query_params: &Map<String, Value>,
-        headers: &HashMap<String, String>,
+        query_params: Option<&Map<String, Value>>,
+        headers: Option<&HashMap<String, String>>,
     ) -> Option<Value> {
+        // The reference declares every parameter optional; `None` is the
+        // omit-it call and the absent map is the empty one.
+        let empty_params = Map::new();
+        let query_params = match query_params {
+            Some(q) => q,
+            None => &empty_params,
+        };
+        let empty_headers = HashMap::new();
+        let headers = match headers {
+            Some(h) => h,
+            None => &empty_headers,
+        };
         // Only process in dynamic mode.
         if self.static_mode {
             return None;
@@ -459,7 +471,7 @@ mod tests {
         let raw = serde_json::Map::new();
         let result = agent
             .agent()
-            .on_function_call("start_questions", &args, &raw);
+            .on_function_call("start_questions", &args, Some(&raw));
         assert!(result.is_some());
     }
 
@@ -617,7 +629,7 @@ mod tests {
         );
         assert!(
             agent
-                .on_swml_request(None, &Map::new(), &HashMap::new())
+                .on_swml_request(None, Some(&Map::new()), Some(&HashMap::new()))
                 .is_none()
         );
     }
@@ -627,7 +639,7 @@ mod tests {
         // Empty questions => dynamic mode; no callback => fallback questions.
         let agent = InfoGathererAgent::new(InfoGathererOptions::new().name("test"));
         let out = agent
-            .on_swml_request(None, &Map::new(), &HashMap::new())
+            .on_swml_request(None, Some(&Map::new()), Some(&HashMap::new()))
             .expect("dynamic mode returns global_data");
         let questions = out["global_data"]["questions"].as_array().unwrap();
         assert_eq!(questions.len(), 2);
@@ -655,7 +667,7 @@ mod tests {
         let mut query = Map::new();
         query.insert("set".to_string(), json!("support"));
         let out = agent
-            .on_swml_request(None, &query, &HashMap::new())
+            .on_swml_request(None, Some(&query), Some(&HashMap::new()))
             .expect("dynamic mode returns global_data");
         let questions = out["global_data"]["questions"].as_array().unwrap();
         assert_eq!(questions.len(), 2);
@@ -667,7 +679,7 @@ mod tests {
         let mut agent = InfoGathererAgent::new(InfoGathererOptions::new().name("test"));
         agent.set_question_callback(Arc::new(|_q, _b, _h| vec![]));
         let out = agent
-            .on_swml_request(None, &Map::new(), &HashMap::new())
+            .on_swml_request(None, Some(&Map::new()), Some(&HashMap::new()))
             .expect("dynamic mode returns global_data");
         let questions = out["global_data"]["questions"].as_array().unwrap();
         assert_eq!(questions.len(), 2); // fallback

@@ -353,7 +353,9 @@ fn capture_client_frames(out: &mut BTreeMap<&str, Value>) {
                 json!([[{"type": "phone", "params": {"to_number": "+15551112222"}}]]),
                 Some("dial-1"),
                 Some(600),
-                Duration::from_millis(50),
+                // A deliberately short timeout: this harness only needs the
+                // dial FRAME on the wire, not a completed call.
+                Some(Duration::from_millis(50)),
             );
         }),
     );

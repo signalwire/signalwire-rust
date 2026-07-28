@@ -92,29 +92,27 @@ impl<'a> CrudResource<'a> {
     /// # use std::collections::HashMap;
     /// # use signalwire::rest::CrudResource;
     /// # fn demo(resource: &CrudResource<'_>) {
-    /// for item in resource.paginate(&HashMap::new()) {
+    /// for item in resource.paginate(None, &HashMap::new()) {
     ///     let item = item.expect("page fetch failed");
     ///     // ... use item ...
     /// }
     /// # }
     /// ```
     ///
-    /// Mirrors the Python reference's `ReadResource.paginate(**params)`, wiring
-    /// the resource layer to the tested [`PaginatedIterator`] so callers no
-    /// longer hand-build the path + cursor loop. Construction is lazy — no HTTP
-    /// is dispatched until the iterator is first stepped.
+    /// Mirrors the Python reference's
+    /// `ReadResource.paginate(*, request_options=None, **params)`, wiring the
+    /// resource layer to the tested [`PaginatedIterator`] so callers no longer
+    /// hand-build the path + cursor loop. Construction is lazy — no HTTP is
+    /// dispatched until the iterator is first stepped.
+    ///
+    /// `request_options` is a per-request [`RequestOptions`] override (plan 4.2)
+    /// forwarded to every page GET; `None` is the omit-it call, matching the
+    /// reference's default. Options are never serialized.
     #[must_use]
-    pub fn paginate(&self, params: &HashMap<String, String>) -> PaginatedIterator<'a> {
-        PaginatedIterator::new(self.client, &self.base_path, params.clone(), "data", None)
-    }
-
-    /// `paginate` with a per-request [`RequestOptions`] override (plan 4.2)
-    /// forwarded to every page GET. Options are never serialized.
-    #[must_use]
-    pub fn paginate_with_options(
+    pub fn paginate(
         &self,
-        params: &HashMap<String, String>,
         request_options: Option<RequestOptions>,
+        params: &HashMap<String, String>,
     ) -> PaginatedIterator<'a> {
         PaginatedIterator::new(
             self.client,
@@ -380,7 +378,7 @@ mod tests {
         // Constructing the iterator dispatches no HTTP until first stepped.
         let (client, stub) = make_resource();
         let crud = CrudResource::new(&client, "/api/items", "PATCH");
-        let _it = crud.paginate(&HashMap::new());
+        let _it = crud.paginate(None, &HashMap::new());
         assert!(stub.requests.lock().unwrap().is_empty());
     }
 
@@ -413,7 +411,7 @@ mod tests {
 
         let crud = CrudResource::new(&client, "/api/items", "PATCH");
         let ids: Vec<String> = crud
-            .paginate(&HashMap::new())
+            .paginate(None, &HashMap::new())
             .map(|item| item.unwrap()["id"].as_str().unwrap().to_string())
             .collect();
         assert_eq!(ids, vec!["1", "2", "3"]);

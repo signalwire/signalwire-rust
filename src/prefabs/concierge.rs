@@ -622,14 +622,14 @@ mod tests {
         args.insert("service".to_string(), json!("Spa"));
         let result = agent
             .agent()
-            .on_function_call("check_availability", &args, &raw);
+            .on_function_call("check_availability", &args, Some(&raw));
         assert!(result.is_some());
 
         let mut args2 = serde_json::Map::new();
         args2.insert("destination".to_string(), json!("Pool"));
         let result2 = agent
             .agent()
-            .on_function_call("get_directions", &args2, &raw);
+            .on_function_call("get_directions", &args2, Some(&raw));
         assert!(result2.is_some());
         let json_str = result2.unwrap().to_json();
         assert!(json_str.contains("Floor 3"));
@@ -736,7 +736,7 @@ mod tests {
             "POST",
             "/concierge/post_prompt",
             &headers,
-            &body.to_string(),
+            Some(&body.to_string()),
         );
         assert_eq!(status, 200);
         assert_eq!(*captured.lock().unwrap(), "Great concierge call");

@@ -525,8 +525,9 @@ impl Step {
         output_key: Option<&str>,
         completion_action: Option<&str>,
         prompt: Option<&str>,
-        isolated: bool,
+        isolated: Option<bool>,
     ) -> &mut Self {
+        let isolated = isolated.unwrap_or(false);
         self.gather_info = Some(GatherInfo::new(
             output_key,
             completion_action,
@@ -570,12 +571,15 @@ impl Step {
         &mut self,
         key: &str,
         question: &str,
-        question_type: &str,
-        confirm: bool,
+        question_type: Option<&str>,
+        confirm: Option<bool>,
         prompt: Option<&str>,
         functions: Option<Vec<String>>,
         isolated: Option<bool>,
     ) -> &mut Self {
+        // `None` is the omit-it call; the reference defaults are "string"/false.
+        let question_type = question_type.unwrap_or("string");
+        let confirm = confirm.unwrap_or(false);
         if self.gather_info.is_none() {
             self.gather_info = Some(GatherInfo::new(None, None, None, false));
         }
@@ -1654,8 +1658,8 @@ mod tests {
     fn test_step_gather_info() {
         let mut step = Step::new("s");
         step.set_text("text");
-        step.set_gather_info(Some("info"), Some("done"), None, false);
-        step.add_gather_question("name", "Name?", "string", false, None, None, None);
+        step.set_gather_info(Some("info"), Some("done"), None, None);
+        step.add_gather_question("name", "Name?", None, None, None, None, None);
         let val = step.to_value();
         assert!(val["gather_info"]["questions"].is_array());
         assert_eq!(val["gather_info"]["output_key"], "info");
@@ -1665,7 +1669,7 @@ mod tests {
     fn test_step_gather_info_lazy_init() {
         let mut step = Step::new("s");
         step.set_text("text");
-        step.add_gather_question("email", "Email?", "string", false, None, None, None);
+        step.add_gather_question("email", "Email?", None, None, None, None, None);
         let val = step.to_value();
         assert_eq!(val["gather_info"]["questions"].as_array().unwrap().len(), 1);
     }
@@ -2083,8 +2087,8 @@ mod tests {
     fn test_step_gather_info_isolated_passthrough() {
         let mut step = Step::new("s");
         step.set_text("t");
-        step.set_gather_info(Some("info"), None, None, true);
-        step.add_gather_question("k", "Q?", "string", false, None, None, None);
+        step.set_gather_info(Some("info"), None, None, Some(true));
+        step.add_gather_question("k", "Q?", None, None, None, None, None);
         assert_eq!(step.to_value()["gather_info"]["isolated"], true);
     }
 
@@ -2095,17 +2099,9 @@ mod tests {
         // emits nothing.
         let mut step = Step::new("s");
         step.set_text("t");
-        step.set_gather_info(Some("info"), None, None, true);
-        step.add_gather_question(
-            "override_off",
-            "Q1?",
-            "string",
-            false,
-            None,
-            None,
-            Some(false),
-        );
-        step.add_gather_question("inherit", "Q2?", "string", false, None, None, None);
+        step.set_gather_info(Some("info"), None, None, Some(true));
+        step.add_gather_question("override_off", "Q1?", None, None, None, None, Some(false));
+        step.add_gather_question("inherit", "Q2?", None, None, None, None, None);
         let questions = step.to_value()["gather_info"]["questions"].clone();
         assert_eq!(questions[0]["isolated"], false);
         assert!(questions[1].get("isolated").is_none());
@@ -2213,7 +2209,7 @@ mod tests {
         let ctx = builder.add_context("default");
         let step = ctx.add_step("s1");
         step.set_text("a");
-        step.set_gather_info(None, None, None, false);
+        step.set_gather_info(None, None, None, None);
         let result = builder.validate();
         assert!(result.is_err());
         let errors = result.unwrap_err();
@@ -2226,8 +2222,8 @@ mod tests {
         let ctx = builder.add_context("default");
         let step = ctx.add_step("s1");
         step.set_text("a");
-        step.add_gather_question("name", "Name?", "string", false, None, None, None);
-        step.add_gather_question("name", "Name again?", "string", false, None, None, None);
+        step.add_gather_question("name", "Name?", None, None, None, None, None);
+        step.add_gather_question("name", "Name again?", None, None, None, None, None);
         let result = builder.validate();
         assert!(result.is_err());
         let errors = result.unwrap_err();

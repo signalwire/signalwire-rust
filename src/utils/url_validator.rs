@@ -126,7 +126,11 @@ fn cidr_contains(cidr: &str, ip: &IpAddr) -> bool {
 /// Validate that a URL is safe to fetch.
 ///
 /// Mirrors Python's `validate_url(url, allow_private=False) -> bool`.
-pub fn validate_url(url: &str, allow_private: bool) -> bool {
+///
+/// `allow_private` is `Option<bool>` because the reference declares it optional;
+/// `None` is the omit-it call and takes `false`.
+pub fn validate_url(url: &str, allow_private: Option<bool>) -> bool {
+    let allow_private = allow_private.unwrap_or(false);
     let log = Logger::new("signalwire.url_validator");
 
     let parsed = match Url::parse(url) {
@@ -208,7 +212,7 @@ mod tests {
         let _g = TEST_GUARD.lock().unwrap();
         reset_state();
         stub_resolver("1.2.3.4");
-        assert!(validate_url("http://example.com", false));
+        assert!(validate_url("http://example.com", None));
         reset_state();
     }
 
@@ -217,7 +221,7 @@ mod tests {
         let _g = TEST_GUARD.lock().unwrap();
         reset_state();
         stub_resolver("1.2.3.4");
-        assert!(validate_url("https://example.com", false));
+        assert!(validate_url("https://example.com", None));
         reset_state();
     }
 
@@ -225,21 +229,21 @@ mod tests {
     fn ftp_scheme_rejected() {
         let _g = TEST_GUARD.lock().unwrap();
         reset_state();
-        assert!(!validate_url("ftp://example.com", false));
+        assert!(!validate_url("ftp://example.com", None));
     }
 
     #[test]
     fn file_scheme_rejected() {
         let _g = TEST_GUARD.lock().unwrap();
         reset_state();
-        assert!(!validate_url("file:///etc/passwd", false));
+        assert!(!validate_url("file:///etc/passwd", None));
     }
 
     #[test]
     fn javascript_scheme_rejected() {
         let _g = TEST_GUARD.lock().unwrap();
         reset_state();
-        assert!(!validate_url("javascript:alert(1)", false));
+        assert!(!validate_url("javascript:alert(1)", None));
     }
 
     // --- Hostname --------------------------------------------------------
@@ -248,7 +252,7 @@ mod tests {
     fn no_hostname_rejected() {
         let _g = TEST_GUARD.lock().unwrap();
         reset_state();
-        assert!(!validate_url("http://", false));
+        assert!(!validate_url("http://", None));
     }
 
     #[test]
@@ -256,7 +260,7 @@ mod tests {
         let _g = TEST_GUARD.lock().unwrap();
         reset_state();
         stub_failed_resolver();
-        assert!(!validate_url("http://nonexistent.invalid", false));
+        assert!(!validate_url("http://nonexistent.invalid", None));
         reset_state();
     }
 
@@ -267,7 +271,7 @@ mod tests {
         let _g = TEST_GUARD.lock().unwrap();
         reset_state();
         stub_resolver("127.0.0.1");
-        assert!(!validate_url("http://localhost", false));
+        assert!(!validate_url("http://localhost", None));
         reset_state();
     }
 
@@ -276,7 +280,7 @@ mod tests {
         let _g = TEST_GUARD.lock().unwrap();
         reset_state();
         stub_resolver("10.0.0.5");
-        assert!(!validate_url("http://internal", false));
+        assert!(!validate_url("http://internal", None));
         reset_state();
     }
 
@@ -285,7 +289,7 @@ mod tests {
         let _g = TEST_GUARD.lock().unwrap();
         reset_state();
         stub_resolver("192.168.1.1");
-        assert!(!validate_url("http://router", false));
+        assert!(!validate_url("http://router", None));
         reset_state();
     }
 
@@ -294,7 +298,7 @@ mod tests {
         let _g = TEST_GUARD.lock().unwrap();
         reset_state();
         stub_resolver("172.16.0.1");
-        assert!(!validate_url("http://corp", false));
+        assert!(!validate_url("http://corp", None));
         reset_state();
     }
 
@@ -303,7 +307,7 @@ mod tests {
         let _g = TEST_GUARD.lock().unwrap();
         reset_state();
         stub_resolver("169.254.169.254");
-        assert!(!validate_url("http://metadata", false));
+        assert!(!validate_url("http://metadata", None));
         reset_state();
     }
 
@@ -312,7 +316,7 @@ mod tests {
         let _g = TEST_GUARD.lock().unwrap();
         reset_state();
         stub_resolver("0.0.0.0");
-        assert!(!validate_url("http://void", false));
+        assert!(!validate_url("http://void", None));
         reset_state();
     }
 
@@ -321,7 +325,7 @@ mod tests {
         let _g = TEST_GUARD.lock().unwrap();
         reset_state();
         stub_resolver("::1");
-        assert!(!validate_url("http://[::1]", false));
+        assert!(!validate_url("http://[::1]", None));
         reset_state();
     }
 
@@ -330,7 +334,7 @@ mod tests {
         let _g = TEST_GUARD.lock().unwrap();
         reset_state();
         stub_resolver("fe80::1");
-        assert!(!validate_url("http://link-local", false));
+        assert!(!validate_url("http://link-local", None));
         reset_state();
     }
 
@@ -339,7 +343,7 @@ mod tests {
         let _g = TEST_GUARD.lock().unwrap();
         reset_state();
         stub_resolver("fc00::1");
-        assert!(!validate_url("http://ipv6-private", false));
+        assert!(!validate_url("http://ipv6-private", None));
         reset_state();
     }
 
@@ -348,7 +352,7 @@ mod tests {
         let _g = TEST_GUARD.lock().unwrap();
         reset_state();
         stub_resolver("8.8.8.8");
-        assert!(validate_url("http://dns.google", false));
+        assert!(validate_url("http://dns.google", None));
         reset_state();
     }
 
@@ -359,7 +363,7 @@ mod tests {
         let _g = TEST_GUARD.lock().unwrap();
         reset_state();
         // No resolver stub: bypass short-circuits before DNS.
-        assert!(validate_url("http://10.0.0.5", true));
+        assert!(validate_url("http://10.0.0.5", Some(true)));
     }
 
     #[test]
@@ -367,7 +371,7 @@ mod tests {
         let _g = TEST_GUARD.lock().unwrap();
         reset_state();
         unsafe { env::set_var("SWML_ALLOW_PRIVATE_URLS", "true") };
-        assert!(validate_url("http://10.0.0.5", false));
+        assert!(validate_url("http://10.0.0.5", None));
         reset_state();
     }
 
@@ -376,7 +380,7 @@ mod tests {
         let _g = TEST_GUARD.lock().unwrap();
         reset_state();
         unsafe { env::set_var("SWML_ALLOW_PRIVATE_URLS", "YES") };
-        assert!(validate_url("http://10.0.0.5", false));
+        assert!(validate_url("http://10.0.0.5", None));
         reset_state();
     }
 
@@ -385,7 +389,7 @@ mod tests {
         let _g = TEST_GUARD.lock().unwrap();
         reset_state();
         unsafe { env::set_var("SWML_ALLOW_PRIVATE_URLS", "1") };
-        assert!(validate_url("http://10.0.0.5", false));
+        assert!(validate_url("http://10.0.0.5", None));
         reset_state();
     }
 
@@ -395,7 +399,7 @@ mod tests {
         reset_state();
         unsafe { env::set_var("SWML_ALLOW_PRIVATE_URLS", "false") };
         stub_resolver("10.0.0.5");
-        assert!(!validate_url("http://internal", false));
+        assert!(!validate_url("http://internal", None));
         reset_state();
     }
 

@@ -554,23 +554,33 @@ mod tests {
         let mut enum_fr = FunctionResult::new();
         enum_fr
             .record_call(
-                "rec1",
-                true,
-                RecordFormat::Mp3.as_str(),
-                "both",
-                "",
-                false,
-                44.0,
+                Some("rec1"),
+                Some(true),
+                Some(RecordFormat::Mp3.as_str().into()),
                 None,
                 None,
                 None,
-                "",
+                None,
+                None,
+                None,
+                None,
+                None,
             )
             .unwrap();
         let mut str_fr = FunctionResult::new();
         str_fr
             .record_call(
-                "rec1", true, "mp3", "both", "", false, 44.0, None, None, None, "",
+                Some("rec1"),
+                Some(true),
+                Some("mp3".into()),
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
             )
             .unwrap();
         assert_eq!(enum_fr.to_value(), str_fr.to_value());
@@ -612,23 +622,33 @@ mod tests {
         let mut enum_fr = FunctionResult::new();
         enum_fr
             .record_call(
-                "rec1",
-                false,
-                "wav",
-                RecordDirection::Listen.as_str(),
-                "",
-                false,
-                44.0,
+                Some("rec1"),
+                None,
+                None,
+                Some(RecordDirection::Listen.as_str().into()),
                 None,
                 None,
                 None,
-                "",
+                None,
+                None,
+                None,
+                None,
             )
             .unwrap();
         let mut str_fr = FunctionResult::new();
         str_fr
             .record_call(
-                "rec1", false, "wav", "listen", "", false, 44.0, None, None, None, "",
+                Some("rec1"),
+                None,
+                None,
+                Some("listen".into()),
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
             )
             .unwrap();
         assert_eq!(enum_fr.to_value(), str_fr.to_value());
@@ -676,16 +696,23 @@ mod tests {
         enum_fr
             .tap(
                 "wss://example.com",
-                "t1",
-                TapDirection::Hear.as_str(),
-                "PCMU",
-                20,
-                "",
+                Some("t1"),
+                Some(TapDirection::Hear.as_str().into()),
+                None,
+                None,
+                None,
             )
             .unwrap();
         let mut str_fr = FunctionResult::new();
         str_fr
-            .tap("wss://example.com", "t1", "hear", "PCMU", 20, "")
+            .tap(
+                "wss://example.com",
+                Some("t1"),
+                Some("hear".into()),
+                None,
+                None,
+                None,
+            )
             .unwrap();
         assert_eq!(enum_fr.to_value(), str_fr.to_value());
 
@@ -723,16 +750,23 @@ mod tests {
         enum_fr
             .tap(
                 "wss://example.com",
-                "t1",
-                "both",
-                Codec::Pcma.as_str(),
-                20,
-                "",
+                Some("t1"),
+                None,
+                Some(Codec::Pcma.as_str().into()),
+                None,
+                None,
             )
             .unwrap();
         let mut str_fr = FunctionResult::new();
         str_fr
-            .tap("wss://example.com", "t1", "both", "PCMA", 20, "")
+            .tap(
+                "wss://example.com",
+                Some("t1"),
+                None,
+                Some("PCMA".into()),
+                None,
+                None,
+            )
             .unwrap();
         assert_eq!(enum_fr.to_value(), str_fr.to_value());
 
@@ -870,23 +904,33 @@ mod tests {
         let mut typed_fr = FunctionResult::new();
         typed_fr
             .record_call(
-                "r",
-                true,
-                RecordFormat::Mp3,
-                RecordDirection::Speak,
-                "",
-                false,
-                44.0,
+                Some("r"),
+                Some(true),
+                Some(RecordFormat::Mp3.into()),
+                Some(RecordDirection::Speak.into()),
                 None,
                 None,
                 None,
-                "",
+                None,
+                None,
+                None,
+                None,
             )
             .unwrap();
         let mut raw_fr = FunctionResult::new();
         raw_fr
             .record_call(
-                "r", true, "mp3", "speak", "", false, 44.0, None, None, None, "",
+                Some("r"),
+                Some(true),
+                Some("mp3".into()),
+                Some("speak".into()),
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
             )
             .unwrap();
         assert_eq!(typed_fr.to_value(), raw_fr.to_value());
@@ -904,16 +948,23 @@ mod tests {
         typed_fr
             .tap(
                 "wss://example.com",
-                "t1",
-                TapDirection::Hear,
-                Codec::Pcma,
-                20,
-                "",
+                Some("t1"),
+                Some(TapDirection::Hear.into()),
+                Some(Codec::Pcma.into()),
+                None,
+                None,
             )
             .unwrap();
         let mut raw_fr = FunctionResult::new();
         raw_fr
-            .tap("wss://example.com", "t1", "hear", "PCMA", 20, "")
+            .tap(
+                "wss://example.com",
+                Some("t1"),
+                Some("hear".into()),
+                Some("PCMA".into()),
+                None,
+                None,
+            )
             .unwrap();
         assert_eq!(typed_fr.to_value(), raw_fr.to_value());
 
@@ -932,33 +983,42 @@ mod tests {
         let mut typed_rec = FunctionResult::new();
         typed_rec
             .record_call(
-                "",
-                false,
-                RecordFormat::Wav,
-                RecordDirection::Both,
-                "",
-                false,
-                44.0,
+                None,
+                None,
+                Some(RecordFormat::Wav.into()),
+                Some(RecordDirection::Both.into()),
                 None,
                 None,
                 None,
-                "",
+                None,
+                None,
+                None,
+                None,
             )
             .unwrap();
         let mut raw_rec = FunctionResult::new();
         raw_rec
             .record_call(
-                "", false, "wav", "both", "", false, 44.0, None, None, None, "",
+                None, None, None, None, None, None, None, None, None, None, None,
             )
             .unwrap();
         assert_eq!(typed_rec.to_value(), raw_rec.to_value());
 
         let mut typed_tap = FunctionResult::new();
         typed_tap
-            .tap("wss://x", "", TapDirection::Both, Codec::Pcmu, 20, "")
+            .tap(
+                "wss://x",
+                None,
+                Some(TapDirection::Both.into()),
+                Some(Codec::Pcmu.into()),
+                None,
+                None,
+            )
             .unwrap();
         let mut raw_tap = FunctionResult::new();
-        raw_tap.tap("wss://x", "", "both", "PCMU", 20, "").unwrap();
+        raw_tap
+            .tap("wss://x", None, None, None, None, None)
+            .unwrap();
         assert_eq!(typed_tap.to_value(), raw_tap.to_value());
         // Default direction/codec are omitted from the tap verb in both.
         let tv = typed_tap.to_value();
@@ -976,7 +1036,17 @@ mod tests {
         let mut fr = FunctionResult::new();
         assert_eq!(
             fr.record_call(
-                "", false, "ogg", "both", "", false, 44.0, None, None, None, ""
+                None,
+                None,
+                Some("ogg".into()),
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None
             )
             .unwrap_err(),
             "format must be 'wav', 'mp3', or 'mp4'"
@@ -984,20 +1054,31 @@ mod tests {
         let mut fr = FunctionResult::new();
         assert_eq!(
             fr.record_call(
-                "", false, "wav", "left", "", false, 44.0, None, None, None, ""
+                None,
+                None,
+                None,
+                Some("left".into()),
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None
             )
             .unwrap_err(),
             "direction must be 'speak', 'listen', or 'both'"
         );
         let mut fr = FunctionResult::new();
         assert_eq!(
-            fr.tap("wss://x", "", "sideways", "PCMU", 20, "")
+            fr.tap("wss://x", None, Some("sideways".into()), None, None, None)
                 .unwrap_err(),
             "direction must be one of ['speak', 'hear', 'both']"
         );
         let mut fr = FunctionResult::new();
         assert_eq!(
-            fr.tap("wss://x", "", "both", "OPUS", 20, "").unwrap_err(),
+            fr.tap("wss://x", None, None, Some("OPUS".into()), None, None)
+                .unwrap_err(),
             "codec must be one of ['PCMU', 'PCMA']"
         );
         // None of the rejected calls emitted an action.

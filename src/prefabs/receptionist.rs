@@ -204,14 +204,17 @@ impl ReceptionistAgent {
                                 result.swml_transfer(
                                     swml_url,
                                     &format!("Transferring you to {name} now."),
-                                    // final=true: permanent transfer (Python's
-                                    // swml_transfer default) — the receptionist
+                                    // `None` = the reference default final=true:
+                                    // permanent transfer — the receptionist
                                     // hands the call off entirely.
-                                    true,
+                                    None,
                                 );
                             }
                         } else if let Some(number) = dept.get("number").and_then(|v| v.as_str()) {
-                            result.connect(number, false, "");
+                            // final=false is DELIBERATE (not the default): the
+                            // caller returns to the receptionist afterwards. No
+                            // caller-ID override, so `from` is omitted.
+                            result.connect(number, Some(false), None);
                         }
 
                         return result;
@@ -287,14 +290,14 @@ mod tests {
         args.insert("reason".to_string(), json!("Billing inquiry"));
         let result = agent
             .agent()
-            .on_function_call("collect_caller_info", &args, &raw);
+            .on_function_call("collect_caller_info", &args, Some(&raw));
         assert!(result.is_some());
 
         let mut args2 = serde_json::Map::new();
         args2.insert("department".to_string(), json!("Sales"));
         let result2 = agent
             .agent()
-            .on_function_call("transfer_call", &args2, &raw);
+            .on_function_call("transfer_call", &args2, Some(&raw));
         assert!(result2.is_some());
     }
 
@@ -330,7 +333,7 @@ mod tests {
             "POST",
             "/receptionist/post_prompt",
             &headers,
-            &body.to_string(),
+            Some(&body.to_string()),
         );
         assert_eq!(status, 200);
         assert_eq!(*captured.lock().unwrap(), "Routed to Sales");

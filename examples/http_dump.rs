@@ -109,7 +109,7 @@ fn main() {
         let svc = new_service();
         let mut headers = HashMap::new();
         headers.insert("Authorization".to_string(), basic_auth(USER, PASSWORD));
-        let (s, h, b) = svc.handle_request("GET", "/swml", &headers, "");
+        let (s, h, b) = svc.handle_request("GET", "/swml", &headers, None);
         out.insert(
             "http_handle_request_200_swml",
             observe_response(s, &h, &b, true),
@@ -118,7 +118,7 @@ fn main() {
     // ---- handle_request: 401 no auth ----
     {
         let svc = new_service();
-        let (s, h, b) = svc.handle_request("GET", "/swml", &HashMap::new(), "");
+        let (s, h, b) = svc.handle_request("GET", "/swml", &HashMap::new(), None);
         out.insert(
             "http_handle_request_401_no_auth",
             observe_response(s, &h, &b, true),
@@ -129,7 +129,7 @@ fn main() {
         let svc = new_service();
         let mut headers = HashMap::new();
         headers.insert("Authorization".to_string(), basic_auth(USER, "wrong"));
-        let (s, h, b) = svc.handle_request("GET", "/swml", &headers, "");
+        let (s, h, b) = svc.handle_request("GET", "/swml", &headers, None);
         out.insert(
             "http_handle_request_401_bad_password",
             observe_response(s, &h, &b, false),
@@ -138,14 +138,14 @@ fn main() {
     // ---- handle_request: 307 redirect via routing callback ----
     {
         let mut svc = new_service();
-        svc.register_routing_callback(redirect_cb, "/sip");
+        svc.register_routing_callback(redirect_cb, None);
         let mut headers = HashMap::new();
         headers.insert("Authorization".to_string(), basic_auth(USER, PASSWORD));
         let (s, h, b) = svc.handle_request(
             "POST",
             "/swml/sip",
             &headers,
-            r#"{"call": {"to": "sip:redirect-me@space"}}"#,
+            Some(r#"{"call": {"to": "sip:redirect-me@space"}}"#),
         );
         out.insert(
             "http_handle_request_307_redirect",
@@ -155,14 +155,14 @@ fn main() {
     // ---- handle_request: callback returns None -> normal 200 SWML ----
     {
         let mut svc = new_service();
-        svc.register_routing_callback(redirect_cb, "/sip");
+        svc.register_routing_callback(redirect_cb, None);
         let mut headers = HashMap::new();
         headers.insert("Authorization".to_string(), basic_auth(USER, PASSWORD));
         let (s, h, b) = svc.handle_request(
             "POST",
             "/swml/sip",
             &headers,
-            r#"{"call": {"to": "sip:keep@space"}}"#,
+            Some(r#"{"call": {"to": "sip:keep@space"}}"#),
         );
         out.insert(
             "http_handle_request_callback_passthrough_200",

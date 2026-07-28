@@ -704,7 +704,7 @@ mod tests {
         args.insert("query".to_string(), Value::from("pricing"));
         let raw = serde_json::Map::new();
         let result = agent
-            .on_function_call("search", &args, &raw)
+            .on_function_call("search", &args, Some(&raw))
             .expect("handler dispatched");
         let v = result.to_value();
         assert_eq!(v["response"], "hit: pricing");

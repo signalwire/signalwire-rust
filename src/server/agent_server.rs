@@ -243,7 +243,14 @@ impl AgentServer {
     ///
     /// # Errors
     /// Returns [`ServerError::StaticDir`] if the directory does not exist.
-    pub fn serve_static_files(&mut self, directory: &str, route: &str) -> Result<(), ServerError> {
+    /// `route` is `Option<&str>` because the reference declares it optional
+    /// (`route: str = "/"`); `None` is the omit-it call and takes `"/"`.
+    pub fn serve_static_files(
+        &mut self,
+        directory: &str,
+        route: Option<&str>,
+    ) -> Result<(), ServerError> {
+        let route = route.unwrap_or("/");
         self.serve_static(directory, route)
     }
 
@@ -398,7 +405,7 @@ impl AgentServer {
                 self.logger
                     .info(&format!("Routing SIP request to {target_route}"));
                 if let Some(agent) = self.agents.get(&target_route) {
-                    return agent.handle_request(method, &target_route, headers, body);
+                    return agent.handle_request(method, &target_route, headers, Some(body));
                 }
             } else {
                 self.logger
@@ -418,7 +425,7 @@ impl AgentServer {
             // string" → "this agent picks up the call").
             let normalized = self.normalize_route(&redirected_route);
             if let Some(agent) = self.agents.get(&normalized) {
-                return agent.handle_request(method, &normalized, headers, body);
+                return agent.handle_request(method, &normalized, headers, Some(body));
             }
             // Configured route does not resolve — log and fall through.
             self.logger.warn(&format!(
@@ -429,7 +436,7 @@ impl AgentServer {
         // Find matching agent by longest prefix
         if let Some(matched_route) = self.find_matching_route(&path) {
             let agent = &self.agents[&matched_route];
-            return agent.handle_request(method, &path, headers, body);
+            return agent.handle_request(method, &path, headers, Some(body));
         }
 
         self.json_response(404, &json!({"error": "Not Found"}))
@@ -940,7 +947,7 @@ mod tests {
         // direct alias of serve_static. Both should fail on a missing
         // directory.
         let mut server = AgentServer::new(None, Some(3000));
-        let r1 = server.serve_static_files("/nonexistent/path/xyz", "/static");
+        let r1 = server.serve_static_files("/nonexistent/path/xyz", Some("/static"));
         assert!(r1.is_err());
     }
 
@@ -950,7 +957,7 @@ mod tests {
         let project = std::env::current_dir().unwrap();
         let dir = project.join("src");
         let mut server = AgentServer::new(None, Some(3000));
-        let r = server.serve_static_files(dir.to_str().unwrap(), "/static");
+        let r = server.serve_static_files(dir.to_str().unwrap(), Some("/static"));
         assert!(r.is_ok(), "serve_static_files unexpectedly errored: {r:?}");
         assert!(server.static_routes.contains_key("/static"));
     }

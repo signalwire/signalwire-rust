@@ -48,12 +48,16 @@ impl PomBuilder {
     pub fn add_section(
         &mut self,
         title: &str,
-        body: &str,
+        body: Option<&str>,
         bullets: Option<Vec<String>>,
-        numbered: bool,
-        numbered_bullets: bool,
+        numbered: Option<bool>,
+        numbered_bullets: Option<bool>,
         subsections: Option<Vec<Value>>,
     ) -> &mut Self {
+        // `None` is the omit-it call; reference defaults are ""/false/false.
+        let body = body.unwrap_or("");
+        let numbered = numbered.unwrap_or(false);
+        let numbered_bullets = numbered_bullets.unwrap_or(false);
         {
             let section = self
                 .pom
@@ -98,7 +102,7 @@ impl PomBuilder {
         bullets: Option<Vec<String>>,
     ) -> &mut Self {
         if !self.has_section(title) {
-            self.add_section(title, "", None, false, false, None);
+            self.add_section(title, None, None, None, None, None);
         }
         if let Some(section) = self.pom.find_section_mut(title) {
             if let Some(b) = body
@@ -125,11 +129,13 @@ impl PomBuilder {
         &mut self,
         parent_title: &str,
         title: &str,
-        body: &str,
+        body: Option<&str>,
         bullets: Option<Vec<String>>,
     ) -> &mut Self {
+        // `None` is the omit-it call; the reference default is "".
+        let body = body.unwrap_or("");
         if !self.has_section(parent_title) {
-            self.add_section(parent_title, "", None, false, false, None);
+            self.add_section(parent_title, None, None, None, None, None);
         }
         if let Some(parent) = self.pom.find_section_mut(parent_title) {
             parent.add_subsection_full(title, body, bullets.unwrap_or_default(), None, false);
@@ -212,10 +218,10 @@ mod tests {
         let mut b = PomBuilder::new();
         b.add_section(
             "Role",
-            "You are helpful.",
+            Some("You are helpful."),
             Some(vec!["Be concise".to_string()]),
-            false,
-            false,
+            None,
+            None,
             None,
         );
         assert!(b.has_section("Role"));
@@ -229,10 +235,10 @@ mod tests {
         let mut b = PomBuilder::new();
         b.add_section(
             "Rules",
-            "",
             None,
-            false,
-            false,
+            None,
+            None,
+            None,
             Some(vec![
                 json!({"title": "Sub", "body": "sub body", "bullets": ["x"]}),
             ]),
@@ -256,7 +262,12 @@ mod tests {
     #[test]
     fn test_add_subsection_autovivifies_parent() {
         let mut b = PomBuilder::new();
-        b.add_subsection("Parent", "Child", "child body", Some(vec!["b".to_string()]));
+        b.add_subsection(
+            "Parent",
+            "Child",
+            Some("child body"),
+            Some(vec!["b".to_string()]),
+        );
         assert!(b.has_section("Parent"));
         let p = b.get_section("Parent").unwrap();
         assert_eq!(p.subsections[0].title.as_deref(), Some("Child"));
@@ -272,7 +283,7 @@ mod tests {
     #[test]
     fn test_render_and_to_json() {
         let mut b = PomBuilder::new();
-        b.add_section("Role", "You help.", None, false, false, None);
+        b.add_section("Role", Some("You help."), None, None, None, None);
         assert!(b.render_markdown().contains("You help."));
         assert!(b.render_xml().contains("Role") || !b.render_xml().is_empty());
         let json_str = b.to_json();
@@ -282,7 +293,7 @@ mod tests {
     #[test]
     fn test_to_value_is_section_array() {
         let mut b = PomBuilder::new();
-        b.add_section("Role", "You help.", None, false, false, None);
+        b.add_section("Role", Some("You help."), None, None, None, None);
         let v = b.to_value();
         assert!(v.is_array());
         assert_eq!(v[0]["title"], "Role");

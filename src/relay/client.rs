@@ -1637,8 +1637,15 @@ impl Client {
         devices: Value,
         tag: Option<&str>,
         max_duration: Option<u32>,
-        dial_timeout: Duration,
+        dial_timeout: Option<Duration>,
     ) -> Result<Arc<Call>, RelayError> {
+        // The reference declares `dial_timeout: float | None = None` and falls
+        // back to 120 seconds when it is not supplied
+        // (`timeout = dial_timeout if dial_timeout is not None else 120.0`).
+        let dial_timeout = match dial_timeout {
+            Some(d) => d,
+            None => Duration::from_secs(120),
+        };
         self.dial_blocking(devices, tag, max_duration, dial_timeout)
     }
 

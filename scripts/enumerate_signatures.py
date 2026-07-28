@@ -1408,6 +1408,34 @@ def collect(rust_doc: dict, aliases: dict) -> tuple[dict, list]:
         out_modules[mod].setdefault("classes", {})
         out_modules[mod]["classes"].update(entry["classes"])
 
+    # KEYWORD-ONLY KIND MIRROR (methods). The reference marks some params
+    # keyword-only (``def paginate(self, *, request_options=None, **params)``);
+    # RUST HAS NO KEYWORD-ONLY ARGUMENTS, so rustdoc necessarily reports every
+    # param positional. That is pure idiom, reconciled in the enumerator rather
+    # than excused (Rule 2) — exactly the mirror already applied to the free
+    # functions above (see ``ref_kind_by_name``), lifted to methods so the two
+    # paths share one rule instead of the class side silently going unmirrored.
+    #
+    # It is a MIRROR, not an assertion: the kind is copied only onto a param the
+    # reference records under the SAME NAME and only when Rust reports it
+    # positional. A param the reference does not declare keyword-only keeps its
+    # positional kind, so this cannot manufacture agreement where none exists.
+    for mod_name, mod_entry in out_modules.items():
+        ref_classes = _PY_REF.get("modules", {}).get(mod_name, {}).get("classes", {})
+        for cls_name, cls_entry in (mod_entry.get("classes") or {}).items():
+            ref_methods = ref_classes.get(cls_name, {}).get("methods", {})
+            for meth_name, sig in (cls_entry.get("methods") or {}).items():
+                ref_kw = {
+                    p.get("name")
+                    for p in ref_methods.get(meth_name, {}).get("params", [])
+                    if p.get("kind") == "keyword"
+                }
+                if not ref_kw:
+                    continue
+                for p in sig.get("params", []):
+                    if p.get("name") in ref_kw and p.get("kind", "positional") == "positional":
+                        p["kind"] = "keyword"
+
     sorted_modules = {}
     for k in sorted(out_modules):
         entry = out_modules[k]

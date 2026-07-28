@@ -522,8 +522,12 @@ impl Service {
         &self,
         name: &str,
         args: &serde_json::Map<String, Value>,
-        raw_data: &serde_json::Map<String, Value>,
+        raw_data: Option<&serde_json::Map<String, Value>>,
     ) -> Option<FunctionResult> {
+        // `raw_data` is optional in the reference (`dict | None = None`); an
+        // omitted post-data payload is the empty map the handler sees.
+        let empty = serde_json::Map::new();
+        let raw_data = raw_data.unwrap_or(&empty);
         let tool = self.tools.get(name)?;
         let handler = tool.handler.as_ref()?;
         Some(handler(args, raw_data))
@@ -906,10 +910,14 @@ impl Service {
 
     /// Register a routing callback for `path`. The callback inspects request
     /// data and returns `Some(route)` to redirect.
-    pub fn register_routing_callback<F>(&mut self, callback: F, path: &str) -> &mut Self
+    ///
+    /// `path` is `Option<&str>` because the reference declares it optional
+    /// (`path: str = "/sip"`); `None` takes `"/sip"`.
+    pub fn register_routing_callback<F>(&mut self, callback: F, path: Option<&str>) -> &mut Self
     where
         F: Fn(&Value, &HashMap<String, String>) -> Option<String> + Send + Sync + 'static,
     {
+        let path = path.unwrap_or("/sip");
         // Path normalization mirrors Python's `register_routing_callback`
         // (swml_service.py): strip trailing '/', then ensure a leading '/'.
         // "/sip/" -> "/sip"; "voice" -> "/voice"; "" -> "/".
@@ -975,13 +983,21 @@ impl Service {
     // ------------------------------------------------------------------
 
     /// Handle an HTTP request. Returns `(status_code, headers, body)`.
+    ///
+    /// `body` is `Option<&str>` because the reference declares it optional
+    /// (`body: dict | None = None`) — a GET carries no body at all.
     pub fn handle_request(
         &self,
         method: &str,
         path: &str,
         headers: &HashMap<String, String>,
-        body: &str,
+        body: Option<&str>,
     ) -> (u16, HashMap<String, String>, String) {
+        // Reference default is `None` (no body), NOT the empty string. The
+        // fallback stays `unwrap_or_default()` rather than `unwrap_or("")`:
+        // the enumerator records a default from `unwrap_or(<literal>)`, and a
+        // recorded `""` would contradict the reference's `null`.
+        let body = body.unwrap_or_default();
         self.logger
             .info(&format!("incoming request: {method} {path}"));
 
@@ -1428,7 +1444,7 @@ impl Service {
             let _ = request.as_reader().read_to_string(&mut body_buf);
 
             let (status, resp_headers, resp_body) =
-                self.handle_request(&method, &path, &req_headers, &body_buf);
+                self.handle_request(&method, &path, &req_headers, Some(&body_buf));
 
             let mut response =
                 tiny_http::Response::from_string(&resp_body).with_status_code(status);
@@ -1610,7 +1626,7 @@ mod tests {
     #[test]
     fn test_health_endpoint() {
         let svc = Service::new(default_options("svc"));
-        let (status, headers, body) = svc.handle_request("GET", "/health", &HashMap::new(), "");
+        let (status, headers, body) = svc.handle_request("GET", "/health", &HashMap::new(), None);
         assert_eq!(status, 200);
         let parsed: Value = serde_json::from_str(&body).unwrap();
         assert_eq!(parsed["status"], "healthy");
@@ -1620,7 +1636,7 @@ mod tests {
     #[test]
     fn test_ready_endpoint() {
         let svc = Service::new(default_options("svc"));
-        let (status, _headers, body) = svc.handle_request("GET", "/ready", &HashMap::new(), "");
+        let (status, _headers, body) = svc.handle_request("GET", "/ready", &HashMap::new(), None);
         assert_eq!(status, 200);
         let parsed: Value = serde_json::from_str(&body).unwrap();
         assert_eq!(parsed["status"], "ready");
@@ -1629,7 +1645,7 @@ mod tests {
     #[test]
     fn test_auth_required_on_root() {
         let svc = Service::new(default_options("svc"));
-        let (status, headers, body) = svc.handle_request("POST", "/", &HashMap::new(), "");
+        let (status, headers, body) = svc.handle_request("POST", "/", &HashMap::new(), None);
         assert_eq!(status, 401);
         // Framework-free contract: JSON error body + bare `WWW-Authenticate:
         // Basic` header (no realm, no Content-Type).
@@ -1642,7 +1658,7 @@ mod tests {
     fn test_auth_success_returns_document() {
         let svc = Service::new(default_options("svc"));
         let headers = authed_headers("testuser", "testpass");
-        let (status, _, body) = svc.handle_request("POST", "/", &headers, "");
+        let (status, _, body) = svc.handle_request("POST", "/", &headers, None);
         assert_eq!(status, 200);
         let parsed: Value = serde_json::from_str(&body).unwrap();
         assert_eq!(parsed["version"], "1.0.0");
@@ -1652,7 +1668,7 @@ mod tests {
     fn test_auth_wrong_password() {
         let svc = Service::new(default_options("svc"));
         let headers = authed_headers("testuser", "wrong");
-        let (status, _, _) = svc.handle_request("POST", "/", &headers, "");
+        let (status, _, _) = svc.handle_request("POST", "/", &headers, None);
         assert_eq!(status, 401);
     }
 
@@ -1660,14 +1676,14 @@ mod tests {
     fn test_auth_wrong_user() {
         let svc = Service::new(default_options("svc"));
         let headers = authed_headers("wrong", "testpass");
-        let (status, _, _) = svc.handle_request("POST", "/", &headers, "");
+        let (status, _, _) = svc.handle_request("POST", "/", &headers, None);
         assert_eq!(status, 401);
     }
 
     #[test]
     fn test_security_headers_present() {
         let svc = Service::new(default_options("svc"));
-        let (_, headers, _) = svc.handle_request("GET", "/health", &HashMap::new(), "");
+        let (_, headers, _) = svc.handle_request("GET", "/health", &HashMap::new(), None);
         assert_eq!(headers.get("X-Content-Type-Options").unwrap(), "nosniff");
         assert_eq!(headers.get("X-Frame-Options").unwrap(), "DENY");
         assert_eq!(headers.get("Cache-Control").unwrap(), "no-store");
@@ -1821,7 +1837,7 @@ mod tests {
         let svc = Service::new(default_options("svc"));
         let headers = authed_headers("testuser", "testpass");
         let big_body = "x".repeat(MAX_BODY_SIZE + 1);
-        let (status, _, body) = svc.handle_request("POST", "/", &headers, &big_body);
+        let (status, _, body) = svc.handle_request("POST", "/", &headers, Some(&big_body));
         assert_eq!(status, 413);
         let parsed: Value = serde_json::from_str(&body).unwrap();
         assert_eq!(parsed["error"], "Request body too large");
@@ -1833,7 +1849,7 @@ mod tests {
         // letting the platform fetch it from either endpoint.
         let svc = Service::new(default_options("svc"));
         let headers = authed_headers("testuser", "testpass");
-        let (status, _, body) = svc.handle_request("GET", "/swaig", &headers, "");
+        let (status, _, body) = svc.handle_request("GET", "/swaig", &headers, None);
         assert_eq!(status, 200);
         let parsed: Value = serde_json::from_str(&body).unwrap();
         assert!(parsed.is_object(), "SWML doc must be an object, got {body}");
@@ -1864,7 +1880,7 @@ mod tests {
         );
         let headers = authed_headers("testuser", "testpass");
         let body = r#"{"function":"lookup","argument":{"parsed":[{"competitor":"ACME"}]}}"#;
-        let (status, _, resp) = svc.handle_request("POST", "/swaig", &headers, body);
+        let (status, _, resp) = svc.handle_request("POST", "/swaig", &headers, Some(body));
         assert_eq!(status, 200);
         let parsed: Value = serde_json::from_str(&resp).unwrap();
         assert_eq!(parsed["response"], "ACME pricing: $99");
@@ -1878,7 +1894,7 @@ mod tests {
         let svc = Service::new(default_options("svc"));
         let headers = authed_headers("testuser", "testpass");
         let body = r#"{"function":"never_registered","argument":{"parsed":[{}]}}"#;
-        let (status, _, resp) = svc.handle_request("POST", "/swaig", &headers, body);
+        let (status, _, resp) = svc.handle_request("POST", "/swaig", &headers, Some(body));
         assert_eq!(status, 200);
         let parsed: Value = serde_json::from_str(&resp).unwrap();
         let msg = parsed["response"].as_str().unwrap_or("");
@@ -1899,7 +1915,7 @@ mod tests {
         let svc = Service::new(default_options("svc"));
         let headers = authed_headers("testuser", "testpass");
         let body = r#"{"function":"../etc/passwd","argument":{"parsed":[{}]}}"#;
-        let (status, _, resp) = svc.handle_request("POST", "/swaig", &headers, body);
+        let (status, _, resp) = svc.handle_request("POST", "/swaig", &headers, Some(body));
         assert_eq!(status, 400);
         assert!(resp.contains("Invalid function name format"));
     }
@@ -1909,7 +1925,7 @@ mod tests {
         let svc = Service::new(default_options("svc"));
         let headers = authed_headers("testuser", "testpass");
         let body = r#"{"argument":{"parsed":[{}]}}"#;
-        let (status, _, resp) = svc.handle_request("POST", "/swaig", &headers, body);
+        let (status, _, resp) = svc.handle_request("POST", "/swaig", &headers, Some(body));
         assert_eq!(status, 400);
         assert!(resp.contains("Missing function name"));
     }
@@ -1934,7 +1950,7 @@ mod tests {
         );
         let headers = authed_headers("testuser", "testpass");
         let body = r#"{"function":"echo","arguments":{"name":"there"}}"#;
-        let (status, _, resp) = svc.handle_request("POST", "/swaig", &headers, body);
+        let (status, _, resp) = svc.handle_request("POST", "/swaig", &headers, Some(body));
         assert_eq!(status, 200);
         let parsed: Value = serde_json::from_str(&resp).unwrap();
         assert_eq!(parsed["response"], "hi there");
@@ -1967,7 +1983,7 @@ mod tests {
         // unknown route is a web-framework concern, layered above this core.
         let svc = Service::new(default_options("svc"));
         let headers = authed_headers("testuser", "testpass");
-        let (status, _, body) = svc.handle_request("POST", "/post_prompt", &headers, "");
+        let (status, _, body) = svc.handle_request("POST", "/post_prompt", &headers, None);
         assert_eq!(status, 200);
         let parsed: Value = serde_json::from_str(&body).unwrap();
         assert_eq!(parsed["version"], "1.0.0");
@@ -1979,7 +1995,7 @@ mod tests {
         // the framework-free core contract.
         let svc = Service::new(default_options("svc"));
         let headers = authed_headers("testuser", "testpass");
-        let (status, _, _) = svc.handle_request("GET", "/unknown", &headers, "");
+        let (status, _, _) = svc.handle_request("GET", "/unknown", &headers, None);
         assert_eq!(status, 200);
     }
 
@@ -1995,15 +2011,15 @@ mod tests {
 
         let headers = authed_headers("u", "p");
         // Root of the custom route
-        let (status, _, _) = svc.handle_request("POST", "/api/v1", &headers, "");
+        let (status, _, _) = svc.handle_request("POST", "/api/v1", &headers, None);
         assert_eq!(status, 200);
 
         // Sub-route — GET /swaig returns the SWML doc.
-        let (status, _, _) = svc.handle_request("GET", "/api/v1/swaig", &headers, "");
+        let (status, _, _) = svc.handle_request("GET", "/api/v1/swaig", &headers, None);
         assert_eq!(status, 200);
 
         // Path outside the route should 404
-        let (status, _, _) = svc.handle_request("POST", "/other", &headers, "");
+        let (status, _, _) = svc.handle_request("POST", "/other", &headers, None);
         assert_eq!(status, 404);
     }
 
@@ -2019,14 +2035,14 @@ mod tests {
     fn test_health_no_auth_required() {
         let svc = Service::new(default_options("svc"));
         // No auth headers at all — should still work for /health
-        let (status, _, _) = svc.handle_request("GET", "/health", &HashMap::new(), "");
+        let (status, _, _) = svc.handle_request("GET", "/health", &HashMap::new(), None);
         assert_eq!(status, 200);
     }
 
     #[test]
     fn test_ready_no_auth_required() {
         let svc = Service::new(default_options("svc"));
-        let (status, _, _) = svc.handle_request("GET", "/ready", &HashMap::new(), "");
+        let (status, _, _) = svc.handle_request("GET", "/ready", &HashMap::new(), None);
         assert_eq!(status, 200);
     }
 
@@ -2052,7 +2068,7 @@ mod tests {
         );
         let mut args = serde_json::Map::new();
         args.insert("x".to_string(), Value::String("y".to_string()));
-        let result = svc.on_function_call("lookup", &args, &serde_json::Map::new());
+        let result = svc.on_function_call("lookup", &args, Some(&serde_json::Map::new()));
         assert!(result.is_some());
         let v = result.unwrap().to_value();
         assert_eq!(v["response"], "ok");
@@ -2068,7 +2084,7 @@ mod tests {
         let result = svc.on_function_call(
             "no_such_fn",
             &serde_json::Map::new(),
-            &serde_json::Map::new(),
+            Some(&serde_json::Map::new()),
         );
         assert!(result.is_none());
     }
@@ -2130,7 +2146,8 @@ mod tests {
         );
         let mut args = serde_json::Map::new();
         args.insert("competitor".to_string(), Value::String("ACME".to_string()));
-        let result = svc.on_function_call("lookup_competitor", &args, &serde_json::Map::new());
+        let result =
+            svc.on_function_call("lookup_competitor", &args, Some(&serde_json::Map::new()));
         assert!(result.is_some());
         let v = result.unwrap().to_value();
         let resp = v["response"].as_str().unwrap();

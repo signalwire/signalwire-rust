@@ -114,15 +114,15 @@ fn main() {
             "I'll need to collect a few details to set up your account. \
              I'll ask one question at a time.",
         ),
-        false,
+        None,
     );
 
     // Question 1: email — only validate_email + gather_submit callable.
     onboard.add_gather_question(
         "email",
         "What's your email address?",
-        "string",
-        true,
+        None,
+        Some(true),
         None,
         Some(vec!["validate_email".to_string()]),
         None,
@@ -131,8 +131,8 @@ fn main() {
     onboard.add_gather_question(
         "zip",
         "What's your ZIP code?",
-        "string",
-        false,
+        None,
+        None,
         None,
         Some(vec!["geocode_zip".to_string()]),
         None,
@@ -142,8 +142,8 @@ fn main() {
     onboard.add_gather_question(
         "age",
         "How old are you?",
-        "integer",
-        false,
+        Some("integer"),
+        None,
         None,
         Some(vec!["check_age_eligibility".to_string()]),
         None,
@@ -154,8 +154,8 @@ fn main() {
     onboard.add_gather_question(
         "referral_source",
         "How did you hear about us?",
-        "string",
-        false,
+        None,
+        None,
         None,
         None,
         None,

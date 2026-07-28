@@ -99,14 +99,15 @@ impl DataMap {
         name: &str,
         param_type: &str,
         description: &str,
-        required: bool,
-        enum_values: Vec<&str>,
+        required: Option<bool>,
+        enum_values: Option<Vec<&str>>,
     ) -> &mut Self {
+        let required = required.unwrap_or(false);
         let mut prop = Map::new();
         prop.insert("type".to_string(), json!(param_type));
         prop.insert("description".to_string(), json!(description));
-        if !enum_values.is_empty() {
-            prop.insert("enum".to_string(), json!(enum_values));
+        if let Some(e) = enum_values.filter(|e| !e.is_empty()) {
+            prop.insert("enum".to_string(), json!(e));
         }
         self.properties
             .insert(name.to_string(), Value::Object(prop));
@@ -141,28 +142,29 @@ impl DataMap {
         &mut self,
         method: &str,
         url: &str,
-        headers: Value,
-        form_param: &str,
-        input_args_as_params: bool,
-        require_args: Vec<&str>,
+        headers: Option<Value>,
+        form_param: Option<&str>,
+        input_args_as_params: Option<bool>,
+        require_args: Option<Vec<&str>>,
     ) -> &mut Self {
+        let input_args_as_params = input_args_as_params.unwrap_or(false);
         let mut wh = Map::new();
         wh.insert("method".to_string(), json!(method));
         wh.insert("url".to_string(), json!(url));
 
-        if let Value::Object(ref h) = headers
+        if let Some(Value::Object(h)) = headers
             && !h.is_empty()
         {
-            wh.insert("headers".to_string(), headers.clone());
+            wh.insert("headers".to_string(), Value::Object(h));
         }
-        if !form_param.is_empty() {
-            wh.insert("form_param".to_string(), json!(form_param));
+        if let Some(f) = form_param.filter(|f| !f.is_empty()) {
+            wh.insert("form_param".to_string(), json!(f));
         }
         if input_args_as_params {
             wh.insert("input_args_as_params".to_string(), json!(true));
         }
-        if !require_args.is_empty() {
-            wh.insert("require_args".to_string(), json!(require_args));
+        if let Some(r) = require_args.filter(|r| !r.is_empty()) {
+            wh.insert("require_args".to_string(), json!(r));
         }
         self.webhooks.push(Value::Object(wh));
         self
@@ -342,10 +344,10 @@ impl DataMap {
                 .as_array()
                 .map(|arr| arr.iter().filter_map(|v| v.as_str()).collect())
                 .unwrap_or_default();
-            builder.parameter(p_name, p_type, p_desc, p_required, p_enum);
+            builder.parameter(p_name, p_type, p_desc, Some(p_required), Some(p_enum));
         }
 
-        builder.webhook(method, url, headers, "", false, vec![]);
+        builder.webhook(method, url, Some(headers), None, None, None);
         builder.output(output);
 
         builder.to_swaig_function()
@@ -370,7 +372,7 @@ impl DataMap {
                 .as_array()
                 .map(|arr| arr.iter().filter_map(|v| v.as_str()).collect())
                 .unwrap_or_default();
-            builder.parameter(p_name, p_type, p_desc, p_required, p_enum);
+            builder.parameter(p_name, p_type, p_desc, Some(p_required), Some(p_enum));
         }
 
         for expr in expressions {
@@ -420,7 +422,7 @@ mod tests {
     #[test]
     fn test_parameter() {
         let mut dm = DataMap::new("func");
-        dm.parameter("city", "string", "City name", true, vec![]);
+        dm.parameter("city", "string", "City name", Some(true), None);
         let val = dm.to_swaig_function();
         let props = &val["argument"]["properties"];
         assert_eq!(props["city"]["type"], "string");
@@ -436,8 +438,8 @@ mod tests {
             "unit",
             "string",
             "Temperature unit",
-            false,
-            vec!["celsius", "fahrenheit"],
+            None,
+            Some(vec!["celsius", "fahrenheit"]),
         );
         let val = dm.to_swaig_function();
         let enums = val["argument"]["properties"]["unit"]["enum"]
@@ -449,7 +451,7 @@ mod tests {
     #[test]
     fn test_parameter_not_required() {
         let mut dm = DataMap::new("func");
-        dm.parameter("opt", "string", "optional", false, vec![]);
+        dm.parameter("opt", "string", "optional", None, None);
         let val = dm.to_swaig_function();
         // required array should not exist if no required params
         assert!(val["argument"].get("required").is_none());
@@ -485,10 +487,10 @@ mod tests {
         dm.webhook(
             "GET",
             "https://api.example.com/data",
-            json!({}),
-            "",
-            false,
-            vec![],
+            None,
+            None,
+            None,
+            None,
         );
         let val = dm.to_swaig_function();
         let wh = &val["data_map"]["webhooks"][0];
@@ -502,10 +504,10 @@ mod tests {
         dm.webhook(
             "POST",
             "https://api.example.com",
-            json!({"Authorization": "Bearer token"}),
-            "data",
-            true,
-            vec!["city"],
+            Some(json!({"Authorization": "Bearer token"})),
+            Some("data"),
+            Some(true),
+            Some(vec!["city"]),
         );
         let val = dm.to_swaig_function();
         let wh = &val["data_map"]["webhooks"][0];
@@ -518,14 +520,7 @@ mod tests {
     #[test]
     fn test_webhook_expressions() {
         let mut dm = DataMap::new("func");
-        dm.webhook(
-            "GET",
-            "https://api.example.com",
-            json!({}),
-            "",
-            false,
-            vec![],
-        );
+        dm.webhook("GET", "https://api.example.com", None, None, None, None);
         dm.webhook_expressions(vec![
             json!({"pattern": "ok", "output": {"response": "good"}}),
         ]);
@@ -539,14 +534,7 @@ mod tests {
     #[test]
     fn test_body() {
         let mut dm = DataMap::new("func");
-        dm.webhook(
-            "POST",
-            "https://api.example.com",
-            json!({}),
-            "",
-            false,
-            vec![],
-        );
+        dm.webhook("POST", "https://api.example.com", None, None, None, None);
         dm.body(json!({"key": "value"}));
         let val = dm.to_swaig_function();
         assert_eq!(val["data_map"]["webhooks"][0]["body"]["key"], "value");
@@ -555,14 +543,7 @@ mod tests {
     #[test]
     fn test_params() {
         let mut dm = DataMap::new("func");
-        dm.webhook(
-            "POST",
-            "https://api.example.com",
-            json!({}),
-            "",
-            false,
-            vec![],
-        );
+        dm.webhook("POST", "https://api.example.com", None, None, None, None);
         dm.params(json!({"q": "${args.query}"}));
         let val = dm.to_swaig_function();
         assert_eq!(
@@ -574,14 +555,7 @@ mod tests {
     #[test]
     fn test_for_each() {
         let mut dm = DataMap::new("func");
-        dm.webhook(
-            "GET",
-            "https://api.example.com",
-            json!({}),
-            "",
-            false,
-            vec![],
-        );
+        dm.webhook("GET", "https://api.example.com", None, None, None, None);
         dm.for_each(json!({"input_key": "items", "output_key": "result"}));
         let val = dm.to_swaig_function();
         assert_eq!(
@@ -593,14 +567,7 @@ mod tests {
     #[test]
     fn test_output() {
         let mut dm = DataMap::new("func");
-        dm.webhook(
-            "GET",
-            "https://api.example.com",
-            json!({}),
-            "",
-            false,
-            vec![],
-        );
+        dm.webhook("GET", "https://api.example.com", None, None, None, None);
         dm.output(json!({"response": "Weather is ${temp}"}));
         let val = dm.to_swaig_function();
         assert_eq!(
@@ -620,14 +587,7 @@ mod tests {
     #[test]
     fn test_error_keys() {
         let mut dm = DataMap::new("func");
-        dm.webhook(
-            "GET",
-            "https://api.example.com",
-            json!({}),
-            "",
-            false,
-            vec![],
-        );
+        dm.webhook("GET", "https://api.example.com", None, None, None, None);
         dm.error_keys(vec!["error", "message"]);
         let val = dm.to_swaig_function();
         let ek = val["data_map"]["webhooks"][0]["error_keys"]
@@ -657,15 +617,8 @@ mod tests {
     fn test_chaining() {
         let mut dm = DataMap::new("weather");
         dm.purpose("Get weather")
-            .parameter("city", "string", "City name", true, vec![])
-            .webhook(
-                "GET",
-                "https://api.weather.com",
-                json!({}),
-                "",
-                false,
-                vec![],
-            )
+            .parameter("city", "string", "City name", Some(true), None)
+            .webhook("GET", "https://api.weather.com", None, None, None, None)
             .output(json!({"response": "Weather: ${temp}"}));
 
         let val = dm.to_swaig_function();
@@ -735,8 +688,8 @@ mod tests {
     #[test]
     fn test_multiple_parameters() {
         let mut dm = DataMap::new("func");
-        dm.parameter("a", "string", "First", true, vec![])
-            .parameter("b", "number", "Second", false, vec![]);
+        dm.parameter("a", "string", "First", Some(true), None)
+            .parameter("b", "number", "Second", None, None);
         let val = dm.to_swaig_function();
         assert!(val["argument"]["properties"]["a"].is_object());
         assert!(val["argument"]["properties"]["b"].is_object());
@@ -748,8 +701,8 @@ mod tests {
     #[test]
     fn test_multiple_webhooks() {
         let mut dm = DataMap::new("func");
-        dm.webhook("GET", "https://api1.com", json!({}), "", false, vec![]);
-        dm.webhook("POST", "https://api2.com", json!({}), "", false, vec![]);
+        dm.webhook("GET", "https://api1.com", None, None, None, None);
+        dm.webhook("POST", "https://api2.com", None, None, None, None);
         let val = dm.to_swaig_function();
         let whs = val["data_map"]["webhooks"].as_array().unwrap();
         assert_eq!(whs.len(), 2);

@@ -646,7 +646,7 @@ mod tests {
         let raw = serde_json::Map::new();
         let result = agent
             .agent()
-            .on_function_call("validate_response", &args, &raw);
+            .on_function_call("validate_response", &args, Some(&raw));
         assert!(result.is_some());
     }
 
@@ -656,10 +656,11 @@ mod tests {
         let mut args = serde_json::Map::new();
         args.insert("question_id".to_string(), json!("q1"));
         args.insert("answer".to_string(), json!("3"));
-        let result =
-            agent
-                .agent()
-                .on_function_call("validate_response", &args, &serde_json::Map::new());
+        let result = agent.agent().on_function_call(
+            "validate_response",
+            &args,
+            Some(&serde_json::Map::new()),
+        );
         assert!(result.is_some());
         let json_str = result.unwrap().to_json();
         assert!(json_str.contains("Valid rating"));
@@ -671,10 +672,11 @@ mod tests {
         let mut args = serde_json::Map::new();
         args.insert("question_id".to_string(), json!("q2"));
         args.insert("answer".to_string(), json!("yes"));
-        let result =
-            agent
-                .agent()
-                .on_function_call("validate_response", &args, &serde_json::Map::new());
+        let result = agent.agent().on_function_call(
+            "validate_response",
+            &args,
+            Some(&serde_json::Map::new()),
+        );
         assert!(result.is_some());
         let json_str = result.unwrap().to_json();
         assert!(json_str.contains("Valid response"));
@@ -808,7 +810,7 @@ mod tests {
             "POST",
             "/survey/post_prompt",
             &headers,
-            &body.to_string(),
+            Some(&body.to_string()),
         );
         assert_eq!(status, 200);
         assert_eq!(*captured.lock().unwrap(), "Survey done");

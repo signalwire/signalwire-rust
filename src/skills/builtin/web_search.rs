@@ -743,7 +743,7 @@ mod tests {
         let mut args = Map::new();
         args.insert("query".to_string(), json!(query));
         let result = agent
-            .on_function_call("web_search", &args, &Map::new())
+            .on_function_call("web_search", &args, Some(&Map::new()))
             .expect("web_search tool should be registered");
         result
             .to_value()

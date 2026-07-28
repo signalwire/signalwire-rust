@@ -1241,7 +1241,15 @@ impl AgentBase {
     /// `add_pronunciation(replace, with_text, ignore_case=False)`: the SWML
     /// wire keys are `replace`, `with`, and `ignore_case` (a bool, emitted
     /// only when true — matches signalwire-agents schema.json `Pronounce`).
-    pub fn add_pronunciation(&mut self, replace: &str, with: &str, ignore_case: bool) -> &mut Self {
+    /// `ignore_case` is `Option<bool>` because the reference declares it
+    /// optional (`ignore_case: bool = False`); `None` takes `false`.
+    pub fn add_pronunciation(
+        &mut self,
+        replace: &str,
+        with: &str,
+        ignore_case: Option<bool>,
+    ) -> &mut Self {
+        let ignore_case = ignore_case.unwrap_or(false);
         let mut entry = Map::new();
         entry.insert("replace".to_string(), json!(replace));
         entry.insert("with".to_string(), json!(with));
@@ -1408,8 +1416,19 @@ impl AgentBase {
         self
     }
 
-    pub fn enable_debug_events(&mut self, level: &str) -> &mut Self {
-        self.debug_events_level = Some(level.to_string());
+    /// `level` is `Option<&str>` because the reference declares it optional
+    /// (`level: int = 1`): `None` is the omit-it call and, exactly like the
+    /// reference's no-arg call, still ENABLES debug events at the base tier.
+    ///
+    /// The string-label-vs-int-level TYPE divergence is the pre-existing
+    /// documented signature omission, so no static default is recorded here —
+    /// the string `"1"` is not the reference's int `1`, and recording it would
+    /// assert a default this port does not actually agree on.
+    pub fn enable_debug_events(&mut self, level: Option<&str>) -> &mut Self {
+        self.debug_events_level = Some(match level {
+            Some(l) => l.to_string(),
+            None => "1".to_string(),
+        });
         self
     }
 
@@ -1563,7 +1582,10 @@ impl AgentBase {
     //  Skill Methods (stubs)
     // ══════════════════════════════════════════════════════════════════════
 
-    pub fn add_skill(&mut self, name: &str, params: Value) -> &mut Self {
+    /// `params` is `Option<Value>` because the reference declares it optional
+    /// (`params: dict | None = None`); `None` is the omit-it call.
+    pub fn add_skill(&mut self, name: &str, params: Option<Value>) -> &mut Self {
+        let params = params.unwrap_or(Value::Null);
         if !self.skills.contains(&name.to_string()) {
             self.skills.push(name.to_string());
         }
@@ -1759,8 +1781,12 @@ impl AgentBase {
     ///
     /// Prefers the manual proxy-URL override when set; otherwise composes from
     /// the service host/port/route.
+    ///
+    /// `include_auth` is `Option<bool>` because the reference declares it
+    /// optional (`include_auth: bool = False`); `None` takes `false`.
     #[must_use]
-    pub fn get_full_url(&self, include_auth: bool) -> String {
+    pub fn get_full_url(&self, include_auth: Option<bool>) -> String {
+        let include_auth = include_auth.unwrap_or(false);
         let base = if let Some(proxy) = &self.manual_proxy_url {
             proxy.trim_end_matches('/').to_string()
         } else {
@@ -1807,9 +1833,11 @@ impl AgentBase {
         &mut self,
         url: &str,
         headers: Option<Map<String, Value>>,
-        resources: bool,
+        resources: Option<bool>,
         resource_vars: Option<Map<String, Value>>,
     ) -> &mut Self {
+        // `None` is the omit-it call; the reference default is `False`.
+        let resources = resources.unwrap_or(false);
         let mut server = Map::new();
         server.insert("url".to_string(), json!(url));
         if let Some(h) = headers
@@ -1897,11 +1925,15 @@ impl AgentBase {
     pub fn setup_graceful_shutdown(&self) {}
 
     /// Register a routing callback for `path`.
-    pub fn register_routing_callback<F>(&mut self, callback: F, path: &str) -> &mut Self
+    ///
+    /// `path` is `Option<&str>` because the reference declares it optional
+    /// (`path: str = "/sip"`); `None` takes `"/sip"`.
+    pub fn register_routing_callback<F>(&mut self, callback: F, path: Option<&str>) -> &mut Self
     where
         F: Fn(&Value, &HashMap<String, String>) -> Option<String> + Send + Sync + 'static,
     {
-        self.service.register_routing_callback(callback, path);
+        let path = path.unwrap_or("/sip");
+        self.service.register_routing_callback(callback, Some(path));
         self
     }
 
@@ -2134,16 +2166,25 @@ impl AgentBase {
 
     /// Handle an HTTP request. Overrides the service handler with agent-specific
     /// logic for SWML, SWAIG dispatch, and post-prompt callbacks.
+    ///
+    /// `body` is `Option<&str>` to match [`SWMLService::handle_request`], which
+    /// this overrides — a GET carries no body at all.
     pub fn handle_request(
         &self,
         method: &str,
         path: &str,
         headers: &HashMap<String, String>,
-        body: &str,
+        body: Option<&str>,
     ) -> (u16, HashMap<String, String>, String) {
+        // `unwrap_or_default()` (not `unwrap_or("")`) for the same reason as
+        // `SWMLService::handle_request`: the reference's default is `null`, and
+        // `unwrap_or(<literal>)` is the form the enumerator records a default from.
+        let body = body.unwrap_or_default();
         // Health/ready: delegate to service
         if path == "/health" || path == "/ready" {
-            return self.service.handle_request(method, path, headers, body);
+            return self
+                .service
+                .handle_request(method, path, headers, Some(body));
         }
 
         // Determine sub-path relative to route
@@ -2379,7 +2420,7 @@ impl AgentBase {
 
         let raw_data = data.as_object().cloned().unwrap_or_default();
 
-        match self.on_function_call(function_name, &args, &raw_data) {
+        match self.on_function_call(function_name, &args, Some(&raw_data)) {
             Some(result) => json_response(200, &result.to_value()),
             None => json_response(
                 404,
@@ -2639,7 +2680,7 @@ impl AgentBase {
             let _ = request.as_reader().read_to_string(&mut body_buf);
 
             let (status, resp_headers, resp_body) =
-                self.handle_request(&method, &path, &req_headers, &body_buf);
+                self.handle_request(&method, &path, &req_headers, Some(&body_buf));
 
             let mut response =
                 tiny_http::Response::from_string(&resp_body).with_status_code(status);
@@ -2885,7 +2926,7 @@ mod tests {
         let mut args = Map::new();
         args.insert("name".to_string(), json!("Alice"));
         let raw = Map::new();
-        let result = agent.on_function_call("greet", &args, &raw).unwrap();
+        let result = agent.on_function_call("greet", &args, Some(&raw)).unwrap();
         assert_eq!(result.to_value()["response"], "Hello, Alice!");
     }
 
@@ -2894,7 +2935,11 @@ mod tests {
         let agent = AgentBase::new(default_options());
         let args = Map::new();
         let raw = Map::new();
-        assert!(agent.on_function_call("nonexistent", &args, &raw).is_none());
+        assert!(
+            agent
+                .on_function_call("nonexistent", &args, Some(&raw))
+                .is_none()
+        );
     }
 
     #[test]
@@ -3212,7 +3257,7 @@ mod tests {
     fn test_add_pronunciation() {
         // Wire keys: replace, with; `ignore_case` (bool) omitted when false.
         let mut agent = AgentBase::new(default_options());
-        agent.add_pronunciation("SignalWire", "signal wire", false);
+        agent.add_pronunciation("SignalWire", "signal wire", None);
         assert_eq!(agent.pronunciations[0]["replace"], "SignalWire");
         assert_eq!(agent.pronunciations[0]["with"], "signal wire");
         assert!(agent.pronunciations[0].get("ignore_case").is_none());
@@ -3225,7 +3270,7 @@ mod tests {
         // ignore_case=true emits the bool wire key `ignore_case: true`
         // (matches signalwire-agents schema.json + Python add_pronunciation).
         let mut agent = AgentBase::new(default_options());
-        agent.add_pronunciation("AI", "A.I.", true);
+        agent.add_pronunciation("AI", "A.I.", Some(true));
         assert_eq!(agent.pronunciations[0]["ignore_case"], json!(true));
         assert!(agent.pronunciations[0].get("ignore").is_none());
     }
@@ -3233,7 +3278,7 @@ mod tests {
     #[test]
     fn test_set_pronunciations() {
         let mut agent = AgentBase::new(default_options());
-        agent.add_pronunciation("a", "b", false);
+        agent.add_pronunciation("a", "b", None);
         agent.set_pronunciations(vec![]);
         assert!(agent.pronunciations.is_empty());
     }
@@ -3369,7 +3414,7 @@ mod tests {
     #[test]
     fn test_enable_debug_events() {
         let mut agent = AgentBase::new(default_options());
-        agent.enable_debug_events("all");
+        agent.enable_debug_events(Some("all"));
         assert_eq!(agent.debug_events_level, Some("all".to_string()));
     }
 
@@ -3511,7 +3556,7 @@ mod tests {
         assert!(!agent.has_skill("weather"));
         assert!(agent.list_skills().is_empty());
 
-        agent.add_skill("weather", json!({}));
+        agent.add_skill("weather", None);
         assert!(agent.has_skill("weather"));
         assert_eq!(agent.list_skills(), vec!["weather"]);
 
@@ -3522,8 +3567,8 @@ mod tests {
     #[test]
     fn test_add_skill_idempotent() {
         let mut agent = AgentBase::new(default_options());
-        agent.add_skill("s1", json!({}));
-        agent.add_skill("s1", json!({}));
+        agent.add_skill("s1", None);
+        agent.add_skill("s1", None);
         assert_eq!(agent.list_skills().len(), 1);
     }
 
@@ -3538,7 +3583,7 @@ mod tests {
         // the bare string: same bookkeeping entry AND the same SWAIG functions
         // get registered (real behaviour, not just the name list).
         let mut enum_agent = AgentBase::new(default_options());
-        enum_agent.add_skill(SkillName::Datetime.as_str(), json!({}));
+        enum_agent.add_skill(SkillName::Datetime.as_str(), None);
         assert!(enum_agent.has_skill("datetime")); // string lookup
         assert!(enum_agent.has_skill(SkillName::Datetime.as_str())); // enum lookup — same skill
         assert!(enum_agent.has_tool("get_current_time"));
@@ -3546,7 +3591,7 @@ mod tests {
 
         // Parity: the bare string still works identically (Python uses str).
         let mut string_agent = AgentBase::new(default_options());
-        string_agent.add_skill("datetime", json!({}));
+        string_agent.add_skill("datetime", None);
 
         // Both paths produce the same loaded-skill set and the same tool set.
         assert_eq!(enum_agent.list_skills(), string_agent.list_skills());
@@ -3726,7 +3771,7 @@ mod tests {
     #[test]
     fn test_build_ai_verb_pronunciations() {
         let mut agent = AgentBase::new(default_options());
-        agent.add_pronunciation("AI", "A.I.", false);
+        agent.add_pronunciation("AI", "A.I.", None);
         let ai = agent.build_ai_verb(&HashMap::new());
         assert_eq!(ai["pronounce"][0]["replace"], "AI");
     }
@@ -3736,7 +3781,7 @@ mod tests {
         let mut agent = AgentBase::new(default_options());
         agent.set_param("temperature", json!(0.7));
         agent.add_internal_filler("one moment");
-        agent.enable_debug_events("all");
+        agent.enable_debug_events(Some("all"));
         let ai = agent.build_ai_verb(&HashMap::new());
         assert_eq!(ai["params"]["temperature"], 0.7);
         assert_eq!(ai["params"]["internal_fillers"][0], "one moment");
@@ -3870,7 +3915,7 @@ mod tests {
         let clone = agent.clone_for_request();
         let args = Map::new();
         let raw = Map::new();
-        let result = clone.on_function_call("func1", &args, &raw).unwrap();
+        let result = clone.on_function_call("func1", &args, Some(&raw)).unwrap();
         assert_eq!(result.to_value()["response"], "ok");
     }
 
@@ -3879,7 +3924,7 @@ mod tests {
     #[test]
     fn test_handle_request_health() {
         let agent = AgentBase::new(default_options());
-        let (status, _, body) = agent.handle_request("GET", "/health", &HashMap::new(), "");
+        let (status, _, body) = agent.handle_request("GET", "/health", &HashMap::new(), None);
         assert_eq!(status, 200);
         let parsed: Value = serde_json::from_str(&body).unwrap();
         assert_eq!(parsed["status"], "healthy");
@@ -3888,14 +3933,14 @@ mod tests {
     #[test]
     fn test_handle_request_ready() {
         let agent = AgentBase::new(default_options());
-        let (status, _, _) = agent.handle_request("GET", "/ready", &HashMap::new(), "");
+        let (status, _, _) = agent.handle_request("GET", "/ready", &HashMap::new(), None);
         assert_eq!(status, 200);
     }
 
     #[test]
     fn test_handle_request_auth_required() {
         let agent = AgentBase::new(default_options());
-        let (status, _, _) = agent.handle_request("POST", "/", &HashMap::new(), "");
+        let (status, _, _) = agent.handle_request("POST", "/", &HashMap::new(), None);
         assert_eq!(status, 401);
     }
 
@@ -3903,7 +3948,7 @@ mod tests {
     fn test_handle_request_swml() {
         let mut agent = AgentBase::new(default_options());
         agent.set_prompt_text("Bot");
-        let (status, _, body) = agent.handle_request("POST", "/", &authed_headers(), "");
+        let (status, _, body) = agent.handle_request("POST", "/", &authed_headers(), None);
         assert_eq!(status, 200);
         let parsed: Value = serde_json::from_str(&body).unwrap();
         assert_eq!(parsed["version"], "1.0.0");
@@ -3925,7 +3970,7 @@ mod tests {
             "argument": {"parsed": [{}]}
         });
         let (status, _, resp_body) =
-            agent.handle_request("POST", "/swaig", &authed_headers(), &body.to_string());
+            agent.handle_request("POST", "/swaig", &authed_headers(), Some(&body.to_string()));
         assert_eq!(status, 200);
         let parsed: Value = serde_json::from_str(&resp_body).unwrap();
         assert_eq!(parsed["response"], "Hello!");
@@ -3936,14 +3981,14 @@ mod tests {
         let agent = AgentBase::new(default_options());
         let body = json!({"function": "nonexistent", "argument": {"parsed": [{}]}});
         let (status, _, _) =
-            agent.handle_request("POST", "/swaig", &authed_headers(), &body.to_string());
+            agent.handle_request("POST", "/swaig", &authed_headers(), Some(&body.to_string()));
         assert_eq!(status, 404);
     }
 
     #[test]
     fn test_handle_request_swaig_no_body() {
         let agent = AgentBase::new(default_options());
-        let (status, _, _) = agent.handle_request("POST", "/swaig", &authed_headers(), "");
+        let (status, _, _) = agent.handle_request("POST", "/swaig", &authed_headers(), None);
         assert_eq!(status, 400);
     }
 
@@ -3952,7 +3997,7 @@ mod tests {
         let agent = AgentBase::new(default_options());
         let body = json!({"argument": {}});
         let (status, _, _) =
-            agent.handle_request("POST", "/swaig", &authed_headers(), &body.to_string());
+            agent.handle_request("POST", "/swaig", &authed_headers(), Some(&body.to_string()));
         assert_eq!(status, 400);
     }
 
@@ -3960,8 +4005,12 @@ mod tests {
     fn test_handle_request_post_prompt() {
         let agent = AgentBase::new(default_options());
         let body = json!({"summary": "Call went well"});
-        let (status, _, resp_body) =
-            agent.handle_request("POST", "/post_prompt", &authed_headers(), &body.to_string());
+        let (status, _, resp_body) = agent.handle_request(
+            "POST",
+            "/post_prompt",
+            &authed_headers(),
+            Some(&body.to_string()),
+        );
         assert_eq!(status, 200);
         let parsed: Value = serde_json::from_str(&resp_body).unwrap();
         assert_eq!(parsed["status"], "ok");
@@ -3970,7 +4019,7 @@ mod tests {
     #[test]
     fn test_handle_request_not_found() {
         let agent = AgentBase::new(default_options());
-        let (status, _, _) = agent.handle_request("GET", "/unknown", &authed_headers(), "");
+        let (status, _, _) = agent.handle_request("GET", "/unknown", &authed_headers(), None);
         assert_eq!(status, 404);
     }
 
@@ -3985,7 +4034,7 @@ mod tests {
             .add_hint("hint1")
             .add_hints(vec!["hint2", "hint3"])
             .set_param("temperature", json!(0.7))
-            .enable_debug_events("all")
+            .enable_debug_events(Some("all"))
             .add_pre_answer_verb("play", json!({"url": "ring.mp3"}))
             .add_post_answer_verb("sleep", json!(1000));
 
@@ -4046,7 +4095,7 @@ mod tests {
             clone.set_prompt_text("Dynamic prompt");
         }));
 
-        let (status, _, body) = agent.handle_request("POST", "/", &authed_headers(), "{}");
+        let (status, _, body) = agent.handle_request("POST", "/", &authed_headers(), Some("{}"));
         assert_eq!(status, 200);
         let parsed: Value = serde_json::from_str(&body).unwrap();
         // The AI verb should have the dynamically modified prompt
@@ -4079,8 +4128,12 @@ mod tests {
         }));
 
         let body = json!({"summary": "Great call"});
-        let (status, _, _) =
-            agent.handle_request("POST", "/post_prompt", &authed_headers(), &body.to_string());
+        let (status, _, _) = agent.handle_request(
+            "POST",
+            "/post_prompt",
+            &authed_headers(),
+            Some(&body.to_string()),
+        );
         assert_eq!(status, 200);
 
         let guard = captured.lock().unwrap();
@@ -4362,7 +4415,7 @@ mod tests {
             "POST",
             "/swaig",
             &authed_headers(),
-            &swaig_body("secure_tool", Some("garbage_token")),
+            Some(&swaig_body("secure_tool", Some("garbage_token"))),
         );
         assert_eq!(status, 200, "the reference refuses in-band, not via HTTP");
         assert!(
@@ -4379,7 +4432,7 @@ mod tests {
             "POST",
             "/swaig",
             &authed_headers(),
-            &swaig_body("secure_tool", Some(&token)),
+            Some(&swaig_body("secure_tool", Some(&token))),
         );
         assert_eq!(status, 200);
         assert!(
@@ -4400,7 +4453,7 @@ mod tests {
             "POST",
             "/swaig",
             &authed_headers(),
-            &swaig_body("insecure_tool", Some("garbage_token")),
+            Some(&swaig_body("insecure_tool", Some("garbage_token"))),
         );
         assert_eq!(status, 200);
         assert!(
@@ -4423,7 +4476,7 @@ mod tests {
             "query_params": {"__token": token},
         });
         let (status, _, out) =
-            a.handle_request("POST", "/swaig", &authed_headers(), &body.to_string());
+            a.handle_request("POST", "/swaig", &authed_headers(), Some(&body.to_string()));
         assert_eq!(status, 200);
         assert!(
             !out.contains("security token for this function is invalid"),
@@ -4441,7 +4494,7 @@ mod tests {
             "POST",
             "/swaig",
             &authed_headers(),
-            &swaig_body("secure_tool", None),
+            Some(&swaig_body("secure_tool", None)),
         );
         assert_eq!(status, 200);
         assert!(

@@ -12,8 +12,14 @@ fn main() {
     let mut command_processor = DataMap::new("command_processor");
     command_processor
         .description("Process user commands with pattern matching")
-        .parameter("command", "string", "User command to process", true, vec![])
-        .parameter("target", "string", "Optional target", false, vec![])
+        .parameter(
+            "command",
+            "string",
+            "User command to process",
+            Some(true),
+            None,
+        )
+        .parameter("target", "string", "Optional target", None, None)
         .expression(
             "${args.command}",
             r"^start",
@@ -48,19 +54,18 @@ fn main() {
     let mut api_tool = DataMap::new("advanced_api_tool");
     api_tool
         .description("API tool with advanced webhook features")
-        .parameter("action", "string", "Action to perform", true, vec![])
-        .parameter("data", "string", "Data to send", false, vec![])
+        .parameter("action", "string", "Action to perform", Some(true), None)
+        .parameter("data", "string", "Data to send", None, None)
         .webhook(
             "POST",
             "https://api.example.com/advanced",
-            json!({
+            Some(json!({
                 "Authorization": "Bearer ${env.API_TOKEN}",
                 "User-Agent": "SignalWire-Agent/1.0"
-            }),
-            "",
-            false,
-            vec![],
-        )
+            })),
+            None,
+            None,
+            None)
         .body(json!({"action": "${args.action}", "data": "${args.data}"}))
         .webhook_expressions(vec![
             json!({
@@ -85,17 +90,17 @@ fn main() {
     let mut search_tool = DataMap::new("knowledge_search");
     search_tool
         .description("Search the knowledge base")
-        .parameter("query", "string", "Search query", true, vec![])
+        .parameter("query", "string", "Search query", Some(true), None)
         .webhook(
             "POST",
             "https://api.example.com/search",
-            json!({
+            Some(json!({
                 "Authorization": "Bearer ${env.KB_API_KEY}",
                 "Content-Type": "application/json"
-            }),
-            "",
-            false,
-            vec![],
+            })),
+            None,
+            None,
+            None,
         )
         .body(json!({"query": "${args.query}", "limit": 5}))
         .for_each(json!({

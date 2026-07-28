@@ -55,7 +55,7 @@ impl RequestHandler for crate::agent::AgentBase {
         headers: &HashMap<String, String>,
         body: &str,
     ) -> (u16, HashMap<String, String>, String) {
-        crate::agent::AgentBase::handle_request(self, method, path, headers, body)
+        crate::agent::AgentBase::handle_request(self, method, path, headers, Some(body))
     }
 }
 

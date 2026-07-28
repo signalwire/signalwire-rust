@@ -107,10 +107,13 @@ impl AuthHandler {
     /// guard closure that inspects a request's headers and reports whether the
     /// request is authenticated by any enabled method. `optional` makes an
     /// un-credentialed request pass (matching FastAPI's optional dependency).
+    /// `optional` is `Option<bool>` because the reference declares it optional
+    /// (`optional: bool = False`); `None` takes `false`.
     pub fn get_fastapi_dependency(
         &self,
-        optional: bool,
+        optional: Option<bool>,
     ) -> impl Fn(&HashMap<String, String>) -> bool + '_ {
+        let optional = optional.unwrap_or(false);
         move |headers| {
             if self.authenticate_headers(headers) {
                 return true;
@@ -308,10 +311,10 @@ mod tests {
     #[test]
     fn test_fastapi_dependency_optional_allows_no_credentials() {
         let h = handler();
-        let dep = h.get_fastapi_dependency(true);
+        let dep = h.get_fastapi_dependency(Some(true));
         let empty = HashMap::new();
         assert!(dep(&empty)); // optional + no credential → allow
-        let required = h.get_fastapi_dependency(false);
+        let required = h.get_fastapi_dependency(None);
         assert!(!required(&empty)); // required + no credential → deny
     }
 }
