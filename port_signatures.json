@@ -23413,8 +23413,8 @@
                 },
                 {
                   "name": "params",
-                  "type": "dict<string,string>",
-                  "required": true
+                  "type": "optional<dict<string,string>>",
+                  "required": false
                 },
                 {
                   "name": "request_options",
@@ -23461,8 +23461,13 @@
                 },
                 {
                   "name": "body",
-                  "type": "class:signalwire.value.Value",
-                  "required": true
+                  "type": "optional<class:signalwire.value.Value>",
+                  "required": false
+                },
+                {
+                  "name": "params",
+                  "type": "optional<dict<string,string>>",
+                  "required": false
                 },
                 {
                   "name": "request_options",

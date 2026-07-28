@@ -77,7 +77,7 @@ impl<'a> CrudResource<'a> {
         request_options: Option<&RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
         self.client
-            .get_with_options(&self.base_path, params, request_options)
+            .get_with_options(&self.base_path, Some(params), request_options)
     }
 
     /// Iterate every item across all pages of this resource's list endpoint.
@@ -146,7 +146,7 @@ impl<'a> CrudResource<'a> {
         request_options: Option<&RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
         self.client
-            .post_with_options(&self.base_path, data, request_options)
+            .post_with_options(&self.base_path, Some(data), None, request_options)
     }
 
     /// Retrieve a single resource by ID (GET basePath/{id}).
@@ -171,7 +171,7 @@ impl<'a> CrudResource<'a> {
         request_options: Option<&RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
         self.client
-            .get_with_options(&self.path(&[id]), &HashMap::new(), request_options)
+            .get_with_options(&self.path(&[id]), None, request_options)
     }
 
     /// Update a resource by ID (PUT/PATCH basePath/{id}, per `update_method`).

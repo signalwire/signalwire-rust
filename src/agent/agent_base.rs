@@ -2097,11 +2097,18 @@ impl AgentBase {
             merged_params.insert("internal_fillers".to_string(), json!(self.internal_fillers));
         }
         if let Some(level) = self.debug_events_level {
-            // The wire key is `debug_webhook_level` and it carries an INTEGER
-            // tier — see the reference (`core/agent_base.py:1259`) and this
+            // Debug events emit a PAIR of params, exactly as the reference does
+            // (`core/agent_base.py:1254-1261`): the auth-embedded webhook URL
+            // built from the `debug_events` endpoint, and the INTEGER tier.
+            //
+            // The wire key for the tier is `debug_webhook_level` — see this
             // crate's embedded `schema.json`, which types it as `integer` and
             // has no `debug_events` param at all. `debug_events` is the webhook
             // PATH segment, never a params key.
+            merged_params.insert(
+                "debug_webhook_url".to_string(),
+                json!(self.build_webhook_url("debug_events", headers)),
+            );
             merged_params.insert("debug_webhook_level".to_string(), json!(level));
         }
         if !merged_params.is_empty() {
@@ -2537,6 +2544,15 @@ impl AgentBase {
     }
 
     fn build_swaig_webhook_url(&self, headers: &HashMap<String, String>) -> String {
+        self.build_webhook_url("swaig", headers)
+    }
+
+    /// Build the auth-embedded webhook URL for `endpoint`, the port's
+    /// `_build_webhook_url(endpoint, query_params)`
+    /// (`core/swml_service.py:1615`). The `swaig` query params are appended for
+    /// every endpoint, matching the reference — it passes the same
+    /// `_swaig_query_params` copy to the `swaig` and `debug_events` calls alike.
+    fn build_webhook_url(&self, endpoint: &str, headers: &HashMap<String, String>) -> String {
         let proxy_base = self.resolve_proxy_base(headers);
         let route_segment = if self.service.route() == "/" {
             String::new()
@@ -2552,9 +2568,9 @@ impl AgentBase {
                 let proto_end = proxy_base.find("://").unwrap() + 3;
                 let proto = &proxy_base[..proto_end];
                 let rest = &proxy_base[proto_end..];
-                format!("{proto}{user}:{pass}@{rest}{route_segment}/swaig")
+                format!("{proto}{user}:{pass}@{rest}{route_segment}/{endpoint}")
             } else {
-                format!("http://{user}:{pass}@{proxy_base}{route_segment}/swaig")
+                format!("http://{user}:{pass}@{proxy_base}{route_segment}/{endpoint}")
             };
 
         if !self.swaig_query_params.is_empty() {
@@ -3808,6 +3824,51 @@ mod tests {
         let ai = agent.build_ai_verb(&HashMap::new());
         // The reference's `level: int = 1` default.
         assert_eq!(ai["params"]["debug_webhook_level"], 1);
+    }
+
+    /// WIRE CONTRACT: enabling debug events emits BOTH params — the reference
+    /// sets `params["debug_webhook_url"] = _build_webhook_url("debug_events",
+    /// …)` alongside `params["debug_webhook_level"]`
+    /// (`core/agent_base.py:1254-1261`). Emitting only the level leaves the
+    /// platform with nowhere to deliver the events.
+    #[test]
+    fn test_debug_events_emit_both_url_and_level() {
+        let mut agent = AgentBase::new(default_options());
+        agent.enable_debug_events(Some(2));
+        let ai = agent.build_ai_verb(&HashMap::new());
+
+        assert_eq!(ai["params"]["debug_webhook_level"], 2);
+        let url = ai["params"]["debug_webhook_url"]
+            .as_str()
+            .expect("debug_webhook_url must be emitted alongside the level");
+        // The `debug_events` ENDPOINT segment (not `swaig`), and the same
+        // auth-embedded shape every webhook URL carries.
+        assert!(
+            url.ends_with("/debug_events"),
+            "debug_webhook_url must address the debug_events endpoint, got {url}"
+        );
+        assert!(
+            url.contains('@'),
+            "debug_webhook_url must embed basic-auth credentials, got {url}"
+        );
+    }
+
+    /// The debug webhook URL carries the same `swaig` query params the
+    /// reference passes into its `_build_webhook_url("debug_events", …)` call.
+    #[test]
+    fn test_debug_webhook_url_carries_swaig_query_params() {
+        let mut agent = AgentBase::new(default_options());
+        let mut qp = HashMap::new();
+        qp.insert("tenant".to_string(), "acme".to_string());
+        agent.add_swaig_query_params(qp);
+        agent.enable_debug_events(Some(1));
+        let ai = agent.build_ai_verb(&HashMap::new());
+
+        let url = ai["params"]["debug_webhook_url"].as_str().unwrap();
+        assert!(
+            url.contains("/debug_events?tenant=acme"),
+            "query params must ride along on the debug webhook URL, got {url}"
+        );
     }
 
     #[test]

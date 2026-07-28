@@ -176,7 +176,7 @@ impl<'a> ReadResource<'a> {
     ) -> Result<Value, SignalWireRestError> {
         self.base
             .client()
-            .get_with_options(self.base.base_path(), params, request_options)
+            .get_with_options(self.base.base_path(), Some(params), request_options)
     }
 
     /// Iterate every item across all pages of this resource's list endpoint.
@@ -225,11 +225,9 @@ impl<'a> ReadResource<'a> {
         id: &str,
         request_options: Option<&RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.base.client().get_with_options(
-            &self.base.path(&[id]),
-            &HashMap::new(),
-            request_options,
-        )
+        self.base
+            .client()
+            .get_with_options(&self.base.path(&[id]), None, request_options)
     }
 }
 
@@ -399,7 +397,7 @@ impl<'a> FabricResource<'a> {
     ) -> Result<Value, SignalWireRestError> {
         self.base.client().get_with_options(
             &self.base.path(&[id, "addresses"]),
-            params,
+            Some(params),
             request_options,
         )
     }

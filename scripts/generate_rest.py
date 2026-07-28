@@ -828,12 +828,17 @@ def emit_operation_method(spec: Spec, anchor: str, markup: dict, base: str,
     write_verb = verb in ("post", "put", "patch")
     verb_fn = {"post": "post", "put": "put", "patch": "patch"}.get(verb, verb)
 
-    # `put`/`patch` take an OPTIONAL body (`Option<&Value>`) because the
-    # reference's `put`/`patch` default `body=None`; `post` still takes it by
-    # plain reference. A generated operation always HAS a body to send, so it
-    # wraps in `Some(..)` for the two optional-body verbs.
     def _body(expr: str) -> str:
-        return f"Some({expr})" if verb in ("put", "patch") else expr
+        # `post`/`put`/`patch` all take an OPTIONAL body (`Option<&Value>`)
+        # because the reference defaults each to `body=None`. A generated
+        # operation always HAS a body to send, so it wraps in `Some(..)`.
+        return f"Some({expr})" if verb in ("post", "put", "patch") else expr
+
+    # `post` carries the reference's QUERY-params argument between the body and
+    # the options (`_base.py` `post(path, body, params, request_options)`); a
+    # generated operation sends its inputs in the body, so it passes `None`.
+    # `put`/`patch` have no such argument.
+    post_params_fwd = "None, " if verb == "post" else ""
 
     # Every generated method carries a trailing ``request_options:
     # Option<RequestOptions>`` (plan 4.2 / PY-9), forwarded to the client's
@@ -854,7 +859,7 @@ def emit_operation_method(spec: Spec, anchor: str, markup: dict, base: str,
             lines.append("    /// Returns [`SignalWireRestError`] on transport failure, a non-2xx")
             lines.append("    /// status, or an unparseable response body.")
             lines.append(f"    pub fn {name}(&self, {', '.join(params)}) -> Result<Value, SignalWireRestError> {{")
-            lines.append(f"        self.client().{verb_fn}_with_options({path_expr}, {_body('&request.build()')}, {ro_fwd})")
+            lines.append(f"        self.client().{verb_fn}_with_options({path_expr}, {_body('&request.build()')}, {post_params_fwd}{ro_fwd})")
             lines.append("    }")
         else:
             # §5.2 union body → a single positional body: Value.
@@ -865,7 +870,7 @@ def emit_operation_method(spec: Spec, anchor: str, markup: dict, base: str,
             lines.append("    /// Returns [`SignalWireRestError`] on transport failure, a non-2xx")
             lines.append("    /// status, or an unparseable response body.")
             lines.append(f"    pub fn {name}(&self, {', '.join(params)}) -> Result<Value, SignalWireRestError> {{")
-            lines.append(f"        self.client().{verb_fn}_with_options({path_expr}, {_body('body')}, {ro_fwd})")
+            lines.append(f"        self.client().{verb_fn}_with_options({path_expr}, {_body('body')}, {post_params_fwd}{ro_fwd})")
             lines.append("    }")
     elif write_verb:
         params = id_params + [ro_param]
@@ -874,7 +879,7 @@ def emit_operation_method(spec: Spec, anchor: str, markup: dict, base: str,
         lines.append("    /// # Errors")
         lines.append("    /// Returns [`SignalWireRestError`] on transport failure, a non-2xx status.")
         lines.append(f"    pub fn {name}(&self, {', '.join(params)}) -> Result<Value, SignalWireRestError> {{")
-        lines.append(f"        self.client().{verb_fn}_with_options({path_expr}, {_body('&Value::Object(Map::new())')}, {ro_fwd})")
+        lines.append(f"        self.client().{verb_fn}_with_options({path_expr}, {_body('&Value::Object(Map::new())')}, {post_params_fwd}{ro_fwd})")
         lines.append("    }")
     elif verb == "get":
         # §5.3 GET query door — a trailing params map + request_options.
@@ -884,7 +889,7 @@ def emit_operation_method(spec: Spec, anchor: str, markup: dict, base: str,
         lines.append("    /// # Errors")
         lines.append("    /// Returns [`SignalWireRestError`] on transport failure, a non-2xx status.")
         lines.append(f"    pub fn {name}(&self, {', '.join(params)}) -> Result<Value, SignalWireRestError> {{")
-        lines.append(f"        self.client().get_with_options({path_expr}, params, {ro_fwd})")
+        lines.append(f"        self.client().get_with_options({path_expr}, Some(params), {ro_fwd})")
         lines.append("    }")
     else:  # delete
         params = id_params + [ro_param]
@@ -1050,7 +1055,7 @@ def emit_command_dispatch(spec: Spec, anchor: str, markup: dict, structs: dict[s
     lines.append("        }")
     lines.append("        // request_options is transport-only — forwarded to the HTTP layer, never")
     lines.append("        // serialized into the command body.")
-    lines.append("        self.client.post_with_options(Self::BASE_PATH, &Value::Object(body), request_options.as_ref())")
+    lines.append("        self.client.post_with_options(Self::BASE_PATH, Some(&Value::Object(body)), None, request_options.as_ref())")
     lines.append("    }")
 
     for cmd in commands:

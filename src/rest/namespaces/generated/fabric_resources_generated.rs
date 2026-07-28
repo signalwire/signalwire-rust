@@ -850,7 +850,7 @@ impl<'a> GenericResources<'a> {
         request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
         self.client()
-            .get_with_options(self.base_path(), params, request_options.as_ref())
+            .get_with_options(self.base_path(), Some(params), request_options.as_ref())
     }
 
     /// `GET /resources/{id}` (generated operation method; query params).
@@ -864,7 +864,7 @@ impl<'a> GenericResources<'a> {
         request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
         self.client()
-            .get_with_options(&self.path(&[id]), params, request_options.as_ref())
+            .get_with_options(&self.path(&[id]), Some(params), request_options.as_ref())
     }
 
     /// `DELETE /resources/{id}` (generated operation method).
@@ -892,7 +892,7 @@ impl<'a> GenericResources<'a> {
     ) -> Result<Value, SignalWireRestError> {
         self.client().get_with_options(
             &self.path(&[id, "addresses"]),
-            params,
+            Some(params),
             request_options.as_ref(),
         )
     }
@@ -910,7 +910,8 @@ impl<'a> GenericResources<'a> {
     ) -> Result<Value, SignalWireRestError> {
         self.client().post_with_options(
             &self.path(&[id, "phone_routes"]),
-            &request.build(),
+            Some(&request.build()),
+            None,
             request_options.as_ref(),
         )
     }
@@ -928,7 +929,8 @@ impl<'a> GenericResources<'a> {
     ) -> Result<Value, SignalWireRestError> {
         self.client().post_with_options(
             &self.path(&[id, "domain_applications"]),
-            &request.build(),
+            Some(&request.build()),
+            None,
             request_options.as_ref(),
         )
     }
@@ -1137,7 +1139,7 @@ impl<'a> CallFlows<'a> {
     ) -> Result<Value, SignalWireRestError> {
         self.client().get_with_options(
             &format!("/api/fabric/resources/call_flow/{id}/addresses"),
-            params,
+            Some(params),
             request_options.as_ref(),
         )
     }
@@ -1154,7 +1156,7 @@ impl<'a> CallFlows<'a> {
     ) -> Result<Value, SignalWireRestError> {
         self.client().get_with_options(
             &format!("/api/fabric/resources/call_flow/{id}/versions"),
-            params,
+            Some(params),
             request_options.as_ref(),
         )
     }
@@ -1172,7 +1174,8 @@ impl<'a> CallFlows<'a> {
     ) -> Result<Value, SignalWireRestError> {
         self.client().post_with_options(
             &format!("/api/fabric/resources/call_flow/{id}/versions"),
-            body,
+            Some(body),
+            None,
             request_options.as_ref(),
         )
     }
@@ -1280,7 +1283,7 @@ impl<'a> ConferenceRooms<'a> {
     ) -> Result<Value, SignalWireRestError> {
         self.client().get_with_options(
             &format!("/api/fabric/resources/conference_room/{id}/addresses"),
-            params,
+            Some(params),
             request_options.as_ref(),
         )
     }
@@ -1326,7 +1329,7 @@ impl<'a> CxmlApplications<'a> {
         request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
         self.client()
-            .get_with_options(self.base_path(), params, request_options.as_ref())
+            .get_with_options(self.base_path(), Some(params), request_options.as_ref())
     }
 
     /// `GET /resources/cxml_applications/{id}` (generated operation method; query params).
@@ -1340,7 +1343,7 @@ impl<'a> CxmlApplications<'a> {
         request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
         self.client()
-            .get_with_options(&self.path(&[id]), params, request_options.as_ref())
+            .get_with_options(&self.path(&[id]), Some(params), request_options.as_ref())
     }
 
     /// `PUT /resources/cxml_applications/{id}` (generated operation method).
@@ -1386,7 +1389,7 @@ impl<'a> CxmlApplications<'a> {
     ) -> Result<Value, SignalWireRestError> {
         self.client().get_with_options(
             &self.path(&[id, "addresses"]),
-            params,
+            Some(params),
             request_options.as_ref(),
         )
     }
@@ -2118,7 +2121,7 @@ impl<'a> Subscribers<'a> {
     ) -> Result<Value, SignalWireRestError> {
         self.client().get_with_options(
             &self.path(&[subscriber_id, "sip_endpoints"]),
-            params,
+            Some(params),
             request_options.as_ref(),
         )
     }
@@ -2136,7 +2139,8 @@ impl<'a> Subscribers<'a> {
     ) -> Result<Value, SignalWireRestError> {
         self.client().post_with_options(
             &self.path(&[subscriber_id, "sip_endpoints"]),
-            &request.build(),
+            Some(&request.build()),
+            None,
             request_options.as_ref(),
         )
     }
@@ -2154,7 +2158,7 @@ impl<'a> Subscribers<'a> {
     ) -> Result<Value, SignalWireRestError> {
         self.client().get_with_options(
             &self.path(&[subscriber_id, "sip_endpoints", id]),
-            params,
+            Some(params),
             request_options.as_ref(),
         )
     }
@@ -2435,7 +2439,8 @@ impl<'a> FabricTokens<'a> {
     ) -> Result<Value, SignalWireRestError> {
         self.client().post_with_options(
             "/api/fabric/subscribers/tokens",
-            &request.build(),
+            Some(&request.build()),
+            None,
             request_options.as_ref(),
         )
     }
@@ -2452,7 +2457,8 @@ impl<'a> FabricTokens<'a> {
     ) -> Result<Value, SignalWireRestError> {
         self.client().post_with_options(
             "/api/fabric/subscribers/tokens/refresh",
-            &request.build(),
+            Some(&request.build()),
+            None,
             request_options.as_ref(),
         )
     }
@@ -2469,7 +2475,8 @@ impl<'a> FabricTokens<'a> {
     ) -> Result<Value, SignalWireRestError> {
         self.client().post_with_options(
             "/api/fabric/subscriber/invites",
-            &request.build(),
+            Some(&request.build()),
+            None,
             request_options.as_ref(),
         )
     }
@@ -2486,7 +2493,8 @@ impl<'a> FabricTokens<'a> {
     ) -> Result<Value, SignalWireRestError> {
         self.client().post_with_options(
             "/api/fabric/guests/tokens",
-            &request.build(),
+            Some(&request.build()),
+            None,
             request_options.as_ref(),
         )
     }
@@ -2503,7 +2511,8 @@ impl<'a> FabricTokens<'a> {
     ) -> Result<Value, SignalWireRestError> {
         self.client().post_with_options(
             "/api/fabric/embeds/tokens",
-            &request.build(),
+            Some(&request.build()),
+            None,
             request_options.as_ref(),
         )
     }

@@ -141,9 +141,9 @@ impl<'a> PaginatedIterator<'a> {
     /// Fetch one page: replace the item buffer and resolve the next cursor.
     fn fetch_next(&mut self) -> Result<(), SignalWireRestError> {
         let (path, params) = self.next_request();
-        let response = self
-            .http
-            .get_with_options(&path, &params, self.request_options.as_ref())?;
+        let response =
+            self.http
+                .get_with_options(&path, Some(&params), self.request_options.as_ref())?;
 
         let data = response
             .get(&self.data_key)

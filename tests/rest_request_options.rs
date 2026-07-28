@@ -19,7 +19,6 @@
 #[path = "common/mod.rs"]
 mod common;
 
-use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
@@ -58,7 +57,7 @@ fn test_get_retry_once_succeeds() {
 
     let body = c
         .http()
-        .get(GET_PATH, &HashMap::new())
+        .get(GET_PATH, None)
         .expect("retry into 200 succeeds");
     assert!(body.is_object());
     // attempt + 1 retry == 2 requests on the wire.
@@ -81,7 +80,7 @@ fn test_get_retry_exhausted() {
 
     let err = c
         .http()
-        .get(GET_PATH, &HashMap::new())
+        .get(GET_PATH, None)
         .expect_err("retries exhausted -> typed 503");
     assert_eq!(err.status_code(), 503);
     assert!(!err.is_transport());
@@ -106,7 +105,7 @@ fn test_post_500_not_retried() {
 
     let err = c
         .http()
-        .post(CREATE_PATH, &json!({"label": "x"}))
+        .post(CREATE_PATH, Some(&json!({"label": "x"})), None)
         .expect_err("POST 500 -> typed 500, no retry");
     assert_eq!(err.status_code(), 500);
     // A non-idempotent method must NOT retry 500 -> exactly 1 request.
@@ -132,7 +131,7 @@ fn test_post_503_retried() {
 
     let body = c
         .http()
-        .post(CREATE_PATH, &json!({"label": "x"}))
+        .post(CREATE_PATH, Some(&json!({"label": "x"})), None)
         .expect("POST 503 retried into success");
     assert!(body.is_object());
     assert_eq!(
@@ -163,7 +162,7 @@ fn test_per_request_override_beats_client_default() {
     let per = RequestOptions::new().retries(1).retry_backoff(0.0);
     let body = c
         .http()
-        .get_with_options(GET_PATH, &HashMap::new(), Some(&per))
+        .get_with_options(GET_PATH, None, Some(&per))
         .expect("per-request override retries into 200");
     assert!(body.is_object());
     assert_eq!(hits(GET_PATH), 2, "per-request retries=1 -> 2 requests");
@@ -186,7 +185,7 @@ fn test_no_retry_by_default() {
 
     let err = c
         .http()
-        .get(GET_PATH, &HashMap::new())
+        .get(GET_PATH, None)
         .expect_err("no retry by default -> typed 503 on first response");
     assert_eq!(err.status_code(), 503);
     assert_eq!(hits(GET_PATH), 1, "default is no retry -> 1 request");
@@ -205,7 +204,7 @@ fn test_abort_signal_cancels_before_send() {
 
     let err = c
         .http()
-        .get(GET_PATH, &HashMap::new())
+        .get(GET_PATH, None)
         .expect_err("a set abort_signal cancels before the send");
     assert!(
         err.is_transport(),
@@ -247,7 +246,7 @@ fn test_abort_signal_stops_retry_between_attempts() {
 
     let err = c
         .http()
-        .get(GET_PATH, &HashMap::new())
+        .get(GET_PATH, None)
         .expect_err("abort between attempts -> typed transport error");
     let _ = flip.join();
     assert!(err.is_transport(), "abort surfaces as a transport error");
@@ -279,7 +278,7 @@ fn test_timeout_surfaces_typed_transport_error() {
 
     let err = c
         .http()
-        .get(GET_PATH, &HashMap::new())
+        .get(GET_PATH, None)
         .expect_err("a per-attempt timeout surfaces the typed transport error");
     assert!(
         err.is_transport(),

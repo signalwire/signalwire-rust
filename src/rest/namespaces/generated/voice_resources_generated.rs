@@ -93,7 +93,7 @@ impl<'a> VoiceLogs<'a> {
     ) -> Result<Value, SignalWireRestError> {
         self.client().get_with_options(
             &self.path(&[id, "events"]),
-            params,
+            Some(params),
             request_options.as_ref(),
         )
     }

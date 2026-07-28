@@ -284,7 +284,6 @@ signalwire.relay.call.StandaloneCollectAction.start_input_timers: idiom: Rust `s
 signalwire.relay.client.RelayClient.dial: idiom: Rust `dial` is a synchronous wrapper delegating to the blocking client; Python is async. Sync-blocking idiom.
 signalwire.relay.client.RelayClient.send_message: idiom: Rust `send_message` is a synchronous wrapper delegating to the blocking client; Python is async. Sync-blocking idiom.
 signalwire.relay.message.Message.wait: idiom: Rust `wait(&self, timeout)` blocks and returns Option; Python is async. Sync-blocking + Option idiom.
-signalwire.rest._base.HttpClient.post: idiom: Rust `post(&self, path, data: &Value) -> Result<Value, SignalWireRestError>`; Python `(self, path, body, params)`. Result + &Value-body idiom (query params threaded via the path/builder).
 signalwire.skills.registry.SkillRegistry.discover_skills: no-self: Rust static method over the compiled-in factory registry (no instance state); Python enumerates the bound `self`.
 signalwire.skills.registry.SkillRegistry.get_all_skills_schema: no-self: Rust static method over the compiled-in factory registry; Python enumerates the bound `self`.
 signalwire.skills.registry.SkillRegistry.get_skill_class: no-self + param-name idiom: Rust `get_skill_class(name)` associated fn returns a factory over the compiled-in registry; Python `(self, skill_name)` returns a class. Rust has no runtime class objects — the factory closure is the analog.

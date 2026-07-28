@@ -416,10 +416,12 @@ impl HttpClient {
     /// 404 when the addressed resource does not exist), or a 2xx response body
     /// is present but not valid JSON. This is the authoritative description of
     /// the three failure modes shared by every HTTP method on this client.
+    /// `params` is optional — `None` sends no query string, matching the
+    /// reference's `params=None` default.
     pub fn get(
         &self,
         path: &str,
-        params: &HashMap<String, String>,
+        params: Option<&HashMap<String, String>>,
     ) -> Result<Value, SignalWireRestError> {
         self.request("GET", path, params, None, None)
     }
@@ -438,35 +440,51 @@ impl HttpClient {
     pub fn get_with_options(
         &self,
         path: &str,
-        params: &HashMap<String, String>,
+        params: Option<&HashMap<String, String>>,
         options: Option<&RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
         self.request("GET", path, params, None, options)
     }
 
-    /// Issue a `POST` request to `path` with `data` serialized as the JSON body.
+    /// Issue a `POST` request to `path` with `data` serialized as the JSON body
+    /// and `params` sent as the QUERY STRING.
+    ///
+    /// The two carriers are independent, exactly as in the reference
+    /// (`_base.py` `_request` passes `json=body, params=params`): `data`
+    /// becomes the JSON request body and `params` becomes the URL query — a
+    /// `POST` may carry both at once. `params` is optional; `None` sends no
+    /// query string, matching the reference's `params=None` default.
     ///
     /// # Errors
     /// Returns [`SignalWireRestError`] if the request cannot reach the Space
     /// (transport failure), the API responds with a non-2xx status (e.g. 422
     /// when the payload fails server-side validation), or a 2xx response body
     /// is not valid JSON. See [`get`](Self::get) for the canonical description.
-    pub fn post(&self, path: &str, data: &Value) -> Result<Value, SignalWireRestError> {
-        self.post_with_options(path, data, None)
+    pub fn post(
+        &self,
+        path: &str,
+        data: Option<&Value>,
+        params: Option<&HashMap<String, String>>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.post_with_options(path, data, params, None)
     }
 
     /// `POST` with a per-request [`RequestOptions`] override.
+    ///
+    /// `data` is optional — `None` sends no request body, matching the
+    /// reference's `body=None` default.
     ///
     /// # Errors
     /// Same as [`post`](Self::post).
     pub fn post_with_options(
         &self,
         path: &str,
-        data: &Value,
+        data: Option<&Value>,
+        params: Option<&HashMap<String, String>>,
         options: Option<&RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        let body = serde_json::to_string(data).unwrap_or_else(|_| "{}".to_string());
-        self.request("POST", path, &HashMap::new(), Some(&body), options)
+        let body = data.map(|d| serde_json::to_string(d).unwrap_or_else(|_| "{}".to_string()));
+        self.request("POST", path, params, body.as_deref(), options)
     }
 
     /// Issue a `PUT` request to `path` with `data` serialized as the JSON body.
@@ -494,7 +512,7 @@ impl HttpClient {
         options: Option<&RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
         let body = data.map(|d| serde_json::to_string(d).unwrap_or_else(|_| "{}".to_string()));
-        self.request("PUT", path, &HashMap::new(), body.as_deref(), options)
+        self.request("PUT", path, None, body.as_deref(), options)
     }
 
     /// Issue a `PATCH` request to `path` with `data` serialized as the JSON body.
@@ -522,7 +540,7 @@ impl HttpClient {
         options: Option<&RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
         let body = data.map(|d| serde_json::to_string(d).unwrap_or_else(|_| "{}".to_string()));
-        self.request("PATCH", path, &HashMap::new(), body.as_deref(), options)
+        self.request("PATCH", path, None, body.as_deref(), options)
     }
 
     /// Issue a `DELETE` request to `path`.
@@ -545,7 +563,7 @@ impl HttpClient {
         path: &str,
         options: Option<&RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.request("DELETE", path, &HashMap::new(), None, options)
+        self.request("DELETE", path, None, None, options)
     }
 
     // -- Paginated list support --
@@ -572,7 +590,7 @@ impl HttpClient {
         let mut seen_next: std::collections::HashSet<String> = std::collections::HashSet::new();
 
         loop {
-            let response = self.get(&current_path, &current_params)?;
+            let response = self.get(&current_path, Some(&current_params))?;
 
             // Extract data items
             let data = response
@@ -637,13 +655,15 @@ impl HttpClient {
         &self,
         method: &str,
         path: &str,
-        params: &HashMap<String, String>,
+        params: Option<&HashMap<String, String>>,
         body: Option<&str>,
         request_options: Option<&RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
         let mut url = format!("{}{}", self.base_url, path);
 
-        if !params.is_empty() {
+        // `params` go on the QUERY STRING (never merged into the JSON body) —
+        // the reference routes them the same way for every verb.
+        if let Some(params) = params.filter(|p| !p.is_empty()) {
             // Percent-encode keys AND values as application/x-www-form-urlencoded
             // so reserved characters (space, &, =, +, /, unicode) can't corrupt
             // the query or inject extra parameters. Sort by key for a stable,
@@ -946,7 +966,7 @@ mod tests {
                 body: r#"{"error":"not found"}"#.to_string(),
             }),
         );
-        let err = client.get("/api/missing", &HashMap::new()).unwrap_err();
+        let err = client.get("/api/missing", None).unwrap_err();
         assert_eq!(err.request_id(), Some("req-abc-123"));
         assert_eq!(
             err.headers()
@@ -969,7 +989,7 @@ mod tests {
         stub.set_response(404, r#"{"error":"missing"}"#);
         let mut params = HashMap::new();
         params.insert("page".to_string(), "2".to_string());
-        let err = client.get("/api/missing", &params).unwrap_err();
+        let err = client.get("/api/missing", Some(&params)).unwrap_err();
         // Full origin, path, AND the encoded query — never just "/api/missing".
         assert_eq!(
             err.url(),
@@ -1004,7 +1024,7 @@ mod tests {
         );
         let mut params = HashMap::new();
         params.insert("q".to_string(), "x y".to_string());
-        let err = client.get("/api/x", &params).unwrap_err();
+        let err = client.get("/api/x", Some(&params)).unwrap_err();
         assert!(err.is_transport());
         assert_eq!(
             err.url(),
@@ -1019,7 +1039,7 @@ mod tests {
     fn test_non_json_error_url_is_full() {
         let (client, stub) = make_client();
         stub.set_response(200, "not json at all");
-        let err = client.get("/api/weird", &HashMap::new()).unwrap_err();
+        let err = client.get("/api/weird", None).unwrap_err();
         assert_eq!(err.url(), "https://test.signalwire.com/api/weird");
     }
 
@@ -1044,7 +1064,7 @@ mod tests {
         let (client, stub) = make_client();
         stub.set_response(200, r#"{"data": [1,2,3]}"#);
 
-        let result = client.get("/api/test", &HashMap::new()).unwrap();
+        let result = client.get("/api/test", None).unwrap();
         assert_eq!(result["data"], json!([1, 2, 3]));
 
         let reqs = stub.requests.lock().unwrap();
@@ -1059,7 +1079,7 @@ mod tests {
 
         let mut params = HashMap::new();
         params.insert("page".to_string(), "2".to_string());
-        client.get("/api/test", &params).unwrap();
+        client.get("/api/test", Some(&params)).unwrap();
 
         let reqs = stub.requests.lock().unwrap();
         assert!(reqs[0].1.contains("page=2"));
@@ -1071,12 +1091,84 @@ mod tests {
         stub.set_response(201, r#"{"id":"new-1"}"#);
 
         let data = json!({"name": "test"});
-        let result = client.post("/api/test", &data).unwrap();
+        let result = client.post("/api/test", Some(&data), None).unwrap();
         assert_eq!(result["id"], "new-1");
 
         let reqs = stub.requests.lock().unwrap();
         assert_eq!(reqs[0].0, "POST");
         assert!(reqs[0].2.as_ref().unwrap().contains("test"));
+    }
+
+    /// WIRE CONTRACT: `params` go on the QUERY STRING and `body` goes in the
+    /// JSON body — the two carriers are INDEPENDENT, for `post` exactly as for
+    /// `get`. The reference (`rest/_base.py` `_request`) calls
+    /// `session.request(method, url, json=body, params=params)`, so a POST may
+    /// carry both at once and a query param must NEVER be merged into the body
+    /// dict (nor a body field leak into the query).
+    ///
+    /// This is the assertion that fails if `post` is ever wired to route
+    /// `params` into the body instead of the query.
+    #[test]
+    fn test_post_routes_params_to_query_and_body_to_json() {
+        let (client, stub) = make_client();
+        stub.set_response(201, r#"{"id":"new-1"}"#);
+
+        let mut params = HashMap::new();
+        params.insert("expand".to_string(), "detail".to_string());
+        params.insert("page".to_string(), "2".to_string());
+        let data = json!({"name": "widget", "count": 3});
+        client
+            .post("/api/test", Some(&data), Some(&params))
+            .unwrap();
+
+        let reqs = stub.requests.lock().unwrap();
+        let (method, url, body) = reqs.last().expect("a request was recorded");
+        assert_eq!(method, "POST");
+
+        // -- query carries the params, and ONLY the params --
+        let query = url
+            .split_once('?')
+            .unwrap_or_else(|| panic!("POST params must be on the query string, got url {url}"))
+            .1;
+        assert!(
+            query.contains("expand=detail") && query.contains("page=2"),
+            "both params must be on the query, got {query}"
+        );
+        assert!(
+            !query.contains("name") && !query.contains("widget") && !query.contains("count"),
+            "body fields must NOT leak into the query, got {query}"
+        );
+
+        // -- body carries the JSON, and ONLY the JSON --
+        let sent = body.as_ref().expect("POST must send a JSON body");
+        let parsed: Value = serde_json::from_str(sent).expect("body must be JSON");
+        assert_eq!(parsed["name"], "widget");
+        assert_eq!(parsed["count"], 3);
+        assert!(
+            parsed.get("expand").is_none() && parsed.get("page").is_none(),
+            "query params must NOT be merged into the JSON body, got {sent}"
+        );
+    }
+
+    /// `params: None` is the reference's `params=None` default — no query
+    /// string is emitted at all (not an empty `?`).
+    #[test]
+    fn test_none_params_emits_no_query_string() {
+        let (client, stub) = make_client();
+        stub.set_response(200, "{}");
+
+        client.get("/api/test", None).unwrap();
+        client
+            .post("/api/test", Some(&json!({"a": 1})), None)
+            .unwrap();
+
+        let reqs = stub.requests.lock().unwrap();
+        for (method, url, _) in reqs.iter() {
+            assert!(
+                !url.contains('?'),
+                "{method} with params=None must emit no query string, got {url}"
+            );
+        }
     }
 
     #[test]
@@ -1124,7 +1216,7 @@ mod tests {
         let (client, stub) = make_client();
         stub.set_response(404, r#"{"error":"not found"}"#);
 
-        let err = client.get("/api/missing", &HashMap::new()).unwrap_err();
+        let err = client.get("/api/missing", None).unwrap_err();
         assert_eq!(err.status_code(), 404);
         assert!(err.message().contains("404"));
     }
@@ -1134,7 +1226,7 @@ mod tests {
         let (client, stub) = make_client();
         stub.set_response(500, "server error");
 
-        let err = client.get("/api/fail", &HashMap::new()).unwrap_err();
+        let err = client.get("/api/fail", None).unwrap_err();
         assert_eq!(err.status_code(), 500);
     }
 
@@ -1299,7 +1391,7 @@ mod tests {
     fn test_empty_body_200() {
         let (client, stub) = make_client();
         stub.set_response(200, "");
-        let result = client.get("/api/test", &HashMap::new()).unwrap();
+        let result = client.get("/api/test", None).unwrap();
         assert!(result.is_object());
     }
 
@@ -1314,7 +1406,7 @@ mod tests {
         // Values carrying reserved chars: `&`, `=`, `+`, space, `/`, unicode.
         params.insert("q".to_string(), "a b&c=d+e/f".to_string());
         params.insert("name".to_string(), "café ☕".to_string());
-        client.get("/api/test", &params).unwrap();
+        client.get("/api/test", Some(&params)).unwrap();
 
         let reqs = stub.requests.lock().unwrap();
         let (_method, url, _body) = reqs.last().expect("a request was recorded");
@@ -1353,7 +1445,7 @@ mod tests {
             Box::new(UreqTransport::new()),
         );
 
-        let err = client.get("/api/test", &HashMap::new()).unwrap_err();
+        let err = client.get("/api/test", None).unwrap_err();
         assert!(
             err.is_transport(),
             "conn-refused must be a transport error, got: {err}"
