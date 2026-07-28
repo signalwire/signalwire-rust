@@ -55,7 +55,8 @@
                 {
                   "name": "host",
                   "type": "optional<string>",
-                  "required": true
+                  "required": false,
+                  "default": "0.0.0.0"
                 },
                 {
                   "name": "port",
@@ -65,7 +66,8 @@
                 {
                   "name": "log_level",
                   "type": "optional<string>",
-                  "required": true
+                  "required": false,
+                  "default": "info"
                 }
               ],
               "returns": "any"
@@ -8091,7 +8093,8 @@
                 {
                   "name": "token_expiry_secs",
                   "type": "int",
-                  "required": true
+                  "required": false,
+                  "default": 900
                 }
               ],
               "returns": "void"
@@ -32808,11 +32811,13 @@
       "params": {
         "host": {
           "type": "optional<string>",
-          "required": true
+          "required": false,
+          "default": "0.0.0.0"
         },
         "log_level": {
           "type": "optional<string>",
-          "required": true
+          "required": false,
+          "default": "info"
         },
         "port": {
           "type": "optional<int>",
@@ -32824,43 +32829,53 @@
       "params": {
         "basic_auth": {
           "type": "optional<tuple<string,string>>",
-          "required": false
+          "required": false,
+          "default": null
         },
         "host": {
           "type": "optional<string>",
-          "required": false
+          "required": false,
+          "default": null
         },
         "max_tokens": {
           "type": "int",
-          "required": false
+          "required": false,
+          "default": 1024
         },
         "name": {
           "type": "string",
-          "required": false
+          "required": false,
+          "default": "bedrock_agent"
         },
         "port": {
           "type": "optional<int>",
-          "required": false
+          "required": false,
+          "default": null
         },
         "route": {
           "type": "string",
-          "required": false
+          "required": false,
+          "default": "/bedrock"
         },
         "system_prompt": {
           "type": "optional<string>",
-          "required": false
+          "required": false,
+          "default": null
         },
         "temperature": {
           "type": "float",
-          "required": false
+          "required": false,
+          "default": 0.7
         },
         "top_p": {
           "type": "float",
-          "required": false
+          "required": false,
+          "default": 0.9
         },
         "voice_id": {
           "type": "string",
-          "required": false
+          "required": false,
+          "default": "matthew"
         }
       }
     },
@@ -32868,19 +32883,23 @@
       "params": {
         "project": {
           "type": "optional<string>",
-          "required": false
+          "required": false,
+          "default": null
         },
         "space": {
           "type": "optional<string>",
-          "required": false
+          "required": false,
+          "default": null
         },
         "token": {
           "type": "optional<string>",
-          "required": false
+          "required": false,
+          "default": null
         },
         "url": {
           "type": "optional<string>",
-          "required": false
+          "required": false,
+          "default": null
         }
       }
     },
@@ -32900,11 +32919,13 @@
       "params": {
         "call_timeline": {
           "type": "list<dict<string,any>>",
-          "required": false
+          "required": false,
+          "default": "list()"
         },
         "messages": {
           "type": "list<dict<string,any>>",
-          "required": false
+          "required": false,
+          "default": "list()"
         }
       }
     },
@@ -32920,7 +32941,8 @@
         },
         "user_event": {
           "type": "optional<dict<string,any>>",
-          "required": false
+          "required": false,
+          "default": null
         }
       }
     },
@@ -32932,7 +32954,8 @@
         },
         "initial_message": {
           "type": "optional<string>",
-          "required": false
+          "required": false,
+          "default": null
         },
         "status": {
           "type": "string",
@@ -32944,35 +32967,43 @@
       "params": {
         "agent_id": {
           "type": "optional<string>",
-          "required": false
+          "required": false,
+          "default": null
         },
         "auto_answer": {
           "type": "bool",
-          "required": false
+          "required": false,
+          "default": true
         },
         "basic_auth": {
           "type": "optional<tuple<string,string>>",
-          "required": false
+          "required": false,
+          "default": null
         },
         "check_for_input_override": {
           "type": "bool",
-          "required": false
+          "required": false,
+          "default": false
         },
         "config_file": {
           "type": "optional<string>",
-          "required": false
+          "required": false,
+          "default": null
         },
         "default_webhook_url": {
           "type": "optional<string>",
-          "required": false
+          "required": false,
+          "default": null
         },
         "enable_post_prompt_override": {
           "type": "bool",
-          "required": false
+          "required": false,
+          "default": false
         },
         "host": {
           "type": "optional<string>",
-          "required": false
+          "required": false,
+          "default": null
         },
         "name": {
           "type": "string",
@@ -32980,55 +33011,68 @@
         },
         "native_functions": {
           "type": "optional<list<string>>",
-          "required": false
+          "required": false,
+          "default": null
         },
         "port": {
           "type": "optional<int>",
-          "required": false
+          "required": false,
+          "default": null
         },
         "record_call": {
           "type": "bool",
-          "required": false
+          "required": false,
+          "default": false
         },
         "record_format": {
           "type": "string",
-          "required": false
+          "required": false,
+          "default": "mp4"
         },
         "record_stereo": {
           "type": "bool",
-          "required": false
+          "required": false,
+          "default": true
         },
         "route": {
           "type": "optional<string>",
-          "required": false
+          "required": false,
+          "default": null
         },
         "schema_path": {
           "type": "optional<string>",
-          "required": false
+          "required": false,
+          "default": null
         },
         "schema_validation": {
           "type": "bool",
-          "required": false
+          "required": false,
+          "default": true
         },
         "signing_key": {
           "type": "optional<string>",
-          "required": false
+          "required": false,
+          "default": null
         },
         "suppress_logs": {
           "type": "bool",
-          "required": false
+          "required": false,
+          "default": false
         },
         "token_expiry_secs": {
           "type": "int",
-          "required": false
+          "required": false,
+          "default": 3600
         },
         "trust_proxy_for_signature": {
           "type": "bool",
-          "required": false
+          "required": false,
+          "default": false
         },
         "use_pom": {
           "type": "bool",
-          "required": false
+          "required": false,
+          "default": true
         }
       }
     },
@@ -33128,7 +33172,8 @@
       "params": {
         "token_expiry_secs": {
           "type": "int",
-          "required": true
+          "required": false,
+          "default": 900
         }
       }
     },
@@ -33176,15 +33221,18 @@
       "params": {
         "basic_auth": {
           "type": "optional<tuple<string,string>>",
-          "required": false
+          "required": false,
+          "default": null
         },
         "config_file": {
           "type": "optional<string>",
-          "required": false
+          "required": false,
+          "default": null
         },
         "host": {
           "type": "optional<string>",
-          "required": false
+          "required": false,
+          "default": "0.0.0.0"
         },
         "name": {
           "type": "string",
@@ -33192,19 +33240,23 @@
         },
         "port": {
           "type": "optional<int>",
-          "required": false
+          "required": false,
+          "default": null
         },
         "route": {
           "type": "optional<string>",
-          "required": false
+          "required": false,
+          "default": "/"
         },
         "schema_path": {
           "type": "optional<string>",
-          "required": false
+          "required": false,
+          "default": null
         },
         "schema_validation": {
           "type": "bool",
-          "required": false
+          "required": false,
+          "default": true
         }
       }
     },
@@ -33236,11 +33288,13 @@
         },
         "name": {
           "type": "string",
-          "required": false
+          "required": false,
+          "default": "concierge"
         },
         "route": {
           "type": "string",
-          "required": false
+          "required": false,
+          "default": "/concierge"
         },
         "services": {
           "type": "list<string>",
@@ -33252,11 +33306,13 @@
         },
         "venue_name": {
           "type": "string",
-          "required": true
+          "required": true,
+          "default": "Venue"
         },
         "welcome_message": {
           "type": "optional<string>",
-          "required": false
+          "required": false,
+          "default": null
         }
       }
     },
@@ -33268,19 +33324,23 @@
         },
         "name": {
           "type": "string",
-          "required": false
+          "required": false,
+          "default": "faq_bot"
         },
         "persona": {
           "type": "optional<string>",
-          "required": false
+          "required": false,
+          "default": null
         },
         "route": {
           "type": "string",
-          "required": false
+          "required": false,
+          "default": "/faq"
         },
         "suggest_related": {
           "type": "bool",
-          "required": false
+          "required": false,
+          "default": true
         }
       }
     },
@@ -33288,7 +33348,8 @@
       "params": {
         "name": {
           "type": "string",
-          "required": false
+          "required": false,
+          "default": "info_gatherer"
         },
         "questions": {
           "type": "list<class:signalwire.value.Value>",
@@ -33296,7 +33357,8 @@
         },
         "route": {
           "type": "string",
-          "required": false
+          "required": false,
+          "default": "/info_gatherer"
         }
       }
     },
@@ -33308,19 +33370,23 @@
         },
         "greeting": {
           "type": "string",
-          "required": false
+          "required": false,
+          "default": "Thank you for calling. How can I help you today?"
         },
         "name": {
           "type": "string",
-          "required": false
+          "required": false,
+          "default": "receptionist"
         },
         "route": {
           "type": "string",
-          "required": false
+          "required": false,
+          "default": "/receptionist"
         },
         "voice": {
           "type": "string",
-          "required": false
+          "required": false,
+          "default": "rime.spore"
         }
       }
     },
@@ -33328,23 +33394,28 @@
       "params": {
         "brand_name": {
           "type": "optional<string>",
-          "required": false
+          "required": false,
+          "default": null
         },
         "conclusion": {
           "type": "optional<string>",
-          "required": false
+          "required": false,
+          "default": null
         },
         "introduction": {
           "type": "optional<string>",
-          "required": false
+          "required": false,
+          "default": null
         },
         "max_retries": {
           "type": "int",
-          "required": false
+          "required": false,
+          "default": 2
         },
         "name": {
           "type": "string",
-          "required": false
+          "required": false,
+          "default": "survey"
         },
         "questions": {
           "type": "list<class:signalwire.value.Value>",
@@ -33352,11 +33423,13 @@
         },
         "route": {
           "type": "string",
-          "required": false
+          "required": false,
+          "default": "/survey"
         },
         "survey_name": {
           "type": "string",
-          "required": true
+          "required": true,
+          "default": "Survey"
         }
       }
     },
@@ -34368,15 +34441,18 @@
       "params": {
         "allowed_extensions": {
           "type": "optional<list<string>>",
-          "required": false
+          "required": false,
+          "default": null
         },
         "basic_auth": {
           "type": "optional<tuple<string,string>>",
-          "required": false
+          "required": false,
+          "default": null
         },
         "blocked_extensions": {
           "type": "optional<list<string>>",
-          "required": false
+          "required": false,
+          "default": null
         },
         "directories": {
           "type": "dict<string,string>",
@@ -34384,11 +34460,13 @@
         },
         "enable_cors": {
           "type": "bool",
-          "required": false
+          "required": false,
+          "default": true
         },
         "enable_directory_browsing": {
           "type": "bool",
-          "required": false
+          "required": false,
+          "default": false
         },
         "max_file_size": {
           "type": "int",
@@ -34396,7 +34474,8 @@
         },
         "port": {
           "type": "int",
-          "required": false
+          "required": false,
+          "default": 8002
         }
       }
     }

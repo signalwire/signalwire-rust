@@ -16,7 +16,12 @@ Notes:
     - Rustdoc-json schema is unstable; we pin against the rustc nightly
       pulled by ``rustup toolchain install nightly``. Bump in lockstep
       when needed; the wrapper is written against FORMAT_VERSION 57.
-    - Rust has no defaults; every parameter is required.
+    - Rust has NO language-level default parameter values (there is no
+      ``fn f(x: i32 = 5)``), so a plain positional param is genuinely
+      required and carries no ``default``. Where the port DOES express a
+      default, it does so through one of three source constructs, which
+      ``extract_defaults`` recovers from the rustdoc ``span`` (see that
+      section's docstring). Anything else honestly stays required.
     - ``&T`` / ``&mut T`` collapse to T (Rust borrowing is invisible to
       Python's type model).
 
@@ -31,6 +36,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -823,6 +829,13 @@ def collect(rust_doc: dict, aliases: dict) -> tuple[dict, list]:
     def get(id_):
         return index.get(str(id_)) or index.get(id_)
 
+    # Recover the port's real parameter defaults from source (rustdoc carries no
+    # function bodies; ``span`` is the join key). ``fn_defaults`` is keyed by
+    # rustdoc item id, so each build_signature call gets exactly its own fn's
+    # defaults — a param with none stays required, never a fabricated value.
+    _reader = _SourceReader(PORT_ROOT)
+    fn_defaults, options_defaults = extract_defaults(index, _reader)
+
     # Reference class index — gates PATH-DERIVED class discovery (mirrors the
     # surface enumerator's file-path-derived module fallback: a struct not in
     # CLASS_MODULE_MAP is emitted under its rustdoc-path module ONLY when the
@@ -921,7 +934,10 @@ def collect(rust_doc: dict, aliases: dict) -> tuple[dict, list]:
                 method_canonical = _translate_method_name(m_native)
                 ctx = f"{mod}.{canonical_name}.{method_canonical}"
                 try:
-                    sig = build_signature(m_inner["function"], paths, aliases, ctx)
+                    sig = build_signature(
+                        m_inner["function"], paths, aliases, ctx,
+                        defaults=fn_defaults.get(str(method_id)),
+                    )
                 except TypeTranslationError as e:
                     failures.append(str(e))
                     continue
@@ -972,7 +988,10 @@ def collect(rust_doc: dict, aliases: dict) -> tuple[dict, list]:
                 method_canonical = _translate_method_name(method_native)
                 ctx = f"{mod}.{canonical_name}.{method_canonical}"
                 try:
-                    sig = build_signature(m_inner["function"], paths, aliases, ctx)
+                    sig = build_signature(
+                        m_inner["function"], paths, aliases, ctx,
+                        defaults=fn_defaults.get(str(method_id)),
+                    )
                 except TypeTranslationError as e:
                     failures.append(str(e))
                     continue
@@ -1092,6 +1111,7 @@ def collect(rust_doc: dict, aliases: dict) -> tuple[dict, list]:
             sig = build_signature(
                 inner["function"], paths, aliases,
                 f"{target_module}.{target_function}",
+                defaults=fn_defaults.get(str(iid)),
             )
         except TypeTranslationError as e:
             failures.append(str(e))
@@ -1403,6 +1423,7 @@ def collect(rust_doc: dict, aliases: dict) -> tuple[dict, list]:
         "modules": sorted_modules,
         "construction": build_construction(
             sorted_modules, index, paths, aliases, failures,
+            options_defaults=options_defaults,
         ),
     }, failures
 
@@ -1471,8 +1492,9 @@ _CONSTRUCTION_FIELD_TYPES: dict[tuple[str, str], str] = {
 
 def build_construction(
     modules: dict, index: dict, paths: dict, aliases: dict, failures: list,
+    options_defaults: dict | None = None,
 ) -> dict:
-    """Return ``{"module.Class": {"params": {name: {type, required}}}}``.
+    """Return ``{"module.Class": {"params": {name: {type, required[, default]}}}}``.
 
     A NAME-KEYED set (order/arity/mechanism are idiom; the named set is the
     capability) — see porting-sdk ALLOWLIST_DISCIPLINE.md §10. Two sources, in
@@ -1489,7 +1511,13 @@ def build_construction(
     them are required. Where the reference marks a param required and the struct
     does not (or vice versa), that is a real ``construction-required-flip`` for
     review, not something to paper over here.
+
+    ``default`` carries the options struct's own field initializer (mechanism C
+    of ``extract_defaults``) — the value a caller who never touches that field
+    actually gets. A field whose initializer is not a static literal carries NO
+    ``default``, exactly as if it had none.
     """
+    options_defaults = options_defaults or {}
     out: dict = {}
 
     def _params_from_init(sig: dict) -> dict:
@@ -1510,10 +1538,14 @@ def build_construction(
                 short = ptype.rsplit(".", 1)[-1]
                 if short in _OPTIONS_CONSTRUCTS:
                     continue
-            params[name] = {
+            entry = {
                 "type": ptype,
                 "required": bool(p.get("required", True)),
             }
+            if "default" in p:
+                entry["default"] = p["default"]
+                entry["required"] = False
+            params[name] = entry
         return params
 
     for mod, entry in modules.items():
@@ -1599,15 +1631,518 @@ def build_construction(
                 and native in ctor_required
                 and not ftype.startswith("optional<")
             )
+            entry = {"type": ftype, "required": required}
+            # The field's own initializer in `<Struct>::new` / `::default` is the
+            # value a caller who never sets it gets — the port's real default for
+            # this construction param. Keyed by the NATIVE field name (what the
+            # source-side extraction saw), attached under the canonical one.
+            # A field whose initializer is not a static literal is absent from
+            # the map and correctly carries no `default`.
+            _fdefs = options_defaults.get(struct_name or "", {})
+            if native in _fdefs:
+                entry["default"] = _fdefs[native]
+                if not required:
+                    entry["required"] = False
             # The class's own `__init__` (if any) already declared this name with
             # its real required flag — a real ctor param's flag wins.
-            params.setdefault(fname, {"type": ftype, "required": required})
+            params.setdefault(fname, entry)
         out[target]["params"] = dict(sorted(params.items()))
 
     return dict(sorted(out.items()))
 
 
-def build_signature(fn: dict, paths: dict, aliases: dict, context: str) -> dict:
+# ---------------------------------------------------------------------------
+# PARAMETER DEFAULT VALUES
+#
+# Rust has NO language-level default parameter values. A plain positional param
+# (``fn pay(&mut self, timeout: i64, ...)``) is genuinely required: the caller
+# MUST pass a value, and there is no default to record. Emitting one would be a
+# fabrication, so those params keep ``required: true`` and NO ``default`` key.
+#
+# The port DOES express a default through three source constructs, and for those
+# the value a caller-who-supplies-nothing actually gets is recoverable:
+#
+#   A. ZERO-ARG SIBLING CONSTRUCTOR. A public zero-arg fn whose whole body is a
+#      single ``Self::<other>(<literals>)`` delegation. The literals it passes
+#      ARE the defaults of the delegated-to fn's params, positionally.
+#      (``SessionManager::with_defaults() -> Self::new(900)`` — 900 is what a
+#      caller gets for ``token_expiry_secs`` without supplying one.)
+#
+#   B. ``Option<T>`` PARAM + ``<param>.unwrap_or(<literal>)``. Passing ``None``
+#      is the "don't supply it" call, and the ``unwrap_or`` literal is what the
+#      caller then gets. (``AgentServer::with_log_level(host: Option<&str>)`` →
+#      ``host.unwrap_or("0.0.0.0")``.)
+#
+#   C. OPTIONS-STRUCT FIELD INITIALIZERS. Rust spells a wide many-optional-kwarg
+#      constructor as an options struct (see ``_OPTIONS_CONSTRUCTS``); the
+#      struct's own ``new``/``default`` is a struct literal whose per-field
+#      initializers are exactly the reference's per-kwarg defaults
+#      (``AgentOptions::new`` → ``auto_answer: true, token_expiry_secs: 3600,
+#      record_format: "mp4"``).
+#
+# All three are recovered from the rustdoc ``span`` (filename + begin/end lines),
+# which is the join key from an index item back to its source text — rustdoc-json
+# carries no function BODIES, so the value has to be read out of the source.
+#
+# ONLY STATIC LITERALS ARE RECORDED. A default that is a non-literal EXPRESSION
+# (a ``const`` reference, a function call, arithmetic, a ``format!``) is not a
+# static value: it is NOT evaluated and NOT guessed — the param simply carries no
+# ``default``, exactly as if it had none. The one deliberate exception is an
+# ``unwrap_or_else(|| … .unwrap_or(<literal>))`` env-override chain, whose
+# TERMINAL literal is the value a caller gets with the env unset — that is the
+# static default the reference records as a plain literal (``AgentServer.port``:
+# reference ``port: int = 3000``, Rust reads ``$PORT`` then falls back to 3000).
+# ---------------------------------------------------------------------------
+
+# A Rust literal we are willing to record as a static default value, with the
+# ergonomic conversion suffixes (``"x".to_string()`` is still the literal "x")
+# and the numeric type suffixes (``3600u64``) stripped.
+_RUST_LITERAL_RE = re.compile(
+    r'''^\s*(?:
+          "(?P<s>(?:[^"\\]|\\.)*)"
+            (?:\s*\.\s*(?:to_string|to_owned|into|to_vec)\s*\(\s*\))?
+        | (?P<b>true|false)
+        | (?P<f>-?\d+\.\d+)(?:_?f(?:32|64))?
+        | (?P<i>-?\d+)(?:_?(?:[iu](?:8|16|32|64|128)|usize|isize))?
+        )\s*$''',
+    re.X,
+)
+
+_STR_ESCAPES = (("\\\\", "\\"), ('\\"', '"'), ("\\n", "\n"), ("\\t", "\t"),
+                ("\\r", "\r"), ("\\0", "\0"))
+
+
+def parse_rust_literal(text: str):
+    """``(found, value)`` for a Rust literal expression.
+
+    Returns ``(False, None)`` for anything that is not a bare literal — a const,
+    a call, arithmetic. Callers MUST NOT substitute a guess for a ``False``.
+    ``None`` (the Rust ``None``) is a real default value and returns
+    ``(True, None)``; that is why the flag is separate from the value.
+    """
+    t = (text or "").strip()
+    if t == "None":
+        return (True, None)
+    m = _RUST_LITERAL_RE.match(t)
+    if not m:
+        return (False, None)
+    if m.group("s") is not None:
+        s = m.group("s")
+        # Longest-first so ``\\n`` (an escaped backslash then n) is not eaten by
+        # the ``\n`` rule.
+        for esc, real in _STR_ESCAPES:
+            s = s.replace(esc, real)
+        return (True, s)
+    if m.group("b") is not None:
+        return (True, m.group("b") == "true")
+    if m.group("f") is not None:
+        return (True, float(m.group("f")))
+    if m.group("i") is not None:
+        return (True, int(m.group("i")))
+    return (False, None)
+
+
+def _split_top_level(text: str) -> list[str]:
+    """Split on commas that are not nested inside brackets or a string literal."""
+    out: list[str] = []
+    depth = 0
+    cur = ""
+    in_str = False
+    esc = False
+    for ch in text:
+        if in_str:
+            cur += ch
+            if esc:
+                esc = False
+            elif ch == "\\":
+                esc = True
+            elif ch == '"':
+                in_str = False
+            continue
+        if ch == '"':
+            in_str = True
+            cur += ch
+            continue
+        if ch in "([{":
+            depth += 1
+        elif ch in ")]}":
+            depth -= 1
+        if ch == "," and depth == 0:
+            out.append(cur)
+            cur = ""
+        else:
+            cur += ch
+    if cur.strip():
+        out.append(cur)
+    return out
+
+
+def _strip_line_comments(text: str) -> str:
+    """Drop ``//`` comments, respecting string literals (a ``//`` inside a URL
+    literal is not a comment — the tokenizer-desync trap, AGENT_RULES L20)."""
+    out = []
+    in_str = False
+    esc = False
+    i = 0
+    while i < len(text):
+        ch = text[i]
+        if in_str:
+            out.append(ch)
+            if esc:
+                esc = False
+            elif ch == "\\":
+                esc = True
+            elif ch == '"':
+                in_str = False
+            i += 1
+            continue
+        if ch == '"':
+            in_str = True
+            out.append(ch)
+            i += 1
+            continue
+        if ch == "/" and text[i:i + 2] == "//":
+            while i < len(text) and text[i] != "\n":
+                i += 1
+            continue
+        out.append(ch)
+        i += 1
+    return "".join(out)
+
+
+class _SourceReader:
+    """Read a rustdoc item's source text via its ``span`` (filename + lines).
+
+    rustdoc-json records ``has_body`` but never the body itself, so every default
+    below is read out of the real source file the span points at. Missing files
+    degrade to "no defaults found" — never to a fabricated value.
+    """
+
+    def __init__(self, root: Path):
+        self.root = root
+        self._cache: dict[str, list[str]] = {}
+
+    def _lines(self, filename: str) -> list[str]:
+        if filename not in self._cache:
+            p = self.root / filename
+            try:
+                self._cache[filename] = p.read_text(encoding="utf-8").splitlines()
+            except (FileNotFoundError, OSError, UnicodeDecodeError):
+                self._cache[filename] = []
+        return self._cache[filename]
+
+    def text(self, item: dict) -> str | None:
+        span = item.get("span") or {}
+        filename = span.get("filename")
+        begin = span.get("begin")
+        end = span.get("end")
+        if not filename or not begin or not end:
+            return None
+        lines = self._lines(filename)
+        if not lines:
+            return None
+        return "\n".join(lines[begin[0] - 1:end[0]])
+
+
+def _body_of(text: str) -> str:
+    """The ``{ … }`` body of a fn's source text (brace-balanced, string-aware)."""
+    start = None
+    depth = 0
+    in_str = False
+    esc = False
+    for i, ch in enumerate(text):
+        if in_str:
+            if esc:
+                esc = False
+            elif ch == "\\":
+                esc = True
+            elif ch == '"':
+                in_str = False
+            continue
+        if ch == '"':
+            in_str = True
+            continue
+        if ch == "{":
+            if depth == 0:
+                start = i
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0 and start is not None:
+                return text[start + 1:i]
+    return ""
+
+
+def _struct_literal_fields(body: str, struct_name: str) -> dict:
+    """``{field: value}`` for the literal-valued fields of a ``Name { … }`` /
+    ``Self { … }`` struct literal inside ``body``. Non-literal initializers are
+    omitted (never guessed)."""
+
+    m = re.search(r'\b(?:' + re.escape(struct_name) + r'|Self)\s*\{', body)
+    if not m:
+        return {}
+    i = m.end()
+    depth = 1
+    in_str = False
+    esc = False
+    start = i
+    while i < len(body) and depth:
+        ch = body[i]
+        if in_str:
+            if esc:
+                esc = False
+            elif ch == "\\":
+                esc = True
+            elif ch == '"':
+                in_str = False
+        else:
+            if ch == '"':
+                in_str = True
+            elif ch in "{([":
+                depth += 1
+            elif ch in "})]":
+                depth -= 1
+                if depth == 0:
+                    break
+        i += 1
+    inner = body[start:i]
+    out: dict = {}
+    for part in _split_top_level(inner):
+        part = _strip_line_comments(part).strip()
+        if ":" not in part:
+            continue
+        key, _, val = part.partition(":")
+        key = key.strip()
+        if not re.fullmatch(r"\w+", key):
+            continue
+        found, value = parse_rust_literal(val)
+        if found:
+            out[key] = value
+    return out
+
+
+def _balanced_arg(text: str, open_paren_end: int) -> str:
+    """The text between an already-consumed ``(`` and its matching ``)``."""
+    i = open_paren_end
+    depth = 1
+    in_str = False
+    esc = False
+    start = i
+    while i < len(text) and depth:
+        ch = text[i]
+        if in_str:
+            if esc:
+                esc = False
+            elif ch == "\\":
+                esc = True
+            elif ch == '"':
+                in_str = False
+        else:
+            if ch == '"':
+                in_str = True
+            elif ch in "([{":
+                depth += 1
+            elif ch in ")]}":
+                depth -= 1
+                if depth == 0:
+                    break
+        i += 1
+    return text[start:i]
+
+
+def _none_branch_default(clean_body: str, expr: str):
+    """``(found, value)`` for the value ``expr`` takes when it is ``None``.
+
+    ``expr`` is a param name (``host``) or a field access (``options.host``).
+    Recognises the ways this port spells "use the default when unset":
+
+        let <x> = expr.unwrap_or(<literal>);
+        let <x> = expr.unwrap_or_else(|| <literal>);
+        let <x> = expr.map_or_else(|| <literal>, |v| …);   # 1st closure = None arm
+        let <x> = expr.map_or(<literal>, |v| …);           # 1st arg     = None arm
+
+    THE ``let`` BINDING IS REQUIRED, and it is not cosmetic. An ``unwrap_or``
+    used INLINE inside a condition is a validation guard, not a default:
+    ``if body.unwrap_or("").is_empty() { return Err(…) }``
+    (relay/client.rs, ``send_message_blocking``) tests emptiness and then ERRORS
+    — a caller who omits ``body`` gets a failure, not ``""``. Recording ``""``
+    there would be a confident wrong value. Requiring the binding keeps only the
+    form where the unwrapped value is what the rest of the body actually uses.
+
+    Returns ``(False, None)`` when the None-arm is not a static literal — the
+    caller must then record NO default rather than guess one.
+    """
+    pat = re.escape(expr).replace(r"\.", r"\s*\.\s*")
+    for m in re.finditer(
+        r"\blet\s+(?:mut\s+)?\w+\s*(?::[^=;]+)?=\s*" + pat
+        + r"\s*\.\s*(?P<op>unwrap_or_else|unwrap_or|map_or_else|map_or)\s*\(",
+        clean_body,
+    ):
+        arg = _balanced_arg(clean_body, m.end())
+        op = m.group("op")
+        if op in ("map_or_else", "map_or"):
+            parts = _split_top_level(arg)
+            if not parts:
+                continue
+            arg = parts[0]
+        # Strip a closure header so ``|| "x".to_string()`` reads as the literal.
+        arg = re.sub(r"^\s*\|\s*\|", "", arg, count=1).strip()
+        # ONLY a bare literal None-arm counts. An ENV-CONSULTING chain
+        # (``|| env::var("PORT").ok()…unwrap_or(3000)``) is deliberately NOT
+        # reduced to its terminal literal: the value depends on the process
+        # environment, so it is not a static default. The reference agrees — for
+        # exactly this construct (``port if port is not None else
+        # int(os.environ.get("PORT", 3000))``, swml_service.py:133) it records the
+        # DECLARED ``None``, not the resolved 3000. Reducing the chain made
+        # SWMLService.port read 3000 against the oracle's None: a confident wrong
+        # value, which is worse than a missing one.
+        found, value = parse_rust_literal(arg)
+        if found:
+            # First occurrence wins: it is the binding the rest of the body reads.
+            return (True, value)
+    return (False, None)
+
+
+def extract_defaults(index: dict, reader: "_SourceReader") -> tuple[dict, dict]:
+    """Recover the port's real parameter defaults from source.
+
+    Returns ``(fn_defaults, options_defaults)``:
+      * ``fn_defaults``: ``{rustdoc_item_id: {param_name: value}}`` — mechanisms
+        A and B, keyed by the item whose PARAMS carry the default.
+      * ``options_defaults``: ``{options_struct_name: {field: value}}`` —
+        mechanism C.
+    A param absent from these maps has no recoverable default and stays required.
+    """
+
+
+    fn_defaults: dict = {}
+    options_defaults: dict = {}
+    # Mechanism D's findings, merged over C after the walk (see mechanism D).
+    consumed_defaults: dict = {}
+
+    # Index public fns by (filename, name) so a delegation target can be found.
+    fns_by_file_name: dict[tuple[str, str], list] = {}
+    for iid, item in index.items():
+        if "function" not in (item.get("inner") or {}):
+            continue
+        span = item.get("span") or {}
+        fname = span.get("filename")
+        if not fname or not item.get("name"):
+            continue
+        fns_by_file_name.setdefault((fname, item["name"]), []).append((str(iid), item))
+
+    for iid, item in index.items():
+        fn = (item.get("inner") or {}).get("function")
+        if not fn:
+            continue
+        sig = fn.get("sig") or {}
+        inputs = sig.get("inputs") or []
+        text = reader.text(item)
+        if not text:
+            continue
+        body = _body_of(text)
+        if not body:
+            continue
+
+        # ---- Mechanism A: zero-arg sibling constructor delegating literals ----
+        # Only a PUBLIC, genuinely zero-arg fn whose entire body is one
+        # ``Self::<target>(<args>)`` expression, and only when EVERY arg is a
+        # literal (a partly-literal delegation tells us nothing positionally
+        # reliable about which param got which value).
+        if not inputs and item.get("visibility") == "public":
+            expr = _strip_line_comments(body).strip().rstrip(";").strip()
+            m = re.fullmatch(r"Self::(\w+)\s*\((?P<args>.*)\)", expr, re.S)
+            if m:
+                args = [a.strip() for a in _split_top_level(m.group("args"))]
+                parsed = [parse_rust_literal(a) for a in args]
+                if args and all(found for found, _ in parsed):
+                    span = item.get("span") or {}
+                    targets = fns_by_file_name.get(
+                        (span.get("filename"), m.group(1)), []
+                    )
+                    for tid, titem in targets:
+                        tsig = (titem.get("inner") or {}).get("function", {}).get("sig") or {}
+                        tinputs = [
+                            n for n, _ in (tsig.get("inputs") or [])
+                            if isinstance(n, str) and n != "self"
+                        ]
+                        if len(tinputs) != len(args):
+                            continue  # not the overload this delegates to
+                        fn_defaults.setdefault(tid, {}).update(
+                            {n: v for n, (_, v) in zip(tinputs, parsed)}
+                        )
+
+        clean = _strip_line_comments(body)
+
+        # ---- Mechanism B: Option<T> param + <param>.unwrap_or(<literal>) ----
+        opt_params = [
+            n for n, t in inputs
+            if isinstance(n, str) and n != "self"
+            and isinstance(t, dict) and "resolved_path" in t
+            and str(t["resolved_path"].get("path", "")).split("::")[-1] == "Option"
+        ]
+        for pname in opt_params:
+            found, value = _none_branch_default(clean, pname)
+            if found:
+                fn_defaults.setdefault(str(iid), {}).setdefault(pname, value)
+
+        # ---- Mechanism D (collected here, APPLIED after the loop) ----
+        # An options struct can leave a field ``None`` and have the constructor
+        # that CONSUMES it supply the real default:
+        #   ``Service::new(options: ServiceOptions)`` →
+        #   ``options.host.unwrap_or_else(|| "0.0.0.0".to_string())``.
+        # The struct-literal initializer (mechanism C) sees only that ``None``, so
+        # without this the field reads as "defaults to None" when a caller who
+        # sets nothing actually gets ``"0.0.0.0"``. Attribute the resolved value
+        # to the OPTIONS STRUCT's field, where mechanism C would have put it — the
+        # consuming ctor's resolution IS that field's effective default. Held in a
+        # separate map and merged AFTER the walk so it deterministically WINS over
+        # C's ``None``; doing it inline would make the result depend on rustdoc's
+        # index iteration order.
+        for pname, ptype in inputs:
+            if not isinstance(pname, str) or pname == "self":
+                continue
+            if not (isinstance(ptype, dict) and "resolved_path" in ptype):
+                continue
+            struct_name = str(ptype["resolved_path"].get("path", "")).split("::")[-1]
+            if struct_name not in _OPTIONS_CONSTRUCTS:
+                continue
+            for fm in re.finditer(
+                re.escape(pname)
+                + r"\s*\.\s*(\w+)\s*\.\s*(?:unwrap_or(?:_else)?|map_or_else|map_or)\s*\(",
+                clean,
+            ):
+                fname = fm.group(1)
+                found, value = _none_branch_default(clean, f"{pname}.{fname}")
+                if found:
+                    consumed_defaults.setdefault(struct_name, {}).setdefault(fname, value)
+
+        # ---- Mechanism C: options-struct field initializers ----
+        # Require the EXPLICIT ``<Struct> { … }`` literal form. A bare ``Self { … }``
+        # inside ``impl <Struct>`` is the same thing, but the ``impl`` header sits
+        # OUTSIDE this item's span, so there is no way to tell from the span alone
+        # which struct ``Self`` names — attributing it by guess would be exactly
+        # the fabrication this whole pass refuses to do.
+        if item.get("name") in ("new", "default"):
+            for struct_name in _OPTIONS_CONSTRUCTS:
+                if not re.search(r"\b" + re.escape(struct_name) + r"\s*\{", body):
+                    continue
+                fields = _struct_literal_fields(body, struct_name)
+                if fields:
+                    options_defaults.setdefault(struct_name, {}).update(fields)
+                break
+
+    # Mechanism D wins over C: a field C read as ``None`` but which the consuming
+    # constructor resolves to a real literal defaults to that literal, because
+    # that is what a caller who sets nothing actually gets.
+    for struct_name, fields in consumed_defaults.items():
+        options_defaults.setdefault(struct_name, {}).update(fields)
+
+    return fn_defaults, options_defaults
+
+
+def build_signature(fn: dict, paths: dict, aliases: dict, context: str,
+                    defaults: dict | None = None) -> dict:
     sig = fn.get("sig", {})
     inputs = sig.get("inputs", [])
     params_out: list = []
@@ -1623,11 +2158,21 @@ def build_signature(fn: dict, paths: dict, aliases: dict, context: str) -> dict:
             continue
         canon = translate_rust_type(t, paths, aliases, f"{context}[{name}]")
         reconcile = PARAM_RECONCILE.get(context, {}).get(name, {})
-        params_out.append({
+        p = {
             "name": reconcile.get("name", name),
             "type": reconcile.get("type", canon),
-            "required": True,  # Rust has no defaults
-        })
+            # Rust has no language-level default parameter values, so a param is
+            # required unless ``extract_defaults`` recovered one of the three
+            # source constructs that DO express a default (see that section).
+            "required": True,
+        }
+        # Key the recovered default off the NATIVE Rust param name — that is the
+        # name the source-side extraction saw — not the post-reconcile emitted
+        # name, which may have been renamed to the Python spelling.
+        if defaults and name in defaults:
+            p["default"] = defaults[name]
+            p["required"] = False
+        params_out.append(p)
     # Constructors have no Rust receiver but Python's canonical signature
     # includes ``self`` first. Synthesize it so __init__ shapes line up.
     if is_ctor and not is_method:
