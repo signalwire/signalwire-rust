@@ -402,6 +402,21 @@ METHOD_RENAMES: dict[str, dict[str, str]] = {
     "AgentServer": {
         "with_log_level": "__init__",
     },
+    # signalwire.core.auth_handler.BearerCredentials: the reference gets this
+    # carrier from FastAPI, whose HTTPBearer builds it by splitting the raw
+    # `Authorization` header on its FIRST space (`scheme, _, param =
+    # authorization.partition(" ")`) — so the header-parsing constructor is part
+    # of the type in the reference too, it is just spelled inside the framework
+    # rather than on the class. The oracle therefore records only `__init__`.
+    # Rust has no baked-in web framework, so the port carries that split itself
+    # as a second constructor spelling, `parse_header(authorization)`. It is the
+    # SAME construction the reference's `__init__` performs (scheme + credentials
+    # from a header), so fold it onto `__init__` rather than record an addition
+    # for constructor-arity idiom — same treatment as SecurityConfig /
+    # AgentServer above.
+    "BearerCredentials": {
+        "parse_header": "__init__",
+    },
     # signalwire.relay.event.CollectEvent: the reference dataclass field is the
     # bare `final`. Rust cannot name a method `final` (reserved word) without a
     # raw identifier, so the accessor is spelled `is_final`; fold it to the

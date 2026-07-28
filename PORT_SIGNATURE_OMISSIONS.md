@@ -366,8 +366,6 @@ signalwire.core.mixins.web_mixin.WebMixin.set_dynamic_config_callback: rust-idio
 
 signalwire.agent_server.AgentServer.agents: idiom: Python `@property agents -> dict<str, AgentBase>` read accessor; Rust exposes the registered agents via `get_agents()` and stores the map as a struct field (no zero-arg `agents` method). Property-vs-getter idiom.
 signalwire.core.auth_handler.AuthHandler.flask_decorator: idiom: Python `flask_decorator(f)` wraps a Flask view fn; Rust has no Flask — the port's auth is applied in `Service::handle_request`, so the method exists as glue without the Python callable arg. No-Flask idiom.
-signalwire.core.auth_handler.AuthHandler.verify_basic_auth: idiom: Rust `verify_basic_auth(username, password)` verifies the decoded credential pair; Python `verify_basic_auth(credentials: HTTPBasicCredentials)` takes the FastAPI credentials object. Decoded-pair vs framework-object idiom.
-signalwire.core.auth_handler.AuthHandler.verify_bearer_token: idiom: Rust `verify_bearer_token(token: &str)` verifies the raw bearer string; Python `(credentials: HTTPAuthorizationCredentials)` takes the FastAPI auth object. Raw-token vs framework-object idiom.
 signalwire.core.config_loader.ConfigLoader.substitute_vars: idiom: Rust `substitute_vars(&self, value)` performs env-var substitution with a fixed internal recursion guard; Python exposes `max_depth` as a caller arg. Internal-recursion-bound idiom.
 signalwire.web.web_service.WebService.start: idiom: Rust `start(host, port)` reads SSL cert/key from config/env (the Rust static-file server is integrated into AgentServer); Python `start(host, port, ssl_cert, ssl_key)` takes SSL paths as args. Config-sourced-SSL idiom.
 

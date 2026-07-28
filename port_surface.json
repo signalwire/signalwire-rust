@@ -1,6 +1,6 @@
 {
   "version": "1",
-  "generated_from": "signalwire-rust @ 3638a9346564f8c3688aae69b83b3376ca51458c",
+  "generated_from": "signalwire-rust @ b28b09ce67a69b0e761999ec2518f2a9b38fd3eb",
   "modules": {
     "signalwire": {
       "classes": {
@@ -264,6 +264,16 @@
           "verify_api_key",
           "verify_basic_auth",
           "verify_bearer_token"
+        ],
+        "BasicCredentials": [
+          "__init__",
+          "password",
+          "username"
+        ],
+        "BearerCredentials": [
+          "__init__",
+          "credentials",
+          "scheme"
         ]
       },
       "functions": []
