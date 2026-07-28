@@ -401,7 +401,8 @@ different things:
   `build_construction` then reads `required` off the folded positionals. Fix in the
   enumerator, not the port — **agree?**
 - **B. 16 findings are arity-only, with a working escape hatch.** `Section::new(Option<String>)`
-  accepts `None`, and `Section::default()` already gives the reference's `Section()`. Does
+  accepts `None`, and `Section::default()` already gives what the reference constructs
+  with a no-argument Section in Python. Does
   `required` in the §10 construction contract mean *"a meaningful value must be supplied"*
   (→ these are idiom, fold at the emitter per §2, no port change) or *"an argument must be
   written"* (→ these are §12a bugs, change the signatures, SemVer-major)? **Which?**
