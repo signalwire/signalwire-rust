@@ -472,6 +472,20 @@ sched_gate TLS-VERIFY desc="no TLS-verify-off construct in the builtin-skill / H
 sched_gate CA-VAR desc="REST reads SIGNALWIRE_REST_CA_FILE and RELAY reads SIGNALWIRE_RELAY_CA_FILE (exact fleet names)" \
     -- python3 "$PORTING_SDK_DIR/scripts/ca_var_parity.py" --port rust --repo .
 
+# TOKEN-INTEROP — property 3 of the SWAIG tool-token contract: a token this port MINTS
+# must validate under the REFERENCE's own decoder. SECURE-DEFAULT proves a token is
+# minted and the fleet keying check proves the HMAC key; NEITHER sees the base64
+# ENVELOPE, so a port can ship correct-key correct-HMAC tokens that no other
+# implementation accepts — in production every secure tool call then fails auth. THIS
+# port is where the defect class was first proven: it minted with URL_SAFE_NO_PAD, and
+# the reference's urlsafe_b64decode RAISES on a stripped '='. Our own decoder tolerated
+# it, so round-tripping against ourselves could never catch it. This gate is what keeps
+# the fix (URL_SAFE) from silently regressing. One mint + a pure-python validation →
+# cheap, per-PR (a security property must not wait for nightly).
+sched_gate TOKEN-INTEROP desc="a token this port mints validates under the reference's decoder (padded urlsafe base64, ':'-signed / '.'-enveloped, hex HMAC keyed by the secret_key string)" \
+    -- python3 "$PORTING_SDK_DIR/scripts/diff_port_token_interop.py" --port rust \
+        --mint-cmd 'cargo run --quiet --example token_interop_mint'
+
 # AI-CHAT (COORDINATED pass rust:ai-chat-client <-> porting-sdk:ai-chat-client):
 # wire-behavioral gate for the AIChatClient. Drives the ai-chat-dump binary through
 # the shared ai_chat_corpus against porting-sdk's in-process mock_ai_chat and asserts
