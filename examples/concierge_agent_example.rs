@@ -35,7 +35,7 @@ fn main() {
     );
 
     let mut agent = ConciergeAgent::new(
-        ConciergeOptions::from_venue_info(&venue_info)
+        ConciergeOptions::from_venue_info(venue_name, &venue_info)
             .name("concierge")
             .route("/concierge"),
     );

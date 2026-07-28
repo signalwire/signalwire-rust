@@ -22827,7 +22827,7 @@
                   "kind": "self"
                 }
               ],
-              "returns": "optional<class:signalwire.value.Value>"
+              "returns": "optional<string>"
             },
             "dispatch_event": {
               "params": [
@@ -22868,7 +22868,7 @@
                   "kind": "self"
                 }
               ],
-              "returns": "optional<class:signalwire.value.Value>"
+              "returns": "list<string>"
             },
             "message_id": {
               "params": [
@@ -33306,8 +33306,7 @@
         },
         "venue_name": {
           "type": "string",
-          "required": true,
-          "default": "Venue"
+          "required": true
         },
         "welcome_message": {
           "type": "optional<string>",
@@ -33428,8 +33427,7 @@
         },
         "survey_name": {
           "type": "string",
-          "required": true,
-          "default": "Survey"
+          "required": true
         }
       }
     },
