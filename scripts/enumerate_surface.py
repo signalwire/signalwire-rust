@@ -1401,6 +1401,51 @@ FORCE_CLASS_METHODS: dict[tuple[str, str], list[str]] = {
     # with it. What remains to force is the reference's `__init__`, which Rust's
     # enum has no counterpart for — a variant is constructed by naming it.
     ("signalwire.relay.client", "RelayError"): ["__init__"],
+    # ---- @dataclass constructors the reference SYNTHESIZES (porting-sdk 8828dd2)
+    # Every class below is a Python `@dataclass`, so python_surface.json records an
+    # `__init__` that exists only because the decorator generates it — there is no
+    # `def __init__` in the reference source either. Rust's equivalent is the struct
+    # literal (`CallReceiveEvent { base }`), which this text-based enumerator cannot
+    # see as a "constructor", so all 27 read as missing-port once 8828dd2 made
+    # `__init__` emission mandatory fleet-wide.
+    #
+    # This is EMISSION of a real capability, not an omission (RULES.md §2 — fold at
+    # the emitter, never omit): every struct exists and is constructible (verified —
+    # `pub struct X` present for all 27; the event types additionally carry
+    # `from_payload`). The go port does exactly this via eventTarget()'s
+    # `SyntheticMethods: ["from_payload", "__init__"]`, and typescript/ruby/php/cpp
+    # all emit `__init__` for these same classes.
+    #
+    # This does NOT go vacuous: naming a class the reference does not record still
+    # fails as a port-only ADDITION (verified by adding a fake entry — it surfaced as
+    # "+ signalwire.relay.event.TotallyFakeEvent" and reddened the gate).
+    ("signalwire.ai_chat.client", "ChatLog"): ["__init__"],
+    ("signalwire.ai_chat.client", "ChatResponse"): ["__init__"],
+    ("signalwire.ai_chat.client", "ConversationInfo"): ["__init__"],
+    ("signalwire.relay.event", "RelayEvent"): ["__init__"],
+    ("signalwire.relay.event", "CallReceiveEvent"): ["__init__"],
+    ("signalwire.relay.event", "CallStateEvent"): ["__init__"],
+    ("signalwire.relay.event", "CallingErrorEvent"): ["__init__"],
+    ("signalwire.relay.event", "CollectEvent"): ["__init__"],
+    ("signalwire.relay.event", "ConferenceEvent"): ["__init__"],
+    ("signalwire.relay.event", "ConnectEvent"): ["__init__"],
+    ("signalwire.relay.event", "DenoiseEvent"): ["__init__"],
+    ("signalwire.relay.event", "DetectEvent"): ["__init__"],
+    ("signalwire.relay.event", "DialEvent"): ["__init__"],
+    ("signalwire.relay.event", "EchoEvent"): ["__init__"],
+    ("signalwire.relay.event", "FaxEvent"): ["__init__"],
+    ("signalwire.relay.event", "HoldEvent"): ["__init__"],
+    ("signalwire.relay.event", "MessageReceiveEvent"): ["__init__"],
+    ("signalwire.relay.event", "MessageStateEvent"): ["__init__"],
+    ("signalwire.relay.event", "PayEvent"): ["__init__"],
+    ("signalwire.relay.event", "PlayEvent"): ["__init__"],
+    ("signalwire.relay.event", "QueueEvent"): ["__init__"],
+    ("signalwire.relay.event", "RecordEvent"): ["__init__"],
+    ("signalwire.relay.event", "ReferEvent"): ["__init__"],
+    ("signalwire.relay.event", "SendDigitsEvent"): ["__init__"],
+    ("signalwire.relay.event", "StreamEvent"): ["__init__"],
+    ("signalwire.relay.event", "TapEvent"): ["__init__"],
+    ("signalwire.relay.event", "TranscribeEvent"): ["__init__"],
     # Python delegate classes (PromptManager / ToolRegistry) that Rust folds
     # onto AgentBase: their SURFACE_PROJECTIONS already project the method set,
     # but the reference also records a bare __init__ on each. Emit it.
