@@ -22,6 +22,11 @@ Notes:
       default, it does so through one of three source constructs, which
       ``extract_defaults`` recovers from the rustdoc ``span`` (see that
       section's docstring). Anything else honestly stays required.
+    - Rust also has no OMITTABLE arguments, so ``required`` is read from
+      the type, not the arity: an ``Option<T>`` param models absence
+      (``None`` IS the don't-supply-it call) and is ``required: false``;
+      a bare ``T`` is ``required: true``. See the PARAMETER OPTIONALITY
+      section for the one enumerated reference-side exception.
     - ``&T`` / ``&mut T`` collapse to T (Rust borrowing is invisible to
       Python's type model).
 
@@ -2141,6 +2146,75 @@ def extract_defaults(index: dict, reader: "_SourceReader") -> tuple[dict, dict]:
     return fn_defaults, options_defaults
 
 
+# ---------------------------------------------------------------------------
+# PARAMETER OPTIONALITY (``required``)
+#
+# Rust has no omittable arguments: EVERY parameter must appear at the callsite,
+# so "can the caller leave it out?" is never answerable from arity alone. What
+# Rust does have is a way to MODEL ABSENCE in the type — ``Option<T>``. Passing
+# ``None`` IS the don't-supply-it call, and the body then takes its no-value
+# branch (``unwrap_or``, ``if let Some``, ``let … else``). That is exactly the
+# capability the reference spells ``x: T | None = None``, so an ``Option<T>``
+# param is ``required: false`` and a bare ``T`` param is ``required: true``.
+#
+# Emitting ``required: true`` for every param (the previous behaviour, from
+# "Rust has no defaults") was not a conservative choice — it was a WRONG one for
+# the 105 params the port models as ``Option<T>``: it reported a capability loss
+# the port does not have.
+#
+# THE ONE EXCEPTION, and why it is a table and not a rule. The reference has 8
+# params (of 1,187 it types ``optional<…>``) that are optional-TYPED but still
+# positionally REQUIRED — the caller must pass something, and that something may
+# be ``None``:
+#
+#     def merge(self, override: RequestOptions | None) -> RequestOptions
+#     def resolve(client_default: RequestOptions | None,
+#                 per_request: RequestOptions | None) -> _EffectiveOptions
+#
+# Rust spells those ``Option<&RequestOptions>`` — byte-identically to a genuinely
+# omittable param, because Rust has ONE spelling for both and the bodies are the
+# same shape (``client_default.cloned().unwrap_or_default()`` is a fallback
+# either way). No property of the Rust source separates them, so no rule can:
+# the distinction lives only in the reference's declaration. Rather than pretend
+# to derive it, the divergence is NAMED here, per symbol, so it is auditable and
+# so a NEW one cannot appear silently — an unlisted ``Option<T>`` is optional.
+#
+# This is not oracle-copying: the general answer is measured from the Rust type,
+# and only this closed, enumerated set of reference-side quirks is reconciled —
+# the same shape as PARAM_RECONCILE and RETURN_TYPE_OVERRIDE above.
+#
+# The 5 remaining reference optional-typed-required params (AIChatError.code,
+# AgentBase.on_summary.summary, validate_request.params_or_raw_body,
+# SignalWireRestError.status_code, SipEndpoints.create.calling_handler_resource_id)
+# are NOT ``Option<T>`` in this port, so they never reach this table.
+# ---------------------------------------------------------------------------
+
+# ``{context: {native_param_name}}`` — ``Option<T>`` params the REFERENCE
+# declares positionally required (optional-typed, no default). Verified against
+# python_signatures.json 2026-07-27: exactly 8 reference params are
+# ``optional<…>`` with ``required: true``, and these 3 are the ones this port
+# spells ``Option<T>``.
+OPTIONAL_TYPED_BUT_REQUIRED: dict[str, set[str]] = {
+    "signalwire.rest._request_options.RequestOptions.merge": {"override_opts"},
+    "signalwire.rest._request_options.resolve": {"client_default", "per_request"},
+}
+
+
+def _is_optional_slot(t, context: str, name: str) -> bool:
+    """True when this param's Rust type MODELS ABSENCE (``Option<T>``).
+
+    ``&Option<T>`` / ``&mut Option<T>`` count too — the borrow is invisible to
+    the reference's type model (the same collapse ``translate_rust_type`` does).
+    """
+    if name in OPTIONAL_TYPED_BUT_REQUIRED.get(context, ()):
+        return False
+    while isinstance(t, dict) and "borrowed_ref" in t:
+        t = t["borrowed_ref"].get("type")
+    if not (isinstance(t, dict) and "resolved_path" in t):
+        return False
+    return str(t["resolved_path"].get("path", "")).split("::")[-1] == "Option"
+
+
 def build_signature(fn: dict, paths: dict, aliases: dict, context: str,
                     defaults: dict | None = None) -> dict:
     sig = fn.get("sig", {})
@@ -2161,10 +2235,10 @@ def build_signature(fn: dict, paths: dict, aliases: dict, context: str,
         p = {
             "name": reconcile.get("name", name),
             "type": reconcile.get("type", canon),
-            # Rust has no language-level default parameter values, so a param is
-            # required unless ``extract_defaults`` recovered one of the three
-            # source constructs that DO express a default (see that section).
-            "required": True,
+            # A bare Rust param is REQUIRED — the caller must pass a value and
+            # there is no default to record. An ``Option<T>`` param is the port's
+            # way of MODELLING ABSENCE (see _is_optional_slot), so it is not.
+            "required": not _is_optional_slot(t, context, name),
         }
         # Key the recovered default off the NATIVE Rust param name — that is the
         # name the source-side extraction saw — not the post-reconcile emitted

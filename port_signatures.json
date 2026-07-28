@@ -61,7 +61,7 @@
                 {
                   "name": "port",
                   "type": "optional<int>",
-                  "required": true
+                  "required": false
                 },
                 {
                   "name": "log_level",
@@ -188,7 +188,7 @@
                 {
                   "name": "route",
                   "type": "optional<string>",
-                  "required": true
+                  "required": false
                 }
               ],
               "returns": "void"
@@ -240,12 +240,12 @@
                 {
                   "name": "host",
                   "type": "optional<string>",
-                  "required": true
+                  "required": false
                 },
                 {
                   "name": "port",
                   "type": "optional<int>",
-                  "required": true
+                  "required": false
                 }
               ],
               "returns": "void"
@@ -401,17 +401,17 @@
                 {
                   "name": "temperature",
                   "type": "optional<float>",
-                  "required": true
+                  "required": false
                 },
                 {
                   "name": "top_p",
                   "type": "optional<float>",
-                  "required": true
+                  "required": false
                 },
                 {
                   "name": "max_tokens",
                   "type": "optional<int>",
-                  "required": true
+                  "required": false
                 }
               ],
               "returns": "any"
@@ -1042,7 +1042,7 @@
                 {
                   "name": "body",
                   "type": "optional<string>",
-                  "required": true
+                  "required": false
                 },
                 {
                   "name": "bullets",
@@ -1282,7 +1282,7 @@
             {
               "name": "description",
               "type": "optional<string>",
-              "required": true
+              "required": false
             },
             {
               "name": "has_raw_data",
@@ -1321,7 +1321,7 @@
                 {
                   "name": "config",
                   "type": "optional<class:signalwire.value.Value>",
-                  "required": true
+                  "required": false
                 }
               ],
               "returns": "any"
@@ -1444,7 +1444,7 @@
                 {
                   "name": "headers",
                   "type": "optional<dict<string,any>>",
-                  "required": true
+                  "required": false
                 },
                 {
                   "name": "resources",
@@ -1454,7 +1454,7 @@
                 {
                   "name": "resource_vars",
                   "type": "optional<dict<string,any>>",
-                  "required": true
+                  "required": false
                 }
               ],
               "returns": "any"
@@ -1857,7 +1857,7 @@
                 {
                   "name": "headers",
                   "type": "optional<dict<string,string>>",
-                  "required": true
+                  "required": false
                 }
               ],
               "returns": "string"
@@ -2016,7 +2016,7 @@
                 {
                   "name": "body",
                   "type": "optional<string>",
-                  "required": true
+                  "required": false
                 },
                 {
                   "name": "bullets",
@@ -2128,12 +2128,12 @@
                 {
                   "name": "host",
                   "type": "optional<string>",
-                  "required": true
+                  "required": false
                 },
                 {
                   "name": "port",
                   "type": "optional<int>",
-                  "required": true
+                  "required": false
                 }
               ],
               "returns": "void"
@@ -2249,12 +2249,12 @@
                 {
                   "name": "speech_fillers",
                   "type": "optional<list<string>>",
-                  "required": true
+                  "required": false
                 },
                 {
                   "name": "function_fillers",
                   "type": "optional<list<string>>",
-                  "required": true
+                  "required": false
                 }
               ],
               "returns": "any"
@@ -2518,7 +2518,7 @@
                 {
                   "name": "key",
                   "type": "optional<string>",
-                  "required": true
+                  "required": false
                 }
               ],
               "returns": "any"
@@ -2777,7 +2777,7 @@
                 {
                   "name": "config_paths",
                   "type": "optional<list<string>>",
-                  "required": true
+                  "required": false
                 }
               ],
               "returns": "void"
@@ -2796,12 +2796,12 @@
                 {
                   "name": "service_name",
                   "type": "optional<string>",
-                  "required": true
+                  "required": false
                 },
                 {
                   "name": "additional_paths",
                   "type": "optional<list<string>>",
-                  "required": true
+                  "required": false
                 }
               ],
               "returns": "optional<string>"
@@ -3367,17 +3367,17 @@
                 {
                   "name": "output_key",
                   "type": "optional<string>",
-                  "required": true
+                  "required": false
                 },
                 {
                   "name": "completion_action",
                   "type": "optional<string>",
-                  "required": true
+                  "required": false
                 },
                 {
                   "name": "prompt",
                   "type": "optional<string>",
-                  "required": true
+                  "required": false
                 },
                 {
                   "name": "isolated",
@@ -3416,17 +3416,17 @@
                 {
                   "name": "prompt",
                   "type": "optional<string>",
-                  "required": true
+                  "required": false
                 },
                 {
                   "name": "functions",
                   "type": "optional<list<string>>",
-                  "required": true
+                  "required": false
                 },
                 {
                   "name": "isolated",
                   "type": "optional<bool>",
-                  "required": true
+                  "required": false
                 }
               ],
               "returns": "any"
@@ -3473,17 +3473,17 @@
                 {
                   "name": "prompt",
                   "type": "optional<string>",
-                  "required": true
+                  "required": false
                 },
                 {
                   "name": "functions",
                   "type": "optional<list<string>>",
-                  "required": true
+                  "required": false
                 },
                 {
                   "name": "isolated",
                   "type": "optional<bool>",
-                  "required": true
+                  "required": false
                 }
               ],
               "returns": "void"
@@ -3626,17 +3626,17 @@
                 {
                   "name": "prompt",
                   "type": "optional<string>",
-                  "required": true
+                  "required": false
                 },
                 {
                   "name": "functions",
                   "type": "optional<list<string>>",
-                  "required": true
+                  "required": false
                 },
                 {
                   "name": "isolated",
                   "type": "optional<bool>",
-                  "required": true
+                  "required": false
                 }
               ],
               "returns": "any"
@@ -3715,17 +3715,17 @@
                 {
                   "name": "output_key",
                   "type": "optional<string>",
-                  "required": true
+                  "required": false
                 },
                 {
                   "name": "completion_action",
                   "type": "optional<string>",
-                  "required": true
+                  "required": false
                 },
                 {
                   "name": "prompt",
                   "type": "optional<string>",
-                  "required": true
+                  "required": false
                 },
                 {
                   "name": "isolated",
@@ -4051,7 +4051,7 @@
                 {
                   "name": "nomatch_output",
                   "type": "optional<class:signalwire.value.Value>",
-                  "required": true
+                  "required": false
                 }
               ],
               "returns": "any"
@@ -4534,7 +4534,7 @@
                 {
                   "name": "wait_url",
                   "type": "optional<string>",
-                  "required": true
+                  "required": false
                 },
                 {
                   "name": "max_participants",
@@ -4549,7 +4549,7 @@
                 {
                   "name": "region",
                   "type": "optional<string>",
-                  "required": true
+                  "required": false
                 },
                 {
                   "name": "trim",
@@ -4559,17 +4559,17 @@
                 {
                   "name": "coach",
                   "type": "optional<string>",
-                  "required": true
+                  "required": false
                 },
                 {
                   "name": "status_callback_event",
                   "type": "optional<string>",
-                  "required": true
+                  "required": false
                 },
                 {
                   "name": "status_callback",
                   "type": "optional<string>",
-                  "required": true
+                  "required": false
                 },
                 {
                   "name": "status_callback_method",
@@ -4579,7 +4579,7 @@
                 {
                   "name": "recording_status_callback",
                   "type": "optional<string>",
-                  "required": true
+                  "required": false
                 },
                 {
                   "name": "recording_status_callback_method",
@@ -4594,7 +4594,7 @@
                 {
                   "name": "result",
                   "type": "optional<class:signalwire.value.Value>",
-                  "required": true
+                  "required": false
                 }
               ],
               "returns": "any"
@@ -4789,17 +4789,17 @@
                 {
                   "name": "initial_timeout",
                   "type": "optional<float>",
-                  "required": true
+                  "required": false
                 },
                 {
                   "name": "end_silence_timeout",
                   "type": "optional<float>",
-                  "required": true
+                  "required": false
                 },
                 {
                   "name": "max_length",
                   "type": "optional<float>",
-                  "required": true
+                  "required": false
                 },
                 {
                   "name": "status_url",
@@ -4846,7 +4846,7 @@
                 {
                   "name": "text",
                   "type": "optional<string>",
-                  "required": true
+                  "required": false
                 }
               ],
               "returns": "any"
@@ -5332,17 +5332,17 @@
                 {
                   "name": "enabled",
                   "type": "optional<bool>",
-                  "required": true
+                  "required": false
                 },
                 {
                   "name": "timeout",
                   "type": "optional<int>",
-                  "required": true
+                  "required": false
                 },
                 {
                   "name": "answer_first",
                   "type": "optional<bool>",
-                  "required": true
+                  "required": false
                 }
               ],
               "returns": "any"
@@ -5495,7 +5495,7 @@
                 {
                   "name": "headers",
                   "type": "optional<dict<string,any>>",
-                  "required": true
+                  "required": false
                 },
                 {
                   "name": "resources",
@@ -5505,7 +5505,7 @@
                 {
                   "name": "resource_vars",
                   "type": "optional<dict<string,any>>",
-                  "required": true
+                  "required": false
                 }
               ],
               "returns": "any"
@@ -5921,7 +5921,7 @@
                 {
                   "name": "body",
                   "type": "optional<string>",
-                  "required": true
+                  "required": false
                 },
                 {
                   "name": "bullets",
@@ -6013,7 +6013,7 @@
                 {
                   "name": "headers",
                   "type": "optional<dict<string,string>>",
-                  "required": true
+                  "required": false
                 }
               ],
               "returns": "string"
@@ -6259,12 +6259,12 @@
                 {
                   "name": "request_data",
                   "type": "optional<class:signalwire.value.Value>",
-                  "required": true
+                  "required": false
                 },
                 {
                   "name": "callback_path",
                   "type": "optional<string>",
-                  "required": true
+                  "required": false
                 }
               ],
               "returns": "optional<class:signalwire.value.Value>"
@@ -6278,12 +6278,12 @@
                 {
                   "name": "request_data",
                   "type": "optional<class:signalwire.value.Value>",
-                  "required": true
+                  "required": false
                 },
                 {
                   "name": "callback_path",
                   "type": "optional<string>",
-                  "required": true
+                  "required": false
                 }
               ],
               "returns": "optional<class:signalwire.value.Value>"
@@ -6366,12 +6366,12 @@
                 {
                   "name": "host",
                   "type": "optional<string>",
-                  "required": true
+                  "required": false
                 },
                 {
                   "name": "port",
                   "type": "optional<int>",
-                  "required": true
+                  "required": false
                 }
               ],
               "returns": "void"
@@ -6435,7 +6435,7 @@
                 {
                   "name": "bullets",
                   "type": "optional<list<string>>",
-                  "required": true
+                  "required": false
                 },
                 {
                   "name": "numbered",
@@ -6450,7 +6450,7 @@
                 {
                   "name": "subsections",
                   "type": "optional<list<class:signalwire.value.Value>>",
-                  "required": true
+                  "required": false
                 }
               ],
               "returns": "any"
@@ -6479,7 +6479,7 @@
                 {
                   "name": "bullets",
                   "type": "optional<list<string>>",
-                  "required": true
+                  "required": false
                 }
               ],
               "returns": "any"
@@ -6498,17 +6498,17 @@
                 {
                   "name": "body",
                   "type": "optional<string>",
-                  "required": true
+                  "required": false
                 },
                 {
                   "name": "bullet",
                   "type": "optional<string>",
-                  "required": true
+                  "required": false
                 },
                 {
                   "name": "bullets",
                   "type": "optional<list<string>>",
-                  "required": true
+                  "required": false
                 }
               ],
               "returns": "any"
@@ -8122,7 +8122,7 @@
                 {
                   "name": "call_id",
                   "type": "optional<string>",
-                  "required": true
+                  "required": false
                 }
               ],
               "returns": "string"
@@ -8437,12 +8437,12 @@
                 {
                   "name": "config_file",
                   "type": "optional<string>",
-                  "required": true
+                  "required": false
                 },
                 {
                   "name": "service_name",
                   "type": "optional<string>",
-                  "required": true
+                  "required": false
                 }
               ],
               "returns": "any"
@@ -8944,7 +8944,7 @@
                 {
                   "name": "raw_data",
                   "type": "optional<dict<string,any>>",
-                  "required": true
+                  "required": false
                 }
               ],
               "returns": "class:signalwire.value.Value"
@@ -9026,12 +9026,12 @@
                 {
                   "name": "token",
                   "type": "optional<string>",
-                  "required": true
+                  "required": false
                 },
                 {
                   "name": "call_id",
                   "type": "optional<string>",
-                  "required": true
+                  "required": false
                 }
               ],
               "returns": "class:signalwire.value.Value"
@@ -9594,12 +9594,12 @@
                 {
                   "name": "max_duration",
                   "type": "optional<int>",
-                  "required": true
+                  "required": false
                 },
                 {
                   "name": "codecs",
                   "type": "optional<string>",
-                  "required": true
+                  "required": false
                 }
               ],
               "returns": "any"
@@ -9622,7 +9622,7 @@
                 {
                   "name": "reason",
                   "type": "optional<string>",
-                  "required": true
+                  "required": false
                 }
               ],
               "returns": "any"
@@ -9636,37 +9636,37 @@
                 {
                   "name": "url",
                   "type": "optional<string>",
-                  "required": true
+                  "required": false
                 },
                 {
                   "name": "urls",
                   "type": "optional<list<string>>",
-                  "required": true
+                  "required": false
                 },
                 {
                   "name": "volume",
                   "type": "optional<float>",
-                  "required": true
+                  "required": false
                 },
                 {
                   "name": "say_voice",
                   "type": "optional<string>",
-                  "required": true
+                  "required": false
                 },
                 {
                   "name": "say_language",
                   "type": "optional<string>",
-                  "required": true
+                  "required": false
                 },
                 {
                   "name": "say_gender",
                   "type": "optional<string>",
-                  "required": true
+                  "required": false
                 },
                 {
                   "name": "auto_answer",
                   "type": "optional<bool>",
-                  "required": true
+                  "required": false
                 }
               ],
               "returns": "any"
@@ -9703,22 +9703,22 @@
                 {
                   "name": "voice",
                   "type": "optional<string>",
-                  "required": true
+                  "required": false
                 },
                 {
                   "name": "language",
                   "type": "optional<string>",
-                  "required": true
+                  "required": false
                 },
                 {
                   "name": "gender",
                   "type": "optional<string>",
-                  "required": true
+                  "required": false
                 },
                 {
                   "name": "volume",
                   "type": "optional<float>",
-                  "required": true
+                  "required": false
                 }
               ],
               "returns": "any"
@@ -9865,7 +9865,7 @@
                 {
                   "name": "actions",
                   "type": "optional<list<class:signalwire.value.Value>>",
-                  "required": true
+                  "required": false
                 }
               ],
               "returns": "string"
@@ -10167,12 +10167,12 @@
                 {
                   "name": "request_data",
                   "type": "optional<class:signalwire.value.Value>",
-                  "required": true
+                  "required": false
                 },
                 {
                   "name": "callback_path",
                   "type": "optional<string>",
-                  "required": true
+                  "required": false
                 }
               ],
               "returns": "optional<class:signalwire.value.Value>"
@@ -10309,12 +10309,12 @@
                 {
                   "name": "_host",
                   "type": "optional<string>",
-                  "required": true
+                  "required": false
                 },
                 {
                   "name": "_port",
                   "type": "optional<int>",
-                  "required": true
+                  "required": false
                 }
               ],
               "returns": "void"
@@ -18023,7 +18023,7 @@
                 {
                   "name": "title",
                   "type": "optional<string>",
-                  "required": true
+                  "required": false
                 }
               ],
               "returns": "class:signalwire.pom.pom.Section"
@@ -18138,7 +18138,7 @@
                 {
                   "name": "title",
                   "type": "optional<string>",
-                  "required": true
+                  "required": false
                 }
               ],
               "returns": "void"
@@ -18552,7 +18552,7 @@
                 {
                   "name": "request_data",
                   "type": "optional<dict<string,any>>",
-                  "required": true
+                  "required": false
                 },
                 {
                   "name": "query_params",
@@ -19052,7 +19052,7 @@
                 {
                   "name": "result",
                   "type": "optional<class:signalwire.value.Value>",
-                  "required": true
+                  "required": false
                 }
               ],
               "returns": "void"
@@ -19139,7 +19139,7 @@
                 {
                   "name": "timeout",
                   "type": "optional<class:signalwire.duration.Duration>",
-                  "required": true
+                  "required": false
                 }
               ],
               "returns": "optional<class:signalwire.value.Value>"
@@ -19582,7 +19582,7 @@
                 {
                   "name": "status_url",
                   "type": "optional<string>",
-                  "required": true
+                  "required": false
                 }
               ],
               "returns": "class:signalwire.value.Value"
@@ -20057,12 +20057,12 @@
                 {
                   "name": "predicate",
                   "type": "optional<class:signalwire.eventpredicate.EventPredicate>",
-                  "required": true
+                  "required": false
                 },
                 {
                   "name": "timeout",
                   "type": "optional<class:signalwire.duration.Duration>",
-                  "required": true
+                  "required": false
                 }
               ],
               "returns": "optional<class:signalwire.relay.event.Event>"
@@ -20076,7 +20076,7 @@
                 {
                   "name": "timeout",
                   "type": "optional<class:signalwire.duration.Duration>",
-                  "required": true
+                  "required": false
                 }
               ],
               "returns": "optional<class:signalwire.relay.event.Event>"
@@ -20090,7 +20090,7 @@
                 {
                   "name": "timeout",
                   "type": "optional<class:signalwire.duration.Duration>",
-                  "required": true
+                  "required": false
                 }
               ],
               "returns": "optional<class:signalwire.relay.event.Event>"
@@ -20104,7 +20104,7 @@
                 {
                   "name": "timeout",
                   "type": "optional<class:signalwire.duration.Duration>",
-                  "required": true
+                  "required": false
                 }
               ],
               "returns": "optional<class:signalwire.relay.event.Event>"
@@ -20118,7 +20118,7 @@
                 {
                   "name": "timeout",
                   "type": "optional<class:signalwire.duration.Duration>",
-                  "required": true
+                  "required": false
                 }
               ],
               "returns": "optional<class:signalwire.relay.event.Event>"
@@ -20192,7 +20192,7 @@
                 {
                   "name": "behavior",
                   "type": "optional<string>",
-                  "required": true
+                  "required": false
                 }
               ],
               "returns": "void"
@@ -20445,7 +20445,7 @@
                 {
                   "name": "behavior",
                   "type": "optional<string>",
-                  "required": true
+                  "required": false
                 }
               ],
               "returns": "void"
@@ -20537,7 +20537,7 @@
                 {
                   "name": "behavior",
                   "type": "optional<string>",
-                  "required": true
+                  "required": false
                 }
               ],
               "returns": "void"
@@ -20863,12 +20863,12 @@
                 {
                   "name": "tag",
                   "type": "optional<string>",
-                  "required": true
+                  "required": false
                 },
                 {
                   "name": "max_duration",
                   "type": "optional<int>",
-                  "required": true
+                  "required": false
                 },
                 {
                   "name": "dial_timeout",
@@ -20892,12 +20892,12 @@
                 {
                   "name": "tag",
                   "type": "optional<string>",
-                  "required": true
+                  "required": false
                 },
                 {
                   "name": "max_duration",
                   "type": "optional<int>",
-                  "required": true
+                  "required": false
                 },
                 {
                   "name": "dial_timeout",
@@ -21237,22 +21237,22 @@
                 {
                   "name": "body",
                   "type": "optional<string>",
-                  "required": true
+                  "required": false
                 },
                 {
                   "name": "media",
                   "type": "optional<list<string>>",
-                  "required": true
+                  "required": false
                 },
                 {
                   "name": "tags",
                   "type": "optional<list<string>>",
-                  "required": true
+                  "required": false
                 },
                 {
                   "name": "context",
                   "type": "optional<string>",
-                  "required": true
+                  "required": false
                 }
               ],
               "returns": "class:signalwire.relay.message.Message"
@@ -21276,22 +21276,22 @@
                 {
                   "name": "body",
                   "type": "optional<string>",
-                  "required": true
+                  "required": false
                 },
                 {
                   "name": "media",
                   "type": "optional<list<string>>",
-                  "required": true
+                  "required": false
                 },
                 {
                   "name": "tags",
                   "type": "optional<list<string>>",
-                  "required": true
+                  "required": false
                 },
                 {
                   "name": "context",
                   "type": "optional<string>",
-                  "required": true
+                  "required": false
                 }
               ],
               "returns": "class:signalwire.relay.message.Message"
@@ -22934,7 +22934,7 @@
                 {
                   "name": "result",
                   "type": "optional<class:signalwire.value.Value>",
-                  "required": true
+                  "required": false
                 }
               ],
               "returns": "void"
@@ -22993,7 +22993,7 @@
                 {
                   "name": "timeout",
                   "type": "optional<class:signalwire.duration.Duration>",
-                  "required": true
+                  "required": false
                 }
               ],
               "returns": "optional<class:signalwire.value.Value>"
@@ -23089,7 +23089,7 @@
                 {
                   "name": "request_options",
                   "type": "optional<class:signalwire.rest._request_options.RequestOptions>",
-                  "required": true
+                  "required": false
                 }
               ],
               "returns": "class:signalwire.value.Value"
@@ -23122,7 +23122,7 @@
                 {
                   "name": "request_options",
                   "type": "optional<class:signalwire.rest._request_options.RequestOptions>",
-                  "required": true
+                  "required": false
                 }
               ],
               "returns": "class:signalwire.value.Value"
@@ -23141,7 +23141,7 @@
                 {
                   "name": "request_options",
                   "type": "optional<class:signalwire.rest._request_options.RequestOptions>",
-                  "required": true
+                  "required": false
                 }
               ],
               "returns": "class:signalwire.value.Value"
@@ -23160,7 +23160,7 @@
                 {
                   "name": "request_options",
                   "type": "optional<class:signalwire.rest._request_options.RequestOptions>",
-                  "required": true
+                  "required": false
                 }
               ],
               "returns": "class:signalwire.value.Value"
@@ -23179,7 +23179,7 @@
                 {
                   "name": "request_options",
                   "type": "optional<class:signalwire.rest._request_options.RequestOptions>",
-                  "required": true
+                  "required": false
                 }
               ],
               "returns": "class:signalwire.rest._pagination.PaginatedIterator"
@@ -23236,7 +23236,7 @@
                 {
                   "name": "request_options",
                   "type": "optional<class:signalwire.rest._request_options.RequestOptions>",
-                  "required": true
+                  "required": false
                 }
               ],
               "returns": "class:signalwire.value.Value"
@@ -23315,7 +23315,7 @@
                 {
                   "name": "options",
                   "type": "optional<class:signalwire.rest._request_options.RequestOptions>",
-                  "required": true
+                  "required": false
                 }
               ],
               "returns": "class:signalwire.value.Value"
@@ -23358,7 +23358,7 @@
                 {
                   "name": "options",
                   "type": "optional<class:signalwire.rest._request_options.RequestOptions>",
-                  "required": true
+                  "required": false
                 }
               ],
               "returns": "class:signalwire.value.Value"
@@ -23401,7 +23401,7 @@
                 {
                   "name": "options",
                   "type": "optional<class:signalwire.rest._request_options.RequestOptions>",
-                  "required": true
+                  "required": false
                 }
               ],
               "returns": "class:signalwire.value.Value"
@@ -23444,7 +23444,7 @@
                 {
                   "name": "options",
                   "type": "optional<class:signalwire.rest._request_options.RequestOptions>",
-                  "required": true
+                  "required": false
                 }
               ],
               "returns": "class:signalwire.value.Value"
@@ -23487,7 +23487,7 @@
                 {
                   "name": "options",
                   "type": "optional<class:signalwire.rest._request_options.RequestOptions>",
-                  "required": true
+                  "required": false
                 }
               ],
               "returns": "class:signalwire.value.Value"
@@ -23526,7 +23526,7 @@
                 {
                   "name": "request_options",
                   "type": "optional<class:signalwire.rest._request_options.RequestOptions>",
-                  "required": true
+                  "required": false
                 }
               ],
               "returns": "any"
@@ -23792,7 +23792,7 @@
                 {
                   "name": "request_options",
                   "type": "optional<class:signalwire.rest._request_options.RequestOptions>",
-                  "required": true
+                  "required": false
                 }
               ],
               "returns": "void"
@@ -24299,7 +24299,7 @@
                 {
                   "name": "request_options",
                   "type": "optional<class:signalwire.rest._request_options.RequestOptions>",
-                  "required": true
+                  "required": false
                 }
               ],
               "returns": "any"
@@ -32446,7 +32446,7 @@
                 {
                   "name": "schema_path",
                   "type": "optional<string>",
-                  "required": true
+                  "required": false
                 },
                 {
                   "name": "schema_validation",
@@ -32782,12 +32782,12 @@
                 {
                   "name": "_host",
                   "type": "optional<string>",
-                  "required": true
+                  "required": false
                 },
                 {
                   "name": "port",
                   "type": "optional<int>",
-                  "required": true
+                  "required": false
                 }
               ],
               "returns": "void"
@@ -32821,7 +32821,7 @@
         },
         "port": {
           "type": "optional<int>",
-          "required": true
+          "required": false
         }
       }
     },
@@ -33088,7 +33088,7 @@
       "params": {
         "config_paths": {
           "type": "optional<list<string>>",
-          "required": true
+          "required": false
         }
       }
     },
@@ -33104,7 +33104,7 @@
       "params": {
         "completion_action": {
           "type": "optional<string>",
-          "required": true
+          "required": false
         },
         "isolated": {
           "type": "bool",
@@ -33112,11 +33112,11 @@
         },
         "output_key": {
           "type": "optional<string>",
-          "required": true
+          "required": false
         },
         "prompt": {
           "type": "optional<string>",
-          "required": true
+          "required": false
         }
       }
     },
@@ -33128,11 +33128,11 @@
         },
         "functions": {
           "type": "optional<list<string>>",
-          "required": true
+          "required": false
         },
         "isolated": {
           "type": "optional<bool>",
-          "required": true
+          "required": false
         },
         "key": {
           "type": "string",
@@ -33140,7 +33140,7 @@
         },
         "prompt": {
           "type": "optional<string>",
-          "required": true
+          "required": false
         },
         "question": {
           "type": "string",
@@ -33181,11 +33181,11 @@
       "params": {
         "config_file": {
           "type": "optional<string>",
-          "required": true
+          "required": false
         },
         "service_name": {
           "type": "optional<string>",
-          "required": true
+          "required": false
         }
       }
     },
@@ -33272,7 +33272,7 @@
       "params": {
         "title": {
           "type": "optional<string>",
-          "required": true
+          "required": false
         }
       }
     },
@@ -33783,7 +33783,7 @@
         },
         "request_options": {
           "type": "optional<class:signalwire.rest._request_options.RequestOptions>",
-          "required": true
+          "required": false
         }
       }
     },
@@ -34415,7 +34415,7 @@
       "params": {
         "schema_path": {
           "type": "optional<string>",
-          "required": true
+          "required": false
         },
         "schema_validation": {
           "type": "bool",
