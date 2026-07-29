@@ -5512,12 +5512,12 @@
         "strip_control_chars": {
           "params": [
             {
-              "name": "value",
-              "type": "string",
+              "name": "event_dict",
+              "type": "dict<string,class:signalwire.value.Value>",
               "required": true
             }
           ],
-          "returns": "string"
+          "returns": "dict<string,class:signalwire.value.Value>"
         }
       }
     },
