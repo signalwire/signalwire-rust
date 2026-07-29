@@ -334,8 +334,8 @@ sched_gate SURFACE-FRESH res=surface desc="check_surface_freshness vs committed 
 # declared optional<dict<string,string>> and go still shipped a bare string, with no gate
 # red. RATCHET, not a hard gate: dynamic languages cannot always express a type, so this
 # banks the current count and fails only on REGRESSION. Drive the number DOWN; never up.
-sched_gate TYPE-EROSION desc="port did not erase a reference-declared param type (ratchet 55)" \
-    -- python3 "$PORTING_SDK_DIR/scripts/diff_port_type_erosion.py" --port rust --repo "$PORT_ROOT" --max 55
+sched_gate TYPE-EROSION desc="port did not erase a reference-declared param type (ratchet 13)" \
+    -- python3 "$PORTING_SDK_DIR/scripts/diff_port_type_erosion.py" --port rust --repo "$PORT_ROOT" --max 13
 
 # RELAY-VERB-RESULT-LOCK: the ~52 calling.* verbs on relay::Call return
 # Result<_, RelayError> (RUST-1). DRIFT tolerates a reversion (the enumerator
