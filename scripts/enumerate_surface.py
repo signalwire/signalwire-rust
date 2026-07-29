@@ -1622,6 +1622,11 @@ FREE_FN_DROPS: dict[str, set[str]] = {
     # wraps a Service in the mountable axum::Router. Crate-internal plumbing
     # (external callers reach it only via as_router), not reference surface.
     "signalwire.swml.router": {"build_router"},
+    # `strip_control_chars_str` is the `pub(crate)` per-value scrub behind the
+    # public `strip_control_chars(event_dict)`. The log emitter needs the
+    # single-string unit; external callers reach only the map form, which is the
+    # reference's contract. Same pub(crate)-drop as `build_router` above.
+    "signalwire.core.logging_config": {"strip_control_chars_str"},
 }
 # SkillBase interface projection. Python models each skill as a subclass that
 # OVERRIDES a specific subset of the SkillBase interface (setup / register_tools
