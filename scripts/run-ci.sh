@@ -696,6 +696,14 @@ sched_gate SNIPPET-RUN tier=nightly defer=1 desc="dynamic-port doc snippets run 
 sched_gate EXAMPLES-RUN tier=nightly defer=1 desc="shipped examples load/start against the mock (compiled port: self-skips; STRICT-MOCKS: MOCK_RELAY_STRICT=1)" \
     -- env MOCK_RELAY_STRICT=1 python3 "$PORTING_SDK_DIR/scripts/examples_run.py" --port rust --repo .
 
+# DOC-SURFACE — rustdoc coverage floor on the public surface (pub items, excluding
+# pub(crate)). The floor is pinned in .doc_surface_floor and ratchets up via
+# --write-floor. BLOCKING and pinned at 100.0 as of the 2026-07-29 burn: every public
+# item carries a `///`, so a new undocumented one is a real regression, not a note.
+# Cheap (a pure text scan, no build), so per-PR rather than nightly.
+sched_gate DOC-SURFACE desc="public rustdoc coverage floor (.doc_surface_floor ratchet; 100% — blocking)" \
+    -- python3 "$PORTING_SDK_DIR/scripts/doc_surface.py" --port rust --repo .
+
 sched_run
 rc=$?
 if [ "$rc" -eq 0 ]; then
