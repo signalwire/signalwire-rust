@@ -27,6 +27,11 @@ pub struct Datetime {
 }
 
 impl Datetime {
+    /// Create the skill from its configuration `params`.
+    ///
+    /// Setup always succeeds — the skill needs no configuration. An unknown
+    /// timezone name is reported as an error at call time rather than
+    /// silently falling back to UTC, which would report the wrong time.
     pub fn new(params: Map<String, Value>) -> Self {
         Datetime {
             sp: SkillParams::new(params),

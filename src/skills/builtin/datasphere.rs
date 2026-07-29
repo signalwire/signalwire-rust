@@ -21,6 +21,12 @@ pub struct Datasphere {
 }
 
 impl Datasphere {
+    /// Create the skill from its configuration `params`.
+    ///
+    /// Requires the `space_name`, `project_id`, and `document_id` params.
+    /// The auth token may come from either a `token` param or the
+    /// `DATASPHERE_TOKEN` environment variable; setup fails if neither
+    /// supplies it.
     pub fn new(params: Map<String, Value>) -> Self {
         Datasphere {
             sp: SkillParams::new(params),

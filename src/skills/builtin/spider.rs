@@ -35,6 +35,10 @@ pub struct Spider {
 }
 
 impl Spider {
+    /// Create the skill from its configuration `params`.
+    ///
+    /// Setup always succeeds — crawl targets are supplied per call rather
+    /// than configured up front.
     pub fn new(params: Map<String, Value>) -> Self {
         Spider {
             sp: SkillParams::new(params),

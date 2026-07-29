@@ -130,6 +130,10 @@ impl SignalWireRestError {
         }
     }
 
+    /// The human-readable description of the failure.
+    ///
+    /// For an HTTP-status error this summarises the status and request; for
+    /// a transport failure it describes the underlying cause.
     pub fn message(&self) -> &str {
         &self.message
     }
@@ -151,6 +155,13 @@ impl SignalWireRestError {
         self.is_transport
     }
 
+    /// The raw response body the server returned, verbatim and unparsed.
+    ///
+    /// The empty string when there is no response at all — which is always
+    /// the case for a transport failure (see
+    /// [`is_transport`](Self::is_transport)) — and also when the server
+    /// answered with an empty body, so an empty result does not by itself
+    /// distinguish the two.
     pub fn response_body(&self) -> &str {
         self.response.as_deref().map_or("", |r| r.body.as_str())
     }

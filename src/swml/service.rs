@@ -218,6 +218,26 @@ pub struct ToolDef {
 }
 
 impl Service {
+    /// Construct a SWML service from `options`.
+    ///
+    /// Resolution rules for the bind and auth settings:
+    ///
+    /// - **route** — trailing slashes are trimmed; an empty or absent route
+    ///   becomes `"/"`.
+    /// - **host** — defaults to `0.0.0.0`, which binds every interface.
+    /// - **port** — falls back to the `PORT` environment variable, then to
+    ///   `3000`.
+    /// - **security** — a unified config layered defaults → `SWML_*`
+    ///   environment → the config file's `security` section (highest
+    ///   priority).
+    /// - **basic auth** — explicit `options` credentials win, then the
+    ///   config-file/environment pair, and failing both a random username
+    ///   and 32-hex-character password are generated. That generated pair
+    ///   exists only in this process and changes on every restart, so it is
+    ///   logged once at `warn` level — otherwise every external caller would
+    ///   silently get 401. Set `SWML_BASIC_AUTH_USER` /
+    ///   `SWML_BASIC_AUTH_PASSWORD` to pin stable credentials and suppress
+    ///   the warning.
     pub fn new(options: ServiceOptions) -> Self {
         let route = options.route.map_or_else(
             || "/".to_string(),
@@ -555,18 +575,31 @@ impl Service {
     // Accessors
     // ------------------------------------------------------------------
 
+    /// The service's name — its identity when hosted by
+    /// [`AgentServer`](crate::server::AgentServer), and the key its
+    /// config-file section is looked up under.
     pub fn name(&self) -> &str {
         &self.name
     }
 
+    /// The HTTP path this service is mounted at, with trailing slashes
+    /// trimmed. `"/"` when mounted at the root.
+    ///
+    /// This segment is spliced into every webhook URL the service
+    /// advertises.
     pub fn route(&self) -> &str {
         &self.route
     }
 
+    /// The address the service binds to. `0.0.0.0` — the default — accepts
+    /// connections on every interface, so bind `127.0.0.1` instead when the
+    /// service should only be reachable locally.
     pub fn host(&self) -> &str {
         &self.host
     }
 
+    /// The TCP port the service binds to: from `ServiceOptions`, else the
+    /// `PORT` environment variable, else `3000`.
     pub fn port(&self) -> u16 {
         self.port
     }
@@ -655,14 +688,29 @@ impl Service {
         self.security.ssl_key_path.as_deref()
     }
 
+    /// Borrow the SWML [`Document`] this service serves.
     pub fn document(&self) -> &Document {
         &self.document
     }
 
+    /// Mutably borrow the SWML [`Document`] this service serves — the way to
+    /// add sections and verbs before rendering.
     pub fn document_mut(&mut self) -> &mut Document {
         &mut self.document
     }
 
+    /// The configured basic-auth credentials as `(username, password)`,
+    /// borrowed.
+    ///
+    /// These are the credentials embedded in the webhook URLs the service
+    /// advertises, so they are what an inbound caller must present.
+    /// [`get_basic_auth_credentials_with_source`](Service::get_basic_auth_credentials_with_source)
+    /// reports where they came from.
+    ///
+    /// Compare candidate credentials with
+    /// [`validate_basic_auth`](Service::validate_basic_auth), which is
+    /// constant-time; comparing the values returned here directly risks a
+    /// timing side channel.
     pub fn basic_auth_credentials(&self) -> (&str, &str) {
         (&self.basic_auth_user, &self.basic_auth_password)
     }
@@ -701,11 +749,28 @@ impl Service {
             && constant_time_eq(password, &self.basic_auth_password)
     }
 
+    /// Render this service's document to compact JSON — the form served on
+    /// the wire.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the document cannot be serialised, which cannot happen for
+    /// a document built through this API (every value is already valid
+    /// JSON).
     #[must_use]
     pub fn render(&self) -> String {
         self.document.render()
     }
 
+    /// Render this service's document to indented JSON, for logs and
+    /// debugging. Byte-for-byte different from
+    /// [`render`](Service::render) but semantically identical — serve
+    /// `render` output, not this.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the document cannot be serialised, which cannot happen for
+    /// a document built through this API.
     #[must_use]
     pub fn render_pretty(&self) -> String {
         self.document.render_pretty()

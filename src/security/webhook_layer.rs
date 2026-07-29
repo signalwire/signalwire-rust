@@ -72,10 +72,12 @@ const SIGNATURE_HEADERS: &[&str] = &["x-signalwire-signature", "x-twilio-signatu
 /// # Returns
 /// * `None` if the signature is valid — run the handler.
 /// * `Some((403, {}, ""))` otherwise — short-circuit with `403 Forbidden`.
-// `implicit_hasher`: the `HashMap<String, String>` shape is the fixed
-// cross-port decomposed-validation contract (`dict<string,string>` in the
-// signature oracle). Generalizing over the hasher would break the enumerated
-// contract shape for no caller benefit, so keep the concrete map.
+///
+/// The concrete `HashMap<String, String>` is the fixed cross-port
+/// decomposed-validation contract (`dict<string,string>` in the signature
+/// oracle), so `clippy::implicit_hasher` is suppressed: generalizing over
+/// the hasher would break the enumerated contract shape for no caller
+/// benefit.
 #[allow(clippy::implicit_hasher)]
 #[must_use]
 pub fn validate(

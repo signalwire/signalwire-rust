@@ -253,6 +253,17 @@ pub struct Client {
 }
 
 impl Client {
+    /// Build a RELAY client authenticating with a project ID / API token
+    /// pair against the space at `host`.
+    ///
+    /// - `project` — the SignalWire project ID.
+    /// - `token` — the API token. A **secret**; do not log it.
+    /// - `host` — the space hostname the WebSocket connects to.
+    ///
+    /// The credentials travel in the `signalwire.connect` handshake. No
+    /// connection is opened here — call `connect` to establish the session.
+    /// Use [`with_jwt_token`](Client::with_jwt_token) for JWT
+    /// authentication instead.
     pub fn new(project: &str, token: &str, host: &str) -> Self {
         Self::with_jwt_token(project, token, host, "")
     }

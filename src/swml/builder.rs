@@ -120,9 +120,20 @@ impl<'a> SwmlBuilder<'a> {
     ///
     /// Panics if neither `url` nor `urls` is provided, matching Python's
     /// `ValueError`.
-    // Faithful port of Python `SWMLBuilder.play(url, urls, volume, say_voice,
-    // say_language, say_gender, auto_answer)` — the parameter set is the wire
-    // contract, not incidental; keeping them flat matches the reference.
+    ///
+    /// `url` takes precedence when both are supplied. `volume` is a gain in
+    /// decibels; the `say_*` parameters configure TTS for `say:` URLs; and
+    /// `auto_answer` answers the call first if it is not already answered.
+    /// Every parameter is `Option` because the reference declares it
+    /// optional — `None` omits the key rather than sending a default.
+    ///
+    /// This is a faithful port of Python's `SWMLBuilder.play(url, urls,
+    /// volume, say_voice, say_language, say_gender, auto_answer)`: the
+    /// parameter set *is* the wire contract, not incidental, so keeping it
+    /// flat matches the reference and `clippy::too_many_arguments` is
+    /// suppressed.
+    ///
+    /// Returns `&mut Self` for chaining.
     #[allow(clippy::too_many_arguments)]
     pub fn play(
         &mut self,

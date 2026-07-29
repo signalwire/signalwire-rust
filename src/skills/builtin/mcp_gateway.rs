@@ -53,6 +53,13 @@ pub struct McpGateway {
 }
 
 impl McpGateway {
+    /// Create the skill from its configuration `params`.
+    ///
+    /// Requires a `gateway_url` param plus credentials. A bearer token
+    /// takes precedence — from an `auth_token` param or the
+    /// `MCP_GATEWAY_AUTH_TOKEN` environment variable — and basic-auth
+    /// credentials are the fallback. Setup fails when the URL is empty or
+    /// no credentials resolve.
     pub fn new(params: Map<String, Value>) -> Self {
         McpGateway {
             sp: SkillParams::new(params),

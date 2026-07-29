@@ -26,6 +26,12 @@ pub struct ApiNinjasTrivia {
 }
 
 impl ApiNinjasTrivia {
+    /// Create the skill from its configuration `params`.
+    ///
+    /// Setup succeeds when an API Ninjas key is available — either an
+    /// `api_key` param or the `API_NINJAS_KEY` environment variable. Without
+    /// one the skill fails to load rather than registering a tool that would
+    /// fail on every call.
     pub fn new(params: Map<String, Value>) -> Self {
         ApiNinjasTrivia {
             sp: SkillParams::new(params),

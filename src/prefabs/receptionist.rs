@@ -233,18 +233,30 @@ impl ReceptionistAgent {
         }
     }
 
+    /// Borrow the underlying [`AgentBase`] this prefab wraps.
+    ///
+    /// `ReceptionistAgent` composes an agent rather than inheriting from one, so
+    /// this is how you read the configured prompt, tools, and skills.
     pub fn agent(&self) -> &AgentBase {
         &self.agent
     }
 
+    /// Mutably borrow the underlying [`AgentBase`].
+    ///
+    /// Use this to layer extra configuration — additional tools, skills,
+    /// hints, or verbs — on top of what the prefab already set up.
     pub fn agent_mut(&mut self) -> &mut AgentBase {
         &mut self.agent
     }
 
+    /// The departments this receptionist can transfer to, as configured.
+    /// Each entry carries the department's name and its destination.
     pub fn departments(&self) -> &[Value] {
         &self.departments
     }
 
+    /// The greeting spoken when the call is answered — the caller's value
+    /// or the reference default.
     pub fn greeting(&self) -> &str {
         &self.greeting
     }

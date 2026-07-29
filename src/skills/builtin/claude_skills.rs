@@ -47,6 +47,12 @@ pub struct ClaudeSkills {
 }
 
 impl ClaudeSkills {
+    /// Create the skill from its configuration `params`.
+    ///
+    /// Requires a `skills_path` param naming a directory of Claude skill
+    /// definitions; `~` is expanded. Setup fails when the param is absent or
+    /// the path is not a directory. A directory containing no skills is
+    /// still a valid setup — discovery simply yields none.
     pub fn new(params: Map<String, Value>) -> Self {
         ClaudeSkills {
             sp: SkillParams::new(params),

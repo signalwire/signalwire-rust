@@ -17,6 +17,11 @@ pub struct WikipediaSearch {
 }
 
 impl WikipediaSearch {
+    /// Create the skill from its configuration `params`.
+    ///
+    /// Setup gates on `validate_packages()` to mirror the Python
+    /// reference's surface; in Rust that check is always satisfied, so setup
+    /// always succeeds.
     pub fn new(params: Map<String, Value>) -> Self {
         WikipediaSearch {
             sp: SkillParams::new(params),

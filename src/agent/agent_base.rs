@@ -117,6 +117,16 @@ pub struct AgentOptions {
 }
 
 impl AgentOptions {
+    /// Start a new options set for an agent named `name`.
+    ///
+    /// `name` is the agent's identity: it is the key [`AgentServer`] routes
+    /// on and, when no explicit `route` is given, the default mount path is
+    /// derived from it. Every other field takes its reference default —
+    /// notably `auto_answer` and `use_pom` are `true`, `record_call` is
+    /// `false`, `schema_validation` is `true`, and `token_expiry_secs` is
+    /// 3600 — so only the fields you actually want to change need setting.
+    ///
+    /// [`AgentServer`]: crate::server::AgentServer
     pub fn new(name: &str) -> Self {
         AgentOptions {
             name: name.to_string(),
@@ -357,11 +367,13 @@ type DebugEventCallback = Box<dyn Fn(&Value, &HashMap<String, String>) + Send + 
 /// equivalent of inheritance) so `Service` methods like `set_route`,
 /// `define_tool`, `on_function_call`, etc. are usable on `AgentBase`
 /// instances directly without needing forwarding wrappers.
-// The several `bool` fields (auto_answer, record_call, record_stereo, use_pom,
-// …) are independent feature flags mirroring Python AgentBase's boolean
-// __init__ kwargs 1:1. clippy::struct_excessive_bools suggests a state struct,
-// but that would diverge from the reference's flat flag surface for no
-// behavioral gain — they're orthogonal toggles, not a state machine.
+///
+/// The several `bool` fields (`auto_answer`, `record_call`, `record_stereo`,
+/// `use_pom`, …) are independent feature flags mirroring Python
+/// `AgentBase`'s boolean `__init__` kwargs 1:1, so
+/// `clippy::struct_excessive_bools` is suppressed: folding them into a state
+/// struct would diverge from the reference's flat flag surface for no
+/// behavioral gain — they are orthogonal toggles, not a state machine.
 #[allow(clippy::struct_excessive_bools)]
 pub struct AgentBase {
     // ── Service (composition + Deref<Service> for inheritance shape) ────
@@ -570,6 +582,21 @@ impl std::ops::DerefMut for AgentBase {
 }
 
 impl AgentBase {
+    /// Construct an agent from `options`.
+    ///
+    /// Wraps a freshly built [`Service`] (reachable via `Deref`) and
+    /// initialises the prompt store, tool registry, skill manager, and AI
+    /// configuration.
+    ///
+    /// Where `options` carries a `config_file`, its `service` section is
+    /// consulted for `name` / `route` / `host` / `port`, but **constructor
+    /// values win**: the file is only read where the caller left the field
+    /// unset, matching the reference (`agent_base.py:189-196`).
+    ///
+    /// Basic-auth credentials are taken from `options` when supplied,
+    /// otherwise from `SWML_BASIC_AUTH_USER` / `SWML_BASIC_AUTH_PASSWORD`,
+    /// otherwise randomly generated — so an agent is never served
+    /// unauthenticated by accident.
     pub fn new(options: AgentOptions) -> Self {
         // Config-file `service` section, applied with CONSTRUCTOR params
         // taking precedence — the reference consults the file only where the
@@ -771,11 +798,27 @@ impl AgentBase {
     //  Prompt Methods
     // ══════════════════════════════════════════════════════════════════════
 
+    /// Set the agent's system prompt as raw text.
+    ///
+    /// Renders as `ai.prompt.text` in the SWML document. This is the
+    /// alternative to the structured POM path — if POM sections have been
+    /// added, `ai.prompt.pom` is emitted instead and this text is unused.
+    ///
+    /// Returns `&mut Self` for chaining.
     pub fn set_prompt_text(&mut self, text: &str) -> &mut Self {
         self.prompt_text = text.to_string();
         self
     }
 
+    /// Set the post-prompt: the instruction the AI follows *after* the
+    /// conversation ends, typically to produce a summary.
+    ///
+    /// Renders as `ai.post_prompt.text`. The whole `post_prompt` block is
+    /// omitted from the SWML when `text` is empty. The resulting summary is
+    /// POSTed to the agent's `/post_prompt` endpoint, where it reaches the
+    /// handler registered with [`on_summary`](AgentBase::on_summary).
+    ///
+    /// Returns `&mut Self` for chaining.
     pub fn set_post_prompt(&mut self, text: &str) -> &mut Self {
         self.post_prompt = text.to_string();
         self
@@ -1040,11 +1083,25 @@ impl AgentBase {
     //  AI Config Methods
     // ══════════════════════════════════════════════════════════════════════
 
+    /// Add one speech-recognition hint.
+    ///
+    /// Hints bias the ASR toward words it would otherwise mis-transcribe —
+    /// product names, jargon, proper nouns. They accumulate and render as
+    /// string entries in the `ai.hints` array, alongside any structured
+    /// pattern hints; the array is omitted entirely when empty.
+    ///
+    /// Returns `&mut Self` for chaining.
     pub fn add_hint(&mut self, hint: &str) -> &mut Self {
         self.hints.push(hint.to_string());
         self
     }
 
+    /// Add several speech-recognition hints at once.
+    ///
+    /// Equivalent to calling [`add_hint`](AgentBase::add_hint) for each
+    /// entry; hints are appended, not replaced.
+    ///
+    /// Returns `&mut Self` for chaining.
     pub fn add_hints(&mut self, hints: Vec<&str>) -> &mut Self {
         for h in hints {
             self.hints.push(h.to_string());
@@ -1218,6 +1275,19 @@ impl AgentBase {
         None
     }
 
+    /// Replace the whole language list with `languages`.
+    ///
+    /// Each entry is a raw language object as it will appear in the
+    /// `ai.languages` array (`name`, `code`, `voice`, optional `params`, …).
+    /// Unlike [`add_language`](AgentBase::add_language) this **replaces**
+    /// rather than appends, and performs no shape validation — the caller
+    /// owns the wire shape. The array is omitted from the SWML when empty.
+    ///
+    /// Mutually exclusive with
+    /// [`set_multilingual`](AgentBase::set_multilingual): if both are
+    /// configured the server honours `multilingual` and ignores `languages`.
+    ///
+    /// Returns `&mut Self` for chaining.
     pub fn set_languages(&mut self, languages: Vec<Value>) -> &mut Self {
         self.languages = languages;
         self
@@ -1260,16 +1330,40 @@ impl AgentBase {
         self
     }
 
+    /// Replace the whole pronunciation list with `pronunciations`.
+    ///
+    /// Each entry is a raw object as it will appear in the `ai.pronounce`
+    /// array (`replace`, `with`, and `ignore_case` only when `true`).
+    /// Unlike [`add_pronunciation`](AgentBase::add_pronunciation) this
+    /// **replaces** rather than appends and does no shape validation — the
+    /// caller owns the wire shape. The array is omitted when empty.
+    ///
+    /// Returns `&mut Self` for chaining.
     pub fn set_pronunciations(&mut self, pronunciations: Vec<Value>) -> &mut Self {
         self.pronunciations = pronunciations;
         self
     }
 
+    /// Set a single AI parameter, overwriting any previous value for `key`.
+    ///
+    /// Parameters land in the `ai.params` object and tune engine behaviour
+    /// (timeouts, barge-in, verbosity, and so on). Other parameters already
+    /// set are left untouched.
+    ///
+    /// Returns `&mut Self` for chaining.
     pub fn set_param(&mut self, key: &str, value: Value) -> &mut Self {
         self.params.insert(key.to_string(), value);
         self
     }
 
+    /// Replace the entire `ai.params` object with `params`.
+    ///
+    /// Any parameters previously set with
+    /// [`set_param`](AgentBase::set_param) are discarded. A `params` value
+    /// that is not a JSON object is **ignored silently** — the existing map
+    /// is left as it was.
+    ///
+    /// Returns `&mut Self` for chaining.
     pub fn set_params(&mut self, params: Value) -> &mut Self {
         if let Value::Object(map) = params {
             self.params = map;
@@ -1277,6 +1371,20 @@ impl AgentBase {
         self
     }
 
+    /// Merge `data` into the agent's global data.
+    ///
+    /// Despite the `set_` name this is a **shallow merge**, not a replace:
+    /// keys in `data` overwrite same-named keys and every other key
+    /// survives. This matches the TypeScript reference, whose `setGlobalData`
+    /// merges exactly like `updateGlobalData` (issue #190) — so
+    /// [`update_global_data`](AgentBase::update_global_data) is a synonym
+    /// here, not a different operation.
+    ///
+    /// Global data renders as the `ai.global_data` object and is visible to
+    /// every SWAIG function invocation on the call. A `data` value that is
+    /// not a JSON object is ignored silently.
+    ///
+    /// Returns `&mut Self` for chaining.
     pub fn set_global_data(&mut self, data: Value) -> &mut Self {
         // #190: merge incoming keys over existing global data (shallow), matching
         // the TS reference (`setGlobalData` shallow-merges like `updateGlobalData`)
@@ -1289,6 +1397,13 @@ impl AgentBase {
         self
     }
 
+    /// Shallow-merge `data` into the agent's global data.
+    ///
+    /// Keys present in `data` overwrite same-named existing keys; all other
+    /// keys are preserved. Nested objects are replaced wholesale, not merged
+    /// recursively. A non-object `data` is ignored silently.
+    ///
+    /// Returns `&mut Self` for chaining.
     pub fn update_global_data(&mut self, data: Value) -> &mut Self {
         if let Value::Object(map) = data {
             for (k, v) in map {
@@ -1304,6 +1419,16 @@ impl AgentBase {
         Value::Object(self.global_data.clone())
     }
 
+    /// Replace the list of server-side native functions the AI may call.
+    ///
+    /// Native functions execute on SignalWire's infrastructure rather than
+    /// against this agent's `/swaig` webhook, so they need no handler here.
+    /// The list renders as `ai.SWAIG.native_functions`; passing an empty
+    /// vector clears it and the key is omitted from the SWML.
+    ///
+    /// This **replaces** the whole list rather than appending.
+    ///
+    /// Returns `&mut Self` for chaining.
     pub fn set_native_functions(&mut self, functions: Vec<&str>) -> &mut Self {
         self.native_functions = functions
             .into_iter()
@@ -1334,6 +1459,19 @@ impl AgentBase {
         "get_ideal_strategy",      // thinking (enable_thinking)
     ];
 
+    /// Replace the flat list of internal filler phrases.
+    ///
+    /// These are short phrases the agent speaks while an internal/native
+    /// function runs, so the caller does not hear dead air. This flat form
+    /// renders as the `ai.params.internal_fillers` array and applies to
+    /// internal work generally — it is **not** the per-function,
+    /// per-language form; for that, use
+    /// [`set_internal_fillers_map`](AgentBase::set_internal_fillers_map),
+    /// which is stored and rendered separately.
+    ///
+    /// Replaces the whole list; the key is omitted when the list is empty.
+    ///
+    /// Returns `&mut Self` for chaining.
     pub fn set_internal_fillers(&mut self, fillers: Vec<&str>) -> &mut Self {
         self.internal_fillers = fillers
             .into_iter()
@@ -1383,6 +1521,14 @@ impl AgentBase {
         self
     }
 
+    /// Append one phrase to the flat internal-filler list.
+    ///
+    /// Accumulates onto whatever
+    /// [`set_internal_fillers`](AgentBase::set_internal_fillers) established;
+    /// the combined list renders as `ai.params.internal_fillers`. No name
+    /// validation applies here — this form is not keyed by function name.
+    ///
+    /// Returns `&mut Self` for chaining.
     pub fn add_internal_filler(&mut self, filler: &str) -> &mut Self {
         self.internal_fillers.push(filler.to_string());
         self
@@ -1430,11 +1576,34 @@ impl AgentBase {
         self
     }
 
+    /// Append one remote SWAIG function-include entry.
+    ///
+    /// An include points the AI at SWAIG functions hosted somewhere other
+    /// than this agent: the object carries a `url` and the `functions` array
+    /// naming which of that endpoint's functions to expose. Includes render
+    /// into `ai.SWAIG.includes`.
+    ///
+    /// Unlike [`set_function_includes`](AgentBase::set_function_includes),
+    /// this appends and applies **no** well-formedness filtering — a
+    /// malformed entry added here reaches the wire as given.
+    ///
+    /// Returns `&mut Self` for chaining.
     pub fn add_function_include(&mut self, include: Value) -> &mut Self {
         self.function_includes.push(include);
         self
     }
 
+    /// Replace the SWAIG function-include list with `includes`.
+    ///
+    /// Entries are filtered to the well-formed ones — a non-empty string
+    /// `url` **and** an array `functions` — matching the TypeScript
+    /// reference's `inc.url && Array.isArray(inc.functions)` check (issue
+    /// #191). Each rejected entry is logged rather than silently dropped;
+    /// the filtering is log-only and wire-neutral.
+    ///
+    /// The surviving entries render into `ai.SWAIG.includes`.
+    ///
+    /// Returns `&mut Self` for chaining.
     pub fn set_function_includes(&mut self, includes: Vec<Value>) -> &mut Self {
         // #191: keep only well-formed entries — a non-empty string `url` AND an
         // array `functions` — matching the TS reference's filter
@@ -1460,6 +1629,19 @@ impl AgentBase {
         self
     }
 
+    /// Merge LLM tuning parameters into the main prompt block.
+    ///
+    /// Keys such as `temperature`, `top_p`, and `confidence` are flattened
+    /// **into** `ai.prompt` alongside `text`/`pom` — they are not nested
+    /// under a sub-object.
+    ///
+    /// Despite the `set_` name this **merges**: repeated calls with distinct
+    /// keys accumulate and a repeated key overwrites its previous value,
+    /// mirroring Python's `self._prompt_llm_params.update(params)`
+    /// (`ai_config_mixin.py:669`). A non-object `params` is ignored
+    /// silently.
+    ///
+    /// Returns `&mut Self` for chaining.
     pub fn set_prompt_llm_params(&mut self, params: Value) -> &mut Self {
         // MERGE, not replace — mirrors Python's
         // `self._prompt_llm_params.update(params)` (ai_config_mixin.py:669).
@@ -1473,6 +1655,19 @@ impl AgentBase {
         self
     }
 
+    /// Merge LLM tuning parameters into the post-prompt block.
+    ///
+    /// Keys are flattened into `ai.post_prompt` alongside its `text`. The
+    /// post-prompt block itself is only emitted when
+    /// [`set_post_prompt`](AgentBase::set_post_prompt) supplied non-empty
+    /// text, so params set here have no effect without it.
+    ///
+    /// **Merges** rather than replaces, mirroring Python's
+    /// `self._post_prompt_llm_params.update(params)`
+    /// (`ai_config_mixin.py:703`). A non-object `params` is ignored
+    /// silently.
+    ///
+    /// Returns `&mut Self` for chaining.
     pub fn set_post_prompt_llm_params(&mut self, params: Value) -> &mut Self {
         // MERGE, not replace — mirrors Python's
         // `self._post_prompt_llm_params.update(params)` (ai_config_mixin.py:703).
@@ -1488,31 +1683,71 @@ impl AgentBase {
     //  Verb Methods
     // ══════════════════════════════════════════════════════════════════════
 
+    /// Append a SWML verb to run **before** the call is answered.
+    ///
+    /// Emitted as `{verb: config}` in `sections.main`, in insertion order,
+    /// ahead of the `answer` verb — so this is where pre-answer signalling
+    /// belongs. Note that verbs which need answered media (`play`, `record`)
+    /// will not behave here.
+    ///
+    /// `verb` is the SWML verb name and `config` its parameter object; the
+    /// pair is passed through verbatim without validation.
+    ///
+    /// Returns `&mut Self` for chaining.
     pub fn add_pre_answer_verb(&mut self, verb: &str, config: Value) -> &mut Self {
         self.pre_answer_verbs.push((verb.to_string(), config));
         self
     }
 
+    /// Append a SWML verb to run **after** the call is answered but before
+    /// the `ai` verb.
+    ///
+    /// Emitted as `{verb: config}` in `sections.main`, in insertion order,
+    /// after `answer` (and after `record_call` when recording is enabled)
+    /// and immediately before the AI verb. Typical use is a greeting `play`
+    /// that must complete before the AI takes the turn.
+    ///
+    /// `verb` and `config` are passed through verbatim without validation.
+    ///
+    /// Returns `&mut Self` for chaining.
     pub fn add_post_answer_verb(&mut self, verb: &str, config: Value) -> &mut Self {
         self.post_answer_verbs.push((verb.to_string(), config));
         self
     }
 
+    /// Append a SWML verb to run **after** the `ai` verb completes.
+    ///
+    /// Emitted as `{verb: config}` in `sections.main`, in insertion order,
+    /// last in the document. This is what runs once the AI conversation
+    /// ends — a transfer, a closing message, or a hangup.
+    ///
+    /// `verb` and `config` are passed through verbatim without validation.
+    ///
+    /// Returns `&mut Self` for chaining.
     pub fn add_post_ai_verb(&mut self, verb: &str, config: Value) -> &mut Self {
         self.post_ai_verbs.push((verb.to_string(), config));
         self
     }
 
+    /// Remove every pre-answer verb.
+    ///
+    /// Returns `&mut Self` for chaining.
     pub fn clear_pre_answer_verbs(&mut self) -> &mut Self {
         self.pre_answer_verbs.clear();
         self
     }
 
+    /// Remove every post-answer verb.
+    ///
+    /// Returns `&mut Self` for chaining.
     pub fn clear_post_answer_verbs(&mut self) -> &mut Self {
         self.post_answer_verbs.clear();
         self
     }
 
+    /// Remove every post-AI verb.
+    ///
+    /// Returns `&mut Self` for chaining.
     pub fn clear_post_ai_verbs(&mut self) -> &mut Self {
         self.post_ai_verbs.clear();
         self
@@ -1647,15 +1882,26 @@ impl AgentBase {
         self
     }
 
+    /// Remove `name` from the agent's list of loaded skills.
+    ///
+    /// A no-op when the skill was never added. Note this drops the skill
+    /// from the tracking list only — tools the skill already registered on
+    /// the agent are not unregistered.
+    ///
+    /// Returns `&mut Self` for chaining.
     pub fn remove_skill(&mut self, name: &str) -> &mut Self {
         self.skills.retain(|s| s != name);
         self
     }
 
+    /// The names of the skills loaded on this agent, in the order they were
+    /// added.
     pub fn list_skills(&self) -> Vec<String> {
         self.skills.clone()
     }
 
+    /// Whether a skill named `name` is loaded. The comparison is exact and
+    /// case-sensitive.
     pub fn has_skill(&self, name: &str) -> bool {
         self.skills.contains(&name.to_string())
     }
@@ -1664,26 +1910,91 @@ impl AgentBase {
     //  Web / Callback Methods
     // ══════════════════════════════════════════════════════════════════════
 
+    /// Install a callback that reconfigures the agent per SWML request.
+    ///
+    /// When set, each request to the SWML endpoint **clones** the agent,
+    /// invokes `callback` with the request's query params, the parsed body,
+    /// the headers, and `&mut` access to that clone, then renders SWML from
+    /// the clone and discards it. The agent this method was called on is
+    /// never mutated by a request, so per-caller configuration cannot leak
+    /// between concurrent calls.
+    ///
+    /// Setting a second callback replaces the first.
+    ///
+    /// Returns `&mut Self` for chaining.
     pub fn set_dynamic_config_callback(&mut self, callback: DynamicConfigCallback) -> &mut Self {
         self.dynamic_config_callback = Some(Arc::new(callback));
         self
     }
 
+    /// Point SWAIG function callbacks at an external `url` instead of this
+    /// agent's own `/swaig` endpoint.
+    ///
+    /// When set, every tool with a handler emits `web_hook_url: url`
+    /// **verbatim** — no per-tool `__token` is appended and no SWAIG query
+    /// params are added, matching the reference (`agent_base.py:1085`).
+    ///
+    /// Security consequence: because no token is minted, an external
+    /// webhook is not protected by the per-call token the platform would
+    /// otherwise validate; the external endpoint is responsible for
+    /// authenticating requests itself.
+    ///
+    /// Returns `&mut Self` for chaining.
     pub fn set_webhook_url(&mut self, url: &str) -> &mut Self {
         self.webhook_url = Some(url.to_string());
         self
     }
 
+    /// Send the post-prompt summary to `url` instead of this agent's own
+    /// `/post_prompt` endpoint.
+    ///
+    /// Emitted verbatim as `ai.post_prompt_url`. When unset, the agent
+    /// derives that URL from its proxy base, route, and basic-auth
+    /// credentials — so overriding this means the summary POST no longer
+    /// carries the agent's embedded credentials, and the receiving endpoint
+    /// must authenticate the request on its own.
+    ///
+    /// Returns `&mut Self` for chaining.
     pub fn set_post_prompt_url(&mut self, url: &str) -> &mut Self {
         self.post_prompt_url = Some(url.to_string());
         self
     }
 
+    /// Override the base URL the agent advertises in the webhook URLs it
+    /// emits.
+    ///
+    /// Use this when the agent sits behind a proxy or tunnel whose public
+    /// address it cannot infer. Any trailing `/` is stripped. This base
+    /// takes precedence over both `SWML_PROXY_URL_BASE` and the
+    /// `X-Forwarded-*` headers.
+    ///
+    /// Because it is operator-supplied configuration rather than request
+    /// data, it is also honoured when reconstructing the URL an inbound
+    /// webhook signature was computed over — regardless of the
+    /// `trust_proxy_for_signature` setting.
+    ///
+    /// Returns `&mut Self` for chaining.
     pub fn manual_set_proxy_url(&mut self, url: &str) -> &mut Self {
         self.manual_proxy_url = Some(url.trim_end_matches('/').to_string());
         self
     }
 
+    /// Merge `params` into the query string appended to the agent's
+    /// generated webhook URLs.
+    ///
+    /// The params are appended to **every** generated endpoint URL — the
+    /// `swaig` callback and the `debug_events` callback alike — matching the
+    /// reference, which passes the same map to both. Keys already present
+    /// are overwritten; others are preserved.
+    ///
+    /// Setting any query param also forces a per-tool `web_hook_url` to be
+    /// emitted for tools that would otherwise fall back to the shared
+    /// `SWAIG.defaults.web_hook_url`.
+    ///
+    /// Has no effect when [`set_webhook_url`](AgentBase::set_webhook_url)
+    /// has redirected callbacks to an external URL, which is used verbatim.
+    ///
+    /// Returns `&mut Self` for chaining.
     pub fn add_swaig_query_params(&mut self, params: HashMap<String, String>) -> &mut Self {
         for (k, v) in params {
             self.swaig_query_params.insert(k, v);
@@ -1691,16 +2002,42 @@ impl AgentBase {
         self
     }
 
+    /// Remove every SWAIG webhook query param previously added.
+    ///
+    /// Returns `&mut Self` for chaining.
     pub fn clear_swaig_query_params(&mut self) -> &mut Self {
         self.swaig_query_params.clear();
         self
     }
 
+    /// Register the handler invoked when the platform POSTs the
+    /// post-prompt summary to `/post_prompt`.
+    ///
+    /// The callback receives the summary text, the full request body, and
+    /// the request headers. The summary text is read from
+    /// `post_prompt_data.raw`, falling back to a top-level `summary` field,
+    /// and is the empty string when neither is present. The endpoint always
+    /// answers `200` whether or not a handler is registered.
+    ///
+    /// Setting a second handler replaces the first.
+    ///
+    /// Returns `&mut Self` for chaining.
     pub fn on_summary(&mut self, callback: SummaryCallback) -> &mut Self {
         self.summary_callback = Some(Arc::new(callback));
         self
     }
 
+    /// Register the handler invoked when the platform POSTs a debug event
+    /// to `/debug_events`.
+    ///
+    /// The callback receives the event body and the request headers. Debug
+    /// events are only delivered once
+    /// [`enable_debug_events`](AgentBase::enable_debug_events) has emitted
+    /// the `debug_webhook_url` / `debug_webhook_level` params into the SWML.
+    ///
+    /// Setting a second handler replaces the first.
+    ///
+    /// Returns `&mut Self` for chaining.
     pub fn on_debug_event(&mut self, callback: DebugEventCallback) -> &mut Self {
         self.debug_event_handler = Some(Arc::new(callback));
         self
@@ -1710,11 +2047,35 @@ impl AgentBase {
     //  SIP Methods
     // ══════════════════════════════════════════════════════════════════════
 
+    /// Enable SIP routing for this agent.
+    ///
+    /// Sets the `sip_routing` AI param to `true`, which is what tells the
+    /// platform to route SIP traffic addressed to this agent's registered
+    /// usernames here. Register the usernames themselves with
+    /// [`register_sip_username`](AgentBase::register_sip_username) or
+    /// [`auto_map_sip_usernames`](AgentBase::auto_map_sip_usernames).
+    ///
+    /// Returns `&mut Self` for chaining.
     pub fn enable_sip_routing(&mut self) -> &mut Self {
         self.set_param("sip_routing", json!(true));
         self
     }
 
+    /// Register a SIP `username` that should route to this agent, optionally
+    /// on a specific `route`.
+    ///
+    /// The name is stored case-folded and deduplicated, so registering
+    /// `"Bob"`, `"BOB"`, and `"bob"` collapses to one `bob` entry (Python
+    /// parity with `AgentBase.register_sip_username`);
+    /// [`sip_usernames`](AgentBase::sip_usernames) reads the set back.
+    ///
+    /// On the wire this sets the `sip_username` AI param to the username as
+    /// **given** (not lower-cased), and sets `sip_route` when `route` is
+    /// non-empty. Because both are single-valued params, registering several
+    /// usernames leaves the last one in `sip_username` — the accumulated set
+    /// is local bookkeeping.
+    ///
+    /// Returns `&mut Self` for chaining.
     pub fn register_sip_username(&mut self, username: &str, route: &str) -> &mut Self {
         // Python parity (`AgentBase.register_sip_username`): accumulate the name
         // into a case-folded, deduplicated set. Registering "Bob"/"BOB"/"bob"

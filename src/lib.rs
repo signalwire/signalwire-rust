@@ -107,11 +107,15 @@
 // every module's own `//!` header ARE documented (so docs.rs renders), and as a
 // module's items get their doc comments its allow is removed here — the budget
 // only shrinks, never grows. The ledger + counts live in DOC_SURFACE_ALLOW.md.
-// Un-annotated modules (pom, datamap) already meet the floor; adding an
-// undocumented public item to one reds LINT (-D warnings), which is the point.
+// Un-annotated modules (pom, datamap, ai_chat) already meet the floor; adding
+// an undocumented public item to one reds LINT (-D warnings), which is the
+// point. NOTE this budget is a WIDER surface than the DOC-SURFACE gate: rustc
+// also wants docs on public FIELDS / enum VARIANTS / trait ITEMS, which the
+// gate's declaration-level regex never counts. The gate reads 100.0%
+// (1499/1499, floor pinned in .doc_surface_floor) while 155 field/variant
+// items remain here.
 #[allow(missing_docs)]
 pub mod core;
-#[allow(missing_docs)]
 pub mod datamap;
 #[allow(missing_docs)]
 pub mod logging;

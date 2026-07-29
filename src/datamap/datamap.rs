@@ -22,6 +22,18 @@ pub struct DataMap {
 }
 
 impl DataMap {
+    /// Start building a server-side tool named `function_name`.
+    ///
+    /// A `DataMap` tool executes on SignalWire's infrastructure rather than
+    /// against this agent's `/swaig` webhook, so it needs no handler and no
+    /// reachable endpoint. `function_name` is the name the AI calls and is
+    /// rendered as the `function` wire key.
+    ///
+    /// Everything else starts empty — describe the tool with
+    /// [`purpose`](DataMap::purpose), declare its arguments with
+    /// [`parameter`](DataMap::parameter), add the API call with
+    /// [`webhook`](DataMap::webhook), and shape the response with
+    /// [`output`](DataMap::output) / [`expression`](DataMap::expression).
     pub fn new(function_name: &str) -> Self {
         DataMap {
             function_name: function_name.to_string(),
@@ -724,7 +736,7 @@ mod tests {
     }
 
     /// The reference emits the method upper-cased on the wire
-    /// (core/data_map.py:230, `"method": method.upper()`), so a caller writing a
+    /// (`core/data_map.py:230`, `"method": method.upper()`), so a caller writing a
     /// lower-case method must still produce byte-identical SWML across languages.
     #[test]
     fn test_webhook_upper_cases_method_on_the_wire() {

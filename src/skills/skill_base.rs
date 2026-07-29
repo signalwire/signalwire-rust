@@ -382,6 +382,11 @@ impl Clone for SkillParams {
 }
 
 impl SkillParams {
+    /// Wrap a skill's configuration map.
+    ///
+    /// The owning agent is not set here — the `SkillManager` records it at
+    /// load time via [`set_agent`](SkillParams::set_agent), so
+    /// [`agent`](SkillParams::agent) is `None` until then.
     pub fn new(params: Map<String, Value>) -> Self {
         SkillParams {
             params,
@@ -389,6 +394,8 @@ impl SkillParams {
         }
     }
 
+    /// Create an empty parameter set, with no configuration and no owning
+    /// agent — the right starting point for a skill that takes no config.
     pub fn empty() -> Self {
         SkillParams {
             params: Map::new(),
@@ -418,14 +425,27 @@ impl SkillParams {
             .unwrap_or_else(std::sync::PoisonError::into_inner) = Some(agent);
     }
 
+    /// Read `key` as a string.
+    ///
+    /// `None` when the key is absent **or** when its value is not a JSON
+    /// string — a numeric or boolean value reads as absent, it is not
+    /// coerced.
     pub fn get_str(&self, key: &str) -> Option<&str> {
         self.params.get(key).and_then(|v| v.as_str())
     }
 
+    /// Read `key` as a string, falling back to `default` when it is absent
+    /// or not a JSON string.
     pub fn get_str_or(&self, key: &str, default: &str) -> String {
         self.get_str(key).unwrap_or(default).to_string()
     }
 
+    /// Read `key` as a boolean, defaulting to `false`.
+    ///
+    /// Absent keys **and** non-boolean values both yield `false`. For a
+    /// param whose documented default is `true`, use
+    /// [`get_bool_or`](SkillParams::get_bool_or) — this method cannot
+    /// express that.
     pub fn get_bool(&self, key: &str) -> bool {
         self.params
             .get(key)
@@ -443,6 +463,10 @@ impl SkillParams {
             .unwrap_or(default)
     }
 
+    /// Read `key` as a signed 64-bit integer, falling back to `default`.
+    ///
+    /// A value that is absent, non-numeric, fractional, or out of `i64`
+    /// range all yield `default`.
     pub fn get_i64(&self, key: &str, default: i64) -> i64 {
         self.params
             .get(key)
@@ -450,6 +474,10 @@ impl SkillParams {
             .unwrap_or(default)
     }
 
+    /// Read `key` as a floating-point number, falling back to `default`.
+    ///
+    /// Integer JSON values convert successfully; absent or non-numeric
+    /// values yield `default`.
     pub fn get_f64(&self, key: &str, default: f64) -> f64 {
         self.params
             .get(key)
@@ -457,6 +485,11 @@ impl SkillParams {
             .unwrap_or(default)
     }
 
+    /// Read `key` as an array, cloning its elements.
+    ///
+    /// Returns an empty vector when the key is absent or its value is not a
+    /// JSON array — an empty result therefore does not distinguish "not
+    /// configured" from "configured empty".
     pub fn get_array(&self, key: &str) -> Vec<Value> {
         self.params
             .get(key)
@@ -465,6 +498,11 @@ impl SkillParams {
             .unwrap_or_default()
     }
 
+    /// Read `key` as an object, cloning its entries.
+    ///
+    /// Returns an empty map when the key is absent or its value is not a
+    /// JSON object, with the same ambiguity as
+    /// [`get_array`](SkillParams::get_array).
     pub fn get_object(&self, key: &str) -> Map<String, Value> {
         self.params
             .get(key)

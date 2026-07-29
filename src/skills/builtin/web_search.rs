@@ -29,6 +29,13 @@ pub struct WebSearch {
 }
 
 impl WebSearch {
+    /// Create the skill from its configuration `params`.
+    ///
+    /// Requires Google Custom Search credentials, each resolvable from a
+    /// param or the environment: the key from `api_key`, `GOOGLE_API_KEY`,
+    /// or `GOOGLE_SEARCH_API_KEY`; the engine id from `search_engine_id`,
+    /// `GOOGLE_CSE_ID`, or `GOOGLE_SEARCH_ENGINE_ID`. Setup verifies both
+    /// resolve somewhere; the handler re-reads them at call time.
     pub fn new(params: Map<String, Value>) -> Self {
         WebSearch {
             sp: SkillParams::new(params),

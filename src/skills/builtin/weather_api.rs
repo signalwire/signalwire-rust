@@ -9,6 +9,10 @@ pub struct WeatherApi {
 }
 
 impl WeatherApi {
+    /// Create the skill from its configuration `params`.
+    ///
+    /// Requires an `api_key` param carrying a `WeatherAPI` key; setup fails
+    /// without it. There is no environment-variable fallback.
     pub fn new(params: Map<String, Value>) -> Self {
         WeatherApi {
             sp: SkillParams::new(params),

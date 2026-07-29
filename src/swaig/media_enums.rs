@@ -129,8 +129,13 @@ impl RecordFormat {
 
     /// Parse a wire string into a [`RecordFormat`], or `None` if it is not a
     /// recognised format (the same strings the reference would reject).
-    // `FromStr` is implemented below; this inherent `from_str` is the deliberate
-    // companion that returns `Option` (a non-member is `None`, not an error).
+    ///
+    /// `clippy::should_implement_trait` is suppressed deliberately: the
+    /// [`FromStr`] impl exists below, and this inherent method is the
+    /// companion that returns `Option` — a non-member is `None`, not an
+    /// error.
+    ///
+    /// [`FromStr`]: std::str::FromStr
     #[allow(clippy::should_implement_trait)]
     pub fn from_str(s: &str) -> Option<RecordFormat> {
         RecordFormat::all()
@@ -219,8 +224,13 @@ impl RecordDirection {
 
     /// Parse a wire string into a [`RecordDirection`], or `None` if it is not a
     /// recognised direction.
-    // `FromStr` is implemented below; this inherent `from_str` is the deliberate
-    // companion that returns `Option` (a non-member is `None`, not an error).
+    ///
+    /// `clippy::should_implement_trait` is suppressed deliberately: the
+    /// [`FromStr`] impl exists below, and this inherent method is the
+    /// companion that returns `Option` — a non-member is `None`, not an
+    /// error.
+    ///
+    /// [`FromStr`]: std::str::FromStr
     #[allow(clippy::should_implement_trait)]
     pub fn from_str(s: &str) -> Option<RecordDirection> {
         RecordDirection::all()
@@ -306,8 +316,13 @@ impl TapDirection {
 
     /// Parse a wire string into a [`TapDirection`], or `None` if it is not a
     /// recognised direction.
-    // `FromStr` is implemented below; this inherent `from_str` is the deliberate
-    // companion that returns `Option` (a non-member is `None`, not an error).
+    ///
+    /// `clippy::should_implement_trait` is suppressed deliberately: the
+    /// [`FromStr`] impl exists below, and this inherent method is the
+    /// companion that returns `Option` — a non-member is `None`, not an
+    /// error.
+    ///
+    /// [`FromStr`]: std::str::FromStr
     #[allow(clippy::should_implement_trait)]
     pub fn from_str(s: &str) -> Option<TapDirection> {
         TapDirection::all()
@@ -388,8 +403,13 @@ impl Codec {
     /// Parse a wire string into a [`Codec`], or `None` if it is not a
     /// recognised codec. Matching is exact (case-sensitive), mirroring the
     /// reference's literal `in ["PCMU", "PCMA"]` check.
-    // `FromStr` is implemented below; this inherent `from_str` is the deliberate
-    // companion that returns `Option` (a non-member is `None`, not an error).
+    ///
+    /// `clippy::should_implement_trait` is suppressed deliberately: the
+    /// [`FromStr`] impl exists below, and this inherent method is the
+    /// companion that returns `Option` — a non-member is `None`, not an
+    /// error.
+    ///
+    /// [`FromStr`]: std::str::FromStr
     #[allow(clippy::should_implement_trait)]
     pub fn from_str(s: &str) -> Option<Codec> {
         Codec::all().iter().copied().find(|c| c.as_str() == s)

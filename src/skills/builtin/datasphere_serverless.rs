@@ -11,6 +11,12 @@ pub struct DatasphereServerless {
 }
 
 impl DatasphereServerless {
+    /// Create the skill from its configuration `params`.
+    ///
+    /// Requires the `space_name`, `project_id`, `token`, and `document_id`
+    /// params. Unlike the non-serverless variant, the token must be a param
+    /// — there is no environment fallback, because a serverless execution
+    /// does not share this process's environment.
     pub fn new(params: Map<String, Value>) -> Self {
         DatasphereServerless {
             sp: SkillParams::new(params),

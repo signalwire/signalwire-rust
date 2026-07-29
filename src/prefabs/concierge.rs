@@ -352,22 +352,35 @@ impl ConciergeAgent {
         }
     }
 
+    /// Borrow the underlying [`AgentBase`] this prefab wraps.
+    ///
+    /// `ConciergeAgent` composes an agent rather than inheriting from one, so
+    /// this is how you read the configured prompt, tools, and skills.
     pub fn agent(&self) -> &AgentBase {
         &self.agent
     }
 
+    /// Mutably borrow the underlying [`AgentBase`].
+    ///
+    /// Use this to layer extra configuration — additional tools, skills,
+    /// hints, or verbs — on top of what the prefab already set up.
     pub fn agent_mut(&mut self) -> &mut AgentBase {
         &mut self.agent
     }
 
+    /// The venue this concierge represents, as configured. Woven into the
+    /// agent's prompt so the model refers to the venue by name.
     pub fn venue_name(&self) -> &str {
         &self.venue_name
     }
 
+    /// The services the concierge can arrange, as configured.
     pub fn services(&self) -> &[String] {
         &self.services
     }
 
+    /// The venue's amenities, keyed by name, with each value describing
+    /// that amenity.
     pub fn amenities(&self) -> &HashMap<String, Value> {
         &self.amenities
     }

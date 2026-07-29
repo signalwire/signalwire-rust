@@ -18,7 +18,10 @@ pub type MessageEventCallback = Arc<dyn Fn(&Message, &Event) + Send + Sync>;
 /// RELAY messaging namespace.  It accumulates state-change events and
 /// resolves once the message reaches a terminal state (delivered,
 /// undelivered, or failed).
-// Field names (message_id, …) mirror the RELAY wire / Python field names 1:1.
+///
+/// Field names (`message_id`, …) mirror the RELAY wire / Python field names
+/// 1:1, so the `struct_field_names` lint is suppressed rather than renaming
+/// away from the wire shape.
 #[allow(clippy::struct_field_names)]
 pub struct Message {
     message_id: Option<String>,
@@ -128,6 +131,11 @@ impl Message {
     // Accessors
     // ------------------------------------------------------------------
 
+    /// The server-assigned message id (`message_id` on the wire), if the
+    /// message has been accepted by the server.
+    ///
+    /// `None` for a message constructed locally before the server has
+    /// acknowledged the send.
     pub fn message_id(&self) -> Option<&str> {
         self.message_id.as_deref()
     }
@@ -145,18 +153,27 @@ impl Message {
         )
     }
 
+    /// The messaging context this message belongs to.
+    ///
+    /// A context is the named routing bucket a RELAY client subscribes to in
+    /// order to receive inbound messages; outbound messages are stamped with
+    /// the context they were sent under.
     pub fn context(&self) -> Option<&str> {
         self.context.as_deref()
     }
 
+    /// Whether the message is `"inbound"` or `"outbound"`, as reported by
+    /// the server.
     pub fn direction(&self) -> Option<&str> {
         self.direction.as_deref()
     }
 
+    /// The sending number in E.164 form (the `from_number` wire field).
     pub fn from_number(&self) -> Option<&str> {
         self.from_number.as_deref()
     }
 
+    /// The destination number in E.164 form (the `to_number` wire field).
     pub fn to_number(&self) -> Option<&str> {
         self.to_number.as_deref()
     }

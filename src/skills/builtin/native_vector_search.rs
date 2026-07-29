@@ -111,6 +111,10 @@ pub struct NativeVectorSearch {
 }
 
 impl NativeVectorSearch {
+    /// Create the skill from its configuration `params`.
+    ///
+    /// Setup always succeeds — the search is performed natively by the
+    /// SignalWire platform, so the skill has no local dependency to verify.
     pub fn new(params: Map<String, Value>) -> Self {
         NativeVectorSearch {
             sp: SkillParams::new(params),

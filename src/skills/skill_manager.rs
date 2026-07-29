@@ -21,6 +21,13 @@ pub struct SkillManager {
 }
 
 impl SkillManager {
+    /// Create an empty skill manager with no skills loaded and no agent
+    /// bound.
+    ///
+    /// Unlike the Python reference, which takes the agent in its
+    /// constructor, the agent is captured on the first `load_skill` call —
+    /// Rust's load path already receives the live `&mut AgentBase`, and
+    /// requiring it here would force every agent into an `Arc<Mutex<…>>`.
     pub fn new() -> Self {
         SkillManager {
             loaded_skills: HashMap::new(),

@@ -10,6 +10,10 @@ pub struct Math {
 }
 
 impl Math {
+    /// Create the skill from its configuration `params`.
+    ///
+    /// Setup always succeeds — the skill needs no configuration and no
+    /// external service.
     pub fn new(params: Map<String, Value>) -> Self {
         Math {
             sp: SkillParams::new(params),

@@ -480,10 +480,14 @@ impl AgentServer {
     //  Accessors
     // ======================================================================
 
+    /// The address the server binds to. `0.0.0.0` accepts connections on
+    /// every interface; bind `127.0.0.1` to keep the server local-only.
     pub fn host(&self) -> &str {
         &self.host
     }
 
+    /// The TCP port the server binds to. Every registered agent is served
+    /// from this one port, distinguished by its route.
     pub fn port(&self) -> u16 {
         self.port
     }

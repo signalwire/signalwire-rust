@@ -95,6 +95,20 @@ impl Default for UreqTransport {
 }
 
 impl UreqTransport {
+    /// Build the real network transport.
+    ///
+    /// The agent carries **no** fixed global timeout — the per-attempt
+    /// deadline comes from the resolved `RequestOptions.timeout` and is
+    /// applied at call time. `http_status_as_error(false)` keeps a non-2xx
+    /// response an ordinary response for the client to interpret, rather
+    /// than a transport error.
+    ///
+    /// TLS verifies against the bundled webpki (Mozilla) roots and, like all
+    /// rustls users, ignores `SSL_CERT_FILE` and the OS trust store. To
+    /// trust a private or self-signed CA, point `SIGNALWIRE_REST_CA_FILE` at
+    /// a PEM bundle; it is then loaded as the **only** trust anchor.
+    /// Verification is always performed — there is no accept-invalid escape
+    /// hatch.
     pub fn new() -> Self {
         // No fixed global timeout on the agent: the per-attempt deadline is
         // supplied per request (from the resolved RequestOptions.timeout) and
@@ -284,6 +298,11 @@ pub struct StubTransport {
 }
 
 impl StubTransport {
+    /// Create a stub that answers every request with `status` and `body`
+    /// until [`set_response`](StubTransport::set_response) changes it.
+    ///
+    /// Requests are recorded in `requests` as `(method, url, body)` for
+    /// assertions.
     pub fn new(status: u16, body: &str) -> Self {
         StubTransport {
             response: std::sync::Mutex::new((status, body.to_string())),
@@ -338,6 +357,16 @@ pub struct HttpClient {
 }
 
 impl HttpClient {
+    /// Build a client for `project_id` / `token` against `base_url`, using
+    /// `transport` to issue requests.
+    ///
+    /// The credentials are pre-encoded into an HTTP Basic `Authorization`
+    /// header once at construction. Trailing slashes on `base_url` are
+    /// trimmed.
+    ///
+    /// Request behaviour uses the built-in defaults — **no retry**, 30s
+    /// timeout. Use [`with_options`](HttpClient::with_options) to change
+    /// them.
     pub fn new(
         project_id: &str,
         token: &str,
@@ -389,18 +418,30 @@ impl HttpClient {
 
     // -- Accessors --
 
+    /// The project ID used as the HTTP Basic username.
     pub fn project_id(&self) -> &str {
         &self.project_id
     }
 
+    /// The API token used as the HTTP Basic password.
+    ///
+    /// This is a **secret** granting full project API access — never log it
+    /// or surface it in an error.
     pub fn token(&self) -> &str {
         &self.token
     }
 
+    /// The base URL every request path is appended to, with any trailing
+    /// slash trimmed.
     pub fn base_url(&self) -> &str {
         &self.base_url
     }
 
+    /// The pre-computed `Authorization` header value —
+    /// `Basic <base64(project_id:token)>`.
+    ///
+    /// This **contains the API token in recoverable form**: base64 is an
+    /// encoding, not encryption. Treat it exactly as you would the token.
     pub fn auth_header(&self) -> &str {
         &self.auth_header
     }
@@ -828,6 +869,14 @@ pub struct SequencedTransport {
 
 #[cfg(test)]
 impl SequencedTransport {
+    /// Create a transport that answers successive requests with each entry
+    /// of `responses` in turn.
+    ///
+    /// Once the queue is exhausted the **last** response repeats for every
+    /// further request, so a test can drive N distinct answers and then
+    /// settle. An empty `responses` makes every request return `200 {}`.
+    ///
+    /// Test-only (`#[cfg(test)]`): not part of the public REST surface.
     #[must_use]
     pub fn new(responses: Vec<(u16, String)>) -> Self {
         let last = responses.last().cloned().unwrap_or((200, "{}".to_string()));

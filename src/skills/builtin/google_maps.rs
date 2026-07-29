@@ -9,6 +9,10 @@ pub struct GoogleMaps {
 }
 
 impl GoogleMaps {
+    /// Create the skill from its configuration `params`.
+    ///
+    /// Requires an `api_key` param carrying a Google Maps API key; setup
+    /// fails without it. There is no environment-variable fallback.
     pub fn new(params: Map<String, Value>) -> Self {
         GoogleMaps {
             sp: SkillParams::new(params),

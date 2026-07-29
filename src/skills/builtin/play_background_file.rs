@@ -9,6 +9,10 @@ pub struct PlayBackgroundFile {
 }
 
 impl PlayBackgroundFile {
+    /// Create the skill from its configuration `params`.
+    ///
+    /// Requires a non-empty `files` array param listing the playable files.
+    /// Setup fails when it is absent or empty.
     pub fn new(params: Map<String, Value>) -> Self {
         PlayBackgroundFile {
             sp: SkillParams::new(params),

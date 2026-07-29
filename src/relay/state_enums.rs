@@ -91,8 +91,11 @@ impl CallState {
     /// Infallible: an unrecognised value becomes [`Other`](CallState::Other)
     /// (server states can grow). Provided as an inherent method for
     /// ergonomics alongside the [`FromStr`] impl.
-    // `FromStr` is implemented below; this inherent `from_str` is the deliberate
-    // infallible companion (an unknown wire value becomes `Other`, never an error).
+    ///
+    /// `clippy::should_implement_trait` is suppressed deliberately: the
+    /// [`FromStr`] impl exists below and delegates here, and this inherent
+    /// method is the infallible companion that returns a [`CallState`]
+    /// directly rather than a `Result`.
     #[allow(clippy::should_implement_trait)]
     pub fn from_str(s: &str) -> CallState {
         match s {
@@ -166,8 +169,11 @@ impl DialState {
 
     /// Parse a wire string into a [`DialState`] (infallible; unknown →
     /// [`Other`](DialState::Other)).
-    // `FromStr` is implemented below; this inherent `from_str` is the deliberate
-    // infallible companion (an unknown wire value becomes `Other`, never an error).
+    ///
+    /// `clippy::should_implement_trait` is suppressed deliberately: the
+    /// [`FromStr`] impl exists below and delegates here, and this inherent
+    /// method is the infallible companion that returns a [`DialState`]
+    /// directly rather than a `Result`.
     #[allow(clippy::should_implement_trait)]
     pub fn from_str(s: &str) -> DialState {
         match s {
@@ -254,8 +260,11 @@ impl MessageState {
 
     /// Parse a wire string into a [`MessageState`] (infallible; unknown →
     /// [`Other`](MessageState::Other)).
-    // `FromStr` is implemented below; this inherent `from_str` is the deliberate
-    // infallible companion (an unknown wire value becomes `Other`, never an error).
+    ///
+    /// `clippy::should_implement_trait` is suppressed deliberately: the
+    /// [`FromStr`] impl exists below and delegates here, and this inherent
+    /// method is the infallible companion that returns a [`MessageState`]
+    /// directly rather than a `Result`.
     #[allow(clippy::should_implement_trait)]
     pub fn from_str(s: &str) -> MessageState {
         match s {

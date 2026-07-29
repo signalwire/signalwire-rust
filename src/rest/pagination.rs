@@ -81,30 +81,54 @@ impl<'a> PaginatedIterator<'a> {
         }
     }
 
+    /// The [`HttpClient`] this iterator issues its page requests through.
     pub fn http(&self) -> &HttpClient {
         self.http
     }
 
+    /// The path of the **first** page request.
+    ///
+    /// Subsequent pages follow the response's `links.next` cursor, so this
+    /// does not change as iteration advances.
     pub fn path(&self) -> &str {
         &self.path
     }
 
+    /// The query parameters sent on the **first** page request.
+    ///
+    /// Later pages carry whatever the `links.next` cursor encodes, so this
+    /// likewise does not change as iteration advances.
     pub fn params(&self) -> &HashMap<String, String> {
         &self.params
     }
 
+    /// The response body field holding each page's items array — typically
+    /// `"data"`.
     pub fn data_key(&self) -> &str {
         &self.data_key
     }
 
+    /// The position within the **current page's** buffered items, not a
+    /// running count across all pages. Resets to `0` each time a new page is
+    /// fetched.
     pub fn index(&self) -> usize {
         self.index
     }
 
+    /// The current page's buffered items.
+    ///
+    /// Empty before the first fetch — construction is lazy, so no HTTP is
+    /// dispatched until the iterator is first stepped.
     pub fn items(&self) -> &[Value] {
         &self.items
     }
 
+    /// Whether iteration has finished.
+    ///
+    /// Becomes `true` when the `links.next` cursor is empty or missing, and
+    /// also when the cycle guard sees a `next` URL it has already followed —
+    /// a broken cursor that keeps returning the same page terminates
+    /// iteration instead of looping forever.
     pub fn is_done(&self) -> bool {
         self.done
     }

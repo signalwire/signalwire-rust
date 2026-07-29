@@ -14,10 +14,12 @@ use crate::swml::service::Service;
 ///
 /// Mirrors the keyword arguments of Python `SwmlRenderer.render_swml`. All
 /// fields default to the Python defaults via [`Default`].
-// The bool fields (prompt_is_pom / add_answer / record_call / record_stereo)
-// are independent render toggles mirroring Python's keyword args — each is a
-// distinct option, not a state machine, so a flat options struct is the right
-// shape.
+///
+/// The `bool` fields (`prompt_is_pom`, `add_answer`, `record_call`,
+/// `record_stereo`) are independent render toggles mirroring Python's
+/// keyword args — each a distinct option, not a state machine — so a flat
+/// options struct is the right shape and `struct_excessive_bools` is
+/// suppressed.
 #[allow(clippy::struct_excessive_bools)]
 #[derive(Debug, Clone)]
 pub struct RenderSwmlOptions {

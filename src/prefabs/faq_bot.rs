@@ -250,18 +250,29 @@ impl FAQBotAgent {
         }
     }
 
+    /// Borrow the underlying [`AgentBase`] this prefab wraps.
+    ///
+    /// `FAQBotAgent` composes an agent rather than inheriting from one, so
+    /// this is how you read the configured prompt, tools, and skills.
     pub fn agent(&self) -> &AgentBase {
         &self.agent
     }
 
+    /// Mutably borrow the underlying [`AgentBase`].
+    ///
+    /// Use this to layer extra configuration — additional tools, skills,
+    /// hints, or verbs — on top of what the prefab already set up.
     pub fn agent_mut(&mut self) -> &mut AgentBase {
         &mut self.agent
     }
 
+    /// The question/answer pairs this bot answers from, as configured.
     pub fn faqs(&self) -> &[Value] {
         &self.faqs
     }
 
+    /// Whether the bot offers related questions alongside each answer,
+    /// rather than answering and stopping.
     pub fn suggest_related(&self) -> bool {
         self.suggest_related
     }

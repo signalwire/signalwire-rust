@@ -102,6 +102,13 @@ pub struct FunctionResult {
 }
 
 impl FunctionResult {
+    /// Create an empty result — no response text, no actions,
+    /// `post_process` off.
+    ///
+    /// Returned as-is this serialises to
+    /// `{"response": "Action completed."}`, the reference's default for an
+    /// otherwise-empty result, so a handler that does nothing still answers
+    /// the platform validly.
     pub fn new() -> Self {
         FunctionResult {
             response: String::new(),
@@ -110,6 +117,11 @@ impl FunctionResult {
         }
     }
 
+    /// Create a result carrying `response` as the text the AI speaks or
+    /// reads back.
+    ///
+    /// Shorthand for [`new`](FunctionResult::new) followed by
+    /// [`set_response`](FunctionResult::set_response).
     pub fn with_response(response: &str) -> Self {
         FunctionResult {
             response: response.to_string(),
@@ -120,11 +132,26 @@ impl FunctionResult {
 
     // ── Core ─────────────────────────────────────────────────────────────
 
+    /// Set the response text the function returns to the AI.
+    ///
+    /// Emitted as the `response` key, and **omitted entirely** when empty
+    /// (Python parity) — so clearing it back to `""` removes the key rather
+    /// than sending an empty string.
+    ///
+    /// Returns `&mut Self` for chaining.
     pub fn set_response(&mut self, text: &str) -> &mut Self {
         self.response = text.to_string();
         self
     }
 
+    /// Set whether the AI re-processes this result before speaking it.
+    ///
+    /// With `post_process` on, the model gets another turn to phrase the
+    /// result rather than the response text being delivered verbatim.
+    /// Emitted as the `post_process` key only when `true` **and** at least
+    /// one action is present; a result with no actions never carries it.
+    ///
+    /// Returns `&mut Self` for chaining.
     pub fn set_post_process(&mut self, val: bool) -> &mut Self {
         self.post_process = val;
         self
@@ -145,11 +172,26 @@ impl FunctionResult {
         self.post_process
     }
 
+    /// Append one raw action object to the result.
+    ///
+    /// Actions execute in insertion order and are emitted as the `action`
+    /// array. `action` is passed through **verbatim with no validation** —
+    /// this is the escape hatch for actions the typed helpers on this type
+    /// do not cover.
+    ///
+    /// Returns `&mut Self` for chaining.
     pub fn add_action(&mut self, action: Value) -> &mut Self {
         self.actions.push(action);
         self
     }
 
+    /// Append several raw action objects, preserving their order.
+    ///
+    /// Equivalent to calling [`add_action`](FunctionResult::add_action) for
+    /// each; entries are appended to any actions already present and are
+    /// likewise unvalidated.
+    ///
+    /// Returns `&mut Self` for chaining.
     pub fn add_actions(&mut self, actions: Vec<Value>) -> &mut Self {
         for a in actions {
             self.actions.push(a);
@@ -159,9 +201,12 @@ impl FunctionResult {
 
     /// Serialise to a JSON value.
     ///
-    /// - `response` is always included.
-    /// - `action` is only included if at least one action exists.
-    /// - `post_process` is only included if `true`.
+    /// - `response` is included only when non-empty (Python parity).
+    /// - `action` is included only when at least one action exists.
+    /// - `post_process` is included only when `true` **and** actions exist —
+    ///   it has no meaning without something to execute.
+    /// - If that leaves the object empty, `{"response": "Action completed."}`
+    ///   is emitted so the platform always receives a valid result.
     #[must_use]
     pub fn to_value(&self) -> Value {
         let mut map = Map::new();
@@ -221,12 +266,27 @@ impl FunctionResult {
 
     // ── Call Control ─────────────────────────────────────────────────────
 
-    // `_final` mirrors Python's `final` kwarg (the audit expects the name
-    // `_final` — `final` is a reserved word in Rust); it IS used in the body, so
-    // the underscore is a name-spelling concession, not a dead binding.
-    // `_final` and `from` are `Option<…>` because the reference declares them
-    // optional (`final: bool = True`, `from_addr: str | None = None`); `None`
-    // is the omit-it call and takes the reference default.
+    /// Transfer the call to `destination`.
+    ///
+    /// Emits an action wrapping a SWML `connect` verb, with `to` set to
+    /// `destination` and the action's `transfer` field set from `_final`.
+    ///
+    /// - `destination` — where to connect the call (a phone number, SIP URI,
+    ///   or other SignalWire address).
+    /// - `_final` — `Some(true)` (and `None`, which takes the reference
+    ///   default `true`) makes the transfer **permanent**: the AI does not
+    ///   regain control when the far end hangs up. `Some(false)` returns
+    ///   control to the agent afterwards. The value is emitted as the
+    ///   *string* `"true"` / `"false"`, matching the reference's
+    ///   `str(final).lower()`.
+    /// - `from` — caller ID to present. `None`, and also an empty string,
+    ///   omit the `from` key entirely rather than sending a blank value.
+    ///
+    /// The parameter is spelled `_final` because `final` is reserved in
+    /// Rust; it is genuinely read in the body, so
+    /// `clippy::used_underscore_binding` is suppressed.
+    ///
+    /// Returns `&mut Self` for chaining.
     #[allow(clippy::used_underscore_binding)]
     pub fn connect(
         &mut self,
@@ -295,6 +355,13 @@ impl FunctionResult {
         self
     }
 
+    /// Terminate the call.
+    ///
+    /// Emits `{"hangup": true}` — the action value is the boolean `true`,
+    /// not an object. Unlike [`stop`](FunctionResult::stop), which only ends
+    /// the AI's execution, this tears down the call itself.
+    ///
+    /// Returns `&mut Self` for chaining.
     pub fn hangup(&mut self) -> &mut Self {
         // Python: add_action("hangup", True) — the value is the boolean true.
         self.actions.push(json!({"hangup": true}));
@@ -338,6 +405,14 @@ impl FunctionResult {
         self
     }
 
+    /// Stop the agent's execution.
+    ///
+    /// Emits `{"stop": true}` — the action value is the boolean `true`, not
+    /// an object. This ends the AI's turn-taking; it does **not** hang up
+    /// the call, so any post-AI SWML verbs still run. Use
+    /// [`hangup`](FunctionResult::hangup) to end the call.
+    ///
+    /// Returns `&mut Self` for chaining.
     pub fn stop(&mut self) -> &mut Self {
         self.actions.push(json!({"stop": true}));
         self
@@ -345,6 +420,18 @@ impl FunctionResult {
 
     // ── State & Data ─────────────────────────────────────────────────────
 
+    /// Set or update global data variables for the session.
+    ///
+    /// Emits a `set_global_data` action carrying `data` verbatim. Global
+    /// data persists for the whole agent session, is available in prompt
+    /// variables, and is readable by every SWAIG function on the call — so
+    /// it is the wrong place for anything the model should not see.
+    ///
+    /// Keys in `data` are merged over the existing global data; use
+    /// [`remove_global_data`](FunctionResult::remove_global_data) to delete
+    /// keys.
+    ///
+    /// Returns `&mut Self` for chaining.
     pub fn update_global_data(&mut self, data: Value) -> &mut Self {
         self.actions.push(json!({"set_global_data": data}));
         self
@@ -361,6 +448,18 @@ impl FunctionResult {
         self
     }
 
+    /// Set metadata scoped to the current function's `meta_data_token`.
+    ///
+    /// Emits a `set_meta_data` action carrying `data` verbatim. Unlike
+    /// [`update_global_data`](FunctionResult::update_global_data), metadata
+    /// is scoped to the token — only functions sharing that
+    /// `meta_data_token` see it — which is what makes it the narrower place
+    /// to stash per-function state.
+    ///
+    /// Delete keys with
+    /// [`remove_metadata`](FunctionResult::remove_metadata).
+    ///
+    /// Returns `&mut Self` for chaining.
     pub fn set_metadata(&mut self, data: Value) -> &mut Self {
         self.actions.push(json!({"set_meta_data": data}));
         self
@@ -476,6 +575,13 @@ impl FunctionResult {
 
     // ── Media ────────────────────────────────────────────────────────────
 
+    /// Make the agent speak `text`.
+    ///
+    /// Emits `{"say": text}` — the action value is the bare string. This
+    /// speaks the text directly as an action, distinct from the result's
+    /// `response` field, which is what the *model* is told.
+    ///
+    /// Returns `&mut Self` for chaining.
     pub fn say(&mut self, text: &str) -> &mut Self {
         self.actions.push(json!({"say": text}));
         self
@@ -618,6 +724,17 @@ impl FunctionResult {
 
     // ── Speech & AI ──────────────────────────────────────────────────────
 
+    /// Add speech-recognition hints mid-call.
+    ///
+    /// Emits `{"add_dynamic_hints": hints}` with the list passed through
+    /// verbatim, so ordering and arbitrary keys survive. Each entry is
+    /// either a plain string hint (`"Cabby"`) or a pronunciation-pattern
+    /// object carrying `pattern`, `replace`, and optionally `ignore_case`.
+    ///
+    /// Hints added here are additive; clear them with
+    /// [`clear_dynamic_hints`](FunctionResult::clear_dynamic_hints).
+    ///
+    /// Returns `&mut Self` for chaining.
     pub fn add_dynamic_hints(&mut self, hints: Vec<Value>) -> &mut Self {
         self.actions.push(json!({"add_dynamic_hints": hints}));
         self
@@ -633,11 +750,30 @@ impl FunctionResult {
         self
     }
 
+    /// Adjust how long a silence must last before speech recognition is
+    /// finalised.
+    ///
+    /// `ms` is milliseconds of silence *after speech has been detected*.
+    /// Emitted as `{"end_of_speech_timeout": ms}` — a bare integer. Raising
+    /// it lets callers pause mid-sentence without being cut off, at the cost
+    /// of latency.
+    ///
+    /// Returns `&mut Self` for chaining.
     pub fn set_end_of_speech_timeout(&mut self, ms: i64) -> &mut Self {
         self.actions.push(json!({"end_of_speech_timeout": ms}));
         self
     }
 
+    /// Adjust how long since the last speech-detection *event* recognition
+    /// waits before finalising.
+    ///
+    /// `ms` is milliseconds. Emitted as `{"speech_event_timeout": ms}` — a
+    /// bare integer. This is the counterpart to
+    /// [`set_end_of_speech_timeout`](FunctionResult::set_end_of_speech_timeout)
+    /// and behaves better in noisy environments, where background sound
+    /// keeps a pure-silence timer from ever firing.
+    ///
+    /// Returns `&mut Self` for chaining.
     pub fn set_speech_event_timeout(&mut self, ms: i64) -> &mut Self {
         self.actions.push(json!({"speech_event_timeout": ms}));
         self

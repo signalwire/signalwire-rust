@@ -11,14 +11,26 @@ use std::env;
 #[must_use]
 #[non_exhaustive]
 pub enum RuntimeEnvironment {
+    /// AWS Lambda, whether behind API Gateway or a Function URL.
     Lambda,
+    /// Google Cloud Functions.
     Gcf,
+    /// Azure Functions.
     Azure,
+    /// A CGI host — the request arrives through CGI environment variables
+    /// and stdin rather than a live socket the process owns.
     Cgi,
+    /// No serverless host detected: the process runs its own long-lived HTTP
+    /// server. This is the fallback when nothing else matches.
     Server,
 }
 
 impl RuntimeEnvironment {
+    /// The canonical lowercase name of this environment — `"lambda"`,
+    /// `"gcf"`, `"azure"`, `"cgi"`, or `"server"`.
+    ///
+    /// This is the string form [`Adapter::detect`] reports and that
+    /// downstream config keys match on.
     #[must_use]
     pub fn as_str(&self) -> &'static str {
         match self {
