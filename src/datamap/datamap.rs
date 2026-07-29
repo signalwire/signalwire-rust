@@ -152,7 +152,10 @@ impl DataMap {
     ) -> &mut Self {
         let input_args_as_params = input_args_as_params.unwrap_or(false);
         let mut wh = Map::new();
-        wh.insert("method".to_string(), json!(method));
+        // The reference upper-cases the method on the wire (core/data_map.py:230,
+        // `"method": method.upper()`), so the same program emits byte-identical SWML in
+        // both languages. The engine itself compares case-insensitively.
+        wh.insert("method".to_string(), json!(method.to_uppercase()));
         wh.insert("url".to_string(), json!(url));
 
         if let Some(Value::Object(h)) = headers
@@ -718,5 +721,24 @@ mod tests {
         let val = dm.to_swaig_function();
         let whs = val["data_map"]["webhooks"].as_array().unwrap();
         assert_eq!(whs.len(), 2);
+    }
+
+    /// The reference emits the method upper-cased on the wire
+    /// (core/data_map.py:230, `"method": method.upper()`), so a caller writing a
+    /// lower-case method must still produce byte-identical SWML across languages.
+    #[test]
+    fn test_webhook_upper_cases_method_on_the_wire() {
+        let mut dm = DataMap::new("case_fn");
+        dm.webhook("get", "https://api.example.com", None, None, None, None);
+        dm.webhook("post", "https://api2.example.com", None, None, None, None);
+        let val = dm.to_swaig_function();
+        let whs = val["data_map"]["webhooks"].as_array().unwrap();
+        assert_eq!(whs[0]["method"], "GET");
+        assert_eq!(whs[1]["method"], "POST");
+        // An already-upper-case method is unchanged.
+        let mut dm2 = DataMap::new("case_fn2");
+        dm2.webhook("DELETE", "https://api3.example.com", None, None, None, None);
+        let val2 = dm2.to_swaig_function();
+        assert_eq!(val2["data_map"]["webhooks"][0]["method"], "DELETE");
     }
 }
