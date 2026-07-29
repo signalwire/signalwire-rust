@@ -31,15 +31,16 @@ let mut weather = DataMap::new("get_weather");
 weather
     .description("Get the current weather for a city")
     // parameter(name, type, description, required, enum_values)
-    .parameter("city", "string", "City name", true, vec![])
+    // The optional trailing arguments are `Option<...>` — `None` takes the default.
+    .parameter("city", "string", "City name", Some(true), None)
     // webhook(method, url, headers, form_param, input_args_as_params, require_args)
     .webhook(
         "GET",
         "https://api.weatherapi.com/v1/current.json",
-        json!({}),
-        "",
-        false,
-        vec![],
+        None,
+        None,
+        None,
+        None,
     )
     // params/body apply to the most recently added webhook
     .params(json!({"key": "YOUR_API_KEY", "q": "${args.city}"}))
@@ -65,7 +66,7 @@ optional `Option<Value>` for the no-match case:
 let mut commands = DataMap::new("command_processor");
 commands
     .description("Process user commands")
-    .parameter("command", "string", "User command", true, vec![])
+    .parameter("command", "string", "User command", Some(true), None)
     .expression(
         "${args.command}",
         r"^start",
@@ -98,7 +99,7 @@ agent.register_swaig_function(commands.to_swaig_function());
 ```rust
 let mut search = DataMap::new("search");
 search
-    .webhook("GET", "https://api.example.com/search", json!({}), "", false, vec![])
+    .webhook("GET", "https://api.example.com/search", None, None, None, None)
     .params(json!({"q": "${args.query}"}))
     .output(FunctionResult::with_response("Results: ${response.data}").to_value());
 ```
@@ -113,13 +114,13 @@ search
     .webhook(
         "POST",
         "https://api.example.com/search",
-        json!({
+        Some(json!({
             "Authorization": "Bearer ${env.API_KEY}",
             "Content-Type": "application/json"
-        }),
-        "",
-        false,
-        vec![],
+        })),
+        None,
+        None,
+        None,
     )
     .body(json!({"query": "${args.query}"}))
     .output(FunctionResult::with_response("Found: ${response.results[0].text}").to_value());
@@ -132,7 +133,7 @@ search
 ```rust
 let mut list = DataMap::new("list_items");
 list
-    .webhook("GET", "https://api.example.com/items", json!({}), "", false, vec![])
+    .webhook("GET", "https://api.example.com/items", None, None, None, None)
     .for_each(json!({
         "input_key": "items",
         "output_key": "formatted",
@@ -150,7 +151,7 @@ list
 ```rust
 let mut tool = DataMap::new("api_tool");
 tool
-    .webhook("POST", "https://api.example.com/action", json!({}), "", false, vec![])
+    .webhook("POST", "https://api.example.com/action", None, None, None, None)
     .webhook_expressions(vec![
         json!({
             "string": "${response.status}",
@@ -174,10 +175,10 @@ let mut form_tool = DataMap::new("form_tool");
 form_tool.webhook(
     "POST",
     "https://api.example.com/submit",
-    json!({}),
-    "payload", // form_param name
-    false,
-    vec![],
+    None,
+    Some("payload"), // form_param name
+    None,
+    None,
 );
 ```
 
@@ -191,10 +192,10 @@ let mut passthrough = DataMap::new("passthrough");
 passthrough.webhook(
     "POST",
     "https://api.example.com/process",
-    json!({}),
-    "",
-    true,            // input_args_as_params
-    vec!["query"],   // require_args
+    None,
+    None,
+    Some(true),            // input_args_as_params
+    Some(vec!["query"]),   // require_args
 );
 ```
 
@@ -206,7 +207,7 @@ keys that signal an error:
 ```rust
 let mut tool = DataMap::new("resilient_tool");
 tool
-    .webhook("GET", "https://api.example.com/x", json!({}), "", false, vec![])
+    .webhook("GET", "https://api.example.com/x", None, None, None, None)
     .error_keys(vec!["error", "errorMessage"])
     .fallback_output(FunctionResult::with_response("The service is unavailable.").to_value());
 ```

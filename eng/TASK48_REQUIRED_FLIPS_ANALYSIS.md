@@ -153,7 +153,7 @@ Three **real** reference programs, translated directly, each fails to compile.
 
 Test file `examples/_flip_proof_48.rs` (temporary, removed after measurement):
 
-```rust
+```
 use signalwire::contexts::GatherQuestion;
 use signalwire::pom::Section;
 use signalwire::relay::Client;
@@ -220,6 +220,8 @@ describing arity, not capability.**
 reference's zero-argument construction — verified compiling:
 
 ```rust
+use signalwire::pom::{PromptObjectModel, Section};
+
 let _s = Section::default();              // Section        #[derive(…, Default)]
 let _p = PromptObjectModel::default();    // PromptObjectModel  #[derive(Debug, Clone, Default, …)]
 ```
