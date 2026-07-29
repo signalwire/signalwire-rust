@@ -1,9 +1,9 @@
 {
   "baseline_version": "3.0.0",
   "version": "2",
-  "generated_from": "signalwire-rust @ 1178517 (v3.0.0 release floor, re-anchored for the synthesized-__init__ surface)",
-  "generated_from_tag": "1178517ff3b8f9f0d427129fa63b719283904cee",
-  "tag_sha": "1178517ff3b8f9f0d427129fa63b719283904cee",
+  "generated_from": "signalwire-rust @ 2ecf709 (v3.0.0 release floor, re-anchored under the version freeze for the wave-6 surface)",
+  "generated_from_tag": "2ecf709c180887e0bf6db94f1c32379fdc5c72cb",
+  "tag_sha": "2ecf709c180887e0bf6db94f1c32379fdc5c72cb",
   "modules": {
     "signalwire": {
       "functions": {
@@ -5515,12 +5515,12 @@
         "strip_control_chars": {
           "params": [
             {
-              "name": "value",
-              "type": "string",
+              "name": "event_dict",
+              "type": "dict<string,class:signalwire.value.Value>",
               "required": true
             }
           ],
-          "returns": "string"
+          "returns": "dict<string,class:signalwire.value.Value>"
         }
       }
     },
