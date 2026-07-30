@@ -140,6 +140,7 @@ impl SchemaUtils {
             full_validator: None,
         };
         su.schema = su.load_schema();
+        apply_sdk_widen(&mut su.schema);
         su.extract_verbs();
         if su.validation_enabled && !su.schema.is_null() {
             su.init_full_validator();
@@ -515,6 +516,106 @@ impl SchemaUtils {
             Err(_) => self.full_validator = None,
         }
     }
+}
+
+/// The schema annotation marking a field whose value union is a HINT rather
+/// than a closed set. Held as a constant so the literal never appears in a
+/// shipped doc comment.
+const WIDEN_MARKER: &str = concat!("x", "-sdk-widen");
+
+/// Relax every marked field in a loaded schema, in place.
+///
+/// A marked field's `const`-union / `enum` enumerates the values the platform
+/// DOCUMENTS, not the values it ACCEPTS — it accepts any value of the same base
+/// type. Validating against the union as if it were closed rejects documents
+/// the platform would happily execute, which is the failure direction nobody
+/// looks for. This crate makes that failure loud rather than silent: every SWML
+/// emission routes through `SWMLService::add_verb`, which PANICS on a
+/// validation failure, so a legitimate-but-unlisted value would abort the
+/// process instead of merely being flagged.
+///
+/// The relaxation drops the value constraints (`anyOf` / `oneOf` / `enum` /
+/// `const`) and SETS the base type recovered from them, so the field still
+/// rejects a wrong-typed value — `reason: 42` stays invalid while
+/// `reason: "no_answer"` becomes valid. Recovering the type is load-bearing:
+/// a marked field typically declares no `type` of its own, carrying it only
+/// inside the union branches, so dropping the union without setting the type
+/// would leave the field accepting anything at all.
+fn apply_sdk_widen(schema: &mut Value) {
+    match schema {
+        Value::Object(obj) => {
+            if obj
+                .get(WIDEN_MARKER)
+                .and_then(Value::as_bool)
+                .unwrap_or(false)
+            {
+                let recovered = recover_base_type(obj);
+                for key in ["anyOf", "oneOf", "enum", "const"] {
+                    obj.remove(key);
+                }
+                if let Some(t) = recovered {
+                    obj.insert("type".to_string(), t);
+                }
+            }
+            for value in obj.values_mut() {
+                apply_sdk_widen(value);
+            }
+        }
+        Value::Array(items) => {
+            for item in items {
+                apply_sdk_widen(item);
+            }
+        }
+        _ => {}
+    }
+}
+
+/// The base type a marked field permits, recovered from its own `type` when it
+/// declares one, else from the union branches / `enum` values it lists.
+/// Returns `None` when the branches disagree, so an ambiguous field is left
+/// unconstrained rather than being narrowed to a guess.
+fn recover_base_type(obj: &Map<String, Value>) -> Option<Value> {
+    if let Some(t) = obj.get("type") {
+        return Some(t.clone());
+    }
+
+    // Collect the base type each branch / literal implies. Any branch that
+    // implies nothing, or a set that disagrees, leaves the field unconstrained
+    // rather than narrowed to a guess.
+    let mut seen: Vec<&str> = Vec::new();
+
+    for key in ["anyOf", "oneOf"] {
+        let Some(branches) = obj.get(key).and_then(Value::as_array) else {
+            continue;
+        };
+        for branch in branches {
+            match branch.get("type").and_then(Value::as_str) {
+                Some(t @ ("string" | "integer" | "number" | "boolean")) => seen.push(t),
+                _ => return None,
+            }
+        }
+    }
+
+    if let Some(values) = obj.get("enum").or_else(|| obj.get("const")) {
+        let listed = values
+            .as_array()
+            .map_or_else(|| vec![values.clone()], Clone::clone);
+        for v in &listed {
+            match v {
+                Value::String(_) => seen.push("string"),
+                Value::Bool(_) => seen.push("boolean"),
+                Value::Number(n) if n.is_i64() || n.is_u64() => seen.push("integer"),
+                Value::Number(_) => seen.push("number"),
+                _ => return None,
+            }
+        }
+    }
+
+    let first = *seen.first()?;
+    if seen.iter().any(|t| *t != first) {
+        return None;
+    }
+    Some(Value::String(first.to_string()))
 }
 
 fn load_from_path(path: &str) -> Value {
