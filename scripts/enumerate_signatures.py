@@ -176,11 +176,42 @@ def load_aliases() -> dict[str, str]:
 _REST_SIDECAR_PATH = PORT_ROOT / "src" / "rest" / "namespaces" / "generated" / "rest_signatures.json"
 
 
+def _require_oracle(path: Path) -> dict:
+    """Read a REQUIRED reference oracle, or abort naming the file.
+
+    Every oracle read in this module gates which members get emitted or how they
+    get projected. Degrading an unreadable one to ``{}`` does not fail loudly --
+    it makes the enumerator write a SHORT-BUT-VALID port_signatures.json and exit
+    0, and that artifact is exactly what the SIGNATURES and DRIFT gates then
+    compare the port against. The port gets blamed for omissions it never had.
+    The oracle ships with porting-sdk; absence is a broken checkout, never a
+    supported degraded mode."""
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise SystemExit(
+            f"enumerate_signatures: cannot read the reference oracle {path}: {exc}\n"
+            "Continuing would write a short-but-valid port_signatures.json and "
+            "exit 0, so DRIFT would compare the port against a fiction."
+        ) from exc
+
+
 def load_rest_sidecar() -> dict:
+    """The generated REST layer's adapter sidecar. FAIL LOUD if absent.
+
+    It carries the typed-param unfold for every generated resource, so an empty
+    sidecar silently reduces the whole generated REST surface to its raw
+    builder shape and still exits 0 — a short inventory that DRIFT then reads as
+    the port's real signatures. generate_rest.py commits this file next to the
+    code it describes; its absence is a broken tree, not a supported mode."""
     try:
         return json.loads(_REST_SIDECAR_PATH.read_text(encoding="utf-8"))
-    except FileNotFoundError:
-        return {"resources": {}, "containers": {}, "suppress_structs": []}
+    except (OSError, json.JSONDecodeError) as exc:
+        raise SystemExit(
+            f"enumerate_signatures: cannot read the REST sidecar {_REST_SIDECAR_PATH}: {exc}\n"
+            "Re-run scripts/generate_rest.py; continuing would emit a short "
+            "port_signatures.json at rc=0."
+        ) from exc
 
 
 def _sidecar_param(p: dict) -> dict:
@@ -294,13 +325,20 @@ _GEN_PAYLOAD_SIDECAR_GLOBS = (
 
 
 def load_gen_payload_sidecars() -> list[dict]:
+    # FAIL LOUD: each sidecar contributes a whole read-side payload MODULE to the
+    # inventory. Skipping an unreadable one drops that module entirely while the
+    # run still exits 0. generate_swaig_payloads.py commits all of them.
     out: list[dict] = []
     for rel in _GEN_PAYLOAD_SIDECAR_GLOBS:
         p = PORT_ROOT / rel
         try:
             out.append(json.loads(p.read_text(encoding="utf-8")))
-        except FileNotFoundError:
-            continue
+        except (OSError, json.JSONDecodeError) as exc:
+            raise SystemExit(
+                f"enumerate_signatures: cannot read the SWAIG payload sidecar {p}: {exc}\n"
+                "Re-run scripts/generate_swaig_payloads.py; continuing would drop "
+                "that payload module from port_signatures.json at rc=0."
+            ) from exc
     return out
 
 
@@ -520,14 +558,13 @@ def _collect_free_function_targets() -> set[tuple[str, str]]:
     targets: set[tuple[str, str]] = set()
     # Read the Python reference's module-level functions directly so the
     # set stays in sync with whatever the oracle currently exposes.
-    try:
-        import json as _json
-        ref = _json.loads((PSDK / "python_signatures.json").read_text(encoding="utf-8"))
-        for mod_name, mod_entry in ref.get("modules", {}).items():
-            for fn_name in (mod_entry.get("functions") or {}):
-                targets.add((mod_name, fn_name))
-    except FileNotFoundError:
-        pass
+    # FAIL LOUD: an unreadable oracle here yields an EMPTY target set, so every
+    # canonical free function silently stops being projected and the inventory
+    # ships short at rc=0.
+    ref = _require_oracle(PSDK / "python_signatures.json")
+    for mod_name, mod_entry in ref.get("modules", {}).items():
+        for fn_name in (mod_entry.get("functions") or {}):
+            targets.add((mod_name, fn_name))
     return targets
 
 
@@ -577,11 +614,10 @@ def _load_python_reference() -> dict:
     Rust has no native ``**kwargs``; serde_json::Value at the trailing
     position IS the idiomatic stand-in.
     """
-    try:
-        import json as _json
-        return _json.loads((PSDK / "python_signatures.json").read_text(encoding="utf-8"))
-    except FileNotFoundError:
-        return {"modules": {}}
+    # FAIL LOUD: an empty reference silently disables the variadic projection, so
+    # every `params: serde_json::Value` tail stays positional and DRIFT reports
+    # kind-mismatches the port does not actually have.
+    return _require_oracle(PSDK / "python_signatures.json")
 
 
 def _ref_class_index(py_ref: dict) -> dict[str, set[str]]:
@@ -1301,15 +1337,19 @@ def collect(rust_doc: dict, aliases: dict) -> tuple[dict, list]:
         # missing-reference drift. Python's reference signatures inventory
         # is the source of truth for what SWMLService actually exposes.
         if svc_entry:
-            try:
-                py_ref = _load_python_reference()
-                py_svc_methods = set(py_ref.get("modules", {})
-                                     .get("signalwire.core.swml_service", {})
-                                     .get("classes", {})
-                                     .get("SWMLService", {})
-                                     .get("methods", {}).keys())
-            except Exception:
-                py_svc_methods = set()
+            # No try/except here on purpose. The old `except Exception:
+            # py_svc_methods = set()` was the most damaging swallow in this file:
+            # an empty set makes the loop below drop EVERY projected method off
+            # SWMLService (the drop condition is `n not in py_svc_methods`), so a
+            # transient oracle read error silently emptied a whole class and the
+            # run still exited 0. _load_python_reference() now aborts naming the
+            # file, which is the correct behaviour for a missing oracle.
+            py_ref = _load_python_reference()
+            py_svc_methods = set(py_ref.get("modules", {})
+                                 .get("signalwire.core.swml_service", {})
+                                 .get("classes", {})
+                                 .get("SWMLService", {})
+                                 .get("methods", {}).keys())
             for n in list(svc_methods.keys()):
                 if n in projected and n not in py_svc_methods:
                     svc_methods.pop(n, None)
@@ -1925,8 +1965,14 @@ class _SourceReader:
     """Read a rustdoc item's source text via its ``span`` (filename + lines).
 
     rustdoc-json records ``has_body`` but never the body itself, so every default
-    below is read out of the real source file the span points at. Missing files
-    degrade to "no defaults found" — never to a fabricated value.
+    below is read out of the real source file the span points at.
+
+    Spans can legitimately point OUTSIDE this repo — rustdoc records the defining
+    file for re-exported dependency items, which lives under the cargo registry
+    and may not be present. Those degrade to "no defaults found", never to a
+    fabricated value. A span pointing INTO this repo's own ``src/`` is different:
+    an unreadable one there means we silently record "no default" for parameters
+    that HAVE defaults, and the run still exits 0. That is a fault, so it aborts.
     """
 
     def __init__(self, root: Path):
@@ -1938,9 +1984,25 @@ class _SourceReader:
             p = self.root / filename
             try:
                 self._cache[filename] = p.read_text(encoding="utf-8").splitlines()
-            except (FileNotFoundError, OSError, UnicodeDecodeError):
+            except (OSError, UnicodeDecodeError) as exc:
+                if self._is_in_repo(p):
+                    raise SystemExit(
+                        f"enumerate_signatures: cannot read this repo's source file "
+                        f"{p}: {exc}\nIts parameter defaults would be silently recorded "
+                        "as absent while the run still exited 0."
+                    ) from exc
                 self._cache[filename] = []
         return self._cache[filename]
+
+    @staticmethod
+    def _is_in_repo(p: Path) -> bool:
+        """True when ``p`` is one of this repo's own sources (vs a cargo-registry
+        path rustdoc recorded for a re-exported dependency item)."""
+        try:
+            p.resolve().relative_to((PORT_ROOT / "src").resolve())
+        except (ValueError, OSError):
+            return False
+        return True
 
     def text(self, item: dict) -> str | None:
         span = item.get("span") or {}
@@ -2578,7 +2640,9 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--raw", type=Path, default=None)
     parser.add_argument("--out", type=Path, default=PORT_ROOT / "port_signatures.json")
-    parser.add_argument("--strict", action="store_true")
+    # Strict is the DEFAULT (see the failure branch below); --no-strict is an
+    # ad-hoc local-debugging escape hatch that no gate may use.
+    parser.add_argument("--strict", action=argparse.BooleanOptionalAction, default=True)
     args = parser.parse_args()
 
     aliases = load_aliases()
@@ -2594,6 +2658,14 @@ def main() -> int:
             print(f"  - {f}", file=sys.stderr)
         if len(failures) > 30:
             print(f"  ... ({len(failures) - 30} more)", file=sys.stderr)
+        # FAIL LOUD BY DEFAULT. A translation failure means a type this port
+        # really exposes could not be rendered into the canonical inventory, so
+        # the artifact written below is SHORT — and it is exactly what the
+        # SIGNATURES/DRIFT gates then compare the port against. Behind the old
+        # opt-in `--strict` (which NO gate passed) that produced a rc=0 "success"
+        # whose output blamed the port for omissions it never had. Same defect
+        # php shipped. `--no-strict` keeps the tolerant mode for ad-hoc local
+        # debugging only; run-ci.sh must never pass it.
         if args.strict:
             return 1
 

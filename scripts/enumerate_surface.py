@@ -1054,10 +1054,24 @@ def _parse_file_full(
     methods: dict[str, set[str]] = defaultdict(set)
     classes: set[str] = set()
     pub_fields: dict[str, set[str]] = defaultdict(set)
+    # FAIL LOUD on an unreadable source file. Returning an empty parse instead
+    # silently drops every class, method and pub field that file declares, and
+    # the enumerator then writes a SHORT-BUT-VALID port_surface.json and exits 0
+    # — so SURFACE-FRESH compares the port against a fiction and reports
+    # omissions the port never had. Measured on this repo before the fix:
+    # `chmod 000 src/swml/service.rs` took the snapshot from 123 modules /
+    # 1285 classes / 1736 methods down to 122 / 1284 / 1673 (the whole
+    # SWMLService class, 52 methods, gone) with rc=0. Same defect class already
+    # found in dotnet, java, php, ruby, perl and cpp parity tooling.
     try:
         text = path.read_text(encoding="utf-8", errors="replace")
-    except OSError:
-        return free_fns, dict(methods), classes, dict(pub_fields)
+    except OSError as exc:
+        raise SystemExit(
+            f"enumerate_surface: cannot read {path}: {exc}\n"
+            "Every .rs file under src/ must be readable — an unreadable one would "
+            "silently drop its entire public surface from port_surface.json and "
+            "still exit 0. Fix the file's permissions/encoding and re-run."
+        ) from exc
 
     lines = text.splitlines()
     impl_stack: list[str] = []  # current impl block class names (for nested-mod safety)
@@ -1210,10 +1224,19 @@ def _parse_lib_reexports(path: Path) -> set[str]:
     `functions` list so Python's flat surface lines up.
     """
     out: set[str] = set()
+    # FAIL LOUD, same reason as _parse_file_full: swallowing the read error here
+    # empties the top-level `signalwire` module's function list (the crate-root
+    # `pub use` re-exports) while still writing a valid-looking snapshot at rc=0.
+    # The caller only reaches this when src/lib.rs exists, so an OSError is a
+    # real permission/encoding fault, never a normal absence.
     try:
         text = path.read_text(encoding="utf-8", errors="replace")
-    except OSError:
-        return out
+    except OSError as exc:
+        raise SystemExit(
+            f"enumerate_surface: cannot read the crate root {path}: {exc}\n"
+            "Its `pub use` re-exports are the top-level `signalwire` module's "
+            "surface; an unreadable lib.rs would silently empty that list."
+        ) from exc
     for line in text.splitlines():
         # `pub use foo::bar::Name;` or `pub use foo::bar::Name as Other;`
         m = RE_PUB_USE_ITEM.match(line)
@@ -1704,10 +1727,32 @@ PUBLIC_FIELD_RENAMES: dict[str, dict[str, str]] = {
 
 
 def _load_json(path: Path) -> dict:
+    """Tolerant read. The ONLY caller is ``_load_reference_surface``, which turns
+    an empty result into a SystemExit itself — so the tolerance never reaches a
+    caller that would quietly under-emit. Use ``_require_json`` everywhere else."""
     try:
         return json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
         return {}
+
+
+def _require_json(path: Path) -> dict:
+    """Read a REQUIRED oracle/inventory, or abort naming the file.
+
+    An unreadable oracle that degrades to ``{}`` does not fail — it makes the
+    enumerator emit a snapshot missing every member that oracle gates, and exit 0.
+    That short-but-valid artifact then becomes the thing SURFACE-FRESH/DRIFT
+    compares against, so the PORT gets blamed for omissions it never had. Every
+    file read through here is either committed in this repo or shipped by
+    porting-sdk; absence is a broken checkout, never a supported mode."""
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise SystemExit(
+            f"enumerate_surface: cannot read required inventory {path}: {exc}\n"
+            "This file gates which members are emitted; continuing would write a "
+            "short-but-valid port_surface.json and exit 0."
+        ) from exc
 
 
 def _load_reference_surface() -> dict:
@@ -1769,9 +1814,14 @@ def _reference_composition_attrs() -> dict[tuple[str, str], set[str]]:
     SDK class (bare ``class:signalwire.…`` or ``optional<…>``/``list<…>``-wrapped; a
     ``union<…>`` return is EXCLUDED — those are verb SETTERS, a distinct idiom class).
     Read from the reference signature oracle (porting-sdk/python_signatures.json).
-    Empty if the oracle is unavailable (degraded env) — the enrich then no-ops, so the
-    surface never HARD-depends on porting-sdk adjacency."""
-    sig = _load_json(PSDK / "python_signatures.json")
+
+    FAIL LOUD if the oracle is unreadable. This used to degrade to an empty dict
+    ("the enrich then no-ops, so the surface never HARD-depends on porting-sdk
+    adjacency") — but a no-op enrich silently drops every composition attribute
+    from the snapshot while still exiting 0, which is the same short-artifact trap
+    _load_reference_surface already refuses. A missing oracle is an error, not a
+    degraded mode."""
+    sig = _require_json(PSDK / "python_signatures.json")
     out: dict[tuple[str, str], set[str]] = {}
 
     def _is_comp(ret: object) -> bool:
@@ -1803,8 +1853,12 @@ def _port_signature_members() -> dict[tuple[str, str], set[str]]:
     a reference composition attribute is surfaced on the port ONLY when the port's
     signature enumeration ALSO records that member on that class — i.e. the port
     genuinely has the field/accessor. This keeps the surface and signature oracles
-    consistent BY CONSTRUCTION and never invents surface the port lacks."""
-    sig = _load_json(REPO_ROOT / "port_signatures.json")
+    consistent BY CONSTRUCTION and never invents surface the port lacks.
+
+    FAIL LOUD if it is unreadable: an empty gate silently drops every composition
+    attribute from the snapshot at rc=0. The file is committed in this repo, so
+    an unreadable one is a real fault, not a degraded mode."""
+    sig = _require_json(REPO_ROOT / "port_signatures.json")
     out: dict[tuple[str, str], set[str]] = {}
     for mod, inv in sig.get("modules", {}).items():
         for cls, ce in inv.get("classes", {}).items():
