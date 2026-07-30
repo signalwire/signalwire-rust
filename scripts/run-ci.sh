@@ -328,6 +328,15 @@ sched_gate DRIFT deps=SIGNATURES desc="diff_port_signatures vs python reference"
 sched_gate SURFACE-FRESH res=surface desc="check_surface_freshness vs committed port_surface.json" \
     --fn surface_fresh_gate
 
+# SIGNATURES-FRESH — the sibling hole. SURFACE-FRESH guards port_surface.json;
+# NOTHING guarded port_signatures.json, which is DRIFT's INPUT — so a stale copy
+# means the parity gate compares against a fiction and reports clean.
+# Scheduled STANDALONE here, exactly like SEMVER-DIFF above: rust's run-ci does not
+# read _surface_commands.py, so a table entry there would be silently skipped.
+sched_gate SIGNATURES-FRESH res=surface desc="committed port_signatures.json matches a fresh regen" \
+    -- python3 "$PORTING_SDK_DIR/scripts/suites/_signatures_fresh.py" \
+        --port rust --repo "$PORT_ROOT" --porting-sdk "$PORTING_SDK_DIR"
+
 # TYPE-EROSION: a port may not erase a type the reference DECLARES. compare_param treats
 # `any` on EITHER side as matching anything, so a port emitting `any` silently satisfies
 # every reference declaration — an unlimited opt-out. ConciergeAgent.hours_of_operation is
