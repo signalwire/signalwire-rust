@@ -578,8 +578,14 @@ sched_gate RELEASE-FRESH desc="publish path is gated (gates-before-publish); rel
 # committed port_signatures.baseline.json (baseline_version 3.0.0); the current
 # generated surface must not regress it (or the version must major-bump). deps on
 # SIGNATURES so it diffs the freshly-regenerated port_signatures.json.
+# WAVE-1: report-only in-wave (owner-FINAL, re-anchor at cut, D5). GATE_ENFORCEMENT_PLAN.md
+# D5a defers the version-line decision to the real release — "no bump churn now;
+# perl/rust 4.0.0 declarations stay as-is; unified-vs-per-port decided at cut time" — so
+# an intentional in-wave breaking change must REPORT rather than block. Eight ports get
+# this hold via the SURFACE suite (_surface_commands.py passes semver_report_only=True);
+# rust and python schedule SEMVER-DIFF standalone and so must pass the flag here.
 sched_gate SEMVER-DIFF deps=SIGNATURES desc="version bump matches the public-API surface change vs the committed baseline floor" \
-    -- python3 "$PORTING_SDK_DIR/scripts/semver_diff.py" --port rust --repo "$PORT_ROOT"
+    -- python3 "$PORTING_SDK_DIR/scripts/semver_diff.py" --port rust --repo "$PORT_ROOT" --report-only
 
 # ---- §D1 packaging -----------------------------------------------------------
 # PACKAGE-SMOKE builds+installs+imports the real published artifact (cargo build
