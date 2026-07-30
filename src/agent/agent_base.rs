@@ -794,6 +794,46 @@ impl AgentBase {
             .validate_token(function_name, call_id, token)
     }
 
+    /// Enforce `secure` for ONE SWAIG call, independent of transport.
+    ///
+    /// A tool registered with `secure = true` REQUIRES a valid `__token`. An
+    /// ABSENT token is refused exactly like a forged one — omitting the
+    /// credential must never be weaker than presenting a wrong one, or
+    /// `secure` would be a flag that permits anonymous calls. A token can only
+    /// be checked against a `call_id`, so a missing `call_id` counts as
+    /// unvalidated rather than as a bypass.
+    ///
+    /// Takes three nullable strings and no transport type, so the HTTP server
+    /// and all four serverless envelopes reach the identical decision.
+    ///
+    /// Returns `None` to proceed, or the refusal to return instead. The
+    /// refusal is a `FunctionResult` body served with HTTP 200, never an error
+    /// status: the engine has no handling for a SWAIG refusal status, so the
+    /// tool reports that it cannot execute and the model relays it.
+    pub(crate) fn swaig_validate_token(
+        &self,
+        function_name: &str,
+        token: Option<&str>,
+        call_id: Option<&str>,
+    ) -> Option<FunctionResult> {
+        // Unknown function: not this check's business — dispatch reports it.
+        let tool = self.get_function(function_name)?;
+        if !tool.secure {
+            return None;
+        }
+        let is_valid = match (token, call_id) {
+            (Some(t), Some(c)) if !t.is_empty() => self.validate_tool_token(function_name, t, c),
+            _ => false,
+        };
+        if is_valid {
+            return None;
+        }
+        Some(FunctionResult::with_response(
+            "I'm sorry, the security token for this function is invalid \
+             or expired. I cannot execute this action.",
+        ))
+    }
+
     // ══════════════════════════════════════════════════════════════════════
     //  Prompt Methods
     // ══════════════════════════════════════════════════════════════════════
@@ -2550,6 +2590,16 @@ impl AgentBase {
         // `SWMLService::handle_request`: the reference's default is `null`, and
         // `unwrap_or(<literal>)` is the form the enumerator records a default from.
         let body = body.unwrap_or_default();
+
+        // Split the query string off the path. `path` arrives as the RAW
+        // request target on every transport (the built-in server hands over
+        // `tiny_http`'s `request.url()`, which retains `?a=b`), so routing must
+        // match on the path alone — otherwise `/swaig?__token=…` misses the
+        // route and 404s, and the credential could never be read at all. The
+        // parsed query is merged into the SWAIG body under `query_params`
+        // below, which is where `swaig_request_token` looks for `__token`.
+        let (path, raw_query) = path.split_once('?').map_or((path, ""), |(p, q)| (p, q));
+
         // Health/ready: delegate to service
         if path == "/health" || path == "/ready" {
             return self
@@ -2604,11 +2654,35 @@ impl AgentBase {
         }
 
         // Parse body
-        let request_data: Option<Value> = if body.is_empty() {
+        let mut request_data: Option<Value> = if body.is_empty() {
             None
         } else {
             serde_json::from_str(body).ok()
         };
+
+        // Merge the request's own query string into `query_params`. A caller
+        // that already embedded `query_params` in the body keeps precedence
+        // (that shape is what the dynamic-config callback and the existing
+        // dispatch tests drive), so this only ADDS the transport-supplied
+        // parameters that were previously dropped on the floor.
+        if !raw_query.is_empty() {
+            let parsed = parse_query_string(raw_query);
+            if !parsed.is_empty() {
+                let target = request_data.get_or_insert_with(|| json!({}));
+                if let Some(obj) = target.as_object_mut() {
+                    let existing = obj
+                        .get("query_params")
+                        .and_then(Value::as_object)
+                        .cloned()
+                        .unwrap_or_default();
+                    let mut merged = parsed;
+                    for (k, v) in existing {
+                        merged.insert(k, v);
+                    }
+                    obj.insert("query_params".to_string(), Value::Object(merged));
+                }
+            }
+        }
 
         match sub_path.as_str() {
             "/" | "" => self.handle_swml_request(method, &request_data, headers),
@@ -2752,33 +2826,17 @@ impl AgentBase {
             return json_response(400, &json!({"error": "Missing function name"}));
         }
 
-        // Validate the per-tool security token when one was supplied. The
-        // reference reads `__token` (falling back to the legacy `token`) off the
-        // query string and, on a mismatch, refuses to execute a SECURE function —
-        // returning a spoken refusal rather than an HTTP error
-        // (`agent_base.py:1414-1444`). An INSECURE function is dispatched even with
-        // a bad token, exactly as the reference does.
-        if let Some(token) = swaig_request_token(data) {
-            let call_id = data
-                .get("call_id")
-                .and_then(Value::as_str)
-                .or_else(|| data.get("call").and_then(|c| c.get("call_id"))?.as_str());
-            if let Some(call_id) = call_id
-                && self.has_function(function_name)
-                && !self.validate_tool_token(function_name, &token, call_id)
-                && self
-                    .get_function(function_name)
-                    .is_some_and(|tool| tool.secure)
-            {
-                return json_response(
-                    200,
-                    &FunctionResult::with_response(
-                        "I'm sorry, the security token for this function is invalid \
-                         or expired. I cannot execute this action.",
-                    )
-                    .to_value(),
-                );
-            }
+        // Enforce `secure` through the transport-agnostic core, so this path
+        // and every serverless path reach the identical decision. The token
+        // rides the query string (`__token`, legacy `token`); the call_id rides
+        // the POST body (flat `call_id`, or nested `call.call_id`).
+        let token = swaig_request_token(data);
+        let call_id = data
+            .get("call_id")
+            .and_then(Value::as_str)
+            .or_else(|| data.get("call").and_then(|c| c.get("call_id"))?.as_str());
+        if let Some(refusal) = self.swaig_validate_token(function_name, token.as_deref(), call_id) {
+            return json_response(200, &refusal.to_value());
         }
 
         let args = data["argument"]["parsed"]
@@ -3080,6 +3138,59 @@ impl AgentBase {
 /// `query_params["__token"]`, falling back to the legacy unprefixed `token`
 /// (`agent_base.py:1414`); the HTTP adapter surfaces the parsed query string on
 /// the request body under `query_params`.
+/// Parse a raw `a=b&c=d` query string into a JSON object of string values.
+///
+/// A leading `?` is tolerated so a full `?a=b` fragment parses the same as
+/// `a=b`. Percent-escapes are decoded and `+` is read as a space, matching how
+/// the platform encodes a minted `__token` into the webhook URL. A repeated key
+/// keeps the FIRST value, and a valueless key maps to the empty string.
+fn parse_query_string(raw: &str) -> Map<String, Value> {
+    let mut out = Map::new();
+    for pair in raw.trim_start_matches('?').split('&') {
+        if pair.is_empty() {
+            continue;
+        }
+        let (k, v) = pair.split_once('=').unwrap_or((pair, ""));
+        let key = percent_decode(k);
+        if key.is_empty() || out.contains_key(&key) {
+            continue;
+        }
+        out.insert(key, Value::String(percent_decode(v)));
+    }
+    out
+}
+
+/// Decode `%XX` escapes and `+`-as-space in one query-string component.
+/// An invalid escape is left verbatim rather than dropped.
+fn percent_decode(s: &str) -> String {
+    let bytes = s.as_bytes();
+    let mut out: Vec<u8> = Vec::with_capacity(bytes.len());
+    let mut i = 0;
+    while i < bytes.len() {
+        match bytes[i] {
+            b'+' => {
+                out.push(b' ');
+                i += 1;
+            }
+            b'%' if i + 2 < bytes.len() => {
+                let hex = &s[i + 1..i + 3];
+                if let Ok(byte) = u8::from_str_radix(hex, 16) {
+                    out.push(byte);
+                    i += 3;
+                } else {
+                    out.push(bytes[i]);
+                    i += 1;
+                }
+            }
+            b => {
+                out.push(b);
+                i += 1;
+            }
+        }
+    }
+    String::from_utf8_lossy(&out).into_owned()
+}
+
 fn swaig_request_token(data: &Value) -> Option<String> {
     let params = data.get("query_params")?.as_object()?;
     params
@@ -4929,9 +5040,10 @@ mod tests {
     }
 
     #[test]
-    fn test_swaig_dispatch_without_token_still_works() {
-        // No token supplied → no validation performed (the reference gates the
-        // whole check on `if token:`).
+    fn test_swaig_dispatch_refuses_absent_token_on_secure_function() {
+        // An ABSENT token is refused exactly like a forged one. Omitting the
+        // credential must never be weaker than presenting a wrong one, or
+        // `secure` would be a flag that permits anonymous calls.
         let a = agent_with_secure_and_insecure_tools();
         let (status, _, body) = a.handle_request(
             "POST",
@@ -4939,10 +5051,151 @@ mod tests {
             &authed_headers(),
             Some(&swaig_body("secure_tool", None)),
         );
+        assert_eq!(status, 200, "the refusal is in-band, not an HTTP error");
+        assert!(
+            body.contains("security token for this function is invalid"),
+            "a secure tool must fail CLOSED with no token, got {body}"
+        );
+    }
+
+    #[test]
+    fn test_swaig_dispatch_runs_insecure_function_without_token() {
+        // The counterweight to the test above: an insecure tool runs ungated.
+        // A fix that refuses everything is not a fix.
+        let a = agent_with_secure_and_insecure_tools();
+        let (status, _, body) = a.handle_request(
+            "POST",
+            "/swaig",
+            &authed_headers(),
+            Some(&swaig_body("insecure_tool", None)),
+        );
         assert_eq!(status, 200);
         assert!(
             body.contains("ok"),
+            "an insecure tool dispatches with no token at all, got {body}"
+        );
+    }
+
+    #[test]
+    fn test_swaig_dispatch_refuses_when_call_id_absent() {
+        // A token can only be checked against a call_id; with none there is
+        // nothing to check it against, so it counts as unvalidated rather than
+        // as a bypass.
+        let a = agent_with_secure_and_insecure_tools();
+        let token = a.create_tool_token("secure_tool", "call_dispatch");
+        let body = json!({
+            "function": "secure_tool",
+            "argument": {"parsed": [{}]},
+            "query_params": {"__token": token},
+        });
+        let (status, _, out) =
+            a.handle_request("POST", "/swaig", &authed_headers(), Some(&body.to_string()));
+        assert_eq!(status, 200);
+        assert!(
+            out.contains("security token for this function is invalid"),
+            "a missing call_id must not be a bypass, got {out}"
+        );
+    }
+
+    #[test]
+    fn test_swaig_dispatch_runs_insecure_function_without_call_id() {
+        let a = agent_with_secure_and_insecure_tools();
+        let body = json!({
+            "function": "insecure_tool",
+            "argument": {"parsed": [{}]},
+        });
+        let (status, _, out) =
+            a.handle_request("POST", "/swaig", &authed_headers(), Some(&body.to_string()));
+        assert_eq!(status, 200);
+        assert!(
+            out.contains("ok"),
+            "an insecure tool runs with no call_id and no token, got {out}"
+        );
+    }
+
+    // ── The credential rides the request's own query string ──────────────
+    //
+    // The built-in server hands `handle_request` `tiny_http`'s `request.url()`,
+    // which retains `?a=b`. Before this was split off, `/swaig?__token=…`
+    // missed the route entirely (404) and the query was never parsed, so the
+    // token could not arrive over the real HTTP transport at all.
+
+    #[test]
+    fn test_swaig_route_matches_when_path_carries_a_query_string() {
+        let a = agent_with_secure_and_insecure_tools();
+        let (status, _, body) = a.handle_request(
+            "POST",
+            "/swaig?foo=bar",
+            &authed_headers(),
+            Some(&swaig_body("insecure_tool", None)),
+        );
+        assert_eq!(status, 200, "a query string must not break routing: {body}");
+        assert!(
+            body.contains("ok"),
             "expected the handler's response: {body}"
+        );
+    }
+
+    #[test]
+    fn test_swaig_token_read_from_the_request_query_string() {
+        let a = agent_with_secure_and_insecure_tools();
+        let token = a.create_tool_token("secure_tool", "call_dispatch");
+        let path = format!("/swaig?__token={token}");
+        let (status, _, body) = a.handle_request(
+            "POST",
+            &path,
+            &authed_headers(),
+            Some(&swaig_body("secure_tool", None)),
+        );
+        assert_eq!(status, 200);
+        assert!(
+            !body.contains("security token for this function is invalid"),
+            "a valid token on the query string must dispatch, got {body}"
+        );
+        assert!(
+            body.contains("ok"),
+            "expected the handler's response: {body}"
+        );
+    }
+
+    #[test]
+    fn test_swaig_forged_token_on_the_query_string_is_refused() {
+        let a = agent_with_secure_and_insecure_tools();
+        let (status, _, body) = a.handle_request(
+            "POST",
+            "/swaig?__token=garbage_token",
+            &authed_headers(),
+            Some(&swaig_body("secure_tool", None)),
+        );
+        assert_eq!(status, 200);
+        assert!(
+            body.contains("security token for this function is invalid"),
+            "a forged query-string token must be refused, got {body}"
+        );
+    }
+
+    #[test]
+    fn test_query_string_parsing_decodes_escapes_and_keeps_body_precedence() {
+        let parsed = parse_query_string("?a=1&b=hello+world&c=%2Ffoo&d&a=2");
+        assert_eq!(parsed.get("a").and_then(Value::as_str), Some("1"));
+        assert_eq!(parsed.get("b").and_then(Value::as_str), Some("hello world"));
+        assert_eq!(parsed.get("c").and_then(Value::as_str), Some("/foo"));
+        assert_eq!(parsed.get("d").and_then(Value::as_str), Some(""));
+
+        // A body-supplied query_params entry wins over the transport's, so the
+        // existing dispatch shape keeps working unchanged.
+        let a = agent_with_secure_and_insecure_tools();
+        let token = a.create_tool_token("secure_tool", "call_dispatch");
+        let (status, _, body) = a.handle_request(
+            "POST",
+            "/swaig?__token=garbage_token",
+            &authed_headers(),
+            Some(&swaig_body("secure_tool", Some(&token))),
+        );
+        assert_eq!(status, 200);
+        assert!(
+            body.contains("ok"),
+            "the body's query_params must take precedence, got {body}"
         );
     }
 }
