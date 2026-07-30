@@ -1163,7 +1163,26 @@ def collect(rust_doc: dict, aliases: dict) -> tuple[dict, list]:
         # is represented by the legacy rest::CrudResource. Skip the
         # generated_bases copies so they don't collide by struct name.
         _pentry = paths.get(str(iid)) or paths.get(iid)
-        if _pentry and "generated_bases" in (_pentry.get("path") or []):
+        _ppath = (_pentry.get("path") or []) if _pentry else []
+        if "generated_bases" in _ppath:
+            continue
+        # Generated REST TYPE structs (rest::namespaces::generated::types::
+        # <ns>_types_generated::*) are the request/response payload shapes. They
+        # are emitted from the sidecar like the resources, but unlike the
+        # resources they are NOT listed in `generated_struct_names` (that set
+        # covers resources/containers/suppressed only), so the struct walk picked
+        # them up and routed them through CLASS_MODULE_MAP BY BARE NAME.
+        #
+        # That collides whenever a generated payload type shares a name with a
+        # hand-written SDK class. `messages_types_generated::Message` and the
+        # RELAY `relay::message::Message` both mapped to
+        # signalwire.relay.message, and which one survived depended on rustdoc's
+        # index ORDERING — so a rustdoc rebuild alone could flip
+        # `Message.direction` between `optional<string>` (the real
+        # `Option<&str>` accessor) and `optional<class:Value>` (the generated
+        # payload field), staling the committed snapshot with no source change.
+        # Skip them by path, exactly as generated_bases is skipped above.
+        if any(seg.endswith("_types_generated") for seg in _ppath):
             continue
         impls = kind_inner.get("impls", [])
 
