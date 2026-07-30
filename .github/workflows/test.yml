@@ -94,6 +94,14 @@ jobs:
           pip install -e porting-sdk/test_harness/mock_relay
           pip install -e porting-sdk/test_harness/mock_signalwire
 
+      # scripts/run-pylint.sh fails LOUD when ruff is absent rather than
+      # skipping, so the PY-LINT gate cannot pass vacuously on a runner that
+      # lacks it — hence this explicit install rather than relying on it being
+      # preinstalled. Without it the gate reds with "ruff not found on PATH",
+      # which is a missing CI dep, not a code finding.
+      - name: Install ruff (PY-LINT gate)
+        run: pip install ruff
+
       # EMISSION needs `import signalwire` (the oracle). Install from the
       # adjacent checkout only if not already importable.
       - name: Install signalwire-python (EMISSION oracle) if not importable
