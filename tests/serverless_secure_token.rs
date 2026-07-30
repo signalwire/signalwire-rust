@@ -11,7 +11,7 @@
 //! that it cannot execute and the model relays it.
 //!
 //! The credential rides the QUERY STRING and the `call_id` rides the POST BODY —
-//! the identical split on all five transports. Each serverless host hands its
+//! the identical split on every transport. Each serverless host hands its
 //! query over in a different shape, so each shape is driven here.
 
 use std::collections::HashMap;
@@ -19,6 +19,7 @@ use std::collections::HashMap;
 use base64::Engine as _;
 use serde_json::{Value, json};
 use signalwire::agent::{AgentBase, AgentOptions};
+use signalwire::server::AgentServer;
 use signalwire::serverless::Adapter;
 use signalwire::swaig::FunctionResult;
 
@@ -82,7 +83,7 @@ fn token_value(a: &AgentBase, function: &str, call_id: &str, t: Token) -> Option
     }
 }
 
-// ── the five transports, each reduced to {status, body-as-text} ──────────
+// ── the transports, each reduced to {status, body-as-text} ──────────────
 
 fn via_http(a: &AgentBase, function: &str, call_id: Option<&str>, t: Token) -> (u16, String) {
     let tok = token_value(a, function, call_id.unwrap_or(CALL_ID), t);
@@ -173,6 +174,35 @@ fn via_cgi(a: &AgentBase, function: &str, call_id: Option<&str>, t: Token) -> (u
     )
 }
 
+/// `AgentServer`, the multi-agent host. It matches the agent by route prefix and
+/// forwards the request target verbatim to `AgentBase::handle_request`, so the
+/// query must survive the prefix match to reach the token reader.
+///
+/// The agent is registered with `None`, which takes its OWN route — the
+/// established idiom. Passing an override route here would file the agent under
+/// a path it does not itself recognise, and every request would 404 before ever
+/// reaching the security check.
+fn via_agent_server(
+    a: &AgentBase,
+    function: &str,
+    call_id: Option<&str>,
+    t: Token,
+) -> (u16, String) {
+    let tok = token_value(a, function, call_id.unwrap_or(CALL_ID), t);
+    let mut server = AgentServer::new(None, None);
+    server
+        .register(a.clone(), None)
+        .expect("register the agent at its own route");
+    let path = tok.map_or_else(
+        || "/swaig".to_string(),
+        |tok| format!("/swaig?__token={tok}"),
+    );
+    let mut h = HashMap::new();
+    h.insert("Authorization".to_string(), auth());
+    let (status, _, out) = server.handle_request("POST", &path, &h, &body(function, call_id));
+    (status, out)
+}
+
 fn reduce(resp: &Value, status_key: &str) -> (u16, String) {
     let status = u16::try_from(resp[status_key].as_u64().unwrap_or(0)).unwrap_or(0);
     (status, resp["body"].as_str().unwrap_or("").to_string())
@@ -181,9 +211,9 @@ fn reduce(resp: &Value, status_key: &str) -> (u16, String) {
 type Transport = fn(&AgentBase, &str, Option<&str>, Token) -> (u16, String);
 
 /// Every dispatch path a SWAIG call can reach in this crate. `handle_request`
-/// is the single funnel — the built-in `serve()` loop and all four
-/// `Adapter::handle_*` entry points call it and nothing else — so covering
-/// these five covers the crate.
+/// is the single funnel — the built-in `serve()` loop, `AgentServer`'s router,
+/// and all four `Adapter::handle_*` entry points call it and nothing else — so
+/// covering these covers the crate.
 const TRANSPORTS: &[(&str, Transport)] = &[
     ("http", via_http),
     ("lambda/queryStringParameters", via_lambda_params),
@@ -191,6 +221,7 @@ const TRANSPORTS: &[(&str, Transport)] = &[
     ("gcf", via_gcf),
     ("azure", via_azure),
     ("cgi", via_cgi),
+    ("agent_server", via_agent_server),
 ];
 
 // ── the matrix ───────────────────────────────────────────────────────────
