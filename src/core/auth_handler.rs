@@ -1,6 +1,6 @@
 //! Unified authentication handler.
 //!
-//! Port of Python `signalwire.core.auth_handler.AuthHandler`. Supports Basic
+//! Supports Basic
 //! Auth, Bearer tokens, and API keys across SignalWire services. Python wires
 //! this into FastAPI (`get_fastapi_dependency`) and Flask (`flask_decorator`);
 //! the Rust port has no baked-in web framework, so those two entry points are
@@ -176,7 +176,7 @@ impl AuthHandler {
     }
 
     /// Verify a Bearer token (timing-safe). Returns false if Bearer auth is not
-    /// configured. Mirrors the reference's `verify_bearer_token(credentials)`,
+    /// configured. Matches the `verify_bearer_token(credentials)`,
     /// which compares `credentials.credentials` against the configured token.
     #[must_use]
     pub fn verify_bearer_token(&self, credentials: &BearerCredentials) -> bool {
@@ -200,7 +200,7 @@ impl AuthHandler {
     /// guard closure that inspects a request's headers and reports whether the
     /// request is authenticated by any enabled method. `optional` makes an
     /// un-credentialed request pass (matching FastAPI's optional dependency).
-    /// `optional` is `Option<bool>` because the reference declares it optional
+    /// `optional` is `Option<bool>` because the argument is optional
     /// (`optional: bool = False`); `None` takes `false`.
     pub fn get_fastapi_dependency(
         &self,

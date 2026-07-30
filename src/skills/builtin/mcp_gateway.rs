@@ -1,7 +1,5 @@
 //! MCP Gateway skill — bridge MCP (Model Context Protocol) servers with SWAIG
-//! functions.
-//!
-//! Mirrors Python's `signalwire.skills.mcp_gateway.MCPGatewaySkill`. This is the
+//! functions. This is the
 //! **CLIENT** half of the MCP integration: it connects to an ALREADY-RUNNING MCP
 //! Gateway service over HTTP, authenticates (bearer token OR HTTP basic auth),
 //! enumerates the gateway's services + tools, and registers each remote MCP tool
@@ -107,7 +105,7 @@ impl McpGateway {
     }
 
     /// Register a single MCP tool (from a service's tool list) as a SWAIG
-    /// function. Mirrors Python `_register_mcp_tool`: names it
+    /// function. Matches `_register_mcp_tool`: names it
     /// `{tool_prefix}{service}_{tool}`, converts the MCP `inputSchema` into SWAIG
     /// parameters, and wires a handler that proxies the call through the gateway.
     fn register_mcp_tool(&self, agent: &mut AgentBase, service_name: &str, tool_def: &Value) {
@@ -251,8 +249,7 @@ impl SkillBase for McpGateway {
 
     /// JSON-Schema describing the accepted configuration parameters. Extends the
     /// shared base schema (`swaig_fields` / `skip_prompt` / `tool_name`) with the
-    /// gateway connection + auth + behaviour params. Mirrors Python's
-    /// `get_parameter_schema`.
+    /// gateway connection + auth + behaviour params.
     fn get_parameter_schema(&self) -> Value {
         let mut schema = crate::skills::skill_base::default_parameter_schema();
         if let Some(props) = schema.get_mut("properties").and_then(|v| v.as_object_mut()) {
@@ -347,7 +344,7 @@ impl SkillBase for McpGateway {
         schema
     }
 
-    /// Setup + validate configuration. Mirrors Python `setup`: requires a bearer
+    /// Setup + validate configuration. Matches `setup`: requires a bearer
     /// token OR (`gateway_url` + `auth_user` + `auth_password`) for basic auth; stores
     /// the config; validates the gateway `/health` endpoint. Returns `false` on
     /// missing params or an unreachable gateway.
@@ -469,7 +466,7 @@ impl SkillBase for McpGateway {
         }
     }
 
-    /// Speech-recognition hints. Mirrors Python `get_hints`: the literals
+    /// Speech-recognition hints. Matches `get_hints`: the literals
     /// `MCP`/`gateway` plus every configured service name.
     fn get_hints(&self) -> Vec<String> {
         let mut hints = vec!["MCP".to_string(), "gateway".to_string()];
@@ -481,7 +478,7 @@ impl SkillBase for McpGateway {
         hints
     }
 
-    /// Global data for `DataMap` variables. Mirrors Python `get_global_data`:
+    /// Global data for `DataMap` variables. Matches `get_global_data`:
     /// the gateway URL, the (initially null) session id, and the service names.
     fn get_global_data(&self) -> Map<String, Value> {
         let service_names: Vec<Value> = self
@@ -502,7 +499,7 @@ impl SkillBase for McpGateway {
         data
     }
 
-    /// Prompt sections. Mirrors Python `get_prompt_sections`: a single "MCP
+    /// Prompt sections. Matches `get_prompt_sections`: a single "MCP
     /// Gateway Integration" section describing the connected services, emitted
     /// only when at least one service is configured (and `skip_prompt` is unset).
     fn get_prompt_sections(&self) -> Vec<Value> {

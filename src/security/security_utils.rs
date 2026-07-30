@@ -1,8 +1,7 @@
 //! Standalone security hygiene utilities.
 //!
-//! Mirrors the Python reference's `signalwire.core.security.security_utils`
-//! (which itself mirrors the TypeScript SDK's `SecurityUtils`:
-//! `filterSensitiveHeaders`, `redactUrl`, `isValidHostname`). The same
+//! The SDK-wide security helper set — `filter_sensitive_headers`,
+//! `redact_url`, `is_valid_hostname`. The same
 //! protections — keeping credentials out of user callbacks and logs, and a
 //! reusable hostname sanity check — are available here as idiomatic Rust free
 //! functions (`snake_case`, matching the Python free-function shape).
@@ -16,7 +15,7 @@ use regex::Regex;
 /// to user callbacks or written to logs. Compared case-insensitively (entries
 /// are stored lower-case; the lookup lower-cases the candidate key).
 ///
-/// Internal — the Python reference does not expose `SENSITIVE_HEADERS` on its
+/// Internal — the wire contract does not expose `SENSITIVE_HEADERS` on its
 /// public surface, so neither do we.
 const SENSITIVE_HEADERS: [&str; 5] = [
     "authorization",
@@ -27,12 +26,12 @@ const SENSITIVE_HEADERS: [&str; 5] = [
 ];
 
 /// URL credentials: `://user:secret@host` -> `://user:****@host`.
-/// Mirrors the Python regex `://([^:@/]+):([^@/]+)@`.
+/// Matches regex `://([^:@/]+):([^@/]+)@`.
 static URL_CREDENTIALS_RE: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"://([^:@/]+):([^@/]+)@").expect("static url-credentials regex"));
 
 /// Hostnames must not contain whitespace, slashes, backslashes, or control
-/// characters. Mirrors the Python char class `[\s/\\\x00-\x1f\x7f]`.
+/// characters. Matches char class `[\s/\\\x00-\x1f\x7f]`.
 static HOSTNAME_REJECT_RE: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"[\s/\\\x00-\x1f\x7f]").expect("static hostname-reject regex"));
 

@@ -48,7 +48,7 @@ impl SkillBase for PlayBackgroundFile {
 
     /// Build the DataMap-backed background-playback tool.
     ///
-    /// Mirrors Python `PlayBackgroundFileSkill.get_tools()`.
+    /// Matches `PlayBackgroundFileSkill.get_tools()`.
     fn get_tools(&self) -> Vec<Value> {
         let tool_name = self.get_tool_name("play_background_file");
         let files = self.sp.get_array("files");

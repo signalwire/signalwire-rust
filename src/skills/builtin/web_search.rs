@@ -9,7 +9,7 @@ use crate::agent::AgentBase;
 use crate::skills::skill_base::{SkillBase, SkillParams};
 use crate::swaig::FunctionResult;
 
-/// Default `no_results_message` (mirrors Python's `WebSearchSkill` default).
+/// Default `no_results_message`.
 /// Returned by the snippet fallback when CSE yields nothing at all or the
 /// `overall_deadline` fires before any item arrives.
 const DEFAULT_NO_RESULTS_MESSAGE: &str = "I couldn't find quality results for '{query}'. The search returned only \
@@ -18,7 +18,7 @@ a different topic.";
 
 /// Search the web using Google Custom Search API.
 ///
-/// Mirrors Python's `signalwire.skills.web_search`: the SDK issues a
+/// Matches `signalwire.skills.web_search`: the SDK issues a
 /// real HTTP GET to Google CSE (`https://www.googleapis.com/customsearch/v1`)
 /// with the query, key, and CSE ID in the query string, and parses the
 /// JSON response. The base URL can be overridden via the
@@ -404,7 +404,7 @@ fn format_web_search_response(
 /// Format Google CSE result items as a labeled snippet block, WITHOUT scraping
 /// the underlying pages.
 ///
-/// Mirrors Python's `GoogleSearchScraper._format_snippet_results` (commit
+/// Matches `GoogleSearchScraper._format_snippet_results` (commit
 /// 51101da). Used in two situations:
 ///   - `snippets_only` is set (the caller wants a fast, sub-second answer); and
 ///   - as the graceful fallback when the `overall_deadline` fires or CSE

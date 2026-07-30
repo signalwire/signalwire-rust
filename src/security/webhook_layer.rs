@@ -65,7 +65,7 @@ const SIGNATURE_HEADERS: &[&str] = &["x-signalwire-signature", "x-twilio-signatu
 /// detail, so which branch tripped is not leaked.
 ///
 /// An empty `signing_key` is a programming error (the key is mandatory
-/// configuration). Mirroring Python's `ValueError`, this is caught by a
+/// configuration). matching `ValueError`, this is caught by a
 /// debug assertion; in release builds it degrades to the reject triple
 /// rather than authenticating an unsigned request.
 ///

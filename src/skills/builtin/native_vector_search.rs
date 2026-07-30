@@ -7,7 +7,7 @@ use crate::swaig::FunctionResult;
 /// Perform a remote vector search: POST `{query, index_name, count, ...}` to
 /// `<remote_url>/search` and return the parsed `results` array.
 ///
-/// Mirrors Python `NativeVectorSearchSkill._search_remote`
+/// Matches `NativeVectorSearchSkill._search_remote`
 /// (`skills/native_vector_search/skill.py`): posts a JSON body to the
 /// `/search` sub-path of the configured remote URL and reads the
 /// `results: [{content, score, metadata}]` list from the JSON response.

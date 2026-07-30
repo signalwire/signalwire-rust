@@ -29,7 +29,7 @@
 //! - parses infallibly via [`from_str`](CallState::from_str) /
 //!   `FromStr` (an unknown string becomes `Other`, not an error).
 //!
-//! Grounded in the Python reference `relay/constants.py`
+//! Grounded in the wire contract `relay/constants.py`
 //! (`CALL_STATE_*` / `MESSAGE_STATE_*` / `MESSAGE_TERMINAL_STATES`) and the
 //! port's own [`constants`](super::constants) (`DIAL_STATE_*`). The typed
 //! accessors (`Call::call_state` / `Message::message_state`) are exposed
@@ -43,7 +43,7 @@ use super::constants;
 
 /// Call lifecycle state, as carried by `calling.call.state` events.
 ///
-/// Mirrors Python `relay/constants.py` `CALL_STATE_*`
+/// Matches `relay/constants.py` `CALL_STATE_*`
 /// (`created` → `ringing` → `answered` → `ending` → `ended`). The terminal
 /// state is `ended` (see [`is_terminal`](CallState::is_terminal)), matching
 /// [`constants::is_call_terminal`].
@@ -211,7 +211,7 @@ impl FromStr for DialState {
 
 /// Message delivery state, as carried by `messaging.state` events.
 ///
-/// Mirrors Python `relay/constants.py` `MESSAGE_STATE_*`. The terminal set
+/// Matches `relay/constants.py` `MESSAGE_STATE_*`. The terminal set
 /// is `delivered` / `undelivered` / `failed`
 /// (`MESSAGE_TERMINAL_STATES`; see [`is_terminal`](MessageState::is_terminal)),
 /// matching [`constants::is_message_terminal`]. Distinct from both

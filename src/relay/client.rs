@@ -22,7 +22,7 @@ use crate::logging::Logger;
 const RELAY_PATH: &str = "/api/relay/ws";
 
 /// How long `connect()` waits for the `signalwire.connect` response before
-/// giving up and tearing the socket down. Matches Python's `_EXECUTE_TIMEOUT`.
+/// giving up and tearing the socket down.
 const HANDSHAKE_TIMEOUT: Duration = Duration::from_secs(10);
 
 /// Live socket type. `MaybeTlsStream` selects plain TCP for `ws://` and TLS
@@ -1202,7 +1202,7 @@ impl Client {
 
     /// Send a JSON-RPC request for a calling/messaging method.
     ///
-    /// Mirrors Python's `RelayClient._send_request`: emits a flat-Blade
+    /// Matches `RelayClient._send_request`: emits a flat-Blade
     /// frame `{"method": <method>, "params": <params>}` directly — no
     /// `signalwire.execute` wrapper. Both forms are accepted by the
     /// production RELAY server and the mock; the flat form is what
@@ -1280,8 +1280,7 @@ impl Client {
     }
 
     /// Execute a `calling.*` verb frame and block for the server's response,
-    /// applying the RELAY "call gone" contract that mirrors Python's
-    /// `Call._execute`.
+    /// applying the RELAY "call gone" contract that
     ///
     /// This is the fallible core the [`Call`](crate::relay::Call) verbs route
     /// through when a live socket is attached. It behaves like
@@ -1435,9 +1434,7 @@ impl Client {
         matches!(n, Some(404 | 410))
     }
 
-    /// Send an outbound SMS/MMS message.
-    ///
-    /// Mirrors Python's `RelayClient.send_message`. At least one of
+    /// Send an outbound SMS/MMS message. At least one of
     /// `body` or `media` must be supplied. Returns a tracked `Message`
     /// whose state will progress as `messaging.state` events arrive
     /// from the server.
@@ -1533,9 +1530,7 @@ impl Client {
         Ok(msg)
     }
 
-    /// Initiate an outbound call using `calling.dial`.
-    ///
-    /// Mirrors Python's `RelayClient.dial`. The dial response carries no
+    /// Initiate an outbound call using `calling.dial`. The dial response carries no
     /// `call_id` — the actual call info arrives via subsequent
     /// `calling.call.dial` events keyed by `tag`. This method waits for
     /// that event up to `dial_timeout` and returns the resolved Call.
@@ -1624,8 +1619,7 @@ impl Client {
     //  and the Python name resolve to the same behaviour.
     // ══════════════════════════════════════════════════════════════════
 
-    /// Send an arbitrary JSON-RPC request and block for its result
-    /// (mirrors Python `RelayClient.execute`). Delegates to
+    /// Send an arbitrary JSON-RPC request and block for its result. Delegates to
     /// [`execute_blocking`].
     ///
     /// # Errors
@@ -1637,7 +1631,7 @@ impl Client {
     }
 
     /// Initiate an outbound call and block until it is answered or the
-    /// dial deadline elapses (mirrors Python `RelayClient.dial`). Delegates
+    /// dial deadline elapses. Delegates
     /// to [`dial_blocking`].
     ///
     /// # Errors
@@ -1660,8 +1654,7 @@ impl Client {
         self.dial_blocking(devices, tag, max_duration, dial_timeout)
     }
 
-    /// Send an outbound SMS/MMS message (mirrors Python
-    /// `RelayClient.send_message`). Delegates to [`send_message_blocking`].
+    /// Send an outbound SMS/MMS message. Delegates to [`send_message_blocking`].
     ///
     /// # Errors
     /// Propagates [`send_message_blocking`]'s errors: `RelayError::
@@ -1681,7 +1674,7 @@ impl Client {
     }
 
     /// Blocking entry point — run the client's event loop until the
-    /// connection is torn down (mirrors Python `RelayClient.run`).
+    /// connection is torn down.
     ///
     /// The reader thread (spawned by [`connect`]) owns all socket I/O and
     /// dispatches events. `run` blocks the calling thread until that reader
@@ -1975,7 +1968,7 @@ impl Client {
 
 /// Credential / re-auth keys whose VALUES must never reach a log or error
 /// string (enterprise SECRET-SCRUB, `r5/deep_enterprise.md` F3.1/F3.2). Mirrors
-/// the python reference's `_scrub_frame` masked-key set.
+/// the `_scrub_frame` masked-key set.
 const SENSITIVE_KEYS: [&str; 4] = ["project", "token", "jwt_token", "authorization_state"];
 
 /// The mask substituted for a scrubbed credential value.

@@ -65,9 +65,7 @@ impl From<Vec<&str>> for Bullets {
     }
 }
 
-/// One node in a Prompt Object Model tree.
-///
-/// Mirrors Python's `signalwire.pom.pom.Section`. Fields are owned
+/// One node in a Prompt Object Model tree. Fields are owned
 /// strings/vecs (Rust idiom — the model is a value-type document).
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Section {
@@ -99,7 +97,7 @@ impl Section {
     ///
     /// Use the field-setter methods (`add_body`, `add_bullets`,
     /// `add_subsection`) or struct-literal construction for further
-    /// configuration. Mirrors Python's `Section(title=..., ...)`
+    /// configuration. Matches `Section(title=..., ...)`
     /// keyword constructor — Rust's idiom uses a builder-style call
     /// chain via `add_*`.
     pub fn new(title: Option<String>) -> Self {
@@ -109,7 +107,7 @@ impl Section {
         }
     }
 
-    /// Replace the body text. Mirrors Python's `Section.add_body` —
+    /// Replace the body text. Matches `Section.add_body` —
     /// the docstring explicitly says "Add OR REPLACE the body".
     pub fn add_body(&mut self, body: impl Into<String>) -> &mut Self {
         self.body = body.into();
@@ -127,7 +125,7 @@ impl Section {
         self
     }
 
-    /// Add a subsection. Mirrors Python's `Section.add_subsection`
+    /// Add a subsection. Matches `Section.add_subsection`
     /// — the title is required (Python raises `ValueError` when
     /// `title is None`); we encode the same constraint by accepting
     /// `String` (not `Option<String>`).

@@ -235,7 +235,7 @@ impl DataMap {
     ///
     /// # Panics
     ///
-    /// Panics (mirroring Python's `ValueError`) if no webhook has been added,
+    /// Panics (matching `ValueError`) if no webhook has been added,
     /// if `foreach_config` is not an object, or if a required key is missing.
     pub fn foreach(&mut self, foreach_config: Value) -> &mut Self {
         assert!(

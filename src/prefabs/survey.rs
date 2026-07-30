@@ -9,7 +9,7 @@ pub struct SurveyAgent {
     agent: AgentBase,
     survey_name: String,
     survey_questions: Vec<Value>,
-    /// Resolved brand name — the caller's value or the reference default
+    /// Resolved brand name — the caller's value or the default
     /// `"Our Company"` (`survey.py:93`). Retained so a caller can read back
     /// what the agent is actually representing; the reference keeps it as
     /// `self.brand_name`.
@@ -24,10 +24,9 @@ pub struct SurveyAgent {
 
 /// Options for constructing a [`SurveyAgent`].
 ///
-/// Mirrors the Python reference's `__init__` (`prefabs/survey.py:55-65`)
-/// param-for-param. `survey_name` and `questions` are the reference's REQUIRED
+/// `survey_name` and `questions` are the REQUIRED
 /// positionals, so they are the arguments to [`SurveyOptions::new`]; every
-/// other field carries the reference's default.
+/// other field carries the default.
 #[must_use]
 pub struct SurveyOptions {
     /// Display name of the survey.
@@ -40,11 +39,11 @@ pub struct SurveyOptions {
     pub conclusion: Option<String>,
     /// Optional brand name to reference in the prompt.
     pub brand_name: Option<String>,
-    /// Re-ask attempts per question (reference default `2`).
+    /// Re-ask attempts per question (default `2`).
     pub max_retries: i64,
-    /// Agent name (reference default `"survey"`).
+    /// Agent name (default `"survey"`).
     pub name: String,
-    /// HTTP route (reference default `"/survey"`).
+    /// HTTP route (default `"/survey"`).
     pub route: String,
 }
 
@@ -375,7 +374,7 @@ impl SurveyAgent {
     }
 
     /// The brand the agent represents — the caller's `brand_name` or the
-    /// reference default `"Our Company"` (`survey.py:93`).
+    /// default `"Our Company"` (`survey.py:93`).
     pub fn brand_name(&self) -> &str {
         &self.brand_name
     }
@@ -397,7 +396,7 @@ impl SurveyAgent {
 
     /// Validate whether a response meets the requirements for a question.
     ///
-    /// Ported from Python `SurveyAgent.validate_response`. Reads `question_id` and
+    /// Reads `question_id` and
     /// `response`; validates per the question's `type` (rating within its `scale`,
     /// `multiple_choice` against its `options`, `yes_no`, and non-empty for a
     /// required `open_ended`). `raw_data` is accepted for handler-signature compatibility
@@ -488,7 +487,7 @@ impl SurveyAgent {
 
     /// Log a validated response to a survey question.
     ///
-    /// Ported from Python `SurveyAgent.log_response`. Acknowledges the response by
+    /// Acknowledges the response by
     /// the question's text. Reads `question_id`; `raw_data` is accepted for
     /// handler-signature compatibility but unused.
     pub fn log_response(

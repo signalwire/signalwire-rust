@@ -1,9 +1,9 @@
 //! # SignalWire AI Agents SDK
 //!
 //! Build, serve, and drive AI voice/messaging agents on the
-//! [SignalWire](https://signalwire.com) platform. This crate is the Rust port of
-//! the SignalWire AI Agents framework — it retains 100% of the reference
-//! functionality, expressed in Rust idioms (builders, traits, `Result`).
+//! [SignalWire](https://signalwire.com) platform. This is the Rust SDK for the
+//! SignalWire AI Agents framework — the full framework, expressed in Rust
+//! idioms (builders, traits, `Result`).
 //!
 //! The library is published as [`signalwire-sdk`](https://crates.io/crates/signalwire-sdk);
 //! the import path is `signalwire`.
@@ -48,8 +48,9 @@
 //!
 //! ## Design & idioms
 //!
-//! Class inheritance in the reference maps to Rust **traits**; constructor-with-
-//! subclassing maps to **builders** (`Options` + `new` + chained `&mut self`).
+//! Capabilities other SDKs express through class inheritance are expressed here
+//! as **traits**; where they subclass a constructor, this crate uses **builders**
+//! (`Options` + `new` + chained `&mut self`).
 //! Shared mutable state is `Arc`-wrapped; every JSON-crossing type derives serde.
 //! See `PORT_PHILOSOPHY_RUST.md` in the repository for the full rationale.
 
@@ -156,16 +157,14 @@ pub mod web;
 ///
 /// This is the crate's one async surface — see [`ai_chat::AIChatClient`]. It is
 /// built on `tokio` + `reqwest` because a chat turn awaits a full LLM round trip
-/// on an event loop, mirroring the async-first python reference.
+/// on an event loop.
 pub mod ai_chat;
 
-// ─── Top-level re-exports for parity with Python's `signalwire` package
+// ─── Top-level re-exports ──────────────────────────────────────────────
 //
-// Python's `signalwire/__init__.py` re-exports a fixed set of names so
-// users can write `from signalwire import AgentBase, RestClient,
-// BedrockAgent, …`. Rust's idiom is `use signalwire::agent::AgentBase`,
-// but for surface parity (and so a one-line `use signalwire::*` brings
-// these in at the crate root) we re-export the same set here.
+// Rust's idiom is `use signalwire::agent::AgentBase`, but the most-used
+// types are also re-exported at the crate root, so a one-line
+// `use signalwire::*` brings them all in.
 
 pub use agent::{AgentBase, AgentOptions};
 // The typed error returned by `"level".parse::<logging::Level>()` — re-exported
@@ -182,12 +181,11 @@ pub use rest::RestClient;
 pub use server::AgentServer;
 pub use swml::service::Service as SWMLService;
 
-// ─── Top-level helpers (mirror Python's `signalwire/__init__.py`) ──────
+// ─── Top-level helpers ─────────────────────────────────────────────────
 
 /// Add a directory to the global skill search path.
 ///
-/// Mirrors `signalwire.add_skill_directory(path)`. In Rust the
-/// directory contents cannot be loaded at runtime — third-party
+/// The directory's contents cannot be loaded at runtime — third-party
 /// skills must call [`skills::SkillRegistry::register_skill`] at
 /// startup — but the registered path is recorded for introspection.
 ///
@@ -199,19 +197,15 @@ pub fn add_skill_directory(path: &str) -> Result<(), String> {
 }
 
 /// Sorted list of every registered skill name.
-///
-/// Mirrors Python's `signalwire.list_skills()`.
 pub fn list_skills() -> Vec<String> {
     skills::SkillRegistry::list_skills()
 }
 
 /// Per-skill schema map (parameter metadata) for every registered
 /// skill. Currently returns only the skill name as the key with an
-/// empty parameter map — Rust skills don't carry rich Python-style
-/// parameter introspection. The shape matches Python's contract so
-/// downstream tooling can iterate.
-///
-/// Mirrors Python's `signalwire.list_skills_with_params()`.
+/// empty parameter map — skills here declare their parameters in code
+/// rather than through runtime introspection — so downstream tooling can
+/// iterate the map uniformly.
 pub fn list_skills_with_params() -> std::collections::HashMap<String, serde_json::Value> {
     let mut out = std::collections::HashMap::new();
     for name in skills::SkillRegistry::list_skills() {
@@ -222,11 +216,9 @@ pub fn list_skills_with_params() -> std::collections::HashMap<String, serde_json
 
 /// Register a custom skill class.
 ///
-/// Mirrors Python's `signalwire.register_skill(skill_class)`. Python's
-/// `skill_class` carries both the name (via `SKILL_NAME` attribute) and
-/// the factory (via the class itself); Rust packages the same pair as
-/// a [`SkillSpec`] tuple — the canonical "skill class" descriptor in
-/// Rust.
+/// A skill class is the pair (registration name, factory). This crate
+/// packages that pair as a [`SkillSpec`] — the canonical skill-class
+/// descriptor here — so registration takes a single argument.
 ///
 /// # Arguments
 /// - `skill_class`: A [`SkillSpec`] describing the skill's name and
@@ -238,10 +230,9 @@ pub fn register_skill(skill_class: SkillSpec) {
     skills::SkillRegistry::register_skill(&skill_class.name, skill_class.factory);
 }
 
-/// Skill registration descriptor — Rust's analogue of a Python skill
-/// class. Bundles a skill's registration name with its factory closure
-/// into a single value so [`register_skill`] can mirror Python's
-/// one-argument signature.
+/// Skill registration descriptor — the skill-class value. Bundles a
+/// skill's registration name with its factory closure into a single
+/// value, so [`register_skill`] takes one argument.
 #[must_use]
 pub struct SkillSpec {
     /// Snake-case skill name used as the registry key.
@@ -263,19 +254,16 @@ impl SkillSpec {
 
 /// Construct a [`RestClient`] from positional or keyword credentials.
 ///
-/// Mirrors Python's top-level `signalwire.RestClient(*args, **kwargs)`
-/// factory — in Python that's a thin wrapper that lazy-imports
-/// `signalwire.rest.RestClient` and instantiates it. The Rust struct
-/// is exposed at `signalwire::rest::RestClient`; this free function
-/// provides the same one-line entry point under `signalwire::`.
+/// A one-line entry point under `signalwire::` for the struct exposed at
+/// `signalwire::rest::RestClient`.
 ///
 /// The struct re-export at `signalwire::RestClient` (a type) and this
 /// function at `signalwire::RestClient` (a value) coexist because
 /// they live in distinct namespaces — types and values, respectively.
 ///
-/// The signature mirrors Python's `(*args, **kwargs)` shape so the
-/// cross-language signature audit recognises them as compatible. In
-/// practice callers pass either:
+/// Credentials arrive as a positional list plus a keyword map, so both
+/// call styles work through one signature. In practice callers pass
+/// either:
 ///   * `args = ["proj", "tok", "space"]` (three positional strings), or
 ///   * `args = []` and `kwargs = {"project": ..., "token": ..., "host": ...}`
 ///

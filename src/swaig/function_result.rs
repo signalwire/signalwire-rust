@@ -4,7 +4,7 @@ use crate::swaig::media_enums::{Codec, MediaArg, RecordDirection, RecordFormat, 
 
 /// Render a list of string values the way Python renders a `list[str]` inside
 /// an f-string — `['a', 'b', 'c']` — so the `join_conference` validation
-/// error messages are byte-identical to the reference's `ValueError` text.
+/// error messages are byte-identical to the error text.
 fn render_list(values: &[&str]) -> String {
     let items: Vec<String> = values.iter().map(|v| format!("'{v}'")).collect();
     format!("[{}]", items.join(", "))
@@ -90,7 +90,7 @@ impl From<&[&str]> for KeysArg {
 
 /// Result returned from a SWAIG function handler.
 ///
-/// Serialises to match the Python reference's `to_dict()`: `response` is omitted when empty,
+/// Serialises to match the `to_dict()`: `response` is omitted when empty,
 /// `action` when empty, and `post_process` unless there are actions; an otherwise-empty result
 /// defaults to `{"response": "Action completed."}`.
 #[derive(Debug, Clone)]
@@ -106,7 +106,7 @@ impl FunctionResult {
     /// `post_process` off.
     ///
     /// Returned as-is this serialises to
-    /// `{"response": "Action completed."}`, the reference's default for an
+    /// `{"response": "Action completed."}`, the default for an
     /// otherwise-empty result, so a handler that does nothing still answers
     /// the platform validly.
     pub fn new() -> Self {
@@ -249,7 +249,7 @@ impl FunctionResult {
     }
 
     /// Build the canonical SWML document that wraps a single verb and push it
-    /// through `execute_swml`, exactly like the Python reference's virtual
+    /// through `execute_swml`, exactly like the virtual
     /// helpers (`send_sms`/`pay`/`record_call`/`tap`/…), which all construct
     /// `{"version": "1.0.0", "sections": {"main": [{verb: params}]}}` and route
     /// it through `execute_swml`. This guarantees the emitted action is the
@@ -277,7 +277,7 @@ impl FunctionResult {
     ///   default `true`) makes the transfer **permanent**: the AI does not
     ///   regain control when the far end hangs up. `Some(false)` returns
     ///   control to the agent afterwards. The value is emitted as the
-    ///   *string* `"true"` / `"false"`, matching the reference's
+    ///   *string* `"true"` / `"false"`, matching the wire contract's
     ///   `str(final).lower()`.
     /// - `from` — caller ID to present. `None`, and also an empty string,
     ///   omit the `from` key entirely rather than sending a blank value.
@@ -323,7 +323,7 @@ impl FunctionResult {
     /// Add a SWML transfer action with an AI response set up for when the
     /// transfer completes and control returns to the agent.
     ///
-    /// Mirrors the Python reference (`FunctionResult.swml_transfer`): emits a
+    /// Emits a
     /// SWML document whose `main` section is `[{set: {ai_response}}, {transfer:
     /// {dest}}]`, with a top-level `"transfer": str(final).lower()` flag marking
     /// whether the transfer is permanent (`final = true`, the default) or
@@ -370,7 +370,7 @@ impl FunctionResult {
 
     /// Place the call on hold.
     ///
-    /// `timeout` is `Option<i64>` because the reference declares it optional
+    /// `timeout` is `Option<i64>` because the argument is optional
     /// (`timeout: int = 300`); `None` is the omit-it call and takes 300.
     pub fn hold(&mut self, timeout: Option<i64>) -> &mut Self {
         let timeout = timeout.unwrap_or(300);
@@ -382,7 +382,7 @@ impl FunctionResult {
 
     /// Control how the agent waits for user input.
     ///
-    /// Mirrors the Python reference (`FunctionResult.wait_for_user`): the action
+    /// The action
     /// value is a **scalar**, chosen by the same precedence —
     /// `answer_first` (the string `"answer_first"`) > `timeout` (bare int) >
     /// `enabled` (bare bool) > the default bare bool `true`.
@@ -478,7 +478,7 @@ impl FunctionResult {
 
     /// Send a user event through SWML to update the client UI.
     ///
-    /// Mirrors the Python reference (`FunctionResult.swml_user_event`): emits a
+    /// Emits a
     /// `"SWML"` action whose `main` section nests the event payload under
     /// `{"user_event": {"event": event_data}}`.
     pub fn swml_user_event(&mut self, event_data: Value) -> &mut Self {
@@ -510,7 +510,7 @@ impl FunctionResult {
 
     /// Change the agent context/prompt during the conversation.
     ///
-    /// Mirrors the Python reference (`FunctionResult.switch_context`): when only
+    /// When only
     /// `system_prompt` is supplied (no `user_prompt`/`consolidate`/`full_reset`,
     /// and — for this port's documented `isolated` extension — no `isolated`),
     /// the action value is the **bare system-prompt string**
@@ -560,7 +560,7 @@ impl FunctionResult {
     /// After first send, replace the `tool_call+result` pair in conversation
     /// history.
     ///
-    /// Mirrors the Python reference (`FunctionResult.replace_in_history`, whose
+    /// (`FunctionResult.replace_in_history`, whose
     /// `text` parameter is `Union[str, bool] = True`): the action key is
     /// `"replace_in_history"`. `Some(t)` replaces the tool call with an assistant
     /// message containing `t`; `None` uses the default `true`, which removes the
@@ -589,11 +589,11 @@ impl FunctionResult {
 
     /// Play an audio/video file in the background.
     ///
-    /// Mirrors the Python reference (`FunctionResult.play_background_file`): the
+    /// The
     /// action key is `"playback_bg"`. With `wait = true` the value is
     /// `{"file": filename, "wait": true}` (suppress attention-getting behaviour);
     /// otherwise it is the bare filename string.
-    /// `wait` is `Option<bool>` because the reference declares it optional
+    /// `wait` is `Option<bool>` because the argument is optional
     /// (`wait: bool = False`); `None` is the omit-it call and takes `false`.
     pub fn play_background_file(&mut self, filename: &str, wait: Option<bool>) -> &mut Self {
         let wait = wait.unwrap_or(false);
@@ -614,17 +614,17 @@ impl FunctionResult {
 
     /// Start background call recording (SWML `record_call`).
     ///
-    /// Mirrors the Python reference (`FunctionResult.record_call`): the verb is
+    /// The verb is
     /// wrapped in a SWML document (`{"SWML": {version, sections: {main:
     /// [{record_call: params}]}}}`) — never a bare verb — and the reference's
     /// two closed-set validations are reproduced, returning `Err(message)` with
-    /// the exact reference `ValueError` text:
+    /// the exact error text:
     ///
     /// - `format` ∈ `{wav, mp3, mp4}`
     /// - `direction` ∈ `{speak, listen, both}`
     ///
     /// `stereo`, `format`, `direction`, `beep`, and `input_sensitivity` are
-    /// **always** emitted (matching the reference, which seeds `record_params`
+    /// **always** emitted (matching the wire contract, which seeds `record_params`
     /// with all five); `control_id`, `terminators`, `initial_timeout`,
     /// `end_silence_timeout`, `max_length`, and `status_url` are emitted only
     /// when supplied. There is no `initiator` field — the previous port invented
@@ -632,7 +632,7 @@ impl FunctionResult {
     ///
     /// # Errors
     ///
-    /// Returns `Err(String)` with the reference's exact `ValueError`
+    /// Returns `Err(String)` with the exact error
     /// text when a closed-set argument is out of range:
     /// `"format must be 'wav', 'mp3', or 'mp4'"` if `format` resolves to
     /// anything outside `{wav, mp3, mp4}`, or
@@ -711,7 +711,7 @@ impl FunctionResult {
 
     /// Stop an active background recording (SWML `stop_record_call`).
     ///
-    /// Mirrors the Python reference: the verb is wrapped in a SWML document. The
+    /// : the verb is wrapped in a SWML document. The
     /// params are `{"control_id": ...}` when supplied, else `{}` (most-recent).
     pub fn stop_record_call(&mut self, control_id: Option<&str>) -> &mut Self {
         let params = match control_id.filter(|c| !c.is_empty()) {
@@ -781,7 +781,7 @@ impl FunctionResult {
 
     /// Enable/disable specific SWAIG functions.
     ///
-    /// Mirrors the Python reference (`FunctionResult.toggle_functions`), which
+    /// Which
     /// takes a `List[Dict[str, Any]]` (each dict carries `function` + `active`,
     /// plus any further keys) and passes it through verbatim via
     /// `add_action("toggle_functions", function_toggles)`. The action value is
@@ -797,7 +797,7 @@ impl FunctionResult {
 
     /// Python: `add_action("functions_on_speaker_timeout", enabled)`.
     ///
-    /// `enabled` is `Option<bool>` because the reference declares it optional
+    /// `enabled` is `Option<bool>` because the argument is optional
     /// (`enabled: bool = True`); `None` is the omit-it call and takes `true`.
     pub fn enable_functions_on_timeout(&mut self, enabled: Option<bool>) -> &mut Self {
         let enabled = enabled.unwrap_or(true);
@@ -806,7 +806,7 @@ impl FunctionResult {
         self
     }
 
-    /// `enabled` is `Option<bool>` because the reference declares it optional
+    /// `enabled` is `Option<bool>` because the argument is optional
     /// (`enabled: bool = True`); `None` is the omit-it call and takes `true`.
     pub fn enable_extensive_data(&mut self, enabled: Option<bool>) -> &mut Self {
         let enabled = enabled.unwrap_or(true);
@@ -825,7 +825,7 @@ impl FunctionResult {
     /// Execute SWML content, optionally marking the call to exit the agent
     /// afterward (`transfer = true`).
     ///
-    /// Mirrors the Python reference (`FunctionResult.execute_swml`): the action
+    /// The action
     /// key is **always** `"SWML"`; when `transfer` is set, a `"transfer": "true"`
     /// flag is added **inside** the SWML dict (it is not a separate action key).
     ///
@@ -837,7 +837,7 @@ impl FunctionResult {
     /// - Any other JSON scalar/array is wrapped as `{"raw_swml": <value-as-string>}`,
     ///   the same fallback Python uses for a non-dict, non-string `swml_content`.
     ///
-    /// `transfer` is `Option<bool>` because the reference declares it optional
+    /// `transfer` is `Option<bool>` because the argument is optional
     /// (`transfer: bool = False`); `None` is the omit-it call and takes `false`.
     pub fn execute_swml(&mut self, swml_content: Value, transfer: Option<bool>) -> &mut Self {
         let transfer = transfer.unwrap_or(false);
@@ -882,7 +882,7 @@ impl FunctionResult {
     ///
     /// Mirrors the Python reference
     /// (`FunctionResult.join_conference`) — `name` is required and the
-    /// remaining 18 parameters are optional with the reference's defaults.
+    /// remaining 18 parameters are optional with the defaults.
     /// `wait_url` carries the hold-music URL (Python has no `hold_audio`
     /// parameter; this port previously invented one — it is removed).
     ///
@@ -905,12 +905,12 @@ impl FunctionResult {
     /// object carrying every non-default parameter under its `snake_case` wire
     /// key. Either way the verb is wrapped in the canonical SWML document
     /// (`{"SWML": {version, sections: {main: [{join_conference: ...}]}}}`),
-    /// matching the reference (which routes `join_conference` through
+    /// matching the wire contract (which routes `join_conference` through
     /// `execute_swml`) — never a bare verb.
     ///
     /// # Errors
     ///
-    /// Returns `Err(String)` (the reference's exact `ValueError` text)
+    /// Returns `Err(String)` (the exact error text)
     /// on any of the seven closed-set / range checks: `beep` outside
     /// `{true, false, onEnter, onExit}` (`"beep must be one of ..."`),
     /// `max_participants` not in `1..=250`
@@ -1092,14 +1092,14 @@ impl FunctionResult {
     }
 
     /// Join a RELAY room (SWML `join_room`). Wrapped in a SWML document,
-    /// matching the Python reference.
+    /// matching the wire contract.
     pub fn join_room(&mut self, name: &str) -> &mut Self {
         self.push_swml_verb("join_room", json!({"name": name}));
         self
     }
 
     /// Send a SIP REFER (SWML `sip_refer`). Wrapped in a SWML document, matching
-    /// the Python reference.
+    /// the wire contract.
     pub fn sip_refer(&mut self, to_uri: &str) -> &mut Self {
         self.push_swml_verb("sip_refer", json!({"to_uri": to_uri}));
         self
@@ -1107,10 +1107,10 @@ impl FunctionResult {
 
     /// Start a background call tap (SWML `tap`).
     ///
-    /// Mirrors the Python reference (`FunctionResult.tap`): the verb is wrapped
+    /// The verb is wrapped
     /// in a SWML document — never a bare verb — and the reference's three
     /// validations are reproduced, returning `Err(message)` with the exact
-    /// reference `ValueError` text:
+    /// error text:
     ///
     /// - `direction` ∈ `{speak, hear, both}`
     /// - `codec` ∈ `{PCMU, PCMA}`
@@ -1122,7 +1122,7 @@ impl FunctionResult {
     ///
     /// # Errors
     ///
-    /// Returns `Err(String)` (the reference's exact `ValueError` text)
+    /// Returns `Err(String)` (the exact error text)
     /// when a closed-set / range argument is invalid: `direction`
     /// outside `{speak, hear, both}` (`"direction must be one of ..."`),
     /// `codec` outside `{PCMU, PCMA}` (`"codec must be one of ..."`), or
@@ -1190,7 +1190,7 @@ impl FunctionResult {
     }
 
     /// Stop an active tap stream (SWML `stop_tap`). Wrapped in a SWML document,
-    /// matching the Python reference.
+    /// matching the wire contract.
     pub fn stop_tap(&mut self, control_id: Option<&str>) -> &mut Self {
         let params = match control_id.filter(|c| !c.is_empty()) {
             Some(c) => json!({"control_id": c}),
@@ -1202,10 +1202,10 @@ impl FunctionResult {
 
     /// Send a text message to a PSTN number (SWML `send_sms`).
     ///
-    /// Mirrors the Python reference (`FunctionResult.send_sms`): the verb is
+    /// The verb is
     /// wrapped in a SWML document — never a bare verb.
     ///
-    /// `body` and `media` are BOTH `Option` because the reference declares both
+    /// `body` and `media` are BOTH `Option` because both are
     /// optional (`body: str | None = None`, `media: list[str] | None = None`),
     /// and the either-or requirement between them is a RUNTIME PAIR CONSTRAINT,
     /// not a default: the reference raises `ValueError` when neither is
@@ -1259,7 +1259,7 @@ impl FunctionResult {
 
     /// Process a payment (SWML `pay`).
     ///
-    /// Mirrors the Python reference (`FunctionResult.pay`) exactly, including its
+    /// Including its
     /// wire-key choices and value rendering:
     /// - the verb is wrapped in a SWML document whose `main` section is
     ///   `[{set: {ai_response}}, {pay: pay_params}]` — never a bare verb;
@@ -1275,14 +1275,14 @@ impl FunctionResult {
     ///
     /// Every parameter below `payment_connector_url` is optional in the
     /// reference, so each is `Option<T>` here: `None` is the omit-it call and
-    /// takes the reference's default.
+    /// takes the default.
     ///
     /// `postal_code` is taken as the already-rendered wire string (pass
     /// `Some("true")`/`Some("false")` for the boolean cases, or the literal
-    /// postcode), mirroring the reference's `Union[bool, str]`;
-    /// `None` resolves to `"true"`, the rendering of the reference's default
+    /// postcode), matching the `Union[bool, str]`;
+    /// `None` resolves to `"true"`, the rendering of the default
     /// `True`. `parameters`/`prompts` are JSON arrays. `None` for `ai_response`
-    /// uses the reference's default status message.
+    /// uses the default status message.
     #[allow(clippy::too_many_arguments)]
     pub fn pay(
         &mut self,
@@ -1390,7 +1390,7 @@ impl FunctionResult {
 
     /// Execute an RPC method on a call (SWML `execute_rpc`).
     ///
-    /// Mirrors the Python reference (`FunctionResult.execute_rpc`): the rpc
+    /// The rpc
     /// params are keyed `{method, call_id?, node_id?, params?}` where
     /// `call_id` and `node_id` are **TOP-LEVEL siblings** of `method`/`params`
     /// (NOT nested inside `params`), and the whole `{"execute_rpc": ...}` verb
@@ -1425,7 +1425,7 @@ impl FunctionResult {
 
     /// Dial out to a number with a destination SWML URL (via `execute_rpc`).
     ///
-    /// Mirrors the Python reference (`FunctionResult.rpc_dial`): method `"dial"`,
+    /// Method `"dial"`,
     /// params `{devices: {type: device_type, params: {to_number, from_number}},
     /// dest_swml}`. `device_type` defaults to `"phone"` and is caller-overridable
     /// (the previous port hard-coded the device and invented
@@ -1453,7 +1453,7 @@ impl FunctionResult {
 
     /// Inject a message into an AI agent on another call (via `execute_rpc`).
     ///
-    /// Mirrors the Python reference (`FunctionResult.rpc_ai_message`): method
+    /// Method
     /// `"ai_message"`, `call_id` carried as the TOP-LEVEL `execute_rpc` sibling,
     /// params `{role, message_text}`. `role` defaults to `"system"` and is
     /// caller-overridable (the previous port omitted `role` and mis-nested
@@ -1474,7 +1474,7 @@ impl FunctionResult {
 
     /// Unhold another call (via `execute_rpc`).
     ///
-    /// Mirrors the Python reference (`FunctionResult.rpc_ai_unhold`): method
+    /// Method
     /// `"ai_unhold"`, `call_id` as the TOP-LEVEL `execute_rpc` sibling, params
     /// `{}` (which `execute_rpc` drops, since it is empty).
     pub fn rpc_ai_unhold(&mut self, call_id: &str) -> &mut Self {

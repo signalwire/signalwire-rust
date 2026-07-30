@@ -256,9 +256,7 @@ impl Message {
     }
 
     /// Block until the message reaches a terminal state (delivered,
-    /// undelivered, failed, …), then return its resolved result.
-    ///
-    /// Mirrors Python's `Message.wait`. Python's coroutine awaits a Future
+    /// undelivered, failed, …), then return its resolved result. Python's coroutine awaits a Future
     /// that resolves to the terminal `RelayEvent`; the Rust `Message` is a
     /// synchronous tracking handle, so `wait` blocks the calling thread
     /// until `dispatch_event` observes a terminal state (which resolves the

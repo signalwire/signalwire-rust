@@ -57,7 +57,7 @@ impl<'a> PaginatedIterator<'a> {
     ///
     /// The trailing `request_options` (plan 4.2) is forwarded to every page GET
     /// (timeout / retry / cancellation); `None` inherits the client default. It
-    /// is never serialized. This mirrors the Python reference's
+    /// is never serialized. This mirrors the
     /// `PaginatedIterator.__init__(http, path, params, data_key, request_options)`.
     pub fn new(
         http: &'a HttpClient,

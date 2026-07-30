@@ -107,7 +107,7 @@ pub trait SkillBase: Send + Sync {
 
     /// The agent this skill was loaded into, or `None` before it is loaded.
     ///
-    /// Mirrors the reference's `SkillBase.agent`, which the reference sets in
+    /// Matches the `SkillBase.agent`, which the reference sets in
     /// `__init__` (`skill_base.py:39`). Here the `SkillManager` hands it over at
     /// load time, BEFORE `setup()` runs, so a skill's own setup can read which
     /// agent it belongs to — the same ordering the reference gets from
@@ -145,7 +145,7 @@ pub trait SkillBase: Send + Sync {
 
     /// Packages this skill depends on.
     ///
-    /// Mirrors Python's `REQUIRED_PACKAGES` class attribute. In Python the
+    /// Matches `REQUIRED_PACKAGES` class attribute. In Python the
     /// list drives a runtime `importlib` availability check
     /// (`validate_packages`). Rust is compiled and its dependencies are
     /// resolved by Cargo at build time, so a runtime "is the package
@@ -181,7 +181,7 @@ pub trait SkillBase: Send + Sync {
 
     /// Build this skill's SWAIG tool definitions without registering them.
     ///
-    /// Mirrors Python's `get_tools()` — the DataMap-style skills
+    /// Matches `get_tools()` — the DataMap-style skills
     /// (`api_ninjas_trivia`, `play_background_file`, `weather_api`) override
     /// this to return their fully-formed tool definitions (each a JSON
     /// object with `function`/`argument`/`data_map` keys). `register_tools`
@@ -195,7 +195,7 @@ pub trait SkillBase: Send + Sync {
     /// Define a tool on the agent, automatically merging this skill's
     /// `swaig_fields`.
     ///
-    /// Mirrors Python's `SkillBase.define_tool(**kwargs)` wrapper: skills
+    /// Matches `SkillBase.define_tool(**kwargs)` wrapper: skills
     /// call this instead of `agent.define_tool(...)` so that any
     /// `swaig_fields` configured for the instance are folded into the tool
     /// definition. `swaig_fields` are applied first; the explicit arguments
@@ -218,7 +218,7 @@ pub trait SkillBase: Send + Sync {
     }
 
     /// Namespaced key under which this skill instance stores state in the
-    /// agent's `global_data` (mirrors Python's `_get_skill_namespace`).
+    /// agent's `global_data`.
     ///
     /// Uses the `prefix` param when present, else the instance key, so
     /// multiple instances of a multi-instance skill don't collide.
@@ -231,7 +231,7 @@ pub trait SkillBase: Send + Sync {
     }
 
     /// Read this skill instance's namespaced state out of the `raw_data`
-    /// passed to a SWAIG handler (mirrors Python's `get_skill_data`).
+    /// passed to a SWAIG handler.
     ///
     /// `raw_data` is expected to contain a `global_data` object; the skill's
     /// slice lives under [`get_skill_namespace`](Self::get_skill_namespace).
@@ -246,8 +246,7 @@ pub trait SkillBase: Send + Sync {
             .unwrap_or_default()
     }
 
-    /// Write this skill instance's namespaced state into a `FunctionResult`
-    /// (mirrors Python's `update_skill_data`).
+    /// Write this skill instance's namespaced state into a `FunctionResult`.
     ///
     /// Wraps `data` under the skill's namespace key and appends a
     /// `set_global_data` action to `result` for chaining.
@@ -264,7 +263,7 @@ pub trait SkillBase: Send + Sync {
 
     /// Validate that this skill's declared packages are available.
     ///
-    /// Mirrors Python's `validate_packages`, which runtime-imports each
+    /// Matches `validate_packages`, which runtime-imports each
     /// `REQUIRED_PACKAGES` entry. Rust has no runtime import step — Cargo
     /// resolves and links every dependency at build time, so anything a
     /// skill's [`required_packages`](Self::required_packages) declares is

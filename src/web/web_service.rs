@@ -1,6 +1,6 @@
 //! Static file-serving web service.
 //!
-//! Port of Python `signalwire.web.web_service.WebService`. Serves local
+//! Serves local
 //! directories over HTTP, mapping URL routes to filesystem paths, with basic
 //! auth, extension filters, and optional directory browsing.
 //!
@@ -94,7 +94,7 @@ impl WebService {
     /// # Errors
     ///
     /// Returns `Err` if `directory` does not exist or is not a directory
-    /// (mirroring Python's `ValueError`).
+    /// (matching `ValueError`).
     pub fn add_directory(&mut self, route: &str, directory: &str) -> Result<(), String> {
         let route = normalize_route(route);
         let path = Path::new(directory);
@@ -114,7 +114,7 @@ impl WebService {
         self.directories.remove(&route);
     }
 
-    /// Start the service (Python `WebService.start`). Optionally overrides the
+    /// Start the service. Optionally overrides the
     /// bind host/port. The Rust HTTP backend is synchronous; this marks the
     /// service running and is the lifecycle entry point.
     pub fn start(&mut self, _host: Option<&str>, port: Option<u16>) {
@@ -124,7 +124,7 @@ impl WebService {
         self.running = true;
     }
 
-    /// Stop the service (Python `WebService.stop`).
+    /// Stop the service.
     pub fn stop(&mut self) {
         self.running = false;
     }

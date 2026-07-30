@@ -23,7 +23,7 @@ pub struct ConciergeAgent {
 
 /// Options for constructing a [`ConciergeAgent`].
 ///
-/// Field-for-field the Python reference's `__init__`
+/// Field-for-field the `__init__`
 /// (`prefabs/concierge.py:45-55`). `venue_name`, `services`, and `amenities`
 /// are the reference's REQUIRED positionals, so they are the arguments to
 /// [`ConciergeOptions::new`]; every other field carries the reference's
@@ -42,9 +42,9 @@ pub struct ConciergeOptions {
     pub special_instructions: Vec<String>,
     /// Custom welcome message; `None` generates one from `venue_name`.
     pub welcome_message: Option<String>,
-    /// Agent name (reference default `"concierge"`).
+    /// Agent name (default `"concierge"`).
     pub name: String,
-    /// HTTP route (reference default `"/concierge"`).
+    /// HTTP route (default `"/concierge"`).
     pub route: String,
 }
 
@@ -386,7 +386,7 @@ impl ConciergeAgent {
     }
 
     /// The venue's operating hours, keyed by label — the caller's map or the
-    /// reference default `{"default": "9 AM - 5 PM"}` (`concierge.py:78`).
+    /// default `{"default": "9 AM - 5 PM"}` (`concierge.py:78`).
     pub fn hours_of_operation(&self) -> &HashMap<String, String> {
         &self.hours_of_operation
     }
@@ -399,7 +399,7 @@ impl ConciergeAgent {
 
     /// Check availability for a service on a specific date and time.
     ///
-    /// Ported from Python `ConciergeAgent.check_availability`. Simulated: if the
+    /// Simulated: if the
     /// requested service is one of the venue's offered services it reports it as
     /// available, otherwise it lists the available services. `args` reads
     /// `service`, `date`, and `time`; `raw_data` is accepted for
@@ -433,7 +433,7 @@ impl ConciergeAgent {
 
     /// Provide directions to a specific location or amenity.
     ///
-    /// Ported from Python `ConciergeAgent.get_directions`. If the requested
+    /// If the requested
     /// location matches an amenity that declares a `location`, it gives directions
     /// there; otherwise it defers to front-desk staff. `args` reads `location`;
     /// `raw_data` is accepted for handler-signature compatibility but unused.

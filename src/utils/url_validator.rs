@@ -5,8 +5,7 @@
 
 //! SSRF-prevention guard for user-supplied URLs.
 //!
-//! Mirrors Python's `signalwire.utils.url_validator.validate_url`:
-//! rejects non-http(s) schemes, missing hostnames, and any URL whose
+//! Rejects non-http(s) schemes, missing hostnames, and any URL whose
 //! hostname resolves to a private / loopback / link-local / cloud-
 //! metadata IP. When `allow_private` is true, OR the
 //! `SWML_ALLOW_PRIVATE_URLS` env var is set to `"1"`, `"true"`, or
@@ -20,7 +19,7 @@ use url::Url;
 
 use crate::logging::Logger;
 
-/// Cross-port SSRF block list. Order matches the Python reference for
+/// Cross-port SSRF block list. Order matches the wire contract for
 /// ease of cross-language review.
 pub const BLOCKED_NETWORKS: [&str; 9] = [
     "10.0.0.0/8",
@@ -125,9 +124,9 @@ fn cidr_contains(cidr: &str, ip: &IpAddr) -> bool {
 
 /// Validate that a URL is safe to fetch.
 ///
-/// Mirrors Python's `validate_url(url, allow_private=False) -> bool`.
+/// Matches `validate_url(url, allow_private=False) -> bool`.
 ///
-/// `allow_private` is `Option<bool>` because the reference declares it optional;
+/// `allow_private` is `Option<bool>` because the argument is optional;
 /// `None` is the omit-it call and takes `false`.
 pub fn validate_url(url: &str, allow_private: Option<bool>) -> bool {
     let allow_private = allow_private.unwrap_or(false);

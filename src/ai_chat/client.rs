@@ -27,7 +27,7 @@
 //! The service streams keepalive whitespace ahead of a slow response body (proxy
 //! read-timeout protection, roughly every 10s), so liveness is byte-driven rather
 //! than wall-clock: there is NO total-request timeout an idle-but-live turn could
-//! trip — only a per-read idle timeout, mirroring the python reference's
+//! trip — only a per-read idle timeout, mirroring the
 //! `aiohttp.ClientTimeout(total=None, connect=10, sock_read=60)`. `reqwest`
 //! exposes exactly this as [`reqwest::ClientBuilder::read_timeout`] (idle time
 //! between reads) + [`reqwest::ClientBuilder::connect_timeout`]; a total
@@ -61,12 +61,11 @@ use serde_json::{Map, Value, json};
 /// Default endpoint path appended to a `space`-derived base URL.
 const DEFAULT_PATH: &str = "/api/ai/chat";
 
-/// Bounded connect timeout (seconds). Mirrors the reference `connect=10`.
+/// Bounded connect timeout (seconds). Matches the `connect=10`.
 const DEFAULT_CONNECT_TIMEOUT_SECS: u64 = 10;
 
 /// Idle read timeout (seconds): the max byte-silence tolerated on a single
-/// request before the connection is treated as dead. Mirrors the reference
-/// `sock_read=60`. The service heartbeats well inside this window, so a
+/// request before the connection is treated as dead. The service heartbeats well inside this window, so a
 /// live-but-slow turn never trips it; it bounds a truly dead connection only.
 /// This is NOT a total-request cap — turn length is the server's business.
 const DEFAULT_READ_IDLE_TIMEOUT_SECS: u64 = 60;
@@ -75,7 +74,7 @@ const DEFAULT_READ_IDLE_TIMEOUT_SECS: u64 = 60;
 
 /// The kind of an [`AIChatError`] — the typed error family for AI Chat failures.
 ///
-/// Mirrors the python reference's exception hierarchy. Every variant carries the
+/// Mirrors the exception hierarchy. Every variant carries the
 /// JSON-RPC `code` and server `message` via the enclosing [`AIChatError`]; an
 /// unmapped code falls to [`AIChatErrorKind::Api`]. [`AIChatErrorKind::Summary`]
 /// rides the JSON-RPC *success* envelope (no code) and exists so a failed summary
@@ -339,7 +338,7 @@ impl ChatOptions {
 }
 
 /// Sampling / prompt options for [`AIChatClient::summarize`]. All optional; only
-/// set fields are put on the wire (mirroring the reference's None-drop).
+/// set fields are put on the wire (matching the None-drop).
 #[derive(Debug, Clone, Default)]
 pub struct SummarizeOptions {
     /// Custom prompt steering the summary (wire `summary_prompt`).
@@ -583,7 +582,7 @@ impl AIChatClient {
     /// Success/failure is decided by the JSON-RPC BODY, not the HTTP status: the
     /// service's keepalive heartbeat commits `200` before the turn's outcome is
     /// known, so a slow error can arrive as `200 + {"error": …}`. Never gate on
-    /// the HTTP status here (mirrors the python reference).
+    /// the HTTP status here (mirrors the wire contract).
     async fn request(
         &self,
         method: &str,

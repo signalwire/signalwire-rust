@@ -595,7 +595,7 @@ impl Step {
     /// # Panics
     ///
     /// Panics if `history` is not one of [`HISTORY_MODES`]
-    /// (`keep` / `default` / `hide`) — mirrors Python's `ValueError`.
+    /// (`keep` / `default` / `hide`) —
     pub fn set_history(&mut self, history: &str) -> &mut Self {
         assert!(
             HISTORY_MODES.contains(&history),
@@ -1045,7 +1045,7 @@ impl Context {
     /// # Panics
     ///
     /// Panics if `history` is not one of [`HISTORY_MODES`]
-    /// (`keep` / `default` / `hide`) — mirrors Python's `ValueError`.
+    /// (`keep` / `default` / `hide`) —
     pub fn set_history(&mut self, history: &str) -> &mut Self {
         assert!(
             HISTORY_MODES.contains(&history),
@@ -1056,7 +1056,7 @@ impl Context {
     }
 
     /// Mark this context as isolated — entering it wipes conversation
-    /// history (subject to the `reset` exception; see the Python reference).
+    /// history (subject to the `reset` exception; see the wire contract).
     pub fn set_isolated(&mut self, isolated: bool) -> &mut Self {
         self.isolated = isolated;
         self

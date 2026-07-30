@@ -24,7 +24,7 @@ impl SkillManager {
     /// Create an empty skill manager with no skills loaded and no agent
     /// bound.
     ///
-    /// Unlike the Python reference, which takes the agent in its
+    /// Unlike the wire contract, which takes the agent in its
     /// constructor, the agent is captured on the first `load_skill` call —
     /// Rust's load path already receives the live `&mut AgentBase`, and
     /// requiring it here would force every agent into an `Arc<Mutex<…>>`.
@@ -36,7 +36,7 @@ impl SkillManager {
     }
 
     /// The agent this manager is loading skills into, or `None` before the
-    /// first skill is loaded. Mirrors the reference's `SkillManager.agent`.
+    /// first skill is loaded.
     pub fn agent(&self) -> Option<Arc<dyn SkillAgent>> {
         self.agent.clone()
     }

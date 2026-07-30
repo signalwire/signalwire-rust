@@ -625,7 +625,7 @@ impl Call {
     //     needed — the escaped name is identical on both sides.
     // ------------------------------------------------------------------
 
-    /// Echo audio back to the caller (mirrors Python `Call.echo`).
+    /// Echo audio back to the caller.
     /// Emits `calling.echo`. Optional `timeout` / `status_url` may be
     /// supplied via `params`; pass `Value::Null` or an empty object for none.
     ///
@@ -644,8 +644,7 @@ impl Call {
         self.execute("calling.echo", extra)
     }
 
-    /// Decline control of an inbound call, returning it to routing
-    /// (mirrors Python `Call.pass_`). Emits `calling.pass`.
+    /// Decline control of an inbound call, returning it to routing. Emits `calling.pass`.
     ///
     /// # Errors
     ///
@@ -657,8 +656,7 @@ impl Call {
         self.execute("calling.pass", Value::Object(serde_json::Map::new()))
     }
 
-    /// Transfer a SIP call to an external SIP endpoint via REFER
-    /// (mirrors Python `Call.refer`). Emits `calling.refer` with the
+    /// Transfer a SIP call to an external SIP endpoint via REFER. Emits `calling.refer` with the
     /// supplied `device` (+ optional `status_url`) params.
     ///
     /// # Errors
@@ -1109,9 +1107,7 @@ impl Call {
 
     /// Block until an event of `event_type` matching `predicate` is
     /// dispatched to this call, then return it. `predicate = None` matches
-    /// any event of that type. `timeout = None` blocks indefinitely.
-    ///
-    /// Mirrors Python `Call.wait_for`. Returns `Some(event)` on a match, or
+    /// any event of that type. `timeout = None` blocks indefinitely. Returns `Some(event)` on a match, or
     /// `None` if `timeout` elapsed before a matching event arrived.
     ///
     /// # Panics
@@ -1232,7 +1228,7 @@ impl Call {
     /// verb's extra params) and, when a [`Client`] is attached, TRANSMITS it
     /// to the wire via [`Client::send_request`] — the client-send boundary.
     /// The params are always also recorded in `sent_commands` for local
-    /// inspection/tests. Mirrors Python's `Call._execute`, which calls
+    /// inspection/tests. Matches `Call._execute`, which calls
     /// `self._client.execute(method, params)`.
     fn execute(&self, method: &str, extra: Value) -> Result<Value, RelayError> {
         let mut base = self.base_params();
@@ -1260,7 +1256,7 @@ impl Call {
 
     /// Spin up a long-running action tracked by a unique `control_id`.
     ///
-    /// Mirrors Python's `Call._start_action`: register the action, execute the
+    /// Matches `Call._start_action`: register the action, execute the
     /// start RPC, and — with a live socket — block for its response. If the RPC
     /// fails the action is removed and the error propagates; if the call is
     /// gone (404/410 → `Ok({})`) the action is immediately resolved so a later

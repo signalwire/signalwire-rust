@@ -13,8 +13,7 @@ pub type SkillFactory = Box<dyn Fn(Map<String, Value>) -> Box<dyn SkillBase> + S
 /// Canonical names of the compiled-in builtin skills, in registration order.
 ///
 /// Used to distinguish `built-in` sources from third-party skills registered
-/// at runtime via [`SkillRegistry::register_skill`] (mirrors Python's
-/// filesystem scan of the builtin skills directory).
+/// at runtime via [`SkillRegistry::register_skill`].
 const BUILTIN_NAMES: &[&str] = &[
     "api_ninjas_trivia",
     "claude_skills",
@@ -52,8 +51,7 @@ struct SkillRegistryInner {
     /// informational: third-party skill crates must call
     /// [`SkillRegistry::register_skill`] at startup with their factory.
     /// This vector keeps the path registration so callers and tooling
-    /// can introspect which directories were declared (mirrors
-    /// Python's `_external_paths`).
+    /// can introspect which directories were declared.
     external_paths: Vec<PathBuf>,
 }
 
@@ -201,9 +199,6 @@ impl SkillRegistry {
 
     /// Register an external directory containing third-party skill
     /// factories.
-    ///
-    /// Mirrors Python's
-    /// `signalwire.skills.registry.SkillRegistry.add_skill_directory`.
     /// Rust cannot dynamically load `.rs` files the way Python loads
     /// `.py` modules from a directory; in Rust, third-party skills
     /// must call [`SkillRegistry::register_skill`] at startup. The
@@ -270,7 +265,7 @@ impl SkillRegistry {
     /// enumerates the statically-registered factories instead. Each entry is
     /// a JSON object with `name`, `description`, `version`,
     /// `required_packages`, `required_env_vars`, and
-    /// `supports_multiple_instances` (mirroring Python's `list_skills`
+    /// `supports_multiple_instances` (matching `list_skills`
     /// dicts). Sorted by name for determinism.
     ///
     /// # Panics

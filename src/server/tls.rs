@@ -23,7 +23,7 @@ use std::env;
 
 use super::error::ServerError;
 
-/// Env vars mirroring Python `SecurityConfig` (`core/security_config.py`).
+/// Env vars matching `SecurityConfig` (`core/security_config.py`).
 const SSL_ENABLED_ENV: &str = "SWML_SSL_ENABLED";
 const SSL_CERT_PATH_ENV: &str = "SWML_SSL_CERT_PATH";
 const SSL_KEY_PATH_ENV: &str = "SWML_SSL_KEY_PATH";

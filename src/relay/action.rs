@@ -240,9 +240,7 @@ impl Action {
     }
 
     /// Block until the action reaches a terminal state, then return its
-    /// resolved result (the terminal payload).
-    ///
-    /// Mirrors Python's `Action.wait`. Python's coroutine awaits a Future
+    /// resolved result (the terminal payload). Python's coroutine awaits a Future
     /// that resolves to the terminal `RelayEvent`; the Rust `Call` is a
     /// synchronous command surface, so `wait` blocks the calling thread on
     /// the same completion signal `resolve` fires and yields the resolved
@@ -472,7 +470,7 @@ macro_rules! action_subclass {
             /// Borrow the underlying [`Action`].
             ///
             /// The same surface is reachable through the `Deref` impl; this
-            /// is the explicit form, matching the reference's base-class
+            /// is the explicit form, matching the wire contract's base-class
             /// access.
             pub fn action(&self) -> &Action {
                 &self.inner
@@ -533,8 +531,7 @@ impl PlayAction {
 action_subclass!(RecordAction, "calling.record.stop");
 
 impl RecordAction {
-    /// Pause the running record. Mirrors Python's
-    /// `PausableAction.pause(behavior: str | None = None)`.
+    /// Pause the running record.
     pub fn pause(&self, behavior: Option<&str>) {
         let mut extra = HashMap::new();
         if let Some(b) = behavior {
@@ -688,7 +685,7 @@ impl std::ops::Deref for CollectAction {
 /// Handle for a bare `calling.collect` — digit or speech collection with no
 /// play phase.
 ///
-/// Mirrors Python's `StandaloneCollectAction`. The distinction from
+/// Matches `StandaloneCollectAction`. The distinction from
 /// [`CollectAction`] is the command prefix: this type's control surface is
 /// `collect` (`calling.collect.stop`,
 /// `calling.collect.start_input_timers`), while `CollectAction` is the

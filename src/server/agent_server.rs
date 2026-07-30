@@ -17,7 +17,7 @@ use crate::server::error::ServerError;
 /// - `Some(route)` — redirect handling to that route's agent.
 /// - `None` — fall through to normal route dispatch.
 ///
-/// Mirrors Python's `register_routing_callback` / `register_global_routing_callback`
+/// Matches `register_routing_callback` / `register_global_routing_callback`
 /// signature (`Callable[[Request, Dict[str, Any]], Optional[str]]`),
 /// modulo Rust's lack of a FastAPI Request object.
 pub type GlobalRoutingCallback =
@@ -191,7 +191,7 @@ impl AgentServer {
     }
 
     /// Look up the route mapped to a SIP username (case-insensitive).
-    /// Mirrors Python `_lookup_sip_route`.
+    /// Matches `_lookup_sip_route`.
     fn lookup_sip_route(&self, username: &str) -> Option<&String> {
         self.sip_username_mapping.get(&username.to_lowercase())
     }
@@ -243,7 +243,7 @@ impl AgentServer {
     ///
     /// # Errors
     /// Returns [`ServerError::StaticDir`] if the directory does not exist.
-    /// `route` is `Option<&str>` because the reference declares it optional
+    /// `route` is `Option<&str>` because the argument is optional
     /// (`route: str = "/"`); `None` is the omit-it call and takes `"/"`.
     pub fn serve_static_files(
         &mut self,
@@ -263,9 +263,6 @@ impl AgentServer {
     /// the callback redirects handling to that registered agent;
     /// returning `None` falls through to normal longest-prefix
     /// dispatch.
-    ///
-    /// Mirrors Python's
-    /// `AgentServer.register_global_routing_callback(callback_fn, path)`.
     ///
     /// In Python the callback signature is
     /// `(request, body) -> Optional[route]`; the Rust signature passes
@@ -287,7 +284,7 @@ impl AgentServer {
     /// Run the HTTP server on the configured host:port, blocking the
     /// current thread until the listener exits.
     ///
-    /// Mirrors Python's `AgentServer.run(host, port)`. The optional
+    /// Matches `AgentServer.run(host, port)`. The optional
     /// `host` and `port` arguments override the values supplied at
     /// construction time (matching the Python contract).
     ///

@@ -1,7 +1,7 @@
 //! Typed, compile-time-checked closed sets for SWML media-action parameters.
 //!
 //! Several [`FunctionResult`](crate::swaig::FunctionResult) media helpers take
-//! parameters that the Python reference *validates* against a fixed set and
+//! parameters that the wire contract *validates* against a fixed set and
 //! rejects with `ValueError` otherwise:
 //!
 //! | Helper            | Parameter   | Allowed values (Python reference)        |
@@ -39,7 +39,7 @@
 //! `tap`'s direction set (`speak`/`hear`/`both`) are **different** — `tap` uses
 //! `hear` where `record_call` uses `listen` — so they are modelled as two
 //! distinct enums, [`RecordDirection`] and [`TapDirection`], faithfully
-//! mirroring the reference's two separate validation lists.
+//! matching the two separate validation lists.
 
 use std::fmt;
 use std::str::FromStr;
@@ -49,7 +49,7 @@ use std::str::FromStr;
 ///
 /// Carries the offending input and the enum's accepted set so the message is
 /// actionable — e.g. `"foo" is not a valid RecordFormat (expected one of:
-/// wav, mp3, mp4)`. This is the typed analogue of the Python reference's
+/// wav, mp3, mp4)`. This is the typed analogue of the
 /// `ValueError`, surfaced through the idiomatic `"wav".parse::<RecordFormat>()`
 /// entry point.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -93,13 +93,13 @@ impl std::error::Error for ParseMediaEnumError {}
 
 /// Recording container format for [`FunctionResult::record_call`].
 ///
-/// Mirrors the Python reference's `format in ["wav", "mp3", "mp4"]` validation.
+/// The platform accepts exactly `"wav"`, `"mp3"`, and `"mp4"`.
 ///
 /// [`FunctionResult::record_call`]: crate::swaig::FunctionResult::record_call
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 #[must_use]
 pub enum RecordFormat {
-    /// `wav` (the reference default).
+    /// `wav` (the default).
     Wav,
     /// `mp3`
     Mp3,
@@ -198,7 +198,7 @@ pub enum RecordDirection {
     Speak,
     /// `listen` — what the party hears.
     Listen,
-    /// `both` — what the party hears and says (the reference default).
+    /// `both` — what the party hears and says (the default).
     Both,
 }
 
@@ -294,7 +294,7 @@ pub enum TapDirection {
     Speak,
     /// `hear` — what the party hears.
     Hear,
-    /// `both` — what the party hears and says (the reference default).
+    /// `both` — what the party hears and says (the default).
     Both,
 }
 
@@ -372,14 +372,14 @@ impl From<TapDirection> for &'static str {
 
 /// Media codec for [`FunctionResult::tap`].
 ///
-/// Mirrors the Python reference's `valid_codecs = ["PCMU", "PCMA"]`
-/// validation. The wire strings are upper-case (`"PCMU"` / `"PCMA"`).
+/// The platform accepts exactly `"PCMU"` and `"PCMA"`; the wire strings are
+/// upper-case.
 ///
 /// [`FunctionResult::tap`]: crate::swaig::FunctionResult::tap
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 #[must_use]
 pub enum Codec {
-    /// `PCMU` (G.711 µ-law, the reference default).
+    /// `PCMU` (G.711 µ-law, the default).
     Pcmu,
     /// `PCMA` (G.711 A-law).
     Pcma,
@@ -476,7 +476,7 @@ impl From<Codec> for &'static str {
 /// fr.record_call("r", false, "mp3", "both", "", false, 44.0, None, None, None, "").unwrap();
 /// ```
 ///
-/// **Validation is unchanged and still matches the Python reference.** The raw
+/// **Validation is unchanged and still matches the wire contract.** The raw
 /// arm carries the string *verbatim* into the method body, where the same
 /// closed-set check runs and rejects an out-of-set value with the reference's
 /// exact `ValueError` text — e.g. `record_call(.., "ogg", ..)` still returns
@@ -492,7 +492,7 @@ pub enum MediaArg<E> {
     /// The typed, closed-set enum value (always a valid wire string).
     Typed(E),
     /// A raw wire string, carried verbatim. Validated in the method body
-    /// exactly as the Python reference validates its `str` argument.
+    /// exactly as the wire contract validates its `str` argument.
     Raw(String),
 }
 

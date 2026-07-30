@@ -81,5 +81,5 @@ fn main() {
 ```
 
 The MCP gateway *server* (which bridges multiple MCP services behind one endpoint) is
-provided separately by the Python SDK; run it there and point your agent's MCP server
-configuration at it.
+a separate component, not part of this crate; run it alongside your agent and point
+the agent's MCP server configuration at it.

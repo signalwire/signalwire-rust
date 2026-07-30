@@ -5,8 +5,6 @@
 //! post-prompt, dynamic configuration) but emits an `amazon_bedrock`
 //! verb in the rendered SWML document instead of the standard `ai`
 //! verb.
-//!
-//! Mirrors the Python `signalwire.agents.bedrock.BedrockAgent`.
 
 use std::collections::HashMap;
 
@@ -92,10 +90,6 @@ impl BedrockOptions {
 
 impl BedrockAgent {
     /// Construct a new `BedrockAgent`.
-    ///
-    /// Mirrors Python's
-    /// `BedrockAgent(name=..., route=..., system_prompt=..., voice_id=...,
-    /// temperature=..., top_p=..., max_tokens=..., **kwargs)`.
     pub fn new(options: BedrockOptions) -> Self {
         let mut agent_opts = AgentOptions::new(&options.name);
         agent_opts.route = Some(options.route);
@@ -137,7 +131,7 @@ impl BedrockAgent {
     }
 
     /// Update Bedrock inference parameters. Pass `None` to keep an
-    /// existing value untouched. Mirrors the Python signature.
+    /// existing value untouched. Matches signature.
     pub fn set_inference_params(
         &mut self,
         temperature: Option<f64>,
@@ -162,7 +156,7 @@ impl BedrockAgent {
 
     /// Set LLM model — not applicable for Bedrock. Logs a warning and
     /// is a no-op (Bedrock uses a fixed voice-to-voice model). Matches
-    /// Python's documented behavior.
+    /// the documented behaviour.
     pub fn set_llm_model(&mut self, model: &str) -> &mut Self {
         self.logger.warn(&format!(
             "set_llm_model('{model}') called but Bedrock uses a fixed voice-to-voice model"
@@ -171,14 +165,14 @@ impl BedrockAgent {
     }
 
     /// Set LLM temperature — redirects to `set_inference_params` for
-    /// Bedrock. Matches Python's documented behavior.
+    /// Bedrock. The documented behaviour.
     pub fn set_llm_temperature(&mut self, temperature: f64) -> &mut Self {
         self.set_inference_params(Some(temperature), None, None)
     }
 
     /// Set post-prompt LLM params — not applicable for Bedrock. Logs a
     /// warning and is a no-op (post-prompt summarisation runs on a
-    /// platform-side model). Matches Python's documented behavior.
+    /// platform-side model). The documented behaviour.
     pub fn set_post_prompt_llm_params(&mut self, _params: Value) -> &mut Self {
         self.logger.warn(
             "set_post_prompt_llm_params() called but Bedrock post-prompt uses OpenAI configured in C code",
@@ -188,7 +182,7 @@ impl BedrockAgent {
 
     /// Set prompt LLM params — Bedrock callers should use
     /// `set_inference_params` instead. Logs a warning and is a no-op.
-    /// Matches Python's documented behavior.
+    /// The documented behaviour.
     pub fn set_prompt_llm_params(&mut self, _params: Value) -> &mut Self {
         self.logger
             .warn("set_prompt_llm_params() called - use set_inference_params() for Bedrock");
@@ -197,7 +191,7 @@ impl BedrockAgent {
 
     /// Render SWML, transforming the `ai` verb into an
     /// `amazon_bedrock` verb that carries the Bedrock voice and
-    /// inference parameters. Mirrors Python's `_render_swml`.
+    /// inference parameters. Matches `_render_swml`.
     #[must_use]
     pub fn render_swml(&self, headers: &HashMap<String, String>) -> Value {
         let mut swml = self.agent.render_swml(headers);
@@ -281,7 +275,7 @@ impl BedrockAgent {
 
     /// Inject voice id and inference params into the prompt object,
     /// stripping text-model-specific fields that don't apply to
-    /// Bedrock voice-to-voice. Mirrors Python's `_add_voice_to_prompt`.
+    /// Bedrock voice-to-voice. Matches `_add_voice_to_prompt`.
     fn add_voice_to_prompt(&self, prompt: Map<String, Value>) -> Map<String, Value> {
         let drop_keys: &[&str] = &["barge_confidence", "presence_penalty", "frequency_penalty"];
         let mut filtered: Map<String, Value> = prompt

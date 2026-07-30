@@ -10,7 +10,7 @@ use crate::swaig::FunctionResult;
 
 /// Resolve a timezone name to a `chrono_tz::Tz`.
 ///
-/// Mirrors the Python reference (`pytz.timezone(name)` with a UTC special
+/// (`pytz.timezone(name)` with a UTC special
 /// case): `"UTC"` (any case) → UTC, an IANA name → that zone, an unknown name
 /// → `Err` so the caller can surface an error instead of silently falling
 /// back to UTC (which would report the wrong time).

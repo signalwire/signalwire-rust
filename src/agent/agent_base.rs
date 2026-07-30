@@ -89,7 +89,7 @@ pub struct AgentOptions {
     /// Recording container format for the `record_call` verb. The reference
     /// default is `"mp4"` (`agent_base.py:131`).
     pub record_format: String,
-    /// Whether `record_call` records in stereo. The reference default is
+    /// Whether `record_call` records in stereo. The default is
     /// `true` (`agent_base.py:132`).
     pub record_stereo: bool,
     /// Default `web_hook_url` applied to every SWAIG function that does not
@@ -121,7 +121,7 @@ impl AgentOptions {
     ///
     /// `name` is the agent's identity: it is the key [`AgentServer`] routes
     /// on and, when no explicit `route` is given, the default mount path is
-    /// derived from it. Every other field takes its reference default —
+    /// derived from it. Every other field takes its default —
     /// notably `auto_answer` and `use_pom` are `true`, `record_call` is
     /// `false`, `schema_validation` is `true`, and `token_expiry_secs` is
     /// 3600 — so only the fields you actually want to change need setting.
@@ -591,7 +591,7 @@ impl AgentBase {
     /// Where `options` carries a `config_file`, its `service` section is
     /// consulted for `name` / `route` / `host` / `port`, but **constructor
     /// values win**: the file is only read where the caller left the field
-    /// unset, matching the reference (`agent_base.py:189-196`).
+    /// unset, matching the wire contract (`agent_base.py:189-196`).
     ///
     /// Basic-auth credentials are taken from `options` when supplied,
     /// otherwise from `SWML_BASIC_AUTH_USER` / `SWML_BASIC_AUTH_PASSWORD`,
@@ -702,7 +702,7 @@ impl AgentBase {
     }
 
     /// This agent's stable identifier — the `agent_id` option, or the UUID v4
-    /// generated at construction. Mirrors the reference's `agent.agent_id`.
+    /// generated at construction.
     #[must_use]
     pub fn agent_id(&self) -> &str {
         &self.agent_id
@@ -998,7 +998,7 @@ impl AgentBase {
     /// Returns the post-prompt text whatever `set_post_prompt` stored, or
     /// `None` when no post-prompt has been set.
     ///
-    /// Mirrors Python's `PromptManager.get_post_prompt` /
+    /// Matches `PromptManager.get_post_prompt` /
     /// `PromptMixin.get_post_prompt` — used by SWML rendering when a
     /// post-prompt is configured.
     pub fn get_post_prompt(&self) -> Option<&str> {
@@ -1012,8 +1012,6 @@ impl AgentBase {
     /// Returns the raw prompt text whatever `set_prompt_text` stored, or
     /// `None` when no raw prompt has been set. Distinct from `get_prompt`
     /// which may return the POM array when `use_pom` is `true`.
-    ///
-    /// Mirrors Python's `PromptManager.get_raw_prompt`.
     pub fn get_raw_prompt(&self) -> Option<&str> {
         if self.prompt_text.is_empty() {
             None
@@ -1027,7 +1025,7 @@ impl AgentBase {
     /// `"numbered_bullets"`, and "subsections". Switches the agent to POM
     /// mode.
     ///
-    /// Mirrors Python's `PromptManager.set_prompt_pom` — accepts a list
+    /// Matches `PromptManager.set_prompt_pom` — accepts a list
     /// of section dicts and stores them in `pom_sections`.
     pub fn set_prompt_pom(&mut self, pom: Vec<Value>) -> &mut Self {
         self.use_pom = true;
@@ -1038,7 +1036,7 @@ impl AgentBase {
     /// Returns the contexts dictionary as a serialised `Value::Object`,
     /// or `None` when no contexts have been defined yet.
     ///
-    /// Mirrors Python's `PromptManager.get_contexts` which returns the
+    /// Matches `PromptManager.get_contexts` which returns the
     /// contexts dict or `None`.
     pub fn get_contexts(&self) -> Option<Value> {
         self.context_builder
@@ -1266,7 +1264,7 @@ impl AgentBase {
     }
 
     /// Set (or replace) the per-language `params` dict on an already-added
-    /// language. Mirrors Python's `AIConfigMixin.set_language_params` —
+    /// language. Matches `AIConfigMixin.set_language_params` —
     /// engine-specific tuning (voice stability/similarity, model knobs,
     /// etc.) can be attached after the language entry was created.
     ///
@@ -1301,7 +1299,7 @@ impl AgentBase {
     }
 
     /// Read the per-language `params` dict for a previously-added
-    /// language. Mirrors Python's `AIConfigMixin.get_language_params`.
+    /// language.
     ///
     /// Returns `Some(&Value)` (always a JSON object) when params were set,
     /// `None` otherwise — including when the language code is unknown.
@@ -1604,7 +1602,7 @@ impl AgentBase {
 
     /// Enable the debug-event webhook at `level`.
     ///
-    /// `level` is `Option<i64>` because the reference declares it optional
+    /// `level` is `Option<i64>` because the argument is optional
     /// (`level: int = 1`): `None` is the omit-it call and, exactly like the
     /// reference's no-arg call, enables debug events at the base tier `1`.
     ///
@@ -1677,7 +1675,7 @@ impl AgentBase {
     ///
     /// Despite the `set_` name this **merges**: repeated calls with distinct
     /// keys accumulate and a repeated key overwrites its previous value,
-    /// mirroring Python's `self._prompt_llm_params.update(params)`
+    /// matching `self._prompt_llm_params.update(params)`
     /// (`ai_config_mixin.py:669`). A non-object `params` is ignored
     /// silently.
     ///
@@ -1855,7 +1853,7 @@ impl AgentBase {
     //  Skill Methods (stubs)
     // ══════════════════════════════════════════════════════════════════════
 
-    /// `params` is `Option<Value>` because the reference declares it optional
+    /// `params` is `Option<Value>` because the argument is optional
     /// (`params: dict | None = None`); `None` is the omit-it call.
     pub fn add_skill(&mut self, name: &str, params: Option<Value>) -> &mut Self {
         let params = params.unwrap_or(Value::Null);
@@ -1972,7 +1970,7 @@ impl AgentBase {
     ///
     /// When set, every tool with a handler emits `web_hook_url: url`
     /// **verbatim** — no per-tool `__token` is appended and no SWAIG query
-    /// params are added, matching the reference (`agent_base.py:1085`).
+    /// params are added, matching the wire contract (`agent_base.py:1085`).
     ///
     /// Security consequence: because no token is minted, an external
     /// webhook is not protected by the per-call token the platform would
@@ -2304,7 +2302,7 @@ impl AgentBase {
         self.debug_routes_enabled
     }
 
-    /// Start a web server for this agent (Python `WebMixin.serve`). Delegates
+    /// Start a web server for this agent. Delegates
     /// to [`AgentBase::run`], optionally overriding host/port first.
     pub fn serve(&mut self, host: Option<&str>, port: Option<u16>) {
         if let Some(h) = host {
@@ -2316,15 +2314,14 @@ impl AgentBase {
         self.run();
     }
 
-    /// Set up graceful shutdown signal handling (Python
-    /// `WebMixin.setup_graceful_shutdown`). The Rust `run` blocks
+    /// Set up graceful shutdown signal handling. The Rust `run` blocks
     /// synchronously; this is the entry point (a no-op placeholder
     /// until an async server backend is wired).
     pub fn setup_graceful_shutdown(&self) {}
 
     /// Register a routing callback for `path`.
     ///
-    /// `path` is `Option<&str>` because the reference declares it optional
+    /// `path` is `Option<&str>` because the argument is optional
     /// (`path: str = "/sip"`); `None` takes `"/sip"`.
     pub fn register_routing_callback<F>(&mut self, callback: F, path: Option<&str>) -> &mut Self
     where
@@ -2968,7 +2965,7 @@ impl AgentBase {
     /// Build the auth-embedded webhook URL for `endpoint`, the port's
     /// `_build_webhook_url(endpoint, query_params)`
     /// (`core/swml_service.py:1615`). The `swaig` query params are appended for
-    /// every endpoint, matching the reference — it passes the same
+    /// every endpoint, matching the wire contract — it passes the same
     /// `_swaig_query_params` copy to the `swaig` and `debug_events` calls alike.
     fn build_webhook_url(&self, endpoint: &str, headers: &HashMap<String, String>) -> String {
         let proxy_base = self.resolve_proxy_base(headers);
@@ -3062,8 +3059,7 @@ impl AgentBase {
     /// Start a blocking HTTP server on the configured host:port.
     ///
     /// Serves HTTPS instead when `SWML_SSL_ENABLED` is set together with
-    /// `SWML_SSL_CERT_PATH` / `SWML_SSL_KEY_PATH` (mirrors Python's
-    /// `SecurityConfig` / uvicorn `ssl_*` contract).
+    /// `SWML_SSL_CERT_PATH` / `SWML_SSL_KEY_PATH`.
     ///
     /// # Panics
     ///

@@ -180,7 +180,7 @@ impl ConfigLoader {
     /// Does not panic in practice: `result` is forced to a JSON object just
     /// above the `as_object_mut().expect(...)`, so the `expect` is unreachable.
     ///
-    /// `env_prefix` is `Option<&str>` because the reference declares it optional
+    /// `env_prefix` is `Option<&str>` because the argument is optional
     /// (`env_prefix: str = "SWML_"`); `None` takes `"SWML_"`.
     #[must_use]
     pub fn merge_with_env(&self, env_prefix: Option<&str>) -> Value {

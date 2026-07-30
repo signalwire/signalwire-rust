@@ -62,7 +62,7 @@ pub struct ServiceOptions {
     pub config_file: Option<String>,
     /// Enable SWML schema validation on `add_verb`. Defaults to `true`; can
     /// also be disabled process-wide via `SWML_SKIP_SCHEMA_VALIDATION=1`.
-    /// Mirrors the reference's `SWMLService.__init__(schema_validation=True)`.
+    /// Matches the `SWMLService.__init__(schema_validation=True)`.
     pub schema_validation: bool,
 }
 
@@ -187,7 +187,7 @@ pub struct Service {
     pub(crate) security: crate::core::security_config::SecurityConfig,
 }
 
-/// Routing-callback signature (Python `register_routing_callback`).
+/// Routing-callback signature.
 ///
 /// Receives `(body, headers)` — the parsed request body and the request
 /// headers — and returns `Some(route)` to redirect the request to a different
@@ -358,7 +358,7 @@ impl Service {
     ///
     /// Skills mark a parameter required by setting `"required": true` *inside*
     /// the property object (the ergonomic per-property idiom). JSON Schema —
-    /// and the Python reference — express requiredness as a top-level
+    /// and the wire contract — express requiredness as a top-level
     /// `required: [...]` array on the parameters object, not a per-property
     /// flag. This lifts each property's `"required": true` into that array (in
     /// the property's declared order) and strips the flag from the property, so
@@ -840,8 +840,7 @@ impl Service {
     ///
     /// # Panics
     ///
-    /// Panics on a schema-invalid verb config (mirrors Python's
-    /// `SchemaValidationError`), matching the fail-loud contract of the
+    /// Panics on a schema-invalid verb config, matching the fail-loud contract of the
     /// legacy section-scoped path.
     pub fn add_verb(&mut self, verb_name: &str, config: Value) -> bool {
         self.add_verb_to_section("main", verb_name, config)
@@ -853,7 +852,7 @@ impl Service {
     ///
     /// Panics if the verb name is not in the schema, or if the verb config
     /// fails validation — the latter carrying a `SchemaValidationError`,
-    /// mirroring Python `SWMLService.add_verb`'s
+    /// matching `SWMLService.add_verb`'s
     /// `raise SchemaValidationError(verb_name, errors)`.
     pub fn add_verb_to_section(&mut self, section: &str, verb: &str, config: Value) -> bool {
         if !self.document.has_section(section) {
@@ -976,7 +975,7 @@ impl Service {
     /// Register a routing callback for `path`. The callback inspects request
     /// data and returns `Some(route)` to redirect.
     ///
-    /// `path` is `Option<&str>` because the reference declares it optional
+    /// `path` is `Option<&str>` because the argument is optional
     /// (`path: str = "/sip"`); `None` takes `"/sip"`.
     pub fn register_routing_callback<F>(&mut self, callback: F, path: Option<&str>) -> &mut Self
     where
@@ -1030,7 +1029,7 @@ impl Service {
         crate::swml::router::build_router(svc)
     }
 
-    /// Start a blocking web server for this service (Python `serve`).
+    /// Start a blocking web server for this service.
     ///
     /// The Rust HTTP serving lives on [`crate::server::AgentServer`]; this
     /// method is the entry point. `host`/`port` override the
@@ -1039,7 +1038,7 @@ impl Service {
         self.run();
     }
 
-    /// Stop the running server (Python `stop`). The Rust `serve`/`run` is a
+    /// Stop the running server. The Rust `serve`/`run` is a
     /// synchronous placeholder, so `stop` is a no-op entry point.
     pub fn stop(&self) {}
 
@@ -1049,7 +1048,7 @@ impl Service {
 
     /// Handle an HTTP request. Returns `(status_code, headers, body)`.
     ///
-    /// `body` is `Option<&str>` because the reference declares it optional
+    /// `body` is `Option<&str>` because the argument is optional
     /// (`body: dict | None = None`) — a GET carries no body at all.
     pub fn handle_request(
         &self,
@@ -1172,7 +1171,7 @@ impl Service {
 
     /// Extract the SIP username from a request body's `call.to` field.
     ///
-    /// Mirrors Python's `SWMLService.extract_sip_username` exactly
+    /// Matches `SWMLService.extract_sip_username` exactly
     /// (`swml_service.py`): reads only `call.to`, then branches on the URI
     /// scheme —
     ///

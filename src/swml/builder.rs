@@ -1,6 +1,6 @@
 //! Fluent SWML document builder.
 //!
-//! Port of Python `signalwire.core.swml_builder.SWMLBuilder`. Provides a
+//! Provides a
 //! fluent interface for building SWML documents by chaining method calls,
 //! delegating to an underlying [`Service`] for the actual document creation.
 //!

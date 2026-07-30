@@ -1,6 +1,6 @@
 //! SWML document rendering utilities.
 //!
-//! Port of Python `signalwire.core.swml_renderer`. [`SwmlRenderer`] renders
+//! [`SwmlRenderer`] renders
 //! complete SWML documents (with AI + SWAIG components) and function-response
 //! documents, driving an underlying [`Service`] through the fluent
 //! [`SwmlBuilder`].

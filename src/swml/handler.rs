@@ -1,6 +1,6 @@
 //! SWML verb handlers — interface and implementations for SWML verb handling.
 //!
-//! Port of Python `signalwire.core.swml_handler`. Defines the base interface
+//! Defines the base interface
 //! for SWML verb handlers ([`SwmlVerbHandler`]) and a concrete handler for the
 //! complex `ai` verb ([`AiVerbHandler`]), plus the [`VerbHandlerRegistry`] that
 //! maps verb names to their specialized handlers.

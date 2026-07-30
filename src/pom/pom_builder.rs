@@ -1,6 +1,6 @@
 //! Builder for structured POM prompts.
 //!
-//! Port of Python `signalwire.core.pom_builder.PomBuilder`. A flexible wrapper
+//! A flexible wrapper
 //! around [`PromptObjectModel`] that supports dynamic section creation, adding
 //! content to existing sections, nesting subsections, and rendering to
 //! markdown / XML. There are no predefined section types.

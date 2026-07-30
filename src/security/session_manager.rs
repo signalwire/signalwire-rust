@@ -24,7 +24,7 @@ pub struct SessionManager {
     /// the HMAC key (`self.secret_key.encode()`, `session_manager.py:79` and `:152`).
     secret_key: String,
     token_expiry_secs: u64,
-    /// Whether `debug_token` returns component details (Python `_debug_mode`).
+    /// Whether `debug_token` returns component details.
     debug_mode: bool,
 }
 
@@ -55,7 +55,7 @@ impl SessionManager {
 
     /// Create a new session manager with the default expiry (900 seconds).
     ///
-    /// 900 seconds — 15 minutes — is the reference's default
+    /// 900 seconds — 15 minutes — is the default
     /// (`session_manager.py:30`, `token_expiry_secs: int = 900`). This used to be
     /// 3600, which minted tokens valid four times longer than the reference and
     /// every correctly-defaulted port.
@@ -425,7 +425,7 @@ mod tests {
         assert_eq!(sm.token_expiry_secs(), 7200);
     }
 
-    /// The DEFAULT expiry is 900 seconds (15 minutes), matching the reference's
+    /// The DEFAULT expiry is 900 seconds (15 minutes), matching the wire contract's
     /// `token_expiry_secs: int = 900` (`session_manager.py:30`). Asserting an
     /// explicitly-passed value (see `test_construction`) does NOT cover this — the
     /// default is its own contract, and this port shipped 3600 until it was folded.

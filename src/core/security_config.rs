@@ -103,7 +103,7 @@ impl SecurityConfig {
     }
 
     /// Apply the `security` section of a JSON config file over the current
-    /// values. Mirrors the reference's `_load_config_file`
+    /// values. Matches the `_load_config_file`
     /// (`security_config.py:99-168`), key for key, including the nested
     /// `auth.basic.{user,password}` credential path.
     ///
@@ -257,7 +257,7 @@ impl SecurityConfig {
     }
 
     /// Get basic-auth credentials, auto-generating a random password when none
-    /// is configured (mirrors Python's `secrets.token_urlsafe` fallback). The
+    /// is configured. The
     /// generated password lives only in this process.
     pub fn get_basic_auth(&mut self) -> (String, String) {
         let username = self
@@ -291,7 +291,7 @@ impl SecurityConfig {
 
     /// Security headers to add to responses (HSTS added when HTTPS + enabled).
     ///
-    /// `is_https` is `Option<bool>` because the reference declares it optional
+    /// `is_https` is `Option<bool>` because the argument is optional
     /// (`is_https: bool = False`); `None` takes `false`.
     #[must_use]
     pub fn get_security_headers(&self, is_https: Option<bool>) -> HashMap<String, String> {

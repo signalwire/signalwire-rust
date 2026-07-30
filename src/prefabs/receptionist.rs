@@ -6,21 +6,20 @@ use crate::swaig::FunctionResult;
 
 /// Options for constructing a [`ReceptionistAgent`].
 ///
-/// Mirrors the Python reference's `__init__` (`prefabs/receptionist.py:38-45`)
-/// param-for-param. `departments` is the reference's one REQUIRED positional,
+/// `departments` is the one REQUIRED field,
 /// so it is the sole argument to [`ReceptionistOptions::new`]; every other
-/// field carries the reference's default.
+/// field carries the default.
 #[must_use]
 pub struct ReceptionistOptions {
     /// Departments to transfer to, each `{name, description, number?}`.
     pub departments: Vec<Value>,
-    /// Agent name (reference default `"receptionist"`).
+    /// Agent name (default `"receptionist"`).
     pub name: String,
-    /// HTTP route (reference default `"/receptionist"`).
+    /// HTTP route (default `"/receptionist"`).
     pub route: String,
     /// Initial greeting message.
     pub greeting: String,
-    /// Voice id used for the configured language (reference default
+    /// Voice id used for the configured language (default
     /// `"rime.spore"`).
     pub voice: String,
 }
@@ -256,7 +255,7 @@ impl ReceptionistAgent {
     }
 
     /// The greeting spoken when the call is answered — the caller's value
-    /// or the reference default.
+    /// or the default.
     pub fn greeting(&self) -> &str {
         &self.greeting
     }

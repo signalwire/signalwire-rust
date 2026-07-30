@@ -56,8 +56,8 @@ pub struct SchemaValidationError {
 }
 
 impl SchemaValidationError {
-    /// Construct a `SchemaValidationError`. Mirrors Python's
-    /// `SchemaValidationError(verb_name, errors)`.
+    /// Construct a `SchemaValidationError` from the verb it rejected and
+    /// the list of validator complaints.
     pub fn new(verb_name: String, errors: Vec<String>) -> Self {
         Self { verb_name, errors }
     }
@@ -94,7 +94,7 @@ pub struct SchemaUtils {
     /// The compiled Draft-2020-12 validator for the WHOLE SWML document schema,
     /// present when full validation is enabled. `validate_verb` wraps a verb in
     /// a minimal `{version, sections:{main:[{verb: config}]}}` document and
-    /// validates it against this (mirroring the Python reference's
+    /// validates it against this (matching reference's
     /// `jsonschema_rs.Draft202012Validator(self.schema)` over the same minimal
     /// doc). The schema's verb objects are CLOSED via `unevaluatedProperties`,
     /// so this rejects unknown/misspelled keys and wrong-typed config — the
@@ -103,8 +103,7 @@ pub struct SchemaUtils {
 }
 
 impl SchemaUtils {
-    /// Construct a `SchemaUtils`.  Mirrors Python's
-    /// `SchemaUtils(schema_path=None, schema_validation=True)`.
+    /// Construct a `SchemaUtils`.
     ///
     /// For the default embedded-schema path (`schema_path = None`), prefer
     /// [`SchemaUtils::shared_default`] on the hot path — it borrows a single
@@ -155,14 +154,12 @@ impl SchemaUtils {
         self.schema_path.as_deref()
     }
 
-    /// Whether full JSON Schema validation is wired up.  Mirrors
-    /// Python's `full_validation_available` property.
+    /// Whether full JSON Schema validation is wired up.
     pub fn full_validation_available(&self) -> bool {
         self.full_validator.is_some()
     }
 
-    /// Read and parse the JSON Schema.  Mirrors Python's
-    /// `load_schema()`.
+    /// Read and parse the JSON Schema.
     pub fn load_schema(&self) -> Value {
         if let Some(path) = &self.schema_path {
             return load_from_path(path);
@@ -173,14 +170,13 @@ impl SchemaUtils {
         DEFAULT_SCHEMA.clone()
     }
 
-    /// Sorted list of all known verb names.  Mirrors Python's
-    /// `get_all_verb_names()`.
+    /// Sorted list of all known verb names.
     pub fn get_all_verb_names(&self) -> Vec<String> {
         self.verbs.keys().cloned().collect()
     }
 
     /// The `properties[verb_name]` block for a verb, or empty when
-    /// unknown.  Mirrors Python's `get_verb_properties(verb_name)`.
+    /// unknown.  Matches `get_verb_properties(verb_name)`.
     pub fn get_verb_properties(&self, verb_name: &str) -> Map<String, Value> {
         let Some(v) = self.verbs.get(verb_name) else {
             return Map::new();
@@ -194,8 +190,7 @@ impl SchemaUtils {
     }
 
     /// The `required` list for a verb, or empty when unknown / not
-    /// specified.  Mirrors Python's
-    /// `get_verb_required_properties(verb_name)`.
+    /// specified.
     pub fn get_verb_required_properties(&self, verb_name: &str) -> Vec<String> {
         let inner = self.get_verb_properties(verb_name);
         match inner.get("required").and_then(|r| r.as_array()) {
@@ -207,8 +202,7 @@ impl SchemaUtils {
         }
     }
 
-    /// Parameter-definition block used by code-gen tooling.  Mirrors
-    /// Python's `get_verb_parameters(verb_name)`.
+    /// Parameter-definition block used by code-gen tooling.
     pub fn get_verb_parameters(&self, verb_name: &str) -> Map<String, Value> {
         let inner = self.get_verb_properties(verb_name);
         match inner.get("properties").and_then(|p| p.as_object()) {
@@ -293,8 +287,7 @@ impl SchemaUtils {
         (errors.is_empty(), errors)
     }
 
-    /// Validate a verb config against the schema.  Mirrors Python's
-    /// `validate_verb(verb_name, verb_config)`.
+    /// Validate a verb config against the schema.
     pub fn validate_verb(&self, verb_name: &str, verb_config: &Value) -> (bool, Vec<String>) {
         if !self.validation_enabled {
             return (true, Vec::new());
@@ -308,8 +301,7 @@ impl SchemaUtils {
         self.validate_verb_lightweight(verb_name, verb_config)
     }
 
-    /// Full JSON-Schema validation of a single verb config (Python
-    /// `_validate_verb_full`). Wraps the verb in a minimal SWML document
+    /// Full JSON-Schema validation of a single verb config. Wraps the verb in a minimal SWML document
     /// `{version, sections:{main:[{verb_name: verb_config}]}}` and validates it
     /// against the whole compiled Draft-2020-12 schema. Because the schema's
     /// verb objects are closed (`unevaluatedProperties: {not:{}}`), this rejects
@@ -368,8 +360,7 @@ impl SchemaUtils {
         (errors.is_empty(), errors)
     }
 
-    /// Validate a complete SWML document.  Mirrors Python's
-    /// `validate_document(document)`.  Returns
+    /// Validate a complete SWML document.  Returns
     /// `(false, ["Schema validator not initialized"])` when no full
     /// validator is wired in.
     pub fn validate_document(&self, document: &Value) -> (bool, Vec<String>) {
@@ -390,7 +381,7 @@ impl SchemaUtils {
     }
 
     /// Generate a Python-style method signature string for a verb.
-    /// Mirrors Python's `generate_method_signature(verb_name)`.
+    /// Matches `generate_method_signature(verb_name)`.
     ///
     /// # Panics
     ///
@@ -433,8 +424,7 @@ impl SchemaUtils {
         format!("def {}({}) -> bool:\n{}", verb_name, parts.join(", "), doc)
     }
 
-    /// Generate a Python-style method body string for a verb.  Mirrors
-    /// Python's `generate_method_body(verb_name)`.
+    /// Generate a Python-style method body string for a verb.
     #[must_use]
     pub fn generate_method_body(&self, verb_name: &str) -> String {
         let params = self.get_verb_parameters(verb_name);

@@ -298,13 +298,13 @@ impl RelayEvent {
         str_field(self.inner.params(), "direction")
     }
 
-    /// The raw event params map (Python `RelayEvent.params`).
+    /// The raw event params map.
     #[must_use]
     pub fn params(&self) -> &HashMap<String, Value> {
         self.inner.params()
     }
 
-    /// The event `timestamp` in float seconds (Python `RelayEvent.timestamp`).
+    /// The event `timestamp` in float seconds.
     #[must_use]
     pub fn timestamp(&self) -> f64 {
         self.inner.timestamp()

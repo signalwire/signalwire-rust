@@ -22,7 +22,7 @@ pub struct Spider {
     sp: SkillParams,
     /// `XPath` expressions for unwanted elements, dropped (subtree and all)
     /// before visible text is extracted. Prefilled with
-    /// [`DEFAULT_REMOVE_XPATHS`], matching the reference's derived
+    /// [`DEFAULT_REMOVE_XPATHS`], matching the wire contract's derived
     /// `self.remove_xpaths` attribute — this is a caller-observable value, not
     /// an empty list.
     ///

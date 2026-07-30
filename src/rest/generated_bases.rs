@@ -183,7 +183,7 @@ impl<'a> ReadResource<'a> {
     ///
     /// Returns a lazy [`PaginatedIterator`] that follows the response's
     /// `links.next` cursor and yields each item under the `"data"` key. Mirrors
-    /// the Python reference's `ReadResource.paginate(*, request_options=None,
+    /// the `ReadResource.paginate(*, request_options=None,
     /// **params)`; see
     /// [`CrudResource::paginate`](super::CrudResource::paginate) for the full
     /// contract.

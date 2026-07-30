@@ -494,7 +494,7 @@ impl HttpClient {
     /// (`_base.py` `_request` passes `json=body, params=params`): `data`
     /// becomes the JSON request body and `params` becomes the URL query — a
     /// `POST` may carry both at once. `params` is optional; `None` sends no
-    /// query string, matching the reference's `params=None` default.
+    /// query string, matching the wire contract's `params=None` default.
     ///
     /// # Errors
     /// Returns [`SignalWireRestError`] if the request cannot reach the Space

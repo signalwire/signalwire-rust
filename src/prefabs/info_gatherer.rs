@@ -8,7 +8,7 @@ use crate::swaig::FunctionResult;
 
 /// Callback for dynamic question configuration.
 ///
-/// Ported from Python `InfoGathererAgent.set_question_callback`: receives
+/// Receives
 /// `(query_params, body_params, headers)` and returns the list of question
 /// objects (`{key_name, question_text, confirm?}`) to gather.
 pub type QuestionCallback = Arc<
@@ -34,7 +34,7 @@ pub struct InfoGathererAgent {
 
 /// Options for constructing an [`InfoGathererAgent`].
 ///
-/// Every field carries the Python reference's default
+/// Every field carries the default
 /// (`prefabs/info_gatherer.py:41-46`), so `InfoGathererOptions::default()` is
 /// the exact equivalent of the valid reference program `InfoGathererAgent()`.
 #[must_use]
@@ -43,9 +43,9 @@ pub struct InfoGathererOptions {
     /// means the questions are resolved dynamically per request (the
     /// reference's `questions=None`).
     pub questions: Vec<Value>,
-    /// Agent name (reference default `"info_gatherer"`).
+    /// Agent name (default `"info_gatherer"`).
     pub name: String,
-    /// HTTP route (reference default `"/info_gatherer"`).
+    /// HTTP route (default `"/info_gatherer"`).
     pub route: String,
 }
 
@@ -60,7 +60,7 @@ impl Default for InfoGathererOptions {
 }
 
 impl InfoGathererOptions {
-    /// Options carrying every reference default.
+    /// Options carrying every default.
     pub fn new() -> Self {
         Self::default()
     }
@@ -209,7 +209,7 @@ impl InfoGathererAgent {
 
     /// Set a callback for dynamic (per-request) question configuration.
     ///
-    /// Ported from Python `InfoGathererAgent.set_question_callback`. The callback
+    /// The callback
     /// receives `(query_params, body_params, headers)` and returns a list of
     /// question objects. Only consulted in dynamic mode (no static questions).
     pub fn set_question_callback(&mut self, callback: QuestionCallback) -> &mut Self {
@@ -219,7 +219,7 @@ impl InfoGathererAgent {
 
     /// Resolve dynamic configuration when SWML is requested.
     ///
-    /// Ported from Python `InfoGathererAgent.on_swml_request`. In static mode
+    /// In static mode
     /// (questions supplied at construction) returns `None`. In dynamic mode it
     /// invokes the question callback (or a name/message fallback when none is set)
     /// and returns a `{"global_data": {questions, question_index, answers}}` map
@@ -312,7 +312,7 @@ impl InfoGathererAgent {
 
     /// Start the question sequence by returning the first question.
     ///
-    /// Ported from Python `InfoGathererAgent.start_questions`. Reads `questions`
+    /// Reads `questions`
     /// and `question_index` from `raw_data["global_data"]` and returns the
     /// instruction for the current question. `args` is accepted for
     /// handler-signature compatibility but unused.
@@ -359,7 +359,7 @@ impl InfoGathererAgent {
 
     /// Submit an answer to the current question and advance to the next.
     ///
-    /// Ported from Python `InfoGathererAgent.submit_answer`. Records the answer
+    /// Records the answer
     /// under the current question's `key_name`, increments `question_index`, and
     /// returns either the next question's instruction or a completion message,
     /// with the updated `answers`/`question_index` pushed via

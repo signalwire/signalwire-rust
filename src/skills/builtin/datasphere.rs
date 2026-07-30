@@ -8,7 +8,7 @@ use crate::swaig::FunctionResult;
 
 /// Search knowledge using SignalWire DataSphere RAG stack.
 ///
-/// Mirrors Python's `signalwire.skills.datasphere`: real HTTP POST to
+/// Matches `signalwire.skills.datasphere`: real HTTP POST to
 /// `https://{space_name}.signalwire.com/api/datasphere/documents/search`
 /// with project-id/token Basic auth and a JSON body containing the
 /// document ID, query, distance, and count.

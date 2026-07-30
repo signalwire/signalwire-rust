@@ -66,7 +66,7 @@ impl SkillBase for ApiNinjasTrivia {
 
     /// Build the DataMap-backed trivia tool.
     ///
-    /// Mirrors Python `ApiNinjasTriviaSkill.get_tools()`: returns the single
+    /// Matches `ApiNinjasTriviaSkill.get_tools()`: returns the single
     /// tool definition. `register_tools` merges `swaig_fields` and registers.
     fn get_tools(&self) -> Vec<Value> {
         let tool_name = self.get_tool_name("get_trivia");

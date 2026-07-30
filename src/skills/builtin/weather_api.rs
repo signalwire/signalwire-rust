@@ -43,7 +43,7 @@ impl SkillBase for WeatherApi {
 
     /// Build the DataMap-backed weather tool.
     ///
-    /// Mirrors Python `WeatherApiSkill.get_tools()`.
+    /// Matches `WeatherApiSkill.get_tools()`.
     fn get_tools(&self) -> Vec<Value> {
         let tool_name = self.get_tool_name("get_weather");
         // API key resolution: explicit param > WEATHER_API_KEY env > "".
