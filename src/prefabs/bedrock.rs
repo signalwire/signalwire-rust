@@ -497,8 +497,8 @@ mod tests {
     }
 
     /// `build_bedrock_block` rebuilds the verb body against a FIXED SIX-KEY
-    /// allowlist (prompt, SWAIG, params, global_data, post_prompt,
-    /// post_prompt_url) — any `ai` key it does not name vanishes SILENTLY, with
+    /// allowlist (`prompt`, `SWAIG`, `params`, `global_data`, `post_prompt`,
+    /// `post_prompt_url`) — any `ai` key it does not name vanishes SILENTLY, with
     /// no error. The typescript port shipped exactly this shape and lost its
     /// debug-events params to it.
     ///

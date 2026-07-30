@@ -283,42 +283,30 @@ mod tests {
         s.add_verb("play", json!({"text": "Hello there"}));
     }
 
-    /// `$defs/AIObject` is CLOSED (`unevaluatedProperties: {"not": {}}`) over
-    /// exactly NINE keys: SWAIG, global_data, hints, languages, params,
-    /// post_prompt, post_prompt_url, prompt, pronounce. Keys other ports were
-    /// caught emitting at the `ai` TOP level belong one level down:
-    ///   contexts                   -> inside `prompt`  ($defs/AIPromptText)
-    ///   debug_webhook_url / _level -> inside `params`  ($defs/AIParams)
-    ///   temperature                -> `params` here. $defs/AIPromptText DOES
-    ///     declare it, but `$defs/AIParams` carries `unevaluatedProperties: {}`
-    ///     — an empty schema, which admits anything — so `params` is
-    ///     deliberately OPEN and this placement is schema-valid. It is also
-    ///     exactly what the reference does: `swml_handler.py`'s kwargs loop
-    ///     promotes only languages/hints/pronounce/global_data and sends every
-    ///     other key to `config["params"][key]`. Matching the reference wins.
-    /// This drives them all THROUGH the validating `Service::add_verb`, so a
-    /// misplacement at the closed top level fails loud (the ai handler's `_ =>`
-    /// arm sinking unrecognised keys into `params` is what keeps it closed).
+    /// The `ai` verb's sub-object PLACEMENTS, pinned against the REFERENCE's own
+    /// emission — the durable authority — not against any schema file's closure:
+    ///   `contexts`                     -> inside `prompt`  (`swml_handler.py:191`)
+    ///   `debug_webhook_url` / `_level` -> inside `params`  (`agent_base.py:1286/:1291`)
+    ///   `temperature`                  -> `params`, because that is what the
+    ///     reference does: `swml_handler.py`'s kwargs loop promotes only
+    ///     `languages`/`hints`/`pronounce`/`global_data` and sends every other
+    ///     key to `config["params"][key]`. Matching the reference wins.
+    ///
+    /// Deliberately NOT asserted here: the set of keys the `ai` TOP level admits.
+    /// The vendored `schema.json` closes `$defs/AIObject` over nine keys, but the
+    /// ENGINE (`mod_infrastructure/swml_schema.c:1880`) accepts FIFTEEN — the
+    /// vendored file is a strict six-key-short subset, and a properly
+    /// server-derived SWML spec is being vendored to replace it. Pinning the
+    /// stale closure here would bake in a number known to be wrong and would go
+    /// red when the real spec lands. The server is the spec; placements are what
+    /// this test can assert durably.
     #[test]
-    fn test_ai_verb_top_level_stays_within_the_closed_nine_keys() {
-        const ALLOWED: [&str; 9] = [
-            "SWAIG",
-            "global_data",
-            "hints",
-            "languages",
-            "params",
-            "post_prompt",
-            "post_prompt_url",
-            "prompt",
-            "pronounce",
-        ];
-
+    fn test_ai_verb_nests_contexts_and_debug_params_where_the_reference_puts_them() {
         // Drive the AI-verb HANDLER — the path that owns this routing
         // (`swml/handler.rs`, port of `swml_handler.py`). It promotes exactly
         // languages/hints/pronounce/global_data to the top level and sends every
         // other key to `params`; `contexts` goes into `prompt`.
         use crate::swml::handler::SwmlVerbHandler;
-        let mut s = svc();
         let handler = crate::swml::handler::AiVerbHandler;
         let mut args = Map::new();
         args.insert("prompt_text".to_string(), json!("hi"));
@@ -331,20 +319,20 @@ mod tests {
         args.insert("debug_webhook_level".to_string(), json!(2));
         let cfg = handler.build_config(&args);
 
-        // Route it THROUGH the validating entry point: a key the closed
-        // $defs/AIObject forbids panics here rather than reaching the document.
-        s.add_verb("ai", cfg.clone());
-
         let ai = cfg.as_object().unwrap();
-        for key in ai.keys() {
+        // Each key landed one level down, where the reference puts it — and NOT
+        // at the top level, which is the misplacement other ports shipped.
+        for k in [
+            "contexts",
+            "temperature",
+            "debug_webhook_url",
+            "debug_webhook_level",
+        ] {
             assert!(
-                ALLOWED.contains(&key.as_str()),
-                "`ai` top level carries `{key}`, which $defs/AIObject forbids \
-                 (unevaluatedProperties: {{\"not\": {{}}}}); it belongs in \
-                 `prompt` or `params`. Full ai object: {ai:?}"
+                !ai.contains_key(k),
+                "`{k}` must be nested, not emitted at the `ai` top level: {ai:?}"
             );
         }
-        // …and each key landed where the schema puts it.
         assert!(ai["prompt"].get("contexts").is_some());
         assert_eq!(ai["params"]["debug_webhook_url"], "https://x/debug_events");
         assert_eq!(ai["params"]["debug_webhook_level"], 2);
