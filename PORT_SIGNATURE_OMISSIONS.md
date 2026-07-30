@@ -302,7 +302,6 @@ signalwire.web.web_service.WebService.start: idiom: Rust `start(host, port)` rea
 ### SkillBase trait / SkillManager / registry idioms
 
 signalwire.core.skill_base.SkillBase.define_tool: idiom: Rust `define_tool(agent, name, description, parameters, handler, secure)` registers a tool with explicit args; Python `define_tool(self, **kwargs)` takes kwargs. Explicit-args vs kwargs idiom.
-signalwire.core.skill_base.SkillBase.register_tools: idiom: Rust `register_tools(&self, agent: &mut AgentBase)` receives the agent to register onto; Python `register_tools(self)` registers onto the bound `self.agent`. Explicit-agent-arg idiom (Rust skill trait is not agent-bound).
 signalwire.core.skill_base.SkillBase.update_skill_data: idiom: Rust `update_skill_data(&self, ...)` mutates skill state and returns unit; Python returns a `FunctionResult`. Rust unit-return idiom.
 signalwire.core.skill_base.SkillBase.validate_env_vars: idiom: Rust `validate_env_vars(&self) -> Vec<String>` returns the list of MISSING env vars (empty == ok); Python returns a `bool`. Missing-list vs bool idiom (both express the same validity check).
 signalwire.register_skill: idiom: Rust `register_skill(skill_class)` takes a `SkillFactory` function pointer (Rust has no runtime class objects); Python takes a `SkillSpec`/`SkillBase` class. Factory-fn vs class idiom.

@@ -160,6 +160,48 @@ PARAM_RECONCILE[
     "func": {"type": "callable<list<any>,any>"},
 }
 
+# EXPLICIT-RECEIVER ELISION for public-surface trait methods. Python binds a
+# skill to its agent once (``self.agent``, set by the loader) and every interface
+# method reads it off ``self``; Rust's ``SkillBase`` is not agent-bound (a skill
+# is a ``&self`` trait object and cannot hold a ``&mut AgentBase`` across the
+# borrow), so the agent is threaded in as an explicit argument:
+# ``fn register_tools(&self, agent: &mut AgentBase)`` vs
+# ``def register_tools(self) -> None``. That argument IS Python's ``self.agent``
+# — the same receiver, spelled positionally because the borrow checker forbids
+# storing it. This is IDIOM, folded here at the enumerator (Rule 2) rather than
+# documented as 14 near-identical omissions (SkillBase + every concrete skill),
+# which is exactly the shape §3 forbids. The method still compares in full: a
+# changed return type, a NEW parameter, or a disappeared method all still drift.
+# Shape: {trait: {method: {param names to elide}}}.
+SURFACE_TRAIT_RECEIVER_PARAMS: dict[str, dict[str, set[str]]] = {
+    "SkillBase": {"register_tools": {"agent"}},
+}
+
+# KWARGS-MAP EXPLOSION. Rust has neither keyword arguments nor `**kwargs`, so a
+# reference method whose parameters are a flat set of optional named keys is
+# spelled as ONE `&Map<String, Value>` the body then reads BY THOSE NAMES:
+#
+#   Python  AIVerbHandler.build_config(self, prompt_text=None, prompt_pom=None,
+#                                      contexts=None, post_prompt=None,
+#                                      post_prompt_url=None, swaig=None, **kwargs)
+#   Rust    fn build_config(&self, args: &Map<String, Value>) -> Value
+#             args.get("prompt_text") / .get("prompt_pom") / .get("contexts") /
+#             .get("post_prompt") / .get("post_prompt_url") / .get("swaig")
+#
+# The port accepts every reference key; only the CALL SPELLING differs. Explode
+# the single map slot into the reference's recorded parameter list so the method
+# compares in FULL — this is the enumerator folding idiom (Rule 2), the same
+# treatment `build_ai_chat_signatures` gives the options-object collapse, not an
+# omission that would blind the gate to a key going missing.
+#
+# The explosion is ORACLE-SOURCED: the emitted params are copied from the
+# reference's own recorded signature, so it cannot invent a parameter the
+# reference lacks and it tracks the oracle without a hand-maintained list. Shape:
+# {"module.Class.method": "rust map param name"}.
+KWARGS_MAP_EXPLODE: dict[str, str] = {
+    "signalwire.core.swml_handler.AIVerbHandler.build_config": "args",
+}
+
 # Return-type reconcile for the type_inference free fns: rustdoc leaks the
 # `TypedHandler` / `InferredSchema` type aliases as class names. Map them to the
 # concrete canonical types they alias — `create_typed_handler_wrapper` returns a
@@ -1034,6 +1076,68 @@ def collect(rust_doc: dict, aliases: dict) -> tuple[dict, list]:
             return "__repr__"
         return method_native
 
+    # PUBLIC-SURFACE-TRAIT DEFAULT BODIES: {trait: {method: signature}}.
+    #
+    # A Rust trait DEFAULT is inherited public API on every implementor exactly
+    # as a Python base-class method is on every subclass — ``Datasphere`` does not
+    # re-declare ``get_instance_key`` in its ``impl SkillBase`` block, but
+    # ``skill.get_instance_key()`` compiles and runs. The reference oracle records
+    # those inherited members PER SUBCLASS (Python enumerates the resolved MRO),
+    # so an implementor that leans on the default must still enumerate it or it
+    # reads as missing-port. Collected here once, projected (oracle-gated) onto
+    # each implementor below. Idiom accessors are dropped at collection time, the
+    # same set the surface enumerator drops from an ``impl SkillBase for X`` body.
+    def _elide_receiver_params(trait_name: str, method_native: str, sig: dict) -> dict:
+        """Drop the explicit-receiver argument(s) a public-surface trait method
+        threads in where Python reads them off ``self`` (see
+        SURFACE_TRAIT_RECEIVER_PARAMS). Returns ``sig`` unchanged when the
+        (trait, method) pair declares none."""
+        elide = SURFACE_TRAIT_RECEIVER_PARAMS.get(trait_name, {}).get(method_native)
+        if not elide:
+            return sig
+        kept = [p for p in sig.get("params", []) if p.get("name") not in elide]
+        if len(kept) == len(sig.get("params", [])):
+            return sig
+        return {**sig, "params": kept}
+
+    surface_trait_defaults: dict[str, dict] = {}
+    for _titem in index.values():
+        _tname = _titem.get("name")
+        if _tname not in PUBLIC_SURFACE_TRAITS:
+            continue
+        _tinner = _titem.get("inner", {}).get("trait")
+        if not _tinner:
+            continue
+        _bucket = surface_trait_defaults.setdefault(_tname, {})
+        for _mid in _tinner.get("items", []):
+            _mi = get(_mi_id := _mid)
+            if not _mi or "function" not in _mi.get("inner", {}):
+                continue
+            _mn = _mi.get("name", "")
+            if not _mn or _mn.startswith("_"):
+                continue
+            if _mn in SKILLBASE_IDIOM_METHOD_DROPS:
+                continue
+            # Required (body-less) trait items are NOT inherited implementations —
+            # every implementor must write its own, and that one lands via the
+            # impl-block walk. Only DEFAULT-bodied items are inherited surface.
+            if not _mi["inner"]["function"].get("has_body"):
+                continue
+            try:
+                _bucket[_translate_method_name(_mn)] = _elide_receiver_params(
+                    _tname,
+                    _mn,
+                    build_signature(
+                        _mi["inner"]["function"],
+                        paths,
+                        aliases,
+                        f"{_tname}.{_mn}",
+                        defaults=fn_defaults.get(str(_mi_id)),
+                    ),
+                )
+            except TypeTranslationError as e:
+                failures.append(str(e))
+
     # Find all struct / enum / trait items + their impls
     for iid, item in index.items():
         inner = item.get("inner", {})
@@ -1130,7 +1234,14 @@ def collect(rust_doc: dict, aliases: dict) -> tuple[dict, list]:
                 except TypeTranslationError as e:
                     failures.append(str(e))
                     continue
+                if canonical_name in PUBLIC_SURFACE_TRAITS:
+                    sig = _elide_receiver_params(canonical_name, m_native, sig)
                 methods_out.setdefault(method_canonical, sig)
+
+        # Which PUBLIC_SURFACE_TRAITS this class implements (see the trait-impl
+        # walk below). Populated as we walk, consumed by the trait-DEFAULT
+        # projection after it.
+        implemented_surface_traits: set[str] = set()
 
         for impl_id in impls:
             impl_item = get(impl_id)
@@ -1139,56 +1250,31 @@ def collect(rust_doc: dict, aliases: dict) -> tuple[dict, list]:
             impl_inner = impl_item.get("inner", {}).get("impl", {})
             # Skip trait impls that pull in unrelated methods (stdlib derives etc.)
             trait = impl_inner.get("trait")
+            is_surface_trait_impl = False
             if trait is not None:
                 # rustdoc emits trait { path, id }; only keep impls whose
                 # trait path is part of the SDK. Skip ALL stdlib traits.
                 trait_path = trait.get("path", "") if isinstance(trait, dict) else ""
-                if trait_path in (
-                    "Debug",
-                    "Clone",
-                    "Default",
-                    "PartialEq",
-                    "Eq",
-                    "Hash",
-                    "Send",
-                    "Sync",
-                    "Drop",
-                    "From",
-                    "TryFrom",
-                    "Display",
-                    "Error",
-                    "Iterator",
-                    "IntoIterator",
-                    "Future",
-                    "Serialize",
-                    "Deserialize",
-                    "Borrow",
-                    "BorrowMut",
-                    "AsRef",
-                    "AsMut",
-                    "ToOwned",
-                    "Into",
-                    "Deref",
-                    "DerefMut",
-                    "CloneToUninit",
-                    "Pointable",
-                    "Any",
-                    "TypeId",
-                    "Unpin",
-                    "PartialOrd",
-                    "Ord",
-                    "Copy",
-                    "Sized",
-                    "FnOnce",
-                    "Fn",
-                    "FnMut",
-                ):
-                    continue
-                # Drop blanket impls: any trait path that isn't part of SDK.
-                # Most stdlib trait paths are unqualified (Debug, Borrow); if
-                # it's not in our allow-skip list and starts with a capital
-                # letter, conservatively skip it too.
-                if (
+                # PUBLIC-SURFACE TRAIT IMPLS ARE REAL SURFACE. ``impl SkillBase
+                # for Math`` is how Rust spells what Python spells as
+                # ``class MathSkill(SkillBase)`` overriding setup/register_tools/
+                # get_hints/... — the trait-impl methods ARE the port's
+                # implementation of the reference's per-subclass override set.
+                # The blanket "unqualified + capitalized => stdlib, skip" rule
+                # below would swallow them (SkillBase is unqualified and
+                # capitalized), which is why every skill subclass previously
+                # enumerated METHOD-LESS. The SURFACE enumerator has always
+                # collected these (PUBLIC_SURFACE_TRAITS + RE_TRAIT_FN); mirror
+                # it here so the two enumerators discover the same symbols.
+                if trait_path in PUBLIC_SURFACE_TRAITS:
+                    is_surface_trait_impl = True
+                    implemented_surface_traits.add(trait_path)
+                # Skip everything else: stdlib/derive traits (Debug, Clone,
+                # Borrow, Serialize, ...) and blanket impls all present as an
+                # unqualified, capitalized trait path, and none of them are
+                # reference surface. An SDK trait that IS surface belongs in
+                # PUBLIC_SURFACE_TRAITS above, not in a second allow-list here.
+                elif (
                     trait_path
                     and not trait_path.startswith("signalwire")
                     and trait_path[0:1].isupper()
@@ -1206,7 +1292,32 @@ def collect(rust_doc: dict, aliases: dict) -> tuple[dict, list]:
                     continue
                 if method_native.startswith("_") and not method_native.startswith("__"):
                     continue
+                # Rust-idiom trait accessors the reference does not enumerate
+                # (name/description/params/version/...) — same drop the surface
+                # enumerator applies to every ``impl SkillBase for X`` body.
+                if (
+                    is_surface_trait_impl
+                    and method_native in SKILLBASE_IDIOM_METHOD_DROPS
+                ):
+                    continue
                 method_canonical = _translate_method_name(method_native)
+                # ORACLE-GATE the trait-impl contribution: a public-surface trait
+                # impl supplies the reference's per-subclass OVERRIDE set, and the
+                # SIGNATURE oracle is the authority on which members it records
+                # there (e.g. it records ``build_config`` on AIVerbHandler but not
+                # ``validate_config``/``get_verb_name``, which live on the
+                # SWMLVerbHandler base). Emitting an un-recorded trait method onto
+                # the concrete class would manufacture a missing-reference drift
+                # out of a method that IS the base's. Same gate shape as the
+                # field-synthesis and idiom-drop passes: cannot over-emit, cannot
+                # go stale.
+                if (
+                    is_surface_trait_impl
+                    and mod
+                    and method_canonical
+                    not in _sig_oracle_members().get((mod, canonical_name), set())
+                ):
+                    continue
                 ctx = f"{mod}.{canonical_name}.{method_canonical}"
                 try:
                     sig = build_signature(
@@ -1219,9 +1330,30 @@ def collect(rust_doc: dict, aliases: dict) -> tuple[dict, list]:
                 except TypeTranslationError as e:
                     failures.append(str(e))
                     continue
+                if is_surface_trait_impl:
+                    sig = _elide_receiver_params(trait_path, method_native, sig)
                 if method_canonical in methods_out:
                     continue
                 methods_out[method_canonical] = sig
+
+        # INHERITED TRAIT-DEFAULT PROJECTION, oracle-gated. ``impl SkillBase for
+        # Datasphere`` overrides only some of the interface; the rest resolve to
+        # the trait's default bodies and are still callable on the concrete skill
+        # — the Rust spelling of Python's inherited-from-the-base methods, which
+        # the reference oracle records on EACH subclass. Project a default onto
+        # this class only when the reference records that same NAME on that same
+        # CLASS, so the projection cannot invent surface and cannot go stale as
+        # the oracle grows (this replaced nothing: the signature enumerator used
+        # to exclude skill trait-impls entirely on the premise that the oracle
+        # recorded skill subclasses method-less, which stopped being true when
+        # the oracle went from 7 to 18 skill modules).
+        if implemented_surface_traits and mod:
+            _recorded_here = _sig_oracle_members().get((mod, canonical_name), set())
+            for _tname in sorted(implemented_surface_traits):
+                for _mname, _msig in surface_trait_defaults.get(_tname, {}).items():
+                    if _mname in methods_out or _mname not in _recorded_here:
+                        continue
+                    methods_out[_mname] = _msig
 
         # PUBLIC-FIELD ACCESSOR SYNTHESIS, oracle-gated — the SIGNATURE twin of the
         # surface enumerator's public-field emission. A bare ``pub`` struct field is
@@ -1632,6 +1764,31 @@ def collect(rust_doc: dict, aliases: dict) -> tuple[dict, list]:
     # for every Call/CallingNamespace command, and the audit needs to
     # treat the two as functionally equivalent.
     py_ref = _load_python_reference()
+
+    # Explode a collapsed ``&Map<String, Value>`` kwargs slot into the reference's
+    # own recorded named parameters (see KWARGS_MAP_EXPLODE). Runs BEFORE the
+    # variadic-tail projection so the exploded shape is what that pass sees.
+    for _path, _map_param in KWARGS_MAP_EXPLODE.items():
+        _mod, _cls, _meth = _path.rsplit(".", 2)
+        _ref_sig = _sig_oracle_signatures().get((_mod, _cls), {}).get(_meth)
+        _port_sig = (
+            out_modules.get(_mod, {})
+            .get("classes", {})
+            .get(_cls, {})
+            .get("methods", {})
+        ).get(_meth)
+        if not _ref_sig or not _port_sig:
+            continue  # class/method genuinely absent → stays a real drift
+        _params = _port_sig.get("params", [])
+        _names = [p.get("name") for p in _params]
+        if _map_param not in _names:
+            continue  # the collapse is gone (port now spells them out) → nothing to do
+        _idx = _names.index(_map_param)
+        _exploded = [
+            dict(p) for p in _ref_sig.get("params", []) if p.get("kind") != "self"
+        ]
+        _port_sig["params"] = _params[:_idx] + _exploded + _params[_idx + 1 :]
+
     _project_variadic_kwargs(out_modules, py_ref)
 
     # Merge the generated REST layer (sidecar-unfolded — L10). These modules
