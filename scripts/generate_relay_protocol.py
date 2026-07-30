@@ -31,6 +31,7 @@ Usage:
     python3 scripts/generate_relay_protocol.py --check    # GEN-FRESH: fail if stale
     python3 scripts/generate_relay_protocol.py --out DIR  # scratch: emit into DIR
 """
+
 from __future__ import annotations
 
 import argparse
@@ -43,7 +44,9 @@ from pathlib import Path
 
 def _load_rest_generator():
     here = Path(__file__).resolve().parent
-    spec = importlib.util.spec_from_file_location("generate_rest", here / "generate_rest.py")
+    spec = importlib.util.spec_from_file_location(
+        "generate_rest", here / "generate_rest.py"
+    )
     if spec is None or spec.loader is None:  # pragma: no cover
         raise SystemExit("generate_relay_protocol.py: cannot load generate_rest.py")
     mod = importlib.util.module_from_spec(spec)
@@ -90,8 +93,13 @@ def build_types(psdk: Path) -> list[tuple[str, dict, str]]:
             if rs_name in seen:
                 continue
             seen.add(rs_name)
-            out.append((rs_name, node.get("properties") or {},
-                        f"RELAY method {method!r}, {phase}"))
+            out.append(
+                (
+                    rs_name,
+                    node.get("properties") or {},
+                    f"RELAY method {method!r}, {phase}",
+                )
+            )
     return out
 
 
@@ -100,8 +108,13 @@ def build_module(psdk: Path) -> str:
     desc = "Generated RELAY-protocol wire types from porting-sdk/relay-protocol/."
     src = GR.TYPES_HEADER.format(gen="generate_relay_protocol.py", desc=desc) + "\n"
     for rs_name, props, tdesc in types:
-        src += "\n" + GR.emit_methodless_struct(rs_name, props, tdesc,
-                                                "generate_relay_protocol.py") + "\n"
+        src += (
+            "\n"
+            + GR.emit_methodless_struct(
+                rs_name, props, tdesc, "generate_relay_protocol.py"
+            )
+            + "\n"
+        )
     return GR._rustfmt(src)
 
 
@@ -111,7 +124,9 @@ def build_outputs(psdk: Path) -> dict[str, str]:
 
 def main(argv: list) -> int:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--check", action="store_true", help="GEN-FRESH: exit non-zero if stale")
+    ap.add_argument(
+        "--check", action="store_true", help="GEN-FRESH: exit non-zero if stale"
+    )
     ap.add_argument("--out", default="", help="scratch: emit into this dir")
     args = ap.parse_args(argv)
 
@@ -126,11 +141,15 @@ def main(argv: list) -> int:
             if not p.is_file() or p.read_text() != src:
                 stale.append(str(p))
         if stale:
-            sys.stderr.write(f"GEN-FRESH FAIL: {len(stale)} generated RELAY-protocol file(s) stale:\n")
+            sys.stderr.write(
+                f"GEN-FRESH FAIL: {len(stale)} generated RELAY-protocol file(s) stale:\n"
+            )
             for s in stale:
                 sys.stderr.write(f"  - {s}\n")
             return 1
-        print("GEN-FRESH: generated RELAY-protocol files match porting-sdk/relay-protocol/.")
+        print(
+            "GEN-FRESH: generated RELAY-protocol files match porting-sdk/relay-protocol/."
+        )
         return 0
 
     for fn, src in outs.items():

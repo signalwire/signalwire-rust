@@ -40,6 +40,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SRC_DIR = REPO_ROOT / "src"
 
+
 # porting-sdk adjacency (mirrors enumerate_signatures.py). Used only to read the
 # reference signature oracle for the composition-attribute enrich below.
 # Precedence: an EXPLICIT $PORTING_SDK wins, then the sibling layout, then the
@@ -67,7 +68,6 @@ PSDK = _resolve_psdk()
 CLASS_MODULE_MAP: dict[str, str] = {
     # core/agent
     "AgentBase": "signalwire.core.agent_base",
-
     # prefabs (Python canonical paths)
     "BedrockAgent": "signalwire.agents.bedrock",
     "BedrockOptions": "signalwire.agents.bedrock",
@@ -76,35 +76,28 @@ CLASS_MODULE_MAP: dict[str, str] = {
     "ReceptionistAgent": "signalwire.prefabs.receptionist",
     "FAQBotAgent": "signalwire.prefabs.faq_bot",
     "ConciergeAgent": "signalwire.prefabs.concierge",
-
     # core/contexts
     "Context": "signalwire.core.contexts",
     "ContextBuilder": "signalwire.core.contexts",
     "GatherInfo": "signalwire.core.contexts",
     "GatherQuestion": "signalwire.core.contexts",
     "Step": "signalwire.core.contexts",
-
     # core/datamap
     "DataMap": "signalwire.core.data_map",
-
     # core/swaig
     "FunctionResult": "signalwire.core.function_result",
     "ToolDefinition": "signalwire.core.swaig_function",
     # SwaigFunction — Rust struct at src/swaig/swaig_function.rs, folded to the
     # reference SWAIGFunction (see CLASS_RENAME_MAP) at signalwire.core.swaig_function.
     "SwaigFunction": "signalwire.core.swaig_function",
-
     # core/skills
     "SkillBase": "signalwire.core.skill_base",
     "SkillManager": "signalwire.core.skill_manager",
     "SkillRegistry": "signalwire.skills.registry",
-
     # server
     "AgentServer": "signalwire.agent_server",
-
     # security
     "SessionManager": "signalwire.core.security.session_manager",
-
     # swml
     "Service": "signalwire.core.swml_service",  # Rust's `Service` == Python's `SWMLService`
     "Document": "signalwire.core.swml_builder",
@@ -115,7 +108,6 @@ CLASS_MODULE_MAP: dict[str, str] = {
     "AiVerbHandler": "signalwire.core.swml_handler",
     "VerbHandlerRegistry": "signalwire.core.swml_handler",
     "SwmlRenderer": "signalwire.core.swml_renderer",
-
     # rest
     "RestClient": "signalwire.rest.client",
     "CrudResource": "signalwire.rest._base",
@@ -123,7 +115,6 @@ CLASS_MODULE_MAP: dict[str, str] = {
     # and rest/error.rs; the Python reference records both under rest._base.
     "HttpClient": "signalwire.rest._base",
     "SignalWireRestError": "signalwire.rest._base",
-
     # RequestOptions envelope (plan 4.2): Rust hosts the value type + resolved
     # form at src/rest/request_options.rs; Python's canonical module is
     # signalwire.rest._request_options. RequestOptions + its `merge` line up 1:1
@@ -131,7 +122,6 @@ CLASS_MODULE_MAP: dict[str, str] = {
     # (a PORT_ADDITION — Python folds it into a private _EffectiveOptions).
     "RequestOptions": "signalwire.rest._request_options",
     "EffectiveOptions": "signalwire.rest._request_options",
-
     # pom — Rust's `signalwire::pom::pom` projects to Python's
     # canonical `signalwire.pom.pom` module (matches the Python
     # source layout signalwire-python/signalwire/signalwire/pom/pom.py).
@@ -140,18 +130,15 @@ CLASS_MODULE_MAP: dict[str, str] = {
     # PomBuilder — Rust wrapper over PromptObjectModel at src/pom/pom_builder.rs;
     # Python's canonical module is signalwire.core.pom_builder.
     "PomBuilder": "signalwire.core.pom_builder",
-
     # SWMLService — Rust struct is named ``Service`` and renamed via
     # CLASS_RENAME_MAP. Canonical name after translate is SWMLService;
     # CLASS_MODULE_MAP lookup happens against the translated name.
     "SWMLService": "signalwire.core.swml_service",
-
     # SchemaUtils + SchemaValidationError — Rust port lives at
     # signalwire-rust/src/utils/schema_utils.rs and projects onto the
     # canonical Python SchemaUtils class under signalwire.utils.schema_utils.
     "SchemaUtils": "signalwire.utils.schema_utils",
     "SchemaValidationError": "signalwire.utils.schema_utils",
-
     # rest namespaces — Rust uses short struct names (Calling, Fabric);
     # CLASS_RENAME_MAP renames them to the Python ``...Namespace`` form,
     # which is what _translate_class returns and CLASS_MODULE_MAP keys
@@ -229,7 +216,6 @@ CLASS_MODULE_MAP: dict[str, str] = {
     "ShortCodesResource": "signalwire.rest.namespaces.short_codes",
     "ImportedNumbersResource": "signalwire.rest.namespaces.imported_numbers",
     "PaginatedIterator": "signalwire.rest._pagination",
-
     # relay
     "Client": "signalwire.relay.client",  # Rust's `relay::Client` == Python's `RelayClient`
     # RelayError: Rust hosts the typed error at relay/error.rs; the Python
@@ -262,7 +248,6 @@ CLASS_MODULE_MAP: dict[str, str] = {
     "StandaloneCollectAction": "signalwire.relay.call",
     "DenoiseAction": "signalwire.relay.call",
     "Event": "signalwire.relay.event",
-
     # skills (Rust's short names → Python's <Name>Skill canonical class)
     "ApiNinjasTrivia": "signalwire.skills.api_ninjas_trivia.skill",
     "ClaudeSkills": "signalwire.skills.claude_skills.skill",
@@ -369,7 +354,7 @@ def gen_type_module_for_file(rel: Path) -> str | None:
     if posix in _GEN_TYPE_FIXED_ROUTES:
         return _GEN_TYPE_FIXED_ROUTES[posix]
     if posix.startswith(_GEN_TYPE_REST_DIR) and posix.endswith("_types_generated.rs"):
-        leaf = posix[len(_GEN_TYPE_REST_DIR):-len(".rs")]  # e.g. chat_types_generated
+        leaf = posix[len(_GEN_TYPE_REST_DIR) : -len(".rs")]  # e.g. chat_types_generated
         return f"signalwire.rest.namespaces.{leaf}"
     return None
 
@@ -747,12 +732,14 @@ METHOD_RENAMES: dict[str, dict[str, str]] = {
 #                              they ARE those methods' optional parameters, not
 #                              standalone reference surface.
 # The Python surface oracle records none of these as classes, so suppress them.
-AI_CHAT_SUPPRESS_CLASSES: frozenset[str] = frozenset({
-    "AIChatClientBuilder",
-    "CreateOptions",
-    "ChatOptions",
-    "SummarizeOptions",
-})
+AI_CHAT_SUPPRESS_CLASSES: frozenset[str] = frozenset(
+    {
+        "AIChatClientBuilder",
+        "CreateOptions",
+        "ChatOptions",
+        "SummarizeOptions",
+    }
+)
 
 
 # CONSTRUCTION-OPTIONS structs — the same fold as AI_CHAT_SUPPRESS_CLASSES above,
@@ -772,17 +759,19 @@ AI_CHAT_SUPPRESS_CLASSES: frozenset[str] = frozenset({
 #
 # Keep this in sync with `enumerate_signatures.py`'s `_OPTIONS_CONSTRUCTS`: an
 # options struct listed there must be folded here.
-OPTIONS_STRUCT_SUPPRESS_CLASSES: frozenset[str] = frozenset({
-    "AgentOptions",
-    "ServiceOptions",
-    "WebServiceOptions",
-    "BedrockOptions",
-    "ConciergeOptions",
-    "FAQBotOptions",
-    "InfoGathererOptions",
-    "ReceptionistOptions",
-    "SurveyOptions",
-})
+OPTIONS_STRUCT_SUPPRESS_CLASSES: frozenset[str] = frozenset(
+    {
+        "AgentOptions",
+        "ServiceOptions",
+        "WebServiceOptions",
+        "BedrockOptions",
+        "ConciergeOptions",
+        "FAQBotOptions",
+        "InfoGathererOptions",
+        "ReceptionistOptions",
+        "SurveyOptions",
+    }
+)
 
 # BACK-REFERENCE handle types — the Rust spelling of a reference attribute that
 # holds the owning object, folded for the same reason as the options structs.
@@ -797,10 +786,12 @@ OPTIONS_STRUCT_SUPPRESS_CLASSES: frozenset[str] = frozenset({
 # (`AgentHandle`). Those two types ARE the reference's `self.agent` in Rust
 # spelling — they add no capability, and the oracle records no such class — so
 # they fold here rather than being recorded as additions.
-BACK_REFERENCE_HANDLE_CLASSES: frozenset[str] = frozenset({
-    "SkillAgent",
-    "AgentHandle",
-})
+BACK_REFERENCE_HANDLE_CLASSES: frozenset[str] = frozenset(
+    {
+        "SkillAgent",
+        "AgentHandle",
+    }
+)
 
 
 # Rust class name → Python canonical class name (when they differ).
@@ -901,11 +892,17 @@ RE_PUB_TYPE = re.compile(r"^\s*pub(?:\s*\([^)]*\))?\s+type\s+(\w+)\b")
 # nesting so such bounds are consumed correctly.
 _NESTED_ANGLES = r"<(?:[^<>]|<[^<>]*>)*>"
 RE_IMPL_BLOCK = re.compile(
-    r"^\s*impl(?:\s*" + _NESTED_ANGLES + r")?\s+(\w+)(?:\s*" + _NESTED_ANGLES
+    r"^\s*impl(?:\s*"
+    + _NESTED_ANGLES
+    + r")?\s+(\w+)(?:\s*"
+    + _NESTED_ANGLES
     + r")?\s*(?:where[^{]*)?\{"
 )
 RE_IMPL_TRAIT_FOR = re.compile(
-    r"^\s*impl(?:\s*" + _NESTED_ANGLES + r")?\s+(\w+)(?:\s*" + _NESTED_ANGLES
+    r"^\s*impl(?:\s*"
+    + _NESTED_ANGLES
+    + r")?\s+(\w+)(?:\s*"
+    + _NESTED_ANGLES
     + r")?\s+for\s+(\w+)\b"
 )
 # Traits whose `impl Trait for Type` bodies expose PUBLIC API on Type — the
@@ -916,26 +913,37 @@ RE_IMPL_TRAIT_FOR = re.compile(
 # for these SDK traits; std/derive-trait impls (Default/Debug/Clone/Drop/From/
 # Display/PartialEq/Hash/Iterator/Serialize/…) are NOT part of the reference
 # surface and must stay excluded.
-PUBLIC_SURFACE_TRAITS = frozenset({
-    "SkillBase",
-    # SWML verb-handler interface: `impl SwmlVerbHandler for AiVerbHandler`
-    # carries the reference's per-handler public overrides (get_verb_name /
-    # validate_config / build_config). Collect them like a trait body so the
-    # `ai` handler's surface matches the reference `AIVerbHandler`.
-    "SwmlVerbHandler",
-})
+PUBLIC_SURFACE_TRAITS = frozenset(
+    {
+        "SkillBase",
+        # SWML verb-handler interface: `impl SwmlVerbHandler for AiVerbHandler`
+        # carries the reference's per-handler public overrides (get_verb_name /
+        # validate_config / build_config). Collect them like a trait body so the
+        # `ai` handler's surface matches the reference `AIVerbHandler`.
+        "SwmlVerbHandler",
+    }
+)
 # SkillBase trait methods that are Rust-idiom accessors, NOT part of the Python
 # skill surface (Python exposes SKILL_NAME/SKILL_DESCRIPTION as class attributes
 # and stores params on the instance — none are enumerated methods). Drop them
 # from every `impl SkillBase for X` block so a skill's surface matches the
 # reference's per-subclass override set.
-SKILLBASE_IDIOM_METHOD_DROPS = frozenset({
-    "name", "description", "version", "params",
-    "required_env_vars", "supports_multiple_instances",
-    "get_tool_name", "get_swaig_fields",
-})
+SKILLBASE_IDIOM_METHOD_DROPS = frozenset(
+    {
+        "name",
+        "description",
+        "version",
+        "params",
+        "required_env_vars",
+        "supports_multiple_instances",
+        "get_tool_name",
+        "get_swaig_fields",
+    }
+)
 # `pub use <path>::Name;` and `pub use <path>::{A, B};` and `pub use <path>::Name as Other;`
-RE_PUB_USE_ITEM = re.compile(r"^\s*pub\s+use\s+([\w:]+)::([\w?]+)(?:\s+as\s+(\w+))?\s*;")
+RE_PUB_USE_ITEM = re.compile(
+    r"^\s*pub\s+use\s+([\w:]+)::([\w?]+)(?:\s+as\s+(\w+))?\s*;"
+)
 RE_PUB_USE_GROUP = re.compile(r"^\s*pub\s+use\s+([\w:]+)::\{([^}]+)\}\s*;")
 
 
@@ -949,7 +957,9 @@ RE_PUB_USE_GROUP = re.compile(r"^\s*pub\s+use\s+([\w:]+)::\{([^}]+)\}\s*;")
 # GeneratedResourceTree is port-internal glue → suppressed.
 # ---------------------------------------------------------------------------
 
-_REST_SIDECAR_PATH = REPO_ROOT / "src" / "rest" / "namespaces" / "generated" / "rest_signatures.json"
+_REST_SIDECAR_PATH = (
+    REPO_ROOT / "src" / "rest" / "namespaces" / "generated" / "rest_signatures.json"
+)
 
 
 def load_rest_sidecar() -> dict:
@@ -991,7 +1001,9 @@ def _collect_crud_bases(sidecar: dict) -> dict:
 
 def _git_sha() -> str:
     try:
-        out = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=REPO_ROOT, text=True)
+        out = subprocess.check_output(
+            ["git", "rev-parse", "HEAD"], cwd=REPO_ROOT, text=True
+        )
         return out.strip()
     except (subprocess.CalledProcessError, FileNotFoundError):
         return "unknown"
@@ -1076,8 +1088,12 @@ def _parse_file_full(
     lines = text.splitlines()
     impl_stack: list[str] = []  # current impl block class names (for nested-mod safety)
     brace_depth_for_impl: list[int] = []
-    in_trait_for_impl: list[bool] = []  # parallel to impl_stack: True if the frame is a `pub trait` body
-    impl_trait_name: list[str | None] = []  # parallel: the trait name for `impl Trait for Type`, else None
+    in_trait_for_impl: list[
+        bool
+    ] = []  # parallel to impl_stack: True if the frame is a `pub trait` body
+    impl_trait_name: list[
+        str | None
+    ] = []  # parallel: the trait name for `impl Trait for Type`, else None
     cur_brace = 0
 
     in_test_mod = False
@@ -1167,7 +1183,9 @@ def _parse_file_full(
         # In a trait body, every `fn` is public API (no `pub` keyword on trait
         # methods), so use the looser trait-method regex there.
         inside_trait = bool(impl_stack) and in_trait_for_impl[-1]
-        m_fn = RE_PUB_FN.match(line) or (RE_TRAIT_FN.match(line) if inside_trait else None)
+        m_fn = RE_PUB_FN.match(line) or (
+            RE_TRAIT_FN.match(line) if inside_trait else None
+        )
         if m_fn:
             fn_name = m_fn.group(1)
             # Map Rust idiomatic constructor / dunder-equivalent names
@@ -1179,8 +1197,10 @@ def _parse_file_full(
             # Drop Rust-idiom SkillBase accessors that are not part of the Python
             # skill surface (name/description/params/… — see the drop-set).
             cur_trait = impl_trait_name[-1] if impl_trait_name else None
-            if (cur_trait in PUBLIC_SURFACE_TRAITS
-                    and fn_name in SKILLBASE_IDIOM_METHOD_DROPS):
+            if (
+                cur_trait in PUBLIC_SURFACE_TRAITS
+                and fn_name in SKILLBASE_IDIOM_METHOD_DROPS
+            ):
                 pass
             elif impl_stack:
                 methods[impl_stack[-1]].add(fn_name)
@@ -1272,40 +1292,96 @@ def _parse_lib_reexports(path: Path) -> set[str]:
 # copy of the donor class are removed from the donor so they don't double-count.
 SURFACE_PROJECTIONS: dict[tuple[str, str], list[tuple[str, list[str]]]] = {
     ("signalwire.core.mixins.ai_config_mixin", "AIConfigMixin"): [
-        ("AgentBase", [
-            "add_function_include", "add_hint", "add_hints", "add_internal_filler",
-            "add_language", "add_mcp_server", "add_pattern_hint", "add_pronunciation",
-            "enable_debug_events", "enable_mcp_server", "get_language_params",
-            "set_function_includes", "set_global_data", "set_internal_fillers",
-            "set_language_params", "set_languages", "set_multilingual",
-            "set_native_functions", "set_param", "set_params",
-            "set_post_prompt_llm_params", "set_prompt_llm_params", "set_pronunciations",
-            "update_global_data",
-        ]),
+        (
+            "AgentBase",
+            [
+                "add_function_include",
+                "add_hint",
+                "add_hints",
+                "add_internal_filler",
+                "add_language",
+                "add_mcp_server",
+                "add_pattern_hint",
+                "add_pronunciation",
+                "enable_debug_events",
+                "enable_mcp_server",
+                "get_language_params",
+                "set_function_includes",
+                "set_global_data",
+                "set_internal_fillers",
+                "set_language_params",
+                "set_languages",
+                "set_multilingual",
+                "set_native_functions",
+                "set_param",
+                "set_params",
+                "set_post_prompt_llm_params",
+                "set_prompt_llm_params",
+                "set_pronunciations",
+                "update_global_data",
+            ],
+        ),
     ],
     ("signalwire.core.mixins.prompt_mixin", "PromptMixin"): [
-        ("AgentBase", [
-            "contexts", "define_contexts", "get_post_prompt", "get_prompt",
-            "prompt_add_section", "prompt_add_subsection", "prompt_add_to_section",
-            "prompt_has_section", "reset_contexts", "set_post_prompt", "set_prompt_pom",
-            "set_prompt_text",
-        ]),
+        (
+            "AgentBase",
+            [
+                "contexts",
+                "define_contexts",
+                "get_post_prompt",
+                "get_prompt",
+                "prompt_add_section",
+                "prompt_add_subsection",
+                "prompt_add_to_section",
+                "prompt_has_section",
+                "reset_contexts",
+                "set_post_prompt",
+                "set_prompt_pom",
+                "set_prompt_text",
+            ],
+        ),
     ],
     ("signalwire.core.mixins.skill_mixin", "SkillMixin"): [
         ("AgentBase", ["add_skill", "has_skill", "list_skills", "remove_skill"]),
     ],
     ("signalwire.core.mixins.tool_mixin", "ToolMixin"): [
-        ("AgentBase", ["define_tool", "define_tools", "on_function_call",
-                       "register_swaig_function", "tool"]),
+        (
+            "AgentBase",
+            [
+                "define_tool",
+                "define_tools",
+                "on_function_call",
+                "register_swaig_function",
+                "tool",
+            ],
+        ),
     ],
     ("signalwire.core.mixins.web_mixin", "WebMixin"): [
-        ("AgentBase", [
-            "as_router", "enable_debug_routes", "get_app", "manual_set_proxy_url",
-            "on_request", "on_swml_request", "register_routing_callback", "run",
-            "serve", "set_dynamic_config_callback", "setup_graceful_shutdown",
-        ]),
-        ("SWMLService", ["manual_set_proxy_url", "on_request", "on_swml_request",
-                         "register_routing_callback"]),
+        (
+            "AgentBase",
+            [
+                "as_router",
+                "enable_debug_routes",
+                "get_app",
+                "manual_set_proxy_url",
+                "on_request",
+                "on_swml_request",
+                "register_routing_callback",
+                "run",
+                "serve",
+                "set_dynamic_config_callback",
+                "setup_graceful_shutdown",
+            ],
+        ),
+        (
+            "SWMLService",
+            [
+                "manual_set_proxy_url",
+                "on_request",
+                "on_swml_request",
+                "register_routing_callback",
+            ],
+        ),
     ],
     ("signalwire.core.mixins.auth_mixin", "AuthMixin"): [
         ("AgentBase", ["get_basic_auth_credentials", "validate_basic_auth"]),
@@ -1322,17 +1398,37 @@ SURFACE_PROJECTIONS: dict[tuple[str, str], list[tuple[str, list[str]]]] = {
     # Rust hosts the same user-facing surface on AgentBase. Project so both
     # paths are covered (a la the signature enumerator's MIXIN_PROJECTIONS).
     ("signalwire.core.agent.prompt.manager", "PromptManager"): [
-        ("AgentBase", [
-            "define_contexts", "get_contexts", "get_post_prompt", "get_prompt",
-            "get_raw_prompt", "prompt_add_section", "prompt_add_subsection",
-            "prompt_add_to_section", "prompt_has_section", "set_post_prompt",
-            "set_prompt_pom", "set_prompt_text",
-        ]),
+        (
+            "AgentBase",
+            [
+                "define_contexts",
+                "get_contexts",
+                "get_post_prompt",
+                "get_prompt",
+                "get_raw_prompt",
+                "prompt_add_section",
+                "prompt_add_subsection",
+                "prompt_add_to_section",
+                "prompt_has_section",
+                "set_post_prompt",
+                "set_prompt_pom",
+                "set_prompt_text",
+            ],
+        ),
     ],
     ("signalwire.core.agent.tools.registry", "ToolRegistry"): [
         ("AgentBase", ["define_tool", "register_swaig_function"]),
-        ("SWMLService", ["define_tool", "register_swaig_function", "has_function",
-                         "get_function", "get_all_functions", "remove_function"]),
+        (
+            "SWMLService",
+            [
+                "define_tool",
+                "register_swaig_function",
+                "has_function",
+                "get_function",
+                "get_all_functions",
+                "remove_function",
+            ],
+        ),
     ],
     # ReadResource: Python's CrudResource inherits get/list/paginate from
     # ReadResource; the reference records them on ReadResource (own methods),
@@ -1511,8 +1607,12 @@ FORCE_CLASS_METHODS: dict[tuple[str, str], list[str]] = {
     # side already lists them via SKILL_INTERFACE_PROJECTION (this union is a
     # harmless idempotent superset there).
     ("signalwire.skills.mcp_gateway.skill", "MCPGatewaySkill"): [
-        "get_global_data", "get_hints", "get_parameter_schema",
-        "get_prompt_sections", "register_tools", "setup",
+        "get_global_data",
+        "get_hints",
+        "get_parameter_schema",
+        "get_prompt_sections",
+        "register_tools",
+        "setup",
     ],
 }
 # Static/associated methods Rust hosts on a class that the Python reference
@@ -1586,8 +1686,11 @@ MODULE_METHOD_DROPS: dict[str, set[str]] = {
     # Drop the AgentBase copy — the delegate carries the reference-matching surface;
     # this reconciles the composition-flatten idiom in EMIT, not an allow-list entry.
     "signalwire.core.agent_base": {
-        "render_swml", "get_contexts", "get_raw_prompt",
-        "create_tool_token", "get_global_data",
+        "render_swml",
+        "get_contexts",
+        "get_raw_prompt",
+        "create_tool_token",
+        "get_global_data",
         # FIELD-READ idiom. The reference stores these construction params as
         # plain instance attributes — `self.agent_id`, `self.native_functions`,
         # `self._default_webhook_url`, `self._suppress_logs`,
@@ -1600,8 +1703,12 @@ MODULE_METHOD_DROPS: dict[str, set[str]] = {
         # recorded as an addition (§2: idiom is hidden by what we EMIT). The
         # construction contract in port_signatures.json is what proves the
         # underlying params match the reference.
-        "agent_id", "native_functions", "default_webhook_url", "suppress_logs",
-        "enable_post_prompt_override", "check_for_input_override",
+        "agent_id",
+        "native_functions",
+        "default_webhook_url",
+        "suppress_logs",
+        "enable_post_prompt_override",
+        "check_for_input_override",
         "trust_proxy_for_signature",
     },
     # `skill_state` is the `SkillBase` plumbing hook that lets the trait's
@@ -1630,7 +1737,8 @@ MODULE_METHOD_DROPS: dict[str, set[str]] = {
 # picks it up automatically instead of surfacing a phantom addition that a later
 # lane has to chase.
 for _skill_module in {
-    m for m in CLASS_MODULE_MAP.values()
+    m
+    for m in CLASS_MODULE_MAP.values()
     if m.startswith("signalwire.skills.") and m.endswith(".skill")
 }:
     MODULE_METHOD_DROPS.setdefault(_skill_module, set()).add("skill_state")
@@ -1662,31 +1770,149 @@ FREE_FN_DROPS: dict[str, set[str]] = {
 # compare EQUAL — the surface analog of the mixin projection (Rule 2). Derived
 # from python_surface.json ∩ SkillBase interface; kept as an explicit table so
 # it is auditable and stable. Keys use the Python (translated) skill-class name.
-SKILL_INTERFACE_METHODS = frozenset({
-    "setup", "register_tools", "get_hints", "get_parameter_schema",
-    "get_instance_key", "get_global_data", "get_prompt_sections", "cleanup",
-})
+SKILL_INTERFACE_METHODS = frozenset(
+    {
+        "setup",
+        "register_tools",
+        "get_hints",
+        "get_parameter_schema",
+        "get_instance_key",
+        "get_global_data",
+        "get_prompt_sections",
+        "cleanup",
+    }
+)
 SKILL_INTERFACE_PROJECTION: dict[tuple[str, str], list[str]] = {
-    ("signalwire.skills.api_ninjas_trivia.skill", "ApiNinjasTriviaSkill"): ["get_instance_key", "get_parameter_schema", "register_tools", "setup"],
-    ("signalwire.skills.claude_skills.skill", "ClaudeSkillsSkill"): ["get_hints", "get_instance_key", "get_parameter_schema", "register_tools", "setup"],
-    ("signalwire.skills.datasphere.skill", "DataSphereSkill"): ["cleanup", "get_global_data", "get_hints", "get_instance_key", "get_parameter_schema", "get_prompt_sections", "register_tools", "setup"],
-    ("signalwire.skills.datasphere_serverless.skill", "DataSphereServerlessSkill"): ["get_global_data", "get_hints", "get_instance_key", "get_parameter_schema", "get_prompt_sections", "register_tools", "setup"],
-    ("signalwire.skills.datetime.skill", "DateTimeSkill"): ["get_hints", "get_parameter_schema", "get_prompt_sections", "register_tools", "setup"],
-    ("signalwire.skills.google_maps.skill", "GoogleMapsSkill"): ["get_hints", "get_parameter_schema", "get_prompt_sections", "register_tools", "setup"],
-    ("signalwire.skills.info_gatherer.skill", "InfoGathererSkill"): ["get_global_data", "get_instance_key", "get_parameter_schema", "register_tools", "setup"],
-    ("signalwire.skills.joke.skill", "JokeSkill"): ["get_global_data", "get_hints", "get_parameter_schema", "get_prompt_sections", "register_tools", "setup"],
-    ("signalwire.skills.math.skill", "MathSkill"): ["get_hints", "get_parameter_schema", "get_prompt_sections", "register_tools", "setup"],
-    ("signalwire.skills.mcp_gateway.skill", "MCPGatewaySkill"): ["get_global_data", "get_hints", "get_parameter_schema", "get_prompt_sections", "register_tools", "setup"],
-    ("signalwire.skills.native_vector_search.skill", "NativeVectorSearchSkill"): ["cleanup", "get_global_data", "get_hints", "get_instance_key", "get_parameter_schema", "get_prompt_sections", "register_tools", "setup"],
-    ("signalwire.skills.play_background_file.skill", "PlayBackgroundFileSkill"): ["get_instance_key", "get_parameter_schema", "register_tools", "setup"],
-    ("signalwire.skills.spider.skill", "SpiderSkill"): ["cleanup", "get_hints", "get_instance_key", "get_parameter_schema", "register_tools", "setup"],
-    ("signalwire.skills.swml_transfer.skill", "SWMLTransferSkill"): ["get_hints", "get_instance_key", "get_parameter_schema", "get_prompt_sections", "register_tools", "setup"],
-    ("signalwire.skills.weather_api.skill", "WeatherApiSkill"): ["get_parameter_schema", "register_tools", "setup"],
-    ("signalwire.skills.web_search.skill", "WebSearchSkill"): ["get_global_data", "get_hints", "get_instance_key", "get_parameter_schema", "get_prompt_sections", "register_tools", "setup"],
-    ("signalwire.skills.wikipedia_search.skill", "WikipediaSearchSkill"): ["get_hints", "get_parameter_schema", "get_prompt_sections", "register_tools", "setup"],
+    ("signalwire.skills.api_ninjas_trivia.skill", "ApiNinjasTriviaSkill"): [
+        "get_instance_key",
+        "get_parameter_schema",
+        "register_tools",
+        "setup",
+    ],
+    ("signalwire.skills.claude_skills.skill", "ClaudeSkillsSkill"): [
+        "get_hints",
+        "get_instance_key",
+        "get_parameter_schema",
+        "register_tools",
+        "setup",
+    ],
+    ("signalwire.skills.datasphere.skill", "DataSphereSkill"): [
+        "cleanup",
+        "get_global_data",
+        "get_hints",
+        "get_instance_key",
+        "get_parameter_schema",
+        "get_prompt_sections",
+        "register_tools",
+        "setup",
+    ],
+    ("signalwire.skills.datasphere_serverless.skill", "DataSphereServerlessSkill"): [
+        "get_global_data",
+        "get_hints",
+        "get_instance_key",
+        "get_parameter_schema",
+        "get_prompt_sections",
+        "register_tools",
+        "setup",
+    ],
+    ("signalwire.skills.datetime.skill", "DateTimeSkill"): [
+        "get_hints",
+        "get_parameter_schema",
+        "get_prompt_sections",
+        "register_tools",
+        "setup",
+    ],
+    ("signalwire.skills.google_maps.skill", "GoogleMapsSkill"): [
+        "get_hints",
+        "get_parameter_schema",
+        "get_prompt_sections",
+        "register_tools",
+        "setup",
+    ],
+    ("signalwire.skills.info_gatherer.skill", "InfoGathererSkill"): [
+        "get_global_data",
+        "get_instance_key",
+        "get_parameter_schema",
+        "register_tools",
+        "setup",
+    ],
+    ("signalwire.skills.joke.skill", "JokeSkill"): [
+        "get_global_data",
+        "get_hints",
+        "get_parameter_schema",
+        "get_prompt_sections",
+        "register_tools",
+        "setup",
+    ],
+    ("signalwire.skills.math.skill", "MathSkill"): [
+        "get_hints",
+        "get_parameter_schema",
+        "get_prompt_sections",
+        "register_tools",
+        "setup",
+    ],
+    ("signalwire.skills.mcp_gateway.skill", "MCPGatewaySkill"): [
+        "get_global_data",
+        "get_hints",
+        "get_parameter_schema",
+        "get_prompt_sections",
+        "register_tools",
+        "setup",
+    ],
+    ("signalwire.skills.native_vector_search.skill", "NativeVectorSearchSkill"): [
+        "cleanup",
+        "get_global_data",
+        "get_hints",
+        "get_instance_key",
+        "get_parameter_schema",
+        "get_prompt_sections",
+        "register_tools",
+        "setup",
+    ],
+    ("signalwire.skills.play_background_file.skill", "PlayBackgroundFileSkill"): [
+        "get_instance_key",
+        "get_parameter_schema",
+        "register_tools",
+        "setup",
+    ],
+    ("signalwire.skills.spider.skill", "SpiderSkill"): [
+        "cleanup",
+        "get_hints",
+        "get_instance_key",
+        "get_parameter_schema",
+        "register_tools",
+        "setup",
+    ],
+    ("signalwire.skills.swml_transfer.skill", "SWMLTransferSkill"): [
+        "get_hints",
+        "get_instance_key",
+        "get_parameter_schema",
+        "get_prompt_sections",
+        "register_tools",
+        "setup",
+    ],
+    ("signalwire.skills.weather_api.skill", "WeatherApiSkill"): [
+        "get_parameter_schema",
+        "register_tools",
+        "setup",
+    ],
+    ("signalwire.skills.web_search.skill", "WebSearchSkill"): [
+        "get_global_data",
+        "get_hints",
+        "get_instance_key",
+        "get_parameter_schema",
+        "get_prompt_sections",
+        "register_tools",
+        "setup",
+    ],
+    ("signalwire.skills.wikipedia_search.skill", "WikipediaSearchSkill"): [
+        "get_hints",
+        "get_parameter_schema",
+        "get_prompt_sections",
+        "register_tools",
+        "setup",
+    ],
 }
-
-
 
 
 # Public struct FIELD renames: {rust_struct_name: {rust_field: reference_name}}.
@@ -1793,8 +2019,9 @@ def _oracle_class_members() -> dict[tuple[str, str], set[str]]:
     return out
 
 
-def _oracle_records(oracle: dict[tuple[str, str], set[str]],
-                    module: str, cls: str, member: str) -> bool:
+def _oracle_records(
+    oracle: dict[tuple[str, str], set[str]], module: str, cls: str, member: str
+) -> bool:
     """True when the reference records ``member`` on ``module.cls``.
 
     Used to GATE every idiom drop: a drop expresses "the reference does not have
@@ -1837,7 +2064,8 @@ def _reference_composition_attrs() -> dict[tuple[str, str], set[str]]:
             if not isinstance(methods, dict):
                 continue
             comp = {
-                m for m, ms in methods.items()
+                m
+                for m, ms in methods.items()
                 if isinstance(ms, dict)
                 and [p for p in ms.get("params", []) if p.get("kind") != "self"] == []
                 and _is_comp(ms.get("returns"))
@@ -1901,7 +2129,9 @@ def _enrich_composition_attributes(modules: dict) -> None:
 
 
 def build_surface() -> dict:
-    modules: dict[str, dict] = defaultdict(lambda: {"classes": defaultdict(list), "functions": []})
+    modules: dict[str, dict] = defaultdict(
+        lambda: {"classes": defaultdict(list), "functions": []}
+    )
     sha = _git_sha()
     # The reference surface oracle — the single AUTHORITY for every gated
     # decision below (idiom drops, public-field emission). Fails loud when
@@ -1963,8 +2193,12 @@ def build_surface() -> dict:
     # struct/enum genuinely carry these identities (AIChatErrorKind::{Api,
     # Authentication, ConversationNotFound, RateLimit, ChatInProgress, Summary}).
     _AI_CHAT_ERROR_CLASSES = (
-        "AIChatError", "AuthenticationError", "ConversationNotFoundError",
-        "RateLimitError", "ChatInProgressError", "SummaryError",
+        "AIChatError",
+        "AuthenticationError",
+        "ConversationNotFoundError",
+        "RateLimitError",
+        "ChatInProgressError",
+        "SummaryError",
     )
     for path in files:
         if path.relative_to(REPO_ROOT) != _AI_CHAT_CLIENT_REL:
@@ -1980,8 +2214,13 @@ def build_surface() -> dict:
         # a real field-wise constructor (code, message) — project `__init__` onto
         # the base so the surface reconciles in emit (rename/projection), folding
         # the former AIChatError.__init__ omission.
-        if "__init__" not in modules["signalwire.ai_chat.client"]["classes"]["AIChatError"]:
-            modules["signalwire.ai_chat.client"]["classes"]["AIChatError"].append("__init__")
+        if (
+            "__init__"
+            not in modules["signalwire.ai_chat.client"]["classes"]["AIChatError"]
+        ):
+            modules["signalwire.ai_chat.client"]["classes"]["AIChatError"].append(
+                "__init__"
+            )
         break
 
     # First pass: collect class declarations + their files (module mapping)
@@ -2021,7 +2260,9 @@ def build_surface() -> dict:
             if name not in modules["signalwire"]["functions"]:
                 modules["signalwire"]["functions"].append(name)
         # keep functions sorted for determinism
-        modules["signalwire"]["functions"] = sorted(set(modules["signalwire"]["functions"]))
+        modules["signalwire"]["functions"] = sorted(
+            set(modules["signalwire"]["functions"])
+        )
 
     # Second pass: collect methods per class
     for path in files:
@@ -2044,7 +2285,9 @@ def build_surface() -> dict:
                 existing.update(meth_set)
                 modules[module_path]["classes"][cls] = sorted(existing)
                 continue
-            module_path = _module_path_for_class(cls, class_defining_files.get(cls, rel))
+            module_path = _module_path_for_class(
+                cls, class_defining_files.get(cls, rel)
+            )
             # Port-internal builder request-structs (XRequest) in the generated
             # dir fall through to a signalwire.rest.namespaces.generated.* path —
             # these are the options-builders behind the exploded params, NOT part
@@ -2176,8 +2419,7 @@ def build_surface() -> dict:
             # module-scoped idiom drop only applies to a name the reference does
             # NOT record on that class, so it self-retires as the oracle grows.
             cls_drop = {
-                m for m in cls_drop
-                if not _oracle_records(oracle, mod_name, cls, m)
+                m for m in cls_drop if not _oracle_records(oracle, mod_name, cls, m)
             }
             entry["classes"][cls] = sorted(set(ms) - cls_drop)
 
@@ -2187,11 +2429,14 @@ def build_surface() -> dict:
     # trait-default-provided methods (which are still callable public API) line
     # up with the reference's per-subclass override list. Only project methods
     # the Rust SkillBase trait actually provides.
-    skillbase_provided = set(
-        modules.get("signalwire.core.skill_base", {})
-        .get("classes", {})
-        .get("SkillBase", [])
-    ) | SKILL_INTERFACE_METHODS
+    skillbase_provided = (
+        set(
+            modules.get("signalwire.core.skill_base", {})
+            .get("classes", {})
+            .get("SkillBase", [])
+        )
+        | SKILL_INTERFACE_METHODS
+    )
     for (mod_name, cls), names in SKILL_INTERFACE_PROJECTION.items():
         if mod_name not in modules or cls not in modules[mod_name]["classes"]:
             continue  # skill class absent → real gap, not masked

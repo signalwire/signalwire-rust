@@ -57,14 +57,21 @@ from enumerate_surface import (  # type: ignore
     # duplication hazard that made a rename table apply in one gate and not the
     # other (go, typescript, php, and rust's own METHOD_RENAMES keying bug).
     PSDK,
-    CLASS_MODULE_MAP, _translate_class,
+    CLASS_MODULE_MAP,
+    _translate_class,
     # Idiom-reconciliation tables mirrored from the SURFACE enumerator so the
     # two enumerators discover/name the SAME symbols (Rule 2: reconcile idiom
     # in the enumerator, not via an omission). Kept as a single source of truth
     # by importing them rather than re-declaring.
-    METHOD_RENAMES, SURFACE_PROJECTIONS, PROJECTION_DONOR_STRIPS,
-    FORCE_CLASS_METHODS, SKILLBASE_IDIOM_METHOD_DROPS, PUBLIC_SURFACE_TRAITS, MODULE_METHOD_DROPS,
-    MODULE_METHOD_DROP_EXCEPTIONS, PUBLIC_FIELD_RENAMES,
+    METHOD_RENAMES,
+    SURFACE_PROJECTIONS,
+    PROJECTION_DONOR_STRIPS,
+    FORCE_CLASS_METHODS,
+    SKILLBASE_IDIOM_METHOD_DROPS,
+    PUBLIC_SURFACE_TRAITS,
+    MODULE_METHOD_DROPS,
+    MODULE_METHOD_DROP_EXCEPTIONS,
+    PUBLIC_FIELD_RENAMES,
 )
 
 
@@ -88,8 +95,7 @@ class TypeTranslationError(RuntimeError):
 # FabricResource (constructed via ``new_put`` — PUT instead of PATCH on
 # ``update``); these five accessors contractually return the PUT variant.
 RETURN_TYPE_OVERRIDE: dict[str, str] = {
-    f"signalwire.rest.namespaces.fabric.FabricNamespace.{m}":
-        "class:signalwire.rest.namespaces.fabric.FabricResourcePUT"
+    f"signalwire.rest.namespaces.fabric.FabricNamespace.{m}": "class:signalwire.rest.namespaces.fabric.FabricResourcePUT"
     for m in (
         "sip_endpoints",
         "swml_scripts",
@@ -108,7 +114,16 @@ RETURN_TYPE_OVERRIDE: dict[str, str] = {
 # Python class), so map it here per-method to the canonical HostAppRouter. This is
 # the tool handling the idiom (the full method contract is still compared), NOT an
 # omission — as_router now drifts 0 against the reference.
-RETURN_TYPE_OVERRIDE.update(dict.fromkeys(("signalwire.core.swml_service.SWMLService.as_router", "signalwire.core.mixins.web_mixin.WebMixin.as_router", "signalwire.core.agent_base.AgentBase.as_router"), "class:signalwire.core.web.HostAppRouter"))
+RETURN_TYPE_OVERRIDE.update(
+    dict.fromkeys(
+        (
+            "signalwire.core.swml_service.SWMLService.as_router",
+            "signalwire.core.mixins.web_mixin.WebMixin.as_router",
+            "signalwire.core.agent_base.AgentBase.as_router",
+        ),
+        "class:signalwire.core.web.HostAppRouter",
+    )
+)
 
 # Per-method PARAMETER reconcile: rename a param and/or remap its type to the
 # canonical Python spelling where the Rust idiom names/types it differently but
@@ -139,7 +154,9 @@ PARAM_RECONCILE: dict[str, dict[str, dict[str, str]]] = {
 # with the `TypedHandler` = `Box<dyn Fn(..) -> FunctionResult>` type alias, which
 # rustdoc renders as a bare class name. Remap it to the canonical `callable<..>`
 # so the wrapper's arg compares equal to the oracle's `func: callable<list<any>,any>`.
-PARAM_RECONCILE["signalwire.core.agent.tools.type_inference.create_typed_handler_wrapper"] = {
+PARAM_RECONCILE[
+    "signalwire.core.agent.tools.type_inference.create_typed_handler_wrapper"
+] = {
     "func": {"type": "callable<list<any>,any>"},
 }
 
@@ -149,12 +166,12 @@ PARAM_RECONCILE["signalwire.core.agent.tools.type_inference.create_typed_handler
 # handler callable; `infer_schema` returns the `(parameters, required,
 # description, is_typed, has_raw_data)` tuple — so both return-compare equal to
 # the oracle (the tool handling the idiom, not an omission).
-RETURN_TYPE_OVERRIDE.update({
-    "signalwire.core.agent.tools.type_inference.create_typed_handler_wrapper":
-        "callable<list<any>,any>",
-    "signalwire.core.agent.tools.type_inference.infer_schema":
-        "tuple<dict<string,dict<string,any>>,list<string>,optional<string>,bool,bool>",
-})
+RETURN_TYPE_OVERRIDE.update(
+    {
+        "signalwire.core.agent.tools.type_inference.create_typed_handler_wrapper": "callable<list<any>,any>",
+        "signalwire.core.agent.tools.type_inference.infer_schema": "tuple<dict<string,dict<string,any>>,list<string>,optional<string>,bool,bool>",
+    }
+)
 
 
 def load_aliases() -> dict[str, str]:
@@ -173,7 +190,9 @@ def load_aliases() -> dict[str, str]:
 # methods, and suppress the port-internal GeneratedResourceTree glue struct.
 # ---------------------------------------------------------------------------
 
-_REST_SIDECAR_PATH = PORT_ROOT / "src" / "rest" / "namespaces" / "generated" / "rest_signatures.json"
+_REST_SIDECAR_PATH = (
+    PORT_ROOT / "src" / "rest" / "namespaces" / "generated" / "rest_signatures.json"
+)
 
 
 def _require_oracle(path: Path) -> dict:
@@ -448,10 +467,18 @@ def translate_rust_type(t, paths: dict, aliases: dict, context: str) -> str:
         # Stdlib generics: Option, Vec, HashMap, BTreeMap, Result, Box, Arc, Rc, etc.
         type_args = _extract_angle_args(args)
         if last in ("Option", "Optional"):
-            inner = translate_rust_type(type_args[0], paths, aliases, context) if type_args else "any"
+            inner = (
+                translate_rust_type(type_args[0], paths, aliases, context)
+                if type_args
+                else "any"
+            )
             return f"optional<{inner}>"
         if last in ("Vec", "VecDeque"):
-            inner = translate_rust_type(type_args[0], paths, aliases, context) if type_args else "any"
+            inner = (
+                translate_rust_type(type_args[0], paths, aliases, context)
+                if type_args
+                else "any"
+            )
             return f"list<{inner}>"
         if last in ("HashMap", "BTreeMap", "IndexMap"):
             if len(type_args) >= 2:
@@ -460,13 +487,25 @@ def translate_rust_type(t, paths: dict, aliases: dict, context: str) -> str:
                 return f"dict<{k},{v}>"
             return "dict<string,any>"
         if last in ("HashSet", "BTreeSet"):
-            inner = translate_rust_type(type_args[0], paths, aliases, context) if type_args else "any"
+            inner = (
+                translate_rust_type(type_args[0], paths, aliases, context)
+                if type_args
+                else "any"
+            )
             return f"list<{inner}>"
         if last == "Result":
             # Result<T, E> → T (the Err type is out-of-band in Python)
-            return translate_rust_type(type_args[0], paths, aliases, context) if type_args else "any"
+            return (
+                translate_rust_type(type_args[0], paths, aliases, context)
+                if type_args
+                else "any"
+            )
         if last in ("Box", "Arc", "Rc", "Mutex", "RwLock"):
-            return translate_rust_type(type_args[0], paths, aliases, context) if type_args else "any"
+            return (
+                translate_rust_type(type_args[0], paths, aliases, context)
+                if type_args
+                else "any"
+            )
 
         # MediaArg<E> — the typed-or-raw wrapper behind FunctionResult's
         # closed-set media params (``record_call(format: impl
@@ -477,7 +516,11 @@ def translate_rust_type(t, paths: dict, aliases: dict, context: str) -> str:
         # as the typed closed set (``class:…RecordFormat``), which is exactly
         # what the oracle's ``enum<…>`` contract expects — not the wrapper.
         if last == "MediaArg":
-            return translate_rust_type(type_args[0], paths, aliases, context) if type_args else "any"
+            return (
+                translate_rust_type(type_args[0], paths, aliases, context)
+                if type_args
+                else "any"
+            )
 
         # SDK class — emit class:<canonical>
         canonical_name = _translate_class(last)
@@ -503,9 +546,17 @@ def translate_rust_type(t, paths: dict, aliases: dict, context: str) -> str:
             trait = tb.get("trait") if isinstance(tb, dict) else None
             if isinstance(trait, dict):
                 trait_last = str(trait.get("path", "")).split("::")[-1]
-                if trait_last in ("Into", "From", "TryInto", "TryFrom",
-                                  "AsRef", "AsMut", "Borrow", "BorrowMut",
-                                  "Cow"):
+                if trait_last in (
+                    "Into",
+                    "From",
+                    "TryInto",
+                    "TryFrom",
+                    "AsRef",
+                    "AsMut",
+                    "Borrow",
+                    "BorrowMut",
+                    "Cow",
+                ):
                     inner_args = _extract_angle_args(trait.get("args"))
                     if inner_args:
                         return translate_rust_type(
@@ -518,9 +569,16 @@ def translate_rust_type(t, paths: dict, aliases: dict, context: str) -> str:
         sig = t.get("function_pointer", t.get("fn_pointer", {}))
         sig_decl = sig.get("decl", sig.get("sig", {}))
         inputs = sig_decl.get("inputs", [])
-        canon_args = [translate_rust_type(it[1] if isinstance(it, list) else it, paths, aliases, context) for it in inputs]
+        canon_args = [
+            translate_rust_type(
+                it[1] if isinstance(it, list) else it, paths, aliases, context
+            )
+            for it in inputs
+        ]
         output = sig_decl.get("output")
-        canon_ret = translate_rust_type(output, paths, aliases, context) if output else "void"
+        canon_ret = (
+            translate_rust_type(output, paths, aliases, context) if output else "void"
+        )
         return f"callable<list<{','.join(canon_args)}>,{canon_ret}>"
 
     # dyn_trait: dyn Foo  →  any
@@ -540,7 +598,9 @@ def _extract_angle_args(args) -> list:
         return []
     if isinstance(args, dict) and "angle_bracketed" in args:
         ab = args["angle_bracketed"]
-        return [a["type"] for a in ab.get("args", []) if isinstance(a, dict) and "type" in a]
+        return [
+            a["type"] for a in ab.get("args", []) if isinstance(a, dict) and "type" in a
+        ]
     return []
 
 
@@ -563,7 +623,7 @@ def _collect_free_function_targets() -> set[tuple[str, str]]:
     # ships short at rc=0.
     ref = _require_oracle(PSDK / "python_signatures.json")
     for mod_name, mod_entry in ref.get("modules", {}).items():
-        for fn_name in (mod_entry.get("functions") or {}):
+        for fn_name in mod_entry.get("functions") or {}:
             targets.add((mod_name, fn_name))
     return targets
 
@@ -714,8 +774,9 @@ def _sig_oracle_signatures() -> dict[tuple[str, str], dict]:
     return _SIG_ORACLE_SIGNATURES
 
 
-def _apply_method_renames(cls_name: str, methods: dict, module: str | None = None,
-                          py_cls: str | None = None) -> dict:
+def _apply_method_renames(
+    cls_name: str, methods: dict, module: str | None = None, py_cls: str | None = None
+) -> dict:
     """Apply the surface enumerator's METHOD_RENAMES table to a class's method
     dict (Rust name -> Python name; None -> drop). Mirrors the surface pass so a
     Rust-idiom method name (``to_value`` -> ``to_dict``) and its dropped
@@ -797,7 +858,9 @@ def _named_params(sig: dict) -> list[str]:
     return [p["name"] for p in (sig or {}).get("params", []) if p.get("kind") != "self"]
 
 
-def _closer_to_reference(candidate: dict, incumbent: dict, ref_sig: dict | None) -> bool:
+def _closer_to_reference(
+    candidate: dict, incumbent: dict, ref_sig: dict | None
+) -> bool:
     """Does ``candidate`` match the reference signature better than ``incumbent``?
 
     Two spellings of one reference method differ by ARITY — that is the whole
@@ -1049,14 +1112,19 @@ def collect(rust_doc: dict, aliases: dict) -> tuple[dict, list]:
                     continue
                 if m_native.startswith("_") and not m_native.startswith("__"):
                     continue
-                if (canonical_name in PUBLIC_SURFACE_TRAITS
-                        and m_native in SKILLBASE_IDIOM_METHOD_DROPS):
+                if (
+                    canonical_name in PUBLIC_SURFACE_TRAITS
+                    and m_native in SKILLBASE_IDIOM_METHOD_DROPS
+                ):
                     continue
                 method_canonical = _translate_method_name(m_native)
                 ctx = f"{mod}.{canonical_name}.{method_canonical}"
                 try:
                     sig = build_signature(
-                        m_inner["function"], paths, aliases, ctx,
+                        m_inner["function"],
+                        paths,
+                        aliases,
+                        ctx,
                         defaults=fn_defaults.get(str(method_id)),
                     )
                 except TypeTranslationError as e:
@@ -1076,23 +1144,55 @@ def collect(rust_doc: dict, aliases: dict) -> tuple[dict, list]:
                 # trait path is part of the SDK. Skip ALL stdlib traits.
                 trait_path = trait.get("path", "") if isinstance(trait, dict) else ""
                 if trait_path in (
-                    "Debug", "Clone", "Default", "PartialEq", "Eq",
-                    "Hash", "Send", "Sync", "Drop", "From", "TryFrom",
-                    "Display", "Error", "Iterator", "IntoIterator",
-                    "Future", "Serialize", "Deserialize",
-                    "Borrow", "BorrowMut", "AsRef", "AsMut", "ToOwned",
-                    "Into", "Deref", "DerefMut", "CloneToUninit",
-                    "Pointable", "Any", "TypeId", "Unpin",
-                    "PartialOrd", "Ord", "Copy", "Sized",
-                    "FnOnce", "Fn", "FnMut",
+                    "Debug",
+                    "Clone",
+                    "Default",
+                    "PartialEq",
+                    "Eq",
+                    "Hash",
+                    "Send",
+                    "Sync",
+                    "Drop",
+                    "From",
+                    "TryFrom",
+                    "Display",
+                    "Error",
+                    "Iterator",
+                    "IntoIterator",
+                    "Future",
+                    "Serialize",
+                    "Deserialize",
+                    "Borrow",
+                    "BorrowMut",
+                    "AsRef",
+                    "AsMut",
+                    "ToOwned",
+                    "Into",
+                    "Deref",
+                    "DerefMut",
+                    "CloneToUninit",
+                    "Pointable",
+                    "Any",
+                    "TypeId",
+                    "Unpin",
+                    "PartialOrd",
+                    "Ord",
+                    "Copy",
+                    "Sized",
+                    "FnOnce",
+                    "Fn",
+                    "FnMut",
                 ):
                     continue
                 # Drop blanket impls: any trait path that isn't part of SDK.
                 # Most stdlib trait paths are unqualified (Debug, Borrow); if
                 # it's not in our allow-skip list and starts with a capital
                 # letter, conservatively skip it too.
-                if (trait_path and not trait_path.startswith("signalwire")
-                        and trait_path[0:1].isupper()):
+                if (
+                    trait_path
+                    and not trait_path.startswith("signalwire")
+                    and trait_path[0:1].isupper()
+                ):
                     continue
             for method_id in impl_inner.get("items", []):
                 method_item = get(method_id)
@@ -1110,7 +1210,10 @@ def collect(rust_doc: dict, aliases: dict) -> tuple[dict, list]:
                 ctx = f"{mod}.{canonical_name}.{method_canonical}"
                 try:
                     sig = build_signature(
-                        m_inner["function"], paths, aliases, ctx,
+                        m_inner["function"],
+                        paths,
+                        aliases,
+                        ctx,
                         defaults=fn_defaults.get(str(method_id)),
                     )
                 except TypeTranslationError as e:
@@ -1154,7 +1257,10 @@ def collect(rust_doc: dict, aliases: dict) -> tuple[dict, list]:
                 _fnode = (_f.get("inner") or {}).get("struct_field")
                 try:
                     _ftype = translate_rust_type(
-                        _fnode, paths, aliases, f"{mod}.{canonical_name}.{_fname}",
+                        _fnode,
+                        paths,
+                        aliases,
+                        f"{mod}.{canonical_name}.{_fname}",
                     )
                 except TypeTranslationError as e:
                     failures.append(str(e))
@@ -1178,14 +1284,19 @@ def collect(rust_doc: dict, aliases: dict) -> tuple[dict, list]:
         # (module, class) separately for the ORACLE GATE, which must be keyed by
         # the name the emitter EMITS. Never mix the two spaces.
         methods_out = _apply_method_renames(
-            struct_name, methods_out, module=mod, py_cls=canonical_name,
+            struct_name,
+            methods_out,
+            module=mod,
+            py_cls=canonical_name,
         )
 
         if not methods_out:
             continue
 
         out_modules.setdefault(mod, {"classes": {}})
-        existing = out_modules[mod]["classes"].get(canonical_name, {}).get("methods", {})
+        existing = (
+            out_modules[mod]["classes"].get(canonical_name, {}).get("methods", {})
+        )
         existing.update(methods_out)
         out_modules[mod]["classes"][canonical_name] = {
             "methods": dict(sorted(existing.items())),
@@ -1230,7 +1341,9 @@ def collect(rust_doc: dict, aliases: dict) -> tuple[dict, list]:
             continue
         try:
             sig = build_signature(
-                inner["function"], paths, aliases,
+                inner["function"],
+                paths,
+                aliases,
                 f"{target_module}.{target_function}",
                 defaults=fn_defaults.get(str(iid)),
             )
@@ -1260,7 +1373,10 @@ def collect(rust_doc: dict, aliases: dict) -> tuple[dict, list]:
             if p.get("kind") == "keyword"
         }
         for p in sig.get("params", []):
-            if p.get("name") in ref_kind_by_name and p.get("kind", "positional") == "positional":
+            if (
+                p.get("name") in ref_kind_by_name
+                and p.get("kind", "positional") == "positional"
+            ):
                 p["kind"] = "keyword"
         out_modules.setdefault(target_module, {"classes": {}})
         out_modules[target_module].setdefault("functions", {})
@@ -1271,22 +1387,29 @@ def collect(rust_doc: dict, aliases: dict) -> tuple[dict, list]:
     # to canonical Python mixin / manager paths so the audit lines up.
     MIXIN_PROJECTIONS: dict[tuple[str, str], list[str]] = {
         ("signalwire.core.agent.tools.registry", "ToolRegistry"): [
-            "define_tool", "register_swaig_function",
-            "has_function", "get_function", "get_all_functions",
+            "define_tool",
+            "register_swaig_function",
+            "has_function",
+            "get_function",
+            "get_all_functions",
             "remove_function",
         ],
         ("signalwire.core.mixins.tool_mixin", "ToolMixin"): [
-            "define_tool", "on_function_call", "register_swaig_function",
+            "define_tool",
+            "on_function_call",
+            "register_swaig_function",
             "define_tools",
         ],
         ("signalwire.core.mixins.auth_mixin", "AuthMixin"): [
-            "validate_basic_auth", "get_basic_auth_credentials",
+            "validate_basic_auth",
+            "get_basic_auth_credentials",
         ],
         ("signalwire.core.mixins.state_mixin", "StateMixin"): [
             "validate_tool_token",
         ],
         ("signalwire.core.mixins.web_mixin", "WebMixin"): [
-            "on_request", "on_swml_request",
+            "on_request",
+            "on_swml_request",
         ],
         # Python additionally extracted a ``PromptManager`` class that
         # PromptMixin delegates to.  The user-facing surface is
@@ -1297,15 +1420,30 @@ def collect(rust_doc: dict, aliases: dict) -> tuple[dict, list]:
         # under a separate PromptMixin namespace, so this is the only
         # prompt-side projection needed here.
         ("signalwire.core.agent.prompt.manager", "PromptManager"): [
-            "define_contexts", "get_contexts", "get_post_prompt", "get_prompt",
+            "define_contexts",
+            "get_contexts",
+            "get_post_prompt",
+            "get_prompt",
             "get_raw_prompt",
-            "prompt_add_section", "prompt_add_subsection", "prompt_add_to_section",
-            "prompt_has_section", "set_post_prompt", "set_prompt_pom",
+            "prompt_add_section",
+            "prompt_add_subsection",
+            "prompt_add_to_section",
+            "prompt_has_section",
+            "set_post_prompt",
+            "set_prompt_pom",
             "set_prompt_text",
         ],
     }
-    svc_entry = out_modules.get("signalwire.core.swml_service", {}).get("classes", {}).get("SWMLService")
-    ab_entry = out_modules.get("signalwire.core.agent_base", {}).get("classes", {}).get("AgentBase")
+    svc_entry = (
+        out_modules.get("signalwire.core.swml_service", {})
+        .get("classes", {})
+        .get("SWMLService")
+    )
+    ab_entry = (
+        out_modules.get("signalwire.core.agent_base", {})
+        .get("classes", {})
+        .get("AgentBase")
+    )
     if svc_entry or ab_entry:
         svc_methods = svc_entry["methods"] if svc_entry else {}
         ab_methods = ab_entry["methods"] if ab_entry else {}
@@ -1345,11 +1483,14 @@ def collect(rust_doc: dict, aliases: dict) -> tuple[dict, list]:
             # run still exited 0. _load_python_reference() now aborts naming the
             # file, which is the correct behaviour for a missing oracle.
             py_ref = _load_python_reference()
-            py_svc_methods = set(py_ref.get("modules", {})
-                                 .get("signalwire.core.swml_service", {})
-                                 .get("classes", {})
-                                 .get("SWMLService", {})
-                                 .get("methods", {}).keys())
+            py_svc_methods = set(
+                py_ref.get("modules", {})
+                .get("signalwire.core.swml_service", {})
+                .get("classes", {})
+                .get("SWMLService", {})
+                .get("methods", {})
+                .keys()
+            )
             for n in list(svc_methods.keys()):
                 if n in projected and n not in py_svc_methods:
                     svc_methods.pop(n, None)
@@ -1551,7 +1692,10 @@ def collect(rust_doc: dict, aliases: dict) -> tuple[dict, list]:
                 if not ref_kw:
                     continue
                 for p in sig.get("params", []):
-                    if p.get("name") in ref_kw and p.get("kind", "positional") == "positional":
+                    if (
+                        p.get("name") in ref_kw
+                        and p.get("kind", "positional") == "positional"
+                    ):
                         p["kind"] = "keyword"
 
     sorted_modules = {}
@@ -1573,7 +1717,11 @@ def collect(rust_doc: dict, aliases: dict) -> tuple[dict, list]:
         "generated_from": f"signalwire-rust via cargo rustdoc-json (FORMAT_VERSION {rust_doc.get('format_version')})",
         "modules": sorted_modules,
         "construction": build_construction(
-            sorted_modules, index, paths, aliases, failures,
+            sorted_modules,
+            index,
+            paths,
+            aliases,
+            failures,
             options_defaults=options_defaults,
         ),
     }, failures
@@ -1632,17 +1780,27 @@ _CONSTRUCTION_FIELD_RENAMES: dict[tuple[str, str], str | None] = {
 # projection of a differently-shaped reference param (the basic_auth pair
 # above). Keyed the same way as the rename table, by the CANONICAL name.
 _CONSTRUCTION_FIELD_TYPES: dict[tuple[str, str], str] = {
-    ("signalwire.core.agent_base.AgentBase", "basic_auth"):
-        "optional<tuple<string,string>>",
-    ("signalwire.core.swml_service.SWMLService", "basic_auth"):
-        "optional<tuple<string,string>>",
-    ("signalwire.agents.bedrock.BedrockAgent", "basic_auth"):
-        "optional<tuple<string,string>>",
+    (
+        "signalwire.core.agent_base.AgentBase",
+        "basic_auth",
+    ): "optional<tuple<string,string>>",
+    (
+        "signalwire.core.swml_service.SWMLService",
+        "basic_auth",
+    ): "optional<tuple<string,string>>",
+    (
+        "signalwire.agents.bedrock.BedrockAgent",
+        "basic_auth",
+    ): "optional<tuple<string,string>>",
 }
 
 
 def build_construction(
-    modules: dict, index: dict, paths: dict, aliases: dict, failures: list,
+    modules: dict,
+    index: dict,
+    paths: dict,
+    aliases: dict,
+    failures: list,
     options_defaults: dict | None = None,
 ) -> dict:
     """Return ``{"module.Class": {"params": {name: {type, required[, default]}}}}``.
@@ -1676,8 +1834,12 @@ def build_construction(
         for p in sig.get("params", []):
             if not isinstance(p, dict):
                 continue
-            if (p.get("kind") or "positional") in ("self", "cls", "var_keyword",
-                                                   "var_positional"):
+            if (p.get("kind") or "positional") in (
+                "self",
+                "cls",
+                "var_keyword",
+                "var_positional",
+            ):
                 continue
             name = p.get("name")
             if not name or name.startswith("_"):
@@ -1849,18 +2011,24 @@ def build_construction(
 # ergonomic conversion suffixes (``"x".to_string()`` is still the literal "x")
 # and the numeric type suffixes (``3600u64``) stripped.
 _RUST_LITERAL_RE = re.compile(
-    r'''^\s*(?:
+    r"""^\s*(?:
           "(?P<s>(?:[^"\\]|\\.)*)"
             (?:\s*\.\s*(?:to_string|to_owned|into|to_vec)\s*\(\s*\))?
         | (?P<b>true|false)
         | (?P<f>-?\d+\.\d+)(?:_?f(?:32|64))?
         | (?P<i>-?\d+)(?:_?(?:[iu](?:8|16|32|64|128)|usize|isize))?
-        )\s*$''',
+        )\s*$""",
     re.X,
 )
 
-_STR_ESCAPES = (("\\\\", "\\"), ('\\"', '"'), ("\\n", "\n"), ("\\t", "\t"),
-                ("\\r", "\r"), ("\\0", "\0"))
+_STR_ESCAPES = (
+    ("\\\\", "\\"),
+    ('\\"', '"'),
+    ("\\n", "\n"),
+    ("\\t", "\t"),
+    ("\\r", "\r"),
+    ("\\0", "\0"),
+)
 
 
 def parse_rust_literal(text: str):
@@ -1952,7 +2120,7 @@ def _strip_line_comments(text: str) -> str:
             out.append(ch)
             i += 1
             continue
-        if ch == "/" and text[i:i + 2] == "//":
+        if ch == "/" and text[i : i + 2] == "//":
             while i < len(text) and text[i] != "\n":
                 i += 1
             continue
@@ -2014,7 +2182,7 @@ class _SourceReader:
         lines = self._lines(filename)
         if not lines:
             return None
-        return "\n".join(lines[begin[0] - 1:end[0]])
+        return "\n".join(lines[begin[0] - 1 : end[0]])
 
 
 def _body_of(text: str) -> str:
@@ -2042,7 +2210,7 @@ def _body_of(text: str) -> str:
         elif ch == "}":
             depth -= 1
             if depth == 0 and start is not None:
-                return text[start + 1:i]
+                return text[start + 1 : i]
     return ""
 
 
@@ -2051,7 +2219,7 @@ def _struct_literal_fields(body: str, struct_name: str) -> dict:
     ``Self { … }`` struct literal inside ``body``. Non-literal initializers are
     omitted (never guessed)."""
 
-    m = re.search(r'\b(?:' + re.escape(struct_name) + r'|Self)\s*\{', body)
+    m = re.search(r"\b(?:" + re.escape(struct_name) + r"|Self)\s*\{", body)
     if not m:
         return {}
     i = m.end()
@@ -2147,7 +2315,8 @@ def _none_branch_default(clean_body: str, expr: str):
     """
     pat = re.escape(expr).replace(r"\.", r"\s*\.\s*")
     for m in re.finditer(
-        r"\blet\s+(?:mut\s+)?\w+\s*(?::[^=;]+)?=\s*" + pat
+        r"\blet\s+(?:mut\s+)?\w+\s*(?::[^=;]+)?=\s*"
+        + pat
         + r"\s*\.\s*(?P<op>unwrap_or_else|unwrap_or|map_or_else|map_or)\s*\(",
         clean_body,
     ):
@@ -2186,7 +2355,6 @@ def extract_defaults(index: dict, reader: _SourceReader) -> tuple[dict, dict]:
         mechanism C.
     A param absent from these maps has no recoverable default and stays required.
     """
-
 
     fn_defaults: dict = {}
     options_defaults: dict = {}
@@ -2234,9 +2402,12 @@ def extract_defaults(index: dict, reader: _SourceReader) -> tuple[dict, dict]:
                         (span.get("filename"), m.group(1)), []
                     )
                     for tid, titem in targets:
-                        tsig = (titem.get("inner") or {}).get("function", {}).get("sig") or {}
+                        tsig = (titem.get("inner") or {}).get("function", {}).get(
+                            "sig"
+                        ) or {}
                         tinputs = [
-                            n for n, _ in (tsig.get("inputs") or [])
+                            n
+                            for n, _ in (tsig.get("inputs") or [])
                             if isinstance(n, str) and n != "self"
                         ]
                         if len(tinputs) != len(args):
@@ -2249,9 +2420,12 @@ def extract_defaults(index: dict, reader: _SourceReader) -> tuple[dict, dict]:
 
         # ---- Mechanism B: Option<T> param + <param>.unwrap_or(<literal>) ----
         opt_params = [
-            n for n, t in inputs
-            if isinstance(n, str) and n != "self"
-            and isinstance(t, dict) and "resolved_path" in t
+            n
+            for n, t in inputs
+            if isinstance(n, str)
+            and n != "self"
+            and isinstance(t, dict)
+            and "resolved_path" in t
             and str(t["resolved_path"].get("path", "")).split("::")[-1] == "Option"
         ]
         for pname in opt_params:
@@ -2288,7 +2462,9 @@ def extract_defaults(index: dict, reader: _SourceReader) -> tuple[dict, dict]:
                 fname = fm.group(1)
                 found, value = _none_branch_default(clean, f"{pname}.{fname}")
                 if found:
-                    consumed_defaults.setdefault(struct_name, {}).setdefault(fname, value)
+                    consumed_defaults.setdefault(struct_name, {}).setdefault(
+                        fname, value
+                    )
 
         # ---- Mechanism C: options-struct field initializers ----
         # Require the EXPLICIT ``<Struct> { … }`` literal form. A bare ``Self { … }``
@@ -2383,8 +2559,9 @@ def _is_optional_slot(t, context: str, name: str) -> bool:
     return str(t["resolved_path"].get("path", "")).split("::")[-1] == "Option"
 
 
-def build_signature(fn: dict, paths: dict, aliases: dict, context: str,
-                    defaults: dict | None = None) -> dict:
+def build_signature(
+    fn: dict, paths: dict, aliases: dict, context: str, defaults: dict | None = None
+) -> dict:
     sig = fn.get("sig", {})
     inputs = sig.get("inputs", [])
     params_out: list = []
@@ -2421,7 +2598,11 @@ def build_signature(fn: dict, paths: dict, aliases: dict, context: str,
         params_out.insert(0, {"name": "self", "kind": "self"})
 
     output = sig.get("output")
-    return_canon = translate_rust_type(output, paths, aliases, f"{context}[->]") if output else "void"
+    return_canon = (
+        translate_rust_type(output, paths, aliases, f"{context}[->]")
+        if output
+        else "void"
+    )
     # ::new() returns Self in Rust; translate as void per __init__ convention
     if context.endswith(".__init__") and return_canon != "void":
         return_canon = "void"
@@ -2615,7 +2796,9 @@ def build_ai_chat_signatures() -> dict:
                 "AIChatClient": {"methods": dict(sorted(client_methods.items()))},
                 "ChatLog": {"methods": dict(sorted(chatlog_methods.items()))},
                 "ChatResponse": {"methods": dict(sorted(chatresponse_methods.items()))},
-                "ConversationInfo": {"methods": dict(sorted(conversationinfo_methods.items()))},
+                "ConversationInfo": {
+                    "methods": dict(sorted(conversationinfo_methods.items()))
+                },
                 "AIChatError": {"methods": {"__init__": aichaterror_init}},
             }
         }
@@ -2624,9 +2807,21 @@ def build_ai_chat_signatures() -> dict:
 
 def run_dump() -> dict:
     cp = subprocess.run(
-        ["cargo", "+nightly", "rustdoc", "--lib", "--", "-Z", "unstable-options",
-         "--output-format", "json"],
-        cwd=PORT_ROOT, capture_output=True, text=True, timeout=600,
+        [
+            "cargo",
+            "+nightly",
+            "rustdoc",
+            "--lib",
+            "--",
+            "-Z",
+            "unstable-options",
+            "--output-format",
+            "json",
+        ],
+        cwd=PORT_ROOT,
+        capture_output=True,
+        text=True,
+        timeout=600,
     )
     if cp.returncode != 0:
         raise RuntimeError(f"cargo rustdoc failed:\n{cp.stderr}")
@@ -2653,7 +2848,10 @@ def main() -> int:
 
     canonical, failures = collect(rust_doc, aliases)
     if failures:
-        print(f"enumerate_signatures: {len(failures)} translation failure(s)", file=sys.stderr)
+        print(
+            f"enumerate_signatures: {len(failures)} translation failure(s)",
+            file=sys.stderr,
+        )
         for f in failures[:30]:
             print(f"  - {f}", file=sys.stderr)
         if len(failures) > 30:
@@ -2669,10 +2867,17 @@ def main() -> int:
         if args.strict:
             return 1
 
-    args.out.write_text(json.dumps(canonical, indent=2, sort_keys=False) + "\n", encoding="utf-8")
+    args.out.write_text(
+        json.dumps(canonical, indent=2, sort_keys=False) + "\n", encoding="utf-8"
+    )
     n_mods = len(canonical["modules"])
-    n_methods = sum(sum(len(c["methods"]) for c in m.get("classes", {}).values()) for m in canonical["modules"].values())
-    print(f"enumerate_signatures: wrote {args.out} ({n_mods} modules, {n_methods} methods)")
+    n_methods = sum(
+        sum(len(c["methods"]) for c in m.get("classes", {}).values())
+        for m in canonical["modules"].values()
+    )
+    print(
+        f"enumerate_signatures: wrote {args.out} ({n_mods} modules, {n_methods} methods)"
+    )
     return 0
 
 
