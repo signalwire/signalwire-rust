@@ -196,15 +196,13 @@ impl DataMap {
         self
     }
 
-    /// Set body on the last webhook.
-    pub fn body(&mut self, data: Value) -> &mut Self {
-        if let Some(Value::Object(map)) = self.webhooks.last_mut() {
-            map.insert("body".to_string(), data);
-        }
-        self
-    }
-
-    /// Set params on the last webhook.
+    /// Set params on the last webhook — the method for POST/PUT request data.
+    ///
+    /// `params` is part of the webhook contract: `schema.json` `$defs/Webhook` lists
+    /// it among the ten permitted properties and forbids everything else, and the
+    /// engine's webhook readers look it up. There is deliberately no `body` setter —
+    /// a `body` key is schema-forbidden and read by no engine reader, so writing one
+    /// produced an invalid document and silently discarded the caller's payload.
     pub fn params(&mut self, data: Value) -> &mut Self {
         if let Some(Value::Object(map)) = self.webhooks.last_mut() {
             map.insert("params".to_string(), data);
@@ -559,15 +557,6 @@ mod tests {
     }
 
     #[test]
-    fn test_body() {
-        let mut dm = DataMap::new("func");
-        dm.webhook("POST", "https://api.example.com", None, None, None, None);
-        dm.body(json!({"key": "value"}));
-        let val = dm.to_swaig_function();
-        assert_eq!(val["data_map"]["webhooks"][0]["body"]["key"], "value");
-    }
-
-    #[test]
     fn test_params() {
         let mut dm = DataMap::new("func");
         dm.webhook("POST", "https://api.example.com", None, None, None, None);
@@ -702,7 +691,6 @@ mod tests {
         let mut dm = DataMap::new("func");
         // These should not panic when no webhooks exist
         dm.webhook_expressions(vec![]);
-        dm.body(json!({}));
         dm.params(json!({}));
         dm.for_each(json!({}));
         dm.output(json!("test"));
@@ -752,5 +740,78 @@ mod tests {
         dm2.webhook("DELETE", "https://api3.example.com", None, None, None, None);
         let val2 = dm2.to_swaig_function();
         assert_eq!(val2["data_map"]["webhooks"][0]["method"], "DELETE");
+    }
+
+    /// `DataMap::body()` is GONE — the key it wrote is invalid, not merely ignored.
+    ///
+    /// Owner-ruled 2026-07-29, extending the `create_simple_api_tool` ruling ("if the
+    /// server doesn't read them, remove them") to the public builder method. Three
+    /// independent sources condemn it:
+    ///
+    /// * The SWML schema's `$defs/Webhook` declares exactly ten properties —
+    ///   `error_keys`, `expressions`, `foreach`, `headers`, `input_args_as_params`,
+    ///   `method`, `output`, `params`, `require_args`, `url` — under
+    ///   `unevaluatedProperties: {"not": {}}`. `body` is not among them, so emitting
+    ///   it is a SCHEMA VIOLATION.
+    /// * `mod_openai/actions.c:735-739` and `bedrock.c:4920-4926` read `url`, `method`,
+    ///   `form_param`, `params` and `headers` and nothing else; `grep -n '"body"'`
+    ///   across both returns ZERO matches.
+    /// * So the method's only possible effect was producing an invalid document while
+    ///   silently discarding the caller's payload.
+    ///
+    /// [`params`](DataMap::params) is the correct method for POST/PUT request data — it
+    /// writes the `params` key, which IS in the contract and IS read.
+    ///
+    /// The builder surface offers no way to reach the forbidden key: `dm.body(..)` is a
+    /// hard compile error after the removal, so the compiler gates the METHOD. This test
+    /// gates the WIRE — driving every setter the builder still exposes and asserting the
+    /// emitted webhook carries no `body` and nothing outside the ten allowed properties.
+    #[test]
+    fn test_body_key_is_never_emitted() {
+        /// Every key the `$defs/Webhook` contract permits.
+        const ALLOWED: &[&str] = &[
+            "error_keys",
+            "expressions",
+            "foreach",
+            "headers",
+            "input_args_as_params",
+            "method",
+            "output",
+            "params",
+            "require_args",
+            "url",
+        ];
+
+        // Drive every webhook-key setter the builder still exposes.
+        let mut dm = DataMap::new("no_body");
+        dm.webhook(
+            "POST",
+            "https://api.example.com",
+            Some(json!({"Content-Type": "application/json"})),
+            None,
+            None,
+            None,
+        );
+        dm.params(json!({"query": "${args.q}"}));
+        dm.webhook_expressions(vec![json!({"pattern": "ok", "output": {"response": "y"}})]);
+        dm.for_each(json!({"input_key": "r", "output_key": "o", "append": "x"}));
+        dm.output(json!({"response": "ok"}));
+        let val = dm.to_swaig_function();
+        let wh = val["data_map"]["webhooks"][0].as_object().unwrap();
+        assert!(
+            !wh.contains_key("body"),
+            "the `body` webhook key is forbidden by schema.json $defs/Webhook and is read \
+             by no engine reader — use params() instead; got keys {:?}",
+            wh.keys().collect::<Vec<_>>()
+        );
+        // Positive control: the replacement still writes the contract key.
+        assert_eq!(wh["params"]["query"], "${args.q}");
+        // Every key present is one of the ten the contract allows.
+        for k in wh.keys() {
+            assert!(
+                ALLOWED.contains(&k.as_str()),
+                "webhook key {k:?} is not one of the ten schema.json $defs/Webhook properties"
+            );
+        }
     }
 }

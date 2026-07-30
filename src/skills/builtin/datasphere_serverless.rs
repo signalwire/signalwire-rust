@@ -69,7 +69,7 @@ impl SkillBase for DatasphereServerless {
 
         let auth_string = BASE64.encode(format!("{project_id}:{token}"));
 
-        let mut body_payload = json!({
+        let mut webhook_params = json!({
             "document_id": document_id,
             "query_string": "${args.query}",
             "count": count,
@@ -77,10 +77,10 @@ impl SkillBase for DatasphereServerless {
         });
 
         if let Some(tags) = self.sp.params.get("tags") {
-            body_payload["tags"] = tags.clone();
+            webhook_params["tags"] = tags.clone();
         }
         if let Some(language) = self.sp.params.get("language") {
-            body_payload["language"] = language.clone();
+            webhook_params["language"] = language.clone();
         }
 
         let mut func_def = json!({
@@ -104,7 +104,11 @@ impl SkillBase for DatasphereServerless {
                         "Content-Type": "application/json",
                         "Authorization": format!("Basic {}", auth_string),
                     },
-                    "body": body_payload,
+                    // The reference writes this payload to `params`
+                    // (datasphere_serverless/skill.py:210, `.params(webhook_params)`).
+                    // `body` is forbidden by schema.json $defs/Webhook and read by no
+                    // engine reader, so emitting it dropped the search parameters.
+                    "params": webhook_params,
                     "foreach": {
                         "input_key": "chunks",
                         "output_key": "formatted_results",
@@ -181,5 +185,47 @@ mod tests {
     fn test_datasphere_serverless_setup_needs_params() {
         let mut skill = DatasphereServerless::new(Map::new());
         assert!(!skill.setup());
+    }
+
+    /// The search payload rides `params`, never the schema-forbidden `body`.
+    ///
+    /// This skill emitted its whole search payload — `document_id`, `query_string`,
+    /// `count`, `distance` — under a `body` webhook key. `body` is not one of the ten
+    /// properties the SWML schema's `$defs/Webhook` declares (it closes the object with
+    /// `unevaluatedProperties: {"not": {}}`) and appears nowhere in `mod_openai`, so
+    /// the engine dropped every search parameter and the query ran unconfigured. The
+    /// reference writes the same payload with `.params(webhook_params)`
+    /// (`datasphere_serverless/skill.py:210`).
+    #[test]
+    fn test_search_payload_rides_params_not_body() {
+        let mut params = Map::new();
+        params.insert("space_name".to_string(), json!("example.signalwire.com"));
+        params.insert("project_id".to_string(), json!("proj"));
+        params.insert("token".to_string(), json!("tok"));
+        params.insert("document_id".to_string(), json!("doc-1"));
+        let skill = DatasphereServerless::new(params);
+
+        let mut agent = AgentBase::new(crate::agent::AgentOptions::new(
+            "datasphere-serverless-test",
+        ));
+        skill.register_tools(&mut agent);
+
+        let def = agent
+            .tool_definition("search_knowledge")
+            .expect("search_knowledge should be registered");
+        let wh = def["data_map"]["webhooks"][0]
+            .as_object()
+            .expect("a webhook should be emitted");
+
+        assert!(
+            !wh.contains_key("body"),
+            "`body` is forbidden by schema.json $defs/Webhook and read by no engine \
+             reader; got keys {:?}",
+            wh.keys().collect::<Vec<_>>()
+        );
+        assert_eq!(wh["params"]["document_id"], "doc-1");
+        assert_eq!(wh["params"]["query_string"], "${args.query}");
+        assert_eq!(wh["params"]["count"], 1);
+        assert_eq!(wh["params"]["distance"], 3.0);
     }
 }

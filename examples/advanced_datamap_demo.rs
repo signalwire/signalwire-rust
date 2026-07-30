@@ -66,7 +66,7 @@ fn main() {
             None,
             None,
             None)
-        .body(json!({"action": "${args.action}", "data": "${args.data}"}))
+        .params(json!({"action": "${args.action}", "data": "${args.data}"}))
         .webhook_expressions(vec![
             json!({
                 "string": "${response.status}",
@@ -102,7 +102,7 @@ fn main() {
             None,
             None,
         )
-        .body(json!({"query": "${args.query}", "limit": 5}))
+        .params(json!({"query": "${args.query}", "limit": 5}))
         .for_each(json!({
             "input_key": "results",
             "output_key": "items",

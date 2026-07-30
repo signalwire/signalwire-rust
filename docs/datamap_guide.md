@@ -42,7 +42,7 @@ weather
         None,
         None,
     )
-    // params/body apply to the most recently added webhook
+    // params applies to the most recently added webhook
     .params(json!({"key": "YOUR_API_KEY", "q": "${args.city}"}))
     // output() takes a Value — use FunctionResult::with_response(...).to_value()
     .output(
@@ -106,7 +106,7 @@ search
 
 ### With Auth Headers
 
-Headers are the third argument to `webhook`; per-request body goes through `body`:
+Headers are the third argument to `webhook`; per-request data goes through `params`:
 
 ```rust
 let mut search = DataMap::new("knowledge_search");
@@ -122,7 +122,7 @@ search
         None,
         None,
     )
-    .body(json!({"query": "${args.query}"}))
+    .params(json!({"query": "${args.query}"}))
     .output(FunctionResult::with_response("Found: ${response.results[0].text}").to_value());
 ```
 

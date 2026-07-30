@@ -4007,20 +4007,6 @@
               ],
               "returns": "void"
             },
-            "body": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                },
-                {
-                  "name": "data",
-                  "type": "class:signalwire.value.Value",
-                  "required": true
-                }
-              ],
-              "returns": "any"
-            },
             "create_expression_tool": {
               "params": [
                 {
@@ -23233,7 +23219,7 @@
                   "kind": "self"
                 }
               ],
-              "returns": "optional<class:signalwire.value.Value>"
+              "returns": "optional<string>"
             },
             "dispatch_event": {
               "params": [
@@ -23274,7 +23260,7 @@
                   "kind": "self"
                 }
               ],
-              "returns": "optional<class:signalwire.value.Value>"
+              "returns": "list<string>"
             },
             "message_id": {
               "params": [

@@ -1,6 +1,6 @@
 {
   "version": "1",
-  "generated_from": "signalwire-rust @ d77d206d0015491781926fdd131588f2de3ac98b",
+  "generated_from": "signalwire-rust @ bce2f574b71a8ce40c8d1156aba750b6ad91f46a",
   "modules": {
     "signalwire": {
       "classes": {
@@ -384,7 +384,6 @@
       "classes": {
         "DataMap": [
           "__init__",
-          "body",
           "description",
           "error_keys",
           "expression",

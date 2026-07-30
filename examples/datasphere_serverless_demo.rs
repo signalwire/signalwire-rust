@@ -49,7 +49,7 @@ fn main() {
             None,
             None,
         )
-        .body(json!({
+        .params(json!({
             "query": "${args.query}",
             "limit": "${args.max_results}"
         }))

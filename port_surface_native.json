@@ -2526,6 +2526,7 @@
     "street_number",
     "string",
     "strip_control_chars",
+    "strip_control_chars_str",
     "sub_use_cases",
     "submit_answer",
     "submit_verification",
