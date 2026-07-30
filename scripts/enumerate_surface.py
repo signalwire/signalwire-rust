@@ -1606,11 +1606,16 @@ FORCE_CLASS_METHODS: dict[tuple[str, str], list[str]] = {
     # return matches, receivers carry no type — diff_port_signatures). The SURFACE
     # side already lists them via SKILL_INTERFACE_PROJECTION (this union is a
     # harmless idempotent superset there).
+    # ``get_prompt_sections`` is NOT in this list: signalwire-python e9aa402 made it
+    # a FINAL template method on ``SkillBase`` (it carries the ``skip_prompt`` guard
+    # and delegates to the protected ``_get_prompt_sections``), so the oracle records
+    # it on the base and on no subclass. Forcing it here injected a phantom member on
+    # BOTH axes — a second, independent path to the same 11-symbol drift, invisible on
+    # the surface side because SKILL_INTERFACE_PROJECTION supplied it too.
     ("signalwire.skills.mcp_gateway.skill", "MCPGatewaySkill"): [
         "get_global_data",
         "get_hints",
         "get_parameter_schema",
-        "get_prompt_sections",
         "register_tools",
         "setup",
     ],
@@ -2437,13 +2442,66 @@ def build_surface() -> dict:
         )
         | SKILL_INTERFACE_METHODS
     )
+    #
+    # ORACLE-GATED, like every other projection here. The per-skill lists below are
+    # a hand-kept snapshot of the reference's per-subclass override sets, and a hand
+    # list cannot self-retire: when the reference PULLS a name up to the base class,
+    # the snapshot keeps projecting it onto every subclass and the port grows 11
+    # phantom additions. That is exactly what signalwire-python e9aa402 did — it made
+    # ``SkillBase.get_prompt_sections`` a FINAL template method carrying the
+    # ``skip_prompt`` guard and moved the per-skill bodies to the protected
+    # ``_get_prompt_sections``, so the oracle now records the name on ``SkillBase``
+    # and on NO subclass. Intersecting with what the oracle records LIVE makes the
+    # table incapable of over-projecting: it can only ever narrow to the reference's
+    # own per-class truth, and a future pull-up retires itself with no edit here.
+    _sk_oracle = _oracle_class_members()
     for (mod_name, cls), names in SKILL_INTERFACE_PROJECTION.items():
         if mod_name not in modules or cls not in modules[mod_name]["classes"]:
             continue  # skill class absent → real gap, not masked
-        proj = [n for n in names if n in skillbase_provided]
+        _recorded = _sk_oracle.get((mod_name, cls), set())
+        proj = [n for n in names if n in skillbase_provided and n in _recorded]
         existing = set(modules[mod_name]["classes"][cls])
         existing.update(proj)
         modules[mod_name]["classes"][cls] = sorted(existing)
+
+    # FINAL-TEMPLATE-METHOD FOLD, derived live from the oracle (no table).
+    #
+    # A name the reference records on ``SkillBase`` and on NO skill subclass is a
+    # FINAL template method: the base declares the public entry point (and any guard
+    # it carries), and subclasses customize through a PROTECTED hook that is not part
+    # of the public surface. Python's ``SkillBase.get_prompt_sections`` became exactly
+    # this in signalwire-python e9aa402 — it now carries the ``skip_prompt`` guard and
+    # delegates to ``_get_prompt_sections``, which every skill overrides instead.
+    #
+    # Rust spells the same design as a trait method with a default body that each
+    # skill overrides, so the Rust walker DOES see the name on all 12 overriding
+    # skills. That is Rust idiom for the same callable, not extra surface: fold it to
+    # the base, exactly where the reference records it. Deriving the set from the
+    # oracle (rather than naming ``get_prompt_sections``) means the fold applies to
+    # any future pull-up and retires itself the moment a subclass re-declares one.
+    _sb_members = _sk_oracle.get(("signalwire.core.skill_base", "SkillBase"), set())
+    _skill_classes = [
+        (m, c)
+        for (m, c) in _sk_oracle
+        if m.startswith("signalwire.skills.") and m.endswith(".skill")
+    ]
+    _final_template = {
+        n
+        for n in _sb_members
+        if n in SKILL_INTERFACE_METHODS
+        and not any(n in _sk_oracle.get(k, set()) for k in _skill_classes)
+    }
+    if _final_template:
+        for mod_name, entry in modules.items():
+            if not (
+                mod_name.startswith("signalwire.skills.")
+                and mod_name.endswith(".skill")
+            ):
+                continue
+            for cls, members in list(entry["classes"].items()):
+                kept = [n for n in members if n not in _final_template]
+                if len(kept) != len(members):
+                    entry["classes"][cls] = kept
 
     # Composition-attribute enrich: surface class-typed struct fields (which Rust
     # records method-less) as members, matching the reference oracle so they stop

@@ -32352,15 +32352,6 @@
               ],
               "returns": "class:signalwire.value.Value"
             },
-            "get_prompt_sections": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "list<class:signalwire.value.Value>"
-            },
             "register_tools": {
               "params": [
                 {
@@ -32437,15 +32428,6 @@
               ],
               "returns": "class:signalwire.value.Value"
             },
-            "get_prompt_sections": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "list<class:signalwire.value.Value>"
-            },
             "register_tools": {
               "params": [
                 {
@@ -32504,15 +32486,6 @@
               ],
               "returns": "class:signalwire.value.Value"
             },
-            "get_prompt_sections": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "list<class:signalwire.value.Value>"
-            },
             "register_tools": {
               "params": [
                 {
@@ -32570,15 +32543,6 @@
                 }
               ],
               "returns": "class:signalwire.value.Value"
-            },
-            "get_prompt_sections": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "list<class:signalwire.value.Value>"
             },
             "register_tools": {
               "params": [
@@ -32714,15 +32678,6 @@
               ],
               "returns": "class:signalwire.value.Value"
             },
-            "get_prompt_sections": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "list<class:signalwire.value.Value>"
-            },
             "register_tools": {
               "params": [
                 {
@@ -32780,15 +32735,6 @@
                 }
               ],
               "returns": "class:signalwire.value.Value"
-            },
-            "get_prompt_sections": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "list<class:signalwire.value.Value>"
             },
             "register_tools": {
               "params": [
@@ -32856,15 +32802,6 @@
                 }
               ],
               "returns": "class:signalwire.value.Value"
-            },
-            "get_prompt_sections": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "list<class:signalwire.value.Value>"
             },
             "register_tools": {
               "params": [
@@ -32950,15 +32887,6 @@
                 }
               ],
               "returns": "class:signalwire.value.Value"
-            },
-            "get_prompt_sections": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "list<class:signalwire.value.Value>"
             },
             "register_tools": {
               "params": [
@@ -33171,15 +33099,6 @@
               ],
               "returns": "class:signalwire.value.Value"
             },
-            "get_prompt_sections": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "list<class:signalwire.value.Value>"
-            },
             "register_tools": {
               "params": [
                 {
@@ -33286,15 +33205,6 @@
                 }
               ],
               "returns": "class:signalwire.value.Value"
-            },
-            "get_prompt_sections": {
-              "params": [
-                {
-                  "name": "self",
-                  "kind": "self"
-                }
-              ],
-              "returns": "list<class:signalwire.value.Value>"
             },
             "register_tools": {
               "params": [
