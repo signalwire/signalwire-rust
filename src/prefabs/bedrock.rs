@@ -496,6 +496,49 @@ mod tests {
         assert_eq!(prompt.get("top_p"), Some(&json!(0.9)));
     }
 
+    /// `build_bedrock_block` rebuilds the verb body against a FIXED SIX-KEY
+    /// allowlist (prompt, SWAIG, params, global_data, post_prompt,
+    /// post_prompt_url) — any `ai` key it does not name vanishes SILENTLY, with
+    /// no error. The typescript port shipped exactly this shape and lost its
+    /// debug-events params to it.
+    ///
+    /// Here they survive, because `debug_webhook_url` / `debug_webhook_level`
+    /// live INSIDE `params`, which is copied wholesale rather than key-by-key.
+    /// That is load-bearing and untested until now: moving either key up to the
+    /// `ai` top level, or narrowing the params copy, would silently make debug
+    /// events unreachable on every Bedrock agent. (The six-key allowlist itself
+    /// is a faithful port of the reference — `agents/bedrock.py:112-131` builds
+    /// the identical dict — so the keys it DOES drop are a reference-level
+    /// shape, not a port defect.)
+    #[test]
+    fn test_render_swml_debug_event_params_survive_the_bedrock_rewrite() {
+        let mut agent = fresh_agent();
+        agent.set_prompt_text("Hi");
+        agent.agent_mut().enable_debug_events(Some(2));
+        let swml = agent.render_swml(&HashMap::new());
+        let main = swml
+            .get("sections")
+            .and_then(|s| s.get("main"))
+            .and_then(|m| m.as_array())
+            .expect("main array present");
+        let bedrock = main
+            .iter()
+            .find_map(|item| item.as_object().and_then(|o| o.get("amazon_bedrock")))
+            .expect("amazon_bedrock verb");
+        let params = bedrock
+            .get("params")
+            .expect("params must survive the ai -> amazon_bedrock rewrite");
+        assert_eq!(params.get("debug_webhook_level"), Some(&json!(2)));
+        let url = params
+            .get("debug_webhook_url")
+            .and_then(Value::as_str)
+            .expect("debug_webhook_url must survive the rewrite");
+        assert!(
+            url.contains("debug_events"),
+            "debug_webhook_url must address the debug_events endpoint, got {url}"
+        );
+    }
+
     #[test]
     fn test_render_swml_strips_text_only_params_from_prompt() {
         let mut agent = fresh_agent();
