@@ -68,6 +68,24 @@ sw_ensure_components() {
     fi
 }
 
+# --- ruff: REQUIRED dev dependency for the PY-LINT gate ----------------------
+# This is a Rust SDK, but it ships 7 hand-written Python programs under scripts/
+# and FIVE of them emit artifacts the CI gates read as ground truth
+# (port_surface.json, port_signatures.json, and the generated REST/SWML/SWAIG
+# source trees). scripts/run-pylint.sh lints and formats them; run-ci.sh runs it
+# as the PY-LINT gate.
+#
+# DECLARATION (per AGENT_RULES §7 "declare in BOTH layers"):
+#   (a) LOCAL bootstrap — install with:
+#         pip install ruff        # any platform
+#         brew install ruff       # macOS
+#   (b) CI — declared in porting-sdk/.github/workflows/cross-port.yml, whose
+#       "Install ruff" step runs `pip install ruff` for every matrix port.
+#
+# UNLIKE sccache below, ruff is NOT availability-gated: run-pylint.sh FAILS LOUD
+# when it is absent rather than skipping. A lint gate that silently no-ops on a
+# missing tool is worse than no gate — it reports PASS while checking nothing.
+
 # --- sccache: availability-gated compiler cache (pure speedup) ---------------
 # sccache is a persistent (on-disk) compiler cache. Rust already has cargo's
 # INCREMENTAL cache, so the LOCAL marginal win is small — but a persistent cache

@@ -517,6 +517,21 @@ sched_gate FMT defer=1 desc="rustfmt via scripts/run-format.sh (local: auto-fix;
 sched_gate LINT defer=1 desc="cargo clippy --all-targets via scripts/run-lint.sh" \
     -- bash "$PORT_ROOT/scripts/run-lint.sh"
 
+# PY-LINT — ruff (lint + format) over the 7 hand-written Python programs under
+# scripts/. LINT above covers the whole Rust tree; this covers the Python that
+# DECIDES WHAT THE GATES COMPARE — enumerate_surface.py feeds SURFACE-FRESH,
+# enumerate_signatures.py feeds SIGNATURES/DRIFT, and the three generators feed
+# GEN-FRESH*. None of it was linted by anything before 2026-07-30; the first
+# pass found a live silent-success defect in both enumerators (an unreadable
+# input yielded a short-but-valid oracle at rc=0). Rule selection mirrors the
+# reference implementation (signalwire-python/pyproject.toml); config in
+# ruff.toml. Dual-mode exactly like FMT: LOCAL applies fixes in place, CI ($CI
+# set) passes --check for read-only verification, so an unformatted commit is
+# never green locally and red in CI on the very formatting the local run applied.
+# Cheap (sub-second, no toolchain), so it is NOT deferred.
+sched_gate PY-LINT desc="ruff over scripts/*.py via scripts/run-pylint.sh (local: apply, CI: check)" \
+    -- bash "$PORT_ROOT/scripts/run-pylint.sh" ${CI:+--check}
+
 # --native-names is load-bearing, not optional. port_surface.json holds the FOLDED
 # surface (reference spellings), so without the native-name sidecar every accessor
 # or options-struct member the enumerator folds becomes unresolvable in this crate's
