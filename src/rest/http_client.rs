@@ -86,6 +86,10 @@ pub trait HttpTransport: Send + Sync {
 /// so any regression in serialization is caught.
 pub struct UreqTransport {
     agent: ureq::Agent,
+    /// Whether `SIGNALWIRE_REST_CA_FILE` supplied a custom trust anchor at
+    /// construction. Recorded because the resulting `TlsConfig` is silently
+    /// unused on a plaintext URL — see the downgrade refusal in `execute_raw`.
+    custom_ca: bool,
 }
 
 impl Default for UreqTransport {
@@ -123,12 +127,16 @@ impl UreqTransport {
         // test CA, or a corporate proxy CA), set SIGNALWIRE_REST_CA_FILE to a
         // PEM bundle; we load it as the *only* trust anchor. Real verification
         // against a caller-chosen CA — never disabled / accept-invalid.
-        if let Some(tls_config) = custom_ca_tls_config() {
-            builder = builder.tls_config(tls_config);
-        }
+        let custom_ca = match custom_ca_tls_config() {
+            Some(tls_config) => {
+                builder = builder.tls_config(tls_config);
+                true
+            }
+            None => false,
+        };
 
         let agent: ureq::Agent = builder.build().into();
-        UreqTransport { agent }
+        UreqTransport { agent, custom_ca }
     }
 }
 
@@ -166,6 +174,20 @@ impl UreqTransport {
         body: Option<&str>,
         timeout: Duration,
     ) -> Result<(u16, HashMap<String, String>, String), String> {
+        // NO SILENT DOWNGRADE. Setting SIGNALWIRE_REST_CA_FILE is a request to
+        // verify the peer against that CA — meaningless over plaintext. The
+        // agent's TlsConfig is chosen at construction and simply goes unused on
+        // an `http://` URL, so a caller who set the CA and a plain base URL (or
+        // whose paginated `next` link came back as `http://`) would have the
+        // request sent in the clear with no diagnostic. Refuse instead, naming
+        // the setting that would otherwise have been ignored.
+        if self.custom_ca && !url.starts_with("https://") {
+            return Err(format!(
+                "SIGNALWIRE_REST_CA_FILE is set (TLS verification requested) but the request \
+                 URL is not https: {url} — refusing to downgrade to plaintext. Use an https:// \
+                 base URL, or unset SIGNALWIRE_REST_CA_FILE to send in the clear deliberately."
+            ));
+        }
         // Apply the resolved per-attempt timeout to THIS request (request-level
         // config overrides the agent default). A timeout surfaces as
         // `ureq::Error::Timeout`, mapped below into the typed transport error.

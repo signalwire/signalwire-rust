@@ -64,6 +64,15 @@ mod tls {
     /// * `wss://` with no `SIGNALWIRE_RELAY_CA_FILE` -> rustls + webpki roots.
     /// * `wss://` with `SIGNALWIRE_RELAY_CA_FILE` -> rustls verifying against
     ///   *that* CA, via a custom `Connector::Rustls`.
+    ///
+    /// A configured `SIGNALWIRE_RELAY_CA_FILE` against a plain `ws://` URL is
+    /// REFUSED, not downgraded — see the check below.
+    ///
+    /// # Errors
+    ///
+    /// Returns `RelayError::Transport` when the URL is unparseable, the TCP
+    /// connect or WebSocket/TLS handshake fails, the CA bundle cannot be read,
+    /// or TLS was requested but the resolved transport is plaintext.
     pub fn ws_connect(url: &str) -> Result<WsStream, RelayError> {
         let ca_file = std::env::var(CA_FILE_ENV).ok().filter(|s| !s.is_empty());
 
@@ -88,6 +97,30 @@ mod tls {
                 .map_err(|e| RelayError::transport(format!("parse uri {url}"), e))?,
         )
         .map_err(|e| RelayError::transport(format!("uri mode {url}"), e))?;
+
+        // NO SILENT DOWNGRADE. Pointing CA_FILE_ENV at a bundle is a request to
+        // verify the peer against that CA, which is meaningless without TLS. If
+        // the URL resolved to plain `ws://` — a stale `SIGNALWIRE_RELAY_SCHEME`,
+        // a hand-built endpoint, an operator who changed one setting and not the
+        // other — `client_tls_with_config` happily returns a PLAINTEXT stream and
+        // the session completes: the caller asked for encryption, got none, and
+        // is never told. Refuse instead, naming the setting that would otherwise
+        // have been ignored. (This was previously only a `debug_assert!` on the
+        // resulting stream, i.e. compiled out of every release build — the
+        // plaintext session authenticated and ran with no diagnostic at all.)
+        if matches!(mode, Mode::Plain) {
+            return Err(RelayError::transport(
+                format!("connect {url}"),
+                format!(
+                    "{CA_FILE_ENV} is set (TLS verification requested) but the RELAY endpoint \
+                     resolved to plaintext `{}://` — refusing to downgrade. Use a `wss://` \
+                     endpoint (check SIGNALWIRE_RELAY_SCHEME), or unset {CA_FILE_ENV} to \
+                     connect in the clear deliberately.",
+                    parsed.scheme()
+                ),
+            ));
+        }
+
         let port = parsed.port().unwrap_or(match mode {
             Mode::Tls => 443,
             Mode::Plain => 80,
@@ -101,8 +134,17 @@ mod tls {
 
         let (ws, _resp) = client_tls_with_config(url, tcp, None, Some(connector))
             .map_err(|e| RelayError::transport(format!("wss handshake {url}"), e))?;
-        // Sanity: a `wss://` url with a custom CA must have negotiated TLS.
-        debug_assert!(matches!(ws.get_ref(), MaybeTlsStream::Rustls(_)));
+        // Belt-and-braces, and a REAL check rather than a debug_assert: whatever
+        // the URL said, the stream we hand back must actually be TLS. A build
+        // without the rustls feature, or a future tungstenite change, would
+        // otherwise return a Plain stream from a `wss://` URL.
+        if !matches!(ws.get_ref(), MaybeTlsStream::Rustls(_)) {
+            return Err(RelayError::transport(
+                format!("wss handshake {url}"),
+                "handshake completed without a TLS stream — refusing to use an \
+                 unencrypted RELAY connection",
+            ));
+        }
         Ok(ws)
     }
 
