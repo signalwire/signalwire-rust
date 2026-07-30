@@ -10,7 +10,7 @@
 //! the engine has no handling for a SWAIG refusal status, so the tool reports
 //! that it cannot execute and the model relays it.
 //!
-//! The credential rides the QUERY STRING and the call_id rides the POST BODY —
+//! The credential rides the QUERY STRING and the `call_id` rides the POST BODY —
 //! the identical split on all five transports. Each serverless host hands its
 //! query over in a different shape, so each shape is driven here.
 
@@ -57,7 +57,7 @@ fn auth() -> String {
     )
 }
 
-/// The SWAIG POST body. The call_id rides HERE, never the query string.
+/// The SWAIG POST body. The `call_id` rides HERE, never the query string.
 fn body(function: &str, call_id: Option<&str>) -> String {
     let mut b = json!({"function": function, "argument": {"parsed": [{}]}});
     if let Some(c) = call_id {

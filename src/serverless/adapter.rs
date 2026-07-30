@@ -44,12 +44,13 @@ fn query_from_raw(raw: Option<&serde_json::Value>) -> Option<String> {
 
 /// Percent-encode one query component, leaving the unreserved set intact.
 fn encode_component(s: &str) -> String {
+    use std::fmt::Write as _;
     let mut out = String::with_capacity(s.len());
     for b in s.bytes() {
         if b.is_ascii_alphanumeric() || matches!(b, b'-' | b'_' | b'.' | b'~') {
             out.push(b as char);
         } else {
-            out.push_str(&format!("%{b:02X}"));
+            let _ = write!(out, "%{b:02X}");
         }
     }
     out

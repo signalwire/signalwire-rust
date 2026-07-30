@@ -810,7 +810,7 @@ impl AgentBase {
     /// refusal is a `FunctionResult` body served with HTTP 200, never an error
     /// status: the engine has no handling for a SWAIG refusal status, so the
     /// tool reports that it cannot execute and the model relays it.
-    pub(crate) fn swaig_validate_token(
+    fn swaig_validate_token(
         &self,
         function_name: &str,
         token: Option<&str>,
