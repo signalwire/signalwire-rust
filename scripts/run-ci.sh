@@ -457,9 +457,20 @@ sched_gate ENVELOPE desc="diff_port_envelope vs python oracle: conn-refused type
 # `__token` must be present for the secure tool and absent for the insecure one — so
 # this gate proves the port does not silently ship tools as unauthenticated. A fast
 # in-process SWML render (no live mock) → per-PR tier.
+#
+# --prebuild-cmd, like WAIT-LIVENESS and SECRET-SCRUB-LIVE below: the differ arms
+# a 120s wall-clock deadline the moment it launches the dump, and `cargo run`
+# BLOCKS on the cargo build lock whenever a concurrently-scheduled gate is
+# building. Gates run in parallel (SW_CI_JOBS), so the line-415 prebuild does not
+# make this gate ordering-independent on its own — it only warms the artifact,
+# it does not stop a LATER sibling's build from holding the lock while this gate
+# waits on it. Without the flag that lock wait is charged to the deadline and the
+# gate reports "dump HUNG (> 120s)" for a dump that takes ~5s: measured 5.0s idle
+# vs 10.1s under concurrent CI load, and a red in two consecutive full runs.
 sched_gate SECURE-DEFAULT desc="define_tool's secure state reaches the wire as the per-tool __token (Layer D vs python oracle)" \
     -- python3 "$PORTING_SDK_DIR/scripts/diff_port_secure_default.py" \
         --port rust \
+        --prebuild-cmd "cargo build --quiet --example secure_default_dump" \
         --dump-cmd 'cargo run -q --example secure_default_dump 2>/dev/null'
 
 # The three STATIC security source-checks (PSDK-5/6, A5). rust wired NONE of them
