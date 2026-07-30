@@ -233,6 +233,10 @@ fn main() {
 
     // ---- serverless (lambda) ----
     out.insert("http_serverless_lambda_swaig", serverless_swaig());
+    out.insert(
+        "http_serverless_lambda_swaig_valid_token",
+        serverless_swaig_valid_token(),
+    );
     out.insert("http_serverless_lambda_noauth_401", serverless_noauth());
 
     println!(
@@ -291,9 +295,12 @@ fn reduce_lambda(resp: &Value) -> Value {
     json!({ "status": status, "body": body })
 }
 
-/// Drive the lambda adapter for the /swaig dispatch case. The agent is built
-/// at route "/" so the event's root-relative "/swaig" path routes correctly.
-fn serverless_swaig() -> Value {
+/// An agent with the corpus's single `secure` tool, at route "/" so the
+/// event's root-relative "/swaig" path routes correctly.
+///
+/// The tool is `secure` because that is what the corpus fixture pins — a
+/// `secure = false` re-declaration would make both lambda fixtures vacuous.
+fn serverless_agent() -> AgentBase {
     let mut agent = AgentBase::new(
         AgentOptions::new("demo")
             .route("/")
@@ -304,15 +311,50 @@ fn serverless_swaig() -> Value {
         "greet",
         json!({}),
         Box::new(|_args, _raw| FunctionResult::with_response("hello there")),
-        false,
+        true,
     );
+    agent
+}
+
+const SWAIG_BODY: &str = r#"{"function":"say_hello","argument":{"parsed":[{}]},"call_id":"c1"}"#;
+
+/// The NEGATIVE half of the serverless token contract: a `secure` tool invoked
+/// with NO `__token` anywhere. Pins the REFUSAL.
+fn serverless_swaig() -> Value {
+    let agent = serverless_agent();
     let event = json!({
         "rawPath": "/swaig",
         "headers": {
             "authorization": basic_auth(USER, PASSWORD),
             "content-type": "application/json",
         },
-        "body": r#"{"function":"say_hello","argument":{"parsed":[{}]},"call_id":"c1"}"#,
+        "body": SWAIG_BODY,
+        "requestContext": {"http": {"method": "POST"}},
+    });
+    reduce_lambda(&Adapter::handle_lambda(&agent, &event))
+}
+
+/// The POSITIVE half: identical except it carries a genuinely minted
+/// `__token` in the lambda `queryStringParameters` mapping, so it pins that a
+/// valid credential is ACCEPTED and the secure tool RUNS. Without it the
+/// contract would only ever be proven in the refusing direction, and a port
+/// that refuses EVERYTHING would sail through.
+///
+/// The token cannot be a literal: it is HMAC-signed with the agent's
+/// per-process random `SessionManager` secret and it expires. It is minted
+/// here from the SAME agent instance the fixture drives, for the `call_id`
+/// that rides the POST body.
+fn serverless_swaig_valid_token() -> Value {
+    let agent = serverless_agent();
+    let token = agent.create_tool_token("say_hello", "c1");
+    let event = json!({
+        "rawPath": "/swaig",
+        "headers": {
+            "authorization": basic_auth(USER, PASSWORD),
+            "content-type": "application/json",
+        },
+        "queryStringParameters": {"__token": token},
+        "body": SWAIG_BODY,
         "requestContext": {"http": {"method": "POST"}},
     });
     reduce_lambda(&Adapter::handle_lambda(&agent, &event))
