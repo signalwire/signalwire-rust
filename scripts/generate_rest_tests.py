@@ -27,7 +27,7 @@ The assertion oracle is INDEPENDENT of the resource generator (RULES §1):
     generator self-snapshot.
 
 Inputs joined by (METHOD, normalized-path) (RULES §2): the plan's per-route call
-entries (path params already {id}) × the spec operationIds (spec path normalized
+entries (path params already {id}) x the spec operationIds (spec path normalized
 the SAME way before the join). Routing collisions are resolved
 longest-template-wins (RULES §7) so the asserted route is the one the mock
 ACTUALLY journals (e.g. GET /rooms/{id} vs GET /rooms/{name}).
@@ -115,7 +115,7 @@ def load_plan() -> list[dict]:
 
 
 # ---------------------------------------------------------------------------
-# 2. The join — plan routes × spec operationIds by (method, normalized-path).
+# 2. The join — plan routes x spec operationIds by (method, normalized-path).
 # ---------------------------------------------------------------------------
 
 _BRACE = re.compile(r"\{[^}]+\}")
@@ -387,11 +387,13 @@ def main(argv: list[str]) -> int:
                 stale.append(str(p))
         expected = set(outs.keys())
         if out_dir.is_dir():
-            for p in sorted(out_dir.glob("rest_generated_*.rs")):
-                if p.name not in expected:
-                    stale.append(f"{p} (leftover — not in generator output)")
+            stale.extend(
+                f"{p} (leftover — not in generator output)"
+                for p in sorted(out_dir.glob("rest_generated_*.rs"))
+                if p.name not in expected
+            )
         if stale:
-            sys.stderr.write("GEN-FRESH FAIL: %d generated REST test file(s) stale:\n" % len(stale))
+            sys.stderr.write(f"GEN-FRESH FAIL: {len(stale)} generated REST test file(s) stale:\n")
             for s in stale:
                 sys.stderr.write(f"  - {s}\n")
             return 1

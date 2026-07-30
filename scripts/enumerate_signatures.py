@@ -40,7 +40,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import re
 import subprocess
 import sys
@@ -58,14 +57,13 @@ from enumerate_surface import (  # type: ignore
     # duplication hazard that made a rename table apply in one gate and not the
     # other (go, typescript, php, and rust's own METHOD_RENAMES keying bug).
     PSDK,
-    CLASS_MODULE_MAP, _module_path_for_class, _translate_class,
+    CLASS_MODULE_MAP, _translate_class,
     # Idiom-reconciliation tables mirrored from the SURFACE enumerator so the
     # two enumerators discover/name the SAME symbols (Rule 2: reconcile idiom
     # in the enumerator, not via an omission). Kept as a single source of truth
     # by importing them rather than re-declaring.
     METHOD_RENAMES, SURFACE_PROJECTIONS, PROJECTION_DONOR_STRIPS,
-    FORCE_CLASS_METHODS, SKILLBASE_IDIOM_METHOD_DROPS, SKILL_INTERFACE_METHODS,
-    SKILL_INTERFACE_PROJECTION, PUBLIC_SURFACE_TRAITS, MODULE_METHOD_DROPS,
+    FORCE_CLASS_METHODS, SKILLBASE_IDIOM_METHOD_DROPS, PUBLIC_SURFACE_TRAITS, MODULE_METHOD_DROPS,
     MODULE_METHOD_DROP_EXCEPTIONS, PUBLIC_FIELD_RENAMES,
 )
 
@@ -110,14 +108,7 @@ RETURN_TYPE_OVERRIDE: dict[str, str] = {
 # Python class), so map it here per-method to the canonical HostAppRouter. This is
 # the tool handling the idiom (the full method contract is still compared), NOT an
 # omission — as_router now drifts 0 against the reference.
-RETURN_TYPE_OVERRIDE.update({
-    ctx: "class:signalwire.core.web.HostAppRouter"
-    for ctx in (
-        "signalwire.core.swml_service.SWMLService.as_router",
-        "signalwire.core.mixins.web_mixin.WebMixin.as_router",
-        "signalwire.core.agent_base.AgentBase.as_router",
-    )
-})
+RETURN_TYPE_OVERRIDE.update(dict.fromkeys(("signalwire.core.swml_service.SWMLService.as_router", "signalwire.core.mixins.web_mixin.WebMixin.as_router", "signalwire.core.agent_base.AgentBase.as_router"), "class:signalwire.core.web.HostAppRouter"))
 
 # Per-method PARAMETER reconcile: rename a param and/or remap its type to the
 # canonical Python spelling where the Rust idiom names/types it differently but
@@ -212,7 +203,7 @@ def build_generated_signatures(sidecar: dict) -> dict:
     from the sidecar (self + exploded params + a void __init__). Returns
     {module: {"classes": {cls: {"methods": {...}}}}}."""
     out: dict = {}
-    for _name, r in sidecar.get("resources", {}).items():
+    for r in sidecar.get("resources", {}).values():
         mod = r["module"]
         cls = r["class"]
         methods: dict = {
@@ -255,7 +246,7 @@ def build_generated_signatures(sidecar: dict) -> dict:
             }
         out.setdefault(mod, {"classes": {}})
         out[mod]["classes"][cls] = {"methods": dict(sorted(methods.items()))}
-    for _name, c in sidecar.get("containers", {}).items():
+    for c in sidecar.get("containers", {}).values():
         mod = c["module"]
         cls = c["class"]
         methods = {
@@ -371,7 +362,6 @@ def translate_rust_type(t, paths: dict, aliases: dict, context: str) -> str:
 
     # slice: { "slice": { type } }
     if "slice" in t:
-        inner = translate_rust_type(t["slice"], paths, aliases, context) if not isinstance(t["slice"], dict) else translate_rust_type(t["slice"], paths, aliases, context)
         # handle [u8] specifically as bytes
         slice_type = t["slice"]
         if isinstance(slice_type, dict) and slice_type.get("primitive") == "u8":
@@ -436,11 +426,9 @@ def translate_rust_type(t, paths: dict, aliases: dict, context: str) -> str:
             return f"list<{inner}>"
         if last == "Result":
             # Result<T, E> → T (the Err type is out-of-band in Python)
-            inner = translate_rust_type(type_args[0], paths, aliases, context) if type_args else "any"
-            return inner
+            return translate_rust_type(type_args[0], paths, aliases, context) if type_args else "any"
         if last in ("Box", "Arc", "Rc", "Mutex", "RwLock"):
-            inner = translate_rust_type(type_args[0], paths, aliases, context) if type_args else "any"
-            return inner
+            return translate_rust_type(type_args[0], paths, aliases, context) if type_args else "any"
 
         # MediaArg<E> — the typed-or-raw wrapper behind FunctionResult's
         # closed-set media params (``record_call(format: impl
@@ -451,8 +439,7 @@ def translate_rust_type(t, paths: dict, aliases: dict, context: str) -> str:
         # as the typed closed set (``class:…RecordFormat``), which is exactly
         # what the oracle's ``enum<…>`` contract expects — not the wrapper.
         if last == "MediaArg":
-            inner = translate_rust_type(type_args[0], paths, aliases, context) if type_args else "any"
-            return inner
+            return translate_rust_type(type_args[0], paths, aliases, context) if type_args else "any"
 
         # SDK class — emit class:<canonical>
         canonical_name = _translate_class(last)
@@ -515,11 +502,7 @@ def _extract_angle_args(args) -> list:
         return []
     if isinstance(args, dict) and "angle_bracketed" in args:
         ab = args["angle_bracketed"]
-        out = []
-        for a in ab.get("args", []):
-            if isinstance(a, dict) and "type" in a:
-                out.append(a["type"])
-        return out
+        return [a["type"] for a in ab.get("args", []) if isinstance(a, dict) and "type" in a]
     return []
 
 
@@ -541,7 +524,7 @@ def _collect_free_function_targets() -> set[tuple[str, str]]:
         import json as _json
         ref = _json.loads((PSDK / "python_signatures.json").read_text(encoding="utf-8"))
         for mod_name, mod_entry in ref.get("modules", {}).items():
-            for fn_name in (mod_entry.get("functions") or {}).keys():
+            for fn_name in (mod_entry.get("functions") or {}):
                 targets.add((mod_name, fn_name))
     except FileNotFoundError:
         pass
@@ -844,7 +827,7 @@ def _reconcile_variadic_tail(py_sig: dict, rust_sig: dict) -> None:
     """
     PROJECTED_TYPE = "dict<string,any>"
     py_params = py_sig.get("params", [])
-    rust_params = sig_params = rust_sig.get("params", [])
+    rust_params = rust_sig.get("params", [])
     if not rust_params:
         return
 
@@ -1017,7 +1000,6 @@ def collect(rust_doc: dict, aliases: dict) -> tuple[dict, list]:
         # inventory (previously SkillBase surfaced method-less). Rust-idiom trait
         # accessors the reference does not enumerate are dropped (mirrors the
         # surface SKILLBASE_IDIOM_METHOD_DROPS).
-        method_id_sources: list = []
         if is_trait:
             for method_id in kind_inner.get("items", []):
                 method_item = get(method_id)
@@ -1069,13 +1051,13 @@ def collect(rust_doc: dict, aliases: dict) -> tuple[dict, list]:
                     "FnOnce", "Fn", "FnMut",
                 ):
                     continue
-                # Drop blanket impls: any trait path that isn't part of SDK
-                if trait_path and not trait_path.startswith("signalwire"):
-                    # Most stdlib trait paths are unqualified (Debug, Borrow);
-                    # if it's not in our allow-skip list and starts with a
-                    # capital letter, conservatively skip it too.
-                    if trait_path[0:1].isupper():
-                        continue
+                # Drop blanket impls: any trait path that isn't part of SDK.
+                # Most stdlib trait paths are unqualified (Debug, Borrow); if
+                # it's not in our allow-skip list and starts with a capital
+                # letter, conservatively skip it too.
+                if (trait_path and not trait_path.startswith("signalwire")
+                        and trait_path[0:1].isupper()):
+                    continue
             for method_id in impl_inner.get("items", []):
                 method_item = get(method_id)
                 if not method_item:
@@ -1350,14 +1332,12 @@ def collect(rust_doc: dict, aliases: dict) -> tuple[dict, list]:
     # method the reference records on a mixin but which Rust hosts on SWMLService
     # (inherited by AgentBase) is still projectable.
     donor_sig_index: dict[str, dict] = {}
-    for _mod_name, _entry in out_modules.items():
+    for _entry in out_modules.values():
         for _cls, _c in _entry.get("classes", {}).items():
             donor_sig_index.setdefault(_cls, {}).update(_c.get("methods", {}))
     DEREF_INHERITS = {"AgentBase": "SWMLService"}
     for _child, _parent in DEREF_INHERITS.items():
-        parent_sigs = {
-            m: s for m, s in donor_sig_index.get(_parent, {}).items()
-        }
+        parent_sigs = dict(donor_sig_index.get(_parent, {}).items())
         merged = dict(parent_sigs)
         merged.update(donor_sig_index.get(_child, {}))
         donor_sig_index[_child] = merged
@@ -2134,7 +2114,7 @@ def _none_branch_default(clean_body: str, expr: str):
     return (False, None)
 
 
-def extract_defaults(index: dict, reader: "_SourceReader") -> tuple[dict, dict]:
+def extract_defaults(index: dict, reader: _SourceReader) -> tuple[dict, dict]:
     """Recover the port's real parameter defaults from source.
 
     Returns ``(fn_defaults, options_defaults)``:
@@ -2200,7 +2180,7 @@ def extract_defaults(index: dict, reader: "_SourceReader") -> tuple[dict, dict]:
                         if len(tinputs) != len(args):
                             continue  # not the overload this delegates to
                         fn_defaults.setdefault(tid, {}).update(
-                            {n: v for n, (_, v) in zip(tinputs, parsed)}
+                            {n: v for n, (_, v) in zip(tinputs, parsed, strict=False)}
                         )
 
         clean = _strip_line_comments(body)

@@ -962,9 +962,9 @@ def load_rest_sidecar() -> dict:
 def _sidecar_class_index(sidecar: dict) -> tuple[dict, set]:
     """Return ({class_name: (module, drop_set)}, {suppressed_class_names})."""
     idx: dict[str, tuple[str, set]] = {}
-    for _n, r in sidecar.get("resources", {}).items():
+    for r in sidecar.get("resources", {}).values():
         idx[r["class"]] = (r["module"], set(r.get("surface_drop", [])))
-    for _n, c in sidecar.get("containers", {}).items():
+    for c in sidecar.get("containers", {}).values():
         # Containers keep only __init__; every accessor method is property-like
         # and NOT recorded by the oracle → treat every non-__init__ as dropped.
         idx[c["class"]] = (c["module"], {"*accessors*"})
@@ -983,7 +983,7 @@ def _collect_crud_bases(sidecar: dict) -> dict:
     them here folds their CRUD without a per-op allow-list. The diff reads only the class
     keys (not ``bind``); ``base`` is carried for parity with java/dotnet's map + provenance."""
     out: dict[str, dict] = {}
-    for _n, r in sidecar.get("resources", {}).items():
+    for r in sidecar.get("resources", {}).values():
         key = f"{r['module']}.{r['class']}"
         out[key] = {"base": r["base"]}
     return dict(sorted(out.items()))
@@ -1074,7 +1074,7 @@ def _parse_file_full(
     struct_brace = 0
 
     for line in lines:
-        stripped = line.strip()
+        line.strip()
         # Track #[cfg(test)] mod tests blocks — skip them
         if "#[cfg(test)]" in line and not in_test_mod:
             in_test_mod = True
@@ -2036,7 +2036,7 @@ def build_surface() -> dict:
     # Build a lookup of every class's current method-set (post-rename) keyed by
     # the translated Python class name, so a donor lookup is language-agnostic.
     donor_index: dict[str, set[str]] = {}
-    for mod_name, entry in modules.items():
+    for entry in modules.values():
         for cls, ms in entry["classes"].items():
             donor_index.setdefault(cls, set()).update(ms)
 

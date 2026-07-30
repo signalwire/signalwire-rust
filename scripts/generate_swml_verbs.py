@@ -219,9 +219,9 @@ def main(argv: list) -> int:
             if not p.is_file() or p.read_text() != src:
                 stale.append(str(p))
         if stale:
-            sys.stderr.write("GEN-FRESH FAIL: %d generated SWML-verb file(s) stale:\n" % len(stale))
+            sys.stderr.write(f"GEN-FRESH FAIL: {len(stale)} generated SWML-verb file(s) stale:\n")
             for s in stale:
-                sys.stderr.write("  - %s\n" % s)
+                sys.stderr.write(f"  - {s}\n")
             return 1
         print("GEN-FRESH: generated SWML-verb files match porting-sdk/schema.json ($defs).")
         return 0
