@@ -2065,8 +2065,7 @@ impl AgentBase {
     /// on a specific `route`.
     ///
     /// The name is stored case-folded and deduplicated, so registering
-    /// `"Bob"`, `"BOB"`, and `"bob"` collapses to one `bob` entry (Python
-    /// parity with `AgentBase.register_sip_username`);
+    /// `"Bob"`, `"BOB"`, and `"bob"` collapses to one `bob` entry;
     /// [`sip_usernames`](AgentBase::sip_usernames) reads the set back.
     ///
     /// On the wire this sets the `sip_username` AI param to the username as

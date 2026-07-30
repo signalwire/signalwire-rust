@@ -134,9 +134,9 @@ impl FunctionResult {
 
     /// Set the response text the function returns to the AI.
     ///
-    /// Emitted as the `response` key, and **omitted entirely** when empty
-    /// (Python parity) — so clearing it back to `""` removes the key rather
-    /// than sending an empty string.
+    /// Emitted as the `response` key, and **omitted entirely** when empty —
+    /// so clearing it back to `""` removes the key rather than sending an
+    /// empty string.
     ///
     /// Returns `&mut Self` for chaining.
     pub fn set_response(&mut self, text: &str) -> &mut Self {
@@ -201,7 +201,7 @@ impl FunctionResult {
 
     /// Serialise to a JSON value.
     ///
-    /// - `response` is included only when non-empty (Python parity).
+    /// - `response` is included only when non-empty.
     /// - `action` is included only when at least one action exists.
     /// - `post_process` is included only when `true` **and** actions exist —
     ///   it has no meaning without something to execute.

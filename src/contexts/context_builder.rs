@@ -220,9 +220,8 @@ impl GatherInfo {
     /// match [`GatherQuestion::new`] exactly — see it for the per-field wire
     /// behaviour and the tri-state `isolated`.
     ///
-    /// The argument list keeps 1:1 parity with Python's
-    /// `GatherInfo.add_question` / `GatherQuestion.__init__`, mirroring the
-    /// reference's wire fields rather than a Rust-only signature, so
+    /// Each argument is a distinct wire field of the emitted question, so the
+    /// list is one-per-field rather than a grouped struct and
     /// `clippy::too_many_arguments` is suppressed.
     ///
     /// Returns `&mut Self` for chaining.
@@ -685,11 +684,10 @@ impl Step {
     /// `None` inherits the gather's setting.
     ///
     /// `question_type` and `confirm` are `Option` because `None` is the
-    /// omit-it call: they take the reference defaults `"string"` and
-    /// `false`. The argument list keeps 1:1 parity with Python's
-    /// `Step.add_gather_question`, mirroring the reference rather than a
-    /// refactorable Rust-only signature, so `clippy::too_many_arguments` is
-    /// suppressed.
+    /// omit-it call: they take the defaults `"string"` and `false`. Each
+    /// argument is a distinct wire field of the emitted question, so the list
+    /// is one-per-field rather than a grouped struct and
+    /// `clippy::too_many_arguments` is suppressed.
     ///
     /// Returns `&mut Self` for chaining.
     #[allow(clippy::too_many_arguments)]
@@ -771,8 +769,7 @@ impl Step {
     /// text or the POM sections rendered down to a string. Every other field
     /// is emitted only when meaningful: the three booleans (`end`,
     /// `skip_user_turn`, `skip_to_next_step`) only when `true`, and the
-    /// `reset` object only when at least one of its fields is set (Python
-    /// parity).
+    /// `reset` object only when at least one of its fields is set.
     ///
     /// # Panics
     ///
