@@ -281,7 +281,7 @@ pub struct PostPromptSystemLogEntry {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub timestamp: Option<i64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub action: Option<String>,
+    pub action: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub lang: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -290,12 +290,6 @@ pub struct PostPromptSystemLogEntry {
     pub content_type: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub metadata: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub context: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub step: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub step_index: Option<i64>,
 }
 
 /// `PostPromptSystemEntry` — generated read-side wire type (post-prompt components/schemas 'PostPromptSystemEntry').
@@ -341,9 +335,9 @@ pub struct PostPromptSwaigLogEntry {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub mcp_tool: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub mcp_response: Option<serde_json::Value>,
+    pub mcp_response: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub mcp_error: Option<String>,
+    pub mcp_error: Option<bool>,
 }
 
 /// `PostPromptTimesEntry` — generated read-side wire type (post-prompt components/schemas 'PostPromptTimesEntry').

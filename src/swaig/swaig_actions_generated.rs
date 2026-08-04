@@ -23,17 +23,17 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct ContextSwitchAction {
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub system_prompt: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub user_prompt: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub system_pom: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub user_pom: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub consolidate: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub full_reset: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub system_pom: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub system_prompt: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub user_pom: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub user_prompt: Option<String>,
 }
 
 /// `HoldAction` — generated read-side wire type (swaig-response action 'hold' value object).
@@ -43,7 +43,7 @@ pub struct ContextSwitchAction {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct HoldAction {
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub timeout: Option<i64>,
+    pub timeout: Option<f64>,
 }
 
 /// `PlaybackBgAction` — generated read-side wire type (swaig-response action 'playback_bg' value object).
@@ -53,7 +53,7 @@ pub struct HoldAction {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct PlaybackBgAction {
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub file: Option<serde_json::Value>,
+    pub file: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub wait: Option<bool>,
 }
@@ -65,7 +65,7 @@ pub struct PlaybackBgAction {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct TransferAction {
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub dest: Option<serde_json::Value>,
+    pub dest: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub summarize: Option<bool>,
 }
