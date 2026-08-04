@@ -31,7 +31,14 @@ jobs:
           token: ${{ secrets.PORTING_SDK_TOKEN }}
 
       - name: Set up Rust (stable)
-        uses: dtolnay/rust-toolchain@stable
+        # PINNED, in lockstep with rust-toolchain.toml's `channel` (NOT `@stable`).
+        # Cargo.toml denies clippy::all + the whole pedantic group with `-D warnings`,
+        # so a new stable release is an instant build failure with nothing in the diff
+        # to explain it. `@stable` also fights the pin: it becomes the rustup DEFAULT
+        # while cargo-inside-the-repo still obeys rust-toolchain.toml, so any cache keyed
+        # on `rustc +stable` points at a compiler cargo never uses (that mismatch reds
+        # nightly.yml's SNIPPET-COMPILE; see its comment).
+        uses: dtolnay/rust-toolchain@1.96.0
 
       - name: Install Rust nightly (rustdoc-json for SIGNATURES gate)
         uses: dtolnay/rust-toolchain@nightly
