@@ -35,9 +35,14 @@ if ! command -v ruff >/dev/null 2>&1; then
     echo "ERROR: ruff not found on PATH." >&2
     echo "       It lints + formats the 7 hand-written Python programs under scripts/," >&2
     echo "       five of which produce artifacts the CI gates read as ground truth." >&2
-    echo "       Install it with:  pip install ruff   (or: brew install ruff)" >&2
+    echo "       Install it with:  pip install ruff==$SW_RUFF_VERSION" >&2
     exit 1
 fi
+
+# The ruff that runs here must be the one CI installs, or this gate's verdict
+# differs between local and CI on identical source. (Defined in scripts/_env.sh,
+# in lockstep with .github/workflows/test.yml.)
+sw_assert_ruff_version || exit 1
 
 if [ ! -f "$CFG" ]; then
     echo "ERROR: $CFG missing — refusing to lint against ruff's built-in defaults." >&2
