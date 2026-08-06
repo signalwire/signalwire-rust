@@ -13,24 +13,29 @@ Source: the vendored porting-sdk ``swaig-specs/*.yaml`` (from mod_openai):
   * ``post-prompt.yaml``    -> signalwire.core.post_prompt_generated    (14 types)
         one type per components/schemas OBJECT schema; the oneOf alias
         ``PostPromptCallLogEntry`` is NOT surfaced (15 schemas - 1 alias = 14).
-  * ``swaig-response.yaml`` -> signalwire.core.swaig_actions_generated  (4 types)
+  * ``swaig-response.yaml`` -> signalwire.core.swaig_actions_generated  (6 types)
         one ``<Verb>Action`` type per action key whose value is an object-with-
-        properties (a bare object OR the object variant of a oneOf).
+        properties (a bare object OR the object variant of a oneOf) — 4 of those —
+        PLUS the two response ENVELOPE schemas the module owns, ``SwaigAction``
+        (the action object) and ``SwaigResponse`` (the ``{response, action,
+        post_process}`` handler-response body).
 
-  2 + 14 + 4 = 20 == the surface oracle EXACTLY (0 missing / 0 extra).
+  2 + 14 + 6 = 22 == the surface oracle EXACTLY (0 missing / 0 extra).
 
-post-prompt + swaig-request types are in the SIGNATURE oracle WITH a zero-arg
-accessor per class-typed field — Rust structs carry no accessor methods, so this
-generator writes a gen-payload SIGNATURE SIDECAR per module the sig enumerator
-unfolds into synthesized ``any``-return accessors. swaig-actions are NOT in the
-sig oracle -> method-less, no sidecar. All three modules route to their oracle
-module BY FILE PATH in both enumerators (names collide with the SWAIG SDK classes
-FunctionResult / ParameterSchema).
+All three modules are in the SIGNATURE oracle WITH a zero-arg accessor per
+class-typed field — Rust structs carry no accessor methods, so this generator
+writes a gen-payload SIGNATURE SIDECAR per module the sig enumerator unfolds into
+synthesized ``any``-return accessors. (swaig-actions was previously sidecar-less
+on the belief it was not in the sig oracle; that held only while the envelope was
+unemitted — ``SwaigAction.{context_switch, hold, playback_bg, transfer}`` and
+``SwaigResponse.action`` are class-typed fields the reference records.) All three
+modules route to their oracle module BY FILE PATH in both enumerators (names
+collide with the SWAIG SDK classes FunctionResult / ParameterSchema).
 
 Output: three modules under src/swaig/
   post_prompt_generated.rs   (+ post_prompt_gen_payload.json)
   swaig_request_generated.rs (+ swaig_request_gen_payload.json)
-  swaig_actions_generated.rs
+  swaig_actions_generated.rs (+ swaig_actions_gen_payload.json)
 
 Usage:
     python3 scripts/generate_swaig_payloads.py            # write into the repo tree
@@ -69,6 +74,8 @@ SR_FILE = "swaig/swaig_request_generated.rs"
 SR_SIDECAR = "swaig/swaig_request_gen_payload.json"
 SR_ORACLE = "signalwire.core.swaig_request_generated"
 SA_FILE = "swaig/swaig_actions_generated.rs"
+SA_SIDECAR = "swaig/swaig_actions_gen_payload.json"
+SA_ORACLE = "signalwire.core.swaig_actions_generated"
 
 
 def resolve_porting_sdk() -> Path:
@@ -131,8 +138,21 @@ def _build_post_prompt(psdk: Path) -> list[tuple[str, dict, str]]:
 
 
 def _build_swaig_actions(psdk: Path) -> list[tuple[str, dict, str]]:
+    """swaig-response.yaml -> one ``<Verb>Action`` value type per action key whose
+    value is an object-with-properties, PLUS the two response ENVELOPE types this
+    module owns.
+
+    THE ENVELOPE IS NOT OPTIONAL SURFACE. This generator reached THROUGH
+    ``components/schemas/SwaigAction.properties`` to lift the per-verb value objects
+    while never emitting ``SwaigAction`` / ``SwaigResponse`` themselves, so the port
+    sat 2 classes short of the surface oracle (SURFACE-DIFF) and 5 class-typed fields
+    short of the signature oracle (DRIFT: ``SwaigAction.{context_switch, hold,
+    playback_bg, transfer}`` + ``SwaigResponse.action``). The reference has declared
+    both in ``signalwire.core.swaig_actions_generated`` all along; perl fixed the same
+    generator-side defect (signalwire-perl ``_build_swaig_actions``) and passes."""
     spec = _load_yaml(psdk / "swaig-specs" / "swaig-response.yaml")
-    actions = spec["components"]["schemas"]["SwaigAction"]["properties"]
+    schemas = spec["components"]["schemas"]
+    actions = schemas["SwaigAction"]["properties"]
 
     def _is_obj(s) -> bool:
         return (
@@ -166,6 +186,28 @@ def _build_swaig_actions(psdk: Path) -> list[tuple[str, dict, str]]:
                     f"swaig-response action {verb!r} value object",
                 )
             )
+
+    # The two ENVELOPE types (see the docstring). Their property sets come straight
+    # from swaig-response.yaml's own schemas, so the emitted struct fields — and the
+    # sidecar accessor names synthesized from them — carry the same wire keys the
+    # reference's TypedDict fields do.
+    for env_name, env_desc in (
+        ("SwaigAction", "swaig-response `SwaigAction` response-action envelope"),
+        ("SwaigResponse", "swaig-response `SwaigResponse` handler-response envelope"),
+    ):
+        node = schemas.get(env_name)
+        if not isinstance(node, dict) or not node.get("properties"):
+            raise SystemExit(
+                f"generate_swaig_payloads.py: swaig-response.yaml is missing "
+                f"components/schemas/{env_name}.properties — the response envelope the "
+                f"reference declares in signalwire.core.swaig_actions_generated. "
+                f"Refusing to emit a surface 2 classes short of the oracle."
+            )
+        rs_name = GR.type_name(env_name)
+        if rs_name in seen:
+            continue
+        seen.add(rs_name)
+        out.append((rs_name, node["properties"], env_desc))
     return out
 
 
@@ -216,6 +258,7 @@ def build_outputs(psdk: Path) -> dict[str, str]:
             "Generated SWAIG response-action config types.",
             "generate_swaig_payloads.py",
         ),
+        SA_SIDECAR: _sidecar_src(sa, SA_ORACLE, "generate_swaig_payloads.py"),
     }
 
 

@@ -69,3 +69,79 @@ pub struct TransferAction {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub summarize: Option<bool>,
 }
+
+/// `SwaigAction` — generated read-side wire type (swaig-response `SwaigAction` response-action envelope).
+///
+/// Method-less serde DTO: each field maps a snake wire key (via
+/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct SwaigAction {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub add_dynamic_hints: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub back_to_back_functions: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub change_context: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub change_step: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub clear_dynamic_hints: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub context_switch: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub end_of_speech_timeout: Option<i64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub extensive_data: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub functions_on_speaker_timeout: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub hangup: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub hold: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub playback_bg: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub replace_in_history: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub say: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub set_global_data: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub set_meta_data: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub settings: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub speech_event_timeout: Option<i64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub stop: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub stop_playback_bg: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub toggle_functions: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub transfer: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub unset_global_data: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub unset_meta_data: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub user_event: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub user_input: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub wait_for_user: Option<serde_json::Value>,
+}
+
+/// `SwaigResponse` — generated read-side wire type (swaig-response `SwaigResponse` handler-response envelope).
+///
+/// Method-less serde DTO: each field maps a snake wire key (via
+/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct SwaigResponse {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub response: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub action: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub post_process: Option<bool>,
+}

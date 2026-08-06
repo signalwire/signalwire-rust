@@ -1,6 +1,6 @@
 {
   "version": "1",
-  "generated_from": "signalwire-rust @ 52003ed6c45fe49ae456cc8902839600487438d5",
+  "generated_from": "signalwire-rust @ 09c875229fbf79969e4aeddcc19ad59d4631981a",
   "modules": {
     "signalwire": {
       "classes": {
@@ -630,7 +630,9 @@
         "PostPromptEot": [],
         "PostPromptStampsUs": [],
         "PostPromptSwaigLogEntry": [
-          "post_data"
+          "delayed_post_response",
+          "post_data",
+          "post_response"
         ],
         "PostPromptSystemEntry": [],
         "PostPromptSystemLogEntry": [],
@@ -758,6 +760,8 @@
         "ContextSwitchAction": [],
         "HoldAction": [],
         "PlaybackBgAction": [],
+        "SwaigAction": [],
+        "SwaigResponse": [],
         "TransferAction": []
       },
       "functions": []

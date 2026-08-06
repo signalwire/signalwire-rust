@@ -374,14 +374,20 @@ def build_generated_signatures(sidecar: dict) -> dict:
 # _is_port_state_accessor excuse make these compare EQUAL to the reference
 # (class-typed fields fold by leaf; scalar fields excuse as port-side state).
 #
-# relay-protocol / swaig-actions / REST <ns>_types_generated are NOT in the
-# signature oracle (method-less on both sides) — no sidecar, nothing synthesized.
+# swaig-actions joined this set once the generator started emitting the response
+# ENVELOPE types: the reference records SwaigAction.{context_switch, hold,
+# playback_bg, transfer} and SwaigResponse.action as class-typed fields, so the
+# module IS in the signature oracle and needs its sidecar like the other three.
+#
+# relay-protocol / REST <ns>_types_generated are NOT in the signature oracle
+# (method-less on both sides) — no sidecar, nothing synthesized.
 # ---------------------------------------------------------------------------
 
 _GEN_PAYLOAD_SIDECAR_GLOBS = (
     "src/swml/swml_verbs_gen_payload.json",
     "src/swaig/post_prompt_gen_payload.json",
     "src/swaig/swaig_request_gen_payload.json",
+    "src/swaig/swaig_actions_gen_payload.json",
 )
 
 
