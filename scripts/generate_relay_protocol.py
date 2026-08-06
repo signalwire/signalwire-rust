@@ -5,18 +5,34 @@ The RUST realization of SESSION_CHANGESET_FOR_PORTS.md item I/D — the
 ``signalwire.relay.protocol_types_generated`` module — mirroring python's
 ``generate_relay_protocol`` and ruby/php's ``generate_relay_protocol.py``.
 
-Source: the canonical porting-sdk ``relay-protocol/*.json`` — one standalone
-JSON-Schema file per RELAY WS method+phase, named
-``<domain>.<method>.(params|result).json``. NOT derived from openapi.
+Source: the canonical porting-sdk ``combined-specs/relay.yaml``, read through the
+shared reader ``porting-sdk/scripts/relay_protocol_shapes.py`` (ledger row R11).
+That reader serves ``{method: schema_node}`` per phase, merging the shapes carried
+on a registered method (``methods.<name>.request.params_dto`` /
+``.response.result``) with the six per phase the extractor found for methods the
+vendored spec does not register (``<phase>_shapes_unattached.methods.<name>``) —
+64 methods per phase either way. NOT derived from openapi.
 
-Class name = PascalCase(``x-method``, fallback filename base) + phase suffix:
-  calling.ai_hold.params.json  -> CallingAiHoldParams
-  signalwire.connect.result.json -> SignalwireConnectResult
+This replaced a directory of standalone per-method JSON-Schema files
+(``relay-protocol/<domain>.<method>.(params|result).json``). The method name now
+comes from the document's own key rather than from an ``x-method`` field with a
+filename fallback, and the phase from the block it was carried in rather than from
+a filename suffix.
+
+Class name = PascalCase(method identifier) + phase suffix:
+  calling.ai_hold    (params phase) -> CallingAiHoldParams
+  signalwire.connect (result phase) -> SignalwireConnectResult
 
 Emit/drop rule = the shared ``is_object_schema`` test: an OBJECT schema WITH
 properties -> a method-less Rust struct; empty-object / scalar / union placeholder
 -> NOT surfaced (the reference records those as a module-level ``TypeAlias`` its
-enumerator drops). 123 == the oracle exactly (0/0).
+enumerator drops). 64 params less 2 property-less placeholders = 62, 64 result
+less 3 = 61; 62 + 61 = 123 == the oracle exactly (0/0).
+
+(The combined document omits the ``type: object`` the per-file envelope used to
+declare; ``is_object_schema``'s ``(type is None and properties)`` branch covers
+that, so the emit verdict is unchanged. Pinned by
+``porting-sdk/tests/test_relay_protocol_shapes.py``.)
 
 These are NOT in the SIGNATURE oracle (the reference class carries no class-typed
 field the sig enumerator keeps) — emitted METHOD-LESS (no gen-payload sidecar).
@@ -36,7 +52,6 @@ from __future__ import annotations
 
 import argparse
 import importlib.util
-import json
 import re
 import sys
 from pathlib import Path
@@ -73,20 +88,34 @@ def _pascal_method(method: str) -> str:
     return "".join(w[:1].upper() + w[1:] for w in parts)
 
 
+def _load_relay_shapes(psdk: Path):
+    """The shared porting-sdk reader for ``combined-specs/relay.yaml`` (ledger R11).
+
+    Loaded by FILE PATH — the same way this script already loads generate_rest.py —
+    because porting-sdk is a sibling checkout, not an installed package.
+    """
+    path = psdk / "scripts" / "relay_protocol_shapes.py"
+    if not path.is_file():
+        raise SystemExit(
+            f"generate_relay_protocol.py: {path} not found (need porting-sdk adjacency)"
+        )
+    spec = importlib.util.spec_from_file_location("relay_protocol_shapes", path)
+    if spec is None or spec.loader is None:  # pragma: no cover
+        raise SystemExit(f"generate_relay_protocol.py: cannot load {path}")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
 def build_types(psdk: Path) -> list[tuple[str, dict, str]]:
-    relay_dir = psdk / "relay-protocol"
-    by_name = {p.name: p for p in relay_dir.glob("*.json")}
+    RPS = _load_relay_shapes(psdk)
     out: list[tuple[str, dict, str]] = []
     seen: set = set()
 
-    # Emit the Params block then the Result block (reproduces reference decl order).
+    # Params first, then result — each mapping already ordered by method name — to
+    # reproduce the reference decl order (Params block, then Result block).
     for phase, suffix in _PHASES:
-        tail = "." + phase + ".json"
-        for name in sorted(n for n in by_name if n.endswith(tail)):
-            node = json.loads(by_name[name].read_text())
-            if not isinstance(node, dict):
-                continue
-            method = node.get("x-method") or name[: -len(tail)]
+        for method, node in RPS.shapes(psdk, phase).items():
             rs_name = GR.type_name(_pascal_method(method) + suffix)
             if not GR.is_object_schema(node):
                 continue
@@ -105,7 +134,7 @@ def build_types(psdk: Path) -> list[tuple[str, dict, str]]:
 
 def build_module(psdk: Path) -> str:
     types = build_types(psdk)
-    desc = "Generated RELAY-protocol wire types from porting-sdk/relay-protocol/."
+    desc = "Generated RELAY-protocol wire types from porting-sdk/combined-specs/relay.yaml."
     src = GR.TYPES_HEADER.format(gen="generate_relay_protocol.py", desc=desc) + "\n"
     for rs_name, props, tdesc in types:
         src += (
@@ -148,7 +177,7 @@ def main(argv: list) -> int:
                 sys.stderr.write(f"  - {s}\n")
             return 1
         print(
-            "GEN-FRESH: generated RELAY-protocol files match porting-sdk/relay-protocol/."
+            "GEN-FRESH: generated RELAY-protocol files match porting-sdk/combined-specs/relay.yaml."
         )
         return 0
 
