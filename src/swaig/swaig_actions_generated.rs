@@ -76,6 +76,8 @@ pub struct TransferAction {
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct SwaigAction {
+    #[serde(rename = "SWML", default, skip_serializing_if = "Option::is_none")]
+    pub swml: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub add_dynamic_hints: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]

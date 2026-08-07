@@ -36,6 +36,10 @@ pub struct SwaigArgument {
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct SwaigRequest {
+    #[serde(rename = "SWMLCall", default, skip_serializing_if = "Option::is_none")]
+    pub swml_call: Option<serde_json::Value>,
+    #[serde(rename = "SWMLVars", default, skip_serializing_if = "Option::is_none")]
+    pub swml_vars: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub ai_session_id: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]

@@ -17,6 +17,7 @@
       "wait"
     ],
     "SwaigAction": [
+      "SWML",
       "add_dynamic_hints",
       "back_to_back_functions",
       "change_context",
