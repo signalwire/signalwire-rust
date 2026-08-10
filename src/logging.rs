@@ -146,12 +146,29 @@ impl Logger {
         !self.suppressed && level >= self.level
     }
 
+    /// Render the exact line `log` emits, without writing it.
+    ///
+    /// Split out from [`Logger::log`] so a test can assert on the REAL emitted
+    /// text. `eprintln!` cannot be captured in-process, so a test that only
+    /// called the scrub helper directly would pass even with the scrub removed
+    /// from the emission path — which is precisely the bug this guards
+    /// (`strip_control_chars` was public, correct, and called by nothing).
+    fn format_line(&self, level: Level, message: &str) -> String {
+        // Scrub control characters BEFORE emitting — log-injection defence, and the
+        // reason the reference registers strip_control_chars in both of its structlog
+        // processor chains. A port that merely EXPOSES the scrub without putting it on
+        // the emission path offers no protection at all: a caller-supplied `\x00` or a
+        // `\x1b[` escape reaches the terminal verbatim and can forge log lines.
+        let message = crate::core::logging_config::strip_control_chars_str(message);
+        let now = chrono::Local::now().format("%Y-%m-%d %H:%M:%S");
+        format!("[{now}] [{}] [{}] {message}", level.as_str(), self.name)
+    }
+
     pub fn log(&self, level: Level, message: &str) {
         if !self.should_log(level) {
             return;
         }
-        let now = chrono::Local::now().format("%Y-%m-%d %H:%M:%S");
-        eprintln!("[{now}] [{}] [{}] {message}", level.as_str(), self.name);
+        eprintln!("{}", self.format_line(level, message));
     }
 
     pub fn debug(&self, message: &str) {
@@ -428,5 +445,40 @@ mod tests {
             logger.warn("warn message");
             logger.error("error message");
         });
+    }
+
+    /// The scrub must be ON THE EMISSION PATH, not merely available.
+    ///
+    /// This test drives `format_line` — the function `log()` actually calls to
+    /// build the line it writes — so removing the scrub from that path turns it
+    /// RED. An earlier version of this test called the scrub helper directly and
+    /// passed even with the wiring deleted: vacuous, and the exact defect being
+    /// fixed here (`strip_control_chars` was public, correct, and called by
+    /// nothing for the life of the port).
+    #[test]
+    fn log_output_has_control_chars_stripped() {
+        let logger = Logger::new("inject.test");
+        let line = logger.format_line(Level::Info, "user\u{0}said\u{1b}[31mRED\u{7}");
+
+        for bad in ['\u{0}', '\u{1b}', '\u{7}'] {
+            assert!(
+                !line.contains(bad),
+                "control char {bad:?} survived into the emitted line: {line:?}"
+            );
+        }
+        assert!(
+            line.ends_with("usersaid[31mRED"),
+            "unexpected line: {line:?}"
+        );
+    }
+
+    /// Tab/newline/CR are LEGAL in a log line and must survive — a scrub that ate
+    /// them would mangle multi-line messages while still passing the assertion
+    /// above.
+    #[test]
+    fn log_output_keeps_legal_whitespace() {
+        let logger = Logger::new("inject.test");
+        let line = logger.format_line(Level::Info, "line1\tcol\nline2\r end");
+        assert!(line.ends_with("line1\tcol\nline2\r end"), "line: {line:?}");
     }
 }

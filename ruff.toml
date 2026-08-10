@@ -1,0 +1,72 @@
+# ruff.toml — canonical Python lint + format config for signalwire-rust.
+#
+# WHY A RUST PORT HAS A PYTHON LINT CONFIG
+# ========================================
+# This repo ships 7 hand-written Python programs under scripts/ (~8.2k lines):
+# the four REST / RELAY / SWML / SWAIG code generators, the REST wire-test
+# generator, and the two parity enumerators. FIVE of them produce artifacts that
+# CI gates read as ground truth:
+#
+#   enumerate_surface.py      -> port_surface.json      (SURFACE-FRESH)
+#   enumerate_signatures.py   -> port_signatures.json   (SIGNATURES, DRIFT)
+#   generate_rest.py          -> shipped src/rest/**    (GEN-FRESH)
+#   generate_swml_verbs.py    -> shipped src/swml/**    (GEN-FRESH-SWML)
+#   generate_swaig_payloads.py-> shipped src/swaig/**   (GEN-FRESH-SWAIG)
+#
+# The Rust tree itself has always been covered end-to-end by
+# `cargo clippy --all-targets` (lib + bins + tests + examples) at full
+# strictness. Until 2026-07-30 the Python that DECIDES WHAT THE GATES COMPARE
+# was held to no bar at all. The first lint pass over it found a live defect: an
+# unreadable source file made enumerate_surface.py emit a SHORT-BUT-VALID
+# port_surface.json and exit 0 (proven: chmod 000 on src/swml/service.rs dropped
+# 63 methods and a whole module, rc=0 — see the fail-loud fix in that file).
+#
+# The rule selection below is COPIED from the reference implementation
+# (signalwire-python/pyproject.toml [tool.ruff]) rather than invented here, so
+# the whole fleet applies one identical Python bar. Keep them in sync; if the
+# reference's select list changes, follow it.
+
+target-version = "py310"
+line-length = 88
+
+[format]
+# Pin STABLE formatting explicitly (mirrors the reference). Without this,
+# `ruff format --check` in CI can resolve preview-mode formatting while a local
+# stable run leaves the file unchanged — a local-vs-CI split with no visible
+# cause.
+preview = false
+
+[lint]
+# E4/E7/E9 + F are the ruff defaults (E501 line-length intentionally excluded —
+# formatting is owned by `ruff format`, not the linter). B = flake8-bugbear
+# (likely-bug patterns), S = flake8-bandit (security smells). Identical to the
+# reference SDK's selection.
+select = ["E4", "E7", "E9", "F", "B", "S", "C4", "PERF", "SIM", "PTH", "RET", "RUF", "UP"]
+
+[lint.per-file-ignores]
+# S603 (subprocess call) / S607 (partial executable path). Every one of these
+# call sites has the same shape: a FIXED list-form argv with the default
+# shell=False, so there is no shell to interpolate into, and the only
+# non-literal arguments are paths this repo's own scripts computed from the repo
+# root — never untrusted or network input. S607 fires where the binary is
+# resolved via PATH (`cargo`, `rustfmt`, `git`), which is deliberate:
+# scripts/_env.sh pins the toolchain by prepending to PATH, so PATH resolution
+# IS the pinning mechanism, not a defect. Hardcoding absolute paths would break
+# on every other machine. Same rationale (and the same per-file scoping) as the
+# reference SDK's "signalwire/signalwire/cli/dokku.py" = ["S603", "S607"], so a
+# NEW subprocess call in a file that does not already shell out still reds the
+# gate.
+#
+# E402 (module-level import not at top of file) on enumerate_signatures.py is
+# STRUCTURALLY FORCED, not sloppiness — the same shape the reference SDK grants
+# its own conftest ("MUST insert the project root on sys.path BEFORE importing
+# signalwire.*"). Line 54's `from enumerate_surface import (...)` must follow the
+# `sys.path.insert(0, str(HERE))` above it, which is what puts the sibling module
+# on the path at all. That import is deliberate sharing: both enumerators read
+# the same oracle through one resolver, because a duplicated resolver is exactly
+# what lets two gates disagree about where the oracle lives. Moving the import up
+# does not make the file tidier; it makes it not work.
+"scripts/enumerate_signatures.py" = ["S603", "S607", "E402"]
+"scripts/enumerate_surface.py" = ["S603", "S607"]
+"scripts/generate_rest.py" = ["S603", "S607"]
+"scripts/generate_rest_tests.py" = ["S603", "S607"]

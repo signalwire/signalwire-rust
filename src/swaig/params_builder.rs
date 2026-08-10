@@ -44,7 +44,7 @@
 //!   `{"type":"object","properties": <this>}`).
 //! - [`build_schema`](ParamsBuilder::build_schema) returns the **full** JSON
 //!   schema `{"type":"object","properties":{…},"required":[…]}` — exactly the
-//!   shape the Python reference's `_ensure_parameter_structure` emits and the
+//!   shape the `_ensure_parameter_structure` emits and the
 //!   shape hand-written for `register_swaig_function` / `DataMap` full
 //!   definitions. This is the form that carries a top-level
 //!   [`required`](ParamsBuilder::required) list.
@@ -358,7 +358,7 @@ impl ParamsBuilder {
     /// `"required": [<name>, …]` in [`build_schema`](Self::build_schema).
     ///
     /// This is the JSON-Schema-style required array (sibling of `properties`),
-    /// matching the Python reference's `required=[…]` argument. Calling it more
+    /// matching the wire contract's `required=[…]` argument. Calling it more
     /// than once replaces the previous list. For a per-property flag instead,
     /// use [`PropertyBuilder::required`].
     pub fn required<I, S>(mut self, names: I) -> Self
@@ -387,7 +387,7 @@ impl ParamsBuilder {
     /// `{"type":"object","properties":{…}}`, plus `"required":[…]` when a
     /// top-level [`required`](Self::required) list was declared.
     ///
-    /// Byte-identical to the Python reference's `_ensure_parameter_structure`
+    /// Byte-identical to the `_ensure_parameter_structure`
     /// output and to the hand-written full-schema forms used with
     /// `register_swaig_function` / `DataMap` definitions.
     #[must_use]
@@ -704,7 +704,7 @@ mod tests {
         args.insert("query".to_string(), Value::from("pricing"));
         let raw = serde_json::Map::new();
         let result = agent
-            .on_function_call("search", &args, &raw)
+            .on_function_call("search", &args, Some(&raw))
             .expect("handler dispatched");
         let v = result.to_value();
         assert_eq!(v["response"], "hit: pricing");

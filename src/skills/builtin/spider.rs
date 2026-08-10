@@ -4,16 +4,55 @@ use crate::agent::AgentBase;
 use crate::skills::skill_base::{SkillBase, SkillParams};
 use crate::swaig::FunctionResult;
 
+/// `XPath` expressions for elements stripped before text extraction. Mirrors the
+/// reference's prefilled `self.remove_xpaths` default
+/// (`skills/spider/skill.py:191-199`) — same seven expressions, same order.
+const DEFAULT_REMOVE_XPATHS: [&str; 7] = [
+    "//script",
+    "//style",
+    "//nav",
+    "//header",
+    "//footer",
+    "//aside",
+    "//noscript",
+];
+
 /// Fast web scraping and crawling capabilities (handler-based).
 pub struct Spider {
     sp: SkillParams,
+    /// `XPath` expressions for unwanted elements, dropped (subtree and all)
+    /// before visible text is extracted. Prefilled with
+    /// [`DEFAULT_REMOVE_XPATHS`], matching the wire contract's derived
+    /// `self.remove_xpaths` attribute — this is a caller-observable value, not
+    /// an empty list.
+    ///
+    /// `pub` because the reference exposes it as a plain mutable instance
+    /// attribute (`skill.remove_xpaths = [...]`); a public field is the direct
+    /// Rust equivalent of that assignment, so no setter method is invented.
+    /// The [`remove_xpaths`](Self::remove_xpaths) reader is the read-side
+    /// spelling the surface contract records.
+    pub remove_xpaths: Vec<String>,
 }
 
 impl Spider {
+    /// Create the skill from its configuration `params`.
+    ///
+    /// Setup always succeeds — crawl targets are supplied per call rather
+    /// than configured up front.
     pub fn new(params: Map<String, Value>) -> Self {
         Spider {
             sp: SkillParams::new(params),
+            remove_xpaths: DEFAULT_REMOVE_XPATHS
+                .iter()
+                .map(|s| (*s).to_string())
+                .collect(),
         }
+    }
+
+    /// The `XPath` expressions whose elements are removed before text extraction.
+    #[must_use]
+    pub fn remove_xpaths(&self) -> &[String] {
+        &self.remove_xpaths
     }
 }
 
@@ -45,6 +84,11 @@ impl SkillBase for Spider {
     fn register_tools(&self, agent: &mut AgentBase) {
         let prefix = self.sp.get_str_or("tool_prefix", "");
         let max_length = usize::try_from(self.sp.get_i64("max_text_length", 5000)).unwrap_or(5000);
+        // Each handler closure is `'static`, so it owns its own copy of the
+        // configured strip list.
+        let strip_scrape = self.remove_xpaths.clone();
+        let strip_crawl = self.remove_xpaths.clone();
+        let strip_extract = self.remove_xpaths.clone();
 
         let scrape_name = format!("{prefix}scrape_url");
         let crawl_name = format!("{prefix}crawl_site");
@@ -76,7 +120,7 @@ impl SkillBase for Spider {
                         return r;
                     }
                 };
-                let extracted = extract_text_from_html(&body, max_length);
+                let extracted = extract_text_from_html(&body, max_length, &strip_scrape);
                 let mut r = FunctionResult::new();
                 r.set_response(&format!("Scraped content from {url_arg}:\n{extracted}"));
                 r
@@ -113,7 +157,7 @@ impl SkillBase for Spider {
                         return r;
                     }
                 };
-                let extracted = extract_text_from_html(&body, max_length);
+                let extracted = extract_text_from_html(&body, max_length, &strip_crawl);
                 let mut r = FunctionResult::new();
                 r.set_response(&format!("Crawled {start_url}:\n{extracted}"));
                 r
@@ -147,7 +191,7 @@ impl SkillBase for Spider {
                         return r;
                     }
                 };
-                let extracted = extract_text_from_html(&body, max_length);
+                let extracted = extract_text_from_html(&body, max_length, &strip_extract);
                 let mut r = FunctionResult::new();
                 r.set_response(&format!("Extracted from {url_arg}:\n{extracted}"));
                 r
@@ -226,13 +270,65 @@ fn http_get_text(url: &str) -> Result<String, String> {
     Ok(body)
 }
 
-/// Extract visible text from raw HTML or JSON responses. Strips tag
-/// markup and collapses whitespace; bounded by `max_length`. Mirrors
+/// Drop each element named by a `//tag` xpath — the open tag through its
+/// matching close tag, contents included — from `html`.
+///
+/// The reference does this with lxml (`elem.drop_tree()` per
+/// `self.remove_xpaths` entry). Rust has no `XPath` engine in the dependency
+/// set, so this handles the `//tag` form the default list is made of; any
+/// other expression shape is ignored rather than silently mis-applied.
+fn drop_removed_elements(html: &str, remove_xpaths: &[String]) -> String {
+    let mut out = html.to_string();
+    for xpath in remove_xpaths {
+        let Some(tag) = xpath.strip_prefix("//") else {
+            continue;
+        };
+        if tag.is_empty() || !tag.chars().all(|c| c.is_ascii_alphanumeric()) {
+            continue;
+        }
+        let tag_lc = tag.to_ascii_lowercase();
+        let open = format!("<{tag_lc}");
+        let close = format!("</{tag_lc}>");
+        let mut result = String::with_capacity(out.len());
+        let mut rest = out.as_str();
+        loop {
+            let lower = rest.to_ascii_lowercase();
+            let Some(start) = lower.find(&open) else {
+                result.push_str(rest);
+                break;
+            };
+            // Only a real tag boundary: `<script>` / `<script src=…>`, not
+            // `<scripting>`.
+            let after = rest[start + open.len()..].chars().next();
+            if !matches!(after, Some('>' | ' ' | '\t' | '\n' | '\r' | '/') | None) {
+                let adv = start + open.len();
+                result.push_str(&rest[..adv]);
+                rest = &rest[adv..];
+                continue;
+            }
+            result.push_str(&rest[..start]);
+            let tail = &rest[start..];
+            let tail_lower = tail.to_ascii_lowercase();
+            let Some(end) = tail_lower.find(&close) else {
+                // Unclosed element: drop to end of input.
+                rest = "";
+                break;
+            };
+            rest = &tail[end + close.len()..];
+        }
+        out = result;
+    }
+    out
+}
+
+/// Extract visible text from raw HTML or JSON responses. Removes the
+/// `remove_xpaths` elements (subtree included), strips remaining tag
+/// markup, and collapses whitespace; bounded by `max_length`. Mirrors
 /// what Python's `_fast_text_extract` does for the spider skill.
 ///
 /// We accept JSON as input too — the audit fixture replies with JSON
 /// containing an `_raw_html` field that itself holds the page HTML.
-fn extract_text_from_html(input: &str, max_length: usize) -> String {
+fn extract_text_from_html(input: &str, max_length: usize, remove_xpaths: &[String]) -> String {
     // If the body parses as JSON, look for an `_raw_html` field (the
     // shape audit_skills_dispatch.py's spider probe serves) and recurse
     // on that content. Otherwise treat the input as HTML directly.
@@ -244,6 +340,8 @@ fn extract_text_from_html(input: &str, max_length: usize) -> String {
                 .map(std::string::ToString::to_string)
         })
         .unwrap_or_else(|| input.to_string());
+
+    let html = drop_removed_elements(&html, remove_xpaths);
 
     let mut out = String::new();
     let mut in_tag = false;
@@ -278,6 +376,68 @@ mod tests {
     fn test_spider_setup() {
         let mut skill = Spider::new(Map::new());
         assert!(skill.setup());
+    }
+
+    /// `remove_xpaths` is PREFILLED at construction with the 7 element
+    /// expressions, not an empty list.
+    #[test]
+    fn test_remove_xpaths_default_is_prefilled() {
+        let skill = Spider::new(Map::new());
+        assert_eq!(
+            skill.remove_xpaths(),
+            [
+                "//script",
+                "//style",
+                "//nav",
+                "//header",
+                "//footer",
+                "//aside",
+                "//noscript"
+            ]
+        );
+    }
+
+    /// The removed elements' CONTENT must not survive into the extracted
+    /// text — the reference drops the whole subtree (`elem.drop_tree()`).
+    #[test]
+    fn test_remove_xpaths_drops_element_contents() {
+        let skill = Spider::new(Map::new());
+        let html = "<html><head><style>body{color:red}</style>\
+<script>var secret = 1;</script></head><body><nav>Menu Home</nav>\
+<p>Real content here</p><footer>Copyright notice</footer></body></html>";
+        let text = extract_text_from_html(html, 5000, skill.remove_xpaths());
+        assert_eq!(text, "Real content here");
+    }
+
+    /// A `<scripting>` element is not a `<script>` element — the tag match
+    /// must respect the tag boundary.
+    #[test]
+    fn test_remove_xpaths_respects_tag_boundary() {
+        let skill = Spider::new(Map::new());
+        let html = "<scripting>keep me</scripting><script>drop me</script>";
+        let text = extract_text_from_html(html, 5000, skill.remove_xpaths());
+        assert_eq!(text, "keep me");
+    }
+
+    /// An attribute-bearing open tag is still the element.
+    #[test]
+    fn test_remove_xpaths_matches_tag_with_attributes() {
+        let skill = Spider::new(Map::new());
+        let html = "<script src=\"x.js\" defer>inline drop</script><p>kept</p>";
+        let text = extract_text_from_html(html, 5000, skill.remove_xpaths());
+        assert_eq!(text, "kept");
+    }
+
+    /// Replacing the list changes what gets stripped — the field is live,
+    /// not a decorative default. Assigned directly, mirroring the reference's
+    /// `skill.remove_xpaths = [...]`.
+    #[test]
+    fn test_assigning_remove_xpaths_changes_extraction() {
+        let mut skill = Spider::new(Map::new());
+        skill.remove_xpaths = vec!["//p".to_string()];
+        let html = "<script>now kept</script><p>now dropped</p>";
+        let text = extract_text_from_html(html, 5000, skill.remove_xpaths());
+        assert_eq!(text, "now kept");
     }
 
     #[test]

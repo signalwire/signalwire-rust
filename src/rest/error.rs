@@ -3,7 +3,7 @@ use std::fmt;
 use std::sync::Arc;
 
 /// Response-header names carrying the platform request id, in preference order,
-/// matched case-insensitively. Mirrors the python reference's list.
+/// matched case-insensitively. Mirrors the list.
 const REQUEST_ID_HEADERS: [&str; 4] = [
     "x-request-id",
     "x-signalwire-request-id",
@@ -17,13 +17,13 @@ const REQUEST_ID_HEADERS: [&str; 4] = [
 ///
 /// Carries the full failure envelope — HTTP status, response body, request URL,
 /// and request method — so a caller can branch on 400-vs-404-vs-422 and inspect
-/// the server's error body. Mirrors the Python reference's `SignalWireRestError`
+/// the server's error body. `SignalWireRestError`
 /// `(status_code, body, url, method)` constructor.
 ///
 /// A transport failure is folded into this SAME type (not a parallel subtype)
 /// via the `is_transport()` discriminator: `status_code` is `0` (this port's
 /// existing "no status" convention) and `response_body` is empty. This is the
-/// equivalent of the Python reference's `SignalWireRestTransportError` subclass
+/// equivalent of the `SignalWireRestTransportError` subclass
 /// with `status_code=None` — mirroring the Go port's `Transport bool` field
 /// rather than a parallel type. The underlying transport error is preserved via
 /// `source()` (Rust's equivalent of Python's `raise ... from exc`), so
@@ -36,7 +36,7 @@ pub struct SignalWireRestError {
     method: String,
     /// `true` when this error represents a transport-level failure (the request
     /// never reached a response), in which case `status_code` is `0` — the
-    /// equivalent of the Python reference's `status_code=None`. `false` for an
+    /// equivalent of the `status_code=None`. `false` for an
     /// HTTP-status error (a real >= 400 response).
     is_transport: bool,
     /// The underlying transport error (connection refused, DNS, reset, TLS),
@@ -110,7 +110,7 @@ impl SignalWireRestError {
     /// Construct a **transport-level** error — the request never reached a
     /// response (connection refused, DNS failure, connection reset, TLS error).
     /// `status_code` is `0` (this port's existing sentinel for "no HTTP status",
-    /// the equivalent of the Python reference's
+    /// the equivalent of the
     /// `SignalWireRestTransportError(status_code=None)`) and `is_transport()`
     /// reports `true`. `cause` is the underlying transport error, preserved as
     /// this error's `source()` so the cause chain survives — the Rust
@@ -130,6 +130,10 @@ impl SignalWireRestError {
         }
     }
 
+    /// The human-readable description of the failure.
+    ///
+    /// For an HTTP-status error this summarises the status and request; for
+    /// a transport failure it describes the underlying cause.
     pub fn message(&self) -> &str {
         &self.message
     }
@@ -144,13 +148,20 @@ impl SignalWireRestError {
     /// `true` when this error represents a transport-level failure (the request
     /// never reached a response, e.g. connection refused / DNS / reset / TLS),
     /// in which case [`status_code`](Self::status_code) is `0` — the equivalent
-    /// of the Python reference's `SignalWireRestTransportError` /
+    /// of the `SignalWireRestTransportError` /
     /// `status_code=None`. `false` for an HTTP-status error (a real >= 400
     /// response).
     pub fn is_transport(&self) -> bool {
         self.is_transport
     }
 
+    /// The raw response body the server returned, verbatim and unparsed.
+    ///
+    /// The empty string when there is no response at all — which is always
+    /// the case for a transport failure (see
+    /// [`is_transport`](Self::is_transport)) — and also when the server
+    /// answered with an empty body, so an empty result does not by itself
+    /// distinguish the two.
     pub fn response_body(&self) -> &str {
         self.response.as_deref().map_or("", |r| r.body.as_str())
     }

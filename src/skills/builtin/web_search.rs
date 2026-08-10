@@ -9,7 +9,7 @@ use crate::agent::AgentBase;
 use crate::skills::skill_base::{SkillBase, SkillParams};
 use crate::swaig::FunctionResult;
 
-/// Default `no_results_message` (mirrors Python's `WebSearchSkill` default).
+/// Default `no_results_message`.
 /// Returned by the snippet fallback when CSE yields nothing at all or the
 /// `overall_deadline` fires before any item arrives.
 const DEFAULT_NO_RESULTS_MESSAGE: &str = "I couldn't find quality results for '{query}'. The search returned only \
@@ -18,7 +18,7 @@ a different topic.";
 
 /// Search the web using Google Custom Search API.
 ///
-/// Mirrors Python's `signalwire.skills.web_search`: the SDK issues a
+/// Matches `signalwire.skills.web_search`: the SDK issues a
 /// real HTTP GET to Google CSE (`https://www.googleapis.com/customsearch/v1`)
 /// with the query, key, and CSE ID in the query string, and parses the
 /// JSON response. The base URL can be overridden via the
@@ -29,6 +29,13 @@ pub struct WebSearch {
 }
 
 impl WebSearch {
+    /// Create the skill from its configuration `params`.
+    ///
+    /// Requires Google Custom Search credentials, each resolvable from a
+    /// param or the environment: the key from `api_key`, `GOOGLE_API_KEY`,
+    /// or `GOOGLE_SEARCH_API_KEY`; the engine id from `search_engine_id`,
+    /// `GOOGLE_CSE_ID`, or `GOOGLE_SEARCH_ENGINE_ID`. Setup verifies both
+    /// resolve somewhere; the handler re-reads them at call time.
     pub fn new(params: Map<String, Value>) -> Self {
         WebSearch {
             sp: SkillParams::new(params),
@@ -397,7 +404,7 @@ fn format_web_search_response(
 /// Format Google CSE result items as a labeled snippet block, WITHOUT scraping
 /// the underlying pages.
 ///
-/// Mirrors Python's `GoogleSearchScraper._format_snippet_results` (commit
+/// Matches `GoogleSearchScraper._format_snippet_results` (commit
 /// 51101da). Used in two situations:
 ///   - `snippets_only` is set (the caller wants a fast, sub-second answer); and
 ///   - as the graceful fallback when the `overall_deadline` fires or CSE
@@ -743,7 +750,7 @@ mod tests {
         let mut args = Map::new();
         args.insert("query".to_string(), json!(query));
         let result = agent
-            .on_function_call("web_search", &args, &Map::new())
+            .on_function_call("web_search", &args, Some(&Map::new()))
             .expect("web_search tool should be registered");
         result
             .to_value()

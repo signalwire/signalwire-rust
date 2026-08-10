@@ -77,7 +77,7 @@ impl<'a> CrudResource<'a> {
         request_options: Option<&RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
         self.client
-            .get_with_options(&self.base_path, params, request_options)
+            .get_with_options(&self.base_path, Some(params), request_options)
     }
 
     /// Iterate every item across all pages of this resource's list endpoint.
@@ -92,29 +92,27 @@ impl<'a> CrudResource<'a> {
     /// # use std::collections::HashMap;
     /// # use signalwire::rest::CrudResource;
     /// # fn demo(resource: &CrudResource<'_>) {
-    /// for item in resource.paginate(&HashMap::new()) {
+    /// for item in resource.paginate(None, &HashMap::new()) {
     ///     let item = item.expect("page fetch failed");
     ///     // ... use item ...
     /// }
     /// # }
     /// ```
     ///
-    /// Mirrors the Python reference's `ReadResource.paginate(**params)`, wiring
-    /// the resource layer to the tested [`PaginatedIterator`] so callers no
-    /// longer hand-build the path + cursor loop. Construction is lazy — no HTTP
-    /// is dispatched until the iterator is first stepped.
+    /// Mirrors the Python reference's
+    /// `ReadResource.paginate(*, request_options=None, **params)`, wiring the
+    /// resource layer to the tested [`PaginatedIterator`] so callers no longer
+    /// hand-build the path + cursor loop. Construction is lazy — no HTTP is
+    /// dispatched until the iterator is first stepped.
+    ///
+    /// `request_options` is a per-request [`RequestOptions`] override (plan 4.2)
+    /// forwarded to every page GET; `None` is the omit-it call, matching the
+    /// reference's default. Options are never serialized.
     #[must_use]
-    pub fn paginate(&self, params: &HashMap<String, String>) -> PaginatedIterator<'a> {
-        PaginatedIterator::new(self.client, &self.base_path, params.clone(), "data", None)
-    }
-
-    /// `paginate` with a per-request [`RequestOptions`] override (plan 4.2)
-    /// forwarded to every page GET. Options are never serialized.
-    #[must_use]
-    pub fn paginate_with_options(
+    pub fn paginate(
         &self,
-        params: &HashMap<String, String>,
         request_options: Option<RequestOptions>,
+        params: &HashMap<String, String>,
     ) -> PaginatedIterator<'a> {
         PaginatedIterator::new(
             self.client,
@@ -148,7 +146,7 @@ impl<'a> CrudResource<'a> {
         request_options: Option<&RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
         self.client
-            .post_with_options(&self.base_path, data, request_options)
+            .post_with_options(&self.base_path, Some(data), None, request_options)
     }
 
     /// Retrieve a single resource by ID (GET basePath/{id}).
@@ -173,7 +171,7 @@ impl<'a> CrudResource<'a> {
         request_options: Option<&RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
         self.client
-            .get_with_options(&self.path(&[id]), &HashMap::new(), request_options)
+            .get_with_options(&self.path(&[id]), None, request_options)
     }
 
     /// Update a resource by ID (PUT/PATCH basePath/{id}, per `update_method`).
@@ -201,9 +199,11 @@ impl<'a> CrudResource<'a> {
     ) -> Result<Value, SignalWireRestError> {
         let path = self.path(&[id]);
         if self.update_method.eq_ignore_ascii_case("PUT") {
-            self.client.put_with_options(&path, data, request_options)
+            self.client
+                .put_with_options(&path, Some(data), request_options)
         } else {
-            self.client.patch_with_options(&path, data, request_options)
+            self.client
+                .patch_with_options(&path, Some(data), request_options)
         }
     }
 
@@ -380,7 +380,7 @@ mod tests {
         // Constructing the iterator dispatches no HTTP until first stepped.
         let (client, stub) = make_resource();
         let crud = CrudResource::new(&client, "/api/items", "PATCH");
-        let _it = crud.paginate(&HashMap::new());
+        let _it = crud.paginate(None, &HashMap::new());
         assert!(stub.requests.lock().unwrap().is_empty());
     }
 
@@ -413,7 +413,7 @@ mod tests {
 
         let crud = CrudResource::new(&client, "/api/items", "PATCH");
         let ids: Vec<String> = crud
-            .paginate(&HashMap::new())
+            .paginate(None, &HashMap::new())
             .map(|item| item.unwrap()["id"].as_str().unwrap().to_string())
             .collect();
         assert_eq!(ids, vec!["1", "2", "3"]);

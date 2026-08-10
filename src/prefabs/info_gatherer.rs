@@ -8,7 +8,7 @@ use crate::swaig::FunctionResult;
 
 /// Callback for dynamic question configuration.
 ///
-/// Ported from Python `InfoGathererAgent.set_question_callback`: receives
+/// Receives
 /// `(query_params, body_params, headers)` and returns the list of question
 /// objects (`{key_name, question_text, confirm?}`) to gather.
 pub type QuestionCallback = Arc<
@@ -34,7 +34,7 @@ pub struct InfoGathererAgent {
 
 /// Options for constructing an [`InfoGathererAgent`].
 ///
-/// Every field carries the Python reference's default
+/// Every field carries the default
 /// (`prefabs/info_gatherer.py:41-46`), so `InfoGathererOptions::default()` is
 /// the exact equivalent of the valid reference program `InfoGathererAgent()`.
 #[must_use]
@@ -43,9 +43,9 @@ pub struct InfoGathererOptions {
     /// means the questions are resolved dynamically per request (the
     /// reference's `questions=None`).
     pub questions: Vec<Value>,
-    /// Agent name (reference default `"info_gatherer"`).
+    /// Agent name (default `"info_gatherer"`).
     pub name: String,
-    /// HTTP route (reference default `"/info_gatherer"`).
+    /// HTTP route (default `"/info_gatherer"`).
     pub route: String,
 }
 
@@ -60,7 +60,7 @@ impl Default for InfoGathererOptions {
 }
 
 impl InfoGathererOptions {
-    /// Options carrying every reference default.
+    /// Options carrying every default.
     pub fn new() -> Self {
         Self::default()
     }
@@ -209,7 +209,7 @@ impl InfoGathererAgent {
 
     /// Set a callback for dynamic (per-request) question configuration.
     ///
-    /// Ported from Python `InfoGathererAgent.set_question_callback`. The callback
+    /// The callback
     /// receives `(query_params, body_params, headers)` and returns a list of
     /// question objects. Only consulted in dynamic mode (no static questions).
     pub fn set_question_callback(&mut self, callback: QuestionCallback) -> &mut Self {
@@ -219,7 +219,7 @@ impl InfoGathererAgent {
 
     /// Resolve dynamic configuration when SWML is requested.
     ///
-    /// Ported from Python `InfoGathererAgent.on_swml_request`. In static mode
+    /// In static mode
     /// (questions supplied at construction) returns `None`. In dynamic mode it
     /// invokes the question callback (or a name/message fallback when none is set)
     /// and returns a `{"global_data": {questions, question_index, answers}}` map
@@ -228,9 +228,21 @@ impl InfoGathererAgent {
     pub fn on_swml_request(
         &self,
         request_data: Option<&Map<String, Value>>,
-        query_params: &Map<String, Value>,
-        headers: &HashMap<String, String>,
+        query_params: Option<&Map<String, Value>>,
+        headers: Option<&HashMap<String, String>>,
     ) -> Option<Value> {
+        // The reference declares every parameter optional; `None` is the
+        // omit-it call and the absent map is the empty one.
+        let empty_params = Map::new();
+        let query_params = match query_params {
+            Some(q) => q,
+            None => &empty_params,
+        };
+        let empty_headers = HashMap::new();
+        let headers = match headers {
+            Some(h) => h,
+            None => &empty_headers,
+        };
         // Only process in dynamic mode.
         if self.static_mode {
             return None;
@@ -300,7 +312,7 @@ impl InfoGathererAgent {
 
     /// Start the question sequence by returning the first question.
     ///
-    /// Ported from Python `InfoGathererAgent.start_questions`. Reads `questions`
+    /// Reads `questions`
     /// and `question_index` from `raw_data["global_data"]` and returns the
     /// instruction for the current question. `args` is accepted for
     /// handler-signature compatibility but unused.
@@ -347,7 +359,7 @@ impl InfoGathererAgent {
 
     /// Submit an answer to the current question and advance to the next.
     ///
-    /// Ported from Python `InfoGathererAgent.submit_answer`. Records the answer
+    /// Records the answer
     /// under the current question's `key_name`, increments `question_index`, and
     /// returns either the next question's instruction or a completion message,
     /// with the updated `answers`/`question_index` pushed via
@@ -459,7 +471,7 @@ mod tests {
         let raw = serde_json::Map::new();
         let result = agent
             .agent()
-            .on_function_call("start_questions", &args, &raw);
+            .on_function_call("start_questions", &args, Some(&raw));
         assert!(result.is_some());
     }
 
@@ -617,7 +629,7 @@ mod tests {
         );
         assert!(
             agent
-                .on_swml_request(None, &Map::new(), &HashMap::new())
+                .on_swml_request(None, Some(&Map::new()), Some(&HashMap::new()))
                 .is_none()
         );
     }
@@ -627,7 +639,7 @@ mod tests {
         // Empty questions => dynamic mode; no callback => fallback questions.
         let agent = InfoGathererAgent::new(InfoGathererOptions::new().name("test"));
         let out = agent
-            .on_swml_request(None, &Map::new(), &HashMap::new())
+            .on_swml_request(None, Some(&Map::new()), Some(&HashMap::new()))
             .expect("dynamic mode returns global_data");
         let questions = out["global_data"]["questions"].as_array().unwrap();
         assert_eq!(questions.len(), 2);
@@ -655,7 +667,7 @@ mod tests {
         let mut query = Map::new();
         query.insert("set".to_string(), json!("support"));
         let out = agent
-            .on_swml_request(None, &query, &HashMap::new())
+            .on_swml_request(None, Some(&query), Some(&HashMap::new()))
             .expect("dynamic mode returns global_data");
         let questions = out["global_data"]["questions"].as_array().unwrap();
         assert_eq!(questions.len(), 2);
@@ -667,7 +679,7 @@ mod tests {
         let mut agent = InfoGathererAgent::new(InfoGathererOptions::new().name("test"));
         agent.set_question_callback(Arc::new(|_q, _b, _h| vec![]));
         let out = agent
-            .on_swml_request(None, &Map::new(), &HashMap::new())
+            .on_swml_request(None, Some(&Map::new()), Some(&HashMap::new()))
             .expect("dynamic mode returns global_data");
         let questions = out["global_data"]["questions"].as_array().unwrap();
         assert_eq!(questions.len(), 2); // fallback

@@ -21,6 +21,13 @@ pub struct SkillManager {
 }
 
 impl SkillManager {
+    /// Create an empty skill manager with no skills loaded and no agent
+    /// bound.
+    ///
+    /// Unlike the wire contract, which takes the agent in its
+    /// constructor, the agent is captured on the first `load_skill` call —
+    /// Rust's load path already receives the live `&mut AgentBase`, and
+    /// requiring it here would force every agent into an `Arc<Mutex<…>>`.
     pub fn new() -> Self {
         SkillManager {
             loaded_skills: HashMap::new(),
@@ -29,7 +36,7 @@ impl SkillManager {
     }
 
     /// The agent this manager is loading skills into, or `None` before the
-    /// first skill is loaded. Mirrors the reference's `SkillManager.agent`.
+    /// first skill is loaded.
     pub fn agent(&self) -> Option<Arc<dyn SkillAgent>> {
         self.agent.clone()
     }
@@ -40,9 +47,15 @@ impl SkillManager {
     pub fn load_skill(
         &mut self,
         skill_name: &str,
-        params: Map<String, Value>,
+        params: Option<Map<String, Value>>,
         agent: &mut AgentBase,
     ) -> (bool, String) {
+        // The reference declares `params: dict | None = None`; `None` is the
+        // omit-it call and the skill is constructed with no parameters.
+        let params = match params {
+            Some(p) => p,
+            None => Map::new(),
+        };
         let Some(factory) = SkillRegistry::get_factory(skill_name) else {
             return (false, format!("Skill '{skill_name}' not found in registry"));
         };
@@ -243,7 +256,7 @@ mod tests {
     fn test_load_skill_from_registry() {
         let mut mgr = SkillManager::new();
         let mut agent = AgentBase::new(AgentOptions::new("test"));
-        let (ok, msg) = mgr.load_skill("datetime", Map::new(), &mut agent);
+        let (ok, msg) = mgr.load_skill("datetime", None, &mut agent);
         assert!(ok, "load_skill failed: {msg}");
         assert!(mgr.has_skill("datetime"));
         assert_eq!(mgr.list_skills(), vec!["datetime"]);
@@ -260,7 +273,7 @@ mod tests {
 
         let mut agent = AgentBase::new(AgentOptions::new("host-agent"));
         let expected_id = agent.agent_id().to_string();
-        let (ok, msg) = mgr.load_skill("datetime", Map::new(), &mut agent);
+        let (ok, msg) = mgr.load_skill("datetime", None, &mut agent);
         assert!(ok, "load_skill failed: {msg}");
 
         let mgr_agent = mgr.agent().expect("manager kept its agent");
@@ -279,7 +292,7 @@ mod tests {
     fn test_load_unknown_skill() {
         let mut mgr = SkillManager::new();
         let mut agent = AgentBase::new(AgentOptions::new("test"));
-        let (ok, msg) = mgr.load_skill("nonexistent_skill_xyz", Map::new(), &mut agent);
+        let (ok, msg) = mgr.load_skill("nonexistent_skill_xyz", None, &mut agent);
         assert!(!ok);
         assert!(msg.contains("not found"));
     }
@@ -288,7 +301,7 @@ mod tests {
     fn test_unload_skill() {
         let mut mgr = SkillManager::new();
         let mut agent = AgentBase::new(AgentOptions::new("test"));
-        mgr.load_skill("datetime", Map::new(), &mut agent);
+        mgr.load_skill("datetime", None, &mut agent);
         assert!(mgr.has_skill("datetime"));
         assert!(mgr.unload_skill("datetime"));
         assert!(!mgr.has_skill("datetime"));
@@ -299,9 +312,9 @@ mod tests {
     fn test_duplicate_no_multi_instance() {
         let mut mgr = SkillManager::new();
         let mut agent = AgentBase::new(AgentOptions::new("test"));
-        let (ok, _) = mgr.load_skill("datetime", Map::new(), &mut agent);
+        let (ok, _) = mgr.load_skill("datetime", None, &mut agent);
         assert!(ok);
-        let (ok2, msg) = mgr.load_skill("datetime", Map::new(), &mut agent);
+        let (ok2, msg) = mgr.load_skill("datetime", None, &mut agent);
         assert!(!ok2);
         assert!(msg.contains("already loaded"));
     }
@@ -310,7 +323,7 @@ mod tests {
     fn test_load_math() {
         let mut mgr = SkillManager::new();
         let mut agent = AgentBase::new(AgentOptions::new("test"));
-        let (ok, msg) = mgr.load_skill("math", Map::new(), &mut agent);
+        let (ok, msg) = mgr.load_skill("math", None, &mut agent);
         assert!(ok, "load_skill failed: {msg}");
         assert!(mgr.has_skill("math"));
     }
@@ -320,8 +333,8 @@ mod tests {
         let mut mgr = SkillManager::new();
         let mut agent = AgentBase::new(AgentOptions::new("test"));
         assert!(mgr.list_loaded_skills().is_empty());
-        mgr.load_skill("datetime", Map::new(), &mut agent);
-        mgr.load_skill("math", Map::new(), &mut agent);
+        mgr.load_skill("datetime", None, &mut agent);
+        mgr.load_skill("math", None, &mut agent);
         assert_eq!(mgr.list_loaded_skills(), mgr.list_skills());
         assert_eq!(mgr.list_loaded_skills(), vec!["datetime", "math"]);
     }
@@ -330,7 +343,7 @@ mod tests {
     fn test_get_skill() {
         let mut mgr = SkillManager::new();
         let mut agent = AgentBase::new(AgentOptions::new("test"));
-        mgr.load_skill("math", Map::new(), &mut agent);
+        mgr.load_skill("math", None, &mut agent);
         let skill = mgr.get_skill("math");
         assert!(skill.is_some());
         assert_eq!(skill.unwrap().name(), "math");

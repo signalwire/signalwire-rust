@@ -9,6 +9,10 @@ pub struct WeatherApi {
 }
 
 impl WeatherApi {
+    /// Create the skill from its configuration `params`.
+    ///
+    /// Requires an `api_key` param carrying a `WeatherAPI` key; setup fails
+    /// without it. There is no environment-variable fallback.
     pub fn new(params: Map<String, Value>) -> Self {
         WeatherApi {
             sp: SkillParams::new(params),
@@ -39,7 +43,7 @@ impl SkillBase for WeatherApi {
 
     /// Build the DataMap-backed weather tool.
     ///
-    /// Mirrors Python `WeatherApiSkill.get_tools()`.
+    /// Matches `WeatherApiSkill.get_tools()`.
     fn get_tools(&self) -> Vec<Value> {
         let tool_name = self.get_tool_name("get_weather");
         // API key resolution: explicit param > WEATHER_API_KEY env > "".

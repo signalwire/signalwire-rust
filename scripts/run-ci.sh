@@ -328,14 +328,23 @@ sched_gate DRIFT deps=SIGNATURES desc="diff_port_signatures vs python reference"
 sched_gate SURFACE-FRESH res=surface desc="check_surface_freshness vs committed port_surface.json" \
     --fn surface_fresh_gate
 
+# SIGNATURES-FRESH — the sibling hole. SURFACE-FRESH guards port_surface.json;
+# NOTHING guarded port_signatures.json, which is DRIFT's INPUT — so a stale copy
+# means the parity gate compares against a fiction and reports clean.
+# Scheduled STANDALONE here, exactly like SEMVER-DIFF above: rust's run-ci does not
+# read _surface_commands.py, so a table entry there would be silently skipped.
+sched_gate SIGNATURES-FRESH res=surface desc="committed port_signatures.json matches a fresh regen" \
+    -- python3 "$PORTING_SDK_DIR/scripts/suites/_signatures_fresh.py" \
+        --port rust --repo "$PORT_ROOT" --porting-sdk "$PORTING_SDK_DIR"
+
 # TYPE-EROSION: a port may not erase a type the reference DECLARES. compare_param treats
 # `any` on EITHER side as matching anything, so a port emitting `any` silently satisfies
 # every reference declaration — an unlimited opt-out. ConciergeAgent.hours_of_operation is
 # declared optional<dict<string,string>> and go still shipped a bare string, with no gate
 # red. RATCHET, not a hard gate: dynamic languages cannot always express a type, so this
 # banks the current count and fails only on REGRESSION. Drive the number DOWN; never up.
-sched_gate TYPE-EROSION desc="port did not erase a reference-declared param type (ratchet 55)" \
-    -- python3 "$PORTING_SDK_DIR/scripts/diff_port_type_erosion.py" --port rust --repo "$PORT_ROOT" --max 55
+sched_gate TYPE-EROSION desc="port did not erase a reference-declared param type (ratchet 13)" \
+    -- python3 "$PORTING_SDK_DIR/scripts/diff_port_type_erosion.py" --port rust --repo "$PORT_ROOT" --max 13
 
 # RELAY-VERB-RESULT-LOCK: the ~52 calling.* verbs on relay::Call return
 # Result<_, RelayError> (RUST-1). DRIFT tolerates a reversion (the enumerator
@@ -448,9 +457,20 @@ sched_gate ENVELOPE desc="diff_port_envelope vs python oracle: conn-refused type
 # `__token` must be present for the secure tool and absent for the insecure one — so
 # this gate proves the port does not silently ship tools as unauthenticated. A fast
 # in-process SWML render (no live mock) → per-PR tier.
+#
+# --prebuild-cmd, like WAIT-LIVENESS and SECRET-SCRUB-LIVE below: the differ arms
+# a 120s wall-clock deadline the moment it launches the dump, and `cargo run`
+# BLOCKS on the cargo build lock whenever a concurrently-scheduled gate is
+# building. Gates run in parallel (SW_CI_JOBS), so the line-415 prebuild does not
+# make this gate ordering-independent on its own — it only warms the artifact,
+# it does not stop a LATER sibling's build from holding the lock while this gate
+# waits on it. Without the flag that lock wait is charged to the deadline and the
+# gate reports "dump HUNG (> 120s)" for a dump that takes ~5s: measured 5.0s idle
+# vs 10.1s under concurrent CI load, and a red in two consecutive full runs.
 sched_gate SECURE-DEFAULT desc="define_tool's secure state reaches the wire as the per-tool __token (Layer D vs python oracle)" \
     -- python3 "$PORTING_SDK_DIR/scripts/diff_port_secure_default.py" \
         --port rust \
+        --prebuild-cmd "cargo build --quiet --example secure_default_dump" \
         --dump-cmd 'cargo run -q --example secure_default_dump 2>/dev/null'
 
 # The three STATIC security source-checks (PSDK-5/6, A5). rust wired NONE of them
@@ -471,6 +491,20 @@ sched_gate TLS-VERIFY desc="no TLS-verify-off construct in the builtin-skill / H
 
 sched_gate CA-VAR desc="REST reads SIGNALWIRE_REST_CA_FILE and RELAY reads SIGNALWIRE_RELAY_CA_FILE (exact fleet names)" \
     -- python3 "$PORTING_SDK_DIR/scripts/ca_var_parity.py" --port rust --repo .
+
+# TOKEN-INTEROP — property 3 of the SWAIG tool-token contract: a token this port MINTS
+# must validate under the REFERENCE's own decoder. SECURE-DEFAULT proves a token is
+# minted and the fleet keying check proves the HMAC key; NEITHER sees the base64
+# ENVELOPE, so a port can ship correct-key correct-HMAC tokens that no other
+# implementation accepts — in production every secure tool call then fails auth. THIS
+# port is where the defect class was first proven: it minted with URL_SAFE_NO_PAD, and
+# the reference's urlsafe_b64decode RAISES on a stripped '='. Our own decoder tolerated
+# it, so round-tripping against ourselves could never catch it. This gate is what keeps
+# the fix (URL_SAFE) from silently regressing. One mint + a pure-python validation →
+# cheap, per-PR (a security property must not wait for nightly).
+sched_gate TOKEN-INTEROP desc="a token this port mints validates under the reference's decoder (padded urlsafe base64, ':'-signed / '.'-enveloped, hex HMAC keyed by the secret_key string)" \
+    -- python3 "$PORTING_SDK_DIR/scripts/diff_port_token_interop.py" --port rust \
+        --mint-cmd 'cargo run --quiet --example token_interop_mint'
 
 # AI-CHAT (COORDINATED pass rust:ai-chat-client <-> porting-sdk:ai-chat-client):
 # wire-behavioral gate for the AIChatClient. Drives the ai-chat-dump binary through
@@ -493,6 +527,21 @@ sched_gate FMT defer=1 desc="rustfmt via scripts/run-format.sh (local: auto-fix;
 
 sched_gate LINT defer=1 desc="cargo clippy --all-targets via scripts/run-lint.sh" \
     -- bash "$PORT_ROOT/scripts/run-lint.sh"
+
+# PY-LINT — ruff (lint + format) over the 7 hand-written Python programs under
+# scripts/. LINT above covers the whole Rust tree; this covers the Python that
+# DECIDES WHAT THE GATES COMPARE — enumerate_surface.py feeds SURFACE-FRESH,
+# enumerate_signatures.py feeds SIGNATURES/DRIFT, and the three generators feed
+# GEN-FRESH*. None of it was linted by anything before 2026-07-30; the first
+# pass found a live silent-success defect in both enumerators (an unreadable
+# input yielded a short-but-valid oracle at rc=0). Rule selection mirrors the
+# reference implementation (signalwire-python/pyproject.toml); config in
+# ruff.toml. Dual-mode exactly like FMT: LOCAL applies fixes in place, CI ($CI
+# set) passes --check for read-only verification, so an unformatted commit is
+# never green locally and red in CI on the very formatting the local run applied.
+# Cheap (sub-second, no toolchain), so it is NOT deferred.
+sched_gate PY-LINT desc="ruff over scripts/*.py via scripts/run-pylint.sh (local: apply, CI: check)" \
+    -- bash "$PORT_ROOT/scripts/run-pylint.sh" ${CI:+--check}
 
 # --native-names is load-bearing, not optional. port_surface.json holds the FOLDED
 # surface (reference spellings), so without the native-name sidecar every accessor
@@ -564,8 +613,14 @@ sched_gate RELEASE-FRESH desc="publish path is gated (gates-before-publish); rel
 # committed port_signatures.baseline.json (baseline_version 3.0.0); the current
 # generated surface must not regress it (or the version must major-bump). deps on
 # SIGNATURES so it diffs the freshly-regenerated port_signatures.json.
+# WAVE-1: report-only in-wave (owner-FINAL, re-anchor at cut, D5). GATE_ENFORCEMENT_PLAN.md
+# D5a defers the version-line decision to the real release — "no bump churn now;
+# perl/rust 4.0.0 declarations stay as-is; unified-vs-per-port decided at cut time" — so
+# an intentional in-wave breaking change must REPORT rather than block. Eight ports get
+# this hold via the SURFACE suite (_surface_commands.py passes semver_report_only=True);
+# rust and python schedule SEMVER-DIFF standalone and so must pass the flag here.
 sched_gate SEMVER-DIFF deps=SIGNATURES desc="version bump matches the public-API surface change vs the committed baseline floor" \
-    -- python3 "$PORTING_SDK_DIR/scripts/semver_diff.py" --port rust --repo "$PORT_ROOT"
+    -- python3 "$PORTING_SDK_DIR/scripts/semver_diff.py" --port rust --repo "$PORT_ROOT" --report-only
 
 # ---- §D1 packaging -----------------------------------------------------------
 # PACKAGE-SMOKE builds+installs+imports the real published artifact (cargo build
@@ -681,6 +736,14 @@ sched_gate SNIPPET-RUN tier=nightly defer=1 desc="dynamic-port doc snippets run 
 
 sched_gate EXAMPLES-RUN tier=nightly defer=1 desc="shipped examples load/start against the mock (compiled port: self-skips; STRICT-MOCKS: MOCK_RELAY_STRICT=1)" \
     -- env MOCK_RELAY_STRICT=1 python3 "$PORTING_SDK_DIR/scripts/examples_run.py" --port rust --repo .
+
+# DOC-SURFACE — rustdoc coverage floor on the public surface (pub items, excluding
+# pub(crate)). The floor is pinned in .doc_surface_floor and ratchets up via
+# --write-floor. BLOCKING and pinned at 100.0 as of the 2026-07-29 burn: every public
+# item carries a `///`, so a new undocumented one is a real regression, not a note.
+# Cheap (a pure text scan, no build), so per-PR rather than nightly.
+sched_gate DOC-SURFACE desc="public rustdoc coverage floor (.doc_surface_floor ratchet; 100% — blocking)" \
+    -- python3 "$PORTING_SDK_DIR/scripts/doc_surface.py" --port rust --repo .
 
 sched_run
 rc=$?

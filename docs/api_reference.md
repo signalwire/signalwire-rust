@@ -86,7 +86,7 @@ AgentBase::new(options: AgentOptions) -> Self
 | `set_dynamic_config_callback` | `(&mut self, cb: DynamicConfigCallback) -> &mut Self` — `cb` is `Box<dyn Fn(&Map<String,Value>, &Option<Value>, &HashMap<String,String>, &mut AgentBase)>` |
 | `on_summary` | `(&mut self, cb: SummaryCallback) -> &mut Self` — `cb` is `Box<dyn Fn(&str, &Value, &HashMap<String,String>)>` |
 | `on_debug_event` | `(&mut self, cb: DebugEventCallback) -> &mut Self` — `cb` is `Box<dyn Fn(&Value, &HashMap<String,String>)>` |
-| `enable_debug_events` | `(&mut self, level: &str) -> &mut Self` |
+| `enable_debug_events` | `(&mut self, level: Option<i64>) -> &mut Self` |
 
 ### Skills and Contexts
 

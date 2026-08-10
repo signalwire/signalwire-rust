@@ -5,8 +5,6 @@
 //! post-prompt, dynamic configuration) but emits an `amazon_bedrock`
 //! verb in the rendered SWML document instead of the standard `ai`
 //! verb.
-//!
-//! Mirrors the Python `signalwire.agents.bedrock.BedrockAgent`.
 
 use std::collections::HashMap;
 
@@ -92,10 +90,6 @@ impl BedrockOptions {
 
 impl BedrockAgent {
     /// Construct a new `BedrockAgent`.
-    ///
-    /// Mirrors Python's
-    /// `BedrockAgent(name=..., route=..., system_prompt=..., voice_id=...,
-    /// temperature=..., top_p=..., max_tokens=..., **kwargs)`.
     pub fn new(options: BedrockOptions) -> Self {
         let mut agent_opts = AgentOptions::new(&options.name);
         agent_opts.route = Some(options.route);
@@ -137,7 +131,7 @@ impl BedrockAgent {
     }
 
     /// Update Bedrock inference parameters. Pass `None` to keep an
-    /// existing value untouched. Mirrors the Python signature.
+    /// existing value untouched. Matches signature.
     pub fn set_inference_params(
         &mut self,
         temperature: Option<f64>,
@@ -162,7 +156,7 @@ impl BedrockAgent {
 
     /// Set LLM model — not applicable for Bedrock. Logs a warning and
     /// is a no-op (Bedrock uses a fixed voice-to-voice model). Matches
-    /// Python's documented behavior.
+    /// the documented behaviour.
     pub fn set_llm_model(&mut self, model: &str) -> &mut Self {
         self.logger.warn(&format!(
             "set_llm_model('{model}') called but Bedrock uses a fixed voice-to-voice model"
@@ -171,14 +165,14 @@ impl BedrockAgent {
     }
 
     /// Set LLM temperature — redirects to `set_inference_params` for
-    /// Bedrock. Matches Python's documented behavior.
+    /// Bedrock. The documented behaviour.
     pub fn set_llm_temperature(&mut self, temperature: f64) -> &mut Self {
         self.set_inference_params(Some(temperature), None, None)
     }
 
     /// Set post-prompt LLM params — not applicable for Bedrock. Logs a
     /// warning and is a no-op (post-prompt summarisation runs on a
-    /// platform-side model). Matches Python's documented behavior.
+    /// platform-side model). The documented behaviour.
     pub fn set_post_prompt_llm_params(&mut self, _params: Value) -> &mut Self {
         self.logger.warn(
             "set_post_prompt_llm_params() called but Bedrock post-prompt uses OpenAI configured in C code",
@@ -188,7 +182,7 @@ impl BedrockAgent {
 
     /// Set prompt LLM params — Bedrock callers should use
     /// `set_inference_params` instead. Logs a warning and is a no-op.
-    /// Matches Python's documented behavior.
+    /// The documented behaviour.
     pub fn set_prompt_llm_params(&mut self, _params: Value) -> &mut Self {
         self.logger
             .warn("set_prompt_llm_params() called - use set_inference_params() for Bedrock");
@@ -197,7 +191,7 @@ impl BedrockAgent {
 
     /// Render SWML, transforming the `ai` verb into an
     /// `amazon_bedrock` verb that carries the Bedrock voice and
-    /// inference parameters. Mirrors Python's `_render_swml`.
+    /// inference parameters. Matches `_render_swml`.
     #[must_use]
     pub fn render_swml(&self, headers: &HashMap<String, String>) -> Value {
         let mut swml = self.agent.render_swml(headers);
@@ -281,7 +275,7 @@ impl BedrockAgent {
 
     /// Inject voice id and inference params into the prompt object,
     /// stripping text-model-specific fields that don't apply to
-    /// Bedrock voice-to-voice. Mirrors Python's `_add_voice_to_prompt`.
+    /// Bedrock voice-to-voice. Matches `_add_voice_to_prompt`.
     fn add_voice_to_prompt(&self, prompt: Map<String, Value>) -> Map<String, Value> {
         let drop_keys: &[&str] = &["barge_confidence", "presence_penalty", "frequency_penalty"];
         let mut filtered: Map<String, Value> = prompt
@@ -494,6 +488,49 @@ mod tests {
         assert_eq!(prompt.get("voice_id"), Some(&json!("joanna")));
         assert_eq!(prompt.get("temperature"), Some(&json!(0.7)));
         assert_eq!(prompt.get("top_p"), Some(&json!(0.9)));
+    }
+
+    /// `build_bedrock_block` rebuilds the verb body against a FIXED SIX-KEY
+    /// allowlist (`prompt`, `SWAIG`, `params`, `global_data`, `post_prompt`,
+    /// `post_prompt_url`) — any `ai` key it does not name vanishes SILENTLY, with
+    /// no error. The typescript port shipped exactly this shape and lost its
+    /// debug-events params to it.
+    ///
+    /// Here they survive, because `debug_webhook_url` / `debug_webhook_level`
+    /// live INSIDE `params`, which is copied wholesale rather than key-by-key.
+    /// That is load-bearing and untested until now: moving either key up to the
+    /// `ai` top level, or narrowing the params copy, would silently make debug
+    /// events unreachable on every Bedrock agent. (The six-key allowlist itself
+    /// is a faithful port of the reference — `agents/bedrock.py:112-131` builds
+    /// the identical dict — so the keys it DOES drop are a reference-level
+    /// shape, not a port defect.)
+    #[test]
+    fn test_render_swml_debug_event_params_survive_the_bedrock_rewrite() {
+        let mut agent = fresh_agent();
+        agent.set_prompt_text("Hi");
+        agent.agent_mut().enable_debug_events(Some(2));
+        let swml = agent.render_swml(&HashMap::new());
+        let main = swml
+            .get("sections")
+            .and_then(|s| s.get("main"))
+            .and_then(|m| m.as_array())
+            .expect("main array present");
+        let bedrock = main
+            .iter()
+            .find_map(|item| item.as_object().and_then(|o| o.get("amazon_bedrock")))
+            .expect("amazon_bedrock verb");
+        let params = bedrock
+            .get("params")
+            .expect("params must survive the ai -> amazon_bedrock rewrite");
+        assert_eq!(params.get("debug_webhook_level"), Some(&json!(2)));
+        let url = params
+            .get("debug_webhook_url")
+            .and_then(Value::as_str)
+            .expect("debug_webhook_url must survive the rewrite");
+        assert!(
+            url.contains("debug_events"),
+            "debug_webhook_url must address the debug_events endpoint, got {url}"
+        );
     }
 
     #[test]

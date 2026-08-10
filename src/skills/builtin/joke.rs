@@ -9,6 +9,11 @@ pub struct Joke {
 }
 
 impl Joke {
+    /// Create the skill from its configuration `params`.
+    ///
+    /// Requires an `api_key` param carrying an API Ninjas key; setup fails
+    /// without it. This skill is DataMap-based, so the joke request executes
+    /// on SignalWire's servers rather than against this process.
     pub fn new(params: Map<String, Value>) -> Self {
         Joke {
             sp: SkillParams::new(params),

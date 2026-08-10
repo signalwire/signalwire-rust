@@ -67,9 +67,9 @@ impl<'a> MessageLogs<'a> {
     #[must_use]
     pub fn paginate(
         &self,
-        params: &HashMap<String, String>,
         request_options: Option<RequestOptions>,
+        params: &HashMap<String, String>,
     ) -> PaginatedIterator<'a> {
-        self.base.paginate_with_options(params, request_options)
+        self.base.paginate(request_options, params)
     }
 }

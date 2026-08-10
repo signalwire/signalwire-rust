@@ -198,6 +198,7 @@ args: stdlib std::env::args
 as_ref: stdlib AsRef::as_ref / Option::as_ref
 current_dir: stdlib std::env::current_dir
 current_exe: stdlib std::env::current_exe (the secret-scrub dump re-execs its own binary to capture the SDK Logger's real fd-2 output)
+ends_with: stdlib str::ends_with (the secure-default dump's redactor matches token-suffixed field names and query keys)
 env: stdlib std::process::Command::env (set a child env var on the secret-scrub dump's re-exec)
 exit: stdlib std::process::exit
 from_millis: stdlib std::time::Duration::from_millis
@@ -211,6 +212,9 @@ piped: stdlib std::process::Stdio::piped
 set_hook: stdlib std::panic::set_hook (silence the panic backtrace for expected fail-loud add_verb panics in the strict-render dump)
 set_var: stdlib std::env::set_var
 spawn: stdlib std::thread::spawn
+split_at: stdlib str::split_at (the secure-default dump's redactor splits a URL at the '?' to keep the base and rewrite only the query)
+split_once: stdlib str::split_once (the secure-default dump's redactor splits each query pair on the first '=')
+starts_with: stdlib str::starts_with (the secure-default dump's redactor detects a path-valued field to redact its query tokens)
 stderr: stdlib std::process::Command::stderr
 stdin: stdlib std::process::Command::stdin
 stdout: stdlib std::process::Command::stdout

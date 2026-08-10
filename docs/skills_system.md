@@ -14,10 +14,10 @@ let mut agent = AgentBase::new(AgentOptions::new("skills-guide"));
 ```
 
 ```rust
-// add_skill(name, params) — params is always a Value; use json!({}) for defaults
-agent.add_skill("datetime", json!({}));
-agent.add_skill("math", json!({}));
-agent.add_skill("joke", json!({"api_key": "your-key"}));
+// add_skill(name, params) — params is `Option<Value>`; pass `None` for defaults
+agent.add_skill("datetime", Some(json!({})));
+agent.add_skill("math", Some(json!({})));
+agent.add_skill("joke", Some(json!({"api_key": "your-key"})));
 ```
 
 ## Architecture
@@ -48,18 +48,18 @@ Skills accept an optional `Value` config object:
 
 ```rust
 // datetime with custom timezone
-agent.add_skill("datetime", json!({"timezone": "America/New_York"}));
+agent.add_skill("datetime", Some(json!({"timezone": "America/New_York"})));
 
 // joke with API key
-agent.add_skill("joke", json!({"api_key": env::var("API_NINJAS_KEY").unwrap()}));
+agent.add_skill("joke", Some(json!({"api_key": env::var("API_NINJAS_KEY").unwrap()})));
 
 // mcp_gateway connecting to external MCP server
-agent.add_skill("mcp_gateway", json!({
+agent.add_skill("mcp_gateway", Some(json!({
     "gateway_url": "http://localhost:8080",
     "auth_user": "admin",
     "auth_password": "changeme",
     "services": [{"name": "todo"}]
-}));
+})));
 ```
 
 ## How Skills Work
@@ -97,17 +97,17 @@ You can add the same skill type multiple times with different configs:
 ```rust
 let api_key = "your-api-ninjas-key";
 
-agent.add_skill("joke", json!({
+agent.add_skill("joke", Some(json!({
     "api_key": api_key,
     "tool_name": "get_regular_joke",
     "default_joke_type": "jokes"
-}));
+})));
 
-agent.add_skill("joke", json!({
+agent.add_skill("joke", Some(json!({
     "api_key": api_key,
     "tool_name": "get_dad_joke",
     "default_joke_type": "dadjokes"
-}));
+})));
 ```
 
 ## Skills vs Raw Tools

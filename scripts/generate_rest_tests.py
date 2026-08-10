@@ -27,7 +27,7 @@ The assertion oracle is INDEPENDENT of the resource generator (RULES §1):
     generator self-snapshot.
 
 Inputs joined by (METHOD, normalized-path) (RULES §2): the plan's per-route call
-entries (path params already {id}) × the spec operationIds (spec path normalized
+entries (path params already {id}) x the spec operationIds (spec path normalized
 the SAME way before the join). Routing collisions are resolved
 longest-template-wins (RULES §7) so the asserted route is the one the mock
 ACTUALLY journals (e.g. GET /rooms/{id} vs GET /rooms/{name}).
@@ -46,6 +46,7 @@ Usage:
     python3 scripts/generate_rest_tests.py           # (re)write the test files
     python3 scripts/generate_rest_tests.py --check   # GEN-FRESH: fail if stale
 """
+
 from __future__ import annotations
 
 import argparse
@@ -66,6 +67,7 @@ except ImportError:  # pragma: no cover
 # ---------------------------------------------------------------------------
 # Resolution.
 # ---------------------------------------------------------------------------
+
 
 def resolve_porting_sdk() -> Path:
     env = os.environ.get("PORTING_SDK")
@@ -89,6 +91,7 @@ def repo_root() -> Path:
 # 1. Capture from the real client (RULES §3) — the rest-test-plan binary.
 #    Each entry: {method, path ({id}-normalized), chain, member, args}.
 # ---------------------------------------------------------------------------
+
 
 def load_plan() -> list[dict]:
     proc = subprocess.run(
@@ -115,7 +118,7 @@ def load_plan() -> list[dict]:
 
 
 # ---------------------------------------------------------------------------
-# 2. The join — plan routes × spec operationIds by (method, normalized-path).
+# 2. The join — plan routes x spec operationIds by (method, normalized-path).
 # ---------------------------------------------------------------------------
 
 _BRACE = re.compile(r"\{[^}]+\}")
@@ -135,24 +138,24 @@ def wire_key(p: str) -> str:
 def spec_prefix(doc: dict) -> str:
     url = ((doc.get("servers") or [{}])[0]).get("url", "")
     i = url.find("signalwire.com")
-    return url[i + len("signalwire.com"):] if i >= 0 else ""
+    return url[i + len("signalwire.com") :] if i >= 0 else ""
 
 
 def spec_dirs_with_openapi(psdk: Path) -> list[str]:
     root = psdk / "rest-apis"
     out = [
-        d.name
-        for d in root.iterdir()
-        if d.is_dir() and (d / "openapi.yaml").is_file()
+        d.name for d in root.iterdir() if d.is_dir() and (d / "openapi.yaml").is_file()
     ]
     return sorted(out)
 
 
-def build_index(psdk: Path, spec_dirs: list[str]) -> tuple[dict[str, str], dict[str, tuple[int, str]]]:
+def build_index(
+    psdk: Path, spec_dirs: list[str]
+) -> tuple[dict[str, str], dict[str, tuple[int, str]]]:
     """Return (op_by, wire_winner):
-      op_by:       "METHOD normPath" -> <spec>.<operationId>   (a route exists)
-      wire_winner: "METHOD wireKey"  -> (orig_len, <spec>.<operationId>)
-                   the longest original template — the route the mock journals.
+    op_by:       "METHOD normPath" -> <spec>.<operationId>   (a route exists)
+    wire_winner: "METHOD wireKey"  -> (orig_len, <spec>.<operationId>)
+                 the longest original template — the route the mock journals.
     """
     op_by: dict[str, str] = {}
     wire_winner: dict[str, tuple[int, str]] = {}
@@ -181,8 +184,9 @@ def build_index(psdk: Path, spec_dirs: list[str]) -> tuple[dict[str, str], dict[
     return op_by, wire_winner
 
 
-def build_rows(plan: list[dict], op_by: dict[str, str],
-               wire_winner: dict[str, tuple[int, str]]) -> tuple[list[dict], list[str]]:
+def build_rows(
+    plan: list[dict], op_by: dict[str, str], wire_winner: dict[str, tuple[int, str]]
+) -> tuple[list[dict], list[str]]:
     """One row per plan entry that has a spec op. Row carries the op_id the mock
     actually journals (longest-template winner). Entries with no spec op are
     coverage findings (returned separately), not generator bugs."""
@@ -200,21 +204,24 @@ def build_rows(plan: list[dict], op_by: dict[str, str],
             continue
         op_id = winner[1]
         spec = op_id[: op_id.index(".")]
-        rows.append({
-            "method": method,
-            "path": np,
-            "op_id": op_id,
-            "spec": spec,
-            "chain": e["chain"],
-            "member": e["member"],
-            "args": e["args"],
-        })
+        rows.append(
+            {
+                "method": method,
+                "path": np,
+                "op_id": op_id,
+                "spec": spec,
+                "chain": e["chain"],
+                "member": e["member"],
+                "args": e["args"],
+            }
+        )
     return rows, uncovered
 
 
 # ---------------------------------------------------------------------------
 # 3. Emit — one tests/rest/generated/<spec>_generated.rs per spec namespace.
 # ---------------------------------------------------------------------------
+
 
 def slug(chain: list[str], member: str) -> str:
     """A stable, unique-per-file test-method fragment from the call chain +
@@ -287,7 +294,9 @@ def rustfmt(src: str) -> str:
             return last.stdout
     if last is not None:
         sys.stderr.write(last.stderr)
-    raise SystemExit("rustfmt failed on generated REST test source (need `rustup run stable rustfmt` or `rustfmt` on PATH)")
+    raise SystemExit(
+        "rustfmt failed on generated REST test source (need `rustup run stable rustfmt` or `rustfmt` on PATH)"
+    )
 
 
 def emit_spec_file(spec: str, rows: list[dict]) -> str:
@@ -327,6 +336,7 @@ fn test_{name}_error() {{
 # Driver.
 # ---------------------------------------------------------------------------
 
+
 def build_outputs(psdk: Path) -> tuple[dict[str, str], list[str], int]:
     plan = load_plan()
     spec_dirs = spec_dirs_with_openapi(psdk)
@@ -363,7 +373,9 @@ def build_outputs(psdk: Path) -> tuple[dict[str, str], list[str], int]:
 
 def main(argv: list[str]) -> int:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--check", action="store_true", help="GEN-FRESH: exit non-zero if stale")
+    ap.add_argument(
+        "--check", action="store_true", help="GEN-FRESH: exit non-zero if stale"
+    )
     ap.add_argument("--out", default="", help="scratch: emit into this dir")
     args = ap.parse_args(argv)
 
@@ -387,11 +399,15 @@ def main(argv: list[str]) -> int:
                 stale.append(str(p))
         expected = set(outs.keys())
         if out_dir.is_dir():
-            for p in sorted(out_dir.glob("rest_generated_*.rs")):
-                if p.name not in expected:
-                    stale.append(f"{p} (leftover — not in generator output)")
+            stale.extend(
+                f"{p} (leftover — not in generator output)"
+                for p in sorted(out_dir.glob("rest_generated_*.rs"))
+                if p.name not in expected
+            )
         if stale:
-            sys.stderr.write("GEN-FRESH FAIL: %d generated REST test file(s) stale:\n" % len(stale))
+            sys.stderr.write(
+                f"GEN-FRESH FAIL: {len(stale)} generated REST test file(s) stale:\n"
+            )
             for s in stale:
                 sys.stderr.write(f"  - {s}\n")
             return 1

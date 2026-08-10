@@ -8,7 +8,7 @@ use crate::swaig::FunctionResult;
 
 /// Search knowledge using SignalWire DataSphere RAG stack.
 ///
-/// Mirrors Python's `signalwire.skills.datasphere`: real HTTP POST to
+/// Matches `signalwire.skills.datasphere`: real HTTP POST to
 /// `https://{space_name}.signalwire.com/api/datasphere/documents/search`
 /// with project-id/token Basic auth and a JSON body containing the
 /// document ID, query, distance, and count.
@@ -21,6 +21,12 @@ pub struct Datasphere {
 }
 
 impl Datasphere {
+    /// Create the skill from its configuration `params`.
+    ///
+    /// Requires the `space_name`, `project_id`, and `document_id` params.
+    /// The auth token may come from either a `token` param or the
+    /// `DATASPHERE_TOKEN` environment variable; setup fails if neither
+    /// supplies it.
     pub fn new(params: Map<String, Value>) -> Self {
         Datasphere {
             sp: SkillParams::new(params),

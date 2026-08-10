@@ -42,6 +42,22 @@ pub struct GatherQuestion {
 }
 
 impl GatherQuestion {
+    /// Build one question for a step's `gather_info` block.
+    ///
+    /// - `key` — the name the collected answer is stored under, and the
+    ///   `key` field on the wire.
+    /// - `question` — the text presented to the caller.
+    /// - `question_type` — the answer type. `"string"` is the default and is
+    ///   **omitted** from the wire; any other value is emitted as `type`.
+    /// - `confirm` — read the answer back for confirmation. Emitted only
+    ///   when `true`.
+    /// - `prompt` — an optional per-question prompt override.
+    /// - `functions` — an optional allow-list of SWAIG functions callable
+    ///   while this question is being answered. An empty vector is treated
+    ///   as absent and omitted.
+    /// - `isolated` — tri-state per-question override of the gather's
+    ///   `isolated` setting. `None` inherits; `Some(false)` is emitted
+    ///   explicitly so it can override an isolated gather.
     pub fn new(
         key: &str,
         question: &str,
@@ -67,6 +83,7 @@ impl GatherQuestion {
     // (`GatherQuestion.key` / `.question` / `.type` / `.confirm` / `.prompt` /
     // `.functions` / `.isolated`), so a caller can read back what they passed.
 
+    /// The key the collected answer is stored under (the `key` wire field).
     pub fn key(&self) -> &str {
         &self.key
     }
@@ -110,6 +127,13 @@ impl GatherQuestion {
         self.isolated
     }
 
+    /// Serialize this question to its wire object.
+    ///
+    /// `key` and `question` are always present. `type` is emitted only when
+    /// it differs from the default `"string"`; `confirm` only when `true`;
+    /// `prompt` and `functions` only when set (an empty `functions` list is
+    /// omitted). `isolated` is emitted whenever it is `Some` — including
+    /// `false`, so a question can explicitly opt out of an isolated gather.
     #[must_use]
     pub fn to_value(&self) -> Value {
         let mut map = Map::new();
@@ -154,6 +178,23 @@ pub struct GatherInfo {
 }
 
 impl GatherInfo {
+    /// Build an empty gather block; add questions with
+    /// [`add_question`](GatherInfo::add_question).
+    ///
+    /// - `output_key` — the key in `global_data` the answers are stored
+    ///   under. `None` stores them at the top level.
+    /// - `completion_action` — where to go once every question is answered:
+    ///   `"next_step"` to auto-advance to the following step, a specific step
+    ///   name to jump there, or `None` to return to normal step mode. The
+    ///   target must be valid — `"next_step"` requires a following step and a
+    ///   named step must exist in the same context.
+    /// - `prompt` — preamble text injected once on entering the gather,
+    ///   giving the model the reason it is asking these questions.
+    /// - `isolated` — the default for every question in this gather. When
+    ///   `true`, each question is asked with its sibling answers hidden from
+    ///   the model, forcing it to ask rather than infer from an earlier
+    ///   answer; the hidden turns still appear in the call log. A question's
+    ///   own `isolated` overrides this. Emitted only when `true`.
     pub fn new(
         output_key: Option<&str>,
         completion_action: Option<&str>,
@@ -173,6 +214,17 @@ impl GatherInfo {
     // `GatherQuestion.__init__` (key, question, type, confirm, prompt,
     // functions, isolated) — the arg list mirrors the reference wire fields,
     // not a refactorable Rust-only signature.
+    /// Append a question to this gather.
+    ///
+    /// Questions are asked in insertion order, one at a time. Arguments
+    /// match [`GatherQuestion::new`] exactly — see it for the per-field wire
+    /// behaviour and the tri-state `isolated`.
+    ///
+    /// Each argument is a distinct wire field of the emitted question, so the
+    /// list is one-per-field rather than a grouped struct and
+    /// `clippy::too_many_arguments` is suppressed.
+    ///
+    /// Returns `&mut Self` for chaining.
     #[allow(clippy::too_many_arguments)]
     pub fn add_question(
         &mut self,
@@ -196,14 +248,25 @@ impl GatherInfo {
         self
     }
 
+    /// The questions in this gather, in the order they will be asked.
     pub fn questions(&self) -> &[GatherQuestion] {
         &self.questions
     }
 
+    /// Where control goes once every question is answered — `"next_step"`,
+    /// a specific step name, or `None` to resume normal step mode.
+    ///
+    /// [`ContextBuilder::validate`] checks this target resolves.
     pub fn completion_action(&self) -> Option<&str> {
         self.completion_action.as_deref()
     }
 
+    /// Serialize this gather to its wire object.
+    ///
+    /// `questions` is always present (possibly an empty array). `prompt`,
+    /// `output_key`, and `completion_action` are emitted only when set, and
+    /// `isolated` only when `true` — a `false` gather-level default is
+    /// omitted, leaving each question's own `isolated` to decide.
     pub fn to_value(&self) -> Value {
         let mut map = Map::new();
 
@@ -258,14 +321,22 @@ fn render_sections(sections: &[Value]) -> String {
 // ── Step ────────────────────────────────────────────────────────────────────
 
 /// A single step within a context.
-// Field names (step_criteria, valid_steps, …) mirror Python's Step field names
-// 1:1 and serialize to those JSON keys; struct_field_names would strip the
-// `step_` prefix and diverge from the wire shape.
-//
-// The five bool fields (end, skip_user_turn, skip_to_next_step,
-// reset_consolidate, reset_full_reset) each mirror a distinct Python Step
-// flag that serializes to its own JSON key; they are independent wire
-// signals, not a state machine, so struct_excessive_bools does not apply.
+///
+/// A step is one turn-taking unit of a structured workflow: it carries the
+/// prompt text the AI follows while in the step, an optional completion
+/// criterion, the functions available during it, and the set of steps or
+/// contexts it may transition to. Steps are ordered within their
+/// [`Context`] and serialized into the `contexts` block of the SWML `ai`
+/// verb by [`to_value`](Step::to_value).
+///
+/// Field names (`step_criteria`, `valid_steps`, …) mirror Python's `Step`
+/// field names 1:1 and serialize to those JSON keys, so `struct_field_names`
+/// is suppressed rather than stripping the `step_` prefix and diverging from
+/// the wire shape. The five `bool` fields (`end`, `skip_user_turn`,
+/// `skip_to_next_step`, `reset_consolidate`, `reset_full_reset`) each mirror
+/// a distinct Python flag that serializes to its own JSON key — independent
+/// wire signals rather than a state machine — so `struct_excessive_bools`
+/// does not apply.
 #[allow(clippy::struct_field_names, clippy::struct_excessive_bools)]
 #[derive(Debug, Clone)]
 pub struct Step {
@@ -290,6 +361,14 @@ pub struct Step {
 }
 
 impl Step {
+    /// Create an empty step named `name`.
+    ///
+    /// The name is the step's identity within its context: it is what
+    /// `valid_steps` entries and a gather's `completion_action` refer to,
+    /// and what the runtime's `next_step` tool navigates by. Every other
+    /// field starts unset — give the step its instructions with
+    /// [`set_text`](Step::set_text) or [`add_section`](Step::add_section)
+    /// before rendering.
     pub fn new(name: &str) -> Self {
         Step {
             name: name.to_string(),
@@ -311,6 +390,8 @@ impl Step {
         }
     }
 
+    /// This step's name — its identity within the context and the value
+    /// other steps' `valid_steps` entries refer to.
     pub fn name(&self) -> &str {
         &self.name
     }
@@ -370,6 +451,14 @@ impl Step {
         self
     }
 
+    /// Describe, in natural language, when this step counts as complete.
+    ///
+    /// The model reads `criteria` to decide it is done with the step and may
+    /// move on. It is guidance for the LLM, not a machine-checked condition.
+    /// Emitted as `step_criteria`; the key is omitted when the string is
+    /// empty.
+    ///
+    /// Returns `&mut Self` for chaining.
     pub fn set_step_criteria(&mut self, criteria: &str) -> &mut Self {
         self.step_criteria = Some(criteria.to_string());
         self
@@ -412,6 +501,18 @@ impl Step {
         self
     }
 
+    /// Restrict which steps this step may transition to.
+    ///
+    /// Setting this causes the runtime to inject the reserved `next_step`
+    /// navigation tool so the model can move between the listed steps —
+    /// which is why a user tool named `next_step` is rejected by
+    /// [`ContextBuilder::validate`]. Every name must resolve to a step in
+    /// the same context; validation reports any that does not.
+    ///
+    /// Replaces the whole list. With this unset, the flow falls back to
+    /// sequential step order.
+    ///
+    /// Returns `&mut Self` for chaining.
     pub fn set_valid_steps(&mut self, steps: Vec<&str>) -> &mut Self {
         self.valid_steps = Some(
             steps
@@ -422,6 +523,16 @@ impl Step {
         self
     }
 
+    /// Restrict which contexts this step may switch to.
+    ///
+    /// Setting this causes the runtime to inject the reserved
+    /// `change_context` navigation tool — which is why a user tool of that
+    /// name is rejected by [`ContextBuilder::validate`]. Every name must
+    /// resolve to a context defined on the same builder.
+    ///
+    /// Replaces the whole list.
+    ///
+    /// Returns `&mut Self` for chaining.
     pub fn set_valid_contexts(&mut self, contexts: Vec<&str>) -> &mut Self {
         self.valid_contexts = Some(
             contexts
@@ -449,6 +560,14 @@ impl Step {
         self
     }
 
+    /// Set whether the agent skips waiting for caller input after this step.
+    ///
+    /// With `skip = true` the model takes another turn immediately instead
+    /// of pausing for the caller — useful when a step only performs work or
+    /// emits a statement that needs no reply. Emitted as `skip_user_turn`
+    /// only when `true`.
+    ///
+    /// Returns `&mut Self` for chaining.
     pub fn set_skip_user_turn(&mut self, skip: bool) -> &mut Self {
         self.skip_user_turn = skip;
         self
@@ -476,7 +595,7 @@ impl Step {
     /// # Panics
     ///
     /// Panics if `history` is not one of [`HISTORY_MODES`]
-    /// (`keep` / `default` / `hide`) — mirrors Python's `ValueError`.
+    /// (`keep` / `default` / `hide`) —
     pub fn set_history(&mut self, history: &str) -> &mut Self {
         assert!(
             HISTORY_MODES.contains(&history),
@@ -525,8 +644,9 @@ impl Step {
         output_key: Option<&str>,
         completion_action: Option<&str>,
         prompt: Option<&str>,
-        isolated: bool,
+        isolated: Option<bool>,
     ) -> &mut Self {
+        let isolated = isolated.unwrap_or(false);
         self.gather_info = Some(GatherInfo::new(
             output_key,
             completion_action,
@@ -562,20 +682,28 @@ impl Step {
     /// default: `Some(true)` hides the sibling Q&A while this question is
     /// asked, `Some(false)` keeps it visible even in an isolated gather, and
     /// `None` inherits the gather's setting.
-    // 1:1 parameter parity with Python `Step.add_gather_question` (key,
-    // question, type, confirm, prompt, functions, isolated) — the arg list
-    // mirrors the reference, not a refactorable Rust-only signature.
+    ///
+    /// `question_type` and `confirm` are `Option` because `None` is the
+    /// omit-it call: they take the defaults `"string"` and `false`. Each
+    /// argument is a distinct wire field of the emitted question, so the list
+    /// is one-per-field rather than a grouped struct and
+    /// `clippy::too_many_arguments` is suppressed.
+    ///
+    /// Returns `&mut Self` for chaining.
     #[allow(clippy::too_many_arguments)]
     pub fn add_gather_question(
         &mut self,
         key: &str,
         question: &str,
-        question_type: &str,
-        confirm: bool,
+        question_type: Option<&str>,
+        confirm: Option<bool>,
         prompt: Option<&str>,
         functions: Option<Vec<String>>,
         isolated: Option<bool>,
     ) -> &mut Self {
+        // `None` is the omit-it call; the reference defaults are "string"/false.
+        let question_type = question_type.unwrap_or("string");
+        let confirm = confirm.unwrap_or(false);
         if self.gather_info.is_none() {
             self.gather_info = Some(GatherInfo::new(None, None, None, false));
         }
@@ -595,14 +723,26 @@ impl Step {
 
     // ── Accessors for validation ─────────────────────────────────────────
 
+    /// The steps this step may transition to, or `None` when unrestricted.
+    ///
+    /// [`ContextBuilder::validate`] reads this to check every named step
+    /// exists in the same context.
     pub fn valid_steps(&self) -> Option<&[String]> {
         self.valid_steps.as_deref()
     }
 
+    /// The contexts this step may switch to, or `None` when unrestricted.
+    ///
+    /// [`ContextBuilder::validate`] reads this to check every named context
+    /// is defined.
     pub fn valid_contexts(&self) -> Option<&[String]> {
         self.valid_contexts.as_deref()
     }
 
+    /// This step's gather block, or `None` when the step gathers nothing.
+    ///
+    /// [`ContextBuilder::validate`] reads this to resolve the gather's
+    /// `completion_action` target.
     pub fn gather_info(&self) -> Option<&GatherInfo> {
         self.gather_info.as_ref()
     }
@@ -623,6 +763,18 @@ impl Step {
         render_sections(&self.sections)
     }
 
+    /// Serialize this step to its wire object.
+    ///
+    /// `name` and `text` are always present — `text` is either the direct
+    /// text or the POM sections rendered down to a string. Every other field
+    /// is emitted only when meaningful: the three booleans (`end`,
+    /// `skip_user_turn`, `skip_to_next_step`) only when `true`, and the
+    /// `reset` object only when at least one of its fields is set.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the step has neither direct text nor POM sections — a step
+    /// with no instructions cannot be rendered.
     #[must_use]
     pub fn to_value(&self) -> Value {
         let mut map = Map::new();
@@ -714,6 +866,14 @@ pub struct Context {
 }
 
 impl Context {
+    /// Create an empty context named `name`.
+    ///
+    /// The name is what a step's `valid_contexts` entries and the reserved
+    /// `change_context` tool refer to. Note the single-context case is
+    /// special: a builder holding exactly one context requires it to be
+    /// named `"default"`, which [`ContextBuilder::validate`] enforces.
+    ///
+    /// Add steps with [`add_step`](Context::add_step).
     pub fn new(name: &str) -> Self {
         Context {
             name: name.to_string(),
@@ -737,6 +897,8 @@ impl Context {
         }
     }
 
+    /// This context's name — the value `valid_contexts` entries and the
+    /// `change_context` tool refer to.
     pub fn name(&self) -> &str {
         &self.name
     }
@@ -769,14 +931,28 @@ impl Context {
         self.steps.get_mut(name).unwrap()
     }
 
+    /// Look up a step by name, or `None` if this context has no such step.
     pub fn get_step(&self, name: &str) -> Option<&Step> {
         self.steps.get(name)
     }
 
+    /// Mutably look up a step by name, or `None` if this context has no such
+    /// step. Use this to reconfigure a step after
+    /// [`add_step`](Context::add_step) has returned.
     pub fn get_step_mut(&mut self, name: &str) -> Option<&mut Step> {
         self.steps.get_mut(name)
     }
 
+    /// Remove the step named `name` from this context.
+    ///
+    /// Drops it from both the step map and the ordering, so the remaining
+    /// steps close up. A no-op when no such step exists.
+    ///
+    /// References to the removed name in other steps' `valid_steps` are
+    /// **not** cleaned up — they become dangling and
+    /// [`ContextBuilder::validate`] will report them.
+    ///
+    /// Returns `&mut Self` for chaining.
     pub fn remove_step(&mut self, name: &str) -> &mut Self {
         if self.steps.remove(name).is_some() {
             self.step_order.retain(|n| n != name);
@@ -869,7 +1045,7 @@ impl Context {
     /// # Panics
     ///
     /// Panics if `history` is not one of [`HISTORY_MODES`]
-    /// (`keep` / `default` / `hide`) — mirrors Python's `ValueError`.
+    /// (`keep` / `default` / `hide`) —
     pub fn set_history(&mut self, history: &str) -> &mut Self {
         assert!(
             HISTORY_MODES.contains(&history),
@@ -880,7 +1056,7 @@ impl Context {
     }
 
     /// Mark this context as isolated — entering it wipes conversation
-    /// history (subject to the `reset` exception; see the Python reference).
+    /// history (subject to the `reset` exception; see the wire contract).
     pub fn set_isolated(&mut self, isolated: bool) -> &mut Self {
         self.isolated = isolated;
         self
@@ -984,11 +1160,29 @@ impl Context {
 
     // ── Fillers ──────────────────────────────────────────────────────────
 
+    /// Replace the whole enter-filler map for this context.
+    ///
+    /// Enter fillers are short phrases the agent speaks on *entering* this
+    /// context, covering the pause while it switches. `fillers` is the raw
+    /// wire object keyed by language code (or `"default"`), each value an
+    /// array of phrases — the shape
+    /// [`add_enter_filler`](Context::add_enter_filler) builds incrementally.
+    /// No shape validation is performed here.
+    ///
+    /// Returns `&mut Self` for chaining.
     pub fn set_enter_fillers(&mut self, fillers: Value) -> &mut Self {
         self.enter_fillers = Some(fillers);
         self
     }
 
+    /// Replace the whole exit-filler map for this context.
+    ///
+    /// Exit fillers are spoken on *leaving* this context. Same shape as
+    /// [`set_enter_fillers`](Context::set_enter_fillers): a raw object keyed
+    /// by language code (or `"default"`), each value an array of phrases,
+    /// unvalidated.
+    ///
+    /// Returns `&mut Self` for chaining.
     pub fn set_exit_fillers(&mut self, fillers: Value) -> &mut Self {
         self.exit_fillers = Some(fillers);
         self
@@ -1036,16 +1230,32 @@ impl Context {
 
     // ── Accessors ────────────────────────────────────────────────────────
 
+    /// The steps in this context, keyed by name.
+    ///
+    /// The map is unordered — read [`step_order`](Context::step_order) for
+    /// the sequence the steps actually run in.
     pub fn steps(&self) -> &HashMap<String, Step> {
         &self.steps
     }
 
+    /// The step names in execution order.
+    ///
+    /// This is the order steps were added (as adjusted by
+    /// [`move_step`](Context::move_step)) and the order they serialize into
+    /// the `steps` array. It is what `"next_step"` advances along.
     pub fn step_order(&self) -> &[String] {
         &self.step_order
     }
 
     // ── Serialisation ────────────────────────────────────────────────────
 
+    /// Serialize this context to its wire object.
+    ///
+    /// `steps` is always present, ordered by
+    /// [`step_order`](Context::step_order). Every other field is emitted
+    /// only when set, and the three booleans (`consolidate`, `full_reset`,
+    /// `isolated`) only when `true`. The context prompt is emitted as `pom`
+    /// when POM sections were added, otherwise as a `prompt` string.
     pub fn to_value(&self) -> Value {
         let mut map = Map::new();
 
@@ -1167,6 +1377,11 @@ impl std::fmt::Debug for ContextBuilder {
 }
 
 impl ContextBuilder {
+    /// Create an empty context builder.
+    ///
+    /// Add contexts with [`add_context`](ContextBuilder::add_context). Until
+    /// at least one is added, [`has_contexts`](ContextBuilder::has_contexts)
+    /// is `false` and the agent emits no `context_switch` block.
     pub fn new() -> Self {
         ContextBuilder {
             contexts: HashMap::new(),
@@ -1219,14 +1434,24 @@ impl ContextBuilder {
         self.contexts.get_mut(name).unwrap()
     }
 
+    /// Look up a context by name, or `None` if none is defined.
     pub fn get_context(&self, name: &str) -> Option<&Context> {
         self.contexts.get(name)
     }
 
+    /// Mutably look up a context by name, or `None` if none is defined. Use
+    /// this to reconfigure a context after
+    /// [`add_context`](ContextBuilder::add_context) has returned.
     pub fn get_context_mut(&mut self, name: &str) -> Option<&mut Context> {
         self.contexts.get_mut(name)
     }
 
+    /// Whether any context has been defined.
+    ///
+    /// [`AgentBase`] checks this before rendering: with no contexts the
+    /// `ai.context_switch` block is omitted from the SWML entirely.
+    ///
+    /// [`AgentBase`]: crate::agent::AgentBase
     pub fn has_contexts(&self) -> bool {
         !self.contexts.is_empty()
     }
@@ -1654,8 +1879,8 @@ mod tests {
     fn test_step_gather_info() {
         let mut step = Step::new("s");
         step.set_text("text");
-        step.set_gather_info(Some("info"), Some("done"), None, false);
-        step.add_gather_question("name", "Name?", "string", false, None, None, None);
+        step.set_gather_info(Some("info"), Some("done"), None, None);
+        step.add_gather_question("name", "Name?", None, None, None, None, None);
         let val = step.to_value();
         assert!(val["gather_info"]["questions"].is_array());
         assert_eq!(val["gather_info"]["output_key"], "info");
@@ -1665,7 +1890,7 @@ mod tests {
     fn test_step_gather_info_lazy_init() {
         let mut step = Step::new("s");
         step.set_text("text");
-        step.add_gather_question("email", "Email?", "string", false, None, None, None);
+        step.add_gather_question("email", "Email?", None, None, None, None, None);
         let val = step.to_value();
         assert_eq!(val["gather_info"]["questions"].as_array().unwrap().len(), 1);
     }
@@ -2083,8 +2308,8 @@ mod tests {
     fn test_step_gather_info_isolated_passthrough() {
         let mut step = Step::new("s");
         step.set_text("t");
-        step.set_gather_info(Some("info"), None, None, true);
-        step.add_gather_question("k", "Q?", "string", false, None, None, None);
+        step.set_gather_info(Some("info"), None, None, Some(true));
+        step.add_gather_question("k", "Q?", None, None, None, None, None);
         assert_eq!(step.to_value()["gather_info"]["isolated"], true);
     }
 
@@ -2095,17 +2320,9 @@ mod tests {
         // emits nothing.
         let mut step = Step::new("s");
         step.set_text("t");
-        step.set_gather_info(Some("info"), None, None, true);
-        step.add_gather_question(
-            "override_off",
-            "Q1?",
-            "string",
-            false,
-            None,
-            None,
-            Some(false),
-        );
-        step.add_gather_question("inherit", "Q2?", "string", false, None, None, None);
+        step.set_gather_info(Some("info"), None, None, Some(true));
+        step.add_gather_question("override_off", "Q1?", None, None, None, None, Some(false));
+        step.add_gather_question("inherit", "Q2?", None, None, None, None, None);
         let questions = step.to_value()["gather_info"]["questions"].clone();
         assert_eq!(questions[0]["isolated"], false);
         assert!(questions[1].get("isolated").is_none());
@@ -2213,7 +2430,7 @@ mod tests {
         let ctx = builder.add_context("default");
         let step = ctx.add_step("s1");
         step.set_text("a");
-        step.set_gather_info(None, None, None, false);
+        step.set_gather_info(None, None, None, None);
         let result = builder.validate();
         assert!(result.is_err());
         let errors = result.unwrap_err();
@@ -2226,8 +2443,8 @@ mod tests {
         let ctx = builder.add_context("default");
         let step = ctx.add_step("s1");
         step.set_text("a");
-        step.add_gather_question("name", "Name?", "string", false, None, None, None);
-        step.add_gather_question("name", "Name again?", "string", false, None, None, None);
+        step.add_gather_question("name", "Name?", None, None, None, None, None);
+        step.add_gather_question("name", "Name again?", None, None, None, None, None);
         let result = builder.validate();
         assert!(result.is_err());
         let errors = result.unwrap_err();

@@ -9,7 +9,7 @@ pub struct SurveyAgent {
     agent: AgentBase,
     survey_name: String,
     survey_questions: Vec<Value>,
-    /// Resolved brand name — the caller's value or the reference default
+    /// Resolved brand name — the caller's value or the default
     /// `"Our Company"` (`survey.py:93`). Retained so a caller can read back
     /// what the agent is actually representing; the reference keeps it as
     /// `self.brand_name`.
@@ -24,10 +24,9 @@ pub struct SurveyAgent {
 
 /// Options for constructing a [`SurveyAgent`].
 ///
-/// Mirrors the Python reference's `__init__` (`prefabs/survey.py:55-65`)
-/// param-for-param. `survey_name` and `questions` are the reference's REQUIRED
+/// `survey_name` and `questions` are the REQUIRED
 /// positionals, so they are the arguments to [`SurveyOptions::new`]; every
-/// other field carries the reference's default.
+/// other field carries the default.
 #[must_use]
 pub struct SurveyOptions {
     /// Display name of the survey.
@@ -40,38 +39,33 @@ pub struct SurveyOptions {
     pub conclusion: Option<String>,
     /// Optional brand name to reference in the prompt.
     pub brand_name: Option<String>,
-    /// Re-ask attempts per question (reference default `2`).
+    /// Re-ask attempts per question (default `2`).
     pub max_retries: i64,
-    /// Agent name (reference default `"survey"`).
+    /// Agent name (default `"survey"`).
     pub name: String,
-    /// HTTP route (reference default `"/survey"`).
+    /// HTTP route (default `"/survey"`).
     pub route: String,
-}
-
-impl Default for SurveyOptions {
-    fn default() -> Self {
-        SurveyOptions {
-            survey_name: "Survey".to_string(),
-            questions: Vec::new(),
-            introduction: None,
-            conclusion: None,
-            brand_name: None,
-            max_retries: 2,
-            name: "survey".to_string(),
-            route: "/survey".to_string(),
-        }
-    }
 }
 
 impl SurveyOptions {
     /// Options for the reference's two required positionals, with every other
     /// field at its default — the port of
     /// `SurveyAgent(survey_name, questions)`.
+    ///
+    /// There is deliberately **no** `Default` impl and no zero-argument
+    /// constructor: `survey_name` is a bare `str` positional in the reference
+    /// (`survey.py:57`), so omitting it must not compile here either. A caller
+    /// who cannot name the survey has no valid `SurveyOptions` to build.
     pub fn new(survey_name: &str, questions: Vec<Value>) -> Self {
         SurveyOptions {
             survey_name: survey_name.to_string(),
             questions,
-            ..Default::default()
+            introduction: None,
+            conclusion: None,
+            brand_name: None,
+            max_retries: 2,
+            name: "survey".to_string(),
+            route: "/survey".to_string(),
         }
     }
 
@@ -351,14 +345,24 @@ impl SurveyAgent {
         }
     }
 
+    /// Borrow the underlying [`AgentBase`] this prefab wraps.
+    ///
+    /// `SurveyAgent` composes an agent rather than inheriting from one, so
+    /// this is how you read the configured prompt, tools, and skills.
     pub fn agent(&self) -> &AgentBase {
         &self.agent
     }
 
+    /// Mutably borrow the underlying [`AgentBase`].
+    ///
+    /// Use this to layer extra configuration — additional tools, skills,
+    /// hints, or verbs — on top of what the prefab already set up.
     pub fn agent_mut(&mut self) -> &mut AgentBase {
         &mut self.agent
     }
 
+    /// The survey's name, as configured. Woven into the agent's prompt and
+    /// used to label the collected responses.
     pub fn survey_name(&self) -> &str {
         &self.survey_name
     }
@@ -370,7 +374,7 @@ impl SurveyAgent {
     }
 
     /// The brand the agent represents — the caller's `brand_name` or the
-    /// reference default `"Our Company"` (`survey.py:93`).
+    /// default `"Our Company"` (`survey.py:93`).
     pub fn brand_name(&self) -> &str {
         &self.brand_name
     }
@@ -392,7 +396,7 @@ impl SurveyAgent {
 
     /// Validate whether a response meets the requirements for a question.
     ///
-    /// Ported from Python `SurveyAgent.validate_response`. Reads `question_id` and
+    /// Reads `question_id` and
     /// `response`; validates per the question's `type` (rating within its `scale`,
     /// `multiple_choice` against its `options`, `yes_no`, and non-empty for a
     /// required `open_ended`). `raw_data` is accepted for handler-signature compatibility
@@ -483,7 +487,7 @@ impl SurveyAgent {
 
     /// Log a validated response to a survey question.
     ///
-    /// Ported from Python `SurveyAgent.log_response`. Acknowledges the response by
+    /// Acknowledges the response by
     /// the question's text. Reads `question_id`; `raw_data` is accepted for
     /// handler-signature compatibility but unused.
     pub fn log_response(
@@ -526,6 +530,56 @@ mod tests {
             json!({"id": "q2", "text": "Would you recommend us?", "type": "yes_no"}),
             json!({"id": "q3", "text": "Choose a color", "type": "multiple_choice", "choices": ["Red", "Blue", "Green"]}),
         ]
+    }
+
+    /// `survey_name` is a bare `str` positional in the reference
+    /// (`survey.py:57`) — genuinely REQUIRED. The port previously shipped an
+    /// `impl Default for SurveyOptions` seeding it with the invented literal
+    /// `"Survey"`, so a caller who never named the survey silently got an
+    /// agent literally called "Survey" instead of the compile error the
+    /// reference and every other port give them.
+    ///
+    /// `SurveyOptions::new` is now the ONLY constructor and it takes
+    /// `survey_name`, so omitting it does not compile. The compile-time half of
+    /// that guarantee is enforced by the build itself (there is no
+    /// zero-argument path to reach); this test is the runtime half: whatever
+    /// the caller passes is the value the agent uses EVERYWHERE it surfaces,
+    /// with no fallback literal reachable on any of those paths.
+    #[test]
+    fn test_survey_name_is_required_and_the_callers_value_is_used_throughout() {
+        // A name that could not possibly be produced by a default.
+        let agent = SurveyAgent::new(SurveyOptions::new(
+            "Q3 Onboarding Experience",
+            sample_questions(),
+        ));
+
+        // Readback.
+        assert_eq!(agent.survey_name(), "Q3 Onboarding Experience");
+
+        // Global data — what the AI actually sees.
+        assert_eq!(
+            agent.agent().get_global_data()["survey_name"],
+            "Q3 Onboarding Experience"
+        );
+
+        // The derived introduction is built FROM survey_name, so a leaked
+        // default would show up here even if the field itself were right.
+        assert_eq!(
+            agent.introduction(),
+            "Welcome to our Q3 Onboarding Experience. We appreciate your participation."
+        );
+
+        // And nothing anywhere carries the old invented default.
+        let prompt = agent.agent().get_prompt().to_string();
+        let global = agent.agent().get_global_data().to_string();
+        assert!(
+            !prompt.contains("Welcome to our Survey."),
+            "invented default survey_name leaked into the prompt: {prompt}"
+        );
+        assert!(
+            !global.contains("\"survey_name\":\"Survey\""),
+            "invented default survey_name leaked into global data: {global}"
+        );
     }
 
     #[test]
@@ -601,7 +655,7 @@ mod tests {
         let raw = serde_json::Map::new();
         let result = agent
             .agent()
-            .on_function_call("validate_response", &args, &raw);
+            .on_function_call("validate_response", &args, Some(&raw));
         assert!(result.is_some());
     }
 
@@ -611,10 +665,11 @@ mod tests {
         let mut args = serde_json::Map::new();
         args.insert("question_id".to_string(), json!("q1"));
         args.insert("answer".to_string(), json!("3"));
-        let result =
-            agent
-                .agent()
-                .on_function_call("validate_response", &args, &serde_json::Map::new());
+        let result = agent.agent().on_function_call(
+            "validate_response",
+            &args,
+            Some(&serde_json::Map::new()),
+        );
         assert!(result.is_some());
         let json_str = result.unwrap().to_json();
         assert!(json_str.contains("Valid rating"));
@@ -626,10 +681,11 @@ mod tests {
         let mut args = serde_json::Map::new();
         args.insert("question_id".to_string(), json!("q2"));
         args.insert("answer".to_string(), json!("yes"));
-        let result =
-            agent
-                .agent()
-                .on_function_call("validate_response", &args, &serde_json::Map::new());
+        let result = agent.agent().on_function_call(
+            "validate_response",
+            &args,
+            Some(&serde_json::Map::new()),
+        );
         assert!(result.is_some());
         let json_str = result.unwrap().to_json();
         assert!(json_str.contains("Valid response"));
@@ -763,7 +819,7 @@ mod tests {
             "POST",
             "/survey/post_prompt",
             &headers,
-            &body.to_string(),
+            Some(&body.to_string()),
         );
         assert_eq!(status, 200);
         assert_eq!(*captured.lock().unwrap(), "Survey done");

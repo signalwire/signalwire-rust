@@ -1,8 +1,5 @@
-//! Cross-port `utils` namespace, mirroring `signalwire.utils.*`. Houses shared
-//! helpers such as serverless-environment detection and URL/schema validation.
-
-// Cross-port "utils" namespace mirroring `signalwire.utils.*` in the
-// Python reference. Houses serverless detection, URL validation, etc.
+//! Shared SDK helpers: serverless-environment detection and URL/schema
+//! validation.
 
 pub mod schema_utils;
 pub mod url_validator;
@@ -12,12 +9,10 @@ pub use url_validator::validate_url;
 
 use crate::core::logging_config::get_execution_mode;
 
-/// Cross-language SDK contract: `signalwire.utils.is_serverless_mode`
-/// returns `true` whenever the SDK is running inside any short-lived /
-/// event-driven invocation environment (anything other than `"server"`).
+/// `true` whenever the SDK is running inside any short-lived /
+/// event-driven invocation environment — anything other than `"server"`.
 ///
-/// Mirrors `signalwire.utils.is_serverless_mode` in the Python
-/// reference. The actual detection ladder lives in
+/// The detection ladder itself lives in
 /// `core::logging_config::get_execution_mode`; this helper just maps
 /// "anything except 'server'" -> `true`.
 pub fn is_serverless_mode() -> bool {

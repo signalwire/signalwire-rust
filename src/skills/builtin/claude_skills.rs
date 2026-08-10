@@ -47,6 +47,12 @@ pub struct ClaudeSkills {
 }
 
 impl ClaudeSkills {
+    /// Create the skill from its configuration `params`.
+    ///
+    /// Requires a `skills_path` param naming a directory of Claude skill
+    /// definitions; `~` is expanded. Setup fails when the param is absent or
+    /// the path is not a directory. A directory containing no skills is
+    /// still a valid setup — discovery simply yields none.
     pub fn new(params: Map<String, Value>) -> Self {
         ClaudeSkills {
             sp: SkillParams::new(params),
@@ -745,7 +751,7 @@ mod tests {
         let mut args = Map::new();
         args.insert("arguments".to_string(), json!("report.pdf"));
         let result = agent
-            .on_function_call("claude_pdf_processing", &args, &Map::new())
+            .on_function_call("claude_pdf_processing", &args, Some(&Map::new()))
             .expect("tool must dispatch");
         let response = result.to_value()["response"].as_str().unwrap().to_string();
         assert!(
@@ -766,7 +772,7 @@ mod tests {
         sargs.insert("arguments".to_string(), json!(""));
         sargs.insert("section".to_string(), json!("refs/api"));
         let sresult = agent
-            .on_function_call("claude_pdf_processing", &sargs, &Map::new())
+            .on_function_call("claude_pdf_processing", &sargs, Some(&Map::new()))
             .expect("section dispatch");
         let sresp = sresult.to_value()["response"].as_str().unwrap().to_string();
         assert!(sresp.contains("API reference"), "section body must load");

@@ -57,7 +57,7 @@ impl<'a> PaginatedIterator<'a> {
     ///
     /// The trailing `request_options` (plan 4.2) is forwarded to every page GET
     /// (timeout / retry / cancellation); `None` inherits the client default. It
-    /// is never serialized. This mirrors the Python reference's
+    /// is never serialized. This mirrors the
     /// `PaginatedIterator.__init__(http, path, params, data_key, request_options)`.
     pub fn new(
         http: &'a HttpClient,
@@ -81,30 +81,54 @@ impl<'a> PaginatedIterator<'a> {
         }
     }
 
+    /// The [`HttpClient`] this iterator issues its page requests through.
     pub fn http(&self) -> &HttpClient {
         self.http
     }
 
+    /// The path of the **first** page request.
+    ///
+    /// Subsequent pages follow the response's `links.next` cursor, so this
+    /// does not change as iteration advances.
     pub fn path(&self) -> &str {
         &self.path
     }
 
+    /// The query parameters sent on the **first** page request.
+    ///
+    /// Later pages carry whatever the `links.next` cursor encodes, so this
+    /// likewise does not change as iteration advances.
     pub fn params(&self) -> &HashMap<String, String> {
         &self.params
     }
 
+    /// The response body field holding each page's items array — typically
+    /// `"data"`.
     pub fn data_key(&self) -> &str {
         &self.data_key
     }
 
+    /// The position within the **current page's** buffered items, not a
+    /// running count across all pages. Resets to `0` each time a new page is
+    /// fetched.
     pub fn index(&self) -> usize {
         self.index
     }
 
+    /// The current page's buffered items.
+    ///
+    /// Empty before the first fetch — construction is lazy, so no HTTP is
+    /// dispatched until the iterator is first stepped.
     pub fn items(&self) -> &[Value] {
         &self.items
     }
 
+    /// Whether iteration has finished.
+    ///
+    /// Becomes `true` when the `links.next` cursor is empty or missing, and
+    /// also when the cycle guard sees a `next` URL it has already followed —
+    /// a broken cursor that keeps returning the same page terminates
+    /// iteration instead of looping forever.
     pub fn is_done(&self) -> bool {
         self.done
     }
@@ -141,9 +165,9 @@ impl<'a> PaginatedIterator<'a> {
     /// Fetch one page: replace the item buffer and resolve the next cursor.
     fn fetch_next(&mut self) -> Result<(), SignalWireRestError> {
         let (path, params) = self.next_request();
-        let response = self
-            .http
-            .get_with_options(&path, &params, self.request_options.as_ref())?;
+        let response =
+            self.http
+                .get_with_options(&path, Some(&params), self.request_options.as_ref())?;
 
         let data = response
             .get(&self.data_key)

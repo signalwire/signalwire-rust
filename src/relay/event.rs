@@ -4,9 +4,11 @@ use std::collections::HashMap;
 ///
 /// Events carry an `event_type` (e.g. `"calling.call.state"`), a
 /// timestamp, and a bag of string-keyed parameters.
-// Field names (event_type, …) mirror the RELAY wire / Python field names 1:1;
-// `event_type` is also a JSON key. struct_field_names would have us drop the
-// `event_` prefix, which would diverge from the wire shape.
+///
+/// Field names (`event_type`, …) mirror the RELAY wire / Python field names
+/// 1:1 — `event_type` is itself a JSON key — so the `struct_field_names`
+/// lint is suppressed rather than dropping the `event_` prefix and diverging
+/// from the wire shape.
 #[allow(clippy::struct_field_names)]
 #[derive(Debug, Clone)]
 pub struct Event {
@@ -52,34 +54,68 @@ impl Event {
     // Accessors
     // ------------------------------------------------------------------
 
+    /// The RELAY event type this event was dispatched under, e.g.
+    /// `"calling.call.state"` or `"messaging.state"`. This is the key the
+    /// client's handler registry routes on.
     pub fn event_type(&self) -> &str {
         &self.event_type
     }
 
+    /// Event time as float seconds since the Unix epoch, matching Python's
+    /// float-seconds timestamps. Set from the wire when the server supplied
+    /// one, otherwise stamped locally at construction.
     pub fn timestamp(&self) -> f64 {
         self.timestamp
     }
 
+    /// The raw `params` object from the wire, unmodified. The typed
+    /// accessors below read well-known keys out of this map; anything the
+    /// SDK does not model is still reachable here.
     pub fn params(&self) -> &HashMap<String, serde_json::Value> {
         &self.params
     }
 
+    /// The `call_id` this event pertains to, if the params carry one.
+    ///
+    /// `call_id` is one of RELAY's four correlation mechanisms: it ties an
+    /// event to a specific call leg for the life of that leg. `None` for
+    /// events that are not call-scoped (or if the key is not a string).
     pub fn call_id(&self) -> Option<&str> {
         self.params.get("call_id").and_then(|v| v.as_str())
     }
 
+    /// The `node_id` of the media node handling this call, if present.
+    ///
+    /// The node id must be echoed back on subsequent call-control requests
+    /// so the request is routed to the node that owns the leg.
     pub fn node_id(&self) -> Option<&str> {
         self.params.get("node_id").and_then(|v| v.as_str())
     }
 
+    /// The `control_id` of the in-flight action this event reports on, if
+    /// present.
+    ///
+    /// A `control_id` is generated per call-control command (play, record,
+    /// collect, …) and correlates every subsequent update for that one
+    /// action, distinguishing concurrent actions on the same call.
     pub fn control_id(&self) -> Option<&str> {
         self.params.get("control_id").and_then(|v| v.as_str())
     }
 
+    /// The caller-supplied `tag` echoed back by the server, if present.
+    ///
+    /// A tag correlates a server response with the local request that
+    /// caused it before a server-assigned id is known.
     pub fn tag(&self) -> Option<&str> {
         self.params.get("tag").and_then(|v| v.as_str())
     }
 
+    /// The `state` string carried by this event, if present.
+    ///
+    /// Which vocabulary applies depends on [`event_type`](Event::event_type)
+    /// — call lifecycle, dial outcome, or message delivery. See
+    /// [`constants`](super::constants) for the raw values and
+    /// [`state_enums`](super::state_enums) for the typed views.
     pub fn state(&self) -> Option<&str> {
         self.params.get("state").and_then(|v| v.as_str())
     }
@@ -262,13 +298,13 @@ impl RelayEvent {
         str_field(self.inner.params(), "direction")
     }
 
-    /// The raw event params map (Python `RelayEvent.params`).
+    /// The raw event params map.
     #[must_use]
     pub fn params(&self) -> &HashMap<String, Value> {
         self.inner.params()
     }
 
-    /// The event `timestamp` in float seconds (Python `RelayEvent.timestamp`).
+    /// The event `timestamp` in float seconds.
     #[must_use]
     pub fn timestamp(&self) -> f64 {
         self.inner.timestamp()

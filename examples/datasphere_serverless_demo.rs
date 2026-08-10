@@ -36,20 +36,20 @@ fn main() {
     let mut search_tool = DataMap::new("search_knowledge");
     search_tool
         .description("Search the Datasphere knowledge base")
-        .parameter("query", "string", "Search query", true, vec![])
-        .parameter("max_results", "integer", "Maximum results", false, vec![])
+        .parameter("query", "string", "Search query", Some(true), None)
+        .parameter("max_results", "integer", "Maximum results", None, None)
         .webhook(
             "POST",
             "https://${env.SIGNALWIRE_SPACE}/api/datasphere/documents/search",
-            json!({
+            Some(json!({
                 "Authorization": "Basic ${env.DATASPHERE_AUTH}",
                 "Content-Type": "application/json"
-            }),
-            "",
-            false,
-            vec![],
+            })),
+            None,
+            None,
+            None,
         )
-        .body(json!({
+        .params(json!({
             "query": "${args.query}",
             "limit": "${args.max_results}"
         }))
