@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
-use std::sync::{LazyLock, Mutex};
+use std::sync::{Arc, LazyLock, Mutex};
 
 use serde_json::{Map, Value};
 
@@ -9,6 +9,18 @@ use crate::skills::skill_base::SkillBase;
 
 /// Factory function that creates a new skill instance given parameters.
 pub type SkillFactory = Box<dyn Fn(Map<String, Value>) -> Box<dyn SkillBase> + Send + Sync>;
+
+/// Shared, cheaply-clonable form of a [`SkillFactory`], used for the
+/// registry's internal storage.
+///
+/// The public [`SkillFactory`] is an owning `Box`, which cannot be cloned out
+/// of the registry map. Storing an `Arc` instead lets
+/// [`SkillRegistry::get_factory`] clone the factory out and **drop the
+/// registry guard before invoking it** — a factory is caller-supplied code,
+/// so calling it under the lock would (a) poison `REGISTRY` for the whole
+/// process lifetime if it panics, and (b) self-deadlock if it calls back into
+/// the registry.
+type SharedSkillFactory = Arc<dyn Fn(Map<String, Value>) -> Box<dyn SkillBase> + Send + Sync>;
 
 /// Canonical names of the compiled-in builtin skills, in registration order.
 ///
@@ -44,7 +56,7 @@ static REGISTRY: LazyLock<Mutex<SkillRegistryInner>> = LazyLock::new(|| {
 });
 
 struct SkillRegistryInner {
-    skills: HashMap<String, SkillFactory>,
+    skills: HashMap<String, SharedSkillFactory>,
     /// External directories registered via [`SkillRegistry::add_skill_directory`].
     ///
     /// Rust cannot load .rs files at runtime, so the recorded path is
@@ -66,75 +78,75 @@ impl SkillRegistryInner {
     fn register_builtins(&mut self) {
         self.skills.insert(
             "api_ninjas_trivia".to_string(),
-            Box::new(|p| Box::new(builtin::api_ninjas_trivia::ApiNinjasTrivia::new(p))),
+            Arc::new(|p| Box::new(builtin::api_ninjas_trivia::ApiNinjasTrivia::new(p))),
         );
         self.skills.insert(
             "claude_skills".to_string(),
-            Box::new(|p| Box::new(builtin::claude_skills::ClaudeSkills::new(p))),
+            Arc::new(|p| Box::new(builtin::claude_skills::ClaudeSkills::new(p))),
         );
         self.skills.insert(
             "custom_skills".to_string(),
-            Box::new(|p| Box::new(builtin::custom_skills::CustomSkills::new(p))),
+            Arc::new(|p| Box::new(builtin::custom_skills::CustomSkills::new(p))),
         );
         self.skills.insert(
             "datasphere".to_string(),
-            Box::new(|p| Box::new(builtin::datasphere::Datasphere::new(p))),
+            Arc::new(|p| Box::new(builtin::datasphere::Datasphere::new(p))),
         );
         self.skills.insert(
             "datasphere_serverless".to_string(),
-            Box::new(|p| Box::new(builtin::datasphere_serverless::DatasphereServerless::new(p))),
+            Arc::new(|p| Box::new(builtin::datasphere_serverless::DatasphereServerless::new(p))),
         );
         self.skills.insert(
             "datetime".to_string(),
-            Box::new(|p| Box::new(builtin::datetime::Datetime::new(p))),
+            Arc::new(|p| Box::new(builtin::datetime::Datetime::new(p))),
         );
         self.skills.insert(
             "google_maps".to_string(),
-            Box::new(|p| Box::new(builtin::google_maps::GoogleMaps::new(p))),
+            Arc::new(|p| Box::new(builtin::google_maps::GoogleMaps::new(p))),
         );
         self.skills.insert(
             "info_gatherer".to_string(),
-            Box::new(|p| Box::new(builtin::info_gatherer::InfoGatherer::new(p))),
+            Arc::new(|p| Box::new(builtin::info_gatherer::InfoGatherer::new(p))),
         );
         self.skills.insert(
             "joke".to_string(),
-            Box::new(|p| Box::new(builtin::joke::Joke::new(p))),
+            Arc::new(|p| Box::new(builtin::joke::Joke::new(p))),
         );
         self.skills.insert(
             "math".to_string(),
-            Box::new(|p| Box::new(builtin::math::Math::new(p))),
+            Arc::new(|p| Box::new(builtin::math::Math::new(p))),
         );
         self.skills.insert(
             "mcp_gateway".to_string(),
-            Box::new(|p| Box::new(builtin::mcp_gateway::McpGateway::new(p))),
+            Arc::new(|p| Box::new(builtin::mcp_gateway::McpGateway::new(p))),
         );
         self.skills.insert(
             "native_vector_search".to_string(),
-            Box::new(|p| Box::new(builtin::native_vector_search::NativeVectorSearch::new(p))),
+            Arc::new(|p| Box::new(builtin::native_vector_search::NativeVectorSearch::new(p))),
         );
         self.skills.insert(
             "play_background_file".to_string(),
-            Box::new(|p| Box::new(builtin::play_background_file::PlayBackgroundFile::new(p))),
+            Arc::new(|p| Box::new(builtin::play_background_file::PlayBackgroundFile::new(p))),
         );
         self.skills.insert(
             "spider".to_string(),
-            Box::new(|p| Box::new(builtin::spider::Spider::new(p))),
+            Arc::new(|p| Box::new(builtin::spider::Spider::new(p))),
         );
         self.skills.insert(
             "swml_transfer".to_string(),
-            Box::new(|p| Box::new(builtin::swml_transfer::SwmlTransfer::new(p))),
+            Arc::new(|p| Box::new(builtin::swml_transfer::SwmlTransfer::new(p))),
         );
         self.skills.insert(
             "weather_api".to_string(),
-            Box::new(|p| Box::new(builtin::weather_api::WeatherApi::new(p))),
+            Arc::new(|p| Box::new(builtin::weather_api::WeatherApi::new(p))),
         );
         self.skills.insert(
             "web_search".to_string(),
-            Box::new(|p| Box::new(builtin::web_search::WebSearch::new(p))),
+            Arc::new(|p| Box::new(builtin::web_search::WebSearch::new(p))),
         );
         self.skills.insert(
             "wikipedia_search".to_string(),
-            Box::new(|p| Box::new(builtin::wikipedia_search::WikipediaSearch::new(p))),
+            Arc::new(|p| Box::new(builtin::wikipedia_search::WikipediaSearch::new(p))),
         );
     }
 }
@@ -150,38 +162,35 @@ impl SkillRegistry {
     /// Panics if the global registry lock is poisoned (another thread
     /// panicked while holding it). This does not occur under normal operation.
     pub fn register_skill(name: &str, factory: SkillFactory) {
+        // Re-home the caller's owning `Box` into the shared `Arc` the map
+        // stores, so `get_factory` can clone it out from under the lock.
+        let shared: SharedSkillFactory = Arc::new(move |params| factory(params));
         let mut inner = REGISTRY.lock().expect("skill registry poisoned");
-        inner.skills.insert(name.to_string(), factory);
+        inner.skills.insert(name.to_string(), shared);
     }
 
     /// Get the factory for a skill by name.
+    ///
+    /// The returned factory is a snapshot: it holds its own handle to the
+    /// registered closure and takes NO lock when invoked. Cloning the factory
+    /// out and releasing the registry guard *before* the caller can run it is
+    /// deliberate — the factory is caller-supplied code, so invoking it under
+    /// the lock would poison `REGISTRY` process-wide on a panic and deadlock
+    /// on a factory that re-enters the registry.
     ///
     /// # Panics
     ///
     /// Panics if the global registry lock is poisoned (another thread
     /// panicked while holding it). This does not occur under normal operation.
     pub fn get_factory(name: &str) -> Option<SkillFactory> {
-        // We can't return a reference to the factory because it's behind
-        // a Mutex, so we check if it exists and then call it through a
-        // wrapper. Instead, we create a new Box<dyn SkillBase> directly.
-        // This is done by returning a closure that locks and calls the factory.
-        let inner = REGISTRY.lock().expect("skill registry poisoned");
-        if inner.skills.contains_key(name) {
-            // Clone the name for the closure.
-            let skill_name = name.to_string();
-            Some(Box::new(
-                move |params: Map<String, Value>| -> Box<dyn SkillBase> {
-                    let inner = REGISTRY.lock().expect("skill registry poisoned");
-                    let factory = inner
-                        .skills
-                        .get(&skill_name)
-                        .expect("skill removed during call");
-                    factory(params)
-                },
-            ))
-        } else {
-            None
-        }
+        let shared: SharedSkillFactory = {
+            let inner = REGISTRY.lock().expect("skill registry poisoned");
+            Arc::clone(inner.skills.get(name)?)
+            // guard dropped here, at the end of this block
+        };
+        Some(Box::new(
+            move |params: Map<String, Value>| -> Box<dyn SkillBase> { shared(params) },
+        ))
     }
 
     /// List all registered skill names (sorted).
@@ -373,6 +382,79 @@ impl SkillRegistry {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// A caller-supplied factory that panics must NOT brick the global
+    /// registry. `get_factory` clones the factory out and releases the
+    /// registry guard before invoking it, so the unwind from a panicking
+    /// third-party factory never crosses a held `MutexGuard` and the
+    /// `REGISTRY` mutex is never poisoned. Before that fix, this single
+    /// panic poisoned the global lock for the remainder of the process and
+    /// every later `register_skill` / `get_factory` / `list_skills` panicked
+    /// with `PoisonError`.
+    #[test]
+    fn test_panicking_factory_does_not_poison_registry() {
+        use crate::skills::builtin::datetime::Datetime;
+
+        SkillRegistry::register_skill(
+            "panicking_factory_probe",
+            Box::new(|_p| panic!("third-party factory blew up")),
+        );
+
+        let factory = SkillRegistry::get_factory("panicking_factory_probe")
+            .expect("probe factory must be registered");
+        let boom = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            factory(Map::new());
+        }));
+        assert!(boom.is_err(), "probe factory must have panicked");
+
+        // The registry must STILL WORK. Each of these locks REGISTRY; on a
+        // poisoned mutex every one of them panics instead.
+        let names = SkillRegistry::list_skills();
+        assert!(
+            names.contains(&"panicking_factory_probe".to_string()),
+            "list_skills must still work after a factory panic"
+        );
+        SkillRegistry::register_skill(
+            "after_panic_probe",
+            Box::new(|p| Box::new(Datetime::new(p))),
+        );
+        let after = SkillRegistry::get_factory("after_panic_probe")
+            .expect("registration after a factory panic must work");
+        assert_eq!(after(Map::new()).name(), "datetime");
+        assert!(SkillRegistry::get_factory("datetime").is_some());
+        // external_paths / add_skill_directory take the same lock; a poisoned
+        // mutex makes add_skill_directory panic rather than return Err.
+        assert!(
+            SkillRegistry::add_skill_directory("/no-such-directory-after-panic-xyz").is_err(),
+            "add_skill_directory must still return Err (not panic) after a factory panic"
+        );
+        let _ = SkillRegistry::external_paths();
+    }
+
+    /// A factory that re-enters the registry must not self-deadlock.
+    ///
+    /// The old `get_factory` returned a closure that re-locked `REGISTRY`
+    /// before calling the factory, so any factory touching the registry
+    /// deadlocked against the non-reentrant `Mutex`. The factory is now called
+    /// with no lock held, so re-entry is fine. If this ever regresses the test
+    /// HANGS rather than failing, which is itself the signal.
+    #[test]
+    fn test_reentrant_factory_does_not_deadlock() {
+        use crate::skills::builtin::datetime::Datetime;
+
+        SkillRegistry::register_skill(
+            "reentrant_probe",
+            Box::new(|p| {
+                // Re-enter the registry from inside the factory.
+                assert!(!SkillRegistry::list_skills().is_empty());
+                assert!(SkillRegistry::get_factory("datetime").is_some());
+                Box::new(Datetime::new(p))
+            }),
+        );
+        let factory =
+            SkillRegistry::get_factory("reentrant_probe").expect("probe must be registered");
+        assert_eq!(factory(Map::new()).name(), "datetime");
+    }
 
     #[test]
     fn test_registry_lists_18_builtins() {
