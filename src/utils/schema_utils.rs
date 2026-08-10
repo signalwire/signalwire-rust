@@ -428,9 +428,7 @@ impl SchemaUtils {
     /// Validate a complete SWML document against the compiled schema. Returns
     /// `(false, ["Schema validator not initialized"])` when no full validator is
     /// wired in, and a named compile-failure refusal when one failed to build.
-    /// (The reference has no `validate_document` body to match — this member is
-    /// carried by the surface oracle, and here it is backed by real
-    /// Draft-2020-12 validation.)
+    /// Backed by real Draft-2020-12 validation.
     pub fn validate_document(&self, document: &Value) -> (bool, Vec<String>) {
         // Already fail-closed (no validator => not valid); when the cause was a
         // COMPILE FAILURE, say so instead of the generic message, so a broken
@@ -580,12 +578,10 @@ impl SchemaUtils {
     /// `SchemaUtils::new(Some(path), true)` with any schema file that parses as
     /// JSON but is not a valid Draft-2020-12 document.
     ///
-    /// This does NOT mirror a Python fallback: the Python reference has no
-    /// full validator at all (no `_init_full_validator`, no `jsonschema_rs`, no
-    /// `validate_document`) — its `validate_verb` IS the required-props check.
-    /// So "fall back to lightweight on a compile failure" was never Python
-    /// parity; it silently downgraded this port's STRONGER validation to one
-    /// that accepts wrong-typed values and unknown keys.
+    /// Falling back to the lightweight required-props check on a compile
+    /// failure would silently downgrade validation to one that accepts
+    /// wrong-typed values and unknown keys the real schema rejects, so a
+    /// compile failure refuses instead.
     fn init_full_validator(&mut self) -> ValidatorStatus {
         match jsonschema::draft202012::new(&self.schema) {
             Ok(v) => {

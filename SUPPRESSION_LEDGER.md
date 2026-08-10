@@ -119,4 +119,4 @@ fires on the union. Test-only; no shipped surface.
 The tests deliberately call the `_`-prefixed test-only seam `_set_resolver`; the
 underscore marks it test-only, and the tests are its only caller. Test-only.
 
-- src/utils/url_validator.rs:187 — tests deliberately call the `_`-prefixed test-only `_set_resolver` seam (mike, 2026-07-09)
+- src/utils/url_validator.rs:207 — tests deliberately call the `_`-prefixed test-only `_set_resolver` seam (mike, 2026-07-09)
