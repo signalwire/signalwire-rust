@@ -1,10 +1,17 @@
 // schema_utils.rs — Rust port of signalwire.utils.schema_utils.SchemaUtils.
 //
 // Loads the SWML JSON Schema, extracts verb metadata, and validates
-// either a single verb config or a complete SWML document.  Validation
-// is lightweight (verb existence + required-property check) by default;
-// full JSON Schema validation can be wired in via the `jsonschema`
-// crate by extending `init_full_validator`.
+// either a single verb config or a complete SWML document.  Full
+// Draft-2020-12 validation via the `jsonschema` crate is the normal path;
+// the lightweight required-property check applies only to a PARTIAL schema
+// that cannot wrap a verb in a document (which is what the reference does for
+// every verb — it has no full validator at all).
+//
+// A validator that FAILS TO COMPILE is not a degraded mode: `jsonschema` is a
+// hard dependency, so a compile failure means a broken install or a bad
+// `schema_path`. Validation then REFUSES and names the reason rather than
+// falling back to the lightweight check, which would accept wrong-typed
+// values and unknown keys that the real schema rejects.
 //
 // Construction rules mirror Python:
 //
@@ -94,12 +101,45 @@ pub struct SchemaUtils {
     /// The compiled Draft-2020-12 validator for the WHOLE SWML document schema,
     /// present when full validation is enabled. `validate_verb` wraps a verb in
     /// a minimal `{version, sections:{main:[{verb: config}]}}` document and
-    /// validates it against this (matching reference's
-    /// `jsonschema_rs.Draft202012Validator(self.schema)` over the same minimal
-    /// doc). The schema's verb objects are CLOSED via `unevaluatedProperties`,
+    /// validates it against this. (This is STRONGER than the reference, which
+    /// has no full validator at all — its `validate_verb` is the required-props
+    /// check.) The schema's verb objects are CLOSED via
+    /// `unevaluatedProperties`,
     /// so this rejects unknown/misspelled keys and wrong-typed config — the
     /// full validation that replaced the former required-props-only stub.
     full_validator: Option<std::sync::Arc<jsonschema::Validator>>,
+    /// WHY `full_validator` is absent, when it is. A missing validator has two
+    /// completely different meanings and they must not share a code path:
+    /// validation was never requested (legitimate — the caller opted out), or
+    /// the validator FAILED TO COMPILE (a broken install / a bad `schema_path`).
+    /// Only the first may silently take the lightweight path; the second must
+    /// refuse to validate and name the reason, because falling back there
+    /// ACCEPTS documents the real schema rejects. Private: this is the
+    /// fail-closed bookkeeping behind the existing public methods, not surface.
+    validator_status: ValidatorStatus,
+}
+
+/// Why a `SchemaUtils` has no compiled full validator. Private to this module.
+#[derive(Debug, Clone)]
+enum ValidatorStatus {
+    /// A validator is compiled and in use.
+    Compiled,
+    /// Validation was not requested (`schema_validation = false`, or the
+    /// `SWML_SKIP_SCHEMA_VALIDATION` env override). Opting out is explicit and
+    /// legitimate; `validate_verb` returns `(true, [])` as documented.
+    Disabled,
+    /// The schema itself is absent/unparseable, so there is nothing to compile.
+    /// A partial or hand-built test schema legitimately takes the lightweight
+    /// required-props path — which is what the reference does for every verb,
+    /// its `validate_verb` BEING the required-props check.
+    NoSchema,
+    /// The schema was present but `jsonschema` REFUSED to compile it. This is
+    /// not a supported degraded mode: the `jsonschema` crate is a hard (non-
+    /// optional) dependency, so a compile failure means a broken install or a
+    /// bad `schema_path`, never a configuration. Validation must REFUSE rather
+    /// than fall back, because the lightweight check accepts wrong-typed values
+    /// and unknown keys that the real schema rejects.
+    CompileFailed(String),
 }
 
 impl SchemaUtils {
@@ -137,13 +177,18 @@ impl SchemaUtils {
             validation_enabled: schema_validation && !env_skip,
             verbs: BTreeMap::new(),
             full_validator: None,
+            validator_status: ValidatorStatus::Disabled,
         };
         su.schema = su.load_schema();
         apply_sdk_widen(&mut su.schema);
         su.extract_verbs();
-        if su.validation_enabled && !su.schema.is_null() {
-            su.init_full_validator();
-        }
+        su.validator_status = if !su.validation_enabled {
+            ValidatorStatus::Disabled
+        } else if su.schema.is_null() {
+            ValidatorStatus::NoSchema
+        } else {
+            su.init_full_validator()
+        };
         su
     }
 
@@ -154,7 +199,10 @@ impl SchemaUtils {
         self.schema_path.as_deref()
     }
 
-    /// Whether full JSON Schema validation is wired up.
+    /// Whether full JSON Schema validation is wired up. `false` covers three
+    /// distinct cases — validation opted out, no/partial schema, and a validator
+    /// that failed to compile. Only the first two take the lightweight path;
+    /// a compile failure makes `validate_verb`/`validate_document` REFUSE.
     pub fn full_validation_available(&self) -> bool {
         self.full_validator.is_some()
     }
@@ -295,25 +343,42 @@ impl SchemaUtils {
         if !self.verbs.contains_key(verb_name) {
             return (false, vec![format!("Unknown verb: {}", verb_name)]);
         }
+        // Fail CLOSED when the validator failed to compile: the lightweight
+        // required-props check accepts wrong-typed values and unknown keys that
+        // the real schema rejects, so falling back here would silently pass
+        // invalid documents.
+        if let Some(errors) = self.compile_failure_errors(Some(verb_name)) {
+            return (false, errors);
+        }
         if self.full_validator.is_some() {
             return self.validate_verb_full(verb_name, verb_config);
         }
         self.validate_verb_lightweight(verb_name, verb_config)
     }
 
-    /// Full JSON-Schema validation of a single verb config. Wraps the verb in a minimal SWML document
+    /// Full JSON-Schema validation of a single verb config. (No counterpart in
+    /// the reference — it has no full-validation path at all.)
+    /// Wraps the verb in a minimal SWML document
     /// `{version, sections:{main:[{verb_name: verb_config}]}}` and validates it
     /// against the whole compiled Draft-2020-12 schema. Because the schema's
     /// verb objects are closed (`unevaluatedProperties: {not:{}}`), this rejects
     /// unknown/misspelled keys, wrong-typed config, and missing-required — full
     /// validation, not just the required-props check.
     fn validate_verb_full(&self, verb_name: &str, verb_config: &Value) -> (bool, Vec<String>) {
+        // Unreachable in practice: `validate_verb` refuses on CompileFailed
+        // before getting here, and only calls this when the validator is
+        // present. Kept fail-closed rather than falling back to lightweight.
         let Some(validator) = &self.full_validator else {
+            if let Some(errors) = self.compile_failure_errors(Some(verb_name)) {
+                return (false, errors);
+            }
             return self.validate_verb_lightweight(verb_name, verb_config);
         };
         // Partial/test schemas without full document structure can't wrap a
-        // verb in a document; fall back (mirrors Python's `"sections" not in
-        // schema_props` guard).
+        // verb in a document; fall back to the required-props check. This is a
+        // legitimate lightweight case (and is what the Python reference does for
+        // EVERY verb) — distinct from a validator that failed to compile, which
+        // refuses above.
         let has_sections = self
             .schema
             .get("properties")
@@ -360,10 +425,19 @@ impl SchemaUtils {
         (errors.is_empty(), errors)
     }
 
-    /// Validate a complete SWML document.  Returns
-    /// `(false, ["Schema validator not initialized"])` when no full
-    /// validator is wired in.
+    /// Validate a complete SWML document against the compiled schema. Returns
+    /// `(false, ["Schema validator not initialized"])` when no full validator is
+    /// wired in, and a named compile-failure refusal when one failed to build.
+    /// (The reference has no `validate_document` body to match — this member is
+    /// carried by the surface oracle, and here it is backed by real
+    /// Draft-2020-12 validation.)
     pub fn validate_document(&self, document: &Value) -> (bool, Vec<String>) {
+        // Already fail-closed (no validator => not valid); when the cause was a
+        // COMPILE FAILURE, say so instead of the generic message, so a broken
+        // install is diagnosable.
+        if let Some(errors) = self.compile_failure_errors(None) {
+            return (false, errors);
+        }
         let Some(validator) = &self.full_validator else {
             return (false, vec!["Schema validator not initialized".to_string()]);
         };
@@ -492,19 +566,56 @@ impl SchemaUtils {
         }
     }
 
-    /// Compile the Draft-2020-12 validator for the whole SWML schema (Python
-    /// `_init_full_validator` — `jsonschema_rs.Draft202012Validator(self.schema)`).
+    /// Compile the Draft-2020-12 validator for the whole SWML schema.
     /// The embedded schema is self-contained: its only non-`#` `$ref`
     /// (`SWMLObject.json`) is a self-reference to the root `$id`, so no remote
     /// retrieval is needed (the crate is built with `default-features = false`,
-    /// dropping the http/file resolvers). A schema that fails to compile leaves
-    /// `full_validator = None`, so `validate_verb` degrades to the lightweight
-    /// required-props check rather than crashing — same fallback shape as Python.
-    fn init_full_validator(&mut self) {
+    /// dropping the http/file resolvers).
+    ///
+    /// A compile failure is reported as [`ValidatorStatus::CompileFailed`], NOT
+    /// silently swallowed into the lightweight path. `jsonschema` 0.48 compiles
+    /// EAGERLY — a bad keyword type (`properties: 42`), an invalid `pattern`
+    /// regex, a dangling local `$ref`, or an unresolvable remote `$ref` all fail
+    /// here — so this arm is reachable from the public
+    /// `SchemaUtils::new(Some(path), true)` with any schema file that parses as
+    /// JSON but is not a valid Draft-2020-12 document.
+    ///
+    /// This does NOT mirror a Python fallback: the Python reference has no
+    /// full validator at all (no `_init_full_validator`, no `jsonschema_rs`, no
+    /// `validate_document`) — its `validate_verb` IS the required-props check.
+    /// So "fall back to lightweight on a compile failure" was never Python
+    /// parity; it silently downgraded this port's STRONGER validation to one
+    /// that accepts wrong-typed values and unknown keys.
+    fn init_full_validator(&mut self) -> ValidatorStatus {
         match jsonschema::draft202012::new(&self.schema) {
-            Ok(v) => self.full_validator = Some(std::sync::Arc::new(v)),
-            Err(_) => self.full_validator = None,
+            Ok(v) => {
+                self.full_validator = Some(std::sync::Arc::new(v));
+                ValidatorStatus::Compiled
+            }
+            Err(e) => {
+                self.full_validator = None;
+                ValidatorStatus::CompileFailed(e.to_string())
+            }
         }
+    }
+
+    /// The refusal error list for a schema that failed to compile, or `None`
+    /// when the absence of a validator is legitimate (opted out / no schema).
+    /// Refusing names the reason so a broken install is diagnosable instead of
+    /// silently permissive.
+    fn compile_failure_errors(&self, verb_name: Option<&str>) -> Option<Vec<String>> {
+        let ValidatorStatus::CompileFailed(reason) = &self.validator_status else {
+            return None;
+        };
+        let target = match verb_name {
+            Some(v) => format!("verb '{v}'"),
+            None => "document".to_string(),
+        };
+        Some(vec![format!(
+            "Schema validation unavailable for {target}: the SWML JSON Schema failed to \
+             compile, so validation did NOT run (refusing rather than accepting unvalidated \
+             input). Underlying error: {reason}"
+        )])
     }
 }
 
@@ -648,8 +759,7 @@ mod tests {
     /// `SWML_SKIP_SCHEMA_VALIDATION`, so this test sees a clean env even
     /// when running in parallel with `env_skip_disables_validation`.
     fn fresh() -> (std::sync::MutexGuard<'static, ()>, SchemaUtils) {
-        let g = ENV_MTX.lock().unwrap();
-        unsafe { env::remove_var("SWML_SKIP_SCHEMA_VALIDATION") };
+        let g = env_guard();
         let su = SchemaUtils::new(None, true);
         (g, su)
     }
@@ -681,7 +791,7 @@ mod tests {
 
     #[test]
     fn env_skip_disables_validation() {
-        let _g = ENV_MTX.lock().unwrap();
+        let _g = env_guard();
         unsafe { env::set_var("SWML_SKIP_SCHEMA_VALIDATION", "1") };
         let su = SchemaUtils::new(None, true);
         assert!(!su.full_validation_available());
@@ -798,5 +908,288 @@ mod tests {
         assert!(msg.contains("missing prompt"));
         assert_eq!(err.verb_name, "ai");
         assert_eq!(err.errors.len(), 2);
+    }
+
+    // ---- fail-closed on a validator that failed to compile ----------------
+    //
+    // `jsonschema` 0.48 compiles EAGERLY, so a schema file that parses as JSON
+    // but is not a valid Draft-2020-12 document makes `draft202012::new` fail.
+    // Before the fix that error was discarded (`Err(_) => full_validator =
+    // None`) and every later validation silently fell back to the lightweight
+    // required-props check, which ACCEPTS wrong-typed values and unknown keys.
+    // These tests pin the refusal, and reach it through PUBLIC API only:
+    // `SchemaUtils::new(Some(path), true)`.
+
+    /// Lock `ENV_MTX` tolerating a poisoned mutex, and clear the skip-env var.
+    /// A test that fails while holding `ENV_MTX` poisons it, which would turn
+    /// one real assertion failure into a cascade of `PoisonError` unwrap panics
+    /// in every other env-sensitive test and bury the actual cause. Recovering
+    /// the guard keeps a failure readable — the protected data is `()`, so there
+    /// is no invariant left broken by the panic.
+    fn env_guard() -> std::sync::MutexGuard<'static, ()> {
+        let g = ENV_MTX
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        unsafe { env::remove_var("SWML_SKIP_SCHEMA_VALIDATION") };
+        g
+    }
+
+    /// A minimal-but-real SWML-shaped schema: `sections` validates its verbs
+    /// against `$defs/SWMLMethod`, and `answer` requires an integer
+    /// `max_duration` with unknown keys closed off. When `poison` is `Some`, one
+    /// compile-fatal construct is spliced in.
+    fn swml_shaped_schema(poison: Option<Value>) -> Value {
+        let mut props = json!({
+            "version": {"type": "string"},
+            "sections": {
+                "type": "object",
+                "additionalProperties": {
+                    "type": "array",
+                    "items": {"$ref": "#/$defs/SWMLMethod"}
+                }
+            }
+        });
+        if let Some(p) = poison {
+            props
+                .as_object_mut()
+                .expect("props is an object")
+                .insert("poison".to_string(), p);
+        }
+        json!({
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "type": "object",
+            "properties": props,
+            "$defs": {
+                "SWMLMethod": {"anyOf": [{"$ref": "#/$defs/AnswerMethod"}]},
+                "AnswerMethod": {
+                    "type": "object",
+                    "properties": {
+                        "answer": {
+                            "type": "object",
+                            "properties": {"max_duration": {"type": "integer"}},
+                            "required": ["max_duration"],
+                            "unevaluatedProperties": {"not": {}}
+                        }
+                    },
+                    "unevaluatedProperties": {"not": {}}
+                }
+            }
+        })
+    }
+
+    /// Write a schema to a repo-local temp dir and return its path.
+    fn write_temp_schema(name: &str, schema: &Value) -> std::path::PathBuf {
+        let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join(".sw-tmp")
+            .join("schema_utils_tests");
+        fs::create_dir_all(&dir).expect("create temp schema dir");
+        let path = dir.join(name);
+        fs::write(
+            &path,
+            serde_json::to_string(schema).expect("serialize schema"),
+        )
+        .expect("write temp schema");
+        path
+    }
+
+    /// The document that separates real validation from the lightweight check:
+    /// the required prop is PRESENT (so required-props passes) but wrong-typed,
+    /// and there is an unknown key the closed schema forbids.
+    fn wrong_typed_answer() -> Value {
+        json!({"max_duration": "not-an-integer", "wibble": 1})
+    }
+
+    /// CONTROL for the tests below: with a schema that COMPILES, this document
+    /// is rejected by full validation but ACCEPTED by the lightweight check.
+    /// That is exactly what a silent fallback would have let through.
+    #[test]
+    fn compiling_schema_rejects_wrong_typed_config() {
+        let _g = env_guard();
+        let path = write_temp_schema("clean.json", &swml_shaped_schema(None));
+        let su = SchemaUtils::new(Some(path.to_string_lossy().to_string()), true);
+        assert!(
+            su.full_validation_available(),
+            "the un-poisoned schema must compile"
+        );
+        let (valid, errors) = su.validate_verb("answer", &wrong_typed_answer());
+        assert!(!valid, "full validation must reject a wrong-typed config");
+        assert!(!errors.is_empty());
+        // Proof the lightweight check alone would have PASSED it: the required
+        // property is present, so it reports no error.
+        let (light_ok, light_errors) =
+            su.validate_verb_lightweight("answer", &wrong_typed_answer());
+        assert!(
+            light_ok,
+            "lightweight accepts it — that's why fallback was unsafe: {light_errors:?}"
+        );
+    }
+
+    /// Every compile-fatal schema shape must make `validate_verb` REFUSE and
+    /// name the reason — never silently accept via the lightweight path.
+    #[test]
+    fn compile_failure_refuses_instead_of_accepting() {
+        let _g = env_guard();
+        let poisons: Vec<(&str, Value)> = vec![
+            // unresolvable remote $ref (http resolver dropped by design)
+            (
+                "remote_ref",
+                json!({"$ref": "https://example.invalid/x.json"}),
+            ),
+            // dangling local pointer
+            ("dangling_local_ref", json!({"$ref": "#/$defs/NotThere"})),
+            // invalid regex in `pattern`
+            ("bad_regex", json!({"type": "string", "pattern": "["})),
+            // wrong keyword type: `properties` must be an object
+            ("props_not_object", json!({"properties": 42})),
+        ];
+        for (label, poison) in poisons {
+            let schema = swml_shaped_schema(Some(poison));
+            assert!(
+                jsonschema::draft202012::new(&schema).is_err(),
+                "[{label}] must be compile-fatal for this test to mean anything"
+            );
+            let path = write_temp_schema(&format!("poison_{label}.json"), &schema);
+            let su = SchemaUtils::new(Some(path.to_string_lossy().to_string()), true);
+            assert!(!su.full_validation_available(), "[{label}]");
+            // The verb is still extracted, so this is NOT an "Unknown verb" path.
+            assert!(
+                su.get_all_verb_names().contains(&"answer".to_string()),
+                "[{label}] verbs must still extract"
+            );
+            let (valid, errors) = su.validate_verb("answer", &wrong_typed_answer());
+            assert!(
+                !valid,
+                "[{label}] a failed validator must REFUSE, not accept via lightweight fallback"
+            );
+            let joined = errors.join(" | ");
+            assert!(
+                joined.contains("failed to compile"),
+                "[{label}] the refusal must say the schema failed to compile: {joined}"
+            );
+            assert!(
+                joined.contains("validation did NOT run"),
+                "[{label}] the refusal must say validation did not run: {joined}"
+            );
+            // `validate_document` must refuse with the same named reason.
+            let (doc_valid, doc_errors) = su.validate_document(&json!({
+                "version": "1.0.0",
+                "sections": {"main": [{"answer": {"max_duration": 5}}]},
+            }));
+            assert!(!doc_valid, "[{label}] document validation must refuse");
+            assert!(
+                doc_errors.join(" | ").contains("failed to compile"),
+                "[{label}] document refusal must name the compile failure: {doc_errors:?}"
+            );
+        }
+    }
+
+    /// A PARTIAL schema (no document `sections` structure) is a legitimate
+    /// lightweight case and must NOT be treated as a compile failure — it still
+    /// validates required properties and accepts a config that satisfies them.
+    /// This is the boundary the fix must not over-reach: refuse only on a
+    /// COMPILE failure, not on every absent validator.
+    #[test]
+    fn partial_schema_still_takes_lightweight_path() {
+        let _g = env_guard();
+        // Compiles fine, but has no `properties.sections`, so a verb cannot be
+        // wrapped in a document.
+        let partial = json!({
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "type": "object",
+            "properties": {"version": {"type": "string"}},
+            "$defs": {
+                "SWMLMethod": {"anyOf": [{"$ref": "#/$defs/AnswerMethod"}]},
+                "AnswerMethod": {
+                    "type": "object",
+                    "properties": {
+                        "answer": {
+                            "type": "object",
+                            "properties": {"max_duration": {"type": "integer"}},
+                            "required": ["max_duration"]
+                        }
+                    }
+                }
+            }
+        });
+        let path = write_temp_schema("partial.json", &partial);
+        let su = SchemaUtils::new(Some(path.to_string_lossy().to_string()), true);
+        assert!(
+            su.full_validation_available(),
+            "a partial schema still COMPILES"
+        );
+        // Required prop present => lightweight accepts.
+        let (ok, errors) = su.validate_verb("answer", &json!({"max_duration": 5}));
+        assert!(
+            ok,
+            "partial-schema lightweight path must accept: {errors:?}"
+        );
+        // Required prop missing => lightweight rejects, with the required-props
+        // message (NOT a compile-failure refusal).
+        let (bad, bad_errors) = su.validate_verb("answer", &json!({}));
+        assert!(!bad);
+        let joined = bad_errors.join(" | ");
+        assert!(
+            joined.contains("Missing required property"),
+            "expected the required-props message, got: {joined}"
+        );
+        assert!(
+            !joined.contains("failed to compile"),
+            "a partial schema is NOT a compile failure: {joined}"
+        );
+    }
+
+    /// An UNREADABLE / non-JSON `schema_path` yields no schema at all. That is
+    /// not a compile failure either: nothing was compiled. Validation stays on
+    /// the lightweight path, and with no verbs extracted the verb is unknown.
+    #[test]
+    fn absent_schema_is_not_a_compile_failure() {
+        let _g = env_guard();
+        let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join(".sw-tmp")
+            .join("schema_utils_tests");
+        fs::create_dir_all(&dir).expect("create temp schema dir");
+        let path = dir.join("not_json.json");
+        fs::write(&path, "this is not json").expect("write non-json");
+        let su = SchemaUtils::new(Some(path.to_string_lossy().to_string()), true);
+        assert!(!su.full_validation_available());
+        let (valid, errors) = su.validate_verb("answer", &json!({"max_duration": 5}));
+        assert!(!valid, "no schema => no verbs => unknown verb");
+        let joined = errors.join(" | ");
+        assert!(joined.contains("Unknown verb"), "got: {joined}");
+        assert!(
+            !joined.contains("failed to compile"),
+            "an absent schema is NOT a compile failure: {joined}"
+        );
+    }
+
+    /// Explicitly opting OUT of validation must still return valid — the fix
+    /// must not turn a deliberate opt-out into a refusal.
+    #[test]
+    fn validation_disabled_still_returns_valid() {
+        let _g = env_guard();
+        // Even with a compile-fatal schema, an explicit opt-out short-circuits.
+        let path = write_temp_schema(
+            "poison_optout.json",
+            &swml_shaped_schema(Some(json!({"$ref": "#/$defs/NotThere"}))),
+        );
+        let su = SchemaUtils::new(Some(path.to_string_lossy().to_string()), false);
+        let (valid, errors) = su.validate_verb("answer", &wrong_typed_answer());
+        assert!(valid, "opt-out must return valid: {errors:?}");
+        assert!(errors.is_empty());
+    }
+
+    /// The DEFAULT embedded schema must compile — if it ever stops compiling,
+    /// the fail-closed refusal would take over and this test catches it loudly
+    /// instead of the SDK silently degrading to permissive validation.
+    #[test]
+    fn embedded_default_schema_compiles() {
+        let (_g, su) = fresh();
+        assert!(
+            su.full_validation_available(),
+            "the embedded SWML schema must compile; a failure here would now \
+             REFUSE all validation rather than silently degrade"
+        );
+        let (valid, errors) = su.validate_verb("answer", &json!({"max_duration": 5}));
+        assert!(valid, "valid answer config must pass: {errors:?}");
     }
 }
