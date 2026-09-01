@@ -527,3 +527,111 @@ fn test_in_handler_play_then_wait_completes_not_deadlocks() {
 
     client.disconnect();
 }
+
+// ---------------------------------------------------------------------------
+// Redelivered calling.call.receive (porting-sdk#141)
+//
+// RELAY delivers at least once: the same receive frame can arrive twice for one
+// call. Receive must therefore be idempotent per call_id — see the "Event
+// Redelivery" section of porting-sdk's RELAY_IMPLEMENTATION_GUIDE.md.
+// ---------------------------------------------------------------------------
+
+/// Without the idempotency guard the second receive builds a second Call and
+/// overwrites `calls[call_id]`. Routing only ever reads that map, so the first
+/// Call — the one handed to the application — silently stops receiving events
+/// and never reaches a terminal state.
+#[test]
+fn test_redelivered_receive_keeps_the_live_call() {
+    let _g = relay_mocktest::begin();
+    let client = relay_mocktest::connected_client(&["default"]);
+
+    let handler_calls: Arc<Mutex<Vec<Arc<signalwire::relay::Call>>>> =
+        Arc::new(Mutex::new(Vec::new()));
+    let collected = handler_calls.clone();
+    client.on_call(move |call, _ev| {
+        collected.lock().unwrap().push(call);
+    });
+
+    relay_mocktest::inbound_call(json!({
+        "call_id": "c-redeliver",
+        "auto_states": ["ringing", "answered"],
+        "delay_ms": 20,
+        "redeliver_receive": 1,
+    }));
+    assert!(
+        wait_until(5000, || !handler_calls.lock().unwrap().is_empty()),
+        "on_call handler did not fire"
+    );
+    // Let the redelivery and the trailing state frame drain.
+    std::thread::sleep(std::time::Duration::from_millis(600));
+
+    // 1. One call means one handler invocation.
+    let calls = handler_calls.lock().unwrap().clone();
+    assert_eq!(
+        calls.len(),
+        1,
+        "on_call handler re-entered for a redelivered receive ({} invocations for one call)",
+        calls.len()
+    );
+
+    // 2. The instance the application holds is still the one events route to.
+    //    A replacement in the calls map would leave it frozen at "ringing".
+    let first = &calls[0];
+    assert_eq!(
+        first.state.lock().unwrap().clone(),
+        "answered",
+        "the Call handed to the application stopped receiving events"
+    );
+
+    // The duplicate really was on the wire — otherwise this proves nothing.
+    let redelivered = relay_mocktest::journal_send(Some("calling.call.receive"))
+        .into_iter()
+        .filter(|e| {
+            e.frame
+                .pointer("/params/params/call_id")
+                .and_then(Value::as_str)
+                == Some("c-redeliver")
+        })
+        .count();
+    assert_eq!(
+        redelivered, 2,
+        "mock did not redeliver the receive frame ({redelivered} sent); \
+         the scenario under test never happened"
+    );
+
+    client.disconnect();
+}
+
+/// The dedup is per call_id and must not swallow a genuinely new concurrent
+/// inbound call.
+#[test]
+fn test_distinct_call_ids_still_create_separate_calls() {
+    let _g = relay_mocktest::begin();
+    let client = relay_mocktest::connected_client(&["default"]);
+
+    let seen: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(Vec::new()));
+    let seen2 = seen.clone();
+    client.on_call(move |call, _ev| {
+        seen2
+            .lock()
+            .unwrap()
+            .push(call.call_id.clone().unwrap_or_default());
+    });
+
+    relay_mocktest::inbound_call(json!({"call_id": "c-first", "auto_states": ["ringing"]}));
+    relay_mocktest::inbound_call(json!({"call_id": "c-second", "auto_states": ["ringing"]}));
+    assert!(
+        wait_until(5000, || seen.lock().unwrap().len() >= 2),
+        "expected both distinct inbound calls to reach the handler"
+    );
+
+    let mut ids = seen.lock().unwrap().clone();
+    ids.sort();
+    assert_eq!(
+        ids,
+        vec!["c-first".to_string(), "c-second".to_string()],
+        "dedup swallowed a distinct call"
+    );
+
+    client.disconnect();
+}

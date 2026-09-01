@@ -1687,6 +1687,22 @@ impl Client {
             return;
         };
 
+        // RELAY delivers at least once, so `calling.call.receive` can arrive
+        // again for a call already in flight. Receive is idempotent per
+        // call_id: keep the live instance and do NOT re-enter the on_call
+        // handler. Replacing the map entry would orphan the Call the
+        // application is holding — routing only ever reads `calls` by call_id,
+        // so the original would silently stop receiving events and a blocking
+        // `Action::wait` on it would burn its timeout instead of resolving at
+        // hangup. The event is ACKed by the reader thread before this runs, so
+        // returning early still stops the server's retries.
+        if self.calls.lock().unwrap().contains_key(call_id) {
+            self.logger.debug(&format!(
+                "Ignoring redelivered calling.call.receive for in-flight call {call_id}"
+            ));
+            return;
+        }
+
         let call = Arc::new(Call::new(params));
         call.set_client(self);
         self.calls
