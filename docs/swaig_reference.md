@@ -76,19 +76,21 @@ The SDK provides convenience methods for common actions. The action methods take
 
 ```rust
 // Transfer the call: connect(destination, final, from)
+// — `final` and `from` are each `Option<...>`; `None` takes the default.
 let mut result = FunctionResult::with_response("Connecting you.");
-result.connect("+15551234567", true, "+15550000000");
+result.connect("+15551234567", Some(true), Some("+15550000000"));
 
 // Send SMS: send_sms(to, from, body, media, tags, region) -> Result
+// — everything after `from` is optional; at least one of body/media is required.
 let mut result = FunctionResult::with_response("Sending confirmation.");
 result
     .send_sms(
-        "+15559876543",          // to
-        "+15551234567",          // from
-        "Your order is confirmed.", // body
-        vec![],                  // media
-        vec![],                  // tags
-        "",                      // region
+        "+15559876543",                        // to
+        "+15551234567",                        // from
+        Some("Your order is confirmed."),      // body
+        None,                                  // media
+        None,                                  // tags
+        None,                                  // region
     )
     .unwrap();
 
@@ -119,7 +121,7 @@ let mut result = FunctionResult::with_response(
     "I will transfer you to support. Is there anything else?"
 );
 result.set_post_process(true);
-result.connect("+15551234567", true, "+15550000000");
+result.connect("+15551234567", Some(true), Some("+15550000000"));
 ```
 
 ## post_data Lifecycle

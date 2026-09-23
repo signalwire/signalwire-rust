@@ -39,16 +39,16 @@ fn main() {
     let mut search_tool = DataMap::new("search_docs");
     search_tool
         .description("Search Datasphere documents")
-        .parameter("query", "string", "Search query", true, vec![])
+        .parameter("query", "string", "Search query", Some(true), None)
         .webhook(
             "POST",
             &search_url,
-            json!({"Authorization": auth_header, "Content-Type": "application/json"}),
-            "",
-            false,
-            vec![],
+            Some(json!({"Authorization": auth_header, "Content-Type": "application/json"})),
+            None,
+            None,
+            None,
         )
-        .body(json!({"query": "${args.query}", "document_id": doc_id, "limit": 5}))
+        .params(json!({"query": "${args.query}", "document_id": doc_id, "limit": 5}))
         .output(FunctionResult::with_response("Results: ${response.results[0].text}").to_value());
 
     agent.register_swaig_function(search_tool.to_swaig_function());

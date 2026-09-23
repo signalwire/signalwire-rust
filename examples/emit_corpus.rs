@@ -99,23 +99,23 @@ fn corpus() -> Vec<Entry> {
         }),
         // ---- connect (final true/false, from override) ----------------------
         entry!("connect.final_true", "", |fr| {
-            fr.connect("+15551234567", true, "");
+            fr.connect("+15551234567", None, None);
         }),
         entry!("connect.final_false", "", |fr| {
-            fr.connect("+15551234567", false, "");
+            fr.connect("+15551234567", Some(false), None);
         }),
         entry!("connect.from_addr", "", |fr| {
-            fr.connect("support@example.com", false, "+15559876543");
+            fr.connect("support@example.com", Some(false), Some("+15559876543"));
         }),
         // ---- swml_transfer --------------------------------------------------
         entry!("swml_transfer.default", "", |fr| {
-            fr.swml_transfer("https://dest.example.com/swml", "Goodbye!", true);
+            fr.swml_transfer("https://dest.example.com/swml", "Goodbye!", None);
         }),
         entry!("swml_transfer.final_false", "", |fr| {
             fr.swml_transfer(
                 "https://dest.example.com/swml",
                 "Welcome back. How else can I help?",
-                false,
+                Some(false),
             );
         }),
         // ---- simple call-control actions ------------------------------------
@@ -124,16 +124,16 @@ fn corpus() -> Vec<Entry> {
         }),
         entry!("hold.default", "", |fr| {
             // Python hold() defaults timeout=300.
-            fr.hold(300);
+            fr.hold(None);
         }),
         entry!("hold.value", "", |fr| {
-            fr.hold(120);
+            fr.hold(Some(120));
         }),
         entry!("hold.clamp_high", "", |fr| {
-            fr.hold(5000);
+            fr.hold(Some(5000));
         }),
         entry!("hold.clamp_low", "", |fr| {
-            fr.hold(-5);
+            fr.hold(Some(-5));
         }),
         entry!("stop", "", |fr| {
             fr.stop();
@@ -216,10 +216,10 @@ fn corpus() -> Vec<Entry> {
         }),
         // ---- background file play/stop --------------------------------------
         entry!("playback_bg.simple", "", |fr| {
-            fr.play_background_file("music.mp3", false);
+            fr.play_background_file("music.mp3", None);
         }),
         entry!("playback_bg.wait", "", |fr| {
-            fr.play_background_file("music.mp3", true);
+            fr.play_background_file("music.mp3", Some(true));
         }),
         entry!("stop_playback_bg", "", |fr| {
             fr.stop_background_file();
@@ -236,10 +236,10 @@ fn corpus() -> Vec<Entry> {
             fr.send_sms(
                 "+15551112222",
                 "+15553334444",
-                "Your appointment is confirmed.",
-                vec![],
-                vec![],
-                "",
+                Some("Your appointment is confirmed."),
+                None,
+                None,
+                None,
             )
             .expect("send_sms.body");
         }),
@@ -247,42 +247,43 @@ fn corpus() -> Vec<Entry> {
             fr.send_sms(
                 "+15551112222",
                 "+15553334444",
-                "See attached.",
-                vec!["https://ex.com/a.jpg"],
-                vec!["receipt", "vip"],
-                "us",
+                Some("See attached."),
+                Some(vec!["https://ex.com/a.jpg"]),
+                Some(vec!["receipt", "vip"]),
+                Some("us"),
             )
             .expect("send_sms.full");
         }),
         // ---- pay (full + helper-shaped prompts/parameters) ------------------
         entry!("pay.minimal", "", |fr| {
-            // Python pay() with only the connector URL: every other arg defaults.
-            // Rust requires the full arg list; pass the same defaults Python
-            // uses (input_method="dtmf", payment_method="credit-card",
-            // timeout=5, max_attempts=1, security_code=True, postal_code=True →
-            // wire "true", min_postal_code_length=0, token_type="reusable",
+            // Python pay() with only the connector URL: every other arg is
+            // OMITTED (`None`), so this entry proves the port's defaults —
+            // input_method="dtmf", payment_method="credit-card", timeout=5,
+            // max_attempts=1, security_code=True, postal_code=True → wire
+            // "true", min_postal_code_length=0, token_type="reusable",
             // currency="usd", language="en-US", voice="woman",
-            // valid_card_types="visa mastercard amex").
+            // valid_card_types="visa mastercard amex", and the default
+            // ai_response — land on the wire without being passed.
             fr.pay(
                 "https://pay.example.com/connector",
-                "dtmf",                 // input_method
-                "",                     // status_url
-                "credit-card",          // payment_method
-                5,                      // timeout
-                1,                      // max_attempts
-                true,                   // security_code
-                "true",                 // postal_code (bool True -> wire "true")
-                0,                      // min_postal_code_length
-                "reusable",             // token_type
-                "",                     // charge_amount
-                "usd",                  // currency
-                "en-US",                // language
-                "woman",                // voice
-                "",                     // description
-                "visa mastercard amex", // valid_card_types
-                Value::Null,            // parameters
-                Value::Null,            // prompts
-                "",                     // ai_response (-> default)
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
             );
         }),
         entry!("pay.full", "", |fr| {
@@ -294,48 +295,49 @@ fn corpus() -> Vec<Entry> {
             }]);
             fr.pay(
                 "https://pay.example.com/connector",
-                "dtmf",           // input_method
-                "https://ex.com/status",
-                "credit-card",    // payment_method
-                7,                // timeout
-                2,                // max_attempts
-                false,            // security_code
-                "90210",          // postal_code
-                5,                // min_postal_code_length
-                "one-time",       // token_type
-                "9.99",           // charge_amount
-                "usd",            // currency
-                "en-US",          // language
-                "woman",          // voice
-                "Order 42",       // description
-                "visa amex",      // valid_card_types
-                parameters,
-                prompts,
-                "The payment status is ${pay_result}, do not mention anything else about collecting payment if successful.",
+                None, // input_method (default "dtmf")
+                Some("https://ex.com/status"),
+                None,              // payment_method (default "credit-card")
+                Some(7),           // timeout
+                Some(2),           // max_attempts
+                Some(false),       // security_code
+                Some("90210"),     // postal_code
+                Some(5),           // min_postal_code_length
+                Some("one-time"),  // token_type
+                Some("9.99"),      // charge_amount
+                None,              // currency (default "usd")
+                None,              // language (default "en-US")
+                None,              // voice (default "woman")
+                Some("Order 42"),  // description
+                Some("visa amex"), // valid_card_types
+                Some(parameters),
+                Some(prompts),
+                None, // ai_response (default status message)
             );
         }),
         entry!("pay.postal_bool", "", |fr| {
-            // postal_code=True with every other arg at Python's default.
+            // postal_code passed EXPLICITLY as the bool-True wire spelling,
+            // with every other arg omitted (`None` = Python's default).
             fr.pay(
                 "https://pay.example.com/connector",
-                "dtmf",
-                "",
-                "credit-card",
-                5,
-                1,
-                true,
-                "true", // postal_code bool True -> wire "true"
-                0,
-                "reusable",
-                "",
-                "usd",
-                "en-US",
-                "woman",
-                "",
-                "visa mastercard amex",
-                Value::Null,
-                Value::Null,
-                "",
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                Some("true"), // postal_code bool True -> wire "true"
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
             );
         }),
         // ---- record_call (incl. mp4 + each direction) -----------------------
@@ -343,19 +345,39 @@ fn corpus() -> Vec<Entry> {
             // Python defaults: format="wav", direction="both",
             // input_sensitivity=44.0; everything else unset.
             fr.record_call(
-                "", false, "wav", "both", "", false, 44.0, None, None, None, "",
+                None, None, None, None, None, None, None, None, None, None, None,
             )
             .expect("record_call.defaults");
         }),
         entry!("record_call.wav_speak", "", |fr| {
             fr.record_call(
-                "", false, "wav", "speak", "", false, 44.0, None, None, None, "",
+                None,
+                None,
+                None,
+                Some("speak".into()),
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
             )
             .expect("record_call.wav_speak");
         }),
         entry!("record_call.mp3_listen", "", |fr| {
             fr.record_call(
-                "", false, "mp3", "listen", "", false, 44.0, None, None, None, "",
+                None,
+                None,
+                Some("mp3".into()),
+                Some("listen".into()),
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
             )
             .expect("record_call.mp3_listen");
         }),
@@ -363,158 +385,168 @@ fn corpus() -> Vec<Entry> {
             // Typed path: prove RecordFormat::Mp4 / RecordDirection::Both emit
             // byte-identically to the bare strings.
             fr.record_call(
-                "",
-                false,
-                RecordFormat::Mp4,
-                RecordDirection::Both,
-                "",
-                false,
-                44.0,
+                None,
+                None,
+                Some(RecordFormat::Mp4.into()),
+                Some(RecordDirection::Both.into()),
                 None,
                 None,
                 None,
-                "",
+                None,
+                None,
+                None,
+                None,
             )
             .expect("record_call.mp4_both");
         }),
         entry!("record_call.full", "", |fr| {
             fr.record_call(
-                "rec1",
-                true,
-                "mp3",
-                "both",
-                "#",
-                true,
-                30.0,
+                Some("rec1"),
+                Some(true),
+                Some("mp3".into()),
+                Some("both".into()),
+                Some("#"),
+                Some(true),
+                Some(30.0),
                 Some(5.0),
                 Some(3.0),
                 Some(120.0),
-                "https://ex.com/rec",
+                Some("https://ex.com/rec"),
             )
             .expect("record_call.full");
         }),
         entry!("stop_record_call.bare", "", |fr| {
-            fr.stop_record_call("");
+            fr.stop_record_call(None);
         }),
         entry!("stop_record_call.id", "", |fr| {
-            fr.stop_record_call("rec1");
+            fr.stop_record_call(Some("rec1"));
         }),
         // ---- tap (each direction / codec) -----------------------------------
         entry!("tap.defaults", "", |fr| {
-            // Python tap defaults: direction="both", codec="PCMU", rtp_ptime=20.
-            fr.tap("rtp://10.0.0.1:5004", "", "both", "PCMU", 20, "")
+            // Every optional arg OMITTED, so this entry proves the port's
+            // defaults (direction="both", codec="PCMU", rtp_ptime=20) land on
+            // the wire without being passed.
+            fr.tap("rtp://10.0.0.1:5004", None, None, None, None, None)
                 .expect("tap.defaults");
         }),
         entry!("tap.speak_pcma", "", |fr| {
-            fr.tap("ws://ex.com/tap", "", "speak", "PCMA", 20, "")
-                .expect("tap.speak_pcma");
+            fr.tap(
+                "ws://ex.com/tap",
+                None,
+                Some("speak".into()),
+                Some("PCMA".into()),
+                None,
+                None,
+            )
+            .expect("tap.speak_pcma");
         }),
         entry!("tap.hear_pcmu", "", |fr| {
             // Typed path: TapDirection::Hear / Codec::Pcmu collapse to the same
             // wire strings as "hear"/"PCMU".
             fr.tap(
                 "wss://ex.com/tap",
-                "",
-                TapDirection::Hear,
-                Codec::Pcmu,
-                20,
-                "",
+                None,
+                Some(TapDirection::Hear.into()),
+                Some(Codec::Pcmu.into()),
+                None,
+                None,
             )
             .expect("tap.hear_pcmu");
         }),
         entry!("tap.both_full", "", |fr| {
             fr.tap(
                 "rtp://10.0.0.1:5004",
-                "tap1",
-                "both",
-                "PCMA",
-                40,
-                "https://ex.com/tapstatus",
+                Some("tap1"),
+                Some("both".into()),
+                Some("PCMA".into()),
+                Some(40),
+                Some("https://ex.com/tapstatus"),
             )
             .expect("tap.both_full");
         }),
         entry!("stop_tap.bare", "", |fr| {
-            fr.stop_tap("");
+            fr.stop_tap(None);
         }),
         entry!("stop_tap.id", "", |fr| {
-            fr.stop_tap("tap1");
+            fr.stop_tap(Some("tap1"));
         }),
         // ---- join_conference (simple + full) --------------------------------
         entry!("join_conference.simple", "", |fr| {
-            // All-default params -> simple bare-string form. Rust's defaults:
-            // muted=false, beep="true", start_on_enter=true, end_on_exit=false,
-            // wait_url=None, max_participants=250, record="do-not-record",
-            // region=None, trim="trim-silence", coach=None, callbacks None,
-            // methods "POST", recording_status_callback_event="completed".
+            // Every optional arg OMITTED -> the simple bare-string form. This
+            // entry proves the port's defaults (muted=false, beep="true",
+            // start_on_enter=true, end_on_exit=false, max_participants=250,
+            // record="do-not-record", trim="trim-silence", both callback
+            // methods "POST", recording_status_callback_event="completed")
+            // without any of them being passed.
             fr.join_conference(
                 "sales-floor",
-                false,           // muted
-                "true",          // beep
-                true,            // start_on_enter
-                false,           // end_on_exit
-                None,            // wait_url
-                250,             // max_participants
-                "do-not-record", // record
-                None,            // region
-                "trim-silence",  // trim
-                None,            // coach
-                None,            // status_callback_event
-                None,            // status_callback
-                "POST",          // status_callback_method
-                None,            // recording_status_callback
-                "POST",          // recording_status_callback_method
-                "completed",     // recording_status_callback_event
-                None,            // result
+                None, // muted
+                None, // beep
+                None, // start_on_enter
+                None, // end_on_exit
+                None, // wait_url
+                None, // max_participants
+                None, // record
+                None, // region
+                None, // trim
+                None, // coach
+                None, // status_callback_event
+                None, // status_callback
+                None, // status_callback_method
+                None, // recording_status_callback
+                None, // recording_status_callback_method
+                None, // recording_status_callback_event
+                None, // result
             )
             .expect("join_conference.simple");
         }),
         entry!("join_conference.full", "", |fr| {
             fr.join_conference(
                 "sales-floor",
-                true,      // muted
-                "onEnter", // beep
-                false,     // start_on_enter
-                true,      // end_on_exit
+                Some(true),      // muted
+                Some("onEnter"), // beep
+                Some(false),     // start_on_enter
+                Some(true),      // end_on_exit
                 Some("https://ex.com/hold"),
-                50,                  // max_participants
-                "record-from-start", // record
+                Some(50),                  // max_participants
+                Some("record-from-start"), // record
                 Some("us-east"),
-                "do-not-trim",    // trim
-                Some("call-123"), // coach
+                Some("do-not-trim"), // trim
+                Some("call-123"),    // coach
                 Some("start end join leave"),
                 Some("https://ex.com/cb"),
-                "GET", // status_callback_method
+                Some("GET"), // status_callback_method
                 Some("https://ex.com/rcb"),
-                "GET", // recording_status_callback_method
-                "in-progress completed",
+                Some("GET"), // recording_status_callback_method
+                Some("in-progress completed"),
                 None, // result
             )
             .expect("join_conference.full");
         }),
         // ---- execute_rpc + the three rpc helpers ----------------------------
         entry!("execute_rpc.minimal", "", |fr| {
-            fr.execute_rpc("ai_unhold", Value::Null, "", "");
+            fr.execute_rpc("ai_unhold", None, None, None);
         }),
         entry!("execute_rpc.full", "", |fr| {
             fr.execute_rpc(
                 "ai_message",
-                json!({"role": "system", "message_text": "Hello"}),
-                "call-abc",
-                "node-1",
+                Some(json!({"role": "system", "message_text": "Hello"})),
+                Some("call-abc"),
+                Some("node-1"),
             );
         }),
         entry!("rpc_dial", "", |fr| {
-            // Python rpc_dial default device_type="phone".
+            // `device_type` OMITTED, proving the port's default "phone".
             fr.rpc_dial(
                 "+15551234567",
                 "+15559876543",
                 "https://ex.com/call-agent",
-                "phone",
+                None,
             );
         }),
         entry!("rpc_ai_message", "", |fr| {
             // Python rpc_ai_message default role="system".
-            fr.rpc_ai_message("call-abc", "Please take a message.", "system");
+            fr.rpc_ai_message("call-abc", "Please take a message.", None);
         }),
         entry!("rpc_ai_unhold", "", |fr| {
             fr.rpc_ai_unhold("call-abc");
@@ -545,17 +577,17 @@ fn corpus() -> Vec<Entry> {
             ]);
         }),
         entry!("functions_on_speaker_timeout.true", "", |fr| {
-            fr.enable_functions_on_timeout(true);
+            fr.enable_functions_on_timeout(None);
         }),
         entry!("functions_on_speaker_timeout.false", "", |fr| {
-            fr.enable_functions_on_timeout(false);
+            fr.enable_functions_on_timeout(Some(false));
         }),
         // ---- extensive_data -------------------------------------------------
         entry!("extensive_data.true", "", |fr| {
-            fr.enable_extensive_data(true);
+            fr.enable_extensive_data(None);
         }),
         entry!("extensive_data.false", "", |fr| {
-            fr.enable_extensive_data(false);
+            fr.enable_extensive_data(Some(false));
         }),
         // ---- replace_in_history (str + bool branches) -----------------------
         entry!("replace_in_history.bool", "", |fr| {
@@ -580,13 +612,13 @@ fn corpus() -> Vec<Entry> {
         entry!("execute_swml.dict", "", |fr| {
             fr.execute_swml(
                 json!({"version": "1.0.0", "sections": {"main": [{"answer": {}}]}}),
-                false,
+                None,
             );
         }),
         entry!("execute_swml.dict_transfer", "", |fr| {
             fr.execute_swml(
                 json!({"version": "1.0.0", "sections": {"main": [{"answer": {}}]}}),
-                true,
+                Some(true),
             );
         }),
         entry!("execute_swml.json_string", "", |fr| {
@@ -595,7 +627,7 @@ fn corpus() -> Vec<Entry> {
             // same parsed SWML document either way).
             fr.execute_swml(
                 json!({"version": "1.0.0", "sections": {"main": [{"hangup": {}}]}}),
-                false,
+                None,
             );
         }),
     ]

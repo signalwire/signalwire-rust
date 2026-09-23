@@ -179,8 +179,12 @@ impl ConfigLoader {
     ///
     /// Does not panic in practice: `result` is forced to a JSON object just
     /// above the `as_object_mut().expect(...)`, so the `expect` is unreachable.
+    ///
+    /// `env_prefix` is `Option<&str>` because the argument is optional
+    /// (`env_prefix: str = "SWML_"`); `None` takes `"SWML_"`.
     #[must_use]
-    pub fn merge_with_env(&self, env_prefix: &str) -> Value {
+    pub fn merge_with_env(&self, env_prefix: Option<&str>) -> Value {
+        let env_prefix = env_prefix.unwrap_or("SWML_");
         let mut result = match &self.config {
             Some(c) => self.substitute_vars(c),
             None => Value::Object(Map::new()),
@@ -372,7 +376,7 @@ mod tests {
             env::set_var("SWMLTEST_NEW_KEY", "v");
         }
         let l = loader_with(json!({"existing": "keep"}));
-        let merged = l.merge_with_env("SWMLTEST_");
+        let merged = l.merge_with_env(Some("SWMLTEST_"));
         assert_eq!(merged["existing"], json!("keep"));
         assert_eq!(merged["new"]["key"], json!("v"));
         unsafe {

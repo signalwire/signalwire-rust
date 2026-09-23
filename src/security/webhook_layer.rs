@@ -65,17 +65,18 @@ const SIGNATURE_HEADERS: &[&str] = &["x-signalwire-signature", "x-twilio-signatu
 /// detail, so which branch tripped is not leaked.
 ///
 /// An empty `signing_key` is a programming error (the key is mandatory
-/// configuration). Mirroring Python's `ValueError`, this is caught by a
+/// configuration). matching `ValueError`, this is caught by a
 /// debug assertion; in release builds it degrades to the reject triple
 /// rather than authenticating an unsigned request.
 ///
 /// # Returns
 /// * `None` if the signature is valid — run the handler.
 /// * `Some((403, {}, ""))` otherwise — short-circuit with `403 Forbidden`.
-// `implicit_hasher`: the `HashMap<String, String>` shape is the fixed
-// cross-port decomposed-validation contract (`dict<string,string>` in the
-// signature oracle). Generalizing over the hasher would break the enumerated
-// contract shape for no caller benefit, so keep the concrete map.
+///
+/// The concrete `HashMap<String, String>` is the fixed header-map type this
+/// validation contract is defined over, so `clippy::implicit_hasher` is
+/// suppressed: generalizing over the hasher would change the published
+/// signature for no caller benefit.
 #[allow(clippy::implicit_hasher)]
 #[must_use]
 pub fn validate(

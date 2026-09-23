@@ -224,7 +224,8 @@ impl<'a> DatasphereDocuments<'a> {
     ) -> Result<Value, SignalWireRestError> {
         self.client().post_with_options(
             &self.path(&["search"]),
-            &request.build(),
+            Some(&request.build()),
+            None,
             request_options.as_ref(),
         )
     }
@@ -241,7 +242,7 @@ impl<'a> DatasphereDocuments<'a> {
     ) -> Result<Value, SignalWireRestError> {
         self.client().get_with_options(
             &self.path(&[document_id, "chunks"]),
-            params,
+            Some(params),
             request_options.as_ref(),
         )
     }
@@ -259,7 +260,7 @@ impl<'a> DatasphereDocuments<'a> {
     ) -> Result<Value, SignalWireRestError> {
         self.client().get_with_options(
             &self.path(&[document_id, "chunks", chunk_id]),
-            params,
+            Some(params),
             request_options.as_ref(),
         )
     }

@@ -1754,7 +1754,8 @@ impl<'a> Calling<'a> {
         // serialized into the command body.
         self.client.post_with_options(
             Self::BASE_PATH,
-            &Value::Object(body),
+            Some(&Value::Object(body)),
+            None,
             request_options.as_ref(),
         )
     }

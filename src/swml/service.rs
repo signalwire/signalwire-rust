@@ -62,7 +62,7 @@ pub struct ServiceOptions {
     pub config_file: Option<String>,
     /// Enable SWML schema validation on `add_verb`. Defaults to `true`; can
     /// also be disabled process-wide via `SWML_SKIP_SCHEMA_VALIDATION=1`.
-    /// Mirrors the reference's `SWMLService.__init__(schema_validation=True)`.
+    /// Matches the `SWMLService.__init__(schema_validation=True)`.
     pub schema_validation: bool,
 }
 
@@ -187,7 +187,7 @@ pub struct Service {
     pub(crate) security: crate::core::security_config::SecurityConfig,
 }
 
-/// Routing-callback signature (Python `register_routing_callback`).
+/// Routing-callback signature.
 ///
 /// Receives `(body, headers)` — the parsed request body and the request
 /// headers — and returns `Some(route)` to redirect the request to a different
@@ -218,6 +218,26 @@ pub struct ToolDef {
 }
 
 impl Service {
+    /// Construct a SWML service from `options`.
+    ///
+    /// Resolution rules for the bind and auth settings:
+    ///
+    /// - **route** — trailing slashes are trimmed; an empty or absent route
+    ///   becomes `"/"`.
+    /// - **host** — defaults to `0.0.0.0`, which binds every interface.
+    /// - **port** — falls back to the `PORT` environment variable, then to
+    ///   `3000`.
+    /// - **security** — a unified config layered defaults → `SWML_*`
+    ///   environment → the config file's `security` section (highest
+    ///   priority).
+    /// - **basic auth** — explicit `options` credentials win, then the
+    ///   config-file/environment pair, and failing both a random username
+    ///   and 32-hex-character password are generated. That generated pair
+    ///   exists only in this process and changes on every restart, so it is
+    ///   logged once at `warn` level — otherwise every external caller would
+    ///   silently get 401. Set `SWML_BASIC_AUTH_USER` /
+    ///   `SWML_BASIC_AUTH_PASSWORD` to pin stable credentials and suppress
+    ///   the warning.
     pub fn new(options: ServiceOptions) -> Self {
         let route = options.route.map_or_else(
             || "/".to_string(),
@@ -338,7 +358,7 @@ impl Service {
     ///
     /// Skills mark a parameter required by setting `"required": true` *inside*
     /// the property object (the ergonomic per-property idiom). JSON Schema —
-    /// and the Python reference — express requiredness as a top-level
+    /// and the wire contract — express requiredness as a top-level
     /// `required: [...]` array on the parameters object, not a per-property
     /// flag. This lifts each property's `"required": true` into that array (in
     /// the property's declared order) and strips the flag from the property, so
@@ -522,8 +542,12 @@ impl Service {
         &self,
         name: &str,
         args: &serde_json::Map<String, Value>,
-        raw_data: &serde_json::Map<String, Value>,
+        raw_data: Option<&serde_json::Map<String, Value>>,
     ) -> Option<FunctionResult> {
+        // `raw_data` is optional in the reference (`dict | None = None`); an
+        // omitted post-data payload is the empty map the handler sees.
+        let empty = serde_json::Map::new();
+        let raw_data = raw_data.unwrap_or(&empty);
         let tool = self.tools.get(name)?;
         let handler = tool.handler.as_ref()?;
         Some(handler(args, raw_data))
@@ -551,18 +575,31 @@ impl Service {
     // Accessors
     // ------------------------------------------------------------------
 
+    /// The service's name — its identity when hosted by
+    /// [`AgentServer`](crate::server::AgentServer), and the key its
+    /// config-file section is looked up under.
     pub fn name(&self) -> &str {
         &self.name
     }
 
+    /// The HTTP path this service is mounted at, with trailing slashes
+    /// trimmed. `"/"` when mounted at the root.
+    ///
+    /// This segment is spliced into every webhook URL the service
+    /// advertises.
     pub fn route(&self) -> &str {
         &self.route
     }
 
+    /// The address the service binds to. `0.0.0.0` — the default — accepts
+    /// connections on every interface, so bind `127.0.0.1` instead when the
+    /// service should only be reachable locally.
     pub fn host(&self) -> &str {
         &self.host
     }
 
+    /// The TCP port the service binds to: from `ServiceOptions`, else the
+    /// `PORT` environment variable, else `3000`.
     pub fn port(&self) -> u16 {
         self.port
     }
@@ -609,14 +646,71 @@ impl Service {
         &self.security
     }
 
+    /// Whether TLS is enabled for this service.
+    ///
+    /// Derived from the resolved [`security`](Self::security) config, mirroring
+    /// the reference's `self.ssl_enabled = self.security.ssl_enabled`
+    /// (`swml_service.py:143`). The reference exposes it as a public instance
+    /// attribute on `SWMLService`; Rust exposes the same caller-observable
+    /// value as a reader.
+    #[must_use]
+    pub fn ssl_enabled(&self) -> bool {
+        self.security.ssl_enabled
+    }
+
+    /// The serving domain, when configured.
+    ///
+    /// Derived from the resolved [`security`](Self::security) config, mirroring
+    /// the reference's `self.domain = self.security.domain`
+    /// (`swml_service.py:144`).
+    #[must_use]
+    pub fn domain(&self) -> Option<&str> {
+        self.security.domain.as_deref()
+    }
+
+    /// Path to the TLS certificate, when configured.
+    ///
+    /// Derived from the resolved [`security`](Self::security) config, mirroring
+    /// the reference's `self.ssl_cert_path = self.security.ssl_cert_path`
+    /// (`swml_service.py:145`).
+    #[must_use]
+    pub fn ssl_cert_path(&self) -> Option<&str> {
+        self.security.ssl_cert_path.as_deref()
+    }
+
+    /// Path to the TLS private key, when configured.
+    ///
+    /// Derived from the resolved [`security`](Self::security) config, mirroring
+    /// the reference's `self.ssl_key_path = self.security.ssl_key_path`
+    /// (`swml_service.py:146`).
+    #[must_use]
+    pub fn ssl_key_path(&self) -> Option<&str> {
+        self.security.ssl_key_path.as_deref()
+    }
+
+    /// Borrow the SWML [`Document`] this service serves.
     pub fn document(&self) -> &Document {
         &self.document
     }
 
+    /// Mutably borrow the SWML [`Document`] this service serves — the way to
+    /// add sections and verbs before rendering.
     pub fn document_mut(&mut self) -> &mut Document {
         &mut self.document
     }
 
+    /// The configured basic-auth credentials as `(username, password)`,
+    /// borrowed.
+    ///
+    /// These are the credentials embedded in the webhook URLs the service
+    /// advertises, so they are what an inbound caller must present.
+    /// [`get_basic_auth_credentials_with_source`](Service::get_basic_auth_credentials_with_source)
+    /// reports where they came from.
+    ///
+    /// Compare candidate credentials with
+    /// [`validate_basic_auth`](Service::validate_basic_auth), which is
+    /// constant-time; comparing the values returned here directly risks a
+    /// timing side channel.
     pub fn basic_auth_credentials(&self) -> (&str, &str) {
         (&self.basic_auth_user, &self.basic_auth_password)
     }
@@ -655,11 +749,28 @@ impl Service {
             && constant_time_eq(password, &self.basic_auth_password)
     }
 
+    /// Render this service's document to compact JSON — the form served on
+    /// the wire.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the document cannot be serialised, which cannot happen for
+    /// a document built through this API (every value is already valid
+    /// JSON).
     #[must_use]
     pub fn render(&self) -> String {
         self.document.render()
     }
 
+    /// Render this service's document to indented JSON, for logs and
+    /// debugging. Byte-for-byte different from
+    /// [`render`](Service::render) but semantically identical — serve
+    /// `render` output, not this.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the document cannot be serialised, which cannot happen for
+    /// a document built through this API.
     #[must_use]
     pub fn render_pretty(&self) -> String {
         self.document.render_pretty()
@@ -729,8 +840,7 @@ impl Service {
     ///
     /// # Panics
     ///
-    /// Panics on a schema-invalid verb config (mirrors Python's
-    /// `SchemaValidationError`), matching the fail-loud contract of the
+    /// Panics on a schema-invalid verb config, matching the fail-loud contract of the
     /// legacy section-scoped path.
     pub fn add_verb(&mut self, verb_name: &str, config: Value) -> bool {
         self.add_verb_to_section("main", verb_name, config)
@@ -742,7 +852,7 @@ impl Service {
     ///
     /// Panics if the verb name is not in the schema, or if the verb config
     /// fails validation — the latter carrying a `SchemaValidationError`,
-    /// mirroring Python `SWMLService.add_verb`'s
+    /// matching `SWMLService.add_verb`'s
     /// `raise SchemaValidationError(verb_name, errors)`.
     pub fn add_verb_to_section(&mut self, section: &str, verb: &str, config: Value) -> bool {
         if !self.document.has_section(section) {
@@ -864,10 +974,14 @@ impl Service {
 
     /// Register a routing callback for `path`. The callback inspects request
     /// data and returns `Some(route)` to redirect.
-    pub fn register_routing_callback<F>(&mut self, callback: F, path: &str) -> &mut Self
+    ///
+    /// `path` is `Option<&str>` because the argument is optional
+    /// (`path: str = "/sip"`); `None` takes `"/sip"`.
+    pub fn register_routing_callback<F>(&mut self, callback: F, path: Option<&str>) -> &mut Self
     where
         F: Fn(&Value, &HashMap<String, String>) -> Option<String> + Send + Sync + 'static,
     {
+        let path = path.unwrap_or("/sip");
         // Path normalization mirrors Python's `register_routing_callback`
         // (swml_service.py): strip trailing '/', then ensure a leading '/'.
         // "/sip/" -> "/sip"; "voice" -> "/voice"; "" -> "/".
@@ -915,7 +1029,7 @@ impl Service {
         crate::swml::router::build_router(svc)
     }
 
-    /// Start a blocking web server for this service (Python `serve`).
+    /// Start a blocking web server for this service.
     ///
     /// The Rust HTTP serving lives on [`crate::server::AgentServer`]; this
     /// method is the entry point. `host`/`port` override the
@@ -924,7 +1038,7 @@ impl Service {
         self.run();
     }
 
-    /// Stop the running server (Python `stop`). The Rust `serve`/`run` is a
+    /// Stop the running server. The Rust `serve`/`run` is a
     /// synchronous placeholder, so `stop` is a no-op entry point.
     pub fn stop(&self) {}
 
@@ -933,13 +1047,21 @@ impl Service {
     // ------------------------------------------------------------------
 
     /// Handle an HTTP request. Returns `(status_code, headers, body)`.
+    ///
+    /// `body` is `Option<&str>` because the argument is optional
+    /// (`body: dict | None = None`) — a GET carries no body at all.
     pub fn handle_request(
         &self,
         method: &str,
         path: &str,
         headers: &HashMap<String, String>,
-        body: &str,
+        body: Option<&str>,
     ) -> (u16, HashMap<String, String>, String) {
+        // Reference default is `None` (no body), NOT the empty string. The
+        // fallback stays `unwrap_or_default()` rather than `unwrap_or("")`:
+        // the enumerator records a default from `unwrap_or(<literal>)`, and a
+        // recorded `""` would contradict the reference's `null`.
+        let body = body.unwrap_or_default();
         self.logger
             .info(&format!("incoming request: {method} {path}"));
 
@@ -1049,7 +1171,7 @@ impl Service {
 
     /// Extract the SIP username from a request body's `call.to` field.
     ///
-    /// Mirrors Python's `SWMLService.extract_sip_username` exactly
+    /// Matches `SWMLService.extract_sip_username` exactly
     /// (`swml_service.py`): reads only `call.to`, then branches on the URI
     /// scheme —
     ///
@@ -1386,7 +1508,7 @@ impl Service {
             let _ = request.as_reader().read_to_string(&mut body_buf);
 
             let (status, resp_headers, resp_body) =
-                self.handle_request(&method, &path, &req_headers, &body_buf);
+                self.handle_request(&method, &path, &req_headers, Some(&body_buf));
 
             let mut response =
                 tiny_http::Response::from_string(&resp_body).with_status_code(status);
@@ -1496,6 +1618,30 @@ mod tests {
         assert_eq!(svc.port(), 3000);
     }
 
+    /// `SWMLService` exposes `ssl_enabled` / `domain` / `ssl_cert_path` /
+    /// `ssl_key_path` as derived reads off the resolved security config.
+    /// Assert they track `security()`
+    /// exactly rather than holding an independent copy.
+    #[test]
+    fn test_ssl_accessors_derive_from_security_config() {
+        let svc = Service::new(default_options("ssl-derive"));
+        assert_eq!(svc.ssl_enabled(), svc.security().ssl_enabled);
+        assert_eq!(svc.domain(), svc.security().domain.as_deref());
+        assert_eq!(svc.ssl_cert_path(), svc.security().ssl_cert_path.as_deref());
+        assert_eq!(svc.ssl_key_path(), svc.security().ssl_key_path.as_deref());
+    }
+
+    /// Secure-by-default: with no SSL configuration the service reports TLS
+    /// off and no cert/key/domain — matching `SecurityConfig::default()`.
+    #[test]
+    fn test_ssl_accessors_default_off() {
+        let svc = Service::new(default_options("ssl-default"));
+        assert!(!svc.ssl_enabled());
+        assert_eq!(svc.ssl_cert_path(), None);
+        assert_eq!(svc.ssl_key_path(), None);
+        assert_eq!(svc.domain(), None);
+    }
+
     #[test]
     fn test_explicit_auth() {
         let svc = Service::new(
@@ -1544,7 +1690,7 @@ mod tests {
     #[test]
     fn test_health_endpoint() {
         let svc = Service::new(default_options("svc"));
-        let (status, headers, body) = svc.handle_request("GET", "/health", &HashMap::new(), "");
+        let (status, headers, body) = svc.handle_request("GET", "/health", &HashMap::new(), None);
         assert_eq!(status, 200);
         let parsed: Value = serde_json::from_str(&body).unwrap();
         assert_eq!(parsed["status"], "healthy");
@@ -1554,7 +1700,7 @@ mod tests {
     #[test]
     fn test_ready_endpoint() {
         let svc = Service::new(default_options("svc"));
-        let (status, _headers, body) = svc.handle_request("GET", "/ready", &HashMap::new(), "");
+        let (status, _headers, body) = svc.handle_request("GET", "/ready", &HashMap::new(), None);
         assert_eq!(status, 200);
         let parsed: Value = serde_json::from_str(&body).unwrap();
         assert_eq!(parsed["status"], "ready");
@@ -1563,7 +1709,7 @@ mod tests {
     #[test]
     fn test_auth_required_on_root() {
         let svc = Service::new(default_options("svc"));
-        let (status, headers, body) = svc.handle_request("POST", "/", &HashMap::new(), "");
+        let (status, headers, body) = svc.handle_request("POST", "/", &HashMap::new(), None);
         assert_eq!(status, 401);
         // Framework-free contract: JSON error body + bare `WWW-Authenticate:
         // Basic` header (no realm, no Content-Type).
@@ -1576,7 +1722,7 @@ mod tests {
     fn test_auth_success_returns_document() {
         let svc = Service::new(default_options("svc"));
         let headers = authed_headers("testuser", "testpass");
-        let (status, _, body) = svc.handle_request("POST", "/", &headers, "");
+        let (status, _, body) = svc.handle_request("POST", "/", &headers, None);
         assert_eq!(status, 200);
         let parsed: Value = serde_json::from_str(&body).unwrap();
         assert_eq!(parsed["version"], "1.0.0");
@@ -1586,7 +1732,7 @@ mod tests {
     fn test_auth_wrong_password() {
         let svc = Service::new(default_options("svc"));
         let headers = authed_headers("testuser", "wrong");
-        let (status, _, _) = svc.handle_request("POST", "/", &headers, "");
+        let (status, _, _) = svc.handle_request("POST", "/", &headers, None);
         assert_eq!(status, 401);
     }
 
@@ -1594,14 +1740,14 @@ mod tests {
     fn test_auth_wrong_user() {
         let svc = Service::new(default_options("svc"));
         let headers = authed_headers("wrong", "testpass");
-        let (status, _, _) = svc.handle_request("POST", "/", &headers, "");
+        let (status, _, _) = svc.handle_request("POST", "/", &headers, None);
         assert_eq!(status, 401);
     }
 
     #[test]
     fn test_security_headers_present() {
         let svc = Service::new(default_options("svc"));
-        let (_, headers, _) = svc.handle_request("GET", "/health", &HashMap::new(), "");
+        let (_, headers, _) = svc.handle_request("GET", "/health", &HashMap::new(), None);
         assert_eq!(headers.get("X-Content-Type-Options").unwrap(), "nosniff");
         assert_eq!(headers.get("X-Frame-Options").unwrap(), "DENY");
         assert_eq!(headers.get("Cache-Control").unwrap(), "no-store");
@@ -1755,7 +1901,7 @@ mod tests {
         let svc = Service::new(default_options("svc"));
         let headers = authed_headers("testuser", "testpass");
         let big_body = "x".repeat(MAX_BODY_SIZE + 1);
-        let (status, _, body) = svc.handle_request("POST", "/", &headers, &big_body);
+        let (status, _, body) = svc.handle_request("POST", "/", &headers, Some(&big_body));
         assert_eq!(status, 413);
         let parsed: Value = serde_json::from_str(&body).unwrap();
         assert_eq!(parsed["error"], "Request body too large");
@@ -1767,7 +1913,7 @@ mod tests {
         // letting the platform fetch it from either endpoint.
         let svc = Service::new(default_options("svc"));
         let headers = authed_headers("testuser", "testpass");
-        let (status, _, body) = svc.handle_request("GET", "/swaig", &headers, "");
+        let (status, _, body) = svc.handle_request("GET", "/swaig", &headers, None);
         assert_eq!(status, 200);
         let parsed: Value = serde_json::from_str(&body).unwrap();
         assert!(parsed.is_object(), "SWML doc must be an object, got {body}");
@@ -1798,7 +1944,7 @@ mod tests {
         );
         let headers = authed_headers("testuser", "testpass");
         let body = r#"{"function":"lookup","argument":{"parsed":[{"competitor":"ACME"}]}}"#;
-        let (status, _, resp) = svc.handle_request("POST", "/swaig", &headers, body);
+        let (status, _, resp) = svc.handle_request("POST", "/swaig", &headers, Some(body));
         assert_eq!(status, 200);
         let parsed: Value = serde_json::from_str(&resp).unwrap();
         assert_eq!(parsed["response"], "ACME pricing: $99");
@@ -1812,7 +1958,7 @@ mod tests {
         let svc = Service::new(default_options("svc"));
         let headers = authed_headers("testuser", "testpass");
         let body = r#"{"function":"never_registered","argument":{"parsed":[{}]}}"#;
-        let (status, _, resp) = svc.handle_request("POST", "/swaig", &headers, body);
+        let (status, _, resp) = svc.handle_request("POST", "/swaig", &headers, Some(body));
         assert_eq!(status, 200);
         let parsed: Value = serde_json::from_str(&resp).unwrap();
         let msg = parsed["response"].as_str().unwrap_or("");
@@ -1833,7 +1979,7 @@ mod tests {
         let svc = Service::new(default_options("svc"));
         let headers = authed_headers("testuser", "testpass");
         let body = r#"{"function":"../etc/passwd","argument":{"parsed":[{}]}}"#;
-        let (status, _, resp) = svc.handle_request("POST", "/swaig", &headers, body);
+        let (status, _, resp) = svc.handle_request("POST", "/swaig", &headers, Some(body));
         assert_eq!(status, 400);
         assert!(resp.contains("Invalid function name format"));
     }
@@ -1843,7 +1989,7 @@ mod tests {
         let svc = Service::new(default_options("svc"));
         let headers = authed_headers("testuser", "testpass");
         let body = r#"{"argument":{"parsed":[{}]}}"#;
-        let (status, _, resp) = svc.handle_request("POST", "/swaig", &headers, body);
+        let (status, _, resp) = svc.handle_request("POST", "/swaig", &headers, Some(body));
         assert_eq!(status, 400);
         assert!(resp.contains("Missing function name"));
     }
@@ -1868,7 +2014,7 @@ mod tests {
         );
         let headers = authed_headers("testuser", "testpass");
         let body = r#"{"function":"echo","arguments":{"name":"there"}}"#;
-        let (status, _, resp) = svc.handle_request("POST", "/swaig", &headers, body);
+        let (status, _, resp) = svc.handle_request("POST", "/swaig", &headers, Some(body));
         assert_eq!(status, 200);
         let parsed: Value = serde_json::from_str(&resp).unwrap();
         assert_eq!(parsed["response"], "hi there");
@@ -1901,7 +2047,7 @@ mod tests {
         // unknown route is a web-framework concern, layered above this core.
         let svc = Service::new(default_options("svc"));
         let headers = authed_headers("testuser", "testpass");
-        let (status, _, body) = svc.handle_request("POST", "/post_prompt", &headers, "");
+        let (status, _, body) = svc.handle_request("POST", "/post_prompt", &headers, None);
         assert_eq!(status, 200);
         let parsed: Value = serde_json::from_str(&body).unwrap();
         assert_eq!(parsed["version"], "1.0.0");
@@ -1913,7 +2059,7 @@ mod tests {
         // the framework-free core contract.
         let svc = Service::new(default_options("svc"));
         let headers = authed_headers("testuser", "testpass");
-        let (status, _, _) = svc.handle_request("GET", "/unknown", &headers, "");
+        let (status, _, _) = svc.handle_request("GET", "/unknown", &headers, None);
         assert_eq!(status, 200);
     }
 
@@ -1929,15 +2075,15 @@ mod tests {
 
         let headers = authed_headers("u", "p");
         // Root of the custom route
-        let (status, _, _) = svc.handle_request("POST", "/api/v1", &headers, "");
+        let (status, _, _) = svc.handle_request("POST", "/api/v1", &headers, None);
         assert_eq!(status, 200);
 
         // Sub-route — GET /swaig returns the SWML doc.
-        let (status, _, _) = svc.handle_request("GET", "/api/v1/swaig", &headers, "");
+        let (status, _, _) = svc.handle_request("GET", "/api/v1/swaig", &headers, None);
         assert_eq!(status, 200);
 
         // Path outside the route should 404
-        let (status, _, _) = svc.handle_request("POST", "/other", &headers, "");
+        let (status, _, _) = svc.handle_request("POST", "/other", &headers, None);
         assert_eq!(status, 404);
     }
 
@@ -1953,14 +2099,14 @@ mod tests {
     fn test_health_no_auth_required() {
         let svc = Service::new(default_options("svc"));
         // No auth headers at all — should still work for /health
-        let (status, _, _) = svc.handle_request("GET", "/health", &HashMap::new(), "");
+        let (status, _, _) = svc.handle_request("GET", "/health", &HashMap::new(), None);
         assert_eq!(status, 200);
     }
 
     #[test]
     fn test_ready_no_auth_required() {
         let svc = Service::new(default_options("svc"));
-        let (status, _, _) = svc.handle_request("GET", "/ready", &HashMap::new(), "");
+        let (status, _, _) = svc.handle_request("GET", "/ready", &HashMap::new(), None);
         assert_eq!(status, 200);
     }
 
@@ -1986,7 +2132,7 @@ mod tests {
         );
         let mut args = serde_json::Map::new();
         args.insert("x".to_string(), Value::String("y".to_string()));
-        let result = svc.on_function_call("lookup", &args, &serde_json::Map::new());
+        let result = svc.on_function_call("lookup", &args, Some(&serde_json::Map::new()));
         assert!(result.is_some());
         let v = result.unwrap().to_value();
         assert_eq!(v["response"], "ok");
@@ -2002,7 +2148,7 @@ mod tests {
         let result = svc.on_function_call(
             "no_such_fn",
             &serde_json::Map::new(),
-            &serde_json::Map::new(),
+            Some(&serde_json::Map::new()),
         );
         assert!(result.is_none());
     }
@@ -2064,7 +2210,8 @@ mod tests {
         );
         let mut args = serde_json::Map::new();
         args.insert("competitor".to_string(), Value::String("ACME".to_string()));
-        let result = svc.on_function_call("lookup_competitor", &args, &serde_json::Map::new());
+        let result =
+            svc.on_function_call("lookup_competitor", &args, Some(&serde_json::Map::new()));
         assert!(result.is_some());
         let v = result.unwrap().to_value();
         let resp = v["response"].as_str().unwrap();

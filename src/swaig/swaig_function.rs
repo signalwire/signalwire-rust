@@ -1,6 +1,6 @@
 //! SWAIG function — a tool the AI model can call.
 //!
-//! Port of Python `signalwire.core.swaig_function.SWAIGFunction`. Represents a
+//! Represents a
 //! single tool (exactly the OpenAI/Anthropic "function tool" concept): a name,
 //! an LLM-facing description, a JSON-Schema parameter object, and a handler
 //! invoked when the model calls it. Rendered into the SWAIG array via
@@ -275,7 +275,7 @@ impl SwaigFunction {
     }
 
     /// Wrap the raw parameters into the `{type, properties, [required]}`
-    /// structure the SWML AI verb expects (Python `_ensure_parameter_structure`).
+    /// structure the SWML AI verb expects.
     fn ensure_parameter_structure(&self) -> Value {
         match &self.parameters {
             Value::Object(obj) if obj.is_empty() => json!({"type": "object", "properties": {}}),

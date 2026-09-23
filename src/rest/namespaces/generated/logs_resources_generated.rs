@@ -50,6 +50,6 @@ impl<'a> ConferenceLogs<'a> {
         request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
         self.client()
-            .get_with_options(self.base_path(), params, request_options.as_ref())
+            .get_with_options(self.base_path(), Some(params), request_options.as_ref())
     }
 }

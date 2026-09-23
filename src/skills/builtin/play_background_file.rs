@@ -9,6 +9,10 @@ pub struct PlayBackgroundFile {
 }
 
 impl PlayBackgroundFile {
+    /// Create the skill from its configuration `params`.
+    ///
+    /// Requires a non-empty `files` array param listing the playable files.
+    /// Setup fails when it is absent or empty.
     pub fn new(params: Map<String, Value>) -> Self {
         PlayBackgroundFile {
             sp: SkillParams::new(params),
@@ -44,7 +48,7 @@ impl SkillBase for PlayBackgroundFile {
 
     /// Build the DataMap-backed background-playback tool.
     ///
-    /// Mirrors Python `PlayBackgroundFileSkill.get_tools()`.
+    /// Matches `PlayBackgroundFileSkill.get_tools()`.
     fn get_tools(&self) -> Vec<Value> {
         let tool_name = self.get_tool_name("play_background_file");
         let files = self.sp.get_array("files");

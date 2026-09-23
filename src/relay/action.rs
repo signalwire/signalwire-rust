@@ -43,10 +43,31 @@ pub struct Action {
 }
 
 impl Action {
+    /// Create an action handle for the three RELAY correlation ids.
+    ///
+    /// The action is created **not stoppable**: its stop method is the empty
+    /// string, so [`stop`](Action::stop) emits nothing. Use
+    /// [`with_stop_method`](Action::with_stop_method) for an action that
+    /// carries a stop RPC.
+    ///
+    /// No client is attached — sub-commands are recorded in memory only
+    /// until [`set_client`](Action::set_client) wires one up.
     pub fn new(control_id: &str, call_id: &str, node_id: &str) -> Self {
         Self::with_stop_method(control_id, call_id, node_id, "")
     }
 
+    /// Create an action handle that knows the RPC method used to stop it.
+    ///
+    /// - `control_id` — correlates every event for this one action,
+    ///   distinguishing it from other actions concurrent on the same call.
+    /// - `call_id` — the call leg the action runs on.
+    /// - `node_id` — the media node owning the leg; echoed back on
+    ///   sub-command frames so they route to the right node.
+    /// - `stop_method` — the RELAY method emitted to stop this action, e.g.
+    ///   `"calling.play.stop"`. An empty string means not stoppable.
+    ///
+    /// No client is attached — sub-commands are recorded in memory only
+    /// until [`set_client`](Action::set_client) wires one up.
     pub fn with_stop_method(
         control_id: &str,
         call_id: &str,
@@ -91,10 +112,14 @@ impl Action {
     // Accessors
     // ------------------------------------------------------------------
 
+    /// The `control_id` correlating every event and sub-command frame for
+    /// this action, distinguishing it from other actions running
+    /// concurrently on the same call.
     pub fn control_id(&self) -> &str {
         &self.control_id
     }
 
+    /// The `call_id` of the call leg this action runs on.
     pub fn call_id(&self) -> &str {
         &self.call_id
     }
@@ -118,6 +143,10 @@ impl Action {
         self.client()?.get_call(&self.call_id)
     }
 
+    /// The `node_id` of the media node handling this call.
+    ///
+    /// Echoed back on every sub-command frame this action emits so the
+    /// request is routed to the node that owns the leg.
     pub fn node_id(&self) -> &str {
         &self.node_id
     }
@@ -127,6 +156,21 @@ impl Action {
     /// while holding the lock). This does not occur under normal operation.
     pub fn is_done(&self) -> bool {
         *self.completed.lock().unwrap()
+    }
+
+    /// The reference's derived public ctor attribute `Action.completed` — a
+    /// bool state flag, `false` at construction and flipped `true` when the
+    /// action resolves (`relay/call.py:90,102`).
+    ///
+    /// The reference exposes this value under two spellings: the attribute
+    /// `completed` and the `is_done` property. Both are part of the contract,
+    /// so both are real readers here (same shape as the go and C++ ports).
+    ///
+    /// # Panics
+    /// Panics if an internal mutex is poisoned (i.e. another thread panicked
+    /// while holding the lock). This does not occur under normal operation.
+    pub fn completed(&self) -> bool {
+        self.is_done()
     }
 
     /// # Panics
@@ -157,6 +201,13 @@ impl Action {
         self.events.lock().unwrap().clone()
     }
 
+    /// The RELAY RPC method this action emits to stop itself, e.g.
+    /// `"calling.play.stop"`.
+    ///
+    /// An empty string means the action is not stoppable — [`stop`] is then
+    /// a no-op that emits no frame.
+    ///
+    /// [`stop`]: Action::stop
     pub fn stop_method(&self) -> &str {
         &self.stop_method
     }
@@ -189,9 +240,7 @@ impl Action {
     }
 
     /// Block until the action reaches a terminal state, then return its
-    /// resolved result (the terminal payload).
-    ///
-    /// Mirrors Python's `Action.wait`. Python's coroutine awaits a Future
+    /// resolved result (the terminal payload). Python's coroutine awaits a Future
     /// that resolves to the terminal `RelayEvent`; the Rust `Call` is a
     /// synchronous command surface, so `wait` blocks the calling thread on
     /// the same completion signal `resolve` fires and yields the resolved
@@ -400,6 +449,16 @@ macro_rules! action_subclass {
         }
 
         impl $name {
+            /// Create this action handle for the given RELAY correlation
+            /// ids, pre-wired with this action type's stop RPC method.
+            ///
+            /// - `control_id` — correlates every event for this one action.
+            /// - `call_id` — the call leg the action runs on.
+            /// - `node_id` — the media node owning the leg, echoed back on
+            ///   sub-command frames.
+            ///
+            /// No client is attached, so sub-commands are recorded in memory
+            /// only until [`Action::set_client`] wires one up.
             pub fn new(control_id: &str, call_id: &str, node_id: &str) -> Self {
                 $name {
                     inner: Arc::new(Action::with_stop_method(
@@ -408,6 +467,11 @@ macro_rules! action_subclass {
                 }
             }
 
+            /// Borrow the underlying [`Action`].
+            ///
+            /// The same surface is reachable through the `Deref` impl; this
+            /// is the explicit form, matching the wire contract's base-class
+            /// access.
             pub fn action(&self) -> &Action {
                 &self.inner
             }
@@ -438,10 +502,23 @@ impl PlayAction {
         self.execute_subcommand("calling.play.pause", extra);
     }
 
+    /// Resume a paused play, emitting `calling.play.resume`.
+    ///
+    /// Fire-and-forget: the frame is sent (or, with no client attached,
+    /// recorded) and this returns immediately. Watch the action's events for
+    /// the server's acknowledgement.
     pub fn resume(&self) {
         self.execute_subcommand("calling.play.resume", HashMap::new());
     }
 
+    /// Adjust the playback volume, emitting `calling.play.volume` with `db`
+    /// in the `volume` param.
+    ///
+    /// `db` is a gain in decibels relative to the source, so `0.0` leaves it
+    /// unchanged, negative attenuates, and positive amplifies. Passed
+    /// through verbatim — no clamping is applied here.
+    ///
+    /// Fire-and-forget, as with [`resume`](PlayAction::resume).
     pub fn volume(&self, db: f64) {
         let mut extra = HashMap::new();
         extra.insert("volume".to_string(), serde_json::json!(db));
@@ -454,8 +531,7 @@ impl PlayAction {
 action_subclass!(RecordAction, "calling.record.stop");
 
 impl RecordAction {
-    /// Pause the running record. Mirrors Python's
-    /// `PausableAction.pause(behavior: str | None = None)`.
+    /// Pause the running record.
     pub fn pause(&self, behavior: Option<&str>) {
         let mut extra = HashMap::new();
         if let Some(b) = behavior {
@@ -464,10 +540,19 @@ impl RecordAction {
         self.execute_subcommand("calling.record.pause", extra);
     }
 
+    /// Resume a paused recording, emitting `calling.record.resume`.
+    ///
+    /// Fire-and-forget: the frame is sent (or recorded, with no client
+    /// attached) and this returns immediately.
     pub fn resume(&self) {
         self.execute_subcommand("calling.record.resume", HashMap::new());
     }
 
+    /// The URL of the finished recording, read from the action's `url`
+    /// payload field.
+    ///
+    /// `None` until the server has reported it — typically not before the
+    /// action reaches a terminal state.
     pub fn url(&self) -> Option<String> {
         self.payload()
             .get("url")
@@ -475,12 +560,20 @@ impl RecordAction {
             .map(std::string::ToString::to_string)
     }
 
+    /// The recording's duration in seconds, read from the `duration`
+    /// payload field.
+    ///
+    /// `None` until the server reports it, or if the field is not numeric.
     pub fn duration(&self) -> Option<f64> {
         self.payload()
             .get("duration")
             .and_then(serde_json::Value::as_f64)
     }
 
+    /// The recording's size in bytes, read from the `size` payload field.
+    ///
+    /// `None` until the server reports it, or if the field is not a
+    /// non-negative integer.
     pub fn size(&self) -> Option<u64> {
         self.payload()
             .get("size")
@@ -490,11 +583,30 @@ impl RecordAction {
 
 // -- CollectAction (ignores play events) -------------------------------
 
+/// Handle for a `play_and_collect` — a prompt played while digits or speech
+/// are collected.
+///
+/// Its control surface uses the `play_and_collect` command prefix
+/// (`calling.play_and_collect.stop` / `.pause` / `.resume` / `.volume`),
+/// which is what distinguishes it from [`StandaloneCollectAction`]. The one
+/// exception is the input timer, which keeps the bare `collect` prefix.
+///
+/// Because the prompt is part of the same operation, intermediate
+/// `calling.call.play` events are noise here:
+/// [`handle_event_filtered`](CollectAction::handle_event_filtered) drops
+/// them so a play reaching `finished` cannot resolve the collect early.
 pub struct CollectAction {
+    /// The underlying [`Action`], also reachable through this type's
+    /// `Deref`.
     pub inner: Arc<Action>,
 }
 
 impl CollectAction {
+    /// Create a `play_and_collect` handle for the given RELAY correlation
+    /// ids, pre-wired to stop via `calling.play_and_collect.stop`.
+    ///
+    /// See [`Action::with_stop_method`] for what the three ids mean. No
+    /// client is attached until [`Action::set_client`] wires one up.
     pub fn new(control_id: &str, call_id: &str, node_id: &str) -> Self {
         CollectAction {
             inner: Arc::new(Action::with_stop_method(
@@ -506,6 +618,8 @@ impl CollectAction {
         }
     }
 
+    /// Borrow the underlying [`Action`]. The same surface is reachable
+    /// through this type's `Deref`; this is the explicit form.
     pub fn action(&self) -> &Action {
         &self.inner
     }
@@ -540,6 +654,12 @@ impl CollectAction {
         self.execute_subcommand("calling.collect.start_input_timers", HashMap::new());
     }
 
+    /// The collect outcome, read from the action's `result` payload field.
+    ///
+    /// The object carries what was collected — a `digits` field for DTMF, or
+    /// the speech result — plus the collect's own terminal type. `None`
+    /// until the server reports a result, which for a `no_input` or
+    /// `no_match` outcome may never happen.
     pub fn collect_result(&self) -> Option<Value> {
         self.payload().get("result").cloned()
     }
@@ -561,20 +681,32 @@ impl std::ops::Deref for CollectAction {
 }
 
 // -- StandaloneCollectAction (calling.collect without a play phase) -----
-//
-// Mirrors Python's `StandaloneCollectAction`. The distinction from
-// `CollectAction`: Python's `CollectAction` is the play_and_collect handle
-// (its stop/pause/volume use the `play_and_collect` command prefix), while
-// `StandaloneCollectAction` is the bare `calling.collect` handle whose
-// control surface is the `collect` prefix (`calling.collect.stop` /
-// `calling.collect.start_input_timers`). Kept as a separate type so the
-// two collect flavours emit their correct, distinct stop wire methods.
 
+/// Handle for a bare `calling.collect` — digit or speech collection with no
+/// play phase.
+///
+/// Matches `StandaloneCollectAction`. The distinction from
+/// [`CollectAction`] is the command prefix: this type's control surface is
+/// `collect` (`calling.collect.stop`,
+/// `calling.collect.start_input_timers`), while `CollectAction` is the
+/// `play_and_collect` handle. They are kept as separate types precisely so
+/// the two collect flavours emit their correct, distinct stop methods.
+///
+/// With no play phase there are no play events to filter, so unlike
+/// [`CollectAction`] this type has no pause/resume/volume surface and no
+/// event filter.
 pub struct StandaloneCollectAction {
+    /// The underlying [`Action`], also reachable through this type's
+    /// `Deref`.
     pub inner: Arc<Action>,
 }
 
 impl StandaloneCollectAction {
+    /// Create a standalone-collect handle for the given RELAY correlation
+    /// ids, pre-wired to stop via `calling.collect.stop`.
+    ///
+    /// See [`Action::with_stop_method`] for what the three ids mean. No
+    /// client is attached until [`Action::set_client`] wires one up.
     pub fn new(control_id: &str, call_id: &str, node_id: &str) -> Self {
         StandaloneCollectAction {
             inner: Arc::new(Action::with_stop_method(
@@ -586,6 +718,8 @@ impl StandaloneCollectAction {
         }
     }
 
+    /// Borrow the underlying [`Action`]. The same surface is reachable
+    /// through this type's `Deref`; this is the explicit form.
     pub fn action(&self) -> &Action {
         &self.inner
     }
@@ -595,6 +729,11 @@ impl StandaloneCollectAction {
         self.execute_subcommand("calling.collect.start_input_timers", HashMap::new());
     }
 
+    /// The collect outcome, read from the action's `result` payload field.
+    ///
+    /// The object carries what was collected — a `digits` field for DTMF, or
+    /// the speech result. `None` until the server reports a result, which
+    /// for a `no_input` or `no_match` outcome may never happen.
     pub fn collect_result(&self) -> Option<Value> {
         self.payload().get("result").cloned()
     }
@@ -612,6 +751,15 @@ impl std::ops::Deref for StandaloneCollectAction {
 action_subclass!(DetectAction, "calling.detect.stop");
 
 impl DetectAction {
+    /// The detection outcome, read from the action's `detect` payload field,
+    /// falling back to `result`.
+    ///
+    /// `calling.call.detect` events carry the outcome under `detect` — an
+    /// object whose `type` names what was detected (`"machine"`,
+    /// `"human"`, `"fax"`, `"digit"`, …). The `result` fallback covers the
+    /// generic action-result shape.
+    ///
+    /// `None` until the server reports a detection.
     pub fn detect_result(&self) -> Option<Value> {
         let p = self.payload();
         p.get("detect").or_else(|| p.get("result")).cloned()
@@ -620,12 +768,30 @@ impl DetectAction {
 
 // -- FaxAction ---------------------------------------------------------
 
+/// Handle for a fax operation — either sending or receiving.
+///
+/// Unlike the other action types, one struct covers both directions: the
+/// direction is carried in [`fax_type`](FaxAction::fax_type) and selects
+/// which stop RPC the handle emits.
 pub struct FaxAction {
+    /// The underlying [`Action`], also reachable through this type's
+    /// `Deref`.
     pub inner: Arc<Action>,
+    /// The fax direction — `"receive"` or `"send"` — which decided this
+    /// action's stop method at construction.
     pub fax_type: String,
 }
 
 impl FaxAction {
+    /// Create a fax handle for the given RELAY correlation ids.
+    ///
+    /// `fax_type` selects the stop RPC: exactly `"receive"` gives
+    /// `calling.receive_fax.stop`, and **any other value** — including a
+    /// typo — gives `calling.send_fax.stop`. The string is stored verbatim
+    /// and readable via [`fax_type`](FaxAction::fax_type).
+    ///
+    /// See [`Action::with_stop_method`] for what the three ids mean. No
+    /// client is attached until [`Action::set_client`] wires one up.
     pub fn new(control_id: &str, call_id: &str, node_id: &str, fax_type: &str) -> Self {
         let stop = if fax_type == "receive" {
             "calling.receive_fax.stop"
@@ -638,10 +804,16 @@ impl FaxAction {
         }
     }
 
+    /// Borrow the underlying [`Action`]. The same surface is reachable
+    /// through this type's `Deref`; this is the explicit form.
     pub fn action(&self) -> &Action {
         &self.inner
     }
 
+    /// The fax direction this handle was constructed with, verbatim.
+    ///
+    /// `"receive"` means the handle stops via `calling.receive_fax.stop`;
+    /// any other value means `calling.send_fax.stop`.
     pub fn fax_type(&self) -> &str {
         &self.fax_type
     }

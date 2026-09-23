@@ -1025,7 +1025,7 @@ impl<'a> Addresses<'a> {
         request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
         self.client()
-            .get_with_options(self.base_path(), params, request_options.as_ref())
+            .get_with_options(self.base_path(), Some(params), request_options.as_ref())
     }
 
     /// `POST /addresses` (generated operation method).
@@ -1040,7 +1040,8 @@ impl<'a> Addresses<'a> {
     ) -> Result<Value, SignalWireRestError> {
         self.client().post_with_options(
             self.base_path(),
-            &request.build(),
+            Some(&request.build()),
+            None,
             request_options.as_ref(),
         )
     }
@@ -1056,7 +1057,7 @@ impl<'a> Addresses<'a> {
         request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
         self.client()
-            .get_with_options(&self.path(&[id]), params, request_options.as_ref())
+            .get_with_options(&self.path(&[id]), Some(params), request_options.as_ref())
     }
 
     /// `DELETE /addresses/{id}` (generated operation method).
@@ -1111,7 +1112,8 @@ impl<'a> ImportedNumbers<'a> {
     ) -> Result<Value, SignalWireRestError> {
         self.client().post_with_options(
             self.base_path(),
-            &request.build(),
+            Some(&request.build()),
+            None,
             request_options.as_ref(),
         )
     }
@@ -1159,7 +1161,7 @@ impl<'a> Lookup<'a> {
     ) -> Result<Value, SignalWireRestError> {
         self.client().get_with_options(
             &self.path(&["phone_number", e164]),
-            params,
+            Some(params),
             request_options.as_ref(),
         )
     }
@@ -1207,7 +1209,8 @@ impl<'a> Mfa<'a> {
     ) -> Result<Value, SignalWireRestError> {
         self.client().post_with_options(
             &self.path(&["sms"]),
-            &request.build(),
+            Some(&request.build()),
+            None,
             request_options.as_ref(),
         )
     }
@@ -1224,7 +1227,8 @@ impl<'a> Mfa<'a> {
     ) -> Result<Value, SignalWireRestError> {
         self.client().post_with_options(
             &self.path(&["call"]),
-            &request.build(),
+            Some(&request.build()),
+            None,
             request_options.as_ref(),
         )
     }
@@ -1242,7 +1246,8 @@ impl<'a> Mfa<'a> {
     ) -> Result<Value, SignalWireRestError> {
         self.client().post_with_options(
             &self.path(&[request_id, "verify"]),
-            &request.build(),
+            Some(&request.build()),
+            None,
             request_options.as_ref(),
         )
     }
@@ -1354,7 +1359,7 @@ impl<'a> NumberGroups<'a> {
     ) -> Result<Value, SignalWireRestError> {
         self.client().get_with_options(
             &self.path(&[group_id, "number_group_memberships"]),
-            params,
+            Some(params),
             request_options.as_ref(),
         )
     }
@@ -1372,7 +1377,8 @@ impl<'a> NumberGroups<'a> {
     ) -> Result<Value, SignalWireRestError> {
         self.client().post_with_options(
             &self.path(&[group_id, "number_group_memberships"]),
-            &request.build(),
+            Some(&request.build()),
+            None,
             request_options.as_ref(),
         )
     }
@@ -1389,7 +1395,7 @@ impl<'a> NumberGroups<'a> {
     ) -> Result<Value, SignalWireRestError> {
         self.client().get_with_options(
             &format!("/api/relay/rest/number_group_memberships/{id}"),
-            params,
+            Some(params),
             request_options.as_ref(),
         )
     }
@@ -1513,8 +1519,11 @@ impl<'a> PhoneNumbers<'a> {
         params: &HashMap<String, String>,
         request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.client()
-            .get_with_options(&self.path(&["search"]), params, request_options.as_ref())
+        self.client().get_with_options(
+            &self.path(&["search"]),
+            Some(params),
+            request_options.as_ref(),
+        )
     }
 
     /// `set_set_swml_webhook` — update wrapper binding a fixed `call_handler` (§7).
@@ -1715,7 +1724,7 @@ impl<'a> Queues<'a> {
     ) -> Result<Value, SignalWireRestError> {
         self.client().get_with_options(
             &self.path(&[queue_id, "members"]),
-            params,
+            Some(params),
             request_options.as_ref(),
         )
     }
@@ -1732,7 +1741,7 @@ impl<'a> Queues<'a> {
     ) -> Result<Value, SignalWireRestError> {
         self.client().get_with_options(
             &self.path(&[queue_id, "members", "next"]),
-            params,
+            Some(params),
             request_options.as_ref(),
         )
     }
@@ -1750,7 +1759,7 @@ impl<'a> Queues<'a> {
     ) -> Result<Value, SignalWireRestError> {
         self.client().get_with_options(
             &self.path(&[queue_id, "members", id]),
-            params,
+            Some(params),
             request_options.as_ref(),
         )
     }
@@ -1796,7 +1805,7 @@ impl<'a> Recordings<'a> {
         request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
         self.client()
-            .get_with_options(self.base_path(), params, request_options.as_ref())
+            .get_with_options(self.base_path(), Some(params), request_options.as_ref())
     }
 
     /// `GET /recordings/{id}` (generated operation method; query params).
@@ -1810,7 +1819,7 @@ impl<'a> Recordings<'a> {
         request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
         self.client()
-            .get_with_options(&self.path(&[id]), params, request_options.as_ref())
+            .get_with_options(&self.path(&[id]), Some(params), request_options.as_ref())
     }
 
     /// `DELETE /recordings/{id}` (generated operation method).
@@ -1867,7 +1876,7 @@ impl<'a> RegistryBrands<'a> {
         request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
         self.client()
-            .get_with_options(self.base_path(), params, request_options.as_ref())
+            .get_with_options(self.base_path(), Some(params), request_options.as_ref())
     }
 
     /// `POST /registry/beta/brands` (generated operation method; union body).
@@ -1880,8 +1889,12 @@ impl<'a> RegistryBrands<'a> {
         body: &Value,
         request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.client()
-            .post_with_options(self.base_path(), body, request_options.as_ref())
+        self.client().post_with_options(
+            self.base_path(),
+            Some(body),
+            None,
+            request_options.as_ref(),
+        )
     }
 
     /// `GET /registry/beta/brands/{id}` (generated operation method; query params).
@@ -1895,7 +1908,7 @@ impl<'a> RegistryBrands<'a> {
         request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
         self.client()
-            .get_with_options(&self.path(&[id]), params, request_options.as_ref())
+            .get_with_options(&self.path(&[id]), Some(params), request_options.as_ref())
     }
 
     /// `GET /registry/beta/brands/{id}/campaigns` (generated operation method; query params).
@@ -1910,7 +1923,7 @@ impl<'a> RegistryBrands<'a> {
     ) -> Result<Value, SignalWireRestError> {
         self.client().get_with_options(
             &self.path(&[id, "campaigns"]),
-            params,
+            Some(params),
             request_options.as_ref(),
         )
     }
@@ -1928,7 +1941,8 @@ impl<'a> RegistryBrands<'a> {
     ) -> Result<Value, SignalWireRestError> {
         self.client().post_with_options(
             &self.path(&[id, "campaigns"]),
-            body,
+            Some(body),
+            None,
             request_options.as_ref(),
         )
     }
@@ -1975,7 +1989,7 @@ impl<'a> RegistryCampaigns<'a> {
         request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
         self.client()
-            .get_with_options(&self.path(&[id]), params, request_options.as_ref())
+            .get_with_options(&self.path(&[id]), Some(params), request_options.as_ref())
     }
 
     /// `PUT /registry/beta/campaigns/{id}` (generated operation method).
@@ -1991,7 +2005,7 @@ impl<'a> RegistryCampaigns<'a> {
     ) -> Result<Value, SignalWireRestError> {
         self.client().put_with_options(
             &self.path(&[id]),
-            &request.build(),
+            Some(&request.build()),
             request_options.as_ref(),
         )
     }
@@ -2008,7 +2022,7 @@ impl<'a> RegistryCampaigns<'a> {
     ) -> Result<Value, SignalWireRestError> {
         self.client().get_with_options(
             &self.path(&[id, "numbers"]),
-            params,
+            Some(params),
             request_options.as_ref(),
         )
     }
@@ -2025,7 +2039,7 @@ impl<'a> RegistryCampaigns<'a> {
     ) -> Result<Value, SignalWireRestError> {
         self.client().get_with_options(
             &self.path(&[id, "orders"]),
-            params,
+            Some(params),
             request_options.as_ref(),
         )
     }
@@ -2043,7 +2057,8 @@ impl<'a> RegistryCampaigns<'a> {
     ) -> Result<Value, SignalWireRestError> {
         self.client().post_with_options(
             &self.path(&[id, "orders"]),
-            &request.build(),
+            Some(&request.build()),
+            None,
             request_options.as_ref(),
         )
     }
@@ -2134,7 +2149,7 @@ impl<'a> RegistryOrders<'a> {
         request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
         self.client()
-            .get_with_options(&self.path(&[id]), params, request_options.as_ref())
+            .get_with_options(&self.path(&[id]), Some(params), request_options.as_ref())
     }
 }
 
@@ -2178,7 +2193,7 @@ impl<'a> ShortCodes<'a> {
         request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
         self.client()
-            .get_with_options(self.base_path(), params, request_options.as_ref())
+            .get_with_options(self.base_path(), Some(params), request_options.as_ref())
     }
 
     /// `GET /short_codes/{id}` (generated operation method; query params).
@@ -2192,7 +2207,7 @@ impl<'a> ShortCodes<'a> {
         request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
         self.client()
-            .get_with_options(&self.path(&[id]), params, request_options.as_ref())
+            .get_with_options(&self.path(&[id]), Some(params), request_options.as_ref())
     }
 
     /// `PUT /short_codes/{id}` (generated operation method).
@@ -2208,7 +2223,7 @@ impl<'a> ShortCodes<'a> {
     ) -> Result<Value, SignalWireRestError> {
         self.client().put_with_options(
             &self.path(&[id]),
-            &request.build(),
+            Some(&request.build()),
             request_options.as_ref(),
         )
     }
@@ -2250,7 +2265,7 @@ impl<'a> SipProfile<'a> {
         request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
         self.client()
-            .get_with_options(self.base_path(), params, request_options.as_ref())
+            .get_with_options(self.base_path(), Some(params), request_options.as_ref())
     }
 
     /// `PUT /sip_profile` (generated operation method).
@@ -2263,8 +2278,11 @@ impl<'a> SipProfile<'a> {
         request: SipProfileUpdateRequest,
         request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.client()
-            .put_with_options(self.base_path(), &request.build(), request_options.as_ref())
+        self.client().put_with_options(
+            self.base_path(),
+            Some(&request.build()),
+            request_options.as_ref(),
+        )
     }
 }
 
@@ -2373,7 +2391,8 @@ impl<'a> VerifiedCallers<'a> {
     ) -> Result<Value, SignalWireRestError> {
         self.client().post_with_options(
             &self.path(&[id, "verification"]),
-            &Value::Object(Map::new()),
+            Some(&Value::Object(Map::new())),
+            None,
             request_options.as_ref(),
         )
     }
@@ -2391,7 +2410,7 @@ impl<'a> VerifiedCallers<'a> {
     ) -> Result<Value, SignalWireRestError> {
         self.client().put_with_options(
             &self.path(&[id, "verification"]),
-            &request.build(),
+            Some(&request.build()),
             request_options.as_ref(),
         )
     }

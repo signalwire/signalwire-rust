@@ -9,6 +9,10 @@ pub struct CustomSkills {
 }
 
 impl CustomSkills {
+    /// Create the skill from its configuration `params`.
+    ///
+    /// Setup always succeeds: this skill hosts caller-supplied tool
+    /// definitions and has no required configuration of its own.
     pub fn new(params: Map<String, Value>) -> Self {
         CustomSkills {
             sp: SkillParams::new(params),

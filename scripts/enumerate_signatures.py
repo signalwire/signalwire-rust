@@ -16,7 +16,17 @@ Notes:
     - Rustdoc-json schema is unstable; we pin against the rustc nightly
       pulled by ``rustup toolchain install nightly``. Bump in lockstep
       when needed; the wrapper is written against FORMAT_VERSION 57.
-    - Rust has no defaults; every parameter is required.
+    - Rust has NO language-level default parameter values (there is no
+      ``fn f(x: i32 = 5)``), so a plain positional param is genuinely
+      required and carries no ``default``. Where the port DOES express a
+      default, it does so through one of three source constructs, which
+      ``extract_defaults`` recovers from the rustdoc ``span`` (see that
+      section's docstring). Anything else honestly stays required.
+    - Rust also has no OMITTABLE arguments, so ``required`` is read from
+      the type, not the arity: an ``Option<T>`` param models absence
+      (``None`` IS the don't-supply-it call) and is ``required: false``;
+      a bare ``T`` is ``required: true``. See the PARAMETER OPTIONALITY
+      section for the one enumerated reference-side exception.
     - ``&T`` / ``&mut T`` collapse to T (Rust borrowing is invisible to
       Python's type model).
 
@@ -30,7 +40,7 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -47,15 +57,21 @@ from enumerate_surface import (  # type: ignore
     # duplication hazard that made a rename table apply in one gate and not the
     # other (go, typescript, php, and rust's own METHOD_RENAMES keying bug).
     PSDK,
-    CLASS_MODULE_MAP, _module_path_for_class, _translate_class,
+    CLASS_MODULE_MAP,
+    _translate_class,
     # Idiom-reconciliation tables mirrored from the SURFACE enumerator so the
     # two enumerators discover/name the SAME symbols (Rule 2: reconcile idiom
     # in the enumerator, not via an omission). Kept as a single source of truth
     # by importing them rather than re-declaring.
-    METHOD_RENAMES, SURFACE_PROJECTIONS, PROJECTION_DONOR_STRIPS,
-    FORCE_CLASS_METHODS, SKILLBASE_IDIOM_METHOD_DROPS, SKILL_INTERFACE_METHODS,
-    SKILL_INTERFACE_PROJECTION, PUBLIC_SURFACE_TRAITS, MODULE_METHOD_DROPS,
-    MODULE_METHOD_DROP_EXCEPTIONS, PUBLIC_FIELD_RENAMES,
+    METHOD_RENAMES,
+    SURFACE_PROJECTIONS,
+    PROJECTION_DONOR_STRIPS,
+    FORCE_CLASS_METHODS,
+    SKILLBASE_IDIOM_METHOD_DROPS,
+    PUBLIC_SURFACE_TRAITS,
+    MODULE_METHOD_DROPS,
+    MODULE_METHOD_DROP_EXCEPTIONS,
+    PUBLIC_FIELD_RENAMES,
 )
 
 
@@ -79,8 +95,7 @@ class TypeTranslationError(RuntimeError):
 # FabricResource (constructed via ``new_put`` — PUT instead of PATCH on
 # ``update``); these five accessors contractually return the PUT variant.
 RETURN_TYPE_OVERRIDE: dict[str, str] = {
-    f"signalwire.rest.namespaces.fabric.FabricNamespace.{m}":
-        "class:signalwire.rest.namespaces.fabric.FabricResourcePUT"
+    f"signalwire.rest.namespaces.fabric.FabricNamespace.{m}": "class:signalwire.rest.namespaces.fabric.FabricResourcePUT"
     for m in (
         "sip_endpoints",
         "swml_scripts",
@@ -99,14 +114,16 @@ RETURN_TYPE_OVERRIDE: dict[str, str] = {
 # Python class), so map it here per-method to the canonical HostAppRouter. This is
 # the tool handling the idiom (the full method contract is still compared), NOT an
 # omission — as_router now drifts 0 against the reference.
-RETURN_TYPE_OVERRIDE.update({
-    ctx: "class:signalwire.core.web.HostAppRouter"
-    for ctx in (
-        "signalwire.core.swml_service.SWMLService.as_router",
-        "signalwire.core.mixins.web_mixin.WebMixin.as_router",
-        "signalwire.core.agent_base.AgentBase.as_router",
+RETURN_TYPE_OVERRIDE.update(
+    dict.fromkeys(
+        (
+            "signalwire.core.swml_service.SWMLService.as_router",
+            "signalwire.core.mixins.web_mixin.WebMixin.as_router",
+            "signalwire.core.agent_base.AgentBase.as_router",
+        ),
+        "class:signalwire.core.web.HostAppRouter",
     )
-})
+)
 
 # Per-method PARAMETER reconcile: rename a param and/or remap its type to the
 # canonical Python spelling where the Rust idiom names/types it differently but
@@ -137,8 +154,52 @@ PARAM_RECONCILE: dict[str, dict[str, dict[str, str]]] = {
 # with the `TypedHandler` = `Box<dyn Fn(..) -> FunctionResult>` type alias, which
 # rustdoc renders as a bare class name. Remap it to the canonical `callable<..>`
 # so the wrapper's arg compares equal to the oracle's `func: callable<list<any>,any>`.
-PARAM_RECONCILE["signalwire.core.agent.tools.type_inference.create_typed_handler_wrapper"] = {
+PARAM_RECONCILE[
+    "signalwire.core.agent.tools.type_inference.create_typed_handler_wrapper"
+] = {
     "func": {"type": "callable<list<any>,any>"},
+}
+
+# EXPLICIT-RECEIVER ELISION for public-surface trait methods. Python binds a
+# skill to its agent once (``self.agent``, set by the loader) and every interface
+# method reads it off ``self``; Rust's ``SkillBase`` is not agent-bound (a skill
+# is a ``&self`` trait object and cannot hold a ``&mut AgentBase`` across the
+# borrow), so the agent is threaded in as an explicit argument:
+# ``fn register_tools(&self, agent: &mut AgentBase)`` vs
+# ``def register_tools(self) -> None``. That argument IS Python's ``self.agent``
+# — the same receiver, spelled positionally because the borrow checker forbids
+# storing it. This is IDIOM, folded here at the enumerator (Rule 2) rather than
+# documented as 14 near-identical omissions (SkillBase + every concrete skill),
+# which is exactly the shape §3 forbids. The method still compares in full: a
+# changed return type, a NEW parameter, or a disappeared method all still drift.
+# Shape: {trait: {method: {param names to elide}}}.
+SURFACE_TRAIT_RECEIVER_PARAMS: dict[str, dict[str, set[str]]] = {
+    "SkillBase": {"register_tools": {"agent"}},
+}
+
+# KWARGS-MAP EXPLOSION. Rust has neither keyword arguments nor `**kwargs`, so a
+# reference method whose parameters are a flat set of optional named keys is
+# spelled as ONE `&Map<String, Value>` the body then reads BY THOSE NAMES:
+#
+#   Python  AIVerbHandler.build_config(self, prompt_text=None, prompt_pom=None,
+#                                      contexts=None, post_prompt=None,
+#                                      post_prompt_url=None, swaig=None, **kwargs)
+#   Rust    fn build_config(&self, args: &Map<String, Value>) -> Value
+#             args.get("prompt_text") / .get("prompt_pom") / .get("contexts") /
+#             .get("post_prompt") / .get("post_prompt_url") / .get("swaig")
+#
+# The port accepts every reference key; only the CALL SPELLING differs. Explode
+# the single map slot into the reference's recorded parameter list so the method
+# compares in FULL — this is the enumerator folding idiom (Rule 2), the same
+# treatment `build_ai_chat_signatures` gives the options-object collapse, not an
+# omission that would blind the gate to a key going missing.
+#
+# The explosion is ORACLE-SOURCED: the emitted params are copied from the
+# reference's own recorded signature, so it cannot invent a parameter the
+# reference lacks and it tracks the oracle without a hand-maintained list. Shape:
+# {"module.Class.method": "rust map param name"}.
+KWARGS_MAP_EXPLODE: dict[str, str] = {
+    "signalwire.core.swml_handler.AIVerbHandler.build_config": "args",
 }
 
 # Return-type reconcile for the type_inference free fns: rustdoc leaks the
@@ -147,12 +208,12 @@ PARAM_RECONCILE["signalwire.core.agent.tools.type_inference.create_typed_handler
 # handler callable; `infer_schema` returns the `(parameters, required,
 # description, is_typed, has_raw_data)` tuple — so both return-compare equal to
 # the oracle (the tool handling the idiom, not an omission).
-RETURN_TYPE_OVERRIDE.update({
-    "signalwire.core.agent.tools.type_inference.create_typed_handler_wrapper":
-        "callable<list<any>,any>",
-    "signalwire.core.agent.tools.type_inference.infer_schema":
-        "tuple<dict<string,dict<string,any>>,list<string>,optional<string>,bool,bool>",
-})
+RETURN_TYPE_OVERRIDE.update(
+    {
+        "signalwire.core.agent.tools.type_inference.create_typed_handler_wrapper": "callable<list<any>,any>",
+        "signalwire.core.agent.tools.type_inference.infer_schema": "tuple<dict<string,dict<string,any>>,list<string>,optional<string>,bool,bool>",
+    }
+)
 
 
 def load_aliases() -> dict[str, str]:
@@ -171,14 +232,47 @@ def load_aliases() -> dict[str, str]:
 # methods, and suppress the port-internal GeneratedResourceTree glue struct.
 # ---------------------------------------------------------------------------
 
-_REST_SIDECAR_PATH = PORT_ROOT / "src" / "rest" / "namespaces" / "generated" / "rest_signatures.json"
+_REST_SIDECAR_PATH = (
+    PORT_ROOT / "src" / "rest" / "namespaces" / "generated" / "rest_signatures.json"
+)
+
+
+def _require_oracle(path: Path) -> dict:
+    """Read a REQUIRED reference oracle, or abort naming the file.
+
+    Every oracle read in this module gates which members get emitted or how they
+    get projected. Degrading an unreadable one to ``{}`` does not fail loudly --
+    it makes the enumerator write a SHORT-BUT-VALID port_signatures.json and exit
+    0, and that artifact is exactly what the SIGNATURES and DRIFT gates then
+    compare the port against. The port gets blamed for omissions it never had.
+    The oracle ships with porting-sdk; absence is a broken checkout, never a
+    supported degraded mode."""
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise SystemExit(
+            f"enumerate_signatures: cannot read the reference oracle {path}: {exc}\n"
+            "Continuing would write a short-but-valid port_signatures.json and "
+            "exit 0, so DRIFT would compare the port against a fiction."
+        ) from exc
 
 
 def load_rest_sidecar() -> dict:
+    """The generated REST layer's adapter sidecar. FAIL LOUD if absent.
+
+    It carries the typed-param unfold for every generated resource, so an empty
+    sidecar silently reduces the whole generated REST surface to its raw
+    builder shape and still exits 0 — a short inventory that DRIFT then reads as
+    the port's real signatures. generate_rest.py commits this file next to the
+    code it describes; its absence is a broken tree, not a supported mode."""
     try:
         return json.loads(_REST_SIDECAR_PATH.read_text(encoding="utf-8"))
-    except FileNotFoundError:
-        return {"resources": {}, "containers": {}, "suppress_structs": []}
+    except (OSError, json.JSONDecodeError) as exc:
+        raise SystemExit(
+            f"enumerate_signatures: cannot read the REST sidecar {_REST_SIDECAR_PATH}: {exc}\n"
+            "Re-run scripts/generate_rest.py; continuing would emit a short "
+            "port_signatures.json at rc=0."
+        ) from exc
 
 
 def _sidecar_param(p: dict) -> dict:
@@ -201,7 +295,7 @@ def build_generated_signatures(sidecar: dict) -> dict:
     from the sidecar (self + exploded params + a void __init__). Returns
     {module: {"classes": {cls: {"methods": {...}}}}}."""
     out: dict = {}
-    for _name, r in sidecar.get("resources", {}).items():
+    for r in sidecar.get("resources", {}).values():
         mod = r["module"]
         cls = r["class"]
         methods: dict = {
@@ -244,7 +338,7 @@ def build_generated_signatures(sidecar: dict) -> dict:
             }
         out.setdefault(mod, {"classes": {}})
         out[mod]["classes"][cls] = {"methods": dict(sorted(methods.items()))}
-    for _name, c in sidecar.get("containers", {}).items():
+    for c in sidecar.get("containers", {}).values():
         mod = c["module"]
         cls = c["class"]
         methods = {
@@ -280,25 +374,38 @@ def build_generated_signatures(sidecar: dict) -> dict:
 # _is_port_state_accessor excuse make these compare EQUAL to the reference
 # (class-typed fields fold by leaf; scalar fields excuse as port-side state).
 #
-# relay-protocol / swaig-actions / REST <ns>_types_generated are NOT in the
-# signature oracle (method-less on both sides) — no sidecar, nothing synthesized.
+# swaig-actions joined this set once the generator started emitting the response
+# ENVELOPE types: the reference records SwaigAction.{context_switch, hold,
+# playback_bg, transfer} and SwaigResponse.action as class-typed fields, so the
+# module IS in the signature oracle and needs its sidecar like the other three.
+#
+# relay-protocol / REST <ns>_types_generated are NOT in the signature oracle
+# (method-less on both sides) — no sidecar, nothing synthesized.
 # ---------------------------------------------------------------------------
 
 _GEN_PAYLOAD_SIDECAR_GLOBS = (
     "src/swml/swml_verbs_gen_payload.json",
     "src/swaig/post_prompt_gen_payload.json",
     "src/swaig/swaig_request_gen_payload.json",
+    "src/swaig/swaig_actions_gen_payload.json",
 )
 
 
 def load_gen_payload_sidecars() -> list[dict]:
+    # FAIL LOUD: each sidecar contributes a whole read-side payload MODULE to the
+    # inventory. Skipping an unreadable one drops that module entirely while the
+    # run still exits 0. generate_swaig_payloads.py commits all of them.
     out: list[dict] = []
     for rel in _GEN_PAYLOAD_SIDECAR_GLOBS:
         p = PORT_ROOT / rel
         try:
             out.append(json.loads(p.read_text(encoding="utf-8")))
-        except FileNotFoundError:
-            continue
+        except (OSError, json.JSONDecodeError) as exc:
+            raise SystemExit(
+                f"enumerate_signatures: cannot read the SWAIG payload sidecar {p}: {exc}\n"
+                "Re-run scripts/generate_swaig_payloads.py; continuing would drop "
+                "that payload module from port_signatures.json at rc=0."
+            ) from exc
     return out
 
 
@@ -360,7 +467,6 @@ def translate_rust_type(t, paths: dict, aliases: dict, context: str) -> str:
 
     # slice: { "slice": { type } }
     if "slice" in t:
-        inner = translate_rust_type(t["slice"], paths, aliases, context) if not isinstance(t["slice"], dict) else translate_rust_type(t["slice"], paths, aliases, context)
         # handle [u8] specifically as bytes
         slice_type = t["slice"]
         if isinstance(slice_type, dict) and slice_type.get("primitive") == "u8":
@@ -409,10 +515,18 @@ def translate_rust_type(t, paths: dict, aliases: dict, context: str) -> str:
         # Stdlib generics: Option, Vec, HashMap, BTreeMap, Result, Box, Arc, Rc, etc.
         type_args = _extract_angle_args(args)
         if last in ("Option", "Optional"):
-            inner = translate_rust_type(type_args[0], paths, aliases, context) if type_args else "any"
+            inner = (
+                translate_rust_type(type_args[0], paths, aliases, context)
+                if type_args
+                else "any"
+            )
             return f"optional<{inner}>"
         if last in ("Vec", "VecDeque"):
-            inner = translate_rust_type(type_args[0], paths, aliases, context) if type_args else "any"
+            inner = (
+                translate_rust_type(type_args[0], paths, aliases, context)
+                if type_args
+                else "any"
+            )
             return f"list<{inner}>"
         if last in ("HashMap", "BTreeMap", "IndexMap"):
             if len(type_args) >= 2:
@@ -421,15 +535,25 @@ def translate_rust_type(t, paths: dict, aliases: dict, context: str) -> str:
                 return f"dict<{k},{v}>"
             return "dict<string,any>"
         if last in ("HashSet", "BTreeSet"):
-            inner = translate_rust_type(type_args[0], paths, aliases, context) if type_args else "any"
+            inner = (
+                translate_rust_type(type_args[0], paths, aliases, context)
+                if type_args
+                else "any"
+            )
             return f"list<{inner}>"
         if last == "Result":
             # Result<T, E> → T (the Err type is out-of-band in Python)
-            inner = translate_rust_type(type_args[0], paths, aliases, context) if type_args else "any"
-            return inner
+            return (
+                translate_rust_type(type_args[0], paths, aliases, context)
+                if type_args
+                else "any"
+            )
         if last in ("Box", "Arc", "Rc", "Mutex", "RwLock"):
-            inner = translate_rust_type(type_args[0], paths, aliases, context) if type_args else "any"
-            return inner
+            return (
+                translate_rust_type(type_args[0], paths, aliases, context)
+                if type_args
+                else "any"
+            )
 
         # MediaArg<E> — the typed-or-raw wrapper behind FunctionResult's
         # closed-set media params (``record_call(format: impl
@@ -440,8 +564,11 @@ def translate_rust_type(t, paths: dict, aliases: dict, context: str) -> str:
         # as the typed closed set (``class:…RecordFormat``), which is exactly
         # what the oracle's ``enum<…>`` contract expects — not the wrapper.
         if last == "MediaArg":
-            inner = translate_rust_type(type_args[0], paths, aliases, context) if type_args else "any"
-            return inner
+            return (
+                translate_rust_type(type_args[0], paths, aliases, context)
+                if type_args
+                else "any"
+            )
 
         # SDK class — emit class:<canonical>
         canonical_name = _translate_class(last)
@@ -467,9 +594,17 @@ def translate_rust_type(t, paths: dict, aliases: dict, context: str) -> str:
             trait = tb.get("trait") if isinstance(tb, dict) else None
             if isinstance(trait, dict):
                 trait_last = str(trait.get("path", "")).split("::")[-1]
-                if trait_last in ("Into", "From", "TryInto", "TryFrom",
-                                  "AsRef", "AsMut", "Borrow", "BorrowMut",
-                                  "Cow"):
+                if trait_last in (
+                    "Into",
+                    "From",
+                    "TryInto",
+                    "TryFrom",
+                    "AsRef",
+                    "AsMut",
+                    "Borrow",
+                    "BorrowMut",
+                    "Cow",
+                ):
                     inner_args = _extract_angle_args(trait.get("args"))
                     if inner_args:
                         return translate_rust_type(
@@ -482,9 +617,16 @@ def translate_rust_type(t, paths: dict, aliases: dict, context: str) -> str:
         sig = t.get("function_pointer", t.get("fn_pointer", {}))
         sig_decl = sig.get("decl", sig.get("sig", {}))
         inputs = sig_decl.get("inputs", [])
-        canon_args = [translate_rust_type(it[1] if isinstance(it, list) else it, paths, aliases, context) for it in inputs]
+        canon_args = [
+            translate_rust_type(
+                it[1] if isinstance(it, list) else it, paths, aliases, context
+            )
+            for it in inputs
+        ]
         output = sig_decl.get("output")
-        canon_ret = translate_rust_type(output, paths, aliases, context) if output else "void"
+        canon_ret = (
+            translate_rust_type(output, paths, aliases, context) if output else "void"
+        )
         return f"callable<list<{','.join(canon_args)}>,{canon_ret}>"
 
     # dyn_trait: dyn Foo  →  any
@@ -504,11 +646,9 @@ def _extract_angle_args(args) -> list:
         return []
     if isinstance(args, dict) and "angle_bracketed" in args:
         ab = args["angle_bracketed"]
-        out = []
-        for a in ab.get("args", []):
-            if isinstance(a, dict) and "type" in a:
-                out.append(a["type"])
-        return out
+        return [
+            a["type"] for a in ab.get("args", []) if isinstance(a, dict) and "type" in a
+        ]
     return []
 
 
@@ -526,14 +666,13 @@ def _collect_free_function_targets() -> set[tuple[str, str]]:
     targets: set[tuple[str, str]] = set()
     # Read the Python reference's module-level functions directly so the
     # set stays in sync with whatever the oracle currently exposes.
-    try:
-        import json as _json
-        ref = _json.loads((PSDK / "python_signatures.json").read_text(encoding="utf-8"))
-        for mod_name, mod_entry in ref.get("modules", {}).items():
-            for fn_name in (mod_entry.get("functions") or {}).keys():
-                targets.add((mod_name, fn_name))
-    except FileNotFoundError:
-        pass
+    # FAIL LOUD: an unreadable oracle here yields an EMPTY target set, so every
+    # canonical free function silently stops being projected and the inventory
+    # ships short at rc=0.
+    ref = _require_oracle(PSDK / "python_signatures.json")
+    for mod_name, mod_entry in ref.get("modules", {}).items():
+        for fn_name in mod_entry.get("functions") or {}:
+            targets.add((mod_name, fn_name))
     return targets
 
 
@@ -583,11 +722,10 @@ def _load_python_reference() -> dict:
     Rust has no native ``**kwargs``; serde_json::Value at the trailing
     position IS the idiomatic stand-in.
     """
-    try:
-        import json as _json
-        return _json.loads((PSDK / "python_signatures.json").read_text(encoding="utf-8"))
-    except FileNotFoundError:
-        return {"modules": {}}
+    # FAIL LOUD: an empty reference silently disables the variadic projection, so
+    # every `params: serde_json::Value` tail stays positional and DRIFT reports
+    # kind-mismatches the port does not actually have.
+    return _require_oracle(PSDK / "python_signatures.json")
 
 
 def _ref_class_index(py_ref: dict) -> dict[str, set[str]]:
@@ -659,8 +797,34 @@ def _sig_oracle_members() -> dict[tuple[str, str], set[str]]:
     return _SIG_ORACLE_MEMBERS
 
 
-def _apply_method_renames(cls_name: str, methods: dict, module: str | None = None,
-                          py_cls: str | None = None) -> dict:
+_SIG_ORACLE_SIGNATURES: dict[tuple[str, str], dict] | None = None
+
+
+def _sig_oracle_signatures() -> dict[tuple[str, str], dict]:
+    """(module, class) -> {member: the reference's recorded SIGNATURE}.
+
+    The members twin above answers "does the reference have this member"; this
+    answers "and what does it look like", which is what the arity-idiom
+    collision resolver in ``_apply_method_renames`` needs to decide WHICH of two
+    Rust spellings of one reference method is the closer match. Same fail-loud
+    oracle resolution (``_sig_oracle_members`` raises first if unreadable)."""
+    global _SIG_ORACLE_SIGNATURES
+    if _SIG_ORACLE_SIGNATURES is None:
+        _sig_oracle_members()  # fail loud on an unresolvable oracle
+        ref = _load_python_reference()
+        out: dict[tuple[str, str], dict] = {}
+        for mod, inv in ref.get("modules", {}).items():
+            for cls, ce in (inv.get("classes") or {}).items():
+                methods = ce.get("methods")
+                if isinstance(methods, dict):
+                    out[(mod, cls)] = methods
+        _SIG_ORACLE_SIGNATURES = out
+    return _SIG_ORACLE_SIGNATURES
+
+
+def _apply_method_renames(
+    cls_name: str, methods: dict, module: str | None = None, py_cls: str | None = None
+) -> dict:
     """Apply the surface enumerator's METHOD_RENAMES table to a class's method
     dict (Rust name -> Python name; None -> drop). Mirrors the surface pass so a
     Rust-idiom method name (``to_value`` -> ``to_dict``) and its dropped
@@ -674,25 +838,100 @@ def _apply_method_renames(cls_name: str, methods: dict, module: str | None = Non
     ``module``/``py_cls`` (the CANONICAL post-translate key — the same key space
     the emitter writes into) to enable the gate; without them the drop is
     unconditional, preserving the pre-gate behaviour for callers that have no
-    canonical key yet."""
+    canonical key yet.
+
+    ARITY-IDIOM COLLISION (``add_section`` + ``add_section_with`` ->
+    ``add_section``): Rust has no default arguments and no overloading, so ONE
+    reference method with optional kwargs is spelled as a minimum-required
+    entry-point plus a richer ``_with`` / ``_full`` / ``_with_options``
+    companion. Both spellings ARE that single reference method. When a rename
+    makes two Rust methods land on the same reference name, the one whose
+    parameter list is CLOSER TO THE REFERENCE wins — otherwise the fold would be
+    dict-order dependent and would routinely keep the truncated spelling, which
+    is precisely the drift we are folding away. Ties keep the first arrival."""
     table = METHOD_RENAMES.get(cls_name, {})
-    if not table:
+    param_table = PUBLIC_FIELD_RENAMES.get(cls_name, {})
+    if not table and not param_table:
         return methods
     recorded: set[str] = set()
+    ref_members: dict = {}
     if module is not None and py_cls is not None:
         recorded = _sig_oracle_members().get((module, py_cls), set())
+        ref_members = _sig_oracle_signatures().get((module, py_cls), {})
     out: dict = {}
     for name, sig in methods.items():
+        sig = _apply_param_renames(sig, param_table)
         if name in table:
             target = table[name]
             if target is None:
                 if name in recorded:
                     out[name] = sig  # stale drop — the reference has this member
                 continue
-            out[target] = sig
         else:
-            out[name] = sig
+            target = name
+        if target in out and out[target] is not sig:
+            if _closer_to_reference(sig, out[target], ref_members.get(target)):
+                out[target] = sig
+            continue
+        out[target] = sig
     return out
+
+
+def _apply_param_renames(sig: dict, param_table: dict[str, str]) -> dict:
+    """Apply a class's ``PUBLIC_FIELD_RENAMES`` spelling map to a method's
+    PARAMETER names.
+
+    The same Rust-vs-reference spelling split that a struct FIELD has, its
+    methods' parameters have: ``Section.numbered_bullets`` is the field, and
+    ``add_subsection(.., numbered_bullets)`` is the parameter that sets it. The
+    reference records the camelCase WIRE key (``numberedBullets``) in both
+    places, so one table governs both — renaming only the field would leave the
+    parameter reading as drift for a spelling we have already adjudicated."""
+    if not param_table:
+        return sig
+    params = (sig or {}).get("params")
+    if not params or not any(p.get("name") in param_table for p in params):
+        return sig
+    out = dict(sig)
+    out["params"] = [
+        {**p, "name": param_table.get(p["name"], p["name"])} for p in params
+    ]
+    return out
+
+
+def _named_params(sig: dict) -> list[str]:
+    """The comparable parameter NAMES of a signature — the receiver (``self``)
+    is positional plumbing on both sides and never distinguishes two spellings
+    of the same method."""
+    return [p["name"] for p in (sig or {}).get("params", []) if p.get("kind") != "self"]
+
+
+def _closer_to_reference(
+    candidate: dict, incumbent: dict, ref_sig: dict | None
+) -> bool:
+    """Does ``candidate`` match the reference signature better than ``incumbent``?
+
+    Two spellings of one reference method differ by ARITY — that is the whole
+    point of the idiom (``put`` / ``put_with_options``, ``add_section`` /
+    ``add_section_with``). So score on how close each spelling's arity is to the
+    reference's, and use the reference's own parameter NAMES only to break a tie.
+
+    Name-matching must NOT be the primary score: the extra parameter frequently
+    carries a Rust-idiom spelling (``options`` for the reference's
+    ``request_options``, ``data`` for ``body``), so both spellings hit the same
+    small set of shared names and a name-first rule silently keeps the TRUNCATED
+    one — reinstating the exact drift this fold exists to remove."""
+    cand = _named_params(candidate)
+    inc = _named_params(incumbent)
+    if not ref_sig:
+        # Nothing to aim at: the truncated spelling can only ever be a subset of
+        # the fuller one, so more parameters is strictly more capability.
+        return len(cand) > len(inc)
+    ref = _named_params(ref_sig)
+    cand_gap, inc_gap = abs(len(cand) - len(ref)), abs(len(inc) - len(ref))
+    if cand_gap != inc_gap:
+        return cand_gap < inc_gap
+    return len(set(ref) & set(cand)) > len(set(ref) & set(inc))
 
 
 # Rust parameter names used as the ``*args`` / ``**kwargs`` variadic-equivalent
@@ -735,7 +974,7 @@ def _reconcile_variadic_tail(py_sig: dict, rust_sig: dict) -> None:
     """
     PROJECTED_TYPE = "dict<string,any>"
     py_params = py_sig.get("params", [])
-    rust_params = sig_params = rust_sig.get("params", [])
+    rust_params = rust_sig.get("params", [])
     if not rust_params:
         return
 
@@ -823,6 +1062,13 @@ def collect(rust_doc: dict, aliases: dict) -> tuple[dict, list]:
     def get(id_):
         return index.get(str(id_)) or index.get(id_)
 
+    # Recover the port's real parameter defaults from source (rustdoc carries no
+    # function bodies; ``span`` is the join key). ``fn_defaults`` is keyed by
+    # rustdoc item id, so each build_signature call gets exactly its own fn's
+    # defaults — a param with none stays required, never a fabricated value.
+    _reader = _SourceReader(PORT_ROOT)
+    fn_defaults, options_defaults = extract_defaults(index, _reader)
+
     # Reference class index — gates PATH-DERIVED class discovery (mirrors the
     # surface enumerator's file-path-derived module fallback: a struct not in
     # CLASS_MODULE_MAP is emitted under its rustdoc-path module ONLY when the
@@ -835,6 +1081,68 @@ def collect(rust_doc: dict, aliases: dict) -> tuple[dict, list]:
         if method_native == "repr":
             return "__repr__"
         return method_native
+
+    # PUBLIC-SURFACE-TRAIT DEFAULT BODIES: {trait: {method: signature}}.
+    #
+    # A Rust trait DEFAULT is inherited public API on every implementor exactly
+    # as a Python base-class method is on every subclass — ``Datasphere`` does not
+    # re-declare ``get_instance_key`` in its ``impl SkillBase`` block, but
+    # ``skill.get_instance_key()`` compiles and runs. The reference oracle records
+    # those inherited members PER SUBCLASS (Python enumerates the resolved MRO),
+    # so an implementor that leans on the default must still enumerate it or it
+    # reads as missing-port. Collected here once, projected (oracle-gated) onto
+    # each implementor below. Idiom accessors are dropped at collection time, the
+    # same set the surface enumerator drops from an ``impl SkillBase for X`` body.
+    def _elide_receiver_params(trait_name: str, method_native: str, sig: dict) -> dict:
+        """Drop the explicit-receiver argument(s) a public-surface trait method
+        threads in where Python reads them off ``self`` (see
+        SURFACE_TRAIT_RECEIVER_PARAMS). Returns ``sig`` unchanged when the
+        (trait, method) pair declares none."""
+        elide = SURFACE_TRAIT_RECEIVER_PARAMS.get(trait_name, {}).get(method_native)
+        if not elide:
+            return sig
+        kept = [p for p in sig.get("params", []) if p.get("name") not in elide]
+        if len(kept) == len(sig.get("params", [])):
+            return sig
+        return {**sig, "params": kept}
+
+    surface_trait_defaults: dict[str, dict] = {}
+    for _titem in index.values():
+        _tname = _titem.get("name")
+        if _tname not in PUBLIC_SURFACE_TRAITS:
+            continue
+        _tinner = _titem.get("inner", {}).get("trait")
+        if not _tinner:
+            continue
+        _bucket = surface_trait_defaults.setdefault(_tname, {})
+        for _mid in _tinner.get("items", []):
+            _mi = get(_mi_id := _mid)
+            if not _mi or "function" not in _mi.get("inner", {}):
+                continue
+            _mn = _mi.get("name", "")
+            if not _mn or _mn.startswith("_"):
+                continue
+            if _mn in SKILLBASE_IDIOM_METHOD_DROPS:
+                continue
+            # Required (body-less) trait items are NOT inherited implementations —
+            # every implementor must write its own, and that one lands via the
+            # impl-block walk. Only DEFAULT-bodied items are inherited surface.
+            if not _mi["inner"]["function"].get("has_body"):
+                continue
+            try:
+                _bucket[_translate_method_name(_mn)] = _elide_receiver_params(
+                    _tname,
+                    _mn,
+                    build_signature(
+                        _mi["inner"]["function"],
+                        paths,
+                        aliases,
+                        f"{_tname}.{_mn}",
+                        defaults=fn_defaults.get(str(_mi_id)),
+                    ),
+                )
+            except TypeTranslationError as e:
+                failures.append(str(e))
 
     # Find all struct / enum / trait items + their impls
     for iid, item in index.items():
@@ -861,7 +1169,26 @@ def collect(rust_doc: dict, aliases: dict) -> tuple[dict, list]:
         # is represented by the legacy rest::CrudResource. Skip the
         # generated_bases copies so they don't collide by struct name.
         _pentry = paths.get(str(iid)) or paths.get(iid)
-        if _pentry and "generated_bases" in (_pentry.get("path") or []):
+        _ppath = (_pentry.get("path") or []) if _pentry else []
+        if "generated_bases" in _ppath:
+            continue
+        # Generated REST TYPE structs (rest::namespaces::generated::types::
+        # <ns>_types_generated::*) are the request/response payload shapes. They
+        # are emitted from the sidecar like the resources, but unlike the
+        # resources they are NOT listed in `generated_struct_names` (that set
+        # covers resources/containers/suppressed only), so the struct walk picked
+        # them up and routed them through CLASS_MODULE_MAP BY BARE NAME.
+        #
+        # That collides whenever a generated payload type shares a name with a
+        # hand-written SDK class. `messages_types_generated::Message` and the
+        # RELAY `relay::message::Message` both mapped to
+        # signalwire.relay.message, and which one survived depended on rustdoc's
+        # index ORDERING — so a rustdoc rebuild alone could flip
+        # `Message.direction` between `optional<string>` (the real
+        # `Option<&str>` accessor) and `optional<class:Value>` (the generated
+        # payload field), staling the committed snapshot with no source change.
+        # Skip them by path, exactly as generated_bases is skipped above.
+        if any(seg.endswith("_types_generated") for seg in _ppath):
             continue
         impls = kind_inner.get("impls", [])
 
@@ -901,7 +1228,6 @@ def collect(rust_doc: dict, aliases: dict) -> tuple[dict, list]:
         # inventory (previously SkillBase surfaced method-less). Rust-idiom trait
         # accessors the reference does not enumerate are dropped (mirrors the
         # surface SKILLBASE_IDIOM_METHOD_DROPS).
-        method_id_sources: list = []
         if is_trait:
             for method_id in kind_inner.get("items", []):
                 method_item = get(method_id)
@@ -915,17 +1241,32 @@ def collect(rust_doc: dict, aliases: dict) -> tuple[dict, list]:
                     continue
                 if m_native.startswith("_") and not m_native.startswith("__"):
                     continue
-                if (canonical_name in PUBLIC_SURFACE_TRAITS
-                        and m_native in SKILLBASE_IDIOM_METHOD_DROPS):
+                if (
+                    canonical_name in PUBLIC_SURFACE_TRAITS
+                    and m_native in SKILLBASE_IDIOM_METHOD_DROPS
+                ):
                     continue
                 method_canonical = _translate_method_name(m_native)
                 ctx = f"{mod}.{canonical_name}.{method_canonical}"
                 try:
-                    sig = build_signature(m_inner["function"], paths, aliases, ctx)
+                    sig = build_signature(
+                        m_inner["function"],
+                        paths,
+                        aliases,
+                        ctx,
+                        defaults=fn_defaults.get(str(method_id)),
+                    )
                 except TypeTranslationError as e:
                     failures.append(str(e))
                     continue
+                if canonical_name in PUBLIC_SURFACE_TRAITS:
+                    sig = _elide_receiver_params(canonical_name, m_native, sig)
                 methods_out.setdefault(method_canonical, sig)
+
+        # Which PUBLIC_SURFACE_TRAITS this class implements (see the trait-impl
+        # walk below). Populated as we walk, consumed by the trait-DEFAULT
+        # projection after it.
+        implemented_surface_traits: set[str] = set()
 
         for impl_id in impls:
             impl_item = get(impl_id)
@@ -934,29 +1275,36 @@ def collect(rust_doc: dict, aliases: dict) -> tuple[dict, list]:
             impl_inner = impl_item.get("inner", {}).get("impl", {})
             # Skip trait impls that pull in unrelated methods (stdlib derives etc.)
             trait = impl_inner.get("trait")
+            is_surface_trait_impl = False
             if trait is not None:
                 # rustdoc emits trait { path, id }; only keep impls whose
                 # trait path is part of the SDK. Skip ALL stdlib traits.
                 trait_path = trait.get("path", "") if isinstance(trait, dict) else ""
-                if trait_path in (
-                    "Debug", "Clone", "Default", "PartialEq", "Eq",
-                    "Hash", "Send", "Sync", "Drop", "From", "TryFrom",
-                    "Display", "Error", "Iterator", "IntoIterator",
-                    "Future", "Serialize", "Deserialize",
-                    "Borrow", "BorrowMut", "AsRef", "AsMut", "ToOwned",
-                    "Into", "Deref", "DerefMut", "CloneToUninit",
-                    "Pointable", "Any", "TypeId", "Unpin",
-                    "PartialOrd", "Ord", "Copy", "Sized",
-                    "FnOnce", "Fn", "FnMut",
+                # PUBLIC-SURFACE TRAIT IMPLS ARE REAL SURFACE. ``impl SkillBase
+                # for Math`` is how Rust spells what Python spells as
+                # ``class MathSkill(SkillBase)`` overriding setup/register_tools/
+                # get_hints/... — the trait-impl methods ARE the port's
+                # implementation of the reference's per-subclass override set.
+                # The blanket "unqualified + capitalized => stdlib, skip" rule
+                # below would swallow them (SkillBase is unqualified and
+                # capitalized), which is why every skill subclass previously
+                # enumerated METHOD-LESS. The SURFACE enumerator has always
+                # collected these (PUBLIC_SURFACE_TRAITS + RE_TRAIT_FN); mirror
+                # it here so the two enumerators discover the same symbols.
+                if trait_path in PUBLIC_SURFACE_TRAITS:
+                    is_surface_trait_impl = True
+                    implemented_surface_traits.add(trait_path)
+                # Skip everything else: stdlib/derive traits (Debug, Clone,
+                # Borrow, Serialize, ...) and blanket impls all present as an
+                # unqualified, capitalized trait path, and none of them are
+                # reference surface. An SDK trait that IS surface belongs in
+                # PUBLIC_SURFACE_TRAITS above, not in a second allow-list here.
+                elif (
+                    trait_path
+                    and not trait_path.startswith("signalwire")
+                    and trait_path[0:1].isupper()
                 ):
                     continue
-                # Drop blanket impls: any trait path that isn't part of SDK
-                if trait_path and not trait_path.startswith("signalwire"):
-                    # Most stdlib trait paths are unqualified (Debug, Borrow);
-                    # if it's not in our allow-skip list and starts with a
-                    # capital letter, conservatively skip it too.
-                    if trait_path[0:1].isupper():
-                        continue
             for method_id in impl_inner.get("items", []):
                 method_item = get(method_id)
                 if not method_item:
@@ -969,16 +1317,68 @@ def collect(rust_doc: dict, aliases: dict) -> tuple[dict, list]:
                     continue
                 if method_native.startswith("_") and not method_native.startswith("__"):
                     continue
+                # Rust-idiom trait accessors the reference does not enumerate
+                # (name/description/params/version/...) — same drop the surface
+                # enumerator applies to every ``impl SkillBase for X`` body.
+                if (
+                    is_surface_trait_impl
+                    and method_native in SKILLBASE_IDIOM_METHOD_DROPS
+                ):
+                    continue
                 method_canonical = _translate_method_name(method_native)
+                # ORACLE-GATE the trait-impl contribution: a public-surface trait
+                # impl supplies the reference's per-subclass OVERRIDE set, and the
+                # SIGNATURE oracle is the authority on which members it records
+                # there (e.g. it records ``build_config`` on AIVerbHandler but not
+                # ``validate_config``/``get_verb_name``, which live on the
+                # SWMLVerbHandler base). Emitting an un-recorded trait method onto
+                # the concrete class would manufacture a missing-reference drift
+                # out of a method that IS the base's. Same gate shape as the
+                # field-synthesis and idiom-drop passes: cannot over-emit, cannot
+                # go stale.
+                if (
+                    is_surface_trait_impl
+                    and mod
+                    and method_canonical
+                    not in _sig_oracle_members().get((mod, canonical_name), set())
+                ):
+                    continue
                 ctx = f"{mod}.{canonical_name}.{method_canonical}"
                 try:
-                    sig = build_signature(m_inner["function"], paths, aliases, ctx)
+                    sig = build_signature(
+                        m_inner["function"],
+                        paths,
+                        aliases,
+                        ctx,
+                        defaults=fn_defaults.get(str(method_id)),
+                    )
                 except TypeTranslationError as e:
                     failures.append(str(e))
                     continue
+                if is_surface_trait_impl:
+                    sig = _elide_receiver_params(trait_path, method_native, sig)
                 if method_canonical in methods_out:
                     continue
                 methods_out[method_canonical] = sig
+
+        # INHERITED TRAIT-DEFAULT PROJECTION, oracle-gated. ``impl SkillBase for
+        # Datasphere`` overrides only some of the interface; the rest resolve to
+        # the trait's default bodies and are still callable on the concrete skill
+        # — the Rust spelling of Python's inherited-from-the-base methods, which
+        # the reference oracle records on EACH subclass. Project a default onto
+        # this class only when the reference records that same NAME on that same
+        # CLASS, so the projection cannot invent surface and cannot go stale as
+        # the oracle grows (this replaced nothing: the signature enumerator used
+        # to exclude skill trait-impls entirely on the premise that the oracle
+        # recorded skill subclasses method-less, which stopped being true when
+        # the oracle went from 7 to 18 skill modules).
+        if implemented_surface_traits and mod:
+            _recorded_here = _sig_oracle_members().get((mod, canonical_name), set())
+            for _tname in sorted(implemented_surface_traits):
+                for _mname, _msig in surface_trait_defaults.get(_tname, {}).items():
+                    if _mname in methods_out or _mname not in _recorded_here:
+                        continue
+                    methods_out[_mname] = _msig
 
         # PUBLIC-FIELD ACCESSOR SYNTHESIS, oracle-gated — the SIGNATURE twin of the
         # surface enumerator's public-field emission. A bare ``pub`` struct field is
@@ -1014,7 +1414,10 @@ def collect(rust_doc: dict, aliases: dict) -> tuple[dict, list]:
                 _fnode = (_f.get("inner") or {}).get("struct_field")
                 try:
                     _ftype = translate_rust_type(
-                        _fnode, paths, aliases, f"{mod}.{canonical_name}.{_fname}",
+                        _fnode,
+                        paths,
+                        aliases,
+                        f"{mod}.{canonical_name}.{_fname}",
                     )
                 except TypeTranslationError as e:
                     failures.append(str(e))
@@ -1038,14 +1441,19 @@ def collect(rust_doc: dict, aliases: dict) -> tuple[dict, list]:
         # (module, class) separately for the ORACLE GATE, which must be keyed by
         # the name the emitter EMITS. Never mix the two spaces.
         methods_out = _apply_method_renames(
-            struct_name, methods_out, module=mod, py_cls=canonical_name,
+            struct_name,
+            methods_out,
+            module=mod,
+            py_cls=canonical_name,
         )
 
         if not methods_out:
             continue
 
         out_modules.setdefault(mod, {"classes": {}})
-        existing = out_modules[mod]["classes"].get(canonical_name, {}).get("methods", {})
+        existing = (
+            out_modules[mod]["classes"].get(canonical_name, {}).get("methods", {})
+        )
         existing.update(methods_out)
         out_modules[mod]["classes"][canonical_name] = {
             "methods": dict(sorted(existing.items())),
@@ -1090,8 +1498,11 @@ def collect(rust_doc: dict, aliases: dict) -> tuple[dict, list]:
             continue
         try:
             sig = build_signature(
-                inner["function"], paths, aliases,
+                inner["function"],
+                paths,
+                aliases,
                 f"{target_module}.{target_function}",
+                defaults=fn_defaults.get(str(iid)),
             )
         except TypeTranslationError as e:
             failures.append(str(e))
@@ -1119,7 +1530,10 @@ def collect(rust_doc: dict, aliases: dict) -> tuple[dict, list]:
             if p.get("kind") == "keyword"
         }
         for p in sig.get("params", []):
-            if p.get("name") in ref_kind_by_name and p.get("kind", "positional") == "positional":
+            if (
+                p.get("name") in ref_kind_by_name
+                and p.get("kind", "positional") == "positional"
+            ):
                 p["kind"] = "keyword"
         out_modules.setdefault(target_module, {"classes": {}})
         out_modules[target_module].setdefault("functions", {})
@@ -1130,22 +1544,29 @@ def collect(rust_doc: dict, aliases: dict) -> tuple[dict, list]:
     # to canonical Python mixin / manager paths so the audit lines up.
     MIXIN_PROJECTIONS: dict[tuple[str, str], list[str]] = {
         ("signalwire.core.agent.tools.registry", "ToolRegistry"): [
-            "define_tool", "register_swaig_function",
-            "has_function", "get_function", "get_all_functions",
+            "define_tool",
+            "register_swaig_function",
+            "has_function",
+            "get_function",
+            "get_all_functions",
             "remove_function",
         ],
         ("signalwire.core.mixins.tool_mixin", "ToolMixin"): [
-            "define_tool", "on_function_call", "register_swaig_function",
+            "define_tool",
+            "on_function_call",
+            "register_swaig_function",
             "define_tools",
         ],
         ("signalwire.core.mixins.auth_mixin", "AuthMixin"): [
-            "validate_basic_auth", "get_basic_auth_credentials",
+            "validate_basic_auth",
+            "get_basic_auth_credentials",
         ],
         ("signalwire.core.mixins.state_mixin", "StateMixin"): [
             "validate_tool_token",
         ],
         ("signalwire.core.mixins.web_mixin", "WebMixin"): [
-            "on_request", "on_swml_request",
+            "on_request",
+            "on_swml_request",
         ],
         # Python additionally extracted a ``PromptManager`` class that
         # PromptMixin delegates to.  The user-facing surface is
@@ -1156,15 +1577,30 @@ def collect(rust_doc: dict, aliases: dict) -> tuple[dict, list]:
         # under a separate PromptMixin namespace, so this is the only
         # prompt-side projection needed here.
         ("signalwire.core.agent.prompt.manager", "PromptManager"): [
-            "define_contexts", "get_contexts", "get_post_prompt", "get_prompt",
+            "define_contexts",
+            "get_contexts",
+            "get_post_prompt",
+            "get_prompt",
             "get_raw_prompt",
-            "prompt_add_section", "prompt_add_subsection", "prompt_add_to_section",
-            "prompt_has_section", "set_post_prompt", "set_prompt_pom",
+            "prompt_add_section",
+            "prompt_add_subsection",
+            "prompt_add_to_section",
+            "prompt_has_section",
+            "set_post_prompt",
+            "set_prompt_pom",
             "set_prompt_text",
         ],
     }
-    svc_entry = out_modules.get("signalwire.core.swml_service", {}).get("classes", {}).get("SWMLService")
-    ab_entry = out_modules.get("signalwire.core.agent_base", {}).get("classes", {}).get("AgentBase")
+    svc_entry = (
+        out_modules.get("signalwire.core.swml_service", {})
+        .get("classes", {})
+        .get("SWMLService")
+    )
+    ab_entry = (
+        out_modules.get("signalwire.core.agent_base", {})
+        .get("classes", {})
+        .get("AgentBase")
+    )
     if svc_entry or ab_entry:
         svc_methods = svc_entry["methods"] if svc_entry else {}
         ab_methods = ab_entry["methods"] if ab_entry else {}
@@ -1196,15 +1632,22 @@ def collect(rust_doc: dict, aliases: dict) -> tuple[dict, list]:
         # missing-reference drift. Python's reference signatures inventory
         # is the source of truth for what SWMLService actually exposes.
         if svc_entry:
-            try:
-                py_ref = _load_python_reference()
-                py_svc_methods = set(py_ref.get("modules", {})
-                                     .get("signalwire.core.swml_service", {})
-                                     .get("classes", {})
-                                     .get("SWMLService", {})
-                                     .get("methods", {}).keys())
-            except Exception:
-                py_svc_methods = set()
+            # No try/except here on purpose. The old `except Exception:
+            # py_svc_methods = set()` was the most damaging swallow in this file:
+            # an empty set makes the loop below drop EVERY projected method off
+            # SWMLService (the drop condition is `n not in py_svc_methods`), so a
+            # transient oracle read error silently emptied a whole class and the
+            # run still exited 0. _load_python_reference() now aborts naming the
+            # file, which is the correct behaviour for a missing oracle.
+            py_ref = _load_python_reference()
+            py_svc_methods = set(
+                py_ref.get("modules", {})
+                .get("signalwire.core.swml_service", {})
+                .get("classes", {})
+                .get("SWMLService", {})
+                .get("methods", {})
+                .keys()
+            )
             for n in list(svc_methods.keys()):
                 if n in projected and n not in py_svc_methods:
                     svc_methods.pop(n, None)
@@ -1227,14 +1670,12 @@ def collect(rust_doc: dict, aliases: dict) -> tuple[dict, list]:
     # method the reference records on a mixin but which Rust hosts on SWMLService
     # (inherited by AgentBase) is still projectable.
     donor_sig_index: dict[str, dict] = {}
-    for _mod_name, _entry in out_modules.items():
+    for _entry in out_modules.values():
         for _cls, _c in _entry.get("classes", {}).items():
             donor_sig_index.setdefault(_cls, {}).update(_c.get("methods", {}))
     DEREF_INHERITS = {"AgentBase": "SWMLService"}
     for _child, _parent in DEREF_INHERITS.items():
-        parent_sigs = {
-            m: s for m, s in donor_sig_index.get(_parent, {}).items()
-        }
+        parent_sigs = dict(donor_sig_index.get(_parent, {}).items())
         merged = dict(parent_sigs)
         merged.update(donor_sig_index.get(_child, {}))
         donor_sig_index[_child] = merged
@@ -1348,6 +1789,31 @@ def collect(rust_doc: dict, aliases: dict) -> tuple[dict, list]:
     # for every Call/CallingNamespace command, and the audit needs to
     # treat the two as functionally equivalent.
     py_ref = _load_python_reference()
+
+    # Explode a collapsed ``&Map<String, Value>`` kwargs slot into the reference's
+    # own recorded named parameters (see KWARGS_MAP_EXPLODE). Runs BEFORE the
+    # variadic-tail projection so the exploded shape is what that pass sees.
+    for _path, _map_param in KWARGS_MAP_EXPLODE.items():
+        _mod, _cls, _meth = _path.rsplit(".", 2)
+        _ref_sig = _sig_oracle_signatures().get((_mod, _cls), {}).get(_meth)
+        _port_sig = (
+            out_modules.get(_mod, {})
+            .get("classes", {})
+            .get(_cls, {})
+            .get("methods", {})
+        ).get(_meth)
+        if not _ref_sig or not _port_sig:
+            continue  # class/method genuinely absent → stays a real drift
+        _params = _port_sig.get("params", [])
+        _names = [p.get("name") for p in _params]
+        if _map_param not in _names:
+            continue  # the collapse is gone (port now spells them out) → nothing to do
+        _idx = _names.index(_map_param)
+        _exploded = [
+            dict(p) for p in _ref_sig.get("params", []) if p.get("kind") != "self"
+        ]
+        _port_sig["params"] = _params[:_idx] + _exploded + _params[_idx + 1 :]
+
     _project_variadic_kwargs(out_modules, py_ref)
 
     # Merge the generated REST layer (sidecar-unfolded — L10). These modules
@@ -1383,6 +1849,37 @@ def collect(rust_doc: dict, aliases: dict) -> tuple[dict, list]:
         out_modules[mod].setdefault("classes", {})
         out_modules[mod]["classes"].update(entry["classes"])
 
+    # KEYWORD-ONLY KIND MIRROR (methods). The reference marks some params
+    # keyword-only (``def paginate(self, *, request_options=None, **params)``);
+    # RUST HAS NO KEYWORD-ONLY ARGUMENTS, so rustdoc necessarily reports every
+    # param positional. That is pure idiom, reconciled in the enumerator rather
+    # than excused (Rule 2) — exactly the mirror already applied to the free
+    # functions above (see ``ref_kind_by_name``), lifted to methods so the two
+    # paths share one rule instead of the class side silently going unmirrored.
+    #
+    # It is a MIRROR, not an assertion: the kind is copied only onto a param the
+    # reference records under the SAME NAME and only when Rust reports it
+    # positional. A param the reference does not declare keyword-only keeps its
+    # positional kind, so this cannot manufacture agreement where none exists.
+    for mod_name, mod_entry in out_modules.items():
+        ref_classes = _PY_REF.get("modules", {}).get(mod_name, {}).get("classes", {})
+        for cls_name, cls_entry in (mod_entry.get("classes") or {}).items():
+            ref_methods = ref_classes.get(cls_name, {}).get("methods", {})
+            for meth_name, sig in (cls_entry.get("methods") or {}).items():
+                ref_kw = {
+                    p.get("name")
+                    for p in ref_methods.get(meth_name, {}).get("params", [])
+                    if p.get("kind") == "keyword"
+                }
+                if not ref_kw:
+                    continue
+                for p in sig.get("params", []):
+                    if (
+                        p.get("name") in ref_kw
+                        and p.get("kind", "positional") == "positional"
+                    ):
+                        p["kind"] = "keyword"
+
     sorted_modules = {}
     for k in sorted(out_modules):
         entry = out_modules[k]
@@ -1402,7 +1899,12 @@ def collect(rust_doc: dict, aliases: dict) -> tuple[dict, list]:
         "generated_from": f"signalwire-rust via cargo rustdoc-json (FORMAT_VERSION {rust_doc.get('format_version')})",
         "modules": sorted_modules,
         "construction": build_construction(
-            sorted_modules, index, paths, aliases, failures,
+            sorted_modules,
+            index,
+            paths,
+            aliases,
+            failures,
+            options_defaults=options_defaults,
         ),
     }, failures
 
@@ -1460,19 +1962,30 @@ _CONSTRUCTION_FIELD_RENAMES: dict[tuple[str, str], str | None] = {
 # projection of a differently-shaped reference param (the basic_auth pair
 # above). Keyed the same way as the rename table, by the CANONICAL name.
 _CONSTRUCTION_FIELD_TYPES: dict[tuple[str, str], str] = {
-    ("signalwire.core.agent_base.AgentBase", "basic_auth"):
-        "optional<tuple<string,string>>",
-    ("signalwire.core.swml_service.SWMLService", "basic_auth"):
-        "optional<tuple<string,string>>",
-    ("signalwire.agents.bedrock.BedrockAgent", "basic_auth"):
-        "optional<tuple<string,string>>",
+    (
+        "signalwire.core.agent_base.AgentBase",
+        "basic_auth",
+    ): "optional<tuple<string,string>>",
+    (
+        "signalwire.core.swml_service.SWMLService",
+        "basic_auth",
+    ): "optional<tuple<string,string>>",
+    (
+        "signalwire.agents.bedrock.BedrockAgent",
+        "basic_auth",
+    ): "optional<tuple<string,string>>",
 }
 
 
 def build_construction(
-    modules: dict, index: dict, paths: dict, aliases: dict, failures: list,
+    modules: dict,
+    index: dict,
+    paths: dict,
+    aliases: dict,
+    failures: list,
+    options_defaults: dict | None = None,
 ) -> dict:
-    """Return ``{"module.Class": {"params": {name: {type, required}}}}``.
+    """Return ``{"module.Class": {"params": {name: {type, required[, default]}}}}``.
 
     A NAME-KEYED set (order/arity/mechanism are idiom; the named set is the
     capability) — see porting-sdk ALLOWLIST_DISCIPLINE.md §10. Two sources, in
@@ -1489,7 +2002,13 @@ def build_construction(
     them are required. Where the reference marks a param required and the struct
     does not (or vice versa), that is a real ``construction-required-flip`` for
     review, not something to paper over here.
+
+    ``default`` carries the options struct's own field initializer (mechanism C
+    of ``extract_defaults``) — the value a caller who never touches that field
+    actually gets. A field whose initializer is not a static literal carries NO
+    ``default``, exactly as if it had none.
     """
+    options_defaults = options_defaults or {}
     out: dict = {}
 
     def _params_from_init(sig: dict) -> dict:
@@ -1497,8 +2016,12 @@ def build_construction(
         for p in sig.get("params", []):
             if not isinstance(p, dict):
                 continue
-            if (p.get("kind") or "positional") in ("self", "cls", "var_keyword",
-                                                   "var_positional"):
+            if (p.get("kind") or "positional") in (
+                "self",
+                "cls",
+                "var_keyword",
+                "var_positional",
+            ):
                 continue
             name = p.get("name")
             if not name or name.startswith("_"):
@@ -1510,10 +2033,14 @@ def build_construction(
                 short = ptype.rsplit(".", 1)[-1]
                 if short in _OPTIONS_CONSTRUCTS:
                     continue
-            params[name] = {
+            entry = {
                 "type": ptype,
                 "required": bool(p.get("required", True)),
             }
+            if "default" in p:
+                entry["default"] = p["default"]
+                entry["required"] = False
+            params[name] = entry
         return params
 
     for mod, entry in modules.items():
@@ -1599,15 +2126,624 @@ def build_construction(
                 and native in ctor_required
                 and not ftype.startswith("optional<")
             )
+            entry = {"type": ftype, "required": required}
+            # The field's own initializer in `<Struct>::new` / `::default` is the
+            # value a caller who never sets it gets — the port's real default for
+            # this construction param. Keyed by the NATIVE field name (what the
+            # source-side extraction saw), attached under the canonical one.
+            # A field whose initializer is not a static literal is absent from
+            # the map and correctly carries no `default`.
+            _fdefs = options_defaults.get(struct_name or "", {})
+            if native in _fdefs:
+                entry["default"] = _fdefs[native]
+                if not required:
+                    entry["required"] = False
             # The class's own `__init__` (if any) already declared this name with
             # its real required flag — a real ctor param's flag wins.
-            params.setdefault(fname, {"type": ftype, "required": required})
+            params.setdefault(fname, entry)
         out[target]["params"] = dict(sorted(params.items()))
 
     return dict(sorted(out.items()))
 
 
-def build_signature(fn: dict, paths: dict, aliases: dict, context: str) -> dict:
+# ---------------------------------------------------------------------------
+# PARAMETER DEFAULT VALUES
+#
+# Rust has NO language-level default parameter values. A plain positional param
+# (``fn pay(&mut self, timeout: i64, ...)``) is genuinely required: the caller
+# MUST pass a value, and there is no default to record. Emitting one would be a
+# fabrication, so those params keep ``required: true`` and NO ``default`` key.
+#
+# The port DOES express a default through three source constructs, and for those
+# the value a caller-who-supplies-nothing actually gets is recoverable:
+#
+#   A. ZERO-ARG SIBLING CONSTRUCTOR. A public zero-arg fn whose whole body is a
+#      single ``Self::<other>(<literals>)`` delegation. The literals it passes
+#      ARE the defaults of the delegated-to fn's params, positionally.
+#      (``SessionManager::with_defaults() -> Self::new(900)`` — 900 is what a
+#      caller gets for ``token_expiry_secs`` without supplying one.)
+#
+#   B. ``Option<T>`` PARAM + ``<param>.unwrap_or(<literal>)``. Passing ``None``
+#      is the "don't supply it" call, and the ``unwrap_or`` literal is what the
+#      caller then gets. (``AgentServer::with_log_level(host: Option<&str>)`` →
+#      ``host.unwrap_or("0.0.0.0")``.)
+#
+#   C. OPTIONS-STRUCT FIELD INITIALIZERS. Rust spells a wide many-optional-kwarg
+#      constructor as an options struct (see ``_OPTIONS_CONSTRUCTS``); the
+#      struct's own ``new``/``default`` is a struct literal whose per-field
+#      initializers are exactly the reference's per-kwarg defaults
+#      (``AgentOptions::new`` → ``auto_answer: true, token_expiry_secs: 3600,
+#      record_format: "mp4"``).
+#
+# All three are recovered from the rustdoc ``span`` (filename + begin/end lines),
+# which is the join key from an index item back to its source text — rustdoc-json
+# carries no function BODIES, so the value has to be read out of the source.
+#
+# ONLY STATIC LITERALS ARE RECORDED. A default that is a non-literal EXPRESSION
+# (a ``const`` reference, a function call, arithmetic, a ``format!``) is not a
+# static value: it is NOT evaluated and NOT guessed — the param simply carries no
+# ``default``, exactly as if it had none. The one deliberate exception is an
+# ``unwrap_or_else(|| … .unwrap_or(<literal>))`` env-override chain, whose
+# TERMINAL literal is the value a caller gets with the env unset — that is the
+# static default the reference records as a plain literal (``AgentServer.port``:
+# reference ``port: int = 3000``, Rust reads ``$PORT`` then falls back to 3000).
+# ---------------------------------------------------------------------------
+
+# A Rust literal we are willing to record as a static default value, with the
+# ergonomic conversion suffixes (``"x".to_string()`` is still the literal "x")
+# and the numeric type suffixes (``3600u64``) stripped.
+_RUST_LITERAL_RE = re.compile(
+    r"""^\s*(?:
+          "(?P<s>(?:[^"\\]|\\.)*)"
+            (?:\s*\.\s*(?:to_string|to_owned|into|to_vec)\s*\(\s*\))?
+        | (?P<b>true|false)
+        | (?P<f>-?\d+\.\d+)(?:_?f(?:32|64))?
+        | (?P<i>-?\d+)(?:_?(?:[iu](?:8|16|32|64|128)|usize|isize))?
+        )\s*$""",
+    re.X,
+)
+
+_STR_ESCAPES = (
+    ("\\\\", "\\"),
+    ('\\"', '"'),
+    ("\\n", "\n"),
+    ("\\t", "\t"),
+    ("\\r", "\r"),
+    ("\\0", "\0"),
+)
+
+
+def parse_rust_literal(text: str):
+    """``(found, value)`` for a Rust literal expression.
+
+    Returns ``(False, None)`` for anything that is not a bare literal — a const,
+    a call, arithmetic. Callers MUST NOT substitute a guess for a ``False``.
+    ``None`` (the Rust ``None``) is a real default value and returns
+    ``(True, None)``; that is why the flag is separate from the value.
+    """
+    t = (text or "").strip()
+    if t == "None":
+        return (True, None)
+    m = _RUST_LITERAL_RE.match(t)
+    if not m:
+        return (False, None)
+    if m.group("s") is not None:
+        s = m.group("s")
+        # Longest-first so ``\\n`` (an escaped backslash then n) is not eaten by
+        # the ``\n`` rule.
+        for esc, real in _STR_ESCAPES:
+            s = s.replace(esc, real)
+        return (True, s)
+    if m.group("b") is not None:
+        return (True, m.group("b") == "true")
+    if m.group("f") is not None:
+        return (True, float(m.group("f")))
+    if m.group("i") is not None:
+        return (True, int(m.group("i")))
+    return (False, None)
+
+
+def _split_top_level(text: str) -> list[str]:
+    """Split on commas that are not nested inside brackets or a string literal."""
+    out: list[str] = []
+    depth = 0
+    cur = ""
+    in_str = False
+    esc = False
+    for ch in text:
+        if in_str:
+            cur += ch
+            if esc:
+                esc = False
+            elif ch == "\\":
+                esc = True
+            elif ch == '"':
+                in_str = False
+            continue
+        if ch == '"':
+            in_str = True
+            cur += ch
+            continue
+        if ch in "([{":
+            depth += 1
+        elif ch in ")]}":
+            depth -= 1
+        if ch == "," and depth == 0:
+            out.append(cur)
+            cur = ""
+        else:
+            cur += ch
+    if cur.strip():
+        out.append(cur)
+    return out
+
+
+def _strip_line_comments(text: str) -> str:
+    """Drop ``//`` comments, respecting string literals (a ``//`` inside a URL
+    literal is not a comment — the tokenizer-desync trap, AGENT_RULES L20)."""
+    out = []
+    in_str = False
+    esc = False
+    i = 0
+    while i < len(text):
+        ch = text[i]
+        if in_str:
+            out.append(ch)
+            if esc:
+                esc = False
+            elif ch == "\\":
+                esc = True
+            elif ch == '"':
+                in_str = False
+            i += 1
+            continue
+        if ch == '"':
+            in_str = True
+            out.append(ch)
+            i += 1
+            continue
+        if ch == "/" and text[i : i + 2] == "//":
+            while i < len(text) and text[i] != "\n":
+                i += 1
+            continue
+        out.append(ch)
+        i += 1
+    return "".join(out)
+
+
+class _SourceReader:
+    """Read a rustdoc item's source text via its ``span`` (filename + lines).
+
+    rustdoc-json records ``has_body`` but never the body itself, so every default
+    below is read out of the real source file the span points at.
+
+    Spans can legitimately point OUTSIDE this repo — rustdoc records the defining
+    file for re-exported dependency items, which lives under the cargo registry
+    and may not be present. Those degrade to "no defaults found", never to a
+    fabricated value. A span pointing INTO this repo's own ``src/`` is different:
+    an unreadable one there means we silently record "no default" for parameters
+    that HAVE defaults, and the run still exits 0. That is a fault, so it aborts.
+    """
+
+    def __init__(self, root: Path):
+        self.root = root
+        self._cache: dict[str, list[str]] = {}
+
+    def _lines(self, filename: str) -> list[str]:
+        if filename not in self._cache:
+            p = self.root / filename
+            try:
+                self._cache[filename] = p.read_text(encoding="utf-8").splitlines()
+            except (OSError, UnicodeDecodeError) as exc:
+                if self._is_in_repo(p):
+                    raise SystemExit(
+                        f"enumerate_signatures: cannot read this repo's source file "
+                        f"{p}: {exc}\nIts parameter defaults would be silently recorded "
+                        "as absent while the run still exited 0."
+                    ) from exc
+                self._cache[filename] = []
+        return self._cache[filename]
+
+    @staticmethod
+    def _is_in_repo(p: Path) -> bool:
+        """True when ``p`` is one of this repo's own sources (vs a cargo-registry
+        path rustdoc recorded for a re-exported dependency item)."""
+        try:
+            p.resolve().relative_to((PORT_ROOT / "src").resolve())
+        except (ValueError, OSError):
+            return False
+        return True
+
+    def text(self, item: dict) -> str | None:
+        span = item.get("span") or {}
+        filename = span.get("filename")
+        begin = span.get("begin")
+        end = span.get("end")
+        if not filename or not begin or not end:
+            return None
+        lines = self._lines(filename)
+        if not lines:
+            return None
+        return "\n".join(lines[begin[0] - 1 : end[0]])
+
+
+def _body_of(text: str) -> str:
+    """The ``{ … }`` body of a fn's source text (brace-balanced, string-aware)."""
+    start = None
+    depth = 0
+    in_str = False
+    esc = False
+    for i, ch in enumerate(text):
+        if in_str:
+            if esc:
+                esc = False
+            elif ch == "\\":
+                esc = True
+            elif ch == '"':
+                in_str = False
+            continue
+        if ch == '"':
+            in_str = True
+            continue
+        if ch == "{":
+            if depth == 0:
+                start = i
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0 and start is not None:
+                return text[start + 1 : i]
+    return ""
+
+
+def _struct_literal_fields(body: str, struct_name: str) -> dict:
+    """``{field: value}`` for the literal-valued fields of a ``Name { … }`` /
+    ``Self { … }`` struct literal inside ``body``. Non-literal initializers are
+    omitted (never guessed)."""
+
+    m = re.search(r"\b(?:" + re.escape(struct_name) + r"|Self)\s*\{", body)
+    if not m:
+        return {}
+    i = m.end()
+    depth = 1
+    in_str = False
+    esc = False
+    start = i
+    while i < len(body) and depth:
+        ch = body[i]
+        if in_str:
+            if esc:
+                esc = False
+            elif ch == "\\":
+                esc = True
+            elif ch == '"':
+                in_str = False
+        else:
+            if ch == '"':
+                in_str = True
+            elif ch in "{([":
+                depth += 1
+            elif ch in "})]":
+                depth -= 1
+                if depth == 0:
+                    break
+        i += 1
+    inner = body[start:i]
+    out: dict = {}
+    for part in _split_top_level(inner):
+        part = _strip_line_comments(part).strip()
+        if ":" not in part:
+            continue
+        key, _, val = part.partition(":")
+        key = key.strip()
+        if not re.fullmatch(r"\w+", key):
+            continue
+        found, value = parse_rust_literal(val)
+        if found:
+            out[key] = value
+    return out
+
+
+def _balanced_arg(text: str, open_paren_end: int) -> str:
+    """The text between an already-consumed ``(`` and its matching ``)``."""
+    i = open_paren_end
+    depth = 1
+    in_str = False
+    esc = False
+    start = i
+    while i < len(text) and depth:
+        ch = text[i]
+        if in_str:
+            if esc:
+                esc = False
+            elif ch == "\\":
+                esc = True
+            elif ch == '"':
+                in_str = False
+        else:
+            if ch == '"':
+                in_str = True
+            elif ch in "([{":
+                depth += 1
+            elif ch in ")]}":
+                depth -= 1
+                if depth == 0:
+                    break
+        i += 1
+    return text[start:i]
+
+
+def _none_branch_default(clean_body: str, expr: str):
+    """``(found, value)`` for the value ``expr`` takes when it is ``None``.
+
+    ``expr`` is a param name (``host``) or a field access (``options.host``).
+    Recognises the ways this port spells "use the default when unset":
+
+        let <x> = expr.unwrap_or(<literal>);
+        let <x> = expr.unwrap_or_else(|| <literal>);
+        let <x> = expr.map_or_else(|| <literal>, |v| …);   # 1st closure = None arm
+        let <x> = expr.map_or(<literal>, |v| …);           # 1st arg     = None arm
+
+    THE ``let`` BINDING IS REQUIRED, and it is not cosmetic. An ``unwrap_or``
+    used INLINE inside a condition is a validation guard, not a default:
+    ``if body.unwrap_or("").is_empty() { return Err(…) }``
+    (relay/client.rs, ``send_message_blocking``) tests emptiness and then ERRORS
+    — a caller who omits ``body`` gets a failure, not ``""``. Recording ``""``
+    there would be a confident wrong value. Requiring the binding keeps only the
+    form where the unwrapped value is what the rest of the body actually uses.
+
+    Returns ``(False, None)`` when the None-arm is not a static literal — the
+    caller must then record NO default rather than guess one.
+    """
+    pat = re.escape(expr).replace(r"\.", r"\s*\.\s*")
+    for m in re.finditer(
+        r"\blet\s+(?:mut\s+)?\w+\s*(?::[^=;]+)?=\s*"
+        + pat
+        + r"\s*\.\s*(?P<op>unwrap_or_else|unwrap_or|map_or_else|map_or)\s*\(",
+        clean_body,
+    ):
+        arg = _balanced_arg(clean_body, m.end())
+        op = m.group("op")
+        if op in ("map_or_else", "map_or"):
+            parts = _split_top_level(arg)
+            if not parts:
+                continue
+            arg = parts[0]
+        # Strip a closure header so ``|| "x".to_string()`` reads as the literal.
+        arg = re.sub(r"^\s*\|\s*\|", "", arg, count=1).strip()
+        # ONLY a bare literal None-arm counts. An ENV-CONSULTING chain
+        # (``|| env::var("PORT").ok()…unwrap_or(3000)``) is deliberately NOT
+        # reduced to its terminal literal: the value depends on the process
+        # environment, so it is not a static default. The reference agrees — for
+        # exactly this construct (``port if port is not None else
+        # int(os.environ.get("PORT", 3000))``, swml_service.py:133) it records the
+        # DECLARED ``None``, not the resolved 3000. Reducing the chain made
+        # SWMLService.port read 3000 against the oracle's None: a confident wrong
+        # value, which is worse than a missing one.
+        found, value = parse_rust_literal(arg)
+        if found:
+            # First occurrence wins: it is the binding the rest of the body reads.
+            return (True, value)
+    return (False, None)
+
+
+def extract_defaults(index: dict, reader: _SourceReader) -> tuple[dict, dict]:
+    """Recover the port's real parameter defaults from source.
+
+    Returns ``(fn_defaults, options_defaults)``:
+      * ``fn_defaults``: ``{rustdoc_item_id: {param_name: value}}`` — mechanisms
+        A and B, keyed by the item whose PARAMS carry the default.
+      * ``options_defaults``: ``{options_struct_name: {field: value}}`` —
+        mechanism C.
+    A param absent from these maps has no recoverable default and stays required.
+    """
+
+    fn_defaults: dict = {}
+    options_defaults: dict = {}
+    # Mechanism D's findings, merged over C after the walk (see mechanism D).
+    consumed_defaults: dict = {}
+
+    # Index public fns by (filename, name) so a delegation target can be found.
+    fns_by_file_name: dict[tuple[str, str], list] = {}
+    for iid, item in index.items():
+        if "function" not in (item.get("inner") or {}):
+            continue
+        span = item.get("span") or {}
+        fname = span.get("filename")
+        if not fname or not item.get("name"):
+            continue
+        fns_by_file_name.setdefault((fname, item["name"]), []).append((str(iid), item))
+
+    for iid, item in index.items():
+        fn = (item.get("inner") or {}).get("function")
+        if not fn:
+            continue
+        sig = fn.get("sig") or {}
+        inputs = sig.get("inputs") or []
+        text = reader.text(item)
+        if not text:
+            continue
+        body = _body_of(text)
+        if not body:
+            continue
+
+        # ---- Mechanism A: zero-arg sibling constructor delegating literals ----
+        # Only a PUBLIC, genuinely zero-arg fn whose entire body is one
+        # ``Self::<target>(<args>)`` expression, and only when EVERY arg is a
+        # literal (a partly-literal delegation tells us nothing positionally
+        # reliable about which param got which value).
+        if not inputs and item.get("visibility") == "public":
+            expr = _strip_line_comments(body).strip().rstrip(";").strip()
+            m = re.fullmatch(r"Self::(\w+)\s*\((?P<args>.*)\)", expr, re.S)
+            if m:
+                args = [a.strip() for a in _split_top_level(m.group("args"))]
+                parsed = [parse_rust_literal(a) for a in args]
+                if args and all(found for found, _ in parsed):
+                    span = item.get("span") or {}
+                    targets = fns_by_file_name.get(
+                        (span.get("filename"), m.group(1)), []
+                    )
+                    for tid, titem in targets:
+                        tsig = (titem.get("inner") or {}).get("function", {}).get(
+                            "sig"
+                        ) or {}
+                        tinputs = [
+                            n
+                            for n, _ in (tsig.get("inputs") or [])
+                            if isinstance(n, str) and n != "self"
+                        ]
+                        if len(tinputs) != len(args):
+                            continue  # not the overload this delegates to
+                        fn_defaults.setdefault(tid, {}).update(
+                            {n: v for n, (_, v) in zip(tinputs, parsed, strict=False)}
+                        )
+
+        clean = _strip_line_comments(body)
+
+        # ---- Mechanism B: Option<T> param + <param>.unwrap_or(<literal>) ----
+        opt_params = [
+            n
+            for n, t in inputs
+            if isinstance(n, str)
+            and n != "self"
+            and isinstance(t, dict)
+            and "resolved_path" in t
+            and str(t["resolved_path"].get("path", "")).split("::")[-1] == "Option"
+        ]
+        for pname in opt_params:
+            found, value = _none_branch_default(clean, pname)
+            if found:
+                fn_defaults.setdefault(str(iid), {}).setdefault(pname, value)
+
+        # ---- Mechanism D (collected here, APPLIED after the loop) ----
+        # An options struct can leave a field ``None`` and have the constructor
+        # that CONSUMES it supply the real default:
+        #   ``Service::new(options: ServiceOptions)`` →
+        #   ``options.host.unwrap_or_else(|| "0.0.0.0".to_string())``.
+        # The struct-literal initializer (mechanism C) sees only that ``None``, so
+        # without this the field reads as "defaults to None" when a caller who
+        # sets nothing actually gets ``"0.0.0.0"``. Attribute the resolved value
+        # to the OPTIONS STRUCT's field, where mechanism C would have put it — the
+        # consuming ctor's resolution IS that field's effective default. Held in a
+        # separate map and merged AFTER the walk so it deterministically WINS over
+        # C's ``None``; doing it inline would make the result depend on rustdoc's
+        # index iteration order.
+        for pname, ptype in inputs:
+            if not isinstance(pname, str) or pname == "self":
+                continue
+            if not (isinstance(ptype, dict) and "resolved_path" in ptype):
+                continue
+            struct_name = str(ptype["resolved_path"].get("path", "")).split("::")[-1]
+            if struct_name not in _OPTIONS_CONSTRUCTS:
+                continue
+            for fm in re.finditer(
+                re.escape(pname)
+                + r"\s*\.\s*(\w+)\s*\.\s*(?:unwrap_or(?:_else)?|map_or_else|map_or)\s*\(",
+                clean,
+            ):
+                fname = fm.group(1)
+                found, value = _none_branch_default(clean, f"{pname}.{fname}")
+                if found:
+                    consumed_defaults.setdefault(struct_name, {}).setdefault(
+                        fname, value
+                    )
+
+        # ---- Mechanism C: options-struct field initializers ----
+        # Require the EXPLICIT ``<Struct> { … }`` literal form. A bare ``Self { … }``
+        # inside ``impl <Struct>`` is the same thing, but the ``impl`` header sits
+        # OUTSIDE this item's span, so there is no way to tell from the span alone
+        # which struct ``Self`` names — attributing it by guess would be exactly
+        # the fabrication this whole pass refuses to do.
+        if item.get("name") in ("new", "default"):
+            for struct_name in _OPTIONS_CONSTRUCTS:
+                if not re.search(r"\b" + re.escape(struct_name) + r"\s*\{", body):
+                    continue
+                fields = _struct_literal_fields(body, struct_name)
+                if fields:
+                    options_defaults.setdefault(struct_name, {}).update(fields)
+                break
+
+    # Mechanism D wins over C: a field C read as ``None`` but which the consuming
+    # constructor resolves to a real literal defaults to that literal, because
+    # that is what a caller who sets nothing actually gets.
+    for struct_name, fields in consumed_defaults.items():
+        options_defaults.setdefault(struct_name, {}).update(fields)
+
+    return fn_defaults, options_defaults
+
+
+# ---------------------------------------------------------------------------
+# PARAMETER OPTIONALITY (``required``)
+#
+# Rust has no omittable arguments: EVERY parameter must appear at the callsite,
+# so "can the caller leave it out?" is never answerable from arity alone. What
+# Rust does have is a way to MODEL ABSENCE in the type — ``Option<T>``. Passing
+# ``None`` IS the don't-supply-it call, and the body then takes its no-value
+# branch (``unwrap_or``, ``if let Some``, ``let … else``). That is exactly the
+# capability the reference spells ``x: T | None = None``, so an ``Option<T>``
+# param is ``required: false`` and a bare ``T`` param is ``required: true``.
+#
+# Emitting ``required: true`` for every param (the previous behaviour, from
+# "Rust has no defaults") was not a conservative choice — it was a WRONG one for
+# the 105 params the port models as ``Option<T>``: it reported a capability loss
+# the port does not have.
+#
+# THE ONE EXCEPTION, and why it is a table and not a rule. The reference has 8
+# params (of 1,187 it types ``optional<…>``) that are optional-TYPED but still
+# positionally REQUIRED — the caller must pass something, and that something may
+# be ``None``:
+#
+#     def merge(self, override: RequestOptions | None) -> RequestOptions
+#     def resolve(client_default: RequestOptions | None,
+#                 per_request: RequestOptions | None) -> _EffectiveOptions
+#
+# Rust spells those ``Option<&RequestOptions>`` — byte-identically to a genuinely
+# omittable param, because Rust has ONE spelling for both and the bodies are the
+# same shape (``client_default.cloned().unwrap_or_default()`` is a fallback
+# either way). No property of the Rust source separates them, so no rule can:
+# the distinction lives only in the reference's declaration. Rather than pretend
+# to derive it, the divergence is NAMED here, per symbol, so it is auditable and
+# so a NEW one cannot appear silently — an unlisted ``Option<T>`` is optional.
+#
+# This is not oracle-copying: the general answer is measured from the Rust type,
+# and only this closed, enumerated set of reference-side quirks is reconciled —
+# the same shape as PARAM_RECONCILE and RETURN_TYPE_OVERRIDE above.
+#
+# The 5 remaining reference optional-typed-required params (AIChatError.code,
+# AgentBase.on_summary.summary, validate_request.params_or_raw_body,
+# SignalWireRestError.status_code, SipEndpoints.create.calling_handler_resource_id)
+# are NOT ``Option<T>`` in this port, so they never reach this table.
+# ---------------------------------------------------------------------------
+
+# ``{context: {native_param_name}}`` — ``Option<T>`` params the REFERENCE
+# declares positionally required (optional-typed, no default). Verified against
+# python_signatures.json 2026-07-27: exactly 8 reference params are
+# ``optional<…>`` with ``required: true``, and these 3 are the ones this port
+# spells ``Option<T>``.
+OPTIONAL_TYPED_BUT_REQUIRED: dict[str, set[str]] = {
+    "signalwire.rest._request_options.RequestOptions.merge": {"override_opts"},
+    "signalwire.rest._request_options.resolve": {"client_default", "per_request"},
+}
+
+
+def _is_optional_slot(t, context: str, name: str) -> bool:
+    """True when this param's Rust type MODELS ABSENCE (``Option<T>``).
+
+    ``&Option<T>`` / ``&mut Option<T>`` count too — the borrow is invisible to
+    the reference's type model (the same collapse ``translate_rust_type`` does).
+    """
+    if name in OPTIONAL_TYPED_BUT_REQUIRED.get(context, ()):
+        return False
+    while isinstance(t, dict) and "borrowed_ref" in t:
+        t = t["borrowed_ref"].get("type")
+    if not (isinstance(t, dict) and "resolved_path" in t):
+        return False
+    return str(t["resolved_path"].get("path", "")).split("::")[-1] == "Option"
+
+
+def build_signature(
+    fn: dict, paths: dict, aliases: dict, context: str, defaults: dict | None = None
+) -> dict:
     sig = fn.get("sig", {})
     inputs = sig.get("inputs", [])
     params_out: list = []
@@ -1623,18 +2759,32 @@ def build_signature(fn: dict, paths: dict, aliases: dict, context: str) -> dict:
             continue
         canon = translate_rust_type(t, paths, aliases, f"{context}[{name}]")
         reconcile = PARAM_RECONCILE.get(context, {}).get(name, {})
-        params_out.append({
+        p = {
             "name": reconcile.get("name", name),
             "type": reconcile.get("type", canon),
-            "required": True,  # Rust has no defaults
-        })
+            # A bare Rust param is REQUIRED — the caller must pass a value and
+            # there is no default to record. An ``Option<T>`` param is the port's
+            # way of MODELLING ABSENCE (see _is_optional_slot), so it is not.
+            "required": not _is_optional_slot(t, context, name),
+        }
+        # Key the recovered default off the NATIVE Rust param name — that is the
+        # name the source-side extraction saw — not the post-reconcile emitted
+        # name, which may have been renamed to the Python spelling.
+        if defaults and name in defaults:
+            p["default"] = defaults[name]
+            p["required"] = False
+        params_out.append(p)
     # Constructors have no Rust receiver but Python's canonical signature
     # includes ``self`` first. Synthesize it so __init__ shapes line up.
     if is_ctor and not is_method:
         params_out.insert(0, {"name": "self", "kind": "self"})
 
     output = sig.get("output")
-    return_canon = translate_rust_type(output, paths, aliases, f"{context}[->]") if output else "void"
+    return_canon = (
+        translate_rust_type(output, paths, aliases, f"{context}[->]")
+        if output
+        else "void"
+    )
     # ::new() returns Self in Rust; translate as void per __init__ convention
     if context.endswith(".__init__") and return_canon != "void":
         return_canon = "void"
@@ -1828,7 +2978,9 @@ def build_ai_chat_signatures() -> dict:
                 "AIChatClient": {"methods": dict(sorted(client_methods.items()))},
                 "ChatLog": {"methods": dict(sorted(chatlog_methods.items()))},
                 "ChatResponse": {"methods": dict(sorted(chatresponse_methods.items()))},
-                "ConversationInfo": {"methods": dict(sorted(conversationinfo_methods.items()))},
+                "ConversationInfo": {
+                    "methods": dict(sorted(conversationinfo_methods.items()))
+                },
                 "AIChatError": {"methods": {"__init__": aichaterror_init}},
             }
         }
@@ -1837,9 +2989,21 @@ def build_ai_chat_signatures() -> dict:
 
 def run_dump() -> dict:
     cp = subprocess.run(
-        ["cargo", "+nightly", "rustdoc", "--lib", "--", "-Z", "unstable-options",
-         "--output-format", "json"],
-        cwd=PORT_ROOT, capture_output=True, text=True, timeout=600,
+        [
+            "cargo",
+            "+nightly",
+            "rustdoc",
+            "--lib",
+            "--",
+            "-Z",
+            "unstable-options",
+            "--output-format",
+            "json",
+        ],
+        cwd=PORT_ROOT,
+        capture_output=True,
+        text=True,
+        timeout=600,
     )
     if cp.returncode != 0:
         raise RuntimeError(f"cargo rustdoc failed:\n{cp.stderr}")
@@ -1853,7 +3017,9 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--raw", type=Path, default=None)
     parser.add_argument("--out", type=Path, default=PORT_ROOT / "port_signatures.json")
-    parser.add_argument("--strict", action="store_true")
+    # Strict is the DEFAULT (see the failure branch below); --no-strict is an
+    # ad-hoc local-debugging escape hatch that no gate may use.
+    parser.add_argument("--strict", action=argparse.BooleanOptionalAction, default=True)
     args = parser.parse_args()
 
     aliases = load_aliases()
@@ -1864,18 +3030,36 @@ def main() -> int:
 
     canonical, failures = collect(rust_doc, aliases)
     if failures:
-        print(f"enumerate_signatures: {len(failures)} translation failure(s)", file=sys.stderr)
+        print(
+            f"enumerate_signatures: {len(failures)} translation failure(s)",
+            file=sys.stderr,
+        )
         for f in failures[:30]:
             print(f"  - {f}", file=sys.stderr)
         if len(failures) > 30:
             print(f"  ... ({len(failures) - 30} more)", file=sys.stderr)
+        # FAIL LOUD BY DEFAULT. A translation failure means a type this port
+        # really exposes could not be rendered into the canonical inventory, so
+        # the artifact written below is SHORT — and it is exactly what the
+        # SIGNATURES/DRIFT gates then compare the port against. Behind the old
+        # opt-in `--strict` (which NO gate passed) that produced a rc=0 "success"
+        # whose output blamed the port for omissions it never had. Same defect
+        # php shipped. `--no-strict` keeps the tolerant mode for ad-hoc local
+        # debugging only; run-ci.sh must never pass it.
         if args.strict:
             return 1
 
-    args.out.write_text(json.dumps(canonical, indent=2, sort_keys=False) + "\n", encoding="utf-8")
+    args.out.write_text(
+        json.dumps(canonical, indent=2, sort_keys=False) + "\n", encoding="utf-8"
+    )
     n_mods = len(canonical["modules"])
-    n_methods = sum(sum(len(c["methods"]) for c in m.get("classes", {}).values()) for m in canonical["modules"].values())
-    print(f"enumerate_signatures: wrote {args.out} ({n_mods} modules, {n_methods} methods)")
+    n_methods = sum(
+        sum(len(c["methods"]) for c in m.get("classes", {}).values())
+        for m in canonical["modules"].values()
+    )
+    print(
+        f"enumerate_signatures: wrote {args.out} ({n_mods} modules, {n_methods} methods)"
+    )
     return 0
 
 

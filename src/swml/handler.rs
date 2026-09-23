@@ -1,6 +1,6 @@
 //! SWML verb handlers — interface and implementations for SWML verb handling.
 //!
-//! Port of Python `signalwire.core.swml_handler`. Defines the base interface
+//! Defines the base interface
 //! for SWML verb handlers ([`SwmlVerbHandler`]) and a concrete handler for the
 //! complex `ai` verb ([`AiVerbHandler`]), plus the [`VerbHandlerRegistry`] that
 //! maps verb names to their specialized handlers.
@@ -48,6 +48,11 @@ pub trait SwmlVerbHandler: Send + Sync {
 pub struct AiVerbHandler;
 
 impl AiVerbHandler {
+    /// Create the `ai` verb handler.
+    ///
+    /// The handler is stateless — it exists to carry the verb name and the
+    /// `ai`-specific config validation, which chiefly enforces that a
+    /// `prompt` field is present.
     #[must_use]
     pub fn new() -> Self {
         AiVerbHandler

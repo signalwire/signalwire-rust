@@ -113,7 +113,7 @@ fn signed_post_to_root_is_accepted() {
         let mut headers = auth_headers();
         headers.insert("X-SignalWire-Signature".into(), sig);
 
-        let (status, _, _) = agent.handle_request("POST", "/", &headers, body);
+        let (status, _, _) = agent.handle_request("POST", "/", &headers, Some(body));
         // Should NOT be 403 — should pass through to handle_swml_request.
         assert_ne!(status, 403, "valid signature must not 403");
         // SWML render returns 200.
@@ -126,7 +126,7 @@ fn unsigned_post_to_root_is_rejected_403() {
     with_proxy_base("https://agent.example.com", || {
         let agent = make_agent(Some(KEY));
         let headers = auth_headers();
-        let (status, _, _) = agent.handle_request("POST", "/", &headers, "");
+        let (status, _, _) = agent.handle_request("POST", "/", &headers, None);
         assert_eq!(status, 403);
     });
 }
@@ -144,7 +144,7 @@ fn tampered_post_body_is_rejected_403() {
 
         // Tamper the body before sending — signature no longer matches.
         let tampered = r#"{"call_id":"OTHER"}"#;
-        let (status, _, _) = agent.handle_request("POST", "/swaig", &headers, tampered);
+        let (status, _, _) = agent.handle_request("POST", "/swaig", &headers, Some(tampered));
         assert_eq!(status, 403);
     });
 }
@@ -162,7 +162,7 @@ fn signed_post_to_swaig_dispatches_to_handler() {
         let mut headers = auth_headers();
         headers.insert("X-SignalWire-Signature".into(), sig);
 
-        let (status, _, _) = agent.handle_request("POST", "/swaig", &headers, body);
+        let (status, _, _) = agent.handle_request("POST", "/swaig", &headers, Some(body));
         assert_ne!(status, 403, "valid signature must not 403");
         // 400 because "{}" has no function name; that's fine — it
         // reached the handler, which is the assertion we care about.
@@ -184,7 +184,7 @@ fn signed_post_to_post_prompt_is_accepted() {
         let mut headers = auth_headers();
         headers.insert("X-SignalWire-Signature".into(), sig);
 
-        let (status, _, _) = agent.handle_request("POST", "/post_prompt", &headers, body);
+        let (status, _, _) = agent.handle_request("POST", "/post_prompt", &headers, Some(body));
         assert_eq!(status, 200);
     });
 }
@@ -197,12 +197,12 @@ fn get_requests_are_not_signature_checked() {
         let agent = make_agent(Some(KEY));
         let headers = auth_headers();
 
-        let (status, _, _) = agent.handle_request("GET", "/", &headers, "");
+        let (status, _, _) = agent.handle_request("GET", "/", &headers, None);
         assert_eq!(status, 200);
 
         // /health doesn't even hit auth; works without anything.
         let empty_headers = HashMap::new();
-        let (status, _, _) = agent.handle_request("GET", "/health", &empty_headers, "");
+        let (status, _, _) = agent.handle_request("GET", "/health", &empty_headers, None);
         assert_eq!(status, 200);
     });
 }
@@ -214,7 +214,7 @@ fn no_signing_key_means_no_validation() {
         // behaviour with a startup warning logged at construction).
         let agent = make_agent(None);
         let headers = auth_headers();
-        let (status, _, _) = agent.handle_request("POST", "/", &headers, "");
+        let (status, _, _) = agent.handle_request("POST", "/", &headers, None);
         assert_ne!(status, 403, "no-key mode must not 403");
         assert_eq!(status, 200);
     });
@@ -246,7 +246,7 @@ fn signing_key_falls_back_to_env_var() {
 
         let mut headers = auth_headers();
         headers.insert("X-SignalWire-Signature".into(), sig);
-        let (status, _, _) = agent.handle_request("POST", "/", &headers, body);
+        let (status, _, _) = agent.handle_request("POST", "/", &headers, Some(body));
         assert_eq!(status, 200, "env-key signature must validate");
     });
 
@@ -329,7 +329,7 @@ fn x_twilio_signature_header_is_also_accepted_on_agent() {
 
         let mut headers = auth_headers();
         headers.insert("X-Twilio-Signature".into(), sig);
-        let (status, _, _) = agent.handle_request("POST", "/", &headers, body);
+        let (status, _, _) = agent.handle_request("POST", "/", &headers, Some(body));
         assert_eq!(status, 200);
     });
 }
@@ -343,7 +343,7 @@ fn set_signing_key_after_construction_works() {
 
         // Now an unsigned POST should be rejected.
         let headers = auth_headers();
-        let (status, _, _) = agent.handle_request("POST", "/", &headers, "");
+        let (status, _, _) = agent.handle_request("POST", "/", &headers, None);
         assert_eq!(status, 403);
     });
 }

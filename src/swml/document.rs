@@ -11,6 +11,12 @@ pub struct Document {
 }
 
 impl Document {
+    /// Create a document at SWML version `1.0.0` with an empty `main`
+    /// section.
+    ///
+    /// `main` is the entry point the platform executes, and it always
+    /// exists — [`add_verb`](Document::add_verb) appends to it without
+    /// needing a section to be created first.
     pub fn new() -> Self {
         let mut sections = HashMap::new();
         sections.insert("main".to_string(), Vec::new());
@@ -20,6 +26,8 @@ impl Document {
         }
     }
 
+    /// The SWML document version emitted as the `version` key — currently
+    /// always `"1.0.0"`.
     pub fn version(&self) -> &str {
         &self.version
     }
@@ -33,6 +41,7 @@ impl Document {
         true
     }
 
+    /// Whether a section named `name` exists. `"main"` is always present.
     pub fn has_section(&self, name: &str) -> bool {
         self.sections.contains_key(name)
     }

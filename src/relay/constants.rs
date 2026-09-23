@@ -3,19 +3,44 @@
 //! Mirrors the PHP `Constants` class: protocol version, call/dial/message
 //! states, terminal-state maps, and per-event-type action terminal states.
 
-/// Protocol version exchanged during `signalwire.connect`.
+/// Major component of the RELAY protocol version sent in the
+/// `signalwire.connect` handshake. A mismatch here is a breaking protocol
+/// change: the server may refuse the session.
 pub const PROTOCOL_VERSION_MAJOR: u32 = 2;
+/// Minor component of the RELAY protocol version sent in the
+/// `signalwire.connect` handshake. Bumped for backward-compatible additions
+/// to the protocol (new methods or event params).
 pub const PROTOCOL_VERSION_MINOR: u32 = 0;
+/// Revision component of the RELAY protocol version sent in the
+/// `signalwire.connect` handshake. Bumped for fixes that change no wire
+/// contract.
 pub const PROTOCOL_VERSION_REVISION: u32 = 0;
 
 // ------------------------------------------------------------------
 // Call states
 // ------------------------------------------------------------------
 
+/// `calling.call.state` value meaning the call object exists on the server
+/// but has not yet started ringing the destination. First state of the call
+/// lifecycle; non-terminal.
 pub const CALL_STATE_CREATED: &str = "created";
+/// `calling.call.state` value meaning the destination is ringing and has not
+/// yet answered. Non-terminal.
 pub const CALL_STATE_RINGING: &str = "ringing";
+/// `calling.call.state` value meaning the call was answered and media is in
+/// progress. This is the state in which call-control verbs (play, record,
+/// collect, …) are accepted. Non-terminal.
+///
+/// Note this string is shared with [`DIAL_STATE_ANSWERED`] but belongs to a
+/// different vocabulary; see [`state_enums`](super::state_enums) for the
+/// typed view that keeps the two apart.
 pub const CALL_STATE_ANSWERED: &str = "answered";
+/// `calling.call.state` value meaning the call is tearing down but the
+/// server has not yet reported the final hangup. Non-terminal.
 pub const CALL_STATE_ENDING: &str = "ending";
+/// `calling.call.state` value meaning the call has fully ended. This is the
+/// only terminal call state — see [`is_call_terminal`]. After this, no
+/// further call-control verbs will be accepted for the `call_id`.
 pub const CALL_STATE_ENDED: &str = "ended";
 
 /// Returns `true` when the call state is terminal (i.e. `"ended"`).
@@ -27,20 +52,47 @@ pub fn is_call_terminal(state: &str) -> bool {
 // Dial states
 // ------------------------------------------------------------------
 
+/// `calling.call.dial` result value meaning the outbound attempt is still in
+/// flight — devices are being tried. Non-terminal.
 pub const DIAL_STATE_DIALING: &str = "dialing";
+/// `calling.call.dial` result value meaning one of the dialled devices
+/// answered; the dial succeeded and a call leg now exists. Terminal for the
+/// dial.
 pub const DIAL_STATE_ANSWERED: &str = "answered";
+/// `calling.call.dial` result value meaning every device in the dial plan
+/// was exhausted without an answer. Terminal for the dial; no call leg is
+/// produced.
 pub const DIAL_STATE_FAILED: &str = "failed";
 
 // ------------------------------------------------------------------
 // Message states
 // ------------------------------------------------------------------
 
+/// `messaging.state` value meaning the server accepted the message and
+/// queued it for sending. Non-terminal.
 pub const MESSAGE_STATE_QUEUED: &str = "queued";
+/// `messaging.state` value meaning the server has begun sending the message.
+/// Non-terminal.
 pub const MESSAGE_STATE_INITIATED: &str = "initiated";
+/// `messaging.state` value meaning the message was handed off to the
+/// carrier. Non-terminal — delivery is not yet confirmed, so a `sent`
+/// message can still end `undelivered`.
 pub const MESSAGE_STATE_SENT: &str = "sent";
+/// `messaging.state` value meaning the carrier confirmed delivery to the
+/// handset. Terminal — see [`is_message_terminal`].
 pub const MESSAGE_STATE_DELIVERED: &str = "delivered";
+/// `messaging.state` value meaning the carrier accepted the message but
+/// reported that it was not delivered. Terminal.
 pub const MESSAGE_STATE_UNDELIVERED: &str = "undelivered";
+/// `messaging.state` value meaning sending failed outright (the carrier
+/// rejected it or the send errored). Terminal.
+///
+/// This string is shared with [`DIAL_STATE_FAILED`] but belongs to a
+/// different vocabulary — it means *message* failure, never a dial failure.
 pub const MESSAGE_STATE_FAILED: &str = "failed";
+/// `messaging.state` value carried by an *inbound* message
+/// (`messaging.receive`). Not part of the outbound send lifecycle and not in
+/// the terminal set.
 pub const MESSAGE_STATE_RECEIVED: &str = "received";
 
 /// Returns `true` when the message state is terminal.

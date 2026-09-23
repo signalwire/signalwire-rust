@@ -152,7 +152,8 @@ impl<'a> ProjectTokens<'a> {
     ) -> Result<Value, SignalWireRestError> {
         self.client().post_with_options(
             self.base_path(),
-            &request.build(),
+            Some(&request.build()),
+            None,
             request_options.as_ref(),
         )
     }
@@ -170,7 +171,7 @@ impl<'a> ProjectTokens<'a> {
     ) -> Result<Value, SignalWireRestError> {
         self.client().patch_with_options(
             &self.path(&[token_id]),
-            &request.build(),
+            Some(&request.build()),
             request_options.as_ref(),
         )
     }

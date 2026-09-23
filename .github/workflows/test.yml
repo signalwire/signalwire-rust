@@ -52,13 +52,22 @@ jobs:
           path: signalwire-python
           ref: ${{ vars.PORTING_SDK_REF || 'main' }}
 
-      - name: Set up Rust (stable + nightly for rustdoc-json)
-        # Stable for `cargo test` + the FMT/LINT gates (run-ci.sh pins those to
-        # `cargo +stable`); nightly for the rustdoc-json output consumed by
-        # scripts/enumerate_signatures.py (Gate 2). clippy + rustfmt components
-        # are explicit so `cargo +stable fmt`/`clippy` resolve even though the
-        # nightly step below makes nightly the default toolchain.
-        uses: dtolnay/rust-toolchain@stable
+      - name: Set up Rust (PINNED toolchain + nightly for rustdoc-json)
+        # The PINNED toolchain for `cargo test` + the FMT/LINT gates (the scripts
+        # invoke `cargo +$SW_RUST_TOOLCHAIN`, read from rust-toolchain.toml);
+        # nightly for the rustdoc-json output consumed by
+        # scripts/enumerate_signatures.py (Gate 2). clippy + rustfmt components are
+        # explicit so fmt/clippy resolve even though the nightly step below makes
+        # nightly the default toolchain.
+        #
+        # This was `@stable`, which resolves to whatever is newest on the day the
+        # job runs. Cargo.toml denies `clippy::all` + the whole `pedantic` group
+        # (plus `-D warnings`), so every new clippy lint is an instant build
+        # failure: a new stable release could red CI on a commit that was green
+        # locally, with nothing in the diff to explain it. The version lives in
+        # rust-toolchain.toml (ONE source of truth — rustup applies it to every
+        # cargo call in the repo, local and CI alike); keep this in lockstep with it.
+        uses: dtolnay/rust-toolchain@1.96.0
         with:
           components: clippy, rustfmt
 
@@ -93,6 +102,23 @@ jobs:
         run: |
           pip install -e porting-sdk/test_harness/mock_relay
           pip install -e porting-sdk/test_harness/mock_signalwire
+
+      # scripts/run-pylint.sh fails LOUD when ruff is absent rather than
+      # skipping, so the PY-LINT gate cannot pass vacuously on a runner that
+      # lacks it — hence this explicit install rather than relying on it being
+      # preinstalled. Without it the gate reds with "ruff not found on PATH",
+      # which is a missing CI dep, not a code finding.
+      - name: Install ruff (PY-LINT gate)
+        run: |
+          # PINNED EXACT: an unbounded `pip install ruff` resolves the newest release
+          # at CI time, so a ruff release that adds a rule or changes a format
+          # heuristic reds FMT/LINT on a commit that was green locally. Keep in
+          # lockstep with SW_RUFF_VERSION in scripts/_env.sh.
+          pip install "ruff==0.15.21"
+          # Assert the pin took — pip can satisfy a spec from an unexpected
+          # index or cache, so verify rather than assume.
+          ruff --version
+          ruff --version | grep -qw '0\.15\.21' || { echo "FATAL: ruff is not the pinned 0.15.21" >&2; exit 1; }
 
       # EMISSION needs `import signalwire` (the oracle). Install from the
       # adjacent checkout only if not already importable.

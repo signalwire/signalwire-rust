@@ -8,7 +8,7 @@ use crate::swaig::FunctionResult;
 
 /// Search Wikipedia and get article summaries.
 ///
-/// Mirrors Python's `signalwire.skills.wikipedia_search`: real HTTP GET
+/// Matches `signalwire.skills.wikipedia_search`: real HTTP GET
 /// against the Wikipedia REST API. The base URL can be overridden by
 /// setting `WIKIPEDIA_BASE_URL` (used by `audit_skills_dispatch.py`'s
 /// fixture). Defaults to `https://en.wikipedia.org`.
@@ -17,6 +17,11 @@ pub struct WikipediaSearch {
 }
 
 impl WikipediaSearch {
+    /// Create the skill from its configuration `params`.
+    ///
+    /// Setup gates on `validate_packages()` to mirror the Python
+    /// reference's surface; in Rust that check is always satisfied, so setup
+    /// always succeeds.
     pub fn new(params: Map<String, Value>) -> Self {
         WikipediaSearch {
             sp: SkillParams::new(params),
@@ -26,7 +31,7 @@ impl WikipediaSearch {
     /// Search Wikipedia for articles matching `query` and return a formatted
     /// summary string (or an error / no-results message).
     ///
-    /// Mirrors Python `WikipediaSearchSkill.search_wiki`: issues the
+    /// Matches `WikipediaSearchSkill.search_wiki`: issues the
     /// `MediaWiki` `list=search` query, caps at `num_results`, and formats the
     /// hits. `num_results` is clamped to 1..=5 to match Python's
     /// `max(1, num_results)` floor and the skill's schema `maximum: 5`.

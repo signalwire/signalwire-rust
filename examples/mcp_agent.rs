@@ -21,11 +21,11 @@ fn main() {
     // Add the mcp_gateway skill to expose external MCP servers as SWAIG tools.
     agent.add_skill(
         "mcp_gateway",
-        json!({
+        Some(json!({
             "gateway_url": "https://mcp.example.com/tools",
             "headers": {"Authorization": "Bearer sk-your-mcp-api-key"},
             "tool_prefix": "mcp_",
-        }),
+        })),
     );
 
     // -- Agent configuration --

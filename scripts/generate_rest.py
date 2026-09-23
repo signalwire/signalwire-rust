@@ -41,6 +41,7 @@ Usage:
     python3 scripts/generate_rest.py --check         # GEN-FRESH: fail if stale
     python3 scripts/generate_rest.py --out DIR       # scratch: emit into DIR
 """
+
 from __future__ import annotations
 
 import argparse
@@ -82,13 +83,25 @@ except ImportError:  # pragma: no cover
 # needs an order placement. The module/key leaf is ``<spec dir>`` with ``-`` -> ``_``
 # (``relay-rest`` -> ``relay_rest``), derived via snake_of, not tabulated.
 _NS_ORDER = (
-    "relay-rest", "fabric", "calling", "video", "datasphere",
-    "logs", "message", "messages", "voice", "fax", "project", "projects", "chat", "pubsub",
+    "relay-rest",
+    "fabric",
+    "calling",
+    "video",
+    "datasphere",
+    "logs",
+    "message",
+    "messages",
+    "voice",
+    "fax",
+    "project",
+    "projects",
+    "chat",
+    "pubsub",
     "swml-webhooks",
 )
 
 
-def _spec_docs(psdk: "Path") -> "dict[str, dict]":
+def _spec_docs(psdk: Path) -> dict[str, dict]:
     """Scan rest-apis/ once: {spec_dir: parsed openapi doc} for every dir with an
     openapi.yaml (sorted). Cached on the function for the process lifetime."""
     cache = getattr(_spec_docs, "_cache", None)
@@ -103,7 +116,7 @@ def _spec_docs(psdk: "Path") -> "dict[str, dict]":
 
 
 def _has_resource(doc: dict) -> bool:
-    for _path, item in (doc.get("paths") or {}).items():
+    for item in (doc.get("paths") or {}).values():
         if not isinstance(item, dict):
             continue
         r = item.get("x-sdk-resource")
@@ -121,14 +134,14 @@ def _order_key(ns: str) -> int:
     return _NS_ORDER.index(ns)
 
 
-def discover_spec_dirs(psdk: "Path") -> "list[str]":
+def discover_spec_dirs(psdk: Path) -> list[str]:
     """RESOURCE namespaces (former SPEC_DIRS): spec dirs carrying x-sdk-resource
     markup, in the curated cross-namespace order."""
     dirs = [ns for ns, doc in _spec_docs(psdk).items() if _has_resource(doc)]
     return sorted(dirs, key=_order_key)
 
 
-def discover_type_ns(psdk: "Path") -> "list[tuple[str, str]]":
+def discover_type_ns(psdk: Path) -> list[tuple[str, str]]:
     """TYPE namespaces (former TYPE_NS): RESOURCE namespaces PLUS types-only specs
     (components.schemas but no servers block). Returns (spec_dir, ns_key) in the
     curated order — ns_key = spec dir with '-' -> '_'."""
@@ -142,18 +155,65 @@ def discover_type_ns(psdk: "Path") -> "list[tuple[str, str]]":
             out.append((ns, snake_of(ns)))
     return sorted(out, key=lambda t: _order_key(t[0]))
 
+
 # Rust reserved words (2015+2018+2021+2024 keywords, incl. reserved). A spec
 # field or path arg colliding gets a raw identifier ``r#<word>`` (except the few
 # that are not valid even as raw: crate/self/super/Self — none occur as wire
 # field names, but guard anyway → trailing underscore).
 RUST_KEYWORDS = {
-    "as", "break", "const", "continue", "crate", "dyn", "else", "enum",
-    "extern", "false", "fn", "for", "if", "impl", "in", "let", "loop",
-    "match", "mod", "move", "mut", "pub", "ref", "return", "self", "Self",
-    "static", "struct", "super", "trait", "true", "type", "unsafe", "use",
-    "where", "while", "async", "await", "gen", "abstract", "become", "box",
-    "do", "final", "macro", "override", "priv", "typeof", "unsized",
-    "virtual", "yield", "try", "union",
+    "as",
+    "break",
+    "const",
+    "continue",
+    "crate",
+    "dyn",
+    "else",
+    "enum",
+    "extern",
+    "false",
+    "fn",
+    "for",
+    "if",
+    "impl",
+    "in",
+    "let",
+    "loop",
+    "match",
+    "mod",
+    "move",
+    "mut",
+    "pub",
+    "ref",
+    "return",
+    "self",
+    "Self",
+    "static",
+    "struct",
+    "super",
+    "trait",
+    "true",
+    "type",
+    "unsafe",
+    "use",
+    "where",
+    "while",
+    "async",
+    "await",
+    "gen",
+    "abstract",
+    "become",
+    "box",
+    "do",
+    "final",
+    "macro",
+    "override",
+    "priv",
+    "typeof",
+    "unsized",
+    "virtual",
+    "yield",
+    "try",
+    "union",
 }
 # Raw identifiers r#kw are legal for every keyword EXCEPT these.
 RUST_NO_RAW = {"crate", "self", "Self", "super"}
@@ -162,6 +222,7 @@ RUST_NO_RAW = {"crate", "self", "Self", "super"}
 # ---------------------------------------------------------------------------
 # Resolution.
 # ---------------------------------------------------------------------------
+
 
 def resolve_porting_sdk() -> Path:
     env = os.environ.get("PORTING_SDK")
@@ -172,7 +233,9 @@ def resolve_porting_sdk() -> Path:
         cand = parent.parent / "porting-sdk"
         if (cand / "rest-apis").is_dir():
             return cand.resolve()
-    raise SystemExit("generate_rest.py: porting-sdk not found (set $PORTING_SDK or clone adjacent)")
+    raise SystemExit(
+        "generate_rest.py: porting-sdk not found (set $PORTING_SDK or clone adjacent)"
+    )
 
 
 def repo_root() -> Path:
@@ -188,16 +251,16 @@ def repo_root() -> Path:
 # is governed once and applied wherever it surfaces (schema.json AIParams + the
 # calling/fabric REST projections). Matching is by (field name, containing SPEC schema
 # name — the $defs / components.schemas key), NOT the Rust type name we later emit.
-_overlay_cache: "dict[str, set[tuple[str, str | None]]] | None" = None
+_overlay_cache: dict[str, set[tuple[str, str | None]]] | None = None
 
 
-def _load_overlay(psdk: Path | None = None) -> "dict[str, set[tuple[str, str | None]]]":
+def _load_overlay(psdk: Path | None = None) -> dict[str, set[tuple[str, str | None]]]:
     global _overlay_cache
     if _overlay_cache is None:
         base = psdk if psdk is not None else resolve_porting_sdk()
         path = base / "rest-apis" / "x-sdk-overlay.yaml"
 
-        def rules(key: str, data: dict) -> "set[tuple[str, str | None]]":
+        def rules(key: str, data: dict) -> set[tuple[str, str | None]]:
             out: set[tuple[str, str | None]] = set()
             for entry in data.get(key) or []:
                 if isinstance(entry, dict) and entry.get("field"):
@@ -207,11 +270,16 @@ def _load_overlay(psdk: Path | None = None) -> "dict[str, set[tuple[str, str | N
         data = {}
         if path.is_file():
             data = yaml.safe_load(path.read_text()) or {}
-        _overlay_cache = {"hidden": rules("hidden", data), "deprecated": rules("deprecated", data)}
+        _overlay_cache = {
+            "hidden": rules("hidden", data),
+            "deprecated": rules("deprecated", data),
+        }
     return _overlay_cache
 
 
-def _overlay_match(rules: "set[tuple[str, str | None]]", field: str, schema_name: str | None) -> bool:
+def _overlay_match(
+    rules: set[tuple[str, str | None]], field: str, schema_name: str | None
+) -> bool:
     # A rule matches when its field equals `field` AND (it is unscoped OR its scope
     # equals the containing SPEC schema name). `schema_name` is the schema's name as it
     # appears in the spec (the $defs / components.schemas key) — NOT the Rust type name
@@ -234,12 +302,13 @@ def overlay_deprecated(field: str, schema_name: str | None = None) -> bool:
 # Base loading (x-sdk-bases; §2) — validate + flatten to method-sets.
 # ---------------------------------------------------------------------------
 
+
 def load_bases(psdk: Path) -> dict[str, list[str]]:
     raw = yaml.safe_load((psdk / "rest-apis" / "x-sdk-bases.yaml").read_text())
     bases = dict(raw.get("x-sdk-bases") or {})
     fab = psdk / "rest-apis" / "fabric" / "x-sdk-bases.yaml"
     if fab.is_file():
-        bases.update((yaml.safe_load(fab.read_text()).get("x-sdk-bases") or {}))
+        bases.update(yaml.safe_load(fab.read_text()).get("x-sdk-bases") or {})
 
     def resolve(name: str, seen: set[str]) -> list[str]:
         if name in seen:
@@ -261,13 +330,16 @@ def load_bases(psdk: Path) -> dict[str, list[str]]:
 # Spec model.
 # ---------------------------------------------------------------------------
 
+
 class Spec:
     def __init__(self, name: str, doc: dict):
         self.name = name
         self.doc = doc
         self.server_path = _url_path(doc["servers"][0]["url"])
         if self.server_path != "/" and self.server_path.endswith("/"):
-            raise SystemExit(f"{name}: servers[0].url path {self.server_path!r} has a trailing slash")
+            raise SystemExit(
+                f"{name}: servers[0].url path {self.server_path!r} has a trailing slash"
+            )
         self.namespace_attr = (doc.get("x-sdk-namespace") or {}).get("attr") or ""
         self.ops: dict[str, tuple[str, str, bool]] = {}
         self.op_body: dict[str, dict] = {}
@@ -275,10 +347,16 @@ class Spec:
             for verb in ("get", "post", "put", "patch", "delete"):
                 o = item.get(verb)
                 if o and o.get("operationId"):
-                    self.ops[o["operationId"]] = (verb, path, bool(o.get("requestBody")))
+                    self.ops[o["operationId"]] = (
+                        verb,
+                        path,
+                        bool(o.get("requestBody")),
+                    )
                     body = o.get("requestBody") or {}
                     content = body.get("content") or {}
-                    media = content.get("application/json") or (next(iter(content.values())) if content else {})
+                    media = content.get("application/json") or (
+                        next(iter(content.values())) if content else {}
+                    )
                     self.op_body[o["operationId"]] = (media or {}).get("schema") or {}
         self.schemas = ((doc.get("components") or {}).get("schemas")) or {}
 
@@ -299,12 +377,15 @@ def _url_path(url: str) -> str:
 
 
 def load_spec(psdk: Path, ns: str) -> Spec:
-    return Spec(ns, yaml.safe_load((psdk / "rest-apis" / ns / "openapi.yaml").read_text()))
+    return Spec(
+        ns, yaml.safe_load((psdk / "rest-apis" / ns / "openapi.yaml").read_text())
+    )
 
 
 # ---------------------------------------------------------------------------
 # Path composition (§4).
 # ---------------------------------------------------------------------------
+
 
 def join_path(a: str, b: str) -> str:
     if not b:
@@ -331,7 +412,7 @@ def relative_tail(spec: Spec, anchor: str, markup: dict, op_path: str):
     full = join_path(spec.server_path, coll)
     absp = join_path(spec.server_path, op_path)
     if coll and absp.startswith(full + "/"):
-        return ([s for s in absp[len(full) + 1:].split("/") if s], False)
+        return ([s for s in absp[len(full) + 1 :].split("/") if s], False)
     if coll and absp == full:
         return ([], False)
     return ([s for s in absp.lstrip("/").split("/") if s], True)
@@ -340,6 +421,7 @@ def relative_tail(spec: Spec, anchor: str, markup: dict, op_path: str):
 # ---------------------------------------------------------------------------
 # Naming.
 # ---------------------------------------------------------------------------
+
 
 def snake_of(s: str) -> str:
     """Normalize an already-snake-ish string (fold '-'/'.' to '_')."""
@@ -392,12 +474,22 @@ def setter_ident(wire: str) -> str:
 
 
 PARAM_ARG_NAME = {
-    "id": "id", "queue_id": "queue_id", "NumberGroupId": "group_id",
-    "documentId": "document_id", "chunkId": "chunk_id", "mfa_request_id": "request_id",
-    "e164_number": "e164", "fabric_subscriber_id": "subscriber_id",
-    "ai_agent_id": "id", "cxml_webhook_id": "id", "swml_webhook_id": "id",
-    "token_id": "token_id", "room_id": "room_id", "resource_id": "resource_id",
-    "sip_endpoint_id": "sip_endpoint_id", "membership_id": "membership_id",
+    "id": "id",
+    "queue_id": "queue_id",
+    "NumberGroupId": "group_id",
+    "documentId": "document_id",
+    "chunkId": "chunk_id",
+    "mfa_request_id": "request_id",
+    "e164_number": "e164",
+    "fabric_subscriber_id": "subscriber_id",
+    "ai_agent_id": "id",
+    "cxml_webhook_id": "id",
+    "swml_webhook_id": "id",
+    "token_id": "token_id",
+    "room_id": "room_id",
+    "resource_id": "resource_id",
+    "sip_endpoint_id": "sip_endpoint_id",
+    "membership_id": "membership_id",
 }
 
 
@@ -427,18 +519,23 @@ BASE_PROVIDES = {
 # Command-dispatch (§6).
 # ---------------------------------------------------------------------------
 
+
 def command_method_name(cmd: str) -> str:
-    s = cmd[len("calling."):] if cmd.startswith("calling.") else cmd
+    s = cmd[len("calling.") :] if cmd.startswith("calling.") else cmd
     return snake_of(s)
 
 
 def discriminator_mapping(spec: Spec, schema_name: str) -> dict[str, str]:
     sch = spec.schemas.get(schema_name)
     if sch is None:
-        raise SystemExit(f"command-dispatch request {schema_name!r} not in components.schemas")
+        raise SystemExit(
+            f"command-dispatch request {schema_name!r} not in components.schemas"
+        )
     mapping = (sch.get("discriminator") or {}).get("mapping")
     if not mapping:
-        raise SystemExit(f"command-dispatch request {schema_name!r} has no discriminator.mapping")
+        raise SystemExit(
+            f"command-dispatch request {schema_name!r} has no discriminator.mapping"
+        )
     return dict(mapping)
 
 
@@ -455,6 +552,7 @@ def discriminator_mapping(spec: Spec, schema_name: str) -> dict[str, str]:
 #
 # Rust HAS distinct i64/f64 (no numeric monotype) — integer→i64, number→f64.
 
+
 def resolve_schema(spec: Spec, schema: dict | None, seen=None) -> dict:
     if not schema:
         return {}
@@ -468,7 +566,12 @@ def resolve_schema(spec: Spec, schema: dict | None, seen=None) -> dict:
         seen.add(leaf)
         return resolve_schema(spec, spec.schemas.get(leaf), seen)
     allof = schema.get("allOf")
-    if allof and len(allof) == 1 and not schema.get("properties") and not schema.get("type"):
+    if (
+        allof
+        and len(allof) == 1
+        and not schema.get("properties")
+        and not schema.get("type")
+    ):
         return resolve_schema(spec, allof[0], seen)
     return schema
 
@@ -482,7 +585,12 @@ def _json_type(schema: dict) -> str | None:
 
 
 # JSON scalar → (Rust owned type, `serde_json::json!` / into-Value builder).
-_SCALAR_RUST = {"string": "String", "integer": "i64", "number": "f64", "boolean": "bool"}
+_SCALAR_RUST = {
+    "string": "String",
+    "integer": "i64",
+    "number": "f64",
+    "boolean": "bool",
+}
 
 
 def rust_field_type(spec: Spec, schema: dict) -> str:
@@ -508,7 +616,9 @@ def object_body_fields(spec: Spec, body_schema: dict) -> list[tuple[str, dict, b
     return [(name, psc, name in required) for name, psc in props.items()]
 
 
-def command_param_fields(spec: Spec, command_schema: dict) -> tuple[list[tuple[str, dict, bool]], bool]:
+def command_param_fields(
+    spec: Spec, command_schema: dict
+) -> tuple[list[tuple[str, dict, bool]], bool]:
     """§6 union-flatten: union of all variants' fields, required only if EVERY
     variant requires it. ``has_id`` = command schema declares an ``id``."""
     cs = resolve_schema(spec, command_schema)
@@ -572,7 +682,9 @@ def schema_fields(spec: Spec, schema: dict, seen=None) -> set[str]:
     return out
 
 
-def update_request_fields(spec: Spec, anchor: str, markup: dict) -> tuple[set[str], dict[str, dict]]:
+def update_request_fields(
+    spec: Spec, anchor: str, markup: dict
+) -> tuple[set[str], dict[str, dict]]:
     coll = collection_segment(anchor, markup)
     want_verb = "put" if markup.get("update_method") == "PUT" else "patch"
     for path, item in (spec.doc.get("paths") or {}).items():
@@ -616,15 +728,20 @@ def gen_imports(body: str) -> str:
         lines.append("")
     serde_json = [n for n in ("Map", "Value") if re.search(rf"\b{n}\b", body)]
     if serde_json:
-        one = serde_json[0] if len(serde_json) == 1 else "{" + ", ".join(serde_json) + "}"
+        one = (
+            serde_json[0] if len(serde_json) == 1 else "{" + ", ".join(serde_json) + "}"
+        )
         lines.append(f"use serde_json::{one};")
         lines.append("")
     if re.search(r"\bSignalWireRestError\b", body):
         lines.append("use crate::rest::error::SignalWireRestError;")
     if re.search(r"\bRequestOptions\b", body):
         lines.append("use crate::rest::request_options::RequestOptions;")
-    bases = [b for b in ("BaseResource", "CrudResource", "FabricResource", "ReadResource")
-             if re.search(rf"\b{b}\b", body)]
+    bases = [
+        b
+        for b in ("BaseResource", "CrudResource", "FabricResource", "ReadResource")
+        if re.search(rf"\b{b}\b", body)
+    ]
     if bases:
         lines.append(f"use crate::rest::generated_bases::{{{', '.join(bases)}}};")
     if re.search(r"\bHttpClient\b", body):
@@ -696,10 +813,13 @@ def _request_struct_name(cls: str, method_rs: str) -> str:
     return f"{cls}{pm}Request"
 
 
-def emit_request_struct(struct_name: str, spec: Spec,
-                        leading: list[tuple[str, str]],
-                        fields: list[tuple[str, dict, bool]],
-                        wire_container: str) -> tuple[str, str]:
+def emit_request_struct(
+    struct_name: str,
+    spec: Spec,
+    leading: list[tuple[str, str]],
+    fields: list[tuple[str, dict, bool]],
+    wire_container: str,
+) -> tuple[str, str]:
     """Emit a request struct + fluent builder + build() -> Value.
 
     ``leading`` = [(rust_ident, "String")] required leading positional args
@@ -710,8 +830,12 @@ def emit_request_struct(struct_name: str, spec: Spec,
     opt = [(n, s, r) for (n, s, r) in ordered_fields(fields) if not r]
 
     lines: list[str] = []
-    lines.append("/// Named request parameters for the generated method (Rust options-builder")
-    lines.append("/// idiom — required fields in `new`, optionals via setters, `extras` open door).")
+    lines.append(
+        "/// Named request parameters for the generated method (Rust options-builder"
+    )
+    lines.append(
+        "/// idiom — required fields in `new`, optionals via setters, `extras` open door)."
+    )
     lines.append("#[derive(Debug, Clone, Default)]")
     lines.append(f"pub struct {struct_name} {{")
     for ident, ty in leading:
@@ -730,11 +854,15 @@ def emit_request_struct(struct_name: str, spec: Spec,
     # new(required...)
     new_params = []
     for ident, ty in leading:
-        new_params.append(f"{ident}: impl Into<{ty}>" if ty == "String" else f"{ident}: {ty}")
+        new_params.append(
+            f"{ident}: impl Into<{ty}>" if ty == "String" else f"{ident}: {ty}"
+        )
     for wire, sch, _ in req:
         ident = field_ident(wire)
         ty = rust_field_type(spec, sch)
-        new_params.append(f"{ident}: impl Into<{ty}>" if ty == "String" else f"{ident}: {ty}")
+        new_params.append(
+            f"{ident}: impl Into<{ty}>" if ty == "String" else f"{ident}: {ty}"
+        )
     lines.append("    /// Construct the request with its required fields.")
     if len(new_params) > 7:
         # required-param count is spec-mandated (all required create fields); the
@@ -744,13 +872,19 @@ def emit_request_struct(struct_name: str, spec: Spec,
     lines.append(f"        {struct_name} {{")
     for ident, ty in leading:
         # field-init shorthand when no conversion is needed (redundant_field_names)
-        lines.append(f"            {ident}: {ident}.into()," if ty == "String"
-                     else f"            {ident},")
+        lines.append(
+            f"            {ident}: {ident}.into(),"
+            if ty == "String"
+            else f"            {ident},"
+        )
     for wire, sch, _ in req:
         ident = field_ident(wire)
         ty = rust_field_type(spec, sch)
-        lines.append(f"            {ident}: {ident}.into()," if ty == "String"
-                     else f"            {ident},")
+        lines.append(
+            f"            {ident}: {ident}.into(),"
+            if ty == "String"
+            else f"            {ident},"
+        )
     lines.append("            ..Default::default()")
     lines.append("        }")
     lines.append("    }")
@@ -764,7 +898,9 @@ def emit_request_struct(struct_name: str, spec: Spec,
         if ty == "String":
             lines.append(f"    /// Set the optional `{wire}` field.")
             lines.append("    #[must_use]")
-            lines.append(f"    pub fn {setter}(mut self, {arg}: impl Into<{ty}>) -> Self {{")
+            lines.append(
+                f"    pub fn {setter}(mut self, {arg}: impl Into<{ty}>) -> Self {{"
+            )
             lines.append(f"        self.{ident} = Some({arg}.into());")
         else:
             lines.append(f"    /// Set the optional `{wire}` field.")
@@ -777,21 +913,29 @@ def emit_request_struct(struct_name: str, spec: Spec,
     # extras door
     lines.append("    /// Add a forward-compat field the spec does not yet name.")
     lines.append("    #[must_use]")
-    lines.append("    pub fn extra(mut self, key: impl Into<String>, value: impl Into<Value>) -> Self {")
+    lines.append(
+        "    pub fn extra(mut self, key: impl Into<String>, value: impl Into<Value>) -> Self {"
+    )
     lines.append("        self.extras.insert(key.into(), value.into());")
     lines.append("        self")
     lines.append("    }")
 
     # build() -> the wire Value object for the fields (leading args excluded —
     # they are path/id args carried separately by the emitting method).
-    lines.append(f"    /// Assemble the `{wire_container}` JSON object (unset optionals omitted).")
+    lines.append(
+        f"    /// Assemble the `{wire_container}` JSON object (unset optionals omitted)."
+    )
     lines.append("    #[must_use]")
     lines.append("    pub fn build(self) -> Value {")
     lines.append("        let mut obj = Map::new();")
     for wire, sch, _ in req:
         ident = field_ident(wire)
         ty = rust_field_type(spec, sch)
-        conv = ("Value::from(self.%s)" % ident) if ty in ("String", "i64", "f64", "bool") else ("self.%s" % ident)
+        conv = (
+            (f"Value::from(self.{ident})")
+            if ty in ("String", "i64", "f64", "bool")
+            else (f"self.{ident}")
+        )
         lines.append(f"        obj.insert({rs_str(wire)}.to_string(), {conv});")
     for wire, sch, _ in opt:
         ident = field_ident(wire)
@@ -813,9 +957,15 @@ def emit_request_struct(struct_name: str, spec: Spec,
 
 
 # accumulate request structs to emit once per module (dedup by name).
-def emit_operation_method(spec: Spec, anchor: str, markup: dict, base: str,
-                          method_snake: str, op_id: str,
-                          structs: dict[str, str]) -> str:
+def emit_operation_method(
+    spec: Spec,
+    anchor: str,
+    markup: dict,
+    base: str,
+    method_snake: str,
+    op_id: str,
+    structs: dict[str, str],
+) -> str:
     if op_id not in spec.ops:
         raise SystemExit(f"{markup['name']}.{method_snake}: op {op_id!r} not in spec")
     verb, op_path, has_body = spec.ops[op_id]
@@ -827,6 +977,18 @@ def emit_operation_method(spec: Spec, anchor: str, markup: dict, base: str,
     lines: list[str] = []
     write_verb = verb in ("post", "put", "patch")
     verb_fn = {"post": "post", "put": "put", "patch": "patch"}.get(verb, verb)
+
+    def _body(expr: str) -> str:
+        # `post`/`put`/`patch` all take an OPTIONAL body (`Option<&Value>`)
+        # because the reference defaults each to `body=None`. A generated
+        # operation always HAS a body to send, so it wraps in `Some(..)`.
+        return f"Some({expr})" if verb in ("post", "put", "patch") else expr
+
+    # `post` carries the reference's QUERY-params argument between the body and
+    # the options (`_base.py` `post(path, body, params, request_options)`); a
+    # generated operation sends its inputs in the body, so it passes `None`.
+    # `put`/`patch` have no such argument.
+    post_params_fwd = "None, " if verb == "post" else ""
 
     # Every generated method carries a trailing ``request_options:
     # Option<RequestOptions>`` (plan 4.2 / PY-9), forwarded to the client's
@@ -840,60 +1002,104 @@ def emit_operation_method(spec: Spec, anchor: str, markup: dict, base: str,
             sname = _request_struct_name(cls, name)
             src, _ = emit_request_struct(sname, spec, [], fields, "body")
             structs[sname] = src
-            params = id_params + [f"request: {sname}", ro_param]
-            lines.append(f"    /// `{verb.upper()} {op_path}` (generated operation method).")
+            params = [*id_params, f"request: {sname}", ro_param]
+            lines.append(
+                f"    /// `{verb.upper()} {op_path}` (generated operation method)."
+            )
             lines.append("    ///")
             lines.append("    /// # Errors")
-            lines.append("    /// Returns [`SignalWireRestError`] on transport failure, a non-2xx")
+            lines.append(
+                "    /// Returns [`SignalWireRestError`] on transport failure, a non-2xx"
+            )
             lines.append("    /// status, or an unparseable response body.")
-            lines.append(f"    pub fn {name}(&self, {', '.join(params)}) -> Result<Value, SignalWireRestError> {{")
-            lines.append(f"        self.client().{verb_fn}_with_options({path_expr}, &request.build(), {ro_fwd})")
+            lines.append(
+                f"    pub fn {name}(&self, {', '.join(params)}) -> Result<Value, SignalWireRestError> {{"
+            )
+            lines.append(
+                f"        self.client().{verb_fn}_with_options({path_expr}, {_body('&request.build()')}, {post_params_fwd}{ro_fwd})"
+            )
             lines.append("    }")
         else:
             # §5.2 union body → a single positional body: Value.
-            params = id_params + ["body: &Value", ro_param]
-            lines.append(f"    /// `{verb.upper()} {op_path}` (generated operation method; union body).")
+            params = [*id_params, "body: &Value", ro_param]
+            lines.append(
+                f"    /// `{verb.upper()} {op_path}` (generated operation method; union body)."
+            )
             lines.append("    ///")
             lines.append("    /// # Errors")
-            lines.append("    /// Returns [`SignalWireRestError`] on transport failure, a non-2xx")
+            lines.append(
+                "    /// Returns [`SignalWireRestError`] on transport failure, a non-2xx"
+            )
             lines.append("    /// status, or an unparseable response body.")
-            lines.append(f"    pub fn {name}(&self, {', '.join(params)}) -> Result<Value, SignalWireRestError> {{")
-            lines.append(f"        self.client().{verb_fn}_with_options({path_expr}, body, {ro_fwd})")
+            lines.append(
+                f"    pub fn {name}(&self, {', '.join(params)}) -> Result<Value, SignalWireRestError> {{"
+            )
+            lines.append(
+                f"        self.client().{verb_fn}_with_options({path_expr}, {_body('body')}, {post_params_fwd}{ro_fwd})"
+            )
             lines.append("    }")
     elif write_verb:
-        params = id_params + [ro_param]
-        lines.append(f"    /// `{verb.upper()} {op_path}` (generated operation method; no body).")
+        params = [*id_params, ro_param]
+        lines.append(
+            f"    /// `{verb.upper()} {op_path}` (generated operation method; no body)."
+        )
         lines.append("    ///")
         lines.append("    /// # Errors")
-        lines.append("    /// Returns [`SignalWireRestError`] on transport failure, a non-2xx status.")
-        lines.append(f"    pub fn {name}(&self, {', '.join(params)}) -> Result<Value, SignalWireRestError> {{")
-        lines.append(f"        self.client().{verb_fn}_with_options({path_expr}, &Value::Object(Map::new()), {ro_fwd})")
+        lines.append(
+            "    /// Returns [`SignalWireRestError`] on transport failure, a non-2xx status."
+        )
+        lines.append(
+            f"    pub fn {name}(&self, {', '.join(params)}) -> Result<Value, SignalWireRestError> {{"
+        )
+        lines.append(
+            f"        self.client().{verb_fn}_with_options({path_expr}, {_body('&Value::Object(Map::new())')}, {post_params_fwd}{ro_fwd})"
+        )
         lines.append("    }")
     elif verb == "get":
         # §5.3 GET query door — a trailing params map + request_options.
-        params = id_params + ["params: &HashMap<String, String>", ro_param]
-        lines.append(f"    /// `GET {op_path}` (generated operation method; query params).")
+        params = [*id_params, "params: &HashMap<String, String>", ro_param]
+        lines.append(
+            f"    /// `GET {op_path}` (generated operation method; query params)."
+        )
         lines.append("    ///")
         lines.append("    /// # Errors")
-        lines.append("    /// Returns [`SignalWireRestError`] on transport failure, a non-2xx status.")
-        lines.append(f"    pub fn {name}(&self, {', '.join(params)}) -> Result<Value, SignalWireRestError> {{")
-        lines.append(f"        self.client().get_with_options({path_expr}, params, {ro_fwd})")
+        lines.append(
+            "    /// Returns [`SignalWireRestError`] on transport failure, a non-2xx status."
+        )
+        lines.append(
+            f"    pub fn {name}(&self, {', '.join(params)}) -> Result<Value, SignalWireRestError> {{"
+        )
+        lines.append(
+            f"        self.client().get_with_options({path_expr}, Some(params), {ro_fwd})"
+        )
         lines.append("    }")
     else:  # delete
-        params = id_params + [ro_param]
+        params = [*id_params, ro_param]
         lines.append(f"    /// `DELETE {op_path}` (generated operation method).")
         lines.append("    ///")
         lines.append("    /// # Errors")
-        lines.append("    /// Returns [`SignalWireRestError`] on transport failure, a non-2xx status.")
-        lines.append(f"    pub fn {name}(&self, {', '.join(params)}) -> Result<Value, SignalWireRestError> {{")
-        lines.append(f"        self.client().delete_with_options({path_expr}, {ro_fwd})")
+        lines.append(
+            "    /// Returns [`SignalWireRestError`] on transport failure, a non-2xx status."
+        )
+        lines.append(
+            f"    pub fn {name}(&self, {', '.join(params)}) -> Result<Value, SignalWireRestError> {{"
+        )
+        lines.append(
+            f"        self.client().delete_with_options({path_expr}, {ro_fwd})"
+        )
         lines.append("    }")
     return "\n".join(lines)
 
 
-def emit_set_method(spec: Spec, markup: dict, sm_name: str, sm: dict,
-                    update_fields: set[str], field_schemas: dict[str, dict],
-                    structs: dict[str, str]) -> str:
+def emit_set_method(
+    spec: Spec,
+    markup: dict,
+    sm_name: str,
+    sm: dict,
+    update_fields: set[str],
+    field_schemas: dict[str, dict],
+    structs: dict[str, str],
+) -> str:
     handler = sm.get("handler")
     if not handler:
         raise SystemExit(f"{markup['name']}.{sm_name}: set_method missing handler")
@@ -905,11 +1111,16 @@ def emit_set_method(spec: Spec, markup: dict, sm_name: str, sm: dict,
     for arg_name, arg in args.items():
         field = arg.get("field")
         if not field:
-            raise SystemExit(f"{markup['name']}.{sm_name}: arg {arg_name!r} missing field")
+            raise SystemExit(
+                f"{markup['name']}.{sm_name}: arg {arg_name!r} missing field"
+            )
         if field not in update_fields:
             raise SystemExit(
-                f"{markup['name']}.{sm_name}: arg field {field!r} not in update request schema")
-        bound.append((arg_name, field, field_schemas.get(field, {}), bool(arg.get("required"))))
+                f"{markup['name']}.{sm_name}: arg field {field!r} not in update request schema"
+            )
+        bound.append(
+            (arg_name, field, field_schemas.get(field, {}), bool(arg.get("required")))
+        )
 
     # Emit a request struct keyed by arg-name (bound to update field on build).
     sname = _request_struct_name(cls, name)
@@ -921,8 +1132,12 @@ def emit_set_method(spec: Spec, markup: dict, sm_name: str, sm: dict,
     lines: list[str] = []
     # struct with arg-named fields; build() maps to update-field wire keys + handler.
     slines: list[str] = []
-    slines.append("/// Named request parameters for a generated `set_*` wrapper (binds args to")
-    slines.append("/// update-request fields + a fixed `call_handler`; Rust options-builder idiom).")
+    slines.append(
+        "/// Named request parameters for a generated `set_*` wrapper (binds args to"
+    )
+    slines.append(
+        "/// update-request fields + a fixed `call_handler`; Rust options-builder idiom)."
+    )
     slines.append("#[derive(Debug, Clone, Default)]")
     slines.append(f"pub struct {sname} {{")
     for a, s, _ in req:
@@ -936,7 +1151,11 @@ def emit_set_method(spec: Spec, markup: dict, sm_name: str, sm: dict,
     new_params = []
     for a, s, _ in req:
         ty = rust_field_type(spec, s)
-        new_params.append(f"{field_ident(a)}: impl Into<{ty}>" if ty == "String" else f"{field_ident(a)}: {ty}")
+        new_params.append(
+            f"{field_ident(a)}: impl Into<{ty}>"
+            if ty == "String"
+            else f"{field_ident(a)}: {ty}"
+        )
     if len(new_params) > 7:
         slines.append("    #[allow(clippy::too_many_arguments)]")
     slines.append(f"    pub fn new({', '.join(new_params)}) -> Self {{")
@@ -944,8 +1163,11 @@ def emit_set_method(spec: Spec, markup: dict, sm_name: str, sm: dict,
     for a, s, _ in req:
         ty = rust_field_type(spec, s)
         ident = field_ident(a)
-        slines.append(f"            {ident}: {ident}.into()," if ty == "String"
-                      else f"            {ident},")
+        slines.append(
+            f"            {ident}: {ident}.into(),"
+            if ty == "String"
+            else f"            {ident},"
+        )
     slines.append("            ..Default::default()")
     slines.append("        }")
     slines.append("    }")
@@ -955,7 +1177,9 @@ def emit_set_method(spec: Spec, markup: dict, sm_name: str, sm: dict,
         setter = setter_ident(a)
         slines.append("    #[must_use]")
         if ty == "String":
-            slines.append(f"    pub fn {setter}(mut self, value: impl Into<{ty}>) -> Self {{")
+            slines.append(
+                f"    pub fn {setter}(mut self, value: impl Into<{ty}>) -> Self {{"
+            )
             slines.append(f"        self.{ident} = Some(value.into());")
         else:
             slines.append(f"    pub fn {setter}(mut self, value: {ty}) -> Self {{")
@@ -963,25 +1187,37 @@ def emit_set_method(spec: Spec, markup: dict, sm_name: str, sm: dict,
         slines.append("        self")
         slines.append("    }")
     slines.append("    #[must_use]")
-    slines.append("    pub fn extra(mut self, key: impl Into<String>, value: impl Into<Value>) -> Self {")
+    slines.append(
+        "    pub fn extra(mut self, key: impl Into<String>, value: impl Into<Value>) -> Self {"
+    )
     slines.append("        self.extras.insert(key.into(), value.into());")
     slines.append("        self")
     slines.append("    }")
     slines.append("    #[must_use]")
     slines.append("    pub fn build(self) -> Value {")
     slines.append("        let mut obj = Map::new();")
-    slines.append(f"        obj.insert(\"call_handler\".to_string(), Value::from({rs_str(handler)}));")
+    slines.append(
+        f'        obj.insert("call_handler".to_string(), Value::from({rs_str(handler)}));'
+    )
     for a, s, _ in req:
         ident = field_ident(a)
         ty = rust_field_type(spec, s)
-        conv = ("Value::from(self.%s)" % ident) if ty in ("String", "i64", "f64", "bool") else ("self.%s" % ident)
-        slines.append(f"        obj.insert({rs_str(field_map[a])}.to_string(), {conv});")
+        conv = (
+            (f"Value::from(self.{ident})")
+            if ty in ("String", "i64", "f64", "bool")
+            else (f"self.{ident}")
+        )
+        slines.append(
+            f"        obj.insert({rs_str(field_map[a])}.to_string(), {conv});"
+        )
     for a, s, _ in opt:
         ident = field_ident(a)
         ty = rust_field_type(spec, s)
         conv = ("Value::from(v)") if ty in ("String", "i64", "f64", "bool") else "v"
         slines.append(f"        if let Some(v) = self.{ident} {{")
-        slines.append(f"            obj.insert({rs_str(field_map[a])}.to_string(), {conv});")
+        slines.append(
+            f"            obj.insert({rs_str(field_map[a])}.to_string(), {conv});"
+        )
         slines.append("        }")
     slines.append("        for (k, v) in self.extras { obj.insert(k, v); }")
     slines.append("        Value::Object(obj)")
@@ -989,17 +1225,25 @@ def emit_set_method(spec: Spec, markup: dict, sm_name: str, sm: dict,
     slines.append("}")
     structs[sname] = "\n".join(slines)
 
-    lines.append(f"    /// `set_{sm_name}` — update wrapper binding a fixed `call_handler` (§7).")
+    lines.append(
+        f"    /// `set_{sm_name}` — update wrapper binding a fixed `call_handler` (§7)."
+    )
     lines.append("    ///")
     lines.append("    /// # Errors")
-    lines.append("    /// Returns [`SignalWireRestError`] on transport failure or a non-2xx status.")
-    lines.append(f"    pub fn {name}(&self, resource_id: &str, request: {sname}, request_options: Option<RequestOptions>) -> Result<Value, SignalWireRestError> {{")
+    lines.append(
+        "    /// Returns [`SignalWireRestError`] on transport failure or a non-2xx status."
+    )
+    lines.append(
+        f"    pub fn {name}(&self, resource_id: &str, request: {sname}, request_options: Option<RequestOptions>) -> Result<Value, SignalWireRestError> {{"
+    )
     lines.append("        self.update(resource_id, &request.build(), request_options)")
     lines.append("    }")
     return "\n".join(lines)
 
 
-def emit_command_dispatch(spec: Spec, anchor: str, markup: dict, structs: dict[str, str]) -> str:
+def emit_command_dispatch(
+    spec: Spec, anchor: str, markup: dict, structs: dict[str, str]
+) -> str:
     name = markup["name"]
     request = markup.get("request")
     if not request:
@@ -1013,7 +1257,9 @@ def emit_command_dispatch(spec: Spec, anchor: str, markup: dict, structs: dict[s
         base = join_path(spec.server_path, anchor.lstrip("/"))
 
     lines: list[str] = []
-    lines.append(f"/// `{name}` — command-dispatch resource ({spec.name} spec). Each method POSTs")
+    lines.append(
+        f"/// `{name}` — command-dispatch resource ({spec.name} spec). Each method POSTs"
+    )
     lines.append(f"/// `{{command, params, id?}}` to `{base}`.")
     lines.append(f"pub struct {name}<'a> {{")
     lines.append("    client: &'a HttpClient,")
@@ -1032,18 +1278,24 @@ def emit_command_dispatch(spec: Spec, anchor: str, markup: dict, structs: dict[s
     lines.append("        Self::BASE_PATH")
     lines.append("    }")
     lines.append("")
-    lines.append("    fn execute(&self, command: &str, call_id: Option<&str>, params: Value,")
+    lines.append(
+        "    fn execute(&self, command: &str, call_id: Option<&str>, params: Value,"
+    )
     lines.append("        request_options: Option<RequestOptions>)")
     lines.append("        -> Result<Value, SignalWireRestError> {")
     lines.append("        let mut body = Map::new();")
-    lines.append("        body.insert(\"command\".to_string(), Value::from(command));")
-    lines.append("        body.insert(\"params\".to_string(), params);")
+    lines.append('        body.insert("command".to_string(), Value::from(command));')
+    lines.append('        body.insert("params".to_string(), params);')
     lines.append("        if let Some(id) = call_id {")
-    lines.append("            body.insert(\"id\".to_string(), Value::from(id));")
+    lines.append('            body.insert("id".to_string(), Value::from(id));')
     lines.append("        }")
-    lines.append("        // request_options is transport-only — forwarded to the HTTP layer, never")
+    lines.append(
+        "        // request_options is transport-only — forwarded to the HTTP layer, never"
+    )
     lines.append("        // serialized into the command body.")
-    lines.append("        self.client.post_with_options(Self::BASE_PATH, &Value::Object(body), request_options.as_ref())")
+    lines.append(
+        "        self.client.post_with_options(Self::BASE_PATH, Some(&Value::Object(body)), None, request_options.as_ref())"
+    )
     lines.append("    }")
 
     for cmd in commands:
@@ -1052,7 +1304,9 @@ def emit_command_dispatch(spec: Spec, anchor: str, markup: dict, structs: dict[s
         cmd_schema = spec.schemas.get(cmd_leaf, {})
         fields, with_id = command_param_fields(spec, cmd_schema)
         sname = _request_struct_name(name, mname)
-        leading: list[tuple[str, str]] = []  # call_id handled as a method arg, not struct field
+        leading: list[
+            tuple[str, str]
+        ] = []  # call_id handled as a method arg, not struct field
         src, _ = emit_request_struct(sname, spec, leading, fields, "params")
         structs[sname] = src
         id_param = "call_id: &str, " if with_id else ""
@@ -1061,15 +1315,23 @@ def emit_command_dispatch(spec: Spec, anchor: str, markup: dict, structs: dict[s
         lines.append(f"    /// `{cmd}` — generated command method.")
         lines.append("    ///")
         lines.append("    /// # Errors")
-        lines.append("    /// Returns [`SignalWireRestError`] on transport failure or a non-2xx status.")
-        lines.append(f"    pub fn {mname}(&self, {id_param}request: {sname}, request_options: Option<RequestOptions>) -> Result<Value, SignalWireRestError> {{")
-        lines.append(f"        self.execute({rs_str(cmd)}, {call_arg}, request.build(), request_options)")
+        lines.append(
+            "    /// Returns [`SignalWireRestError`] on transport failure or a non-2xx status."
+        )
+        lines.append(
+            f"    pub fn {mname}(&self, {id_param}request: {sname}, request_options: Option<RequestOptions>) -> Result<Value, SignalWireRestError> {{"
+        )
+        lines.append(
+            f"        self.execute({rs_str(cmd)}, {call_arg}, request.build(), request_options)"
+        )
         lines.append("    }")
     lines.append("}")
     return "\n".join(lines)
 
 
-def emit_resource(spec: Spec, anchor: str, markup: dict, structs: dict[str, str]) -> str:
+def emit_resource(
+    spec: Spec, anchor: str, markup: dict, structs: dict[str, str]
+) -> str:
     name = markup["name"]
     base = markup["base"]
     if markup.get("kind") == "command-dispatch":
@@ -1083,9 +1345,13 @@ def emit_resource(spec: Spec, anchor: str, markup: dict, structs: dict[str, str]
         if not upd:
             raise SystemExit(f"{name}: {base} requires update_method")
         item = spec.doc["paths"][anchor]
-        spec_verb = "PUT" if item.get("put") else ("PATCH" if item.get("patch") else None)
+        spec_verb = (
+            "PUT" if item.get("put") else ("PATCH" if item.get("patch") else None)
+        )
         if spec_verb and upd != spec_verb:
-            raise SystemExit(f"{name}: update_method {upd} != spec update verb {spec_verb}")
+            raise SystemExit(
+                f"{name}: update_method {upd} != spec update verb {spec_verb}"
+            )
 
     bp = base_path(spec, anchor, markup)
     upd = markup.get("update_method", "PATCH")
@@ -1104,7 +1370,9 @@ def emit_resource(spec: Spec, anchor: str, markup: dict, structs: dict[str, str]
     lines.append("    #[must_use]")
     lines.append("    pub fn new(client: &'a HttpClient) -> Self {")
     if base in ("CrudResource", "FabricResource"):
-        lines.append(f"        {name} {{ base: {base}::new(client, {rs_str(bp)}, {rs_str(upd)}) }}")
+        lines.append(
+            f"        {name} {{ base: {base}::new(client, {rs_str(bp)}, {rs_str(upd)}) }}"
+        )
     else:
         lines.append(f"        {name} {{ base: {base}::new(client, {rs_str(bp)}) }}")
     lines.append("    }")
@@ -1150,8 +1418,12 @@ def emit_resource(spec: Spec, anchor: str, markup: dict, structs: dict[str, str]
         lines.append("    ///")
         lines.append("    /// # Errors")
         lines.append("    /// See the base resource.")
-        lines.append("    pub fn list(&self, params: &HashMap<String, String>, request_options: Option<RequestOptions>) -> Result<Value, SignalWireRestError> {")
-        lines.append("        self.base.list_with_options(params, request_options.as_ref())")
+        lines.append(
+            "    pub fn list(&self, params: &HashMap<String, String>, request_options: Option<RequestOptions>) -> Result<Value, SignalWireRestError> {"
+        )
+        lines.append(
+            "        self.base.list_with_options(params, request_options.as_ref())"
+        )
         lines.append("    }")
     if "get" in provided:
         lines.append("")
@@ -1159,16 +1431,22 @@ def emit_resource(spec: Spec, anchor: str, markup: dict, structs: dict[str, str]
         lines.append("    ///")
         lines.append("    /// # Errors")
         lines.append("    /// See the base resource.")
-        lines.append("    pub fn get(&self, id: &str, request_options: Option<RequestOptions>) -> Result<Value, SignalWireRestError> {")
+        lines.append(
+            "    pub fn get(&self, id: &str, request_options: Option<RequestOptions>) -> Result<Value, SignalWireRestError> {"
+        )
         lines.append("        self.base.get_with_options(id, request_options.as_ref())")
         lines.append("    }")
     if "paginate" in provided:
         lines.append("")
-        lines.append("    /// `paginate` (delegated to the base): iterate every item across all")
+        lines.append(
+            "    /// `paginate` (delegated to the base): iterate every item across all"
+        )
         lines.append("    /// pages, following the response's `links.next` cursor.")
         lines.append("    #[must_use]")
-        lines.append("    pub fn paginate(&self, params: &HashMap<String, String>, request_options: Option<RequestOptions>) -> PaginatedIterator<'a> {")
-        lines.append("        self.base.paginate_with_options(params, request_options)")
+        lines.append(
+            "    pub fn paginate(&self, request_options: Option<RequestOptions>, params: &HashMap<String, String>) -> PaginatedIterator<'a> {"
+        )
+        lines.append("        self.base.paginate(request_options, params)")
         lines.append("    }")
     if "create" in provided:
         lines.append("")
@@ -1176,8 +1454,12 @@ def emit_resource(spec: Spec, anchor: str, markup: dict, structs: dict[str, str]
         lines.append("    ///")
         lines.append("    /// # Errors")
         lines.append("    /// See the base resource.")
-        lines.append("    pub fn create(&self, data: &Value, request_options: Option<RequestOptions>) -> Result<Value, SignalWireRestError> {")
-        lines.append("        self.base.create_with_options(data, request_options.as_ref())")
+        lines.append(
+            "    pub fn create(&self, data: &Value, request_options: Option<RequestOptions>) -> Result<Value, SignalWireRestError> {"
+        )
+        lines.append(
+            "        self.base.create_with_options(data, request_options.as_ref())"
+        )
         lines.append("    }")
     if "update" in provided:
         lines.append("")
@@ -1185,8 +1467,12 @@ def emit_resource(spec: Spec, anchor: str, markup: dict, structs: dict[str, str]
         lines.append("    ///")
         lines.append("    /// # Errors")
         lines.append("    /// See the base resource.")
-        lines.append("    pub fn update(&self, id: &str, data: &Value, request_options: Option<RequestOptions>) -> Result<Value, SignalWireRestError> {")
-        lines.append("        self.base.update_with_options(id, data, request_options.as_ref())")
+        lines.append(
+            "    pub fn update(&self, id: &str, data: &Value, request_options: Option<RequestOptions>) -> Result<Value, SignalWireRestError> {"
+        )
+        lines.append(
+            "        self.base.update_with_options(id, data, request_options.as_ref())"
+        )
         lines.append("    }")
     if "delete" in provided:
         lines.append("")
@@ -1194,17 +1480,27 @@ def emit_resource(spec: Spec, anchor: str, markup: dict, structs: dict[str, str]
         lines.append("    ///")
         lines.append("    /// # Errors")
         lines.append("    /// See the base resource.")
-        lines.append("    pub fn delete(&self, id: &str, request_options: Option<RequestOptions>) -> Result<Value, SignalWireRestError> {")
-        lines.append("        self.base.delete_with_options(id, request_options.as_ref())")
+        lines.append(
+            "    pub fn delete(&self, id: &str, request_options: Option<RequestOptions>) -> Result<Value, SignalWireRestError> {"
+        )
+        lines.append(
+            "        self.base.delete_with_options(id, request_options.as_ref())"
+        )
         lines.append("    }")
     if "list_addresses" in provided and not override_list_addresses:
         lines.append("")
-        lines.append("    /// `list_addresses` (delegated to the Fabric base; GET base/{id}/addresses).")
+        lines.append(
+            "    /// `list_addresses` (delegated to the Fabric base; GET base/{id}/addresses)."
+        )
         lines.append("    ///")
         lines.append("    /// # Errors")
         lines.append("    /// See the base resource.")
-        lines.append("    pub fn list_addresses(&self, id: &str, params: &HashMap<String, String>, request_options: Option<RequestOptions>) -> Result<Value, SignalWireRestError> {")
-        lines.append("        self.base.list_addresses_with_options(id, params, request_options.as_ref())")
+        lines.append(
+            "    pub fn list_addresses(&self, id: &str, params: &HashMap<String, String>, request_options: Option<RequestOptions>) -> Result<Value, SignalWireRestError> {"
+        )
+        lines.append(
+            "        self.base.list_addresses_with_options(id, params, request_options.as_ref())"
+        )
         lines.append("    }")
 
     for method_snake, spec_ref in declared.items():
@@ -1213,7 +1509,7 @@ def emit_resource(spec: Spec, anchor: str, markup: dict, structs: dict[str, str]
             raise SystemExit(f"{name}.{method_snake}: method markup missing op")
         if method_snake in provided:
             if method_snake == "list_addresses":
-                verb, op_path, _ = spec.ops[op_id]
+                _verb, op_path, _ = spec.ops[op_id]
                 _, sibling = relative_tail(spec, anchor, markup, op_path)
                 if not sibling:
                     continue
@@ -1221,7 +1517,11 @@ def emit_resource(spec: Spec, anchor: str, markup: dict, structs: dict[str, str]
             else:
                 continue
         lines.append("")
-        lines.append(emit_operation_method(spec, anchor, markup, base, method_snake, op_id, structs))
+        lines.append(
+            emit_operation_method(
+                spec, anchor, markup, base, method_snake, op_id, structs
+            )
+        )
 
     set_methods = markup.get("set_methods") or {}
     if set_methods:
@@ -1230,7 +1530,11 @@ def emit_resource(spec: Spec, anchor: str, markup: dict, structs: dict[str, str]
         upd_fields, upd_field_schemas = update_request_fields(spec, anchor, markup)
         for sm_name, sm in set_methods.items():
             lines.append("")
-            lines.append(emit_set_method(spec, markup, sm_name, sm, upd_fields, upd_field_schemas, structs))
+            lines.append(
+                emit_set_method(
+                    spec, markup, sm_name, sm, upd_fields, upd_field_schemas, structs
+                )
+            )
 
     lines.append("}")
     src = "\n".join(lines)
@@ -1241,11 +1545,19 @@ def emit_resource(spec: Spec, anchor: str, markup: dict, structs: dict[str, str]
     body_after_marker = src.split(helper_marker, 1)[1]
     helpers: list[str] = []
     if re.search(r"\bself\.client\(\)", body_after_marker):
-        helpers += ["", "    fn client(&self) -> &HttpClient {",
-                    "        self.base.client()", "    }"]
+        helpers += [
+            "",
+            "    fn client(&self) -> &HttpClient {",
+            "        self.base.client()",
+            "    }",
+        ]
     if re.search(r"\bself\.path\(", body_after_marker):
-        helpers += ["", "    fn path(&self, parts: &[&str]) -> String {",
-                    "        self.base.path(parts)", "    }"]
+        helpers += [
+            "",
+            "    fn path(&self, parts: &[&str]) -> String {",
+            "        self.base.path(parts)",
+            "    }",
+        ]
     return src.replace(helper_marker, "\n".join(helpers))
 
 
@@ -1263,10 +1575,15 @@ CONTAINERS = {
 }
 
 ATTR_OVERRIDE = {
-    "GenericResources": "resources", "FabricAddresses": "addresses",
-    "FabricTokens": "tokens", "DatasphereDocuments": "documents",
-    "ProjectTokens": "tokens", "PubSub": "pubsub",
-    "MessageLogs": "messages", "VoiceLogs": "voice", "FaxLogs": "fax",
+    "GenericResources": "resources",
+    "FabricAddresses": "addresses",
+    "FabricTokens": "tokens",
+    "DatasphereDocuments": "documents",
+    "ProjectTokens": "tokens",
+    "PubSub": "pubsub",
+    "MessageLogs": "messages",
+    "VoiceLogs": "voice",
+    "FaxLogs": "fax",
     "ConferenceLogs": "conferences",
 }
 
@@ -1277,13 +1594,12 @@ def container_accessor(markup: dict, name: str, container: str) -> str:
     if name in ATTR_OVERRIDE:
         return snake_of(ATTR_OVERRIDE[name])
     lead = container[:1].upper() + container[1:]
-    stem = name[len(lead):] if name.startswith(lead) else name
+    stem = name[len(lead) :] if name.startswith(lead) else name
     return _pascal_to_snake(stem) if stem else _pascal_to_snake(name)
 
 
 def _pascal_to_snake(s: str) -> str:
-    out = re.sub(r"(?<!^)(?=[A-Z])", "_", s).lower()
-    return out
+    return re.sub(r"(?<!^)(?=[A-Z])", "_", s).lower()
 
 
 def flat_accessor(name: str) -> str:
@@ -1312,10 +1628,10 @@ def emit_client_tree(placed) -> str:
     """Emit the generated client-tree: one container struct per namespace group +
     a `GeneratedResourceTree` the hand RestClient composes (lazy accessor per flat
     resource + per container). Base paths per §4, placement per §8."""
-    flats = []            # (accessor, struct, module)
+    flats = []  # (accessor, struct, module)
     containers: dict[str, list[tuple[str, str, str]]] = {}
     corder: list[str] = []
-    for spec, anchor, markup, container in placed:
+    for spec, _anchor, markup, container in placed:
         name = markup["name"]
         module = _res_module(spec)
         if not container:
@@ -1349,7 +1665,9 @@ def emit_client_tree(placed) -> str:
     for c in corder:
         clsname, acc = CONTAINERS[c]
         members = containers[c]
-        lines.append(f"/// `{clsname}` — generated container grouping the {c} namespace resources (§8).")
+        lines.append(
+            f"/// `{clsname}` — generated container grouping the {c} namespace resources (§8)."
+        )
         lines.append(f"pub struct {clsname}<'a> {{")
         lines.append("    client: &'a HttpClient,")
         lines.append("}")
@@ -1370,9 +1688,15 @@ def emit_client_tree(placed) -> str:
         lines.append("")
 
     # the resource tree
-    lines.append("/// `GeneratedResourceTree` — generated lazy accessors for every flat REST")
-    lines.append("/// resource plus the namespace containers (§8). The hand `RestClient` composes")
-    lines.append("/// this; each accessor constructs the resource with the client's `HttpClient`")
+    lines.append(
+        "/// `GeneratedResourceTree` — generated lazy accessors for every flat REST"
+    )
+    lines.append(
+        "/// resource plus the namespace containers (§8). The hand `RestClient` composes"
+    )
+    lines.append(
+        "/// this; each accessor constructs the resource with the client's `HttpClient`"
+    )
     lines.append("/// (base paths baked in per §4).")
     lines.append("pub struct GeneratedResourceTree<'a> {")
     lines.append("    client: &'a HttpClient,")
@@ -1486,7 +1810,11 @@ def is_object_schema(node: dict) -> bool:
         return False
     props = node.get("properties")
     t = _type_schema_type(node)
-    return (t == "object" or (t is None and props)) and isinstance(props, dict) and len(props) > 0
+    return (
+        (t == "object" or (t is None and props))
+        and isinstance(props, dict)
+        and len(props) > 0
+    )
 
 
 def _wire_owned_type(psc: dict) -> str:
@@ -1517,10 +1845,7 @@ def _struct_field_ident(wire: str, used: set) -> str:
     ident = snake(wire)
     # snake() lower-cases; a keyword result is escaped as a raw identifier.
     if ident in RUST_KEYWORDS:
-        if ident in RUST_NO_RAW:
-            ident = ident + "_"
-        else:
-            ident = "r#" + ident
+        ident = ident + "_" if ident in RUST_NO_RAW else "r#" + ident
     if not ident or ident[0].isdigit():
         ident = "_" + ident
     base = ident
@@ -1532,8 +1857,13 @@ def _struct_field_ident(wire: str, used: set) -> str:
     return ident
 
 
-def emit_methodless_struct(rs_name: str, properties: dict, source_desc: str,
-                           gen: str, schema_name: str | None = None) -> str:
+def emit_methodless_struct(
+    rs_name: str,
+    properties: dict,
+    source_desc: str,
+    gen: str,
+    schema_name: str | None = None,
+) -> str:
     """Emit one method-less serde struct for an OBJECT schema (shared by the REST
     wire-type emitter and the swml-verbs / relay-protocol / swaig payload
     generators so they never diverge). Every field is ``Option<T>`` with a
@@ -1549,7 +1879,9 @@ def emit_methodless_struct(rs_name: str, properties: dict, source_desc: str,
     lines.append(f"/// `{rs_name}` — generated read-side wire type ({source_desc}).")
     lines.append("///")
     lines.append("/// Method-less serde DTO: each field maps a snake wire key (via")
-    lines.append("/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.")
+    lines.append(
+        "/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted."
+    )
     lines.append("#[derive(Debug, Clone, Default, Serialize, Deserialize)]")
     lines.append(f"pub struct {rs_name} {{")
     used: set = set()
@@ -1565,13 +1897,15 @@ def emit_methodless_struct(rs_name: str, properties: dict, source_desc: str,
         # Emit an explicit ``rename`` whenever the wire key differs so the wire
         # contract is preserved verbatim regardless of the snake_case ident.
         serde_ident = ident[2:] if ident.startswith("r#") else ident
-        attrs = ["default", "skip_serializing_if = \"Option::is_none\""]
+        attrs = ["default", 'skip_serializing_if = "Option::is_none"']
         if serde_ident != wire_key:
             attrs.insert(0, f"rename = {rs_str(wire_key)}")
         lines.append(f"    #[serde({', '.join(attrs)})]")
         if overlay_deprecated(wire_key, schema_name):
             # deprecated: still emitted (back-compat), flagged for tooling + docs.
-            lines.append(f'    #[deprecated(note = "{wire_key}: deprecated per x-sdk-overlay")]')
+            lines.append(
+                f'    #[deprecated(note = "{wire_key}: deprecated per x-sdk-overlay")]'
+            )
         lines.append(f"    pub {ident}: Option<{ty}>,")
     lines.append("}")
     return "\n".join(lines)
@@ -1602,7 +1936,9 @@ def emit_type_enum(rs_name: str, values: list, source_desc: str, gen: str) -> st
     lines: list[str] = []
     lines.append(f"/// `{rs_name}` — generated public closed-set ({source_desc}).")
     lines.append("///")
-    lines.append("/// Each variant serialises to its wire string via `#[serde(rename)]`.")
+    lines.append(
+        "/// Each variant serialises to its wire string via `#[serde(rename)]`."
+    )
     lines.append("#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]")
     lines.append(f"pub enum {rs_name} {{")
     used: set = set()
@@ -1639,21 +1975,32 @@ def build_type_module(psdk: Path, spec_dir: str, ns_key: str) -> str:
             if rs_name in emitted:
                 continue
             emitted.add(rs_name)
-            blocks.append(emit_type_enum(
-                rs_name, list(node.get("enum") or []),
-                f"{spec_dir!r} REST API, schema {raw_name!r}",
-                "generate_rest.py"))
+            blocks.append(
+                emit_type_enum(
+                    rs_name,
+                    list(node.get("enum") or []),
+                    f"{spec_dir!r} REST API, schema {raw_name!r}",
+                    "generate_rest.py",
+                )
+            )
             continue
         if is_object_schema(node):
             rs_name = type_name(raw_name)
             if rs_name in emitted:
                 continue
             emitted.add(rs_name)
-            blocks.append(emit_methodless_struct(
-                rs_name, node.get("properties") or {},
-                f"{spec_dir!r} REST API, schema {raw_name!r}",
-                "generate_rest.py", schema_name=raw_name))
-    desc = f"Generated REST wire types for the {ns_key!r} namespace (components/schemas)."
+            blocks.append(
+                emit_methodless_struct(
+                    rs_name,
+                    node.get("properties") or {},
+                    f"{spec_dir!r} REST API, schema {raw_name!r}",
+                    "generate_rest.py",
+                    schema_name=raw_name,
+                )
+            )
+    desc = (
+        f"Generated REST wire types for the {ns_key!r} namespace (components/schemas)."
+    )
     src = TYPES_HEADER.format(gen="generate_rest.py", desc=desc) + "\n"
     for b in blocks:
         src += "\n" + b + "\n"
@@ -1664,7 +2011,9 @@ def emit_types(psdk: Path, outs: dict) -> None:
     """Emit every ``types/<ns>_types_generated.rs`` module into ``outs`` (keys
     relative to the generated dir)."""
     for spec_dir, ns_key in discover_type_ns(psdk):
-        outs[f"types/{ns_key}_types_generated.rs"] = build_type_module(psdk, spec_dir, ns_key)
+        outs[f"types/{ns_key}_types_generated.rs"] = build_type_module(
+            psdk, spec_dir, ns_key
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -1679,7 +2028,10 @@ def emit_types(psdk: Path, outs: dict) -> None:
 # each generator via GenPayloadSidecar.add + flushed to the JSON alongside the .rs.
 # ---------------------------------------------------------------------------
 
-def gen_payload_accessors(properties: dict, schema_name: str | None = None) -> list[str]:
+
+def gen_payload_accessors(
+    properties: dict, schema_name: str | None = None
+) -> list[str]:
     """The accessor member names for a read-side payload struct: the wire field
     identifier per property (deduped, keyword→r#kw stripped to a bare method name).
     Matches the reference's recorded accessor names (wire field verbatim where a
@@ -1720,17 +2072,20 @@ def gen_payload_accessors(properties: dict, schema_name: str | None = None) -> l
 # signature adapters subtract these so the projection lands 1:1 on the oracle.
 # ---------------------------------------------------------------------------
 
+
 # The oracle's per-resource method set = declared methods + set_methods
 # + (create, update) for a CRUD/Fabric base. Every OTHER base-provided method
 # (list/get/delete[/list_addresses]) is inherited-not-redeclared → dropped from
 # the surface. ``base_path`` is a Rust accessor with no Python analogue → always
 # dropped.
-def surface_drop_set(base: str, declared: list[str], set_methods: list[str]) -> set[str]:
+def surface_drop_set(
+    base: str, declared: list[str], set_methods: list[str]
+) -> set[str]:
     prov = BASE_PROVIDES.get(base, set())
     keep = set(declared) | set(set_methods)
     if base in ("CrudResource", "FabricResource"):
         keep |= {"create", "update"}
-    drop = (prov - keep)
+    drop = prov - keep
     drop.add("base_path")
     return drop
 
@@ -1753,7 +2108,9 @@ def _param(name: str, kind: str, required: bool, ptype: str = "any") -> dict:
 # and FAIL drift — the reference types it concretely). The Rust type is projected
 # to the reference module ``signalwire.rest._request_options`` by the enumerator's
 # FREE_FN module rename, so the canonical type token is identical across ports.
-_REQUEST_OPTIONS_TYPE = "optional<class:signalwire.rest._request_options.RequestOptions>"
+_REQUEST_OPTIONS_TYPE = (
+    "optional<class:signalwire.rest._request_options.RequestOptions>"
+)
 
 
 def _request_options_param() -> dict:
@@ -1770,7 +2127,7 @@ def _with_request_options(params: list[dict]) -> list[dict]:
     slot."""
     tail = params[-1:] if params and params[-1].get("kind") == "var_keyword" else []
     head = params[: len(params) - len(tail)]
-    return head + [_request_options_param()] + tail
+    return [*head, _request_options_param(), *tail]
 
 
 # JSON scalar → the oracle's canonical *param-type* token (the reference records
@@ -1779,7 +2136,12 @@ def _with_request_options(params: list[dict]) -> list[dict]:
 # _wire_owned_type map the identical scalar set to String/i64/f64/bool); here we
 # spell it in the reference's canonical vocabulary so the enumerated param compares
 # EQUAL to the oracle under diff_port_signatures.types_compatible.
-_SCALAR_CANON = {"string": "string", "integer": "int", "number": "float", "boolean": "bool"}
+_SCALAR_CANON = {
+    "string": "string",
+    "integer": "int",
+    "number": "float",
+    "boolean": "bool",
+}
 
 
 def _named_ref_leaf(schema: dict) -> str | None:
@@ -1793,7 +2155,12 @@ def _named_ref_leaf(schema: dict) -> str | None:
     if ref:
         return ref.rsplit("/", 1)[-1]
     allof = schema.get("allOf")
-    if allof and len(allof) == 1 and not schema.get("properties") and not schema.get("type"):
+    if (
+        allof
+        and len(allof) == 1
+        and not schema.get("properties")
+        and not schema.get("type")
+    ):
         return _named_ref_leaf(allof[0])
     return None
 
@@ -1830,14 +2197,17 @@ def _body_field_canon_type(spec: Spec, schema: dict) -> str:
         return _SCALAR_CANON[jt]
     if jt == "array":
         items = resolved.get("items") if isinstance(resolved, dict) else None
-        inner = _body_field_canon_type(spec, items) if isinstance(items, dict) else "any"
+        inner = (
+            _body_field_canon_type(spec, items) if isinstance(items, dict) else "any"
+        )
         return f"list<{inner}>"
     # anonymous object / oneOf / anyOf / union / untyped → open JSON object.
     return "dict<string,any>"
 
 
-def _body_field_params(spec: Spec, fields, kind_for_fields: str,
-                       tail_extra_name: str, tail_kwargs: bool) -> list[dict]:
+def _body_field_params(
+    spec: Spec, fields, kind_for_fields: str, tail_extra_name: str, tail_kwargs: bool
+) -> list[dict]:
     """Exploded params for an object/command body: each field → kind_for_fields
     (``keyword``) carrying the field's CONCRETE type (threaded from its schema so the
     param compares equal to the oracle, not a bare ``any``); then the
@@ -1848,16 +2218,23 @@ def _body_field_params(spec: Spec, fields, kind_for_fields: str,
     (``ordered_fields``)."""
     out: list[dict] = []
     for wire, _sch, req in ordered_fields(fields):
-        out.append(_param(field_ident(wire), kind_for_fields, bool(req),
-                          _body_field_canon_type(spec, _sch)))
+        out.append(
+            _param(
+                field_ident(wire),
+                kind_for_fields,
+                bool(req),
+                _body_field_canon_type(spec, _sch),
+            )
+        )
     out.append(_param(tail_extra_name, kind_for_fields, False, "dict<string,any>"))
     if tail_kwargs:
         out.append(_param("kwargs", "var_keyword", False))
     return out
 
 
-def sidecar_operation_method(spec: Spec, anchor: str, markup: dict, base: str,
-                             method_snake: str, op_id: str) -> list[dict] | None:
+def sidecar_operation_method(
+    spec: Spec, anchor: str, markup: dict, base: str, method_snake: str, op_id: str
+) -> list[dict] | None:
     """Exploded param model for a declared operation method (mirrors
     emit_operation_method's branches)."""
     if op_id not in spec.ops:
@@ -1887,8 +2264,14 @@ def sidecar_operation_method(spec: Spec, anchor: str, markup: dict, base: str,
     return _with_request_options(params)
 
 
-def sidecar_set_method(spec: Spec, markup: dict, sm_name: str, sm: dict,
-                       update_fields: set[str], field_schemas: dict[str, dict]) -> list[dict]:
+def sidecar_set_method(
+    spec: Spec,
+    markup: dict,
+    sm_name: str,
+    sm: dict,
+    update_fields: set[str],
+    field_schemas: dict[str, dict],
+) -> list[dict]:
     """Exploded param model for a set_* wrapper: leading resource_id positional,
     the bound args (required→positional-req / optional→positional), trailing
     ``extra`` var_keyword — matching the oracle (e.g. set_call_flow:
@@ -1903,14 +2286,17 @@ def sidecar_set_method(spec: Spec, markup: dict, sm_name: str, sm: dict,
         # field schema is absent/plain-string.
         fld = arg.get("field")
         fsch = field_schemas.get(fld) if fld else None
-        ptype = _body_field_canon_type(spec, fsch) if isinstance(fsch, dict) else "string"
+        ptype = (
+            _body_field_canon_type(spec, fsch) if isinstance(fsch, dict) else "string"
+        )
         params.append(_param(field_ident(arg_name), "positional", req, ptype))
     params.append(_param("extra", "var_keyword", False))
     return _with_request_options(params)
 
 
-def sidecar_command_method(spec: Spec, mapping_leaf: str, cmd_schema: dict,
-                           with_id: bool) -> list[dict]:
+def sidecar_command_method(
+    spec: Spec, mapping_leaf: str, cmd_schema: dict, with_id: bool
+) -> list[dict]:
     fields, _has_id = command_param_fields(spec, cmd_schema)
     params: list[dict] = []
     if with_id:
@@ -1923,7 +2309,7 @@ def sidecar_for_resource(spec: Spec, anchor: str, markup: dict) -> dict:
     """Return {method_name: [param,...]} for one resource's EMITTED methods
     (declared/command/set + the create/update CRUD-write overrides), matching
     the oracle's exploded shape. __init__ is added by the adapter."""
-    name = markup["name"]
+    markup["name"]
     methods: dict[str, list[dict]] = {}
     if markup.get("kind") == "command-dispatch":
         request = markup.get("request")
@@ -1953,8 +2339,11 @@ def sidecar_for_resource(spec: Spec, anchor: str, markup: dict) -> dict:
     if base in ("CrudResource", "FabricResource"):
         methods["create"] = _with_request_options([_param("data", "positional", True)])
         methods["update"] = _with_request_options(
-            [_param("id", "positional", True, "string"),
-             _param("data", "positional", True)])
+            [
+                _param("id", "positional", True, "string"),
+                _param("data", "positional", True),
+            ]
+        )
 
     # Declared operation methods (may override list_addresses with a sibling path).
     for m_snake, ref in declared.items():
@@ -1965,7 +2354,7 @@ def sidecar_for_resource(spec: Spec, anchor: str, markup: dict) -> dict:
             continue
         if m_snake == "list_addresses" and m_snake in provided:
             # only a SIBLING override is emitted (base delegation otherwise)
-            verb, op_path, _ = spec.ops.get(op_id, (None, None, None))
+            _verb, op_path, _ = spec.ops.get(op_id, (None, None, None))
             if op_path is None:
                 continue
             _, sibling = relative_tail(spec, anchor, markup, op_path)
@@ -1981,7 +2370,8 @@ def sidecar_for_resource(spec: Spec, anchor: str, markup: dict) -> dict:
         upd_fields, upd_field_schemas = update_request_fields(spec, anchor, markup)
         for sm_name, sm in set_methods.items():
             methods[snake_of(sm_name)] = sidecar_set_method(
-                spec, markup, sm_name, sm, upd_fields, upd_field_schemas)
+                spec, markup, sm_name, sm, upd_fields, upd_field_schemas
+            )
     return methods
 
 
@@ -1993,10 +2383,18 @@ def build_sidecar(specs) -> dict:
         module = _res_module(spec)
         for anchor, markup in spec.resources():
             name = markup["name"]
-            base = "command-dispatch" if markup.get("kind") == "command-dispatch" else markup.get("base")
+            base = (
+                "command-dispatch"
+                if markup.get("kind") == "command-dispatch"
+                else markup.get("base")
+            )
             declared = list((markup.get("methods") or {}).keys())
             setm = list((markup.get("set_methods") or {}).keys())
-            drop = sorted(surface_drop_set(base, declared, setm)) if base != "command-dispatch" else ["base_path"]
+            drop = (
+                sorted(surface_drop_set(base, declared, setm))
+                if base != "command-dispatch"
+                else ["base_path"]
+            )
             resources[name] = {
                 "module": f"signalwire.rest.namespaces.{module}",
                 "class": name,
@@ -2018,14 +2416,17 @@ def build_sidecar(specs) -> dict:
         module = _res_module(spec)
         for _anchor, markup in spec.resources():
             res_module[markup["name"]] = f"signalwire.rest.namespaces.{module}"
-    for spec, anchor, markup, container in placed:
+    for _spec, _anchor, markup, container in placed:
         if container and container in CONTAINERS:
             clsname, _acc = CONTAINERS[container]
-            entry = containers.setdefault(clsname, {
-                "module": "signalwire.rest.namespaces._client_tree_generated",
-                "class": clsname,
-                "accessors": {},
-            })
+            entry = containers.setdefault(
+                clsname,
+                {
+                    "module": "signalwire.rest.namespaces._client_tree_generated",
+                    "class": clsname,
+                    "accessors": {},
+                },
+            )
             rname = markup["name"]
             acc = container_accessor(markup, rname, container)
             entry["accessors"][acc] = {
@@ -2033,9 +2434,11 @@ def build_sidecar(specs) -> dict:
             }
     return {
         "version": "1",
-        "note": ("adapter sidecar for the generated REST layer — exploded param "
-                 "model (kinds) + surface drop-sets; consumed by "
-                 "enumerate_signatures.py / enumerate_surface.py"),
+        "note": (
+            "adapter sidecar for the generated REST layer — exploded param "
+            "model (kinds) + surface drop-sets; consumed by "
+            "enumerate_signatures.py / enumerate_surface.py"
+        ),
         "suppress_structs": ["GeneratedResourceTree"],
         "resources": resources,
         "containers": containers,
@@ -2046,23 +2449,31 @@ def build_sidecar(specs) -> dict:
 # Driver.
 # ---------------------------------------------------------------------------
 
+
 def _rustfmt(src: str) -> str:
     """Format Rust source with the pinned stable rustfmt so the generated files
     are byte-identical to what the FMT gate expects (rustfmt is idempotent, so a
     formatted file re-formats to itself). Falls back to the raw source if
     rustfmt is unavailable (GEN-FRESH stays internally consistent either way)."""
     import subprocess
+
     try:
         cp = subprocess.run(
             ["rustfmt", "+stable", "--edition", "2024", "--emit", "stdout"],
-            input=src, capture_output=True, text=True, check=False,
+            input=src,
+            capture_output=True,
+            text=True,
+            check=False,
         )
         if cp.returncode == 0 and cp.stdout:
             return cp.stdout
         # `rustfmt +stable` form may not be accepted directly; retry via rustup.
         cp = subprocess.run(
             ["rustfmt", "--edition", "2024", "--emit", "stdout"],
-            input=src, capture_output=True, text=True, check=False,
+            input=src,
+            capture_output=True,
+            text=True,
+            check=False,
         )
         if cp.returncode == 0 and cp.stdout:
             return cp.stdout
@@ -2093,7 +2504,8 @@ def build_outputs(psdk: Path) -> dict[str, str]:
         for body in bodies:
             body_src += "\n" + body + "\n"
         src = GEN_BANNER.format(
-            desc=f"Generated REST resources for the {spec.name!r} namespace.")
+            desc=f"Generated REST resources for the {spec.name!r} namespace."
+        )
         src += "\n" + gen_imports(body_src)
         src += body_src
         outs[module + ".rs"] = src
@@ -2106,8 +2518,9 @@ def build_outputs(psdk: Path) -> dict[str, str]:
     # namespace, under types/). Emitted into outs["types/<ns>_types_generated.rs"].
     emit_types(psdk, outs)
     type_mod_names = sorted(
-        fn[len("types/"):-len(".rs")]
-        for fn in outs if fn.startswith("types/") and fn.endswith(".rs")
+        fn[len("types/") : -len(".rs")]
+        for fn in outs
+        if fn.startswith("types/") and fn.endswith(".rs")
     )
     type_mod_lines = [
         "// Code generated by scripts/generate_rest.py; DO NOT EDIT.",
@@ -2115,8 +2528,7 @@ def build_outputs(psdk: Path) -> dict[str, str]:
         "// AUTO-GENERATED index for the generated REST wire-type modules (§H/§I).",
         "",
     ]
-    for m in type_mod_names:
-        type_mod_lines.append(f"pub mod {m};")
+    type_mod_lines.extend(f"pub mod {m};" for m in type_mod_names)
     outs["types/mod.rs"] = "\n".join(type_mod_lines) + "\n"
 
     # mod.rs re-exporting each generated module (+ the types index submodule).
@@ -2126,15 +2538,17 @@ def build_outputs(psdk: Path) -> dict[str, str]:
         "// AUTO-GENERATED module index for the generated REST resource layer.",
         "",
     ]
-    for m in mod_names:
-        mod_lines.append(f"pub mod {m};")
+    mod_lines.extend(f"pub mod {m};" for m in mod_names)
     mod_lines.append("pub mod types;")
     outs["mod.rs"] = "\n".join(mod_lines) + "\n"
 
     # Adapter sidecar (JSON, L10) — written alongside the generated modules so a
     # regen keeps it in lockstep and GEN-FRESH gates it too.
     import json as _json
-    outs["rest_signatures.json"] = _json.dumps(build_sidecar(specs), indent=2, sort_keys=True) + "\n"
+
+    outs["rest_signatures.json"] = (
+        _json.dumps(build_sidecar(specs), indent=2, sort_keys=True) + "\n"
+    )
 
     # Format the generated Rust with the pinned rustfmt so the emitted files are
     # byte-identical to what the FMT gate produces (otherwise `cargo fmt --all`
@@ -2147,10 +2561,15 @@ def build_outputs(psdk: Path) -> dict[str, str]:
 
 def main(argv: list[str]) -> int:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--check", action="store_true", help="GEN-FRESH: exit non-zero if stale")
+    ap.add_argument(
+        "--check", action="store_true", help="GEN-FRESH: exit non-zero if stale"
+    )
     ap.add_argument("--out", default="", help="scratch: emit into this dir")
-    ap.add_argument("--report-renames", action="store_true",
-                    help="print reserved-word field/arg renames encountered")
+    ap.add_argument(
+        "--report-renames",
+        action="store_true",
+        help="print reserved-word field/arg renames encountered",
+    )
     args = ap.parse_args(argv)
 
     psdk = resolve_porting_sdk()
@@ -2174,9 +2593,11 @@ def main(argv: list[str]) -> int:
                 if rel not in expected:
                     stale.append(f"{p} (leftover — not in generator output)")
         if stale:
-            sys.stderr.write("GEN-FRESH FAIL: %d generated REST file(s) stale:\n" % len(stale))
+            sys.stderr.write(
+                f"GEN-FRESH FAIL: {len(stale)} generated REST file(s) stale:\n"
+            )
             for s in stale:
-                sys.stderr.write("  - %s\n" % s)
+                sys.stderr.write(f"  - {s}\n")
             return 1
         print("GEN-FRESH: generated REST files match the canonical specs.")
         return 0

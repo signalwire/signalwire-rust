@@ -23,7 +23,7 @@ pub mod section;
 
 pub use pom::{PomParseError, PromptObjectModel};
 pub use pom_builder::PomBuilder;
-pub use section::Section;
+pub use section::{Bullets, Section};
 
 #[cfg(test)]
 mod tests {
@@ -66,16 +66,28 @@ mod tests {
     #[test]
     fn test_simple_render_markdown_exact() {
         let mut pom = PromptObjectModel::new();
-        pom.add_section_with(Some("Greeting".into()), "Hello world")
-            .unwrap();
+        pom.add_section_with(
+            Some("Greeting".into()),
+            Some("Hello world".into()),
+            None,
+            None,
+            None,
+        )
+        .unwrap();
         assert_eq!(pom.render_markdown(), "## Greeting\n\nHello world\n");
     }
 
     #[test]
     fn test_simple_render_xml_exact() {
         let mut pom = PromptObjectModel::new();
-        pom.add_section_with(Some("Greeting".into()), "Hello world")
-            .unwrap();
+        pom.add_section_with(
+            Some("Greeting".into()),
+            Some("Hello world".into()),
+            None,
+            None,
+            None,
+        )
+        .unwrap();
         let expected = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n\
                         <prompt>\n  \
                         <section>\n    \
@@ -92,7 +104,13 @@ mod tests {
     fn test_render_markdown_with_bullets() {
         let mut pom = PromptObjectModel::new();
         let sec = pom
-            .add_section_with(Some("Goals".into()), "Be helpful")
+            .add_section_with(
+                Some("Goals".into()),
+                Some("Be helpful".into()),
+                None,
+                None,
+                None,
+            )
             .unwrap();
         sec.add_bullets(vec!["Be concise".to_string(), "Be clear".to_string()]);
         assert_eq!(
@@ -105,7 +123,13 @@ mod tests {
     fn test_render_xml_with_bullets() {
         let mut pom = PromptObjectModel::new();
         let sec = pom
-            .add_section_with(Some("Goals".into()), "Be helpful")
+            .add_section_with(
+                Some("Goals".into()),
+                Some("Be helpful".into()),
+                None,
+                None,
+                None,
+            )
             .unwrap();
         sec.add_bullets(vec!["Be concise".to_string(), "Be clear".to_string()]);
         let expected = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n\
@@ -128,7 +152,13 @@ mod tests {
     fn test_render_markdown_with_subsection() {
         let mut pom = PromptObjectModel::new();
         let sec = pom
-            .add_section_with(Some("Top".into()), "Top body")
+            .add_section_with(
+                Some("Top".into()),
+                Some("Top body".into()),
+                None,
+                None,
+                None,
+            )
             .unwrap();
         let sub = sec.add_subsection("Sub1");
         sub.add_body("Sub1 body");
@@ -143,7 +173,13 @@ mod tests {
     fn test_render_xml_with_subsection() {
         let mut pom = PromptObjectModel::new();
         let sec = pom
-            .add_section_with(Some("Top".into()), "Top body")
+            .add_section_with(
+                Some("Top".into()),
+                Some("Top body".into()),
+                None,
+                None,
+                None,
+            )
             .unwrap();
         let sub = sec.add_subsection("Sub1");
         sub.add_body("Sub1 body");
@@ -173,18 +209,24 @@ mod tests {
     #[test]
     fn test_render_markdown_numbered_propagates_to_siblings() {
         let mut pom = PromptObjectModel::new();
-        let s1 = pom.add_section_with(Some("S1".into()), "b1").unwrap();
+        let s1 = pom
+            .add_section_with(Some("S1".into()), Some("b1".into()), None, None, None)
+            .unwrap();
         s1.numbered = Some(true);
-        pom.add_section_with(Some("S2".into()), "b2").unwrap();
+        pom.add_section_with(Some("S2".into()), Some("b2".into()), None, None, None)
+            .unwrap();
         assert_eq!(pom.render_markdown(), "## 1. S1\n\nb1\n\n## 2. S2\n\nb2\n");
     }
 
     #[test]
     fn test_render_xml_numbered_propagates() {
         let mut pom = PromptObjectModel::new();
-        let s1 = pom.add_section_with(Some("S1".into()), "b1").unwrap();
+        let s1 = pom
+            .add_section_with(Some("S1".into()), Some("b1".into()), None, None, None)
+            .unwrap();
         s1.numbered = Some(true);
-        pom.add_section_with(Some("S2".into()), "b2").unwrap();
+        pom.add_section_with(Some("S2".into()), Some("b2".into()), None, None, None)
+            .unwrap();
         let expected = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n\
                         <prompt>\n  \
                         <section>\n    \
@@ -234,7 +276,9 @@ mod tests {
     #[test]
     fn test_to_json_exact_shape() {
         let mut pom = PromptObjectModel::new();
-        let sec = pom.add_section_with(Some("A".into()), "ab").unwrap();
+        let sec = pom
+            .add_section_with(Some("A".into()), Some("ab".into()), None, None, None)
+            .unwrap();
         let sub = sec.add_subsection("A1");
         sub.add_body("a1b");
         sub.add_bullets(vec!["x".to_string()]);
@@ -259,7 +303,9 @@ mod tests {
     #[test]
     fn test_to_yaml_exact_shape() {
         let mut pom = PromptObjectModel::new();
-        let sec = pom.add_section_with(Some("A".into()), "ab").unwrap();
+        let sec = pom
+            .add_section_with(Some("A".into()), Some("ab".into()), None, None, None)
+            .unwrap();
         let sub = sec.add_subsection("A1");
         sub.add_body("a1b");
         sub.add_bullets(vec!["x".to_string()]);
@@ -276,7 +322,9 @@ mod tests {
     #[test]
     fn test_from_json_round_trip_preserves_structure() {
         let mut pom = PromptObjectModel::new();
-        let sec = pom.add_section_with(Some("A".into()), "ab").unwrap();
+        let sec = pom
+            .add_section_with(Some("A".into()), Some("ab".into()), None, None, None)
+            .unwrap();
         let sub = sec.add_subsection("A1");
         sub.add_body("a1b");
         sub.add_bullets(vec!["x".to_string(), "y".to_string()]);
@@ -317,7 +365,9 @@ mod tests {
     #[test]
     fn test_from_yaml_round_trip_preserves_structure() {
         let mut pom = PromptObjectModel::new();
-        let sec = pom.add_section_with(Some("A".into()), "ab").unwrap();
+        let sec = pom
+            .add_section_with(Some("A".into()), Some("ab".into()), None, None, None)
+            .unwrap();
         let sub = sec.add_subsection("A1");
         sub.add_body("a1b");
         sub.add_bullets(vec!["x".to_string(), "y".to_string()]);
@@ -331,8 +381,10 @@ mod tests {
     #[test]
     fn test_find_section_top_level() {
         let mut pom = PromptObjectModel::new();
-        pom.add_section_with(Some("One".into()), "b1").unwrap();
-        pom.add_section_with(Some("Two".into()), "b2").unwrap();
+        pom.add_section_with(Some("One".into()), Some("b1".into()), None, None, None)
+            .unwrap();
+        pom.add_section_with(Some("Two".into()), Some("b2".into()), None, None, None)
+            .unwrap();
         let s = pom.find_section("Two").unwrap();
         assert_eq!(s.body, "b2");
     }
@@ -340,7 +392,9 @@ mod tests {
     #[test]
     fn test_find_section_recurses_into_subsections() {
         let mut pom = PromptObjectModel::new();
-        let sec = pom.add_section_with(Some("Outer".into()), "ob").unwrap();
+        let sec = pom
+            .add_section_with(Some("Outer".into()), Some("ob".into()), None, None, None)
+            .unwrap();
         let sub = sec.add_subsection("Inner");
         sub.add_body("ib");
         let found = pom.find_section("Inner").unwrap();
@@ -350,7 +404,8 @@ mod tests {
     #[test]
     fn test_find_section_returns_none_for_missing() {
         let mut pom = PromptObjectModel::new();
-        pom.add_section_with(Some("Only".into()), "b").unwrap();
+        pom.add_section_with(Some("Only".into()), Some("b".into()), None, None, None)
+            .unwrap();
         assert!(pom.find_section("Missing").is_none());
     }
 
@@ -359,10 +414,13 @@ mod tests {
     #[test]
     fn test_add_pom_to_existing_section_by_title() {
         let mut host = PromptObjectModel::new();
-        host.add_section_with(Some("Host".into()), "hb").unwrap();
+        host.add_section_with(Some("Host".into()), Some("hb".into()), None, None, None)
+            .unwrap();
 
         let mut guest = PromptObjectModel::new();
-        guest.add_section_with(Some("Guest".into()), "gb").unwrap();
+        guest
+            .add_section_with(Some("Guest".into()), Some("gb".into()), None, None, None)
+            .unwrap();
 
         host.add_pom_as_subsection("Host", &guest).unwrap();
         let host_section = host.find_section("Host").unwrap();
@@ -374,7 +432,8 @@ mod tests {
     #[test]
     fn test_add_pom_as_subsection_returns_err_for_missing_target() {
         let mut host = PromptObjectModel::new();
-        host.add_section_with(Some("Host".into()), "hb").unwrap();
+        host.add_section_with(Some("Host".into()), Some("hb".into()), None, None, None)
+            .unwrap();
         let guest = PromptObjectModel::new();
         let r = host.add_pom_as_subsection("Nope", &guest);
         assert!(r.is_err());
@@ -431,15 +490,19 @@ mod tests {
     #[test]
     fn test_add_section_returns_section_instance() {
         let mut pom = PromptObjectModel::new();
-        let s = pom.add_section_with(Some("Greeting".into()), "Hi").unwrap();
+        let s = pom
+            .add_section_with(Some("Greeting".into()), Some("Hi".into()), None, None, None)
+            .unwrap();
         assert_eq!(s.title.as_deref(), Some("Greeting"));
     }
 
     #[test]
     fn test_add_section_appears_in_sections() {
         let mut pom = PromptObjectModel::new();
-        pom.add_section_with(Some("A".into()), "ba").unwrap();
-        pom.add_section_with(Some("B".into()), "bb").unwrap();
+        pom.add_section_with(Some("A".into()), Some("ba".into()), None, None, None)
+            .unwrap();
+        pom.add_section_with(Some("B".into()), Some("bb".into()), None, None, None)
+            .unwrap();
         let titles: Vec<_> = pom.sections.iter().map(|s| s.title.clone()).collect();
         assert_eq!(titles, vec![Some("A".to_string()), Some("B".to_string())]);
     }
@@ -447,9 +510,11 @@ mod tests {
     #[test]
     fn test_add_second_untitled_section_returns_err() {
         let mut pom = PromptObjectModel::new();
-        pom.add_section_with(None, "intro").unwrap();
+        pom.add_section_with(None, Some("intro".into()), None, None, None)
+            .unwrap();
         // Second section can have a title — that's fine
-        pom.add_section_with(Some("Real".into()), "body").unwrap();
+        pom.add_section_with(Some("Real".into()), Some("body".into()), None, None, None)
+            .unwrap();
         // Third section without a title — Python would raise.
         let r = pom.add_section(None);
         assert!(r.is_err());
@@ -458,7 +523,8 @@ mod tests {
     #[test]
     fn test_to_value_returns_array() {
         let mut pom = PromptObjectModel::new();
-        pom.add_section_with(Some("A".into()), "body-A").unwrap();
+        pom.add_section_with(Some("A".into()), Some("body-A".into()), None, None, None)
+            .unwrap();
         let v = pom.to_value();
         assert!(v.is_array());
     }
@@ -468,8 +534,10 @@ mod tests {
     #[test]
     fn test_first_untitled_section_renders_body_only() {
         let mut pom = PromptObjectModel::new();
-        pom.add_section_with(None, "intro").unwrap();
-        pom.add_section_with(Some("S1".into()), "b1").unwrap();
+        pom.add_section_with(None, Some("intro".into()), None, None, None)
+            .unwrap();
+        pom.add_section_with(Some("S1".into()), Some("b1".into()), None, None, None)
+            .unwrap();
         assert_eq!(pom.render_markdown(), "intro\n\n## S1\n\nb1\n");
     }
 
@@ -478,7 +546,9 @@ mod tests {
     #[test]
     fn test_from_yaml_round_trip_preserves_bullets() {
         let mut pom = PromptObjectModel::new();
-        let sec = pom.add_section_with(Some("A".into()), "body-A").unwrap();
+        let sec = pom
+            .add_section_with(Some("A".into()), Some("body-A".into()), None, None, None)
+            .unwrap();
         sec.add_bullets(vec!["x".to_string(), "y".to_string()]);
         let y = pom.to_yaml().unwrap();
         let restored = PromptObjectModel::from_yaml(&y).unwrap();
@@ -491,12 +561,16 @@ mod tests {
     #[test]
     fn test_add_pom_as_subsection_markdown_exact() {
         let mut pom1 = PromptObjectModel::new();
-        pom1.add_section_with(Some("A".into()), "ba").unwrap();
-        pom1.add_section_with(Some("B".into()), "bb").unwrap();
+        pom1.add_section_with(Some("A".into()), Some("ba".into()), None, None, None)
+            .unwrap();
+        pom1.add_section_with(Some("B".into()), Some("bb".into()), None, None, None)
+            .unwrap();
 
         let mut pom2 = PromptObjectModel::new();
-        pom2.add_section_with(Some("X".into()), "bx").unwrap();
-        pom2.add_section_with(Some("Y".into()), "by").unwrap();
+        pom2.add_section_with(Some("X".into()), Some("bx".into()), None, None, None)
+            .unwrap();
+        pom2.add_section_with(Some("Y".into()), Some("by".into()), None, None, None)
+            .unwrap();
 
         pom1.add_pom_as_subsection("A", &pom2).unwrap();
         assert_eq!(

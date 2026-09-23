@@ -143,7 +143,7 @@ fn dispatch_handler(agent: &AgentBase, tool_name: &str, args: &Value) -> Result<
     let raw_data: Map<String, Value> = Map::new();
 
     let r = agent
-        .on_function_call(tool_name, &args_map, &raw_data)
+        .on_function_call(tool_name, &args_map, Some(&raw_data))
         .ok_or_else(|| format!("handler '{tool_name}' not registered or returned None"))?;
     Ok(r.to_value())
 }

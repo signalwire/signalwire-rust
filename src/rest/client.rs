@@ -167,22 +167,41 @@ impl RestClient {
 
     // -- Accessors --
 
+    /// The SignalWire project ID this client authenticates as — the username
+    /// half of the HTTP Basic credential.
     pub fn project_id(&self) -> &str {
         &self.project_id
     }
 
+    /// The API token this client authenticates with — the password half of
+    /// the HTTP Basic credential.
+    ///
+    /// This is a **secret**: it grants full API access for the project. Do
+    /// not log it or include it in error messages.
     pub fn token(&self) -> &str {
         &self.token
     }
 
+    /// The SignalWire space hostname (e.g. `example.signalwire.com`) this
+    /// client was configured with.
+    ///
+    /// Empty when the client was built from an explicit base URL rather than
+    /// a space.
     pub fn space(&self) -> &str {
         &self.space
     }
 
+    /// The base URL every request is issued against — derived from the
+    /// space, or set directly when the client was built with an explicit
+    /// base URL.
     pub fn base_url(&self) -> &str {
         &self.base_url
     }
 
+    /// The underlying [`HttpClient`] that performs the requests.
+    ///
+    /// Exposed for calling REST paths the generated namespaces do not cover;
+    /// prefer the typed namespace accessors where one exists.
     pub fn http(&self) -> &HttpClient {
         &self.http
     }

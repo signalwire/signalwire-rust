@@ -10,7 +10,10 @@
 //      or AzureWebJobsStorage                                -> "azure_function"
 //   5. otherwise                                             -> "server"
 
+use std::collections::HashMap;
 use std::env;
+
+use serde_json::Value;
 
 use crate::logging::{Level, ParseLevelError};
 
@@ -75,14 +78,16 @@ use std::sync::atomic::{AtomicBool, Ordering};
 /// Global "configured once" flag (Python's `_logging_configured`).
 static LOGGING_CONFIGURED: AtomicBool = AtomicBool::new(false);
 
-/// Strip control characters from a string to prevent log injection.
+/// Strip control characters from a single string.
 ///
 /// Removes the C0/C1 control ranges (`\x00-\x08`, `\x0b`, `\x0c`,
 /// `\x0e-\x1f`, `\x7f-\x9f`) — the same set as Python's `_CONTROL_CHAR_RE`.
-/// Python operates on a structlog `event_dict`; the Rust surface analog
-/// sanitizes a single log value (the unit callers actually have).
+///
+/// PRIVATE: the reference's public contract is the event-dict form
+/// ([`strip_control_chars`]); this is the per-value scrub that form is built
+/// out of, and the unit the emitter needs. It is deliberately not port surface.
 #[must_use]
-pub fn strip_control_chars(value: &str) -> String {
+pub(crate) fn strip_control_chars_str(value: &str) -> String {
     value
         .chars()
         .filter(|c| {
@@ -94,6 +99,32 @@ pub fn strip_control_chars(value: &str) -> String {
                 || (0x7f..=0x9f).contains(&n))
         })
         .collect()
+}
+
+/// Strip control characters from log event values to prevent log injection.
+///
+/// Mirrors `signalwire.core.logging_config.strip_control_chars`: takes the log
+/// event map, scrubs every STRING value in place, and returns the map.
+/// Non-string values pass through untouched, exactly as the reference's
+/// `isinstance(value, str)` guard does.
+///
+/// The reference wires this into both of its structlog processor chains, so the
+/// scrub is on the real emission path rather than merely available; this port
+/// does the same from [`crate::logging::Logger::log`].
+/// `clippy::implicit_hasher`: the concrete `HashMap<String, Value>` mirrors the
+/// reference's `dict[str, Any]` event map; generalizing over `BuildHasher` would
+/// distort the signature for a caller-hasher flexibility no consumer needs. Same
+/// rationale as `RestClient`'s `**kwargs` map and `filter_sensitive_headers` —
+/// see `PORT_PHILOSOPHY_RUST.md`, the `implicit_hasher` row.
+#[must_use]
+#[allow(clippy::implicit_hasher)]
+pub fn strip_control_chars(mut event_dict: HashMap<String, Value>) -> HashMap<String, Value> {
+    for value in event_dict.values_mut() {
+        if let Value::String(s) = value {
+            *s = strip_control_chars_str(s);
+        }
+    }
+    event_dict
 }
 
 /// Configure the logging system once, globally, from the environment.
@@ -145,7 +176,7 @@ mod logging_setup_tests {
     #[test]
     fn test_strip_control_chars_removes_control_bytes() {
         assert_eq!(
-            strip_control_chars("hello\x00wor\x1bld\x07!"),
+            strip_control_chars_str("hello\x00wor\x1bld\x07!"),
             "helloworld!"
         );
     }
@@ -153,12 +184,30 @@ mod logging_setup_tests {
     #[test]
     fn test_strip_control_chars_keeps_printable_and_whitespace() {
         let s = "line1\tcol\nline2\r end";
-        assert_eq!(strip_control_chars(s), s);
+        assert_eq!(strip_control_chars_str(s), s);
     }
 
     #[test]
     fn test_strip_control_chars_removes_c1_range() {
-        assert_eq!(strip_control_chars("a\u{0085}b\u{009f}c"), "abc");
+        assert_eq!(strip_control_chars_str("a\u{0085}b\u{009f}c"), "abc");
+    }
+
+    #[test]
+    fn test_strip_control_chars_scrubs_string_values_in_the_event_dict() {
+        // The PUBLIC contract, matching the reference: an event map in, the same
+        // map out with every STRING value scrubbed.
+        let mut ev = HashMap::new();
+        ev.insert("event".to_string(), Value::String("hello\u{0}world".into()));
+        ev.insert("field".to_string(), Value::String("a\u{7}b\u{1f}c".into()));
+        ev.insert("n".to_string(), Value::from(42));
+
+        let out = strip_control_chars(ev);
+
+        assert_eq!(out["event"], Value::String("helloworld".into()));
+        assert_eq!(out["field"], Value::String("abc".into()));
+        // Non-string values pass through untouched (the reference's
+        // `isinstance(value, str)` guard).
+        assert_eq!(out["n"], Value::from(42));
     }
 
     #[test]

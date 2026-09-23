@@ -10,6 +10,11 @@ pub struct InfoGatherer {
 }
 
 impl InfoGatherer {
+    /// Create the skill from its configuration `params`.
+    ///
+    /// Requires a non-empty `questions` array param — the questions to
+    /// collect. Setup fails when it is absent or empty, since a gatherer
+    /// with nothing to ask would register a tool that can never complete.
     pub fn new(params: Map<String, Value>) -> Self {
         InfoGatherer {
             sp: SkillParams::new(params),

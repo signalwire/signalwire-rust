@@ -1,6 +1,6 @@
 # Changelog
 
-## [4.0.0] - 2026-07-18
+## [3.0.0]
 
 - **BREAKING**: `Call::live_transcribe`/`Call::live_translate` now take the
   action value directly (`live_transcribe(action)`, `live_translate(action,
@@ -15,8 +15,6 @@
   `call.live_translate(json!("start"), None)` (pass `Some(url)` for the
   optional `status_url`).
 
-## [3.2.0] - 2026-07-14
-
 - REST: added the `Messages` resource (`client.messages()`) — send and redact
   messages under `/api/messaging/messages`. `create` sends an outbound SMS/MMS
   (`POST /api/messaging/messages`) and `update` redacts a previously sent
@@ -24,16 +22,12 @@
   message *logs* under `logs().messages()`. Generated from the canonical
   `messages` spec with success+error wire coverage for both routes.
 
-## [3.1.0] - 2026-07-14
-
 - REST: added the `Projects` resource (`client.projects()`) — full CRUD over
   `/api/projects` (list, create, get, update, delete) plus `rotate_signing_key`
   (`POST /projects/{id}/signing-key/rotate`) for managing projects and
   subprojects. Distinct from the singular `project` token namespace. Generated
   from the canonical `projects` spec with success+error wire coverage for all
   six routes.
-
-## [3.0.2] - 2026-07-13
 
 - REST: the full REST resource surface is now generated from the canonical
   cross-port specs (calling, chat, datasphere, fabric, fax, logs, message,

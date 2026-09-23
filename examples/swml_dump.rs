@@ -162,7 +162,7 @@ fn main() {
     // swml_add_pronunciation: renders into ai.pronounce.
     {
         let mut a = new_agent();
-        a.add_pronunciation("SW", "SignalWire", true);
+        a.add_pronunciation("SW", "SignalWire", Some(true));
         out.insert(
             "swml_add_pronunciation",
             extract(&render(&a), "ai.pronounce"),

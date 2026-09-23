@@ -120,10 +120,7 @@
       "lang",
       "tokens",
       "content_type",
-      "metadata",
-      "context",
-      "step",
-      "step_index"
+      "metadata"
     ],
     "PostPromptThinkingEntry": [
       "role",
