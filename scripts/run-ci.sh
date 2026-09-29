@@ -372,7 +372,7 @@ sched_gate NO-CHEAT desc="audit_no_cheat_tests" \
 sched_gate COORDINATED-PASS desc="a non-main porting-sdk pin must be declared on the PR (Coordinated-With: line or coordinated-pass label)" \
     -- python3 "$PORTING_SDK_DIR/scripts/coordinated_pass.py" --porting-sdk "$PORTING_SDK_DIR"
 
-sched_gate COORDINATED-REFS desc="every coordinated-set checkout (porting-sdk + python oracle + matrix ports) uses PORTING_SDK_REF, not a literal ref" \
+sched_gate COORDINATED-REFS desc="every coordinated-set checkout (porting-sdk + python oracle + matrix ports) takes its ref from the branch-local .porting-sdk-ref pin resolver, never a repo variable or literal ref" \
     -- python3 "$PORTING_SDK_DIR/scripts/check_coordinated_refs.py" --repo "$PORT_ROOT"
 
 sched_gate REST-COVERAGE defer=1 desc="every implemented REST route covered success+error (parity + allowlist)" \
@@ -512,7 +512,7 @@ sched_gate TOKEN-INTEROP desc="a token this port mints validates under the refer
 # the client speaks the AI Chat JSON-RPC protocol per the vendored spec
 # (ai-chat-specs/ai-chat.yaml). The gate script (diff_port_ai_chat.py) + mock live on
 # the porting-sdk `ai-chat-client` branch, so during the coordinated pass
-# PORTING_SDK_REF pins that branch; until it lands on porting-sdk main this gate
+# the .porting-sdk-ref pin selects that branch; until it lands on porting-sdk main this gate
 # skip-passes (the differ script is simply absent).
 sched_gate AI-CHAT desc="AIChatClient speaks the AI Chat protocol per the vendored spec (mock_ai_chat wire-behavioral)" \
     -- bash -c 'if [ -f "$1/scripts/diff_port_ai_chat.py" ]; then python3 "$1/scripts/diff_port_ai_chat.py" --port rust --dump-cmd "cargo run -q --bin ai-chat-dump 2>/dev/null"; else echo "[ai-chat] diff_port_ai_chat.py not on porting-sdk main yet — skip-pass (coordinated-branch dep: porting-sdk ai-chat-client)"; fi' _ "$PORTING_SDK_DIR"
