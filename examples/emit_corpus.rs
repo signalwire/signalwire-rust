@@ -648,11 +648,11 @@ fn corpus() -> Vec<Entry> {
         }),
         // ---- hold with a prompt and step routing ----------------------------
         entry!("hold.prompt", "", |fr| {
-            fr.hold_with(Some("Please hold while I check."), None, None, None);
+            fr.hold_with(Some("Please hold while I check.".into()), None, None, None);
         }),
         entry!("hold.routing", "", |fr| {
             fr.hold_with(
-                Some("One moment."),
+                Some("One moment.".into()),
                 Some(60),
                 Some("resume"),
                 Some("timed_out"),

@@ -258,9 +258,8 @@ impl SchemaUtils {
         }
     }
 
-    /// The set of KNOWN top-level property names for a verb's config object —
-    /// the settled `anyOf` contract (porting-sdk task #223,
-    /// `docs/legacy-census/DISC-g-d21.md` §1.4/§4), applied exactly:
+    /// The set of KNOWN top-level property names for a verb's config object,
+    /// under the settled `anyOf` contract:
     ///
     /// * follow ONE `$ref` hop into `$defs` (the verb body may be a reference);
     /// * a body with no `anyOf`/`oneOf`: its `properties` when it is a closed

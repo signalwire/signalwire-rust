@@ -495,3 +495,26 @@ fn raises_api_error_on_a_non_json_body() {
     server.unblock();
     let _ = handle.join();
 }
+
+#[test]
+fn raw_post_returns_the_response_with_its_body_unread() {
+    let mock = Mock::start();
+    let client = new_client(&mock.url);
+    let body = block_on(async {
+        let mut params = serde_json::Map::new();
+        params.insert("id".to_string(), json!("conv-1"));
+        let mut resp = client.raw_post("end_conversation", params).await.unwrap();
+        assert!(resp.status().is_success());
+        // The caller streams the body through, chunk by chunk.
+        let mut bytes = Vec::new();
+        while let Some(chunk) = resp.chunk().await.unwrap() {
+            bytes.extend_from_slice(&chunk);
+        }
+        String::from_utf8(bytes).unwrap()
+    });
+    let decoded: Value = serde_json::from_str(&body).unwrap();
+    assert!(decoded.get("result").is_some(), "{decoded}");
+    let req = &mock.requests()[0];
+    assert_eq!(req.method, "end_conversation");
+    assert_eq!(req.params["id"], "conv-1");
+}

@@ -88,6 +88,48 @@ impl From<&[&str]> for KeysArg {
     }
 }
 
+/// The `prompt` argument of [`FunctionResult::hold_with`] — the reference's
+/// `prompt: str | int`: an instruction for the model to deliver before the hold
+/// ([`Prompt`](HoldPrompt::Prompt)), or — the reference's back-compat
+/// `hold(120)` form — a bare timeout ([`Timeout`](HoldPrompt::Timeout)).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum HoldPrompt {
+    /// Instruction delivered before the hold takes effect.
+    Prompt(String),
+    /// A timeout in seconds, read as `timeout` (`hold(120)` back-compat).
+    Timeout(i64),
+}
+
+impl From<&str> for HoldPrompt {
+    fn from(s: &str) -> Self {
+        HoldPrompt::Prompt(s.to_string())
+    }
+}
+
+impl From<String> for HoldPrompt {
+    fn from(s: String) -> Self {
+        HoldPrompt::Prompt(s)
+    }
+}
+
+impl From<i64> for HoldPrompt {
+    fn from(t: i64) -> Self {
+        HoldPrompt::Timeout(t)
+    }
+}
+
+/// The response a [`FunctionResult`] carries — the reference's
+/// `response: str | dict`: the text form, or the structured
+/// `{tool_result, tool_prompt}` form set by
+/// [`FunctionResult::set_tool_response`].
+#[derive(Debug, Clone, PartialEq)]
+pub enum FunctionResponse {
+    /// The text form (empty when unset).
+    Text(String),
+    /// The structured `{tool_result?, tool_prompt?}` form.
+    Structured(Map<String, Value>),
+}
+
 /// Result returned from a SWAIG function handler.
 ///
 /// Serialises to match the `to_dict()`: `response` is omitted when empty,
@@ -194,12 +236,15 @@ impl FunctionResult {
         self
     }
 
-    /// The response text. The Python reference exposes this as the public
-    /// instance attribute `FunctionResult.response`, so a caller can read back
-    /// what `set_response` / `with_response` stored.
+    /// The response: the text set by `set_response` / `with_response`, or the
+    /// structured form set by [`set_tool_response`](FunctionResult::set_tool_response)
+    /// (the reference's public `FunctionResult.response` attribute, `str | dict`).
     #[must_use]
-    pub fn response(&self) -> &str {
-        &self.response
+    pub fn response(&self) -> FunctionResponse {
+        match &self.tool_response {
+            Some(m) => FunctionResponse::Structured(m.clone()),
+            None => FunctionResponse::Text(self.response.clone()),
+        }
     }
 
     /// Whether the AI re-processes this result before speaking
@@ -431,15 +476,21 @@ impl FunctionResult {
     /// clamped to `0..=900` (default 300).
     pub fn hold_with(
         &mut self,
-        prompt: Option<&str>,
+        prompt: Option<HoldPrompt>,
         timeout: Option<i64>,
         step: Option<&str>,
         timeout_step: Option<&str>,
     ) -> &mut Self {
-        if let Some(p) = prompt {
-            self.set_tool_response(Some("status: on hold"), Some(p));
-            self.post_process = true;
-        }
+        let timeout = match prompt {
+            // Back-compat: an integer prompt is the timeout (`hold(120)`).
+            Some(HoldPrompt::Timeout(t)) => Some(t),
+            Some(HoldPrompt::Prompt(p)) => {
+                self.set_tool_response(Some("status: on hold"), Some(&p));
+                self.post_process = true;
+                timeout
+            }
+            None => timeout,
+        };
         let clamped = timeout.unwrap_or(300).clamp(0, 900);
         if step.is_none() && timeout_step.is_none() {
             // Bare integer unless routing is requested.
@@ -2488,6 +2539,62 @@ mod tests {
             "beep must be one of ['true', 'false', 'onEnter', 'onExit']"
         );
         assert!(fr.to_value().get("action").is_none());
+    }
+
+    #[test]
+    fn test_hold_with_prompt_routing_and_int_back_compat() {
+        let mut fr = FunctionResult::new();
+        fr.hold_with(
+            Some("One moment.".into()),
+            Some(60),
+            Some("resume"),
+            Some("timed_out"),
+        );
+        let v = fr.to_value();
+        assert_eq!(
+            v["action"][0]["hold"],
+            json!({"timeout": 60, "step": "resume", "timeout_step": "timed_out"})
+        );
+        assert_eq!(
+            v["response"],
+            json!({"tool_result": "status: on hold", "tool_prompt": "One moment."})
+        );
+        assert_eq!(v["post_process"], json!(true));
+        // An integer prompt is the timeout (the reference's `hold(120)`).
+        let mut fr = FunctionResult::new();
+        fr.hold_with(Some(120_i64.into()), None, None, None);
+        assert_eq!(fr.to_value()["action"][0]["hold"], json!(120));
+        assert!(fr.to_value().get("post_process").is_none());
+    }
+
+    #[test]
+    fn test_tool_response_is_the_structured_response() {
+        let mut fr = FunctionResult::with_response("text");
+        assert_eq!(fr.response(), FunctionResponse::Text("text".to_string()));
+        fr.set_tool_response(Some("Saved."), None);
+        let mut want = Map::new();
+        want.insert("tool_result".to_string(), json!("Saved."));
+        assert_eq!(fr.response(), FunctionResponse::Structured(want));
+        assert_eq!(fr.to_value()["response"], json!({"tool_result": "Saved."}));
+        // set_response returns to the text form.
+        fr.set_response("again");
+        assert_eq!(fr.to_value()["response"], json!("again"));
+    }
+
+    #[test]
+    fn test_rpc_ai_message_global_data_forms() {
+        let mut fr = FunctionResult::new();
+        fr.rpc_ai_global_data("call-abc", json!({"order_id": "1042"}));
+        let rpc = &fr.to_value()["action"][0];
+        assert!(rpc.to_string().contains("global_data"));
+        let mut fr = FunctionResult::new();
+        let err = fr
+            .rpc_ai_message_with("call-abc", None, None, None)
+            .unwrap_err();
+        assert_eq!(
+            err,
+            "rpc_ai_message needs message_text, global_data, or both"
+        );
     }
 
     #[test]

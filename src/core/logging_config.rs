@@ -118,13 +118,16 @@ pub(crate) fn strip_control_chars_str(value: &str) -> String {
 /// see `PORT_PHILOSOPHY_RUST.md`, the `implicit_hasher` row.
 #[must_use]
 #[allow(clippy::implicit_hasher)]
-pub fn strip_control_chars(mut event_dict: HashMap<String, Value>) -> HashMap<String, Value> {
-    for value in event_dict.values_mut() {
+pub fn strip_control_chars(mut args: HashMap<String, Value>) -> HashMap<String, Value> {
+    // `args` is the event map: the reference's `*args` exists for structlog's
+    // `(logger, method_name, event_dict)` processor call and reads only the
+    // LAST positional (the event dict) — the one thing this takes.
+    for value in args.values_mut() {
         if let Value::String(s) = value {
             *s = strip_control_chars_str(s);
         }
     }
-    event_dict
+    args
 }
 
 /// Configure the logging system once, globally, from the environment.

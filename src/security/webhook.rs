@@ -39,6 +39,7 @@ use subtle::ConstantTimeEq;
 use url::Url;
 
 type HmacSha1 = Hmac<Sha1>;
+type HmacSha256 = Hmac<Sha256>;
 
 /// Errors returned by the webhook validator.
 ///
@@ -92,6 +93,19 @@ pub enum ParamsOrBody {
 fn hex_hmac_sha1(key: &str, message: &str) -> String {
     let mut mac =
         HmacSha1::new_from_slice(key.as_bytes()).expect("HMAC-SHA1 accepts any key length");
+    mac.update(message.as_bytes());
+    let digest = mac.finalize().into_bytes();
+    let mut out = String::with_capacity(digest.len() * 2);
+    for b in &digest {
+        let _ = write!(out, "{b:02x}");
+    }
+    out
+}
+
+/// Scheme-A digest with the stronger hash: lowercase hex of HMAC-SHA256.
+fn hex_hmac_sha256(key: &str, message: &str) -> String {
+    let mut mac =
+        HmacSha256::new_from_slice(key.as_bytes()).expect("HMAC-SHA256 accepts any key length");
     mac.update(message.as_bytes());
     let digest = mac.finalize().into_bytes();
     let mut out = String::with_capacity(digest.len() * 2);
@@ -299,6 +313,41 @@ fn check_body_sha256(url: &str, raw_body: &str) -> bool {
 //  Public API
 // ---------------------------------------------------------------------------
 
+/// Validate the SHA-256 webhook signature (Scheme A with a stronger hash).
+///
+/// SignalWire sends `X-SignalWire-Sha256-Signature` alongside the SHA-1
+/// `X-SignalWire-Signature` on signed webhooks; it is the same Scheme A message
+/// with SHA-256: `hex(HMAC-SHA256(signing_key, url + raw_body))`. Only Scheme A
+/// (RELAY/SWML/JSON) is defined for this header — the legacy cXML/form Scheme B
+/// stays on SHA-1 ([`validate_webhook_signature`]).
+///
+/// * `signature` — the 64-char lowercase hex header value; empty returns
+///   `Ok(false)`.
+/// * `url` / `raw_body` — exactly as for [`validate_webhook_signature`].
+///
+/// # Errors
+///
+/// Returns `Err(WebhookError::MissingSigningKey)` when `signing_key` is empty;
+/// a wrong or absent signature is `Ok(false)`, never an error. The comparison is
+/// constant-time.
+pub fn validate_webhook_signature_sha256(
+    signing_key: &str,
+    signature: &str,
+    url: &str,
+    raw_body: &str,
+) -> Result<bool, WebhookError> {
+    if signing_key.is_empty() {
+        return Err(WebhookError::MissingSigningKey);
+    }
+    if signature.is_empty() {
+        return Ok(false);
+    }
+    let mut input = String::with_capacity(url.len() + raw_body.len());
+    input.push_str(url);
+    input.push_str(raw_body);
+    Ok(safe_eq(&hex_hmac_sha256(signing_key, &input), signature))
+}
+
 /// Validate a SignalWire webhook signature against both schemes.
 ///
 /// # Arguments
@@ -445,6 +494,49 @@ mod tests {
     const VECTOR_A_BODY: &str =
         r#"{"event":"call.state","params":{"call_id":"abc-123","state":"answered"}}"#;
     const VECTOR_A_SIG: &str = "c3c08c1fefaf9ee198a100d5906765a6f394bf0f";
+    /// `hex(HMAC-SHA256(VECTOR_A_KEY, VECTOR_A_URL + VECTOR_A_BODY))`.
+    const VECTOR_A_SIG256: &str =
+        "2a29f8a92b11df39da80c3b185fd62173d49c294184da585ff951eae4433571c";
+
+    #[test]
+    fn sha256_positive_vector() {
+        assert_eq!(VECTOR_A_SIG256.len(), 64);
+        assert_eq!(
+            validate_webhook_signature_sha256(
+                VECTOR_A_KEY,
+                VECTOR_A_SIG256,
+                VECTOR_A_URL,
+                VECTOR_A_BODY
+            ),
+            Ok(true)
+        );
+    }
+
+    #[test]
+    fn sha256_rejects_the_sha1_digest_and_tampering() {
+        // The SHA-1 digest must NOT validate through the SHA-256 path.
+        assert_eq!(
+            validate_webhook_signature_sha256(
+                VECTOR_A_KEY,
+                VECTOR_A_SIG,
+                VECTOR_A_URL,
+                VECTOR_A_BODY
+            ),
+            Ok(false)
+        );
+        assert_eq!(
+            validate_webhook_signature_sha256(VECTOR_A_KEY, VECTOR_A_SIG256, VECTOR_A_URL, "{}"),
+            Ok(false)
+        );
+        assert_eq!(
+            validate_webhook_signature_sha256(VECTOR_A_KEY, "", VECTOR_A_URL, VECTOR_A_BODY),
+            Ok(false)
+        );
+        assert_eq!(
+            validate_webhook_signature_sha256("", VECTOR_A_SIG256, VECTOR_A_URL, VECTOR_A_BODY),
+            Err(WebhookError::MissingSigningKey)
+        );
+    }
 
     const VECTOR_B_KEY: &str = "12345";
     const VECTOR_B_URL: &str = "https://mycompany.com/myapp.php?foo=1&bar=2";

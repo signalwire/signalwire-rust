@@ -296,6 +296,9 @@ FREE_FN_MODULE_RENAMES: dict[str, str] = {
     # Python's canonical module is signalwire.core.security.webhook_middleware
     # (matches enumerate_signatures.py's FREE_FN_MODULE_RENAMES).
     "signalwire.security.webhook_layer": "signalwire.core.security.webhook_middleware",
+    # run-sync-handler helpers: Rust module `core::sync_handlers`; the reference
+    # keeps them in the underscore module `signalwire.core._sync_handlers`.
+    "signalwire.core.sync_handlers": "signalwire.core._sync_handlers",
     # typed-handler → SWAIG param-schema inference: Rust hosts the free fns
     # (`infer_schema`, `create_typed_handler_wrapper`) at src/agent/type_inference.rs;
     # Python's canonical module is signalwire.core.agent.tools.type_inference.
@@ -507,6 +510,10 @@ METHOD_RENAMES: dict[str, dict[str, str]] = {
     },
     # FunctionResult: Rust's `to_value` (serde_json::Value) == Python's
     # `to_dict` (dict) — both serialize identically.
+    "AIChatError": {
+        # `pub(crate)` constructor for a transport failure — crate plumbing.
+        "transport": None,
+    },
     "FunctionResult": {
         "to_value": "to_dict",
         # Arity idiom (Rust has no default/keyword args): the reference's ONE
@@ -800,8 +807,18 @@ OPTIONS_STRUCT_SUPPRESS_CLASSES: frozenset[str] = frozenset(
         "InfoGathererOptions",
         "ReceptionistOptions",
         "SurveyOptions",
+        "ChatGatewayOptions",
+        "HandoffRouterOptions",
     }
 )
+
+# Types the reference keeps PRIVATE by its underscore convention, which this port
+# spells with the same leading underscore. `_PublicSession` is the type of the
+# reference's `SpiderSkill.session` attribute (recorded there as
+# `class:signalwire.utils.url_validator._PublicSession`); the reference's own
+# enumerator records no `_`-prefixed class, so neither does this one — the type
+# still compares as that attribute's return type.
+PRIVATE_BY_CONVENTION_CLASSES: frozenset[str] = frozenset({"_PublicSession"})
 
 # BACK-REFERENCE handle types — the Rust spelling of a reference attribute that
 # holds the owning object, folded for the same reason as the options structs.
@@ -1261,7 +1278,15 @@ _LIB_REEXPORT_TOPLEVEL_DROP = {"AIChatClient"}
 # Rust sum types that exist ONLY to spell a reference union type (no runtime
 # union in Rust). They are the TYPE of a reference-declared param, never new
 # capability, so they fold at the emitter instead of being PORT_ADDITIONs.
-UNION_SPELLING_CLASSES = frozenset({"Bullets"})
+UNION_SPELLING_CLASSES = frozenset(
+    {
+        "Bullets",
+        # FunctionResult.hold(prompt: str | int) and FunctionResult.response
+        # (str | dict): the same union-spelling idiom.
+        "HoldPrompt",
+        "FunctionResponse",
+    }
+)
 
 
 def _parse_lib_reexports(path: Path) -> set[str]:
@@ -1390,10 +1415,12 @@ SURFACE_PROJECTIONS: dict[tuple[str, str], list[tuple[str, list[str]]]] = {
         (
             "AgentBase",
             [
+                "add_per_call_config",
                 "as_router",
                 "enable_debug_routes",
                 "get_app",
                 "manual_set_proxy_url",
+                "mount",
                 "on_request",
                 "on_swml_request",
                 "register_routing_callback",
@@ -1515,6 +1542,9 @@ SURFACE_PROJECTIONS: dict[tuple[str, str], list[tuple[str, list[str]]]] = {
 # also declares them there (it does not for the mixins → strip them).
 PROJECTION_DONOR_STRIPS: dict[tuple[str, str], set[str]] = {
     ("signalwire.rest._base", "CrudResource"): {"get", "list", "paginate"},
+    # WebMixin methods the reference defines ONLY on the mixin: projected onto
+    # WebMixin above, not left on the AgentBase donor as well.
+    ("signalwire.core.agent_base", "AgentBase"): {"add_per_call_config", "mount"},
 }
 # Reference Python dunders that Rust realizes idiomatically rather than as a
 # literally-named method. `__getattr__` is Python's dynamic attribute hook: on
@@ -1788,6 +1818,18 @@ FREE_FN_DROPS: dict[str, set[str]] = {
     # wraps a Service in the mountable axum::Router. Crate-internal plumbing
     # (external callers reach it only via as_router), not reference surface.
     "signalwire.swml.router": {"build_router"},
+    # `pub(crate)` request plumbing shared by the AI Chat gateway and handoff
+    # routers, and the bounded worker loop behind the built-in servers.
+    "signalwire.ai_chat.gateway": {
+        "header",
+        "json_body",
+        "read_json_body",
+        "rejected",
+        "runtime",
+        "utf8_len",
+    },
+    "signalwire.core._sync_handlers": {"serve_requests"},
+    "signalwire.core.sync_handlers": {"serve_requests"},
     # `strip_control_chars_str` is the `pub(crate)` per-value scrub behind the
     # public `strip_control_chars(event_dict)`. The log emitter needs the
     # single-string unit; external callers reach only the map form, which is the
@@ -2189,6 +2231,7 @@ def build_surface() -> dict:
         | AI_CHAT_SUPPRESS_CLASSES
         | OPTIONS_STRUCT_SUPPRESS_CLASSES
         | BACK_REFERENCE_HANDLE_CLASSES
+        | PRIVATE_BY_CONVENTION_CLASSES
     )
 
     # Generated-type pass (§D3/§H): route each generated-type FILE by path and

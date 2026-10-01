@@ -347,3 +347,44 @@ fn set_signing_key_after_construction_works() {
         assert_eq!(status, 403);
     });
 }
+
+fn hex_sig256(key: &str, url: &str, body: &str) -> String {
+    let mut mac = Hmac::<sha2::Sha256>::new_from_slice(key.as_bytes()).unwrap();
+    mac.update(format!("{url}{body}").as_bytes());
+    mac.finalize()
+        .into_bytes()
+        .iter()
+        .fold(String::new(), |mut s, b| {
+            use std::fmt::Write as _;
+            let _ = write!(s, "{b:02x}");
+            s
+        })
+}
+
+/// The stronger `X-SignalWire-Sha256-Signature` alone is accepted, and a bad
+/// SHA-256 header falls back to a valid SHA-1 one (the platform sends both).
+#[test]
+fn sha256_signature_is_preferred_and_falls_back_to_sha1() {
+    with_proxy_base("https://agent.example.com", || {
+        let agent = make_agent(Some(KEY));
+        let url = "https://agent.example.com/";
+        let mut headers = auth_headers();
+        headers.insert(
+            "X-SignalWire-Sha256-Signature".into(),
+            hex_sig256(KEY, url, ""),
+        );
+        let (status, _, _) = agent.handle_request("POST", "/", &headers, Some(""));
+        assert_eq!(status, 200);
+
+        let mut headers = auth_headers();
+        headers.insert("X-SignalWire-Sha256-Signature".into(), "0".repeat(64));
+        headers.insert("X-SignalWire-Signature".into(), hex_sig(KEY, url, ""));
+        let (status, _, _) = agent.handle_request("POST", "/", &headers, Some(""));
+        assert_eq!(status, 200);
+
+        let mut headers = auth_headers();
+        headers.insert("X-SignalWire-Sha256-Signature".into(), "0".repeat(64));
+        let (status, _, _) = agent.handle_request("POST", "/", &headers, Some(""));
+        assert_eq!(status, 403);
+    });
+}

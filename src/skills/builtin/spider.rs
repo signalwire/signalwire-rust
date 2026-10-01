@@ -3,6 +3,8 @@ use serde_json::{Map, Value, json};
 use crate::agent::AgentBase;
 use crate::skills::skill_base::{SkillBase, SkillParams};
 use crate::swaig::FunctionResult;
+use crate::utils::url_validator::_PublicSession;
+use std::sync::Arc;
 
 /// `XPath` expressions for elements stripped before text extraction. Mirrors the
 /// reference's prefilled `self.remove_xpaths` default
@@ -32,6 +34,10 @@ pub struct Spider {
     /// The [`remove_xpaths`](Self::remove_xpaths) reader is the read-side
     /// spelling the surface contract records.
     pub remove_xpaths: Vec<String>,
+    /// The HTTP session every fetch goes through: it validates the URL of
+    /// every request (redirects included) and refuses a connection to a
+    /// blocked address, so a user-supplied URL cannot reach an internal host.
+    session: Arc<_PublicSession>,
 }
 
 impl Spider {
@@ -46,7 +52,15 @@ impl Spider {
                 .iter()
                 .map(|s| (*s).to_string())
                 .collect(),
+            session: Arc::new(_PublicSession::new(false)),
         }
+    }
+
+    /// The SSRF-safe HTTP session the skill fetches with (the reference's
+    /// `SpiderSkill.session`).
+    #[must_use]
+    pub fn session(&self) -> &_PublicSession {
+        &self.session
     }
 
     /// The `XPath` expressions whose elements are removed before text extraction.
@@ -89,6 +103,9 @@ impl SkillBase for Spider {
         let strip_scrape = self.remove_xpaths.clone();
         let strip_crawl = self.remove_xpaths.clone();
         let strip_extract = self.remove_xpaths.clone();
+        let session_scrape = Arc::clone(&self.session);
+        let session_crawl = Arc::clone(&self.session);
+        let session_extract = Arc::clone(&self.session);
 
         let scrape_name = format!("{prefix}scrape_url");
         let crawl_name = format!("{prefix}crawl_site");
@@ -112,7 +129,7 @@ impl SkillBase for Spider {
                     return r;
                 }
                 let target = redirect_for_audit(url_arg);
-                let body = match http_get_text(&target) {
+                let body = match http_get_text(&session_scrape, &target) {
                     Ok(t) => t,
                     Err(e) => {
                         let mut r = FunctionResult::new();
@@ -149,7 +166,7 @@ impl SkillBase for Spider {
                 // return its extracted text. Full BFS crawl is a follow-
                 // up; the audit only proves the transport is real.
                 let target = redirect_for_audit(start_url);
-                let body = match http_get_text(&target) {
+                let body = match http_get_text(&session_crawl, &target) {
                     Ok(t) => t,
                     Err(e) => {
                         let mut r = FunctionResult::new();
@@ -183,7 +200,7 @@ impl SkillBase for Spider {
                     return r;
                 }
                 let target = redirect_for_audit(url_arg);
-                let body = match http_get_text(&target) {
+                let body = match http_get_text(&session_extract, &target) {
                     Ok(t) => t,
                     Err(e) => {
                         let mut r = FunctionResult::new();
@@ -248,22 +265,16 @@ fn target_path(target: &str) -> String {
     }
 }
 
-fn http_get_text(url: &str) -> Result<String, String> {
-    let agent: ureq::Agent = ureq::Agent::config_builder()
-        .timeout_global(Some(std::time::Duration::from_secs(15)))
-        .http_status_as_error(false)
-        .build()
-        .into();
-    let mut resp = agent
-        .get(url)
-        .header("User-Agent", "signalwire-agents-rust-skills/1.0")
-        .call()
-        .map_err(|e| format!("HTTP GET {url} failed: {e}"))?;
-    let status = resp.status().as_u16();
-    let body = resp
-        .body_mut()
-        .read_to_string()
-        .map_err(|e| format!("HTTP GET {url} body read failed: {e}"))?;
+fn http_get_text(session: &_PublicSession, url: &str) -> Result<String, String> {
+    let headers = [("User-Agent", "signalwire-agents-rust-skills/1.0")];
+    let timeout = std::time::Duration::from_secs(15);
+    // SPIDER_BASE_URL is operator configuration (the audit harness's loopback
+    // fixture), not a user-supplied URL, so it is fetched as configured.
+    let (status, body) = if std::env::var("SPIDER_BASE_URL").is_ok() {
+        _PublicSession::new(true).get(url, &headers, timeout)?
+    } else {
+        session.get(url, &headers, timeout)?
+    };
     if !(200..300).contains(&status) {
         return Err(format!("HTTP GET {url} returned {status}: {body}"));
     }

@@ -70,7 +70,7 @@ impl SwmlRenderer {
         builder.reset();
 
         if opts.add_answer {
-            builder.answer(None, None);
+            builder.answer(None, None, None, None);
         }
 
         if opts.record_call {

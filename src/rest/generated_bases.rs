@@ -404,8 +404,7 @@ impl<'a> FabricResource<'a> {
 }
 
 /// A random (version 4) UUID — the value a generated request fills in for a
-/// server-required id the caller omitted (`x-sdk-autofill: uuid4`, the RELAY
-/// `control_id` idiom).
+/// server-required id the caller omitted (the RELAY `control_id` idiom).
 pub(crate) fn autofill_uuid4() -> String {
     use rand::RngExt;
     let mut data = [0u8; 16];

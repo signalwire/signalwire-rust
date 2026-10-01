@@ -96,13 +96,25 @@ fn emitting_every_engine_reason_does_not_panic() {
 fn the_bundled_schema_publishes_the_engine_values() {
     let su = SchemaUtils::new(None, true);
     let schema = su.load_schema();
-    let reason = &schema["$defs"]["Hangup"]["properties"]["hangup"]["properties"]["reason"];
+    // The hangup body is the engine's multi-form `anyOf` (object / positional
+    // array / bare scalar); `reason` lives on the object arm, itself an `anyOf`
+    // of the closed string enum and a SWML variable.
+    let body = &schema["$defs"]["Hangup"]["properties"]["hangup"];
+    let object_arm = body["anyOf"]
+        .as_array()
+        .and_then(|arms| arms.iter().find(|a| a["type"] == "object"))
+        .unwrap_or(body);
+    let reason = &object_arm["properties"]["reason"];
 
     assert!(
         reason.get(concat!("x", "-sdk-widen")).is_none(),
         "the widen marker must be gone from hangup.reason"
     );
-    let listed: Vec<&str> = reason["enum"]
+    let enum_node = reason["anyOf"]
+        .as_array()
+        .and_then(|arms| arms.iter().find(|a| a.get("enum").is_some()))
+        .unwrap_or(reason);
+    let listed: Vec<&str> = enum_node["enum"]
         .as_array()
         .expect("hangup.reason publishes an enum")
         .iter()

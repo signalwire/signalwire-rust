@@ -159,6 +159,37 @@ PARAM_RECONCILE[
 ] = {
     "func": {"type": "callable<list<any>,any>"},
 }
+# Same type-alias leak for the call-end handler (`CallEndHandler` =
+# `Box<dyn Fn(&[Value], &Map) + ..>`), the `HoldPrompt` sum type spelling the
+# reference's `prompt: str | int`, and `dialogue_turns`' role set (a Rust slice
+# is the spelling of the reference's homogeneous `tuple[str, ...]`).
+PARAM_RECONCILE["signalwire.core.agent_base.AgentBase.on_call_end"] = {
+    "handler": {"type": "callable<list<list<dict<string,any>>,dict<string,any>>,void>"},
+}
+PARAM_RECONCILE["signalwire.core.function_result.FunctionResult.hold_with"] = {
+    "prompt": {"type": "optional<union<int,string>>"},
+}
+# `run_sync_handler(func, args)`: `func` is a generic `FnOnce(A) -> T` (the
+# reference's ParamSpec-typed callable) and `args` is the argument pack — Rust's
+# spelling of `*args` (no splat: one value, a tuple for several).
+PARAM_RECONCILE["signalwire.core._sync_handlers.run_sync_handler"] = {
+    "func": {
+        "type": "callable<list<class:signalwire.core._sync_handlers._P>,"
+        "class:signalwire.core._sync_handlers._T>"
+    },
+    "args": {"type": "any", "kind": "var_positional"},
+}
+# `add_per_call_config(callback)`: `DynamicConfigCallback` =
+# `Box<dyn Fn(&Map, &Option<Value>, &HashMap, &mut AgentBase)>` — the reference's
+# `(query_params, body_params, headers, agent)` callable.
+PARAM_RECONCILE["signalwire.core.agent_base.AgentBase.add_per_call_config"] = {
+    "callback": {
+        "type": "callable<list<dict<string,any>,dict<string,any>,dict<string,any>,any>,void>"
+    },
+}
+PARAM_RECONCILE["signalwire.core.post_prompt.dialogue_turns"] = {
+    "roles": {"type": "tuple<string,any>"},
+}
 
 # EXPLICIT-RECEIVER ELISION for public-surface trait methods. Python binds a
 # skill to its agent once (``self.agent``, set by the loader) and every interface
@@ -208,6 +239,24 @@ KWARGS_MAP_EXPLODE: dict[str, str] = {
 # handler callable; `infer_schema` returns the `(parameters, required,
 # description, is_typed, has_raw_data)` tuple — so both return-compare equal to
 # the oracle (the tool handling the idiom, not an omission).
+# Rust type aliases / sum types that rustdoc leaks as class names, mapped to the
+# canonical type they spell (the tool handling the idiom, not an omission):
+#   * `MountHandler` — the mountable-router type `AgentBase::mount` takes; the
+#     reference's `router()` returns its framework's router (`APIRouter`);
+#   * `reqwest::Response` with its body unread — the streamable response the
+#     reference's `raw_post` yields through an async context manager;
+#   * `FunctionResponse` — the `str | dict` union of `FunctionResult.response`;
+#   * `PreparedCall` — the type alias for `ChatGateway.prepare`'s tuple.
+RETURN_TYPE_OVERRIDE.update(
+    {
+        "signalwire.ai_chat.gateway.ChatGateway.router": "class:APIRouter",
+        "signalwire.ai_chat.handoff.HandoffRouter.router": "class:APIRouter",
+        "signalwire.ai_chat.client.AIChatClient.raw_post": "class:AsyncIterator",
+        "signalwire.core.function_result.FunctionResult.response": "union<dict<string,any>,string>",
+        # `PreparedCall` = `(String, Map, Option<String>)`, the reference's tuple.
+        "signalwire.ai_chat.gateway.ChatGateway.prepare": "tuple<string,dict<string,any>,optional<string>>",
+    }
+)
 RETURN_TYPE_OVERRIDE.update(
     {
         "signalwire.core.agent.tools.type_inference.create_typed_handler_wrapper": "callable<list<any>,any>",
@@ -688,6 +737,8 @@ FREE_FN_MODULE_RENAMES: dict[str, str] = {
     # canonical names so the cross-language audit lines up.
     "signalwire.security.webhook": "signalwire.core.security.webhook_validator",
     "signalwire.security.webhook_layer": "signalwire.core.security.webhook_middleware",
+    # run-sync-handler helpers (reference module `signalwire.core._sync_handlers`).
+    "signalwire.core.sync_handlers": "signalwire.core._sync_handlers",
     # security hygiene free functions — Rust groups them under
     # ``signalwire::security::security_utils``; the Python reference lives at
     # ``signalwire.core.security.security_utils``. The names match 1:1
@@ -1961,6 +2012,10 @@ _OPTIONS_CONSTRUCTS: dict[str, str] = {
     "InfoGathererOptions": "signalwire.prefabs.info_gatherer.InfoGathererAgent",
     "ReceptionistOptions": "signalwire.prefabs.receptionist.ReceptionistAgent",
     "SurveyOptions": "signalwire.prefabs.survey.SurveyAgent",
+    # AI Chat gateway / handoff: keyword-only constructors (all-defaulted
+    # except the one required field) carried on an options struct.
+    "ChatGatewayOptions": "signalwire.ai_chat.gateway.ChatGateway",
+    "HandoffRouterOptions": "signalwire.ai_chat.handoff.HandoffRouter",
 }
 
 # Field-name canonicalization (ADAPTER_CONTRACT rule 3: names are translated to
@@ -2743,6 +2798,13 @@ def extract_defaults(index: dict, reader: _SourceReader) -> tuple[dict, dict]:
 OPTIONAL_TYPED_BUT_REQUIRED: dict[str, set[str]] = {
     "signalwire.rest._request_options.RequestOptions.merge": {"override_opts"},
     "signalwire.rest._request_options.resolve": {"client_default", "per_request"},
+    # ChatGateway guards/helpers take a value the caller always passes, which may
+    # be absent (`str | None` / `list | None`, no default in the reference).
+    "signalwire.ai_chat.gateway.ChatGateway.check_key": {"presented"},
+    "signalwire.ai_chat.gateway.ChatGateway.check_origin": {"origin"},
+    "signalwire.ai_chat.gateway.ChatGateway.last_activity": {"messages"},
+    "signalwire.ai_chat.gateway.ChatGateway.visible_messages": {"messages"},
+    "signalwire.ai_chat.gateway.ChatGateway.prepare": {"origin", "key"},
 }
 
 
@@ -2782,6 +2844,7 @@ def build_signature(
         p = {
             "name": reconcile.get("name", name),
             "type": reconcile.get("type", canon),
+            **({"kind": reconcile["kind"]} if "kind" in reconcile else {}),
             # A bare Rust param is REQUIRED — the caller must pass a value and
             # there is no default to record. An ``Option<T>`` param is the port's
             # way of MODELLING ABSENCE (see _is_optional_slot), so it is not.

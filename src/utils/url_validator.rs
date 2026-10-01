@@ -201,6 +201,190 @@ pub fn validate_url(url: &str, allow_private: Option<bool>) -> bool {
     true
 }
 
+fn ip_is_blocked(ip: &IpAddr) -> bool {
+    // An IPv4-mapped IPv6 peer (`::ffff:169.254.169.254`) is that IPv4 address,
+    // and the unspecified address reaches the local host.
+    let ip = match ip {
+        IpAddr::V6(v6) => v6.to_ipv4_mapped().map_or(*ip, IpAddr::V4),
+        IpAddr::V4(_) => *ip,
+    };
+    ip.is_unspecified() || BLOCKED_NETWORKS.iter().any(|cidr| cidr_contains(cidr, &ip))
+}
+
+/// `url` with any `user:password@` removed, for error messages.
+fn mask_credentials(url: &str) -> String {
+    match Url::parse(url) {
+        Ok(mut u) => {
+            let _ = u.set_username("");
+            let _ = u.set_password(None);
+            u.to_string()
+        }
+        Err(_) => "<unparseable URL>".to_string(),
+    }
+}
+
+/// The resolver behind [`_PublicSession`]: resolves as usual, then drops every
+/// blocked address, so the connection itself can never reach one — a check
+/// made at connect time, which a DNS answer that changes between
+/// [`validate_url`] and the fetch cannot get around.
+#[derive(Debug)]
+struct PublicResolver {
+    inner: ureq::unversioned::resolver::DefaultResolver,
+}
+
+impl ureq::unversioned::resolver::Resolver for PublicResolver {
+    fn resolve(
+        &self,
+        uri: &ureq::http::Uri,
+        config: &ureq::config::Config,
+        timeout: ureq::unversioned::transport::NextTimeout,
+    ) -> Result<ureq::unversioned::resolver::ResolvedSocketAddrs, ureq::Error> {
+        let resolved = self.inner.resolve(uri, config, timeout)?;
+        let mut allowed = self.empty();
+        for addr in &*resolved {
+            if !ip_is_blocked(&addr.ip()) {
+                allowed.push(*addr);
+            }
+        }
+        if allowed.is_empty() {
+            return Err(ureq::Error::HostNotFound);
+        }
+        Ok(allowed)
+    }
+}
+
+/// An HTTP session for fetching user-supplied URLs (the reference's
+/// `url_validator._PublicSession`).
+///
+/// Checking a URL with [`validate_url`] before fetching it is not enough on its
+/// own: the server can redirect to an internal address, and the hostname can
+/// resolve differently when the connection is made. This session checks the URL
+/// of every request it sends, redirects included, and refuses a direct
+/// connection to a blocked address. `SWML_ALLOW_PRIVATE_URLS` turns both checks
+/// off, as it does for [`validate_url`].
+///
+/// It ignores `HTTP_PROXY` / `HTTPS_PROXY`, because through a proxy the
+/// connection check cannot apply; set `SWML_URL_FETCH_USE_PROXY` to use them,
+/// with a proxy that restricts destinations itself.
+#[allow(non_camel_case_types)]
+pub struct _PublicSession {
+    agent: ureq::Agent,
+    allow_private: bool,
+}
+
+impl std::fmt::Debug for _PublicSession {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("_PublicSession")
+            .field("allow_private", &self.allow_private)
+            .finish_non_exhaustive()
+    }
+}
+
+/// Maximum redirects a [`_PublicSession`] follows (each hop re-validated).
+const MAX_REDIRECTS: usize = 10;
+
+impl _PublicSession {
+    /// Create the session; unless `allow_private` (or `SWML_ALLOW_PRIVATE_URLS`),
+    /// refuse private peers.
+    #[must_use]
+    pub fn new(allow_private: bool) -> Self {
+        let allow_private = allow_private || env_allows_private();
+        let use_proxy = matches!(
+            env::var("SWML_URL_FETCH_USE_PROXY")
+                .unwrap_or_default()
+                .to_lowercase()
+                .as_str(),
+            "1" | "true" | "yes"
+        );
+        let mut builder = ureq::Agent::config_builder()
+            .http_status_as_error(false)
+            // Redirects are followed by hand so every hop is validated.
+            .max_redirects(0);
+        if !use_proxy {
+            builder = builder.proxy(None);
+        }
+        let config = builder.build();
+        let agent = if allow_private {
+            ureq::Agent::new_with_config(config)
+        } else {
+            ureq::Agent::with_parts(
+                config,
+                ureq::unversioned::transport::DefaultConnector::new(),
+                PublicResolver {
+                    inner: ureq::unversioned::resolver::DefaultResolver::default(),
+                },
+            )
+        };
+        Self {
+            agent,
+            allow_private,
+        }
+    }
+
+    /// `GET` `url` (following up to 10 redirects, each one validated) and
+    /// return `(status, body)`.
+    ///
+    /// # Errors
+    ///
+    /// Returns a message when a URL in the chain is refused by [`validate_url`],
+    /// the connection would reach a blocked address, the redirect limit is
+    /// exceeded, or the request fails.
+    pub fn get(
+        &self,
+        url: &str,
+        headers: &[(&str, &str)],
+        timeout: std::time::Duration,
+    ) -> Result<(u16, String), String> {
+        let mut current = url.to_string();
+        for _ in 0..=MAX_REDIRECTS {
+            if !self.allow_private && !validate_url(&current, Some(false)) {
+                return Err(format!(
+                    "refusing to fetch a private or internal address: {}",
+                    mask_credentials(&current)
+                ));
+            }
+            let mut req = self
+                .agent
+                .get(&current)
+                .config()
+                .timeout_global(Some(timeout))
+                .build();
+            for (k, v) in headers {
+                req = req.header(*k, *v);
+            }
+            let mut resp = req.call().map_err(|e| match e {
+                ureq::Error::HostNotFound if !self.allow_private => format!(
+                    "refusing to connect to a private or internal address: {}",
+                    mask_credentials(&current)
+                ),
+                other => format!("HTTP GET {} failed: {other}", mask_credentials(&current)),
+            })?;
+            let status = resp.status().as_u16();
+            if (300..400).contains(&status)
+                && let Some(location) = resp.headers().get("location").and_then(|v| v.to_str().ok())
+            {
+                let base = Url::parse(&current).map_err(|e| e.to_string())?;
+                current = base
+                    .join(location)
+                    .map_err(|e| format!("bad redirect {location}: {e}"))?
+                    .to_string();
+                continue;
+            }
+            let body = resp.body_mut().read_to_string().map_err(|e| {
+                format!(
+                    "HTTP GET {} body read failed: {e}",
+                    mask_credentials(&current)
+                )
+            })?;
+            return Ok((status, body));
+        }
+        Err(format!(
+            "too many redirects fetching {}",
+            mask_credentials(url)
+        ))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     // The tests deliberately call the `_`-prefixed test-only seam `_set_resolver`.
@@ -443,5 +627,88 @@ mod tests {
     #[test]
     fn blocked_networks_has_all_nine() {
         assert_eq!(BLOCKED_NETWORKS.len(), 9);
+    }
+
+    // --- _PublicSession (ported from tests/unit/utils/test_public_session.py) --
+
+    /// A loopback HTTP server standing in for an internal service; returns its
+    /// port and a hit counter.
+    fn loopback_server() -> (u16, Arc<Mutex<Vec<String>>>) {
+        let server = tiny_http::Server::http("127.0.0.1:0").expect("bind");
+        let port = server.server_addr().to_ip().expect("ip addr").port();
+        let hits = Arc::new(Mutex::new(Vec::new()));
+        let h = Arc::clone(&hits);
+        std::thread::spawn(move || {
+            if let Ok(req) = server.recv() {
+                h.lock().unwrap().push(req.url().to_string());
+                let _ = req.respond(tiny_http::Response::from_string("internal-secret"));
+            }
+        });
+        (port, hits)
+    }
+
+    const T: std::time::Duration = std::time::Duration::from_secs(5);
+
+    #[test]
+    fn public_session_checks_the_first_request() {
+        let _g = test_guard();
+        reset_state();
+        let err = _PublicSession::new(false)
+            .get("http://169.254.169.254/latest/meta-data/", &[], T)
+            .unwrap_err();
+        assert!(err.contains("private or internal address"), "{err}");
+    }
+
+    #[test]
+    fn public_session_rejection_masks_credentials() {
+        let _g = test_guard();
+        reset_state();
+        let err = _PublicSession::new(false)
+            .get("http://user:hunter2@10.0.0.5/", &[], T)
+            .unwrap_err();
+        assert!(!err.contains("hunter2"), "{err}");
+    }
+
+    #[test]
+    fn public_session_refuses_the_connection_when_the_url_check_passed() {
+        // The URL check sees a public address; the connection then reaches
+        // 127.0.0.1 — the connect-time check still refuses it.
+        let _g = test_guard();
+        reset_state();
+        let (port, hits) = loopback_server();
+        stub_resolver("93.184.216.34");
+        let err = _PublicSession::new(false)
+            .get(&format!("http://127.0.0.1:{port}/"), &[], T)
+            .unwrap_err();
+        reset_state();
+        assert!(err.contains("private or internal address"), "{err}");
+        assert!(hits.lock().unwrap().is_empty());
+    }
+
+    #[test]
+    fn public_session_allow_private_reaches_loopback() {
+        let _g = test_guard();
+        reset_state();
+        let (port, hits) = loopback_server();
+        let (status, body) = _PublicSession::new(true)
+            .get(&format!("http://127.0.0.1:{port}/"), &[], T)
+            .unwrap();
+        assert_eq!(status, 200);
+        assert_eq!(body, "internal-secret");
+        assert_eq!(*hits.lock().unwrap(), vec!["/".to_string()]);
+    }
+
+    #[test]
+    fn mapped_and_unspecified_peers_are_blocked() {
+        for ip in [
+            "10.0.0.7",
+            "::ffff:169.254.169.254",
+            "::",
+            "0.0.0.0",
+            "127.0.0.1",
+        ] {
+            assert!(ip_is_blocked(&ip.parse().unwrap()), "{ip}");
+        }
+        assert!(!ip_is_blocked(&"93.184.216.34".parse().unwrap()));
     }
 }

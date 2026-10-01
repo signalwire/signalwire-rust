@@ -6,6 +6,9 @@
 // owns `get_execution_mode`.
 
 pub mod auth_handler;
+pub mod capabilities;
 pub mod config_loader;
 pub mod logging_config;
+pub mod post_prompt;
 pub mod security_config;
+pub mod sync_handlers;

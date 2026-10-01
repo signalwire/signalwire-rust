@@ -309,7 +309,10 @@ impl AgentServer {
             if self.agents.len() == 1 { "" } else { "s" }
         ));
 
-        for mut request in server.incoming_requests() {
+        // Each request is handled on a worker thread (bounded), so a slow
+        // handler does not hold up every other call; SWML_SYNC_HANDLERS_INLINE
+        // restores one-at-a-time handling on this thread.
+        crate::core::sync_handlers::serve_requests(server.incoming_requests(), |mut request| {
             let method = request.method().as_str().to_string();
             let path = request.url().to_string();
 
@@ -335,7 +338,7 @@ impl AgentServer {
                 }
             }
             let _ = request.respond(response);
-        }
+        });
     }
 
     // ======================================================================

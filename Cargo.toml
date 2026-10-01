@@ -137,7 +137,7 @@ percent-encoding = "2"
 # (no OpenSSL); `read_timeout` supplies the byte-idle liveness the streaming
 # keepalive contract needs (no total wall-clock cap on a live turn).
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
-tokio = { version = "1", features = ["rt", "macros"] }
+tokio = { version = "1", features = ["rt", "rt-multi-thread", "macros"] }
 # Optional Tower middleware integration. Enabled by default so users on
 # axum / hyper get a drop-in webhook-validation Layer; opt out via
 # `default-features = false` if you only need the standalone validator.

@@ -163,7 +163,7 @@ impl AIChatError {
     }
 
     /// A transport/decode failure (no JSON-RPC code): base [`AIChatErrorKind::Api`].
-    fn transport(message: String) -> Self {
+    pub(crate) fn transport(message: String) -> Self {
         Self {
             kind: AIChatErrorKind::Api,
             code: None,
@@ -635,6 +635,46 @@ impl AIChatClient {
             Some(Value::Object(map)) => Ok(map.clone()),
             _ => Ok(Map::new()),
         }
+    }
+
+    /// Send one JSON-RPC call and return the response with its body UNREAD.
+    ///
+    /// For proxies that must stream the body through rather than buffer it:
+    /// the service pads a slow response with keepalive whitespace so
+    /// intermediaries do not sever the connection mid-turn, and a proxy that
+    /// awaits the whole body absorbs that padding and reintroduces the very
+    /// timeout it exists to prevent. Read it with
+    /// [`reqwest::Response::chunk`] and forward the chunks as they arrive.
+    ///
+    /// The caller owns interpreting the result — including that a JSON-RPC
+    /// error arrives under HTTP 200. Prefer the typed methods unless you are
+    /// genuinely relaying bytes.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`AIChatError`] when the request cannot be sent (transport
+    /// failure); the response status and body are not inspected.
+    pub async fn raw_post(
+        &self,
+        method: &str,
+        params: Map<String, Value>,
+    ) -> Result<reqwest::Response, AIChatError> {
+        let id = self.request_counter.fetch_add(1, Ordering::Relaxed) + 1;
+        let payload = json!({
+            "jsonrpc": "2.0",
+            "method": method,
+            "params": Value::Object(params),
+            "id": format!("req-{id}"),
+        });
+        self.http
+            .post(&self.url)
+            .header("Authorization", &self.auth_header)
+            .header("Content-Type", "application/json")
+            .header("Accept", "application/json")
+            .json(&payload)
+            .send()
+            .await
+            .map_err(|e| AIChatError::transport(format!("request failed: {e}")))
     }
 
     // ── API methods ──────────────────────────────────────────────────

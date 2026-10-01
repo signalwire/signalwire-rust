@@ -39,6 +39,9 @@ use super::webhook::validate_webhook_signature;
 /// integrations migrating from Twilio.
 const SIGNATURE_HEADERS: &[&str] = &["x-signalwire-signature", "x-twilio-signature"];
 
+/// The stronger SHA-256 Scheme-A signature header, preferred when present.
+const SHA256_SIGNATURE_HEADER: &str = "x-signalwire-sha256-signature";
+
 // ---------------------------------------------------------------------------
 //  Framework-free decomposed validation core (cross-port contract).
 //
@@ -57,9 +60,10 @@ const SIGNATURE_HEADERS: &[&str] = &["x-signalwire-signature", "x-twilio-signatu
 /// either a `403`-shaped response triple to short-circuit with, or `None`
 /// to let the downstream handler run.
 ///
-/// The signature is read from the `headers` map (`X-SignalWire-Signature`,
-/// falling back to the legacy `X-Twilio-Signature` alias — lookups are
-/// case-insensitive). `method` is accepted for a stable signature
+/// The stronger `X-SignalWire-Sha256-Signature` is preferred when present; on
+/// a miss it falls back to `X-SignalWire-Signature` (then the legacy
+/// `X-Twilio-Signature` alias), so deployments on older platform builds and the
+/// cXML/form Scheme B path keep validating. Lookups are case-insensitive. `method` is accepted for a stable signature
 /// but is not part of the HMAC. On any failure (missing/bad signature,
 /// validator error) the function returns `Some((403, {}, ""))` — no body
 /// detail, so which branch tripped is not leaked.
@@ -93,6 +97,27 @@ pub fn validate(
 
     if signing_key.is_empty() {
         return reject();
+    }
+
+    let header = |want: &str| {
+        headers
+            .iter()
+            .find(|(k, _)| k.eq_ignore_ascii_case(want))
+            .map(|(_, v)| v.as_str())
+    };
+    // Prefer the SHA-256 signature when the platform sends it.
+    if let Some(sig256) = header(SHA256_SIGNATURE_HEADER).filter(|s| !s.is_empty())
+        && matches!(
+            crate::security::webhook::validate_webhook_signature_sha256(
+                signing_key,
+                sig256,
+                url,
+                body
+            ),
+            Ok(true)
+        )
+    {
+        return None;
     }
 
     // Case-insensitive header lookup for the signature (X-SignalWire first,
@@ -352,6 +377,30 @@ mod tests {
     const V_BODY: &str =
         r#"{"event":"call.state","params":{"call_id":"abc-123","state":"answered"}}"#;
     const V_SIG: &str = "c3c08c1fefaf9ee198a100d5906765a6f394bf0f";
+    const V_SIG256: &str = "2a29f8a92b11df39da80c3b185fd62173d49c294184da585ff951eae4433571c";
+
+    #[test]
+    fn validate_core_sha256_signature_alone_passes() {
+        let mut headers = HashMap::new();
+        headers.insert(
+            "X-SignalWire-Sha256-Signature".to_string(),
+            V_SIG256.to_string(),
+        );
+        assert!(validate("POST", V_URL, &headers, V_BODY, V_KEY).is_none());
+    }
+
+    #[test]
+    fn validate_core_bad_sha256_falls_back_to_valid_sha1() {
+        // The platform sends both headers; a mismatched SHA-256 must not reject
+        // a request whose SHA-1 signature is valid.
+        let mut headers = HashMap::new();
+        headers.insert("x-signalwire-sha256-signature".to_string(), "0".repeat(64));
+        headers.insert("x-signalwire-signature".to_string(), V_SIG.to_string());
+        assert!(validate("POST", V_URL, &headers, V_BODY, V_KEY).is_none());
+        // ...and with no valid SHA-1 either, it is rejected.
+        headers.insert("x-signalwire-signature".to_string(), "bad".to_string());
+        assert!(validate("POST", V_URL, &headers, V_BODY, V_KEY).is_some());
+    }
 
     #[test]
     fn validate_core_valid_signature_returns_none() {

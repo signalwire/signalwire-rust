@@ -358,6 +358,22 @@ type SummaryCallback = Box<dyn Fn(&str, &Value, &HashMap<String, String>) + Send
 
 type DebugEventCallback = Box<dyn Fn(&Value, &HashMap<String, String>) + Send + Sync>;
 
+/// A call-end handler: `(call_log, raw_data)` — the conversation as the
+/// platform recorded it, and the complete SWAIG request (`global_data`,
+/// `call_id`, ...). See [`AgentBase::on_call_end`].
+pub type CallEndHandler = Box<dyn Fn(&[Value], &Map<String, Value>) + Send + Sync>;
+
+/// A mounted router / app: `(method, path, headers, body)` → `Some((status,
+/// headers, body))` when it serves the request, `None` to let routing continue.
+/// `path` is relative to the mount prefix (`"/"` for the prefix itself). The
+/// response body is a reader, so a mount can stream it (the built-in server
+/// forwards it chunk by chunk, unbuffered). See [`AgentBase::mount`].
+pub type MountHandler =
+    Box<dyn Fn(&str, &str, &HashMap<String, String>, &str) -> Option<MountResponse> + Send + Sync>;
+
+/// A mounted router's response: `(status, headers, body reader)`.
+pub type MountResponse = (u16, HashMap<String, String>, Box<dyn std::io::Read + Send>);
+
 /// Core agent that extends `Service` with AI-specific capabilities.
 ///
 /// Manages prompt configuration, tool registration, SWML rendering,
@@ -443,7 +459,17 @@ pub struct AgentBase {
     answer_config: Map<String, Value>,
 
     // ── Callbacks ───────────────────────────────────────────────────────
-    dynamic_config_callback: Option<Arc<DynamicConfigCallback>>,
+    /// Per-request configuration callbacks, run in registration order
+    /// ([`add_per_call_config`](AgentBase::add_per_call_config) appends,
+    /// [`set_dynamic_config_callback`](AgentBase::set_dynamic_config_callback)
+    /// replaces).
+    dynamic_config_callback: Vec<Arc<DynamicConfigCallback>>,
+    /// Call-end handlers ([`on_call_end`](AgentBase::on_call_end)); shared
+    /// with the reserved `hangup_hook` tool that runs them.
+    call_end_handlers: Arc<std::sync::RwLock<Vec<Arc<CallEndHandler>>>>,
+    /// Extra routers / apps mounted alongside the agent's own routes
+    /// ([`mount`](AgentBase::mount)): `(prefix, name, handler)`.
+    mounts: Vec<(String, Option<String>, Arc<MountHandler>)>,
     summary_callback: Option<Arc<SummaryCallback>>,
     debug_event_handler: Option<Arc<DebugEventCallback>>,
 
@@ -539,6 +565,8 @@ impl Clone for AgentBase {
             post_ai_verbs: self.post_ai_verbs.clone(),
             answer_config: self.answer_config.clone(),
             dynamic_config_callback: self.dynamic_config_callback.clone(),
+            call_end_handlers: Arc::clone(&self.call_end_handlers),
+            mounts: self.mounts.clone(),
             summary_callback: self.summary_callback.clone(),
             debug_event_handler: self.debug_event_handler.clone(),
             webhook_url: self.webhook_url.clone(),
@@ -676,7 +704,9 @@ impl AgentBase {
             post_answer_verbs: Vec::new(),
             post_ai_verbs: Vec::new(),
             answer_config: Map::new(),
-            dynamic_config_callback: None,
+            dynamic_config_callback: Vec::new(),
+            call_end_handlers: Arc::new(std::sync::RwLock::new(Vec::new())),
+            mounts: Vec::new(),
             summary_callback: None,
             debug_event_handler: None,
             webhook_url: None,
@@ -1957,12 +1987,168 @@ impl AgentBase {
     /// never mutated by a request, so per-caller configuration cannot leak
     /// between concurrent calls.
     ///
-    /// Setting a second callback replaces the first.
+    /// Setting a second callback replaces the first (and any added with
+    /// [`add_per_call_config`](AgentBase::add_per_call_config)).
     ///
     /// Returns `&mut Self` for chaining.
     pub fn set_dynamic_config_callback(&mut self, callback: DynamicConfigCallback) -> &mut Self {
-        self.dynamic_config_callback = Some(Arc::new(callback));
+        self.dynamic_config_callback = vec![Arc::new(callback)];
         self
+    }
+
+    /// Register a per-request configuration callback, KEEPING any already set.
+    ///
+    /// Same signature and contract as
+    /// [`set_dynamic_config_callback`](AgentBase::set_dynamic_config_callback),
+    /// except that callbacks accumulate instead of overwriting. They run in
+    /// registration order against the same per-request clone, so a later one
+    /// sees what an earlier one configured. This is the composable form — a
+    /// base agent and a mixin can each register what they own without knowing
+    /// the other exists. Configure the clone handed to the callback, never the
+    /// master agent.
+    ///
+    /// Returns `&mut Self` for chaining.
+    pub fn add_per_call_config(&mut self, callback: DynamicConfigCallback) -> &mut Self {
+        self.dynamic_config_callback.push(Arc::new(callback));
+        self
+    }
+
+    /// Mount an extra router or app alongside this agent's own routes.
+    ///
+    /// A request whose path is `prefix` or lies under `prefix/` is offered to
+    /// `app_or_router` (with the path relative to the prefix) before the agent's
+    /// own routing and auth — exactly as a router mounted on the reference's
+    /// app is reached ahead of the agent's catch-all; it answers `Some(response)`
+    /// to serve it or `None` to let routing continue. The agent's own route
+    /// (including the bare one the platform fetches) and `/health` / `/ready`
+    /// keep working; several mounts all stay reachable (longest prefix first).
+    /// `prefix` takes no trailing slash; `""` offers every request. `name` is an
+    /// optional label for the mount.
+    ///
+    /// Returns `&mut Self` for chaining.
+    pub fn mount(
+        &mut self,
+        app_or_router: MountHandler,
+        prefix: Option<&str>,
+        name: Option<&str>,
+    ) -> &mut Self {
+        let prefix = prefix.unwrap_or("").trim_end_matches('/').to_string();
+        self.mounts
+            .push((prefix, name.map(str::to_string), Arc::new(app_or_router)));
+        // Longest prefix first, so a nested mount wins over its parent.
+        self.mounts.sort_by_key(|m| std::cmp::Reverse(m.0.len()));
+        self
+    }
+
+    /// Offer a request to the mounted routers, longest prefix first.
+    fn dispatch_mounts(
+        &self,
+        method: &str,
+        path: &str,
+        headers: &HashMap<String, String>,
+        body: &str,
+    ) -> Option<MountResponse> {
+        let path = path.split_once('?').map_or(path, |(p, _)| p);
+        for (prefix, _name, handler) in &self.mounts {
+            let rest = if prefix.is_empty() {
+                Some(path)
+            } else if path == prefix {
+                Some("/")
+            } else {
+                path.strip_prefix(prefix.as_str())
+                    .filter(|r| r.starts_with('/'))
+            };
+            if let Some(rest) = rest
+                && let Some(response) = handler(method, rest, headers, body)
+            {
+                return Some(response);
+            }
+        }
+        None
+    }
+
+    /// Register a handler that runs when the call ends, with the transcript.
+    ///
+    /// Handlers run in registration order and receive `(call_log, raw_data)`:
+    /// the conversation as the platform recorded it (resolved from whichever of
+    /// `call_log` / `raw_call_log` carried it), and the complete SWAIG request,
+    /// including `global_data` and `call_id`.
+    ///
+    /// This wraps the platform's reserved `hangup_hook` function, which fires on
+    /// hangup and is never offered to the model. Registering a handler also turns
+    /// on the `swaig_post_conversation` param: `call_log` is a CONDITIONAL field
+    /// of a SWAIG request, and without that param the hook still fires but
+    /// carries no transcript — indistinguishable from the hook never having been
+    /// registered. If the param was explicitly set to `false` it is left alone
+    /// and a warning is logged.
+    ///
+    /// A handler that panics is caught and logged, so one failing teardown
+    /// handler cannot stop the others or fail the hangup.
+    ///
+    /// Returns `&mut Self` for chaining.
+    pub fn on_call_end(&mut self, handler: CallEndHandler) -> &mut Self {
+        let first = {
+            let mut handlers = self
+                .call_end_handlers
+                .write()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            handlers.push(Arc::new(handler));
+            handlers.len() == 1
+        };
+        if first {
+            self.ensure_call_end_hook();
+        }
+        self
+    }
+
+    /// Register the reserved `hangup_hook` once and enable its transcript payload.
+    fn ensure_call_end_hook(&mut self) {
+        match self.params.get("swaig_post_conversation") {
+            Some(Value::Bool(false)) => log::warn!(
+                "[signalwire] on_call_end handlers are registered but \
+                 swaig_post_conversation is explicitly false -- they will receive \
+                 an empty call_log"
+            ),
+            None => {
+                self.set_param("swaig_post_conversation", json!(true));
+            }
+            Some(_) => {}
+        }
+        let handlers = Arc::clone(&self.call_end_handlers);
+        let hook: FunctionHandler = Box::new(move |_args, raw_data| {
+            // Both spellings are seen in the wild depending on engine.
+            let call_log: Vec<Value> = ["call_log", "raw_call_log"]
+                .iter()
+                .find_map(|k| {
+                    raw_data
+                        .get(*k)
+                        .and_then(Value::as_array)
+                        .filter(|a| !a.is_empty())
+                })
+                .cloned()
+                .unwrap_or_default();
+            let snapshot: Vec<Arc<CallEndHandler>> = handlers
+                .read()
+                .unwrap_or_else(std::sync::PoisonError::into_inner)
+                .clone();
+            for handler in snapshot {
+                // Isolate each handler so one failure cannot stop the others.
+                let outcome = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                    handler(&call_log, raw_data);
+                }));
+                if outcome.is_err() {
+                    log::error!("[signalwire] call_end_handler_failed");
+                }
+            }
+            FunctionResult::with_response("")
+        });
+        self.tool(
+            "hangup_hook",
+            "Internal: fires when the call ends.",
+            json!({}),
+            hook,
+            false,
+        );
     }
 
     /// Point SWAIG function callbacks at an external `url` instead of this
@@ -2604,6 +2790,15 @@ impl AgentBase {
                 .handle_request(method, path, headers, Some(body));
         }
 
+        // Mounted routers / apps are reached ahead of the agent's own routing.
+        if let Some((status, resp_headers, mut reader)) =
+            self.dispatch_mounts(method, path, headers, body)
+        {
+            let mut text = String::new();
+            let _ = reader.read_to_string(&mut text);
+            return (status, resp_headers, text);
+        }
+
         // Determine sub-path relative to route
         let route = self.service.route();
         let sub_path = if route == "/" {
@@ -2704,6 +2899,28 @@ impl AgentBase {
         path: &str,
         raw_body: &str,
     ) -> bool {
+        let url_base = self.resolve_signature_base(headers);
+        let full_url = format!("{}{path}", url_base.trim_end_matches('/'));
+
+        // Prefer the stronger SHA-256 signature when the platform sends it;
+        // fall back to the SHA-1 header (older platform builds, cXML Scheme B).
+        let sig256 = headers
+            .iter()
+            .find(|(k, _)| k.eq_ignore_ascii_case("x-signalwire-sha256-signature"))
+            .map(|(_, v)| v.as_str())
+            .filter(|s| !s.is_empty());
+        if let Some(sig256) = sig256
+            && crate::security::webhook::validate_webhook_signature_sha256(
+                signing_key,
+                sig256,
+                &full_url,
+                raw_body,
+            )
+            .unwrap_or(false)
+        {
+            return true;
+        }
+
         // Header lookup is case-insensitive in practice — try both.
         let signature = headers
             .get("X-SignalWire-Signature")
@@ -2714,11 +2931,6 @@ impl AgentBase {
             Some(s) => s.as_str(),
             None => return false,
         };
-
-        let url_base = self.resolve_signature_base(headers);
-        // Strip a trailing slash on the base so we don't double-up.
-        let base = url_base.trim_end_matches('/');
-        let full_url = format!("{base}{path}");
 
         crate::security::webhook::validate_webhook_signature(
             signing_key,
@@ -2787,7 +2999,7 @@ impl AgentBase {
         request_data: &Option<Value>,
         headers: &HashMap<String, String>,
     ) -> (u16, HashMap<String, String>, String) {
-        if self.dynamic_config_callback.is_some() {
+        if !self.dynamic_config_callback.is_empty() {
             let mut clone = self.clone_for_request();
             let query_params = request_data
                 .as_ref()
@@ -2796,7 +3008,9 @@ impl AgentBase {
                 .cloned()
                 .unwrap_or_default();
 
-            if let Some(ref cb) = self.dynamic_config_callback {
+            // Every registered callback, in registration order, against the
+            // one per-request clone.
+            for cb in &self.dynamic_config_callback {
                 cb(&query_params, request_data, headers, &mut clone);
             }
 
@@ -3097,7 +3311,10 @@ impl AgentBase {
         let (server, _is_https) = crate::server::tls::bind_server(&addr)
             .unwrap_or_else(|e| panic!("Failed to bind {addr}: {e}"));
 
-        for mut request in server.incoming_requests() {
+        // Each request is handled on a worker thread (bounded), so a slow
+        // handler does not hold up every other call; SWML_SYNC_HANDLERS_INLINE
+        // restores one-at-a-time handling on this thread.
+        crate::core::sync_handlers::serve_requests(server.incoming_requests(), |mut request| {
             let method = request.method().as_str().to_string();
             let path = request.url().to_string();
 
@@ -3112,6 +3329,27 @@ impl AgentBase {
             let mut body_buf = String::new();
             let _ = request.as_reader().read_to_string(&mut body_buf);
 
+            // A mounted router may stream its body: forward it unbuffered.
+            if let Some((status, resp_headers, reader)) =
+                self.dispatch_mounts(&method, &path, &req_headers, &body_buf)
+            {
+                let headers: Vec<tiny_http::Header> = resp_headers
+                    .iter()
+                    .filter_map(|(k, v)| {
+                        tiny_http::Header::from_bytes(k.as_bytes(), v.as_bytes()).ok()
+                    })
+                    .collect();
+                let response = tiny_http::Response::new(
+                    tiny_http::StatusCode(status),
+                    headers,
+                    reader,
+                    None,
+                    None,
+                );
+                let _ = request.respond(response);
+                return;
+            }
+
             let (status, resp_headers, resp_body) =
                 self.handle_request(&method, &path, &req_headers, Some(&body_buf));
 
@@ -3123,7 +3361,7 @@ impl AgentBase {
                 }
             }
             let _ = request.respond(response);
-        }
+        });
     }
 }
 
@@ -5193,5 +5431,164 @@ mod tests {
             body.contains("ok"),
             "the body's query_params must take precedence, got {body}"
         );
+    }
+
+    // ── add_per_call_config / on_call_end ────────────────────────────────
+    // Ported from signalwire-python tests/unit/core/test_agent_consolidation.py.
+
+    fn swml_prompt_after_request(agent: &AgentBase) -> Value {
+        let (status, _, body) = agent.handle_request("POST", "/", &authed_headers(), Some("{}"));
+        assert_eq!(status, 200);
+        let parsed: Value = serde_json::from_str(&body).unwrap();
+        parsed["sections"]["main"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|v| v.get("ai").is_some())
+            .unwrap()["ai"]["prompt"]["text"]
+            .clone()
+    }
+
+    #[test]
+    fn test_added_per_call_configs_all_run_in_registration_order() {
+        let mut agent = AgentBase::new(default_options());
+        agent.set_prompt_text("base");
+        agent.add_per_call_config(Box::new(|_q, _b, _h, clone| {
+            clone.set_prompt_text("first");
+        }));
+        agent.add_per_call_config(Box::new(|_q, _b, _h, clone| {
+            let seen = clone.prompt_text.clone();
+            clone.set_prompt_text(&format!("{seen}+second"));
+        }));
+        assert_eq!(swml_prompt_after_request(&agent), "first+second");
+        assert_eq!(agent.prompt_text, "base");
+    }
+
+    #[test]
+    fn test_set_dynamic_config_still_replaces_and_add_composes() {
+        let mut agent = AgentBase::new(default_options());
+        agent.set_prompt_text("base");
+        agent.set_dynamic_config_callback(Box::new(|_q, _b, _h, c| {
+            c.set_prompt_text("one");
+        }));
+        agent.set_dynamic_config_callback(Box::new(|_q, _b, _h, c| {
+            c.set_prompt_text("two");
+        }));
+        assert_eq!(swml_prompt_after_request(&agent), "two");
+        agent.add_per_call_config(Box::new(|_q, _b, _h, c| {
+            let seen = c.prompt_text.clone();
+            c.set_prompt_text(&format!("{seen}+added"));
+        }));
+        assert_eq!(swml_prompt_after_request(&agent), "two+added");
+    }
+
+    fn fire_hangup_hook(agent: &AgentBase, payload: &Value) {
+        let mut body = json!({"function": "hangup_hook", "argument": {"parsed": [{}]}});
+        for (k, v) in payload.as_object().unwrap() {
+            body[k] = v.clone();
+        }
+        let (status, _, _) =
+            agent.handle_request("POST", "/swaig", &authed_headers(), Some(&body.to_string()));
+        assert_eq!(status, 200);
+    }
+
+    #[test]
+    fn test_on_call_end_enables_payload_and_defines_reserved_hook() {
+        let mut agent = AgentBase::new(default_options());
+        assert!(agent.params.get("swaig_post_conversation").is_none());
+        agent.on_call_end(Box::new(|_log, _raw| {}));
+        assert_eq!(agent.params["swaig_post_conversation"], json!(true));
+        assert!(agent.list_tool_names().contains(&"hangup_hook".to_string()));
+    }
+
+    #[test]
+    fn test_on_call_end_handlers_receive_the_log_in_order() {
+        use std::sync::{Arc, Mutex};
+        let seen = Arc::new(Mutex::new(Vec::<String>::new()));
+        let mut agent = AgentBase::new(default_options());
+        let s1 = Arc::clone(&seen);
+        agent.on_call_end(Box::new(move |log, _raw| {
+            s1.lock().unwrap().push(format!("one:{}", log.len()));
+        }));
+        let s2 = Arc::clone(&seen);
+        agent.on_call_end(Box::new(move |_log, raw| {
+            s2.lock()
+                .unwrap()
+                .push(format!("two:{}", raw["call_id"].as_str().unwrap_or("")));
+        }));
+        fire_hangup_hook(
+            &agent,
+            &json!({"call_log": [{"role": "user"}], "call_id": "c-1"}),
+        );
+        assert_eq!(*seen.lock().unwrap(), vec!["one:1", "two:c-1"]);
+    }
+
+    #[test]
+    fn test_on_call_end_accepts_raw_call_log_and_isolates_failures() {
+        use std::sync::{Arc, Mutex};
+        let seen = Arc::new(Mutex::new(Vec::<usize>::new()));
+        let mut agent = AgentBase::new(default_options());
+        agent.on_call_end(Box::new(|_log, _raw| panic!("boom")));
+        let s = Arc::clone(&seen);
+        agent.on_call_end(Box::new(move |log, _raw| s.lock().unwrap().push(log.len())));
+        fire_hangup_hook(
+            &agent,
+            &json!({"raw_call_log": [{"role": "user"}, {"role": "assistant"}]}),
+        );
+        assert_eq!(*seen.lock().unwrap(), vec![2]);
+    }
+
+    #[test]
+    fn test_on_call_end_does_not_override_an_explicit_false() {
+        let mut agent = AgentBase::new(default_options());
+        agent.set_param("swaig_post_conversation", json!(false));
+        agent.on_call_end(Box::new(|_log, _raw| {}));
+        assert_eq!(agent.params["swaig_post_conversation"], json!(false));
+    }
+
+    // ── mount ────────────────────────────────────────────────────────────
+
+    fn ok_router(path: &'static str) -> MountHandler {
+        Box::new(move |method, rest, _h, _b| {
+            (method == "POST" && rest == path).then(|| {
+                let body: Box<dyn std::io::Read + Send> =
+                    Box::new(std::io::Cursor::new(r#"{"ok":true}"#.as_bytes().to_vec()));
+                (200, HashMap::new(), body)
+            })
+        })
+    }
+
+    #[test]
+    fn test_mounted_route_is_reachable_and_agent_routes_survive() {
+        let mut agent = AgentBase::new(default_options());
+        let route = agent.service.route().trim_end_matches('/').to_string();
+        agent.mount(ok_router("/handoff"), Some(&format!("{route}/chat")), None);
+        let (status, _, body) = agent.handle_request(
+            "POST",
+            &format!("{route}/chat/handoff"),
+            &HashMap::new(),
+            None,
+        );
+        assert_eq!(status, 200);
+        assert_eq!(body, r#"{"ok":true}"#);
+        // The bare agent route is not swallowed (401 = alive, demanding auth).
+        let (status, _, _) = agent.handle_request("POST", &route, &HashMap::new(), Some("{}"));
+        assert_ne!(status, 204);
+        assert_ne!(status, 200);
+        // Health survives.
+        let (status, _, _) = agent.handle_request("GET", "/health", &HashMap::new(), None);
+        assert_eq!(status, 200);
+    }
+
+    #[test]
+    fn test_several_mounts_all_stay_reachable() {
+        let mut agent = AgentBase::new(default_options());
+        agent
+            .mount(ok_router("/one"), Some("/myagent/a"), None)
+            .mount(ok_router("/two"), Some("/myagent/b"), Some("b"));
+        for p in ["/myagent/a/one", "/myagent/b/two"] {
+            let (status, _, _) = agent.handle_request("POST", p, &HashMap::new(), None);
+            assert_eq!(status, 200, "{p}");
+        }
     }
 }

@@ -1,6 +1,6 @@
 {
   "version": "1",
-  "generated_from": "signalwire-rust @ aa1038d5cc26d1af102a47a1f14bb5d8da5c25bf",
+  "generated_from": "signalwire-rust @ 108bbfd6906e8a8c0fe1d603b2b3fd438463f743",
   "modules": {
     "signalwire": {
       "classes": {
@@ -78,6 +78,7 @@
           "delete",
           "end",
           "log",
+          "raw_post",
           "summarize",
           "url"
         ],
@@ -110,6 +111,74 @@
         "SummaryError": []
       },
       "functions": []
+    },
+    "signalwire.ai_chat.gateway": {
+      "classes": {
+        "ChatGateway": [
+          "__init__",
+          "allowed_origins",
+          "check_key",
+          "check_origin",
+          "close",
+          "config_url",
+          "conversation_timeout",
+          "effective_timeout",
+          "handle_ttl",
+          "key",
+          "last_activity",
+          "max_new_conversations",
+          "max_turns",
+          "mint_handle",
+          "prepare",
+          "read_handle",
+          "read_user_metadata",
+          "router",
+          "visible_messages",
+          "window_seconds"
+        ],
+        "GatewayRejection": [
+          "__init__",
+          "reason",
+          "status"
+        ]
+      },
+      "functions": []
+    },
+    "signalwire.ai_chat.handoff": {
+      "classes": {
+        "HandoffRouter": [
+          "__init__",
+          "capture_leg",
+          "capture_timeout",
+          "end_call",
+          "escalate",
+          "gateway",
+          "max_messages_per_call",
+          "next_conversation_id",
+          "nonce_ttl",
+          "redeem",
+          "register",
+          "router",
+          "say",
+          "send_message"
+        ],
+        "NonceEntry": [
+          "__init__",
+          "call_id",
+          "conversation_id",
+          "issued_at",
+          "messages",
+          "redeemed"
+        ]
+      },
+      "functions": []
+    },
+    "signalwire.core._sync_handlers": {
+      "classes": {},
+      "functions": [
+        "run_sync_handler",
+        "sync_handlers_inline"
+      ]
     },
     "signalwire.core.agent.prompt.manager": {
       "classes": {
@@ -203,6 +272,7 @@
           "list_tool_names",
           "manual_set_proxy_url",
           "native_functions",
+          "on_call_end",
           "on_debug_event",
           "on_summary",
           "pom",
@@ -280,6 +350,14 @@
         ]
       },
       "functions": []
+    },
+    "signalwire.core.capabilities": {
+      "classes": {},
+      "functions": [
+        "declared_capabilities",
+        "has_capability",
+        "user_variables"
+      ]
     },
     "signalwire.core.config_loader": {
       "classes": {
@@ -583,10 +661,12 @@
     "signalwire.core.mixins.web_mixin": {
       "classes": {
         "WebMixin": [
+          "add_per_call_config",
           "as_router",
           "enable_debug_routes",
           "get_app",
           "manual_set_proxy_url",
+          "mount",
           "on_request",
           "on_swml_request",
           "register_routing_callback",
@@ -616,6 +696,25 @@
         ]
       },
       "functions": []
+    },
+    "signalwire.core.post_prompt": {
+      "classes": {
+        "NormalizedPostPrompt": [
+          "__init__",
+          "call_id",
+          "conversation_id",
+          "dialogue",
+          "medium",
+          "raw",
+          "summary"
+        ]
+      },
+      "functions": [
+        "dialogue_turns",
+        "normalize_post_prompt",
+        "parse_post_prompt_data",
+        "strip_json_fence"
+      ]
     },
     "signalwire.core.post_prompt_generated": {
       "classes": {
@@ -693,7 +792,8 @@
       "classes": {},
       "functions": [
         "validate_request",
-        "validate_webhook_signature"
+        "validate_webhook_signature",
+        "validate_webhook_signature_sha256"
       ]
     },
     "signalwire.core.security_config": {
@@ -3896,6 +3996,7 @@
           "get_parameter_schema",
           "register_tools",
           "remove_xpaths",
+          "session",
           "setup"
         ]
       },
