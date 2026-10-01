@@ -6,13 +6,16 @@ use super::calling_resources_generated::Calling;
 use super::chat_resources_generated::Chat;
 use super::datasphere_resources_generated::DatasphereDocuments;
 use super::fabric_resources_generated::{
-    AiAgents, CallFlows, ConferenceRooms, CxmlApplications, CxmlScripts, CxmlWebhooks,
-    FabricAddresses, FabricTokens, FreeswitchConnectors, GenericResources, RelayApplications,
-    SipEndpoints, SipGateways, Subscribers, SwmlScripts, SwmlWebhooks,
+    AiAgents, AliasAddresses, CallFlows, ConferenceRooms, CxmlApplications, CxmlScripts,
+    CxmlWebhooks, FabricAddresses, FabricTokens, FreeswitchConnectors, GenericResources,
+    PhoneNumberAddresses, RelayApplications, SipAddresses, SipEndpoints, SipGateways, Subscribers,
+    SwmlScripts, SwmlWebhooks,
 };
 use super::fax_resources_generated::FaxLogs;
 use super::logs_resources_generated::ConferenceLogs;
-use super::message_resources_generated::MessageLogs;
+use super::message_resources_generated::{
+    MessageLogs, WhatsappBusinesses, WhatsappNumbers, WhatsappTemplates,
+};
 use super::messages_resources_generated::Messages;
 use super::project_resources_generated::ProjectTokens;
 use super::projects_resources_generated::Projects;
@@ -21,6 +24,11 @@ use super::relay_rest_resources_generated::{
     Addresses, ImportedNumbers, Lookup, Mfa, NumberGroups, PhoneNumbers, Queues, Recordings,
     RegistryBrands, RegistryCampaigns, RegistryNumbers, RegistryOrders, ShortCodes, SipProfile,
     VerifiedCallers,
+};
+use super::space_resources_generated::{
+    SpaceBalance, SpaceBillingProfile, SpaceBillingStatements, SpaceGeographicPermissions,
+    SpaceLowBalanceSetting, SpaceMembers, SpacePaymentHistory, SpacePaymentMethods, SpaceSettings,
+    SpaceUsage,
 };
 use super::video_resources_generated::{
     VideoConferenceTokens, VideoConferences, VideoRoomRecordings, VideoRoomSessions,
@@ -74,6 +82,24 @@ impl<'a> FabricNamespace<'a> {
     #[must_use]
     pub fn new(client: &'a HttpClient) -> Self {
         FabricNamespace { client }
+    }
+
+    /// Access the `AliasAddresses` resource.
+    #[must_use]
+    pub fn alias_addresses(&self) -> AliasAddresses<'a> {
+        AliasAddresses::new(self.client)
+    }
+
+    /// Access the `SipAddresses` resource.
+    #[must_use]
+    pub fn sip_addresses(&self) -> SipAddresses<'a> {
+        SipAddresses::new(self.client)
+    }
+
+    /// Access the `PhoneNumberAddresses` resource.
+    #[must_use]
+    pub fn phone_number_addresses(&self) -> PhoneNumberAddresses<'a> {
+        PhoneNumberAddresses::new(self.client)
     }
 
     /// Access the `FabricAddresses` resource.
@@ -281,6 +307,36 @@ impl<'a> LogsNamespace<'a> {
     }
 }
 
+/// `WhatsappNamespace` — generated container grouping the whatsapp namespace resources (§8).
+pub struct WhatsappNamespace<'a> {
+    client: &'a HttpClient,
+}
+
+impl<'a> WhatsappNamespace<'a> {
+    #[must_use]
+    pub fn new(client: &'a HttpClient) -> Self {
+        WhatsappNamespace { client }
+    }
+
+    /// Access the `WhatsappNumbers` resource.
+    #[must_use]
+    pub fn numbers(&self) -> WhatsappNumbers<'a> {
+        WhatsappNumbers::new(self.client)
+    }
+
+    /// Access the `WhatsappBusinesses` resource.
+    #[must_use]
+    pub fn businesses(&self) -> WhatsappBusinesses<'a> {
+        WhatsappBusinesses::new(self.client)
+    }
+
+    /// Access the `WhatsappTemplates` resource.
+    #[must_use]
+    pub fn templates(&self) -> WhatsappTemplates<'a> {
+        WhatsappTemplates::new(self.client)
+    }
+}
+
 /// `ProjectNamespace` — generated container grouping the project namespace resources (§8).
 pub struct ProjectNamespace<'a> {
     client: &'a HttpClient,
@@ -299,18 +355,93 @@ impl<'a> ProjectNamespace<'a> {
     }
 }
 
+/// `SpaceNamespace` — generated container grouping the space namespace resources (§8).
+pub struct SpaceNamespace<'a> {
+    client: &'a HttpClient,
+}
+
+impl<'a> SpaceNamespace<'a> {
+    #[must_use]
+    pub fn new(client: &'a HttpClient) -> Self {
+        SpaceNamespace { client }
+    }
+
+    /// Access the `SpaceSettings` resource.
+    #[must_use]
+    pub fn settings(&self) -> SpaceSettings<'a> {
+        SpaceSettings::new(self.client)
+    }
+
+    /// Access the `SpaceGeographicPermissions` resource.
+    #[must_use]
+    pub fn geographic_permissions(&self) -> SpaceGeographicPermissions<'a> {
+        SpaceGeographicPermissions::new(self.client)
+    }
+
+    /// Access the `SpaceBillingProfile` resource.
+    #[must_use]
+    pub fn billing_profile(&self) -> SpaceBillingProfile<'a> {
+        SpaceBillingProfile::new(self.client)
+    }
+
+    /// Access the `SpaceBillingStatements` resource.
+    #[must_use]
+    pub fn billing_statements(&self) -> SpaceBillingStatements<'a> {
+        SpaceBillingStatements::new(self.client)
+    }
+
+    /// Access the `SpaceUsage` resource.
+    #[must_use]
+    pub fn usage(&self) -> SpaceUsage<'a> {
+        SpaceUsage::new(self.client)
+    }
+
+    /// Access the `SpacePaymentHistory` resource.
+    #[must_use]
+    pub fn payment_history(&self) -> SpacePaymentHistory<'a> {
+        SpacePaymentHistory::new(self.client)
+    }
+
+    /// Access the `SpaceMembers` resource.
+    #[must_use]
+    pub fn members(&self) -> SpaceMembers<'a> {
+        SpaceMembers::new(self.client)
+    }
+
+    /// Access the `SpaceBalance` resource.
+    #[must_use]
+    pub fn balance(&self) -> SpaceBalance<'a> {
+        SpaceBalance::new(self.client)
+    }
+
+    /// Access the `SpaceLowBalanceSetting` resource.
+    #[must_use]
+    pub fn low_balance_setting(&self) -> SpaceLowBalanceSetting<'a> {
+        SpaceLowBalanceSetting::new(self.client)
+    }
+
+    /// Access the `SpacePaymentMethods` resource.
+    #[must_use]
+    pub fn payment_methods(&self) -> SpacePaymentMethods<'a> {
+        SpacePaymentMethods::new(self.client)
+    }
+}
+
 /// `GeneratedResourceTree` — generated lazy accessors for every flat REST
 /// resource plus the namespace containers (§8). The hand `RestClient` composes
 /// this; each accessor constructs the resource with the client's `HttpClient`
 /// (base paths baked in per §4).
+/// `client` carries the project token; `pat_client` the Personal Access Token
+/// (the namespaces whose spec security requires it).
 pub struct GeneratedResourceTree<'a> {
     client: &'a HttpClient,
+    pat_client: &'a HttpClient,
 }
 
 impl<'a> GeneratedResourceTree<'a> {
     #[must_use]
-    pub fn new(client: &'a HttpClient) -> Self {
-        GeneratedResourceTree { client }
+    pub fn new(client: &'a HttpClient, pat_client: &'a HttpClient) -> Self {
+        GeneratedResourceTree { client, pat_client }
     }
 
     /// Access the flat `Addresses` resource.
@@ -439,9 +570,24 @@ impl<'a> GeneratedResourceTree<'a> {
         LogsNamespace::new(self.client)
     }
 
+    /// Access the `whatsapp` namespace container.
+    #[must_use]
+    pub fn whatsapp(&self) -> WhatsappNamespace<'a> {
+        WhatsappNamespace::new(self.client)
+    }
+
     /// Access the `project` namespace container.
     #[must_use]
     pub fn project(&self) -> ProjectNamespace<'a> {
         ProjectNamespace::new(self.client)
+    }
+
+    /// Access the `space` namespace container.
+    ///
+    /// Authenticated with the client's Personal Access Token, not the
+    /// project token (the spec's security requires it).
+    #[must_use]
+    pub fn space(&self) -> SpaceNamespace<'a> {
+        SpaceNamespace::new(self.pat_client)
     }
 }

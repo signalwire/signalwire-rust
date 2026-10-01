@@ -167,8 +167,7 @@ fn test_registry_campaigns_create_order_posts_to_subpath() {
         .campaigns()
         .create_order(
             "camp-4",
-            relay_gen::RegistryCampaignsCreateOrderRequest::new()
-                .phone_numbers(json!(["pn-1", "pn-2"])),
+            relay_gen::RegistryCampaignsCreateOrderRequest::new(json!(["pn-1", "pn-2"])),
             None,
         )
         .expect("create_order");

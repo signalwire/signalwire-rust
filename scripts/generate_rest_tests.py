@@ -213,6 +213,7 @@ def build_rows(
                 "chain": e["chain"],
                 "member": e["member"],
                 "args": e["args"],
+                "client": e.get("client", "project"),
             }
         )
     return rows, uncovered
@@ -269,6 +270,7 @@ use signalwire::rest::namespaces::generated::messages_resources_generated as mes
 use signalwire::rest::namespaces::generated::project_resources_generated as project_gen;
 use signalwire::rest::namespaces::generated::pubsub_resources_generated as pubsub_gen;
 use signalwire::rest::namespaces::generated::relay_rest_resources_generated as relay_gen;
+use signalwire::rest::namespaces::generated::space_resources_generated as space_gen;
 use signalwire::rest::namespaces::generated::video_resources_generated as video_gen;
 """
 
@@ -306,11 +308,14 @@ def emit_spec_file(spec: str, rows: list[dict]) -> str:
         call = r["_call"]
         method = r["method"]
         op_id = r["op_id"]
+        # The Space Administration API authenticates with a Personal Access Token:
+        # the plan marks those calls ``client: pat`` and they run on a PAT client.
+        mk = "pat_client" if r.get("client") == "pat" else "client"
         body += f"""
 #[test]
 fn test_{name}_success() {{
     let _g = common::mocktest::begin();
-    let c = common::mocktest::client();
+    let c = common::mocktest::{mk}();
     let _ = {call};
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "{method}");
@@ -320,7 +325,7 @@ fn test_{name}_success() {{
 #[test]
 fn test_{name}_error() {{
     let _g = common::mocktest::begin();
-    let c = common::mocktest::client();
+    let c = common::mocktest::{mk}();
     common::mocktest::scenario_set("{op_id}", 500, json!({{"error": "x"}}));
     let err = {call}.expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);

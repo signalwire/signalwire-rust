@@ -17,6 +17,9 @@
         "ai_agents": {
           "returns": "class:signalwire.rest.namespaces.fabric_resources_generated.AiAgents"
         },
+        "alias_addresses": {
+          "returns": "class:signalwire.rest.namespaces.fabric_resources_generated.AliasAddresses"
+        },
         "call_flows": {
           "returns": "class:signalwire.rest.namespaces.fabric_resources_generated.CallFlows"
         },
@@ -35,11 +38,17 @@
         "freeswitch_connectors": {
           "returns": "class:signalwire.rest.namespaces.fabric_resources_generated.FreeswitchConnectors"
         },
+        "phone_number_addresses": {
+          "returns": "class:signalwire.rest.namespaces.fabric_resources_generated.PhoneNumberAddresses"
+        },
         "relay_applications": {
           "returns": "class:signalwire.rest.namespaces.fabric_resources_generated.RelayApplications"
         },
         "resources": {
           "returns": "class:signalwire.rest.namespaces.fabric_resources_generated.GenericResources"
+        },
+        "sip_addresses": {
+          "returns": "class:signalwire.rest.namespaces.fabric_resources_generated.SipAddresses"
         },
         "sip_endpoints": {
           "returns": "class:signalwire.rest.namespaces.fabric_resources_generated.SipEndpoints"
@@ -108,6 +117,42 @@
       "class": "RegistryNamespace",
       "module": "signalwire.rest.namespaces._client_tree_generated"
     },
+    "SpaceNamespace": {
+      "accessors": {
+        "balance": {
+          "returns": "class:signalwire.rest.namespaces.space_resources_generated.SpaceBalance"
+        },
+        "billing_profile": {
+          "returns": "class:signalwire.rest.namespaces.space_resources_generated.SpaceBillingProfile"
+        },
+        "billing_statements": {
+          "returns": "class:signalwire.rest.namespaces.space_resources_generated.SpaceBillingStatements"
+        },
+        "geographic_permissions": {
+          "returns": "class:signalwire.rest.namespaces.space_resources_generated.SpaceGeographicPermissions"
+        },
+        "low_balance_setting": {
+          "returns": "class:signalwire.rest.namespaces.space_resources_generated.SpaceLowBalanceSetting"
+        },
+        "members": {
+          "returns": "class:signalwire.rest.namespaces.space_resources_generated.SpaceMembers"
+        },
+        "payment_history": {
+          "returns": "class:signalwire.rest.namespaces.space_resources_generated.SpacePaymentHistory"
+        },
+        "payment_methods": {
+          "returns": "class:signalwire.rest.namespaces.space_resources_generated.SpacePaymentMethods"
+        },
+        "settings": {
+          "returns": "class:signalwire.rest.namespaces.space_resources_generated.SpaceSettings"
+        },
+        "usage": {
+          "returns": "class:signalwire.rest.namespaces.space_resources_generated.SpaceUsage"
+        }
+      },
+      "class": "SpaceNamespace",
+      "module": "signalwire.rest.namespaces._client_tree_generated"
+    },
     "VideoNamespace": {
       "accessors": {
         "conference_tokens": {
@@ -134,6 +179,21 @@
       },
       "class": "VideoNamespace",
       "module": "signalwire.rest.namespaces._client_tree_generated"
+    },
+    "WhatsappNamespace": {
+      "accessors": {
+        "businesses": {
+          "returns": "class:signalwire.rest.namespaces.message_resources_generated.WhatsappBusinesses"
+        },
+        "numbers": {
+          "returns": "class:signalwire.rest.namespaces.message_resources_generated.WhatsappNumbers"
+        },
+        "templates": {
+          "returns": "class:signalwire.rest.namespaces.message_resources_generated.WhatsappTemplates"
+        }
+      },
+      "class": "WhatsappNamespace",
+      "module": "signalwire.rest.namespaces._client_tree_generated"
     }
   },
   "note": "adapter sidecar for the generated REST layer \u2014 exploded param model (kinds) + surface drop-sets; consumed by enumerate_signatures.py / enumerate_surface.py",
@@ -153,7 +213,7 @@
             "kind": "keyword",
             "name": "country",
             "required": true,
-            "type": "string"
+            "type": "class:signalwire.rest.namespaces.relay-rest_types_generated.AddressCountryCode"
           },
           {
             "kind": "keyword",
@@ -208,6 +268,18 @@
             "name": "address_number",
             "required": false,
             "type": "string"
+          },
+          {
+            "kind": "keyword",
+            "name": "emergency_enabled",
+            "required": false,
+            "type": "bool"
+          },
+          {
+            "kind": "keyword",
+            "name": "auto_correct_address",
+            "required": false,
+            "type": "bool"
           },
           {
             "kind": "keyword",
@@ -275,6 +347,110 @@
             "required": false,
             "type": "any"
           }
+        ],
+        "update": [
+          {
+            "kind": "positional",
+            "name": "id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "kind": "keyword",
+            "name": "label",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "kind": "keyword",
+            "name": "country",
+            "required": false,
+            "type": "class:signalwire.rest.namespaces.relay-rest_types_generated.AddressCountryCode"
+          },
+          {
+            "kind": "keyword",
+            "name": "first_name",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "kind": "keyword",
+            "name": "last_name",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "kind": "keyword",
+            "name": "street_number",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "kind": "keyword",
+            "name": "street_name",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "kind": "keyword",
+            "name": "address_type",
+            "required": false,
+            "type": "class:signalwire.rest.namespaces.relay-rest_types_generated.AddressType"
+          },
+          {
+            "kind": "keyword",
+            "name": "address_number",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "kind": "keyword",
+            "name": "city",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "kind": "keyword",
+            "name": "state",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "kind": "keyword",
+            "name": "postal_code",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "kind": "keyword",
+            "name": "emergency_enabled",
+            "required": false,
+            "type": "bool"
+          },
+          {
+            "kind": "keyword",
+            "name": "auto_correct_address",
+            "required": false,
+            "type": "bool"
+          },
+          {
+            "kind": "keyword",
+            "name": "extras",
+            "required": false,
+            "type": "dict<string,any>"
+          },
+          {
+            "kind": "keyword",
+            "name": "request_options",
+            "required": false,
+            "type": "optional<class:signalwire.rest._request_options.RequestOptions>"
+          },
+          {
+            "kind": "var_keyword",
+            "name": "kwargs",
+            "required": false,
+            "type": "any"
+          }
         ]
       },
       "module": "signalwire.rest.namespaces.relay_rest_resources_generated",
@@ -285,6 +461,88 @@
     "AiAgents": {
       "base": "FabricResource",
       "class": "AiAgents",
+      "methods": {
+        "create": [
+          {
+            "kind": "positional",
+            "name": "data",
+            "required": true,
+            "type": "any"
+          },
+          {
+            "kind": "keyword",
+            "name": "request_options",
+            "required": false,
+            "type": "optional<class:signalwire.rest._request_options.RequestOptions>"
+          }
+        ],
+        "list_conversation_logs": [
+          {
+            "kind": "positional",
+            "name": "id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "kind": "keyword",
+            "name": "request_options",
+            "required": false,
+            "type": "optional<class:signalwire.rest._request_options.RequestOptions>"
+          },
+          {
+            "kind": "var_keyword",
+            "name": "params",
+            "required": false,
+            "type": "any"
+          }
+        ],
+        "list_voices": [
+          {
+            "kind": "keyword",
+            "name": "request_options",
+            "required": false,
+            "type": "optional<class:signalwire.rest._request_options.RequestOptions>"
+          },
+          {
+            "kind": "var_keyword",
+            "name": "params",
+            "required": false,
+            "type": "any"
+          }
+        ],
+        "update": [
+          {
+            "kind": "positional",
+            "name": "id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "kind": "positional",
+            "name": "data",
+            "required": true,
+            "type": "any"
+          },
+          {
+            "kind": "keyword",
+            "name": "request_options",
+            "required": false,
+            "type": "optional<class:signalwire.rest._request_options.RequestOptions>"
+          }
+        ]
+      },
+      "module": "signalwire.rest.namespaces.fabric_resources_generated",
+      "surface_drop": [
+        "base_path",
+        "delete",
+        "get",
+        "list",
+        "list_addresses"
+      ]
+    },
+    "AliasAddresses": {
+      "base": "CrudResource",
+      "class": "AliasAddresses",
       "methods": {
         "create": [
           {
@@ -326,8 +584,7 @@
         "base_path",
         "delete",
         "get",
-        "list",
-        "list_addresses"
+        "list"
       ]
     },
     "CallFlows": {
@@ -366,26 +623,6 @@
             "name": "request_options",
             "required": false,
             "type": "optional<class:signalwire.rest._request_options.RequestOptions>"
-          }
-        ],
-        "list_addresses": [
-          {
-            "kind": "positional",
-            "name": "id",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "kind": "keyword",
-            "name": "request_options",
-            "required": false,
-            "type": "optional<class:signalwire.rest._request_options.RequestOptions>"
-          },
-          {
-            "kind": "var_keyword",
-            "name": "params",
-            "required": false,
-            "type": "any"
           }
         ],
         "list_versions": [
@@ -450,15 +687,15 @@
           },
           {
             "kind": "keyword",
-            "name": "timeout",
-            "required": false,
-            "type": "int"
-          },
-          {
-            "kind": "keyword",
             "name": "prompt",
             "required": false,
             "type": "string"
+          },
+          {
+            "kind": "keyword",
+            "name": "timeout",
+            "required": false,
+            "type": "dict<string,any>"
           },
           {
             "kind": "keyword",
@@ -482,9 +719,9 @@
           },
           {
             "kind": "keyword",
-            "name": "role",
+            "name": "global_data",
             "required": false,
-            "type": "string"
+            "type": "dict<string,any>"
           },
           {
             "kind": "keyword",
@@ -496,13 +733,197 @@
             "kind": "keyword",
             "name": "reset",
             "required": false,
-            "type": "class:signalwire.rest.namespaces.calling_types_generated.CallAIMessageResetParams"
+            "type": "class:signalwire.rest.namespaces.calling_types_generated.RelayIsReset"
+          },
+          {
+            "kind": "keyword",
+            "name": "role",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "kind": "keyword",
+            "name": "extras",
+            "required": false,
+            "type": "dict<string,any>"
+          },
+          {
+            "kind": "keyword",
+            "name": "request_options",
+            "required": false,
+            "type": "optional<class:signalwire.rest._request_options.RequestOptions>"
+          }
+        ],
+        "ai_sidecar": [
+          {
+            "kind": "positional",
+            "name": "call_id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "kind": "keyword",
+            "name": "lang",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "kind": "keyword",
+            "name": "swaig",
+            "required": false,
+            "type": "dict<string,any>"
+          },
+          {
+            "kind": "keyword",
+            "name": "action",
+            "required": false,
+            "type": "dict<string,any>"
+          },
+          {
+            "kind": "keyword",
+            "name": "customer_role",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "kind": "keyword",
+            "name": "direction",
+            "required": false,
+            "type": "list<string>"
           },
           {
             "kind": "keyword",
             "name": "global_data",
             "required": false,
             "type": "dict<string,any>"
+          },
+          {
+            "kind": "keyword",
+            "name": "hints",
+            "required": false,
+            "type": "list<string>"
+          },
+          {
+            "kind": "keyword",
+            "name": "model",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "kind": "keyword",
+            "name": "params",
+            "required": false,
+            "type": "dict<string,any>"
+          },
+          {
+            "kind": "keyword",
+            "name": "permissions",
+            "required": false,
+            "type": "dict<string,any>"
+          },
+          {
+            "kind": "keyword",
+            "name": "prompt",
+            "required": false,
+            "type": "dict<string,any>"
+          },
+          {
+            "kind": "keyword",
+            "name": "url",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "kind": "keyword",
+            "name": "extras",
+            "required": false,
+            "type": "dict<string,any>"
+          },
+          {
+            "kind": "keyword",
+            "name": "request_options",
+            "required": false,
+            "type": "optional<class:signalwire.rest._request_options.RequestOptions>"
+          }
+        ],
+        "ai_sidecar_ask": [
+          {
+            "kind": "positional",
+            "name": "call_id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "kind": "keyword",
+            "name": "text",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "kind": "keyword",
+            "name": "extras",
+            "required": false,
+            "type": "dict<string,any>"
+          },
+          {
+            "kind": "keyword",
+            "name": "request_options",
+            "required": false,
+            "type": "optional<class:signalwire.rest._request_options.RequestOptions>"
+          }
+        ],
+        "ai_sidecar_poke": [
+          {
+            "kind": "positional",
+            "name": "call_id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "kind": "keyword",
+            "name": "text",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "kind": "keyword",
+            "name": "extras",
+            "required": false,
+            "type": "dict<string,any>"
+          },
+          {
+            "kind": "keyword",
+            "name": "request_options",
+            "required": false,
+            "type": "optional<class:signalwire.rest._request_options.RequestOptions>"
+          }
+        ],
+        "ai_sidecar_status": [
+          {
+            "kind": "positional",
+            "name": "call_id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "kind": "keyword",
+            "name": "extras",
+            "required": false,
+            "type": "dict<string,any>"
+          },
+          {
+            "kind": "keyword",
+            "name": "request_options",
+            "required": false,
+            "type": "optional<class:signalwire.rest._request_options.RequestOptions>"
+          }
+        ],
+        "ai_sidecar_stop": [
+          {
+            "kind": "positional",
+            "name": "call_id",
+            "required": true,
+            "type": "string"
           },
           {
             "kind": "keyword",
@@ -527,7 +948,7 @@
           {
             "kind": "keyword",
             "name": "control_id",
-            "required": true,
+            "required": false,
             "type": "string"
           },
           {
@@ -579,26 +1000,14 @@
           {
             "kind": "keyword",
             "name": "control_id",
-            "required": false,
+            "required": true,
             "type": "string"
           },
           {
             "kind": "keyword",
-            "name": "initial_timeout",
+            "name": "r#continue",
             "required": false,
-            "type": "float"
-          },
-          {
-            "kind": "keyword",
-            "name": "digits",
-            "required": false,
-            "type": "dict<string,any>"
-          },
-          {
-            "kind": "keyword",
-            "name": "speech",
-            "required": false,
-            "type": "dict<string,any>"
+            "type": "bool"
           },
           {
             "kind": "keyword",
@@ -608,9 +1017,45 @@
           },
           {
             "kind": "keyword",
+            "name": "digits",
+            "required": false,
+            "type": "class:signalwire.rest.namespaces.calling_types_generated.RelayCallCollectDigitsInner"
+          },
+          {
+            "kind": "keyword",
+            "name": "initial_timeout",
+            "required": false,
+            "type": "float"
+          },
+          {
+            "kind": "keyword",
             "name": "partial_results",
             "required": false,
             "type": "bool"
+          },
+          {
+            "kind": "keyword",
+            "name": "send_start_of_input",
+            "required": false,
+            "type": "bool"
+          },
+          {
+            "kind": "keyword",
+            "name": "speech",
+            "required": false,
+            "type": "class:signalwire.rest.namespaces.calling_types_generated.RelayCallCollectSpeechInner"
+          },
+          {
+            "kind": "keyword",
+            "name": "start_input_timers",
+            "required": false,
+            "type": "bool"
+          },
+          {
+            "kind": "keyword",
+            "name": "status_url",
+            "required": false,
+            "type": "string"
           },
           {
             "kind": "keyword",
@@ -726,13 +1171,19 @@
           },
           {
             "kind": "keyword",
-            "name": "detect",
+            "name": "control_id",
             "required": true,
-            "type": "dict<string,any>"
+            "type": "string"
           },
           {
             "kind": "keyword",
-            "name": "control_id",
+            "name": "detect",
+            "required": true,
+            "type": "class:signalwire.rest.namespaces.calling_types_generated.RelayCallDetectInner"
+          },
+          {
+            "kind": "keyword",
+            "name": "status_url",
             "required": false,
             "type": "string"
           },
@@ -791,7 +1242,7 @@
           {
             "kind": "keyword",
             "name": "to",
-            "required": true,
+            "required": false,
             "type": "string"
           },
           {
@@ -826,21 +1277,75 @@
           },
           {
             "kind": "keyword",
-            "name": "url",
-            "required": false,
-            "type": "string"
-          },
-          {
-            "kind": "keyword",
             "name": "codecs",
             "required": false,
             "type": "dict<string,any>"
           },
           {
             "kind": "keyword",
+            "name": "to_script",
+            "required": false,
+            "type": "dict<string,any>"
+          },
+          {
+            "kind": "keyword",
+            "name": "timeout",
+            "required": false,
+            "type": "int"
+          },
+          {
+            "kind": "keyword",
+            "name": "max_price_per_minute",
+            "required": false,
+            "type": "float"
+          },
+          {
+            "kind": "keyword",
+            "name": "send_digits",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "kind": "keyword",
+            "name": "region",
+            "required": false,
+            "type": "dict<string,any>"
+          },
+          {
+            "kind": "keyword",
+            "name": "username",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "kind": "keyword",
+            "name": "password",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "kind": "keyword",
+            "name": "headers",
+            "required": false,
+            "type": "list<dict<string,any>>"
+          },
+          {
+            "kind": "keyword",
+            "name": "custom_variables",
+            "required": false,
+            "type": "dict<string,any>"
+          },
+          {
+            "kind": "keyword",
+            "name": "url",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "kind": "keyword",
             "name": "swml",
             "required": false,
-            "type": "class:signalwire.rest.namespaces.calling_types_generated.SWMLObject"
+            "type": "dict<string,any>"
           },
           {
             "kind": "keyword",
@@ -886,7 +1391,7 @@
             "kind": "keyword",
             "name": "reason",
             "required": false,
-            "type": "class:signalwire.rest.namespaces.calling_types_generated.HangupReason"
+            "type": "string"
           },
           {
             "kind": "keyword",
@@ -913,6 +1418,12 @@
             "name": "action",
             "required": true,
             "type": "dict<string,any>"
+          },
+          {
+            "kind": "keyword",
+            "name": "hints",
+            "required": false,
+            "type": "list<dict<string,any>>"
           },
           {
             "kind": "keyword",
@@ -968,25 +1479,31 @@
           },
           {
             "kind": "keyword",
-            "name": "play",
+            "name": "control_id",
             "required": true,
-            "type": "list<dict<string,any>>"
+            "type": "string"
           },
           {
             "kind": "keyword",
-            "name": "control_id",
+            "name": "play",
+            "required": true,
+            "type": "list<class:signalwire.rest.namespaces.calling_types_generated.RelayCallPlayInner>"
+          },
+          {
+            "kind": "keyword",
+            "name": "direction",
             "required": false,
             "type": "string"
           },
           {
             "kind": "keyword",
-            "name": "volume",
+            "name": "gender",
             "required": false,
-            "type": "float"
+            "type": "string"
           },
           {
             "kind": "keyword",
-            "name": "direction",
+            "name": "language",
             "required": false,
             "type": "string"
           },
@@ -1001,6 +1518,18 @@
             "name": "status_url",
             "required": false,
             "type": "string"
+          },
+          {
+            "kind": "keyword",
+            "name": "voice",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "kind": "keyword",
+            "name": "volume",
+            "required": false,
+            "type": "float"
           },
           {
             "kind": "keyword",
@@ -1161,14 +1690,14 @@
           {
             "kind": "keyword",
             "name": "control_id",
-            "required": false,
+            "required": true,
             "type": "string"
           },
           {
             "kind": "keyword",
-            "name": "audio",
-            "required": false,
-            "type": "dict<string,any>"
+            "name": "record",
+            "required": true,
+            "type": "class:signalwire.rest.namespaces.calling_types_generated.RelayCallRecordInner"
           },
           {
             "kind": "keyword",
@@ -1200,6 +1729,12 @@
             "kind": "keyword",
             "name": "control_id",
             "required": true,
+            "type": "string"
+          },
+          {
+            "kind": "keyword",
+            "name": "behavior",
+            "required": false,
             "type": "string"
           },
           {
@@ -1278,7 +1813,7 @@
             "kind": "keyword",
             "name": "device",
             "required": true,
-            "type": "dict<string,any>"
+            "type": "class:signalwire.rest.namespaces.calling_types_generated.RelayCallReferDevice"
           },
           {
             "kind": "keyword",
@@ -1334,13 +1869,19 @@
           },
           {
             "kind": "keyword",
+            "name": "control_id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "kind": "keyword",
             "name": "url",
             "required": true,
             "type": "string"
           },
           {
             "kind": "keyword",
-            "name": "control_id",
+            "name": "authorization_bearer_token",
             "required": false,
             "type": "string"
           },
@@ -1352,21 +1893,33 @@
           },
           {
             "kind": "keyword",
-            "name": "track",
-            "required": false,
-            "type": "string"
-          },
-          {
-            "kind": "keyword",
-            "name": "authorization_bearer_token",
-            "required": false,
-            "type": "string"
-          },
-          {
-            "kind": "keyword",
             "name": "custom_parameters",
             "required": false,
             "type": "dict<string,any>"
+          },
+          {
+            "kind": "keyword",
+            "name": "name",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "kind": "keyword",
+            "name": "status_url",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "kind": "keyword",
+            "name": "status_url_method",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "kind": "keyword",
+            "name": "track",
+            "required": false,
+            "type": "string"
           },
           {
             "kind": "keyword",
@@ -1416,19 +1969,25 @@
           },
           {
             "kind": "keyword",
-            "name": "tap",
+            "name": "control_id",
             "required": true,
-            "type": "dict<string,any>"
+            "type": "string"
           },
           {
             "kind": "keyword",
             "name": "device",
             "required": true,
-            "type": "dict<string,any>"
+            "type": "class:signalwire.rest.namespaces.calling_types_generated.RelayCallTapDevice"
           },
           {
             "kind": "keyword",
-            "name": "control_id",
+            "name": "tap",
+            "required": true,
+            "type": "class:signalwire.rest.namespaces.calling_types_generated.RelayTap"
+          },
+          {
+            "kind": "keyword",
+            "name": "status_url",
             "required": false,
             "type": "string"
           },
@@ -1481,7 +2040,7 @@
           {
             "kind": "keyword",
             "name": "control_id",
-            "required": false,
+            "required": true,
             "type": "string"
           },
           {
@@ -1590,7 +2149,7 @@
             "kind": "keyword",
             "name": "swml",
             "required": false,
-            "type": "class:signalwire.rest.namespaces.calling_types_generated.SWMLObject"
+            "type": "dict<string,any>"
           },
           {
             "kind": "keyword",
@@ -1733,26 +2292,6 @@
             "type": "optional<class:signalwire.rest._request_options.RequestOptions>"
           }
         ],
-        "list_addresses": [
-          {
-            "kind": "positional",
-            "name": "id",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "kind": "keyword",
-            "name": "request_options",
-            "required": false,
-            "type": "optional<class:signalwire.rest._request_options.RequestOptions>"
-          },
-          {
-            "kind": "var_keyword",
-            "name": "params",
-            "required": false,
-            "type": "any"
-          }
-        ],
         "update": [
           {
             "kind": "positional",
@@ -1863,87 +2402,81 @@
           },
           {
             "kind": "keyword",
-            "name": "display_name",
+            "name": "name",
             "required": false,
             "type": "string"
           },
           {
             "kind": "keyword",
-            "name": "account_sid",
-            "required": false,
-            "type": "class:signalwire.rest.namespaces.fabric_types_generated.uuid"
-          },
-          {
-            "kind": "keyword",
-            "name": "voice_url",
+            "name": "call_request_url",
             "required": false,
             "type": "string"
           },
           {
             "kind": "keyword",
-            "name": "voice_method",
-            "required": false,
-            "type": "dict<string,any>"
-          },
-          {
-            "kind": "keyword",
-            "name": "voice_fallback_url",
+            "name": "call_request_method",
             "required": false,
             "type": "string"
           },
           {
             "kind": "keyword",
-            "name": "voice_fallback_method",
-            "required": false,
-            "type": "dict<string,any>"
-          },
-          {
-            "kind": "keyword",
-            "name": "status_callback",
+            "name": "call_fallback_url",
             "required": false,
             "type": "string"
           },
           {
             "kind": "keyword",
-            "name": "status_callback_method",
-            "required": false,
-            "type": "dict<string,any>"
-          },
-          {
-            "kind": "keyword",
-            "name": "sms_url",
+            "name": "call_fallback_method",
             "required": false,
             "type": "string"
           },
           {
             "kind": "keyword",
-            "name": "sms_method",
-            "required": false,
-            "type": "dict<string,any>"
-          },
-          {
-            "kind": "keyword",
-            "name": "sms_fallback_url",
+            "name": "call_status_url",
             "required": false,
             "type": "string"
           },
           {
             "kind": "keyword",
-            "name": "sms_fallback_method",
-            "required": false,
-            "type": "dict<string,any>"
-          },
-          {
-            "kind": "keyword",
-            "name": "sms_status_callback",
+            "name": "call_status_method",
             "required": false,
             "type": "string"
           },
           {
             "kind": "keyword",
-            "name": "sms_status_callback_method",
+            "name": "message_request_url",
             "required": false,
-            "type": "dict<string,any>"
+            "type": "string"
+          },
+          {
+            "kind": "keyword",
+            "name": "message_request_method",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "kind": "keyword",
+            "name": "message_fallback_url",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "kind": "keyword",
+            "name": "message_fallback_method",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "kind": "keyword",
+            "name": "message_status_url",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "kind": "keyword",
+            "name": "message_status_method",
+            "required": false,
+            "type": "string"
           },
           {
             "kind": "keyword",
@@ -2250,7 +2783,22 @@
     "FabricAddresses": {
       "base": "ReadResource",
       "class": "FabricAddresses",
-      "methods": {},
+      "methods": {
+        "delete": [
+          {
+            "kind": "positional",
+            "name": "id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "kind": "keyword",
+            "name": "request_options",
+            "required": false,
+            "type": "optional<class:signalwire.rest._request_options.RequestOptions>"
+          }
+        ]
+      },
       "module": "signalwire.rest.namespaces.fabric_resources_generated",
       "surface_drop": [
         "base_path",
@@ -2293,7 +2841,7 @@
           {
             "kind": "keyword",
             "name": "allowed_addresses",
-            "required": true,
+            "required": false,
             "type": "list<class:signalwire.rest.namespaces.fabric_types_generated.uuid>"
           },
           {
@@ -2304,35 +2852,63 @@
           },
           {
             "kind": "keyword",
-            "name": "extras",
+            "name": "ch",
             "required": false,
-            "type": "dict<string,any>"
+            "type": "string"
           },
           {
             "kind": "keyword",
-            "name": "request_options",
+            "name": "region",
             "required": false,
-            "type": "optional<class:signalwire.rest._request_options.RequestOptions>"
-          },
-          {
-            "kind": "var_keyword",
-            "name": "kwargs",
-            "required": false,
-            "type": "any"
-          }
-        ],
-        "create_invite_token": [
-          {
-            "kind": "keyword",
-            "name": "address_id",
-            "required": true,
-            "type": "class:signalwire.rest.namespaces.fabric_types_generated.uuid"
+            "type": "string"
           },
           {
             "kind": "keyword",
-            "name": "expires_at",
+            "name": "email",
             "required": false,
-            "type": "int"
+            "type": "string"
+          },
+          {
+            "kind": "keyword",
+            "name": "first_name",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "kind": "keyword",
+            "name": "last_name",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "kind": "keyword",
+            "name": "display_name",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "kind": "keyword",
+            "name": "job_title",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "kind": "keyword",
+            "name": "time_zone",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "kind": "keyword",
+            "name": "country",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "kind": "keyword",
+            "name": "company_name",
+            "required": false,
+            "type": "string"
           },
           {
             "kind": "keyword",
@@ -2358,6 +2934,12 @@
             "kind": "keyword",
             "name": "reference",
             "required": true,
+            "type": "string"
+          },
+          {
+            "kind": "keyword",
+            "name": "ch",
+            "required": false,
             "type": "string"
           },
           {
@@ -2423,6 +3005,18 @@
           {
             "kind": "keyword",
             "name": "company_name",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "kind": "keyword",
+            "name": "scope",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "kind": "keyword",
+            "name": "fingerprint",
             "required": false,
             "type": "string"
           },
@@ -2583,6 +3177,76 @@
           {
             "kind": "keyword",
             "name": "phone_route_id",
+            "required": true,
+            "type": "class:signalwire.rest.namespaces.fabric_types_generated.uuid"
+          },
+          {
+            "kind": "keyword",
+            "name": "handler",
+            "required": true,
+            "type": "class:signalwire.rest.namespaces.fabric_types_generated.UsedForType"
+          },
+          {
+            "kind": "keyword",
+            "name": "extras",
+            "required": false,
+            "type": "dict<string,any>"
+          },
+          {
+            "kind": "keyword",
+            "name": "request_options",
+            "required": false,
+            "type": "optional<class:signalwire.rest._request_options.RequestOptions>"
+          },
+          {
+            "kind": "var_keyword",
+            "name": "kwargs",
+            "required": false,
+            "type": "any"
+          }
+        ],
+        "assign_sip_endpoint": [
+          {
+            "kind": "positional",
+            "name": "id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "kind": "keyword",
+            "name": "sip_endpoint_id",
+            "required": true,
+            "type": "class:signalwire.rest.namespaces.fabric_types_generated.uuid"
+          },
+          {
+            "kind": "keyword",
+            "name": "extras",
+            "required": false,
+            "type": "dict<string,any>"
+          },
+          {
+            "kind": "keyword",
+            "name": "request_options",
+            "required": false,
+            "type": "optional<class:signalwire.rest._request_options.RequestOptions>"
+          },
+          {
+            "kind": "var_keyword",
+            "name": "kwargs",
+            "required": false,
+            "type": "any"
+          }
+        ],
+        "assign_whatsapp_number": [
+          {
+            "kind": "positional",
+            "name": "id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "kind": "keyword",
+            "name": "whatsapp_number_id",
             "required": true,
             "type": "class:signalwire.rest.namespaces.fabric_types_generated.uuid"
           },
@@ -2824,6 +3488,36 @@
           },
           {
             "kind": "keyword",
+            "name": "message_type",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "kind": "keyword",
+            "name": "template_id",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "kind": "keyword",
+            "name": "header_template_parameters",
+            "required": false,
+            "type": "dict<string,any>"
+          },
+          {
+            "kind": "keyword",
+            "name": "body_template_parameters",
+            "required": false,
+            "type": "dict<string,any>"
+          },
+          {
+            "kind": "keyword",
+            "name": "button_template_parameters",
+            "required": false,
+            "type": "list<string>"
+          },
+          {
+            "kind": "keyword",
             "name": "extras",
             "required": false,
             "type": "dict<string,any>"
@@ -2851,7 +3545,7 @@
           {
             "kind": "keyword",
             "name": "body",
-            "required": true,
+            "required": false,
             "type": "string"
           },
           {
@@ -3178,9 +3872,9 @@
         "list"
       ]
     },
-    "PhoneNumbers": {
+    "PhoneNumberAddresses": {
       "base": "CrudResource",
-      "class": "PhoneNumbers",
+      "class": "PhoneNumberAddresses",
       "methods": {
         "create": [
           {
@@ -3194,6 +3888,165 @@
             "name": "request_options",
             "required": false,
             "type": "optional<class:signalwire.rest._request_options.RequestOptions>"
+          }
+        ],
+        "update": [
+          {
+            "kind": "positional",
+            "name": "id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "kind": "positional",
+            "name": "data",
+            "required": true,
+            "type": "any"
+          },
+          {
+            "kind": "keyword",
+            "name": "request_options",
+            "required": false,
+            "type": "optional<class:signalwire.rest._request_options.RequestOptions>"
+          }
+        ]
+      },
+      "module": "signalwire.rest.namespaces.fabric_resources_generated",
+      "surface_drop": [
+        "base_path",
+        "delete",
+        "get",
+        "list"
+      ]
+    },
+    "PhoneNumbers": {
+      "base": "CrudResource",
+      "class": "PhoneNumbers",
+      "methods": {
+        "assign_e911_address": [
+          {
+            "kind": "positional",
+            "name": "id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "kind": "keyword",
+            "name": "e911_address_id",
+            "required": true,
+            "type": "class:signalwire.rest.namespaces.relay-rest_types_generated.uuid"
+          },
+          {
+            "kind": "keyword",
+            "name": "extras",
+            "required": false,
+            "type": "dict<string,any>"
+          },
+          {
+            "kind": "keyword",
+            "name": "request_options",
+            "required": false,
+            "type": "optional<class:signalwire.rest._request_options.RequestOptions>"
+          },
+          {
+            "kind": "var_keyword",
+            "name": "kwargs",
+            "required": false,
+            "type": "any"
+          }
+        ],
+        "clear_cnam": [
+          {
+            "kind": "positional",
+            "name": "id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "kind": "keyword",
+            "name": "request_options",
+            "required": false,
+            "type": "optional<class:signalwire.rest._request_options.RequestOptions>"
+          }
+        ],
+        "create": [
+          {
+            "kind": "positional",
+            "name": "data",
+            "required": true,
+            "type": "any"
+          },
+          {
+            "kind": "keyword",
+            "name": "request_options",
+            "required": false,
+            "type": "optional<class:signalwire.rest._request_options.RequestOptions>"
+          }
+        ],
+        "get_cnam": [
+          {
+            "kind": "positional",
+            "name": "id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "kind": "keyword",
+            "name": "request_options",
+            "required": false,
+            "type": "optional<class:signalwire.rest._request_options.RequestOptions>"
+          },
+          {
+            "kind": "var_keyword",
+            "name": "params",
+            "required": false,
+            "type": "any"
+          }
+        ],
+        "remove_e911_address": [
+          {
+            "kind": "positional",
+            "name": "id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "kind": "keyword",
+            "name": "request_options",
+            "required": false,
+            "type": "optional<class:signalwire.rest._request_options.RequestOptions>"
+          }
+        ],
+        "request_cnam": [
+          {
+            "kind": "positional",
+            "name": "id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "kind": "keyword",
+            "name": "name",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "kind": "keyword",
+            "name": "extras",
+            "required": false,
+            "type": "dict<string,any>"
+          },
+          {
+            "kind": "keyword",
+            "name": "request_options",
+            "required": false,
+            "type": "optional<class:signalwire.rest._request_options.RequestOptions>"
+          },
+          {
+            "kind": "var_keyword",
+            "name": "kwargs",
+            "required": false,
+            "type": "any"
           }
         ],
         "search": [
@@ -3465,6 +4318,12 @@
           {
             "kind": "keyword",
             "name": "subproject_id",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "kind": "keyword",
+            "name": "project_id",
             "required": false,
             "type": "string"
           },
@@ -3791,6 +4650,26 @@
             "type": "optional<class:signalwire.rest._request_options.RequestOptions>"
           }
         ],
+        "download": [
+          {
+            "kind": "positional",
+            "name": "id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "kind": "keyword",
+            "name": "request_options",
+            "required": false,
+            "type": "optional<class:signalwire.rest._request_options.RequestOptions>"
+          },
+          {
+            "kind": "var_keyword",
+            "name": "params",
+            "required": false,
+            "type": "any"
+          }
+        ],
         "get": [
           {
             "kind": "positional",
@@ -3922,6 +4801,110 @@
             "required": false,
             "type": "any"
           }
+        ],
+        "update": [
+          {
+            "kind": "positional",
+            "name": "id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "kind": "keyword",
+            "name": "name",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "kind": "keyword",
+            "name": "company_name",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "kind": "keyword",
+            "name": "contact_email",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "kind": "keyword",
+            "name": "contact_phone",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "kind": "keyword",
+            "name": "ein_issuing_country",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "kind": "keyword",
+            "name": "legal_entity_type",
+            "required": false,
+            "type": "class:signalwire.rest.namespaces.relay-rest_types_generated.LegalEntityType"
+          },
+          {
+            "kind": "keyword",
+            "name": "ein",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "kind": "keyword",
+            "name": "company_vertical",
+            "required": false,
+            "type": "class:signalwire.rest.namespaces.relay-rest_types_generated.CompanyVertical"
+          },
+          {
+            "kind": "keyword",
+            "name": "company_website",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "kind": "keyword",
+            "name": "company_address",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "kind": "keyword",
+            "name": "csp_brand_reference",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "kind": "keyword",
+            "name": "status_callback_url",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "kind": "keyword",
+            "name": "signalwire_contact_emails",
+            "required": false,
+            "type": "dict<string,any>"
+          },
+          {
+            "kind": "keyword",
+            "name": "extras",
+            "required": false,
+            "type": "dict<string,any>"
+          },
+          {
+            "kind": "keyword",
+            "name": "request_options",
+            "required": false,
+            "type": "optional<class:signalwire.rest._request_options.RequestOptions>"
+          },
+          {
+            "kind": "var_keyword",
+            "name": "kwargs",
+            "required": false,
+            "type": "any"
+          }
         ]
       },
       "module": "signalwire.rest.namespaces.relay_rest_resources_generated",
@@ -3943,7 +4926,7 @@
           {
             "kind": "keyword",
             "name": "phone_numbers",
-            "required": false,
+            "required": true,
             "type": "list<string>"
           },
           {
@@ -4043,6 +5026,18 @@
             "name": "name",
             "required": false,
             "type": "string"
+          },
+          {
+            "kind": "keyword",
+            "name": "status_callback_url",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "kind": "keyword",
+            "name": "signalwire_contact_emails",
+            "required": false,
+            "type": "dict<string,any>"
           },
           {
             "kind": "keyword",
@@ -4219,13 +5214,13 @@
           {
             "kind": "keyword",
             "name": "name",
-            "required": true,
+            "required": false,
             "type": "string"
           },
           {
             "kind": "keyword",
             "name": "message_handler",
-            "required": true,
+            "required": false,
             "type": "class:signalwire.rest.namespaces.relay-rest_types_generated.ShortCodeMessageHandler"
           },
           {
@@ -4287,6 +5282,53 @@
       "module": "signalwire.rest.namespaces.relay_rest_resources_generated",
       "surface_drop": [
         "base_path"
+      ]
+    },
+    "SipAddresses": {
+      "base": "CrudResource",
+      "class": "SipAddresses",
+      "methods": {
+        "create": [
+          {
+            "kind": "positional",
+            "name": "data",
+            "required": true,
+            "type": "any"
+          },
+          {
+            "kind": "keyword",
+            "name": "request_options",
+            "required": false,
+            "type": "optional<class:signalwire.rest._request_options.RequestOptions>"
+          }
+        ],
+        "update": [
+          {
+            "kind": "positional",
+            "name": "id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "kind": "positional",
+            "name": "data",
+            "required": true,
+            "type": "any"
+          },
+          {
+            "kind": "keyword",
+            "name": "request_options",
+            "required": false,
+            "type": "optional<class:signalwire.rest._request_options.RequestOptions>"
+          }
+        ]
+      },
+      "module": "signalwire.rest.namespaces.fabric_resources_generated",
+      "surface_drop": [
+        "base_path",
+        "delete",
+        "get",
+        "list"
       ]
     },
     "SipEndpoints": {
@@ -4436,6 +5478,12 @@
           },
           {
             "kind": "keyword",
+            "name": "default_outbound_policy",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "kind": "keyword",
             "name": "extras",
             "required": false,
             "type": "dict<string,any>"
@@ -4455,6 +5503,635 @@
         ]
       },
       "module": "signalwire.rest.namespaces.relay_rest_resources_generated",
+      "surface_drop": [
+        "base_path"
+      ]
+    },
+    "SpaceBalance": {
+      "base": "BaseResource",
+      "class": "SpaceBalance",
+      "methods": {
+        "create_top_up": [
+          {
+            "kind": "keyword",
+            "name": "idempotency_key",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "kind": "keyword",
+            "name": "amount_in_microdollars",
+            "required": true,
+            "type": "int"
+          },
+          {
+            "kind": "keyword",
+            "name": "payment_method_id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "kind": "keyword",
+            "name": "extras",
+            "required": false,
+            "type": "dict<string,any>"
+          },
+          {
+            "kind": "keyword",
+            "name": "request_options",
+            "required": false,
+            "type": "optional<class:signalwire.rest._request_options.RequestOptions>"
+          },
+          {
+            "kind": "var_keyword",
+            "name": "kwargs",
+            "required": false,
+            "type": "any"
+          }
+        ],
+        "get": [
+          {
+            "kind": "keyword",
+            "name": "request_options",
+            "required": false,
+            "type": "optional<class:signalwire.rest._request_options.RequestOptions>"
+          },
+          {
+            "kind": "var_keyword",
+            "name": "params",
+            "required": false,
+            "type": "any"
+          }
+        ]
+      },
+      "module": "signalwire.rest.namespaces.space_resources_generated",
+      "surface_drop": [
+        "base_path"
+      ]
+    },
+    "SpaceBillingProfile": {
+      "base": "BaseResource",
+      "class": "SpaceBillingProfile",
+      "methods": {
+        "get": [
+          {
+            "kind": "keyword",
+            "name": "request_options",
+            "required": false,
+            "type": "optional<class:signalwire.rest._request_options.RequestOptions>"
+          },
+          {
+            "kind": "var_keyword",
+            "name": "params",
+            "required": false,
+            "type": "any"
+          }
+        ],
+        "update": [
+          {
+            "kind": "keyword",
+            "name": "address_line1",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "kind": "keyword",
+            "name": "address_city",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "kind": "keyword",
+            "name": "address_state",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "kind": "keyword",
+            "name": "address_zip",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "kind": "keyword",
+            "name": "address_country",
+            "required": true,
+            "type": "class:signalwire.rest.namespaces.space_types_generated.AddressCountryCode"
+          },
+          {
+            "kind": "keyword",
+            "name": "company_name",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "kind": "keyword",
+            "name": "contact_name",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "kind": "keyword",
+            "name": "contact_email",
+            "required": true,
+            "type": "list<string>"
+          },
+          {
+            "kind": "keyword",
+            "name": "contact_phone",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "kind": "keyword",
+            "name": "address_line2",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "kind": "keyword",
+            "name": "tax_id_number",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "kind": "keyword",
+            "name": "monthly_invoices",
+            "required": false,
+            "type": "bool"
+          },
+          {
+            "kind": "keyword",
+            "name": "extras",
+            "required": false,
+            "type": "dict<string,any>"
+          },
+          {
+            "kind": "keyword",
+            "name": "request_options",
+            "required": false,
+            "type": "optional<class:signalwire.rest._request_options.RequestOptions>"
+          },
+          {
+            "kind": "var_keyword",
+            "name": "kwargs",
+            "required": false,
+            "type": "any"
+          }
+        ]
+      },
+      "module": "signalwire.rest.namespaces.space_resources_generated",
+      "surface_drop": [
+        "base_path"
+      ]
+    },
+    "SpaceBillingStatements": {
+      "base": "BaseResource",
+      "class": "SpaceBillingStatements",
+      "methods": {
+        "get": [
+          {
+            "kind": "keyword",
+            "name": "request_options",
+            "required": false,
+            "type": "optional<class:signalwire.rest._request_options.RequestOptions>"
+          },
+          {
+            "kind": "var_keyword",
+            "name": "params",
+            "required": false,
+            "type": "any"
+          }
+        ],
+        "get_csv": [
+          {
+            "kind": "keyword",
+            "name": "request_options",
+            "required": false,
+            "type": "optional<class:signalwire.rest._request_options.RequestOptions>"
+          },
+          {
+            "kind": "var_keyword",
+            "name": "params",
+            "required": false,
+            "type": "any"
+          }
+        ],
+        "get_pdf": [
+          {
+            "kind": "keyword",
+            "name": "request_options",
+            "required": false,
+            "type": "optional<class:signalwire.rest._request_options.RequestOptions>"
+          },
+          {
+            "kind": "var_keyword",
+            "name": "params",
+            "required": false,
+            "type": "any"
+          }
+        ],
+        "list": [
+          {
+            "kind": "keyword",
+            "name": "request_options",
+            "required": false,
+            "type": "optional<class:signalwire.rest._request_options.RequestOptions>"
+          },
+          {
+            "kind": "var_keyword",
+            "name": "params",
+            "required": false,
+            "type": "any"
+          }
+        ]
+      },
+      "module": "signalwire.rest.namespaces.space_resources_generated",
+      "surface_drop": [
+        "base_path"
+      ]
+    },
+    "SpaceGeographicPermissions": {
+      "base": "BaseResource",
+      "class": "SpaceGeographicPermissions",
+      "methods": {
+        "get": [
+          {
+            "kind": "keyword",
+            "name": "request_options",
+            "required": false,
+            "type": "optional<class:signalwire.rest._request_options.RequestOptions>"
+          },
+          {
+            "kind": "var_keyword",
+            "name": "params",
+            "required": false,
+            "type": "any"
+          }
+        ],
+        "update": [
+          {
+            "kind": "keyword",
+            "name": "countries",
+            "required": true,
+            "type": "list<string>"
+          },
+          {
+            "kind": "keyword",
+            "name": "extras",
+            "required": false,
+            "type": "dict<string,any>"
+          },
+          {
+            "kind": "keyword",
+            "name": "request_options",
+            "required": false,
+            "type": "optional<class:signalwire.rest._request_options.RequestOptions>"
+          },
+          {
+            "kind": "var_keyword",
+            "name": "kwargs",
+            "required": false,
+            "type": "any"
+          }
+        ]
+      },
+      "module": "signalwire.rest.namespaces.space_resources_generated",
+      "surface_drop": [
+        "base_path"
+      ]
+    },
+    "SpaceLowBalanceSetting": {
+      "base": "BaseResource",
+      "class": "SpaceLowBalanceSetting",
+      "methods": {
+        "get": [
+          {
+            "kind": "keyword",
+            "name": "request_options",
+            "required": false,
+            "type": "optional<class:signalwire.rest._request_options.RequestOptions>"
+          },
+          {
+            "kind": "var_keyword",
+            "name": "params",
+            "required": false,
+            "type": "any"
+          }
+        ],
+        "update": [
+          {
+            "kind": "keyword",
+            "name": "threshold_in_microdollars",
+            "required": false,
+            "type": "int"
+          },
+          {
+            "kind": "keyword",
+            "name": "send_email",
+            "required": false,
+            "type": "bool"
+          },
+          {
+            "kind": "keyword",
+            "name": "send_webhook",
+            "required": false,
+            "type": "bool"
+          },
+          {
+            "kind": "keyword",
+            "name": "webhook_url",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "kind": "keyword",
+            "name": "webhook_method",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "kind": "keyword",
+            "name": "send_topup",
+            "required": false,
+            "type": "bool"
+          },
+          {
+            "kind": "keyword",
+            "name": "topup_amount_in_microdollars",
+            "required": false,
+            "type": "int"
+          },
+          {
+            "kind": "keyword",
+            "name": "topup_payment_method_id",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "kind": "keyword",
+            "name": "extras",
+            "required": false,
+            "type": "dict<string,any>"
+          },
+          {
+            "kind": "keyword",
+            "name": "request_options",
+            "required": false,
+            "type": "optional<class:signalwire.rest._request_options.RequestOptions>"
+          },
+          {
+            "kind": "var_keyword",
+            "name": "kwargs",
+            "required": false,
+            "type": "any"
+          }
+        ]
+      },
+      "module": "signalwire.rest.namespaces.space_resources_generated",
+      "surface_drop": [
+        "base_path"
+      ]
+    },
+    "SpaceMembers": {
+      "base": "CrudResource",
+      "class": "SpaceMembers",
+      "methods": {
+        "create": [
+          {
+            "kind": "positional",
+            "name": "data",
+            "required": true,
+            "type": "any"
+          },
+          {
+            "kind": "keyword",
+            "name": "request_options",
+            "required": false,
+            "type": "optional<class:signalwire.rest._request_options.RequestOptions>"
+          }
+        ],
+        "disable_project": [
+          {
+            "kind": "positional",
+            "name": "member_id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "kind": "positional",
+            "name": "project_id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "kind": "keyword",
+            "name": "request_options",
+            "required": false,
+            "type": "optional<class:signalwire.rest._request_options.RequestOptions>"
+          }
+        ],
+        "enable_project": [
+          {
+            "kind": "positional",
+            "name": "member_id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "kind": "positional",
+            "name": "project_id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "kind": "keyword",
+            "name": "request_options",
+            "required": false,
+            "type": "optional<class:signalwire.rest._request_options.RequestOptions>"
+          }
+        ],
+        "list_projects": [
+          {
+            "kind": "positional",
+            "name": "member_id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "kind": "keyword",
+            "name": "request_options",
+            "required": false,
+            "type": "optional<class:signalwire.rest._request_options.RequestOptions>"
+          },
+          {
+            "kind": "var_keyword",
+            "name": "params",
+            "required": false,
+            "type": "any"
+          }
+        ],
+        "update": [
+          {
+            "kind": "positional",
+            "name": "id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "kind": "positional",
+            "name": "data",
+            "required": true,
+            "type": "any"
+          },
+          {
+            "kind": "keyword",
+            "name": "request_options",
+            "required": false,
+            "type": "optional<class:signalwire.rest._request_options.RequestOptions>"
+          }
+        ]
+      },
+      "module": "signalwire.rest.namespaces.space_resources_generated",
+      "surface_drop": [
+        "base_path",
+        "delete",
+        "get",
+        "list"
+      ]
+    },
+    "SpacePaymentHistory": {
+      "base": "BaseResource",
+      "class": "SpacePaymentHistory",
+      "methods": {
+        "list": [
+          {
+            "kind": "keyword",
+            "name": "request_options",
+            "required": false,
+            "type": "optional<class:signalwire.rest._request_options.RequestOptions>"
+          },
+          {
+            "kind": "var_keyword",
+            "name": "params",
+            "required": false,
+            "type": "any"
+          }
+        ]
+      },
+      "module": "signalwire.rest.namespaces.space_resources_generated",
+      "surface_drop": [
+        "base_path"
+      ]
+    },
+    "SpacePaymentMethods": {
+      "base": "BaseResource",
+      "class": "SpacePaymentMethods",
+      "methods": {
+        "delete": [
+          {
+            "kind": "positional",
+            "name": "id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "kind": "keyword",
+            "name": "request_options",
+            "required": false,
+            "type": "optional<class:signalwire.rest._request_options.RequestOptions>"
+          }
+        ],
+        "list": [
+          {
+            "kind": "keyword",
+            "name": "request_options",
+            "required": false,
+            "type": "optional<class:signalwire.rest._request_options.RequestOptions>"
+          },
+          {
+            "kind": "var_keyword",
+            "name": "params",
+            "required": false,
+            "type": "any"
+          }
+        ]
+      },
+      "module": "signalwire.rest.namespaces.space_resources_generated",
+      "surface_drop": [
+        "base_path"
+      ]
+    },
+    "SpaceSettings": {
+      "base": "BaseResource",
+      "class": "SpaceSettings",
+      "methods": {
+        "get": [
+          {
+            "kind": "keyword",
+            "name": "request_options",
+            "required": false,
+            "type": "optional<class:signalwire.rest._request_options.RequestOptions>"
+          },
+          {
+            "kind": "var_keyword",
+            "name": "params",
+            "required": false,
+            "type": "any"
+          }
+        ],
+        "update": [
+          {
+            "kind": "keyword",
+            "name": "name",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "kind": "keyword",
+            "name": "extras",
+            "required": false,
+            "type": "dict<string,any>"
+          },
+          {
+            "kind": "keyword",
+            "name": "request_options",
+            "required": false,
+            "type": "optional<class:signalwire.rest._request_options.RequestOptions>"
+          },
+          {
+            "kind": "var_keyword",
+            "name": "kwargs",
+            "required": false,
+            "type": "any"
+          }
+        ]
+      },
+      "module": "signalwire.rest.namespaces.space_resources_generated",
+      "surface_drop": [
+        "base_path"
+      ]
+    },
+    "SpaceUsage": {
+      "base": "BaseResource",
+      "class": "SpaceUsage",
+      "methods": {
+        "get": [
+          {
+            "kind": "keyword",
+            "name": "request_options",
+            "required": false,
+            "type": "optional<class:signalwire.rest._request_options.RequestOptions>"
+          },
+          {
+            "kind": "var_keyword",
+            "name": "params",
+            "required": false,
+            "type": "any"
+          }
+        ]
+      },
+      "module": "signalwire.rest.namespaces.space_resources_generated",
       "surface_drop": [
         "base_path"
       ]
@@ -5085,6 +6762,26 @@
             "type": "optional<class:signalwire.rest._request_options.RequestOptions>"
           }
         ],
+        "download": [
+          {
+            "kind": "positional",
+            "name": "id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "kind": "keyword",
+            "name": "request_options",
+            "required": false,
+            "type": "optional<class:signalwire.rest._request_options.RequestOptions>"
+          },
+          {
+            "kind": "var_keyword",
+            "name": "params",
+            "required": false,
+            "type": "any"
+          }
+        ],
         "get": [
           {
             "kind": "positional",
@@ -5503,7 +7200,7 @@
           {
             "kind": "keyword",
             "name": "url",
-            "required": true,
+            "required": false,
             "type": "string"
           },
           {
@@ -5562,6 +7259,89 @@
         "get",
         "list",
         "paginate"
+      ]
+    },
+    "WhatsappBusinesses": {
+      "base": "BaseResource",
+      "class": "WhatsappBusinesses",
+      "methods": {
+        "list": [
+          {
+            "kind": "keyword",
+            "name": "request_options",
+            "required": false,
+            "type": "optional<class:signalwire.rest._request_options.RequestOptions>"
+          },
+          {
+            "kind": "var_keyword",
+            "name": "params",
+            "required": false,
+            "type": "any"
+          }
+        ]
+      },
+      "module": "signalwire.rest.namespaces.message_resources_generated",
+      "surface_drop": [
+        "base_path"
+      ]
+    },
+    "WhatsappNumbers": {
+      "base": "ReadResource",
+      "class": "WhatsappNumbers",
+      "methods": {},
+      "module": "signalwire.rest.namespaces.message_resources_generated",
+      "surface_drop": [
+        "base_path",
+        "get",
+        "list",
+        "paginate"
+      ]
+    },
+    "WhatsappTemplates": {
+      "base": "CrudResource",
+      "class": "WhatsappTemplates",
+      "methods": {
+        "create": [
+          {
+            "kind": "positional",
+            "name": "data",
+            "required": true,
+            "type": "any"
+          },
+          {
+            "kind": "keyword",
+            "name": "request_options",
+            "required": false,
+            "type": "optional<class:signalwire.rest._request_options.RequestOptions>"
+          }
+        ],
+        "update": [
+          {
+            "kind": "positional",
+            "name": "id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "kind": "positional",
+            "name": "data",
+            "required": true,
+            "type": "any"
+          },
+          {
+            "kind": "keyword",
+            "name": "request_options",
+            "required": false,
+            "type": "optional<class:signalwire.rest._request_options.RequestOptions>"
+          }
+        ]
+      },
+      "module": "signalwire.rest.namespaces.message_resources_generated",
+      "surface_drop": [
+        "base_path",
+        "delete",
+        "get",
+        "list"
       ]
     }
   },

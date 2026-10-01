@@ -73,7 +73,8 @@ fn test_calling_dial_forwards_codecs_array() {
     let body = c
         .calling()
         .dial(
-            calling_gen::CallingDialRequest::new("", "+15551234567")
+            calling_gen::CallingDialRequest::new("")
+                .to("+15551234567")
                 .url("https://example.com/swml")
                 .codecs(json!(["OPUS", "G729", "VP8", "PCMA"])),
             None,
@@ -116,7 +117,8 @@ fn test_calling_dial_forwards_codecs_string() {
     let body = c
         .calling()
         .dial(
-            calling_gen::CallingDialRequest::new("", "+15551234567")
+            calling_gen::CallingDialRequest::new("")
+                .to("+15551234567")
                 .url("https://example.com/swml")
                 .codecs(json!("OPUS,G729,VP8,PCMA")),
             None,
@@ -343,7 +345,7 @@ fn test_calling_record() {
         .calling()
         .record(
             "call-1",
-            calling_gen::CallingRecordRequest::new().extra("record", json!({"format": "mp3"})),
+            calling_gen::CallingRecordRequest::new("rec-1", json!({"format": "mp3"})),
             None,
         )
         .expect("record");
@@ -443,7 +445,7 @@ fn test_calling_collect() {
             // The recorded wire value for initial_timeout is the integer 5; the
             // generated setter is f64, so pass it through `.extra` to keep the
             // JSON number an integer (matching the `as_i64` assertion below).
-            calling_gen::CallingCollectRequest::new()
+            calling_gen::CallingCollectRequest::new("collect-1")
                 .extra("initial_timeout", json!(5))
                 .digits(json!({"max": 4})),
             None,
@@ -539,7 +541,10 @@ fn test_calling_detect() {
         .calling()
         .detect(
             "call-1",
-            calling_gen::CallingDetectRequest::new(json!({"type": "machine", "params": {}})),
+            calling_gen::CallingDetectRequest::new(
+                "detect-1",
+                json!({"type": "machine", "params": {}}),
+            ),
             None,
         )
         .expect("detect");
@@ -602,7 +607,11 @@ fn test_calling_tap() {
         .calling()
         .tap(
             "call-1",
-            calling_gen::CallingTapRequest::new(json!({"type": "audio"}), json!({"type": "rtp"})),
+            calling_gen::CallingTapRequest::new(
+                "tap-1",
+                json!({"type": "rtp"}),
+                json!({"type": "audio"}),
+            ),
             None,
         )
         .expect("tap");
@@ -665,7 +674,7 @@ fn test_calling_stream() {
         .calling()
         .stream(
             "call-1",
-            calling_gen::CallingStreamRequest::new("wss://example.com/audio"),
+            calling_gen::CallingStreamRequest::new("stream-1", "wss://example.com/audio"),
             None,
         )
         .expect("stream");
@@ -788,7 +797,7 @@ fn test_calling_transcribe() {
         .calling()
         .transcribe(
             "call-1",
-            calling_gen::CallingTranscribeRequest::new()
+            calling_gen::CallingTranscribeRequest::new("transcribe-1")
                 .extra("language", json!("en-US"))
                 .extra("transcribe", json!({"engine": "google"})),
             None,
@@ -894,7 +903,7 @@ fn test_calling_ai_stop() {
     // test sent an empty body and asserts only command + id, so pass "".
     let body = c
         .calling()
-        .ai_stop("call-1", calling_gen::CallingAiStopRequest::new(""), None)
+        .ai_stop("call-1", calling_gen::CallingAiStopRequest::new(), None)
         .expect("ai_stop");
     assert!(body.is_object());
     assert!(body.as_object().unwrap().contains_key("id"));

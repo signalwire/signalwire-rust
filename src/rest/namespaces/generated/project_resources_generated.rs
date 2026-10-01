@@ -19,6 +19,7 @@ pub struct ProjectTokensCreateRequest {
     name: String,
     permissions: serde_json::Value,
     subproject_id: Option<String>,
+    project_id: Option<String>,
     extras: Map<String, Value>,
 }
 
@@ -37,6 +38,12 @@ impl ProjectTokensCreateRequest {
         self.subproject_id = Some(value.into());
         self
     }
+    /// Set the optional `project_id` field.
+    #[must_use]
+    pub fn project_id(mut self, value: impl Into<String>) -> Self {
+        self.project_id = Some(value.into());
+        self
+    }
     /// Add a forward-compat field the spec does not yet name.
     #[must_use]
     pub fn extra(mut self, key: impl Into<String>, value: impl Into<Value>) -> Self {
@@ -51,6 +58,9 @@ impl ProjectTokensCreateRequest {
         obj.insert("permissions".to_string(), self.permissions);
         if let Some(v) = self.subproject_id {
             obj.insert("subproject_id".to_string(), Value::from(v));
+        }
+        if let Some(v) = self.project_id {
+            obj.insert("project_id".to_string(), Value::from(v));
         }
         for (k, v) in self.extras {
             obj.insert(k, v);

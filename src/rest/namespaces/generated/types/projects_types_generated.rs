@@ -31,8 +31,6 @@ pub struct Project {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub subproject: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub region_preference: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub protect_recordings: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub protect_message_media: Option<bool>,
@@ -52,6 +50,26 @@ pub struct Project {
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct ProjectCreate {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub protect_recordings: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub protect_message_media: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub protect_fax_media: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub force_https_requests: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub parent_project_id: Option<String>,
+}
+
+/// `ProjectUpdate` — generated read-side wire type ('projects' REST API, schema 'ProjectUpdate').
+///
+/// Method-less serde DTO: each field maps a snake wire key (via
+/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct ProjectUpdate {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]

@@ -25,6 +25,7 @@ use signalwire::rest::namespaces::generated::messages_resources_generated as mes
 use signalwire::rest::namespaces::generated::project_resources_generated as project_gen;
 use signalwire::rest::namespaces::generated::pubsub_resources_generated as pubsub_gen;
 use signalwire::rest::namespaces::generated::relay_rest_resources_generated as relay_gen;
+use signalwire::rest::namespaces::generated::space_resources_generated as space_gen;
 use signalwire::rest::namespaces::generated::video_resources_generated as video_gen;
 
 #[test]
@@ -87,7 +88,7 @@ fn test_calling_ai_stop_success() {
     let c = common::mocktest::client();
     let _ = c
         .calling()
-        .ai_stop("x", cg::CallingAiStopRequest::new("x"), None);
+        .ai_stop("x", cg::CallingAiStopRequest::new(), None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "POST");
     assert_eq!(e.matched_route.as_deref(), Some("calling.call-commands"));
@@ -100,7 +101,7 @@ fn test_calling_ai_stop_error() {
     common::mocktest::scenario_set("calling.call-commands", 500, json!({"error": "x"}));
     let err = c
         .calling()
-        .ai_stop("x", cg::CallingAiStopRequest::new("x"), None)
+        .ai_stop("x", cg::CallingAiStopRequest::new(), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -141,7 +142,7 @@ fn test_calling_collect_success() {
     let c = common::mocktest::client();
     let _ = c
         .calling()
-        .collect("x", cg::CallingCollectRequest::new(), None);
+        .collect("x", cg::CallingCollectRequest::new("x"), None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "POST");
     assert_eq!(e.matched_route.as_deref(), Some("calling.call-commands"));
@@ -154,7 +155,7 @@ fn test_calling_collect_error() {
     common::mocktest::scenario_set("calling.call-commands", 500, json!({"error": "x"}));
     let err = c
         .calling()
-        .collect("x", cg::CallingCollectRequest::new(), None)
+        .collect("x", cg::CallingCollectRequest::new("x"), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -280,11 +281,9 @@ fn test_calling_denoise_stop_error() {
 fn test_calling_detect_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let _ = c.calling().detect(
-        "x",
-        cg::CallingDetectRequest::new(serde_json::json!({})),
-        None,
-    );
+    let _ = c
+        .calling()
+        .detect("x", cg::CallingDetectRequest::new("x", json!({})), None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "POST");
     assert_eq!(e.matched_route.as_deref(), Some("calling.call-commands"));
@@ -297,11 +296,7 @@ fn test_calling_detect_error() {
     common::mocktest::scenario_set("calling.call-commands", 500, json!({"error": "x"}));
     let err = c
         .calling()
-        .detect(
-            "x",
-            cg::CallingDetectRequest::new(serde_json::json!({})),
-            None,
-        )
+        .detect("x", cg::CallingDetectRequest::new("x", json!({})), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -340,9 +335,7 @@ fn test_calling_detect_stop_error() {
 fn test_calling_dial_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let _ = c
-        .calling()
-        .dial(cg::CallingDialRequest::new("x", "y"), None);
+    let _ = c.calling().dial(cg::CallingDialRequest::new("x"), None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "POST");
     assert_eq!(e.matched_route.as_deref(), Some("calling.call-commands"));
@@ -355,7 +348,7 @@ fn test_calling_dial_error() {
     common::mocktest::scenario_set("calling.call-commands", 500, json!({"error": "x"}));
     let err = c
         .calling()
-        .dial(cg::CallingDialRequest::new("x", "y"), None)
+        .dial(cg::CallingDialRequest::new("x"), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -485,11 +478,9 @@ fn test_calling_live_translate_error() {
 fn test_calling_play_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let _ = c.calling().play(
-        "x",
-        cg::CallingPlayRequest::new(serde_json::json!({})),
-        None,
-    );
+    let _ = c
+        .calling()
+        .play("x", cg::CallingPlayRequest::new("x", json!({})), None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "POST");
     assert_eq!(e.matched_route.as_deref(), Some("calling.call-commands"));
@@ -502,11 +493,7 @@ fn test_calling_play_error() {
     common::mocktest::scenario_set("calling.call-commands", 500, json!({"error": "x"}));
     let err = c
         .calling()
-        .play(
-            "x",
-            cg::CallingPlayRequest::new(serde_json::json!({})),
-            None,
-        )
+        .play("x", cg::CallingPlayRequest::new("x", json!({})), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -655,7 +642,7 @@ fn test_calling_record_success() {
     let c = common::mocktest::client();
     let _ = c
         .calling()
-        .record("x", cg::CallingRecordRequest::new(), None);
+        .record("x", cg::CallingRecordRequest::new("x", json!({})), None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "POST");
     assert_eq!(e.matched_route.as_deref(), Some("calling.call-commands"));
@@ -668,7 +655,7 @@ fn test_calling_record_error() {
     common::mocktest::scenario_set("calling.call-commands", 500, json!({"error": "x"}));
     let err = c
         .calling()
-        .record("x", cg::CallingRecordRequest::new(), None)
+        .record("x", cg::CallingRecordRequest::new("x", json!({})), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -823,7 +810,7 @@ fn test_calling_stream_success() {
     let c = common::mocktest::client();
     let _ = c
         .calling()
-        .stream("x", cg::CallingStreamRequest::new("x"), None);
+        .stream("x", cg::CallingStreamRequest::new("x", "x"), None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "POST");
     assert_eq!(e.matched_route.as_deref(), Some("calling.call-commands"));
@@ -836,7 +823,7 @@ fn test_calling_stream_error() {
     common::mocktest::scenario_set("calling.call-commands", 500, json!({"error": "x"}));
     let err = c
         .calling()
-        .stream("x", cg::CallingStreamRequest::new("x"), None)
+        .stream("x", cg::CallingStreamRequest::new("x", "x"), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -877,7 +864,7 @@ fn test_calling_tap_success() {
     let c = common::mocktest::client();
     let _ = c.calling().tap(
         "x",
-        cg::CallingTapRequest::new(serde_json::json!({}), serde_json::json!({})),
+        cg::CallingTapRequest::new("x", json!({}), json!({})),
         None,
     );
     let e = common::mocktest::journal_last();
@@ -894,7 +881,7 @@ fn test_calling_tap_error() {
         .calling()
         .tap(
             "x",
-            cg::CallingTapRequest::new(serde_json::json!({}), serde_json::json!({})),
+            cg::CallingTapRequest::new("x", json!({}), json!({})),
             None,
         )
         .expect_err("expected a 500 error");
@@ -937,7 +924,7 @@ fn test_calling_transcribe_success() {
     let c = common::mocktest::client();
     let _ = c
         .calling()
-        .transcribe("x", cg::CallingTranscribeRequest::new(), None);
+        .transcribe("x", cg::CallingTranscribeRequest::new("x"), None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "POST");
     assert_eq!(e.matched_route.as_deref(), Some("calling.call-commands"));
@@ -950,7 +937,7 @@ fn test_calling_transcribe_error() {
     common::mocktest::scenario_set("calling.call-commands", 500, json!({"error": "x"}));
     let err = c
         .calling()
-        .transcribe("x", cg::CallingTranscribeRequest::new(), None)
+        .transcribe("x", cg::CallingTranscribeRequest::new("x"), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();

@@ -28,6 +28,8 @@ pub struct CreateTokenRequest {
     pub permissions: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub subproject_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub project_id: Option<String>,
 }
 
 /// `TokenResponse` — generated read-side wire type ('project' REST API, schema 'TokenResponse').
@@ -44,6 +46,20 @@ pub struct TokenResponse {
     pub permissions: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub token: Option<String>,
+}
+
+/// `TokenUpdateResponse` — generated read-side wire type ('project' REST API, schema 'TokenUpdateResponse').
+///
+/// Method-less serde DTO: each field maps a snake wire key (via
+/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct TokenUpdateResponse {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub permissions: Option<serde_json::Value>,
 }
 
 /// `TokenStatusCode422` — generated read-side wire type ('project' REST API, schema 'TokenStatusCode422').

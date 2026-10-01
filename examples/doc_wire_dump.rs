@@ -50,9 +50,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         None,
     )?;
 
-    // calling().dial(from, to).url(...)
+    // calling().dial(from).to(to).url(...)
     client.calling().dial(
-        CallingDialRequest::new("+15559876543", "+15551234567")
+        CallingDialRequest::new("+15559876543")
+            .to("+15551234567")
             .url("https://example.com/call-handler"),
         None,
     )?;
@@ -70,17 +71,23 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // --- rest/docs/calling.md play (nested params:{text}) --------------------
     client.calling().play(
         call_id,
-        CallingPlayRequest::new(json!([
-            {"type": "tts", "params": {"text": "Please hold."}}
-        ])),
+        CallingPlayRequest::new(
+            "play-1",
+            json!([
+                {"type": "tts", "params": {"text": "Please hold."}}
+            ]),
+        ),
         None,
     )?;
     // With an optional volume set (rest/docs/calling.md variant).
     client.calling().play(
         call_id,
-        CallingPlayRequest::new(json!([
-            {"type": "tts", "params": {"text": "Hello!"}}
-        ]))
+        CallingPlayRequest::new(
+            "play-1",
+            json!([
+                {"type": "tts", "params": {"text": "Hello!"}}
+            ]),
+        )
         .volume(5.0),
         None,
     )?;

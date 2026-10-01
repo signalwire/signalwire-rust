@@ -1,7 +1,9 @@
+use std::collections::HashMap;
 use std::env;
+use std::time::Duration;
 
 use super::error::RestClientBuilderError;
-use super::http_client::{HttpClient, UreqTransport};
+use super::http_client::{HttpClient, HttpTransport, UreqTransport};
 use super::namespaces::generated::client_tree_generated as tree;
 use super::request_options::RequestOptions;
 
@@ -13,12 +15,79 @@ use super::request_options::RequestOptions;
 ///
 /// Production HTTP transport is `ureq` (sync, blocking, real network
 /// I/O). Tests can substitute a stub via [`with_http`].
+///
+/// Two credentials, two HTTP clients. The project ID + API token authenticate
+/// every project-scoped resource; a user's Personal Access Token (`pat_...`)
+/// authenticates [`space_admin`](Self::space_admin) — the Space Administration API, which
+/// the platform serves only to a Personal Access Token (HTTP Basic with an
+/// EMPTY username). Supply it with
+/// [`with_personal_access_token`](Self::with_personal_access_token), the
+/// PAT-only [`from_personal_access_token`](Self::from_personal_access_token), or
+/// `SIGNALWIRE_PERSONAL_ACCESS_TOKEN` via [`from_env`](Self::from_env). Calling a
+/// resource whose credential this client was not given returns a
+/// [`SignalWireRestError`](super::SignalWireRestError) naming the missing
+/// credential, without sending a request.
 pub struct RestClient {
     project_id: String,
     token: String,
     space: String,
     base_url: String,
     http: HttpClient,
+    pat_http: HttpClient,
+}
+
+/// Message for a project-scoped call on a client built with only a Personal
+/// Access Token.
+const MISSING_PROJECT_CREDENTIAL: &str = "project_id and token are required for this resource \
+     (SIGNALWIRE_PROJECT_ID / SIGNALWIRE_API_TOKEN); this client has only a personal access \
+     token, which authenticates space()";
+
+/// Message for a `space()` call on a client built without a Personal Access Token.
+const MISSING_PAT_CREDENTIAL: &str =
+    "personal_access_token is required for space() (SIGNALWIRE_PERSONAL_ACCESS_TOKEN)";
+
+/// The transport behind a credential this client was NOT given: every request
+/// fails before reaching the network, with a message naming the missing
+/// credential (the reference raises the same guidance at call time).
+struct MissingCredentialTransport(&'static str);
+
+impl HttpTransport for MissingCredentialTransport {
+    fn execute(
+        &self,
+        _method: &str,
+        _url: &str,
+        _headers: &HashMap<String, String>,
+        _body: Option<&str>,
+        _timeout: Duration,
+    ) -> Result<(u16, String), String> {
+        Err(self.0.to_string())
+    }
+}
+
+/// An [`HttpClient`] standing in for a credential the client was not given.
+fn missing_credential_http(base_url: &str, message: &'static str) -> HttpClient {
+    HttpClient::new(
+        "",
+        "",
+        base_url,
+        Box::new(MissingCredentialTransport(message)),
+    )
+}
+
+/// The Personal Access Token client: HTTP Basic with an EMPTY username and the
+/// token as the password (the platform's Space Administration authenticator).
+fn pat_http_client(
+    personal_access_token: &str,
+    base_url: &str,
+    request_options: Option<super::request_options::RequestOptions>,
+) -> HttpClient {
+    HttpClient::with_options(
+        "",
+        personal_access_token,
+        base_url,
+        Box::new(UreqTransport::new()),
+        request_options,
+    )
 }
 
 /// Validate a required credential is non-empty, else the typed missing-credential
@@ -51,6 +120,7 @@ impl RestClient {
 
         let base_url = format!("https://{space}");
         let http = HttpClient::new(project_id, token, &base_url, Box::new(UreqTransport::new()));
+        let pat_http = missing_credential_http(&base_url, MISSING_PAT_CREDENTIAL);
 
         Ok(RestClient {
             project_id: project_id.to_string(),
@@ -58,6 +128,7 @@ impl RestClient {
             space: space.to_string(),
             base_url,
             http,
+            pat_http,
         })
     }
 
@@ -105,12 +176,15 @@ impl RestClient {
             Box::new(UreqTransport::new()),
             request_options,
         );
+        let base_url = base_url.trim_end_matches('/').to_string();
+        let pat_http = missing_credential_http(&base_url, MISSING_PAT_CREDENTIAL);
         Ok(RestClient {
             project_id: project_id.to_string(),
             token: token.to_string(),
-            space: base_url.to_string(),
-            base_url: base_url.trim_end_matches('/').to_string(),
+            space: base_url.clone(),
+            base_url,
             http,
+            pat_http,
         })
     }
 
@@ -129,13 +203,83 @@ impl RestClient {
         require_credential("project_id", "SIGNALWIRE_PROJECT_ID", project_id)?;
         require_credential("token", "SIGNALWIRE_API_TOKEN", token)?;
         require_credential("space", "SIGNALWIRE_SPACE", space)?;
+        let base_url = format!("https://{space}");
+        let pat_http = missing_credential_http(&base_url, MISSING_PAT_CREDENTIAL);
         Ok(RestClient {
             project_id: project_id.to_string(),
             token: token.to_string(),
             space: space.to_string(),
-            base_url: format!("https://{space}"),
+            base_url,
             http,
+            pat_http,
         })
+    }
+
+    /// Create a client holding ONLY a Personal Access Token — it can call
+    /// [`space_admin`](Self::space_admin) (the Space Administration API) and nothing else.
+    /// The base URL resolves to `https://{space}`.
+    ///
+    /// A project-scoped call on this client returns a
+    /// [`SignalWireRestError`](super::SignalWireRestError) naming the missing
+    /// project credential, without sending a request. To hold both credentials,
+    /// build a project client and add the token with
+    /// [`with_personal_access_token`](Self::with_personal_access_token).
+    ///
+    /// # Errors
+    /// Returns [`RestClientBuilderError::MissingCredential`] if
+    /// `personal_access_token` or `space` is empty. No network request is made
+    /// here.
+    pub fn from_personal_access_token(
+        personal_access_token: &str,
+        space: &str,
+    ) -> Result<Self, RestClientBuilderError> {
+        require_credential(
+            "personal_access_token",
+            "SIGNALWIRE_PERSONAL_ACCESS_TOKEN",
+            personal_access_token,
+        )?;
+        require_credential("space", "SIGNALWIRE_SPACE", space)?;
+        Ok(Self::pat_only(
+            personal_access_token,
+            &format!("https://{space}"),
+            space,
+        ))
+    }
+
+    /// A PAT-only client against an already-resolved `base_url`.
+    fn pat_only(personal_access_token: &str, base_url: &str, space: &str) -> Self {
+        let base_url = base_url.trim_end_matches('/').to_string();
+        RestClient {
+            project_id: String::new(),
+            token: String::new(),
+            space: space.to_string(),
+            http: missing_credential_http(&base_url, MISSING_PROJECT_CREDENTIAL),
+            pat_http: pat_http_client(personal_access_token, &base_url, None),
+            base_url,
+        }
+    }
+
+    /// Add a Personal Access Token to this client, authenticating
+    /// [`space_admin`](Self::space_admin) (the Space Administration API) against the same
+    /// base URL and client-default [`RequestOptions`] the project credential
+    /// uses. Chain it onto any constructor:
+    ///
+    /// ```no_run
+    /// use signalwire::rest::RestClient;
+    ///
+    /// let client = RestClient::new("project-id", "api-token", "example.signalwire.com")?
+    ///     .with_personal_access_token("pat_...");
+    /// let members = client.space_admin().members().list(None, None)?;
+    /// # Ok::<(), Box<dyn std::error::Error>>(())
+    /// ```
+    #[must_use]
+    pub fn with_personal_access_token(mut self, personal_access_token: &str) -> Self {
+        self.pat_http = pat_http_client(
+            personal_access_token,
+            &self.base_url,
+            self.http.request_options().cloned(),
+        );
+        self
     }
 
     /// Create from environment variables.
@@ -152,17 +296,37 @@ impl RestClient {
     /// env, without a code change. When it is set, `SIGNALWIRE_SPACE` is not
     /// required (the base URL is explicit); otherwise the space resolution and
     /// its credential check apply as in [`new`](Self::new).
+    ///
+    /// Honors `SIGNALWIRE_PERSONAL_ACCESS_TOKEN`: when set, the client also
+    /// authenticates [`space_admin`](Self::space_admin) with it. When it is set and
+    /// `SIGNALWIRE_PROJECT_ID` / `SIGNALWIRE_API_TOKEN` are both unset, the
+    /// client is PAT-only (see
+    /// [`from_personal_access_token`](Self::from_personal_access_token)).
     pub fn from_env() -> Result<Self, RestClientBuilderError> {
         let project_id = env::var("SIGNALWIRE_PROJECT_ID").unwrap_or_default();
         let token = env::var("SIGNALWIRE_API_TOKEN").unwrap_or_default();
+        let pat = env::var("SIGNALWIRE_PERSONAL_ACCESS_TOKEN").unwrap_or_default();
         let base_url_override = env::var("SIGNALWIRE_REST_BASE_URL")
             .ok()
             .filter(|s| !s.is_empty());
-        if let Some(base_url) = base_url_override {
-            return Self::with_base_url(&project_id, &token, &base_url);
-        }
-        let space = env::var("SIGNALWIRE_SPACE").unwrap_or_default();
-        Self::new(&project_id, &token, &space)
+        let pat_only = !pat.is_empty() && project_id.is_empty() && token.is_empty();
+        let client = if let Some(base_url) = base_url_override {
+            if pat_only {
+                return Ok(Self::pat_only(&pat, &base_url, &base_url));
+            }
+            Self::with_base_url(&project_id, &token, &base_url)?
+        } else {
+            let space = env::var("SIGNALWIRE_SPACE").unwrap_or_default();
+            if pat_only {
+                return Self::from_personal_access_token(&pat, &space);
+            }
+            Self::new(&project_id, &token, &space)?
+        };
+        Ok(if pat.is_empty() {
+            client
+        } else {
+            client.with_personal_access_token(&pat)
+        })
     }
 
     // -- Accessors --
@@ -221,7 +385,7 @@ impl RestClient {
 
     /// The generated resource tree (flat resources + namespace containers).
     fn tree(&self) -> tree::GeneratedResourceTree<'_> {
-        tree::GeneratedResourceTree::new(&self.http)
+        tree::GeneratedResourceTree::new(&self.http, &self.pat_http)
     }
 
     /// Fabric API namespace container (subscribers, `sip_endpoints`,
@@ -363,6 +527,22 @@ impl RestClient {
     /// Chat tokens (`create_token` → POST `/api/chat/tokens`).
     pub fn chat(&self) -> super::namespaces::generated::chat_resources_generated::Chat<'_> {
         self.tree().chat()
+    }
+
+    /// Space Administration API (`/api/space`: settings, members, billing,
+    /// usage, payment methods, ...). Authenticated with the client's Personal
+    /// Access Token — see [`with_personal_access_token`](Self::with_personal_access_token).
+    ///
+    /// Named `space_admin` because [`space`](Self::space) is the configured
+    /// space hostname, a published accessor this cannot replace without
+    /// breaking callers.
+    pub fn space_admin(&self) -> tree::SpaceNamespace<'_> {
+        self.tree().space()
+    }
+
+    /// `WhatsApp` namespace (businesses, numbers, templates).
+    pub fn whatsapp(&self) -> tree::WhatsappNamespace<'_> {
+        self.tree().whatsapp()
     }
 }
 

@@ -75,6 +75,26 @@ pub trait HttpTransport: Send + Sync {
         let (status, body) = self.execute(method, url, headers, body, timeout)?;
         Ok((status, HashMap::new(), body))
     }
+
+    /// Like [`execute_with_headers`](Self::execute_with_headers) but WITHOUT
+    /// following a redirect: a 3xx is returned as-is, with its `location`
+    /// header, for an endpoint whose answer IS a redirect (a recording's
+    /// presigned download URL). The default delegates to
+    /// `execute_with_headers` (stub transports never redirect); the real
+    /// [`UreqTransport`] overrides it to disable redirect-following.
+    ///
+    /// # Errors
+    /// Same as [`execute`](Self::execute).
+    fn execute_no_redirect(
+        &self,
+        method: &str,
+        url: &str,
+        headers: &HashMap<String, String>,
+        body: Option<&str>,
+        timeout: Duration,
+    ) -> Result<(u16, HashMap<String, String>, String), String> {
+        self.execute_with_headers(method, url, headers, body, timeout)
+    }
 }
 
 /// Real HTTP transport backed by ureq.
@@ -173,7 +193,11 @@ impl UreqTransport {
         headers: &HashMap<String, String>,
         body: Option<&str>,
         timeout: Duration,
+        follow_redirects: bool,
     ) -> Result<(u16, HashMap<String, String>, String), String> {
+        // `max_redirects(0)` makes ureq hand a 3xx back as an ordinary response
+        // (its `location` header intact) instead of following it.
+        let max_redirects: u32 = if follow_redirects { 10 } else { 0 };
         // NO SILENT DOWNGRADE. Setting SIGNALWIRE_REST_CA_FILE is a request to
         // verify the peer against that CA — meaningless over plaintext. The
         // agent's TlsConfig is chosen at construction and simply goes unused on
@@ -198,6 +222,7 @@ impl UreqTransport {
                     .get(url)
                     .config()
                     .timeout_global(Some(timeout))
+                    .max_redirects(max_redirects)
                     .build();
                 for (k, v) in headers {
                     req = req.header(k, v);
@@ -210,6 +235,7 @@ impl UreqTransport {
                     .post(url)
                     .config()
                     .timeout_global(Some(timeout))
+                    .max_redirects(max_redirects)
                     .build();
                 for (k, v) in headers {
                     req = req.header(k, v);
@@ -225,6 +251,7 @@ impl UreqTransport {
                     .put(url)
                     .config()
                     .timeout_global(Some(timeout))
+                    .max_redirects(max_redirects)
                     .build();
                 for (k, v) in headers {
                     req = req.header(k, v);
@@ -240,6 +267,7 @@ impl UreqTransport {
                     .patch(url)
                     .config()
                     .timeout_global(Some(timeout))
+                    .max_redirects(max_redirects)
                     .build();
                 for (k, v) in headers {
                     req = req.header(k, v);
@@ -255,6 +283,7 @@ impl UreqTransport {
                     .delete(url)
                     .config()
                     .timeout_global(Some(timeout))
+                    .max_redirects(max_redirects)
                     .build();
                 for (k, v) in headers {
                     req = req.header(k, v);
@@ -294,7 +323,8 @@ impl HttpTransport for UreqTransport {
         body: Option<&str>,
         timeout: Duration,
     ) -> Result<(u16, String), String> {
-        let (status, _headers, body) = self.execute_raw(method, url, headers, body, timeout)?;
+        let (status, _headers, body) =
+            self.execute_raw(method, url, headers, body, timeout, true)?;
         Ok((status, body))
     }
 
@@ -306,7 +336,18 @@ impl HttpTransport for UreqTransport {
         body: Option<&str>,
         timeout: Duration,
     ) -> Result<(u16, HashMap<String, String>, String), String> {
-        self.execute_raw(method, url, headers, body, timeout)
+        self.execute_raw(method, url, headers, body, timeout, true)
+    }
+
+    fn execute_no_redirect(
+        &self,
+        method: &str,
+        url: &str,
+        headers: &HashMap<String, String>,
+        body: Option<&str>,
+        timeout: Duration,
+    ) -> Result<(u16, HashMap<String, String>, String), String> {
+        self.execute_raw(method, url, headers, body, timeout, false)
     }
 }
 
@@ -358,6 +399,23 @@ impl HttpTransport for StubTransport {
         let resp = self.response.lock().unwrap().clone();
         Ok(resp)
     }
+}
+
+/// How a request's success is read.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ResponseKind {
+    /// The decoded JSON body (every ordinary endpoint).
+    Json,
+    /// The body as text (a non-JSON media type such as `text/csv`).
+    Text,
+    /// The `Location` of a 3xx, not followed (a presigned download URL).
+    Redirect,
+}
+
+/// A successful reply, per [`ResponseKind`].
+enum Reply {
+    Json(Value),
+    Text(String),
 }
 
 /// Low-level HTTP client for SignalWire REST APIs.
@@ -509,6 +567,113 @@ impl HttpClient {
         self.request("GET", path, params, None, options)
     }
 
+    /// `GET` with a per-request [`RequestOptions`] override AND per-request
+    /// `headers` (sent over the client defaults — e.g. an `Accept` for a
+    /// non-JSON endpoint).
+    ///
+    /// # Errors
+    /// Same as [`get`](Self::get).
+    pub fn get_with_headers(
+        &self,
+        path: &str,
+        params: Option<&HashMap<String, String>>,
+        options: Option<&RequestOptions>,
+        headers: Option<&HashMap<String, String>>,
+    ) -> Result<Value, SignalWireRestError> {
+        match self.request_as(
+            "GET",
+            path,
+            params,
+            None,
+            options,
+            headers,
+            ResponseKind::Json,
+        )? {
+            Reply::Json(v) => Ok(v),
+            Reply::Text(t) => Ok(Value::String(t)),
+        }
+    }
+
+    /// Issue a `GET` whose success body is NOT JSON and return it as text —
+    /// for an endpoint that answers with another media type (e.g. `text/csv`).
+    ///
+    /// # Errors
+    /// Same as [`get`](Self::get), except a 2xx body is never parsed.
+    pub fn get_text(
+        &self,
+        path: &str,
+        params: Option<&HashMap<String, String>>,
+    ) -> Result<String, SignalWireRestError> {
+        self.get_text_with_options(path, params, None, None)
+    }
+
+    /// [`get_text`](Self::get_text) with a per-request [`RequestOptions`]
+    /// override and per-request `headers` (pass the media type as `Accept`).
+    ///
+    /// # Errors
+    /// Same as [`get_text`](Self::get_text).
+    pub fn get_text_with_options(
+        &self,
+        path: &str,
+        params: Option<&HashMap<String, String>>,
+        options: Option<&RequestOptions>,
+        headers: Option<&HashMap<String, String>>,
+    ) -> Result<String, SignalWireRestError> {
+        match self.request_as(
+            "GET",
+            path,
+            params,
+            None,
+            options,
+            headers,
+            ResponseKind::Text,
+        )? {
+            Reply::Text(t) => Ok(t),
+            Reply::Json(v) => Ok(v.to_string()),
+        }
+    }
+
+    /// Issue a `GET` whose success IS a redirect and return its `Location` —
+    /// the URL of the resource (e.g. a presigned download URL), which the caller
+    /// fetches with any HTTP client. The redirect is NOT followed and nothing is
+    /// downloaded.
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] for a transport failure, an error status,
+    /// or a success that is not a redirect carrying a `Location`.
+    pub fn get_redirect_location(
+        &self,
+        path: &str,
+        params: Option<&HashMap<String, String>>,
+    ) -> Result<String, SignalWireRestError> {
+        self.get_redirect_location_with_options(path, params, None)
+    }
+
+    /// [`get_redirect_location`](Self::get_redirect_location) with a
+    /// per-request [`RequestOptions`] override.
+    ///
+    /// # Errors
+    /// Same as [`get_redirect_location`](Self::get_redirect_location).
+    pub fn get_redirect_location_with_options(
+        &self,
+        path: &str,
+        params: Option<&HashMap<String, String>>,
+        options: Option<&RequestOptions>,
+    ) -> Result<String, SignalWireRestError> {
+        match self.request_as(
+            "GET",
+            path,
+            params,
+            None,
+            options,
+            None,
+            ResponseKind::Redirect,
+        )? {
+            Reply::Text(t) => Ok(t),
+            Reply::Json(v) => Ok(v.to_string()),
+        }
+    }
+
     /// Issue a `POST` request to `path` with `data` serialized as the JSON body
     /// and `params` sent as the QUERY STRING.
     ///
@@ -548,6 +713,35 @@ impl HttpClient {
     ) -> Result<Value, SignalWireRestError> {
         let body = data.map(|d| serde_json::to_string(d).unwrap_or_else(|_| "{}".to_string()));
         self.request("POST", path, params, body.as_deref(), options)
+    }
+
+    /// `POST` with a per-request [`RequestOptions`] override AND per-request
+    /// `headers` (sent over the client defaults — e.g. the `Idempotency-Key` a
+    /// balance top-up requires).
+    ///
+    /// # Errors
+    /// Same as [`post`](Self::post).
+    pub fn post_with_headers(
+        &self,
+        path: &str,
+        data: Option<&Value>,
+        params: Option<&HashMap<String, String>>,
+        options: Option<&RequestOptions>,
+        headers: Option<&HashMap<String, String>>,
+    ) -> Result<Value, SignalWireRestError> {
+        let body = data.map(|d| serde_json::to_string(d).unwrap_or_else(|_| "{}".to_string()));
+        match self.request_as(
+            "POST",
+            path,
+            params,
+            body.as_deref(),
+            options,
+            headers,
+            ResponseKind::Json,
+        )? {
+            Reply::Json(v) => Ok(v),
+            Reply::Text(t) => Ok(Value::String(t)),
+        }
     }
 
     /// Issue a `PUT` request to `path` with `data` serialized as the JSON body.
@@ -713,7 +907,6 @@ impl HttpClient {
 
     // -- Internal request engine --
 
-    #[allow(clippy::too_many_lines)]
     fn request(
         &self,
         method: &str,
@@ -722,6 +915,31 @@ impl HttpClient {
         body: Option<&str>,
         request_options: Option<&RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
+        match self.request_as(
+            method,
+            path,
+            params,
+            body,
+            request_options,
+            None,
+            ResponseKind::Json,
+        )? {
+            Reply::Json(v) => Ok(v),
+            Reply::Text(t) => Ok(Value::String(t)),
+        }
+    }
+
+    #[allow(clippy::too_many_lines, clippy::too_many_arguments)]
+    fn request_as(
+        &self,
+        method: &str,
+        path: &str,
+        params: Option<&HashMap<String, String>>,
+        body: Option<&str>,
+        request_options: Option<&RequestOptions>,
+        extra_headers: Option<&HashMap<String, String>>,
+        kind: ResponseKind,
+    ) -> Result<Reply, SignalWireRestError> {
         let mut url = format!("{}{}", self.base_url, path);
 
         // `params` go on the QUERY STRING (never merged into the JSON body) —
@@ -745,6 +963,12 @@ impl HttpClient {
         headers.insert("Accept".to_string(), "application/json".to_string());
         headers.insert("Authorization".to_string(), self.auth_header.clone());
         headers.insert("User-Agent".to_string(), self.user_agent.clone());
+        // Per-request headers go on THIS request only, over the defaults.
+        if let Some(extra) = extra_headers {
+            for (k, v) in extra {
+                headers.insert(k.clone(), v.clone());
+            }
+        }
 
         // Resolve the effective options: per-request over client-default over
         // built-in. total attempts = retries + 1; retry on a retryable status
@@ -768,9 +992,13 @@ impl HttpClient {
                 ));
             }
 
-            let outcome =
+            let outcome = if kind == ResponseKind::Redirect {
                 self.transport
-                    .execute_with_headers(method, &url, &headers, body, opts.timeout);
+                    .execute_no_redirect(method, &url, &headers, body, opts.timeout)
+            } else {
+                self.transport
+                    .execute_with_headers(method, &url, &headers, body, opts.timeout)
+            };
 
             match outcome {
                 Err(e) => {
@@ -789,6 +1017,22 @@ impl HttpClient {
                     ));
                 }
                 Ok((status, resp_headers, response_body)) => {
+                    if kind == ResponseKind::Redirect && (300..400).contains(&status) {
+                        if let Some(location) = resp_headers.get("location") {
+                            return Ok(Reply::Text(location.clone()));
+                        }
+                    }
+                    if kind == ResponseKind::Redirect && (200..400).contains(&status) {
+                        // A success that is not the redirect the endpoint answers with.
+                        return Err(SignalWireRestError::new(
+                            &format!("{method} {path} returned {status} without a redirect"),
+                            status,
+                            &response_body,
+                            &url,
+                            method,
+                        )
+                        .with_headers(resp_headers));
+                    }
                     if !(200..300).contains(&status) {
                         if attempt <= opts.retries && status_is_retryable(method, status, &opts) {
                             // §6.6: the real RESPONSE headers are now available, so
@@ -808,21 +1052,27 @@ impl HttpClient {
                         .with_headers(resp_headers));
                     }
 
-                    // 204 or empty body
-                    if status == 204 || response_body.is_empty() {
-                        return Ok(serde_json::json!({}));
+                    if kind == ResponseKind::Text {
+                        return Ok(Reply::Text(response_body));
                     }
 
-                    return serde_json::from_str(&response_body).map_err(|_| {
-                        SignalWireRestError::new(
-                            &format!("{method} {path} returned non-JSON"),
-                            status,
-                            &response_body,
-                            &url,
-                            method,
-                        )
-                        .with_headers(resp_headers)
-                    });
+                    // 204 or empty body
+                    if status == 204 || response_body.is_empty() {
+                        return Ok(Reply::Json(serde_json::json!({})));
+                    }
+
+                    return serde_json::from_str(&response_body)
+                        .map(Reply::Json)
+                        .map_err(|_| {
+                            SignalWireRestError::new(
+                                &format!("{method} {path} returned non-JSON"),
+                                status,
+                                &response_body,
+                                &url,
+                                method,
+                            )
+                            .with_headers(resp_headers)
+                        });
                 }
             }
         }

@@ -25,6 +25,7 @@ use signalwire::rest::namespaces::generated::messages_resources_generated as mes
 use signalwire::rest::namespaces::generated::project_resources_generated as project_gen;
 use signalwire::rest::namespaces::generated::pubsub_resources_generated as pubsub_gen;
 use signalwire::rest::namespaces::generated::relay_rest_resources_generated as relay_gen;
+use signalwire::rest::namespaces::generated::space_resources_generated as space_gen;
 use signalwire::rest::namespaces::generated::video_resources_generated as video_gen;
 
 #[test]
@@ -400,6 +401,41 @@ fn test_video_room_recordings_delete_error() {
     assert_eq!(
         e.matched_route.as_deref(),
         Some("video.delete_room_recording")
+    );
+}
+
+#[test]
+fn test_video_room_recordings_download_success() {
+    let _g = common::mocktest::begin();
+    let c = common::mocktest::client();
+    let _ = c
+        .video()
+        .room_recordings()
+        .download("x", &std::collections::HashMap::new(), None);
+    let e = common::mocktest::journal_last();
+    assert_eq!(e.method, "GET");
+    assert_eq!(
+        e.matched_route.as_deref(),
+        Some("video.download_room_recording")
+    );
+}
+
+#[test]
+fn test_video_room_recordings_download_error() {
+    let _g = common::mocktest::begin();
+    let c = common::mocktest::client();
+    common::mocktest::scenario_set("video.download_room_recording", 500, json!({"error": "x"}));
+    let err = c
+        .video()
+        .room_recordings()
+        .download("x", &std::collections::HashMap::new(), None)
+        .expect_err("expected a 500 error");
+    assert_eq!(err.status_code(), 500);
+    let e = common::mocktest::journal_last();
+    assert_eq!(e.response_status, Some(500));
+    assert_eq!(
+        e.matched_route.as_deref(),
+        Some("video.download_room_recording")
     );
 }
 
@@ -961,7 +997,7 @@ fn test_video_streams_update_success() {
     let _ = c
         .video()
         .streams()
-        .update("x", video_gen::VideoStreamsUpdateRequest::new("x"), None);
+        .update("x", video_gen::VideoStreamsUpdateRequest::new(), None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "PUT");
     assert_eq!(e.matched_route.as_deref(), Some("video.update_stream"));
@@ -975,7 +1011,7 @@ fn test_video_streams_update_error() {
     let err = c
         .video()
         .streams()
-        .update("x", video_gen::VideoStreamsUpdateRequest::new("x"), None)
+        .update("x", video_gen::VideoStreamsUpdateRequest::new(), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();

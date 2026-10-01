@@ -15,8 +15,8 @@ use crate::rest::request_options::RequestOptions;
 /// idiom — required fields in `new`, optionals via setters, `extras` open door).
 #[derive(Debug, Clone, Default)]
 pub struct CallingAiHoldRequest {
-    timeout: Option<i64>,
     prompt: Option<String>,
+    timeout: Option<serde_json::Value>,
     extras: Map<String, Value>,
 }
 
@@ -27,16 +27,16 @@ impl CallingAiHoldRequest {
             ..Default::default()
         }
     }
-    /// Set the optional `timeout` field.
-    #[must_use]
-    pub fn timeout(mut self, value: i64) -> Self {
-        self.timeout = Some(value);
-        self
-    }
     /// Set the optional `prompt` field.
     #[must_use]
     pub fn prompt(mut self, value: impl Into<String>) -> Self {
         self.prompt = Some(value.into());
+        self
+    }
+    /// Set the optional `timeout` field.
+    #[must_use]
+    pub fn timeout(mut self, value: serde_json::Value) -> Self {
+        self.timeout = Some(value);
         self
     }
     /// Add a forward-compat field the spec does not yet name.
@@ -49,11 +49,11 @@ impl CallingAiHoldRequest {
     #[must_use]
     pub fn build(self) -> Value {
         let mut obj = Map::new();
-        if let Some(v) = self.timeout {
-            obj.insert("timeout".to_string(), Value::from(v));
-        }
         if let Some(v) = self.prompt {
             obj.insert("prompt".to_string(), Value::from(v));
+        }
+        if let Some(v) = self.timeout {
+            obj.insert("timeout".to_string(), v);
         }
         for (k, v) in self.extras {
             obj.insert(k, v);
@@ -66,10 +66,10 @@ impl CallingAiHoldRequest {
 /// idiom — required fields in `new`, optionals via setters, `extras` open door).
 #[derive(Debug, Clone, Default)]
 pub struct CallingAiMessageRequest {
-    role: Option<String>,
+    global_data: Option<serde_json::Value>,
     message_text: Option<String>,
     reset: Option<serde_json::Value>,
-    global_data: Option<serde_json::Value>,
+    role: Option<String>,
     extras: Map<String, Value>,
 }
 
@@ -80,10 +80,10 @@ impl CallingAiMessageRequest {
             ..Default::default()
         }
     }
-    /// Set the optional `role` field.
+    /// Set the optional `global_data` field.
     #[must_use]
-    pub fn role(mut self, value: impl Into<String>) -> Self {
-        self.role = Some(value.into());
+    pub fn global_data(mut self, value: serde_json::Value) -> Self {
+        self.global_data = Some(value);
         self
     }
     /// Set the optional `message_text` field.
@@ -98,10 +98,10 @@ impl CallingAiMessageRequest {
         self.reset = Some(value);
         self
     }
-    /// Set the optional `global_data` field.
+    /// Set the optional `role` field.
     #[must_use]
-    pub fn global_data(mut self, value: serde_json::Value) -> Self {
-        self.global_data = Some(value);
+    pub fn role(mut self, value: impl Into<String>) -> Self {
+        self.role = Some(value.into());
         self
     }
     /// Add a forward-compat field the spec does not yet name.
@@ -114,8 +114,8 @@ impl CallingAiMessageRequest {
     #[must_use]
     pub fn build(self) -> Value {
         let mut obj = Map::new();
-        if let Some(v) = self.role {
-            obj.insert("role".to_string(), Value::from(v));
+        if let Some(v) = self.global_data {
+            obj.insert("global_data".to_string(), v);
         }
         if let Some(v) = self.message_text {
             obj.insert("message_text".to_string(), Value::from(v));
@@ -123,8 +123,8 @@ impl CallingAiMessageRequest {
         if let Some(v) = self.reset {
             obj.insert("reset".to_string(), v);
         }
-        if let Some(v) = self.global_data {
-            obj.insert("global_data".to_string(), v);
+        if let Some(v) = self.role {
+            obj.insert("role".to_string(), Value::from(v));
         }
         for (k, v) in self.extras {
             obj.insert(k, v);
@@ -136,16 +136,16 @@ impl CallingAiMessageRequest {
 /// Named request parameters for the generated method (Rust options-builder
 /// idiom — required fields in `new`, optionals via setters, `extras` open door).
 #[derive(Debug, Clone, Default)]
-pub struct CallingAiStopRequest {
-    control_id: String,
+pub struct CallingAiSidecarAskRequest {
+    text: String,
     extras: Map<String, Value>,
 }
 
-impl CallingAiStopRequest {
+impl CallingAiSidecarAskRequest {
     /// Construct the request with its required fields.
-    pub fn new(control_id: impl Into<String>) -> Self {
-        CallingAiStopRequest {
-            control_id: control_id.into(),
+    pub fn new(text: impl Into<String>) -> Self {
+        CallingAiSidecarAskRequest {
+            text: text.into(),
             ..Default::default()
         }
     }
@@ -159,7 +159,288 @@ impl CallingAiStopRequest {
     #[must_use]
     pub fn build(self) -> Value {
         let mut obj = Map::new();
-        obj.insert("control_id".to_string(), Value::from(self.control_id));
+        obj.insert("text".to_string(), Value::from(self.text));
+        for (k, v) in self.extras {
+            obj.insert(k, v);
+        }
+        Value::Object(obj)
+    }
+}
+
+/// Named request parameters for the generated method (Rust options-builder
+/// idiom — required fields in `new`, optionals via setters, `extras` open door).
+#[derive(Debug, Clone, Default)]
+pub struct CallingAiSidecarPokeRequest {
+    text: String,
+    extras: Map<String, Value>,
+}
+
+impl CallingAiSidecarPokeRequest {
+    /// Construct the request with its required fields.
+    pub fn new(text: impl Into<String>) -> Self {
+        CallingAiSidecarPokeRequest {
+            text: text.into(),
+            ..Default::default()
+        }
+    }
+    /// Add a forward-compat field the spec does not yet name.
+    #[must_use]
+    pub fn extra(mut self, key: impl Into<String>, value: impl Into<Value>) -> Self {
+        self.extras.insert(key.into(), value.into());
+        self
+    }
+    /// Assemble the `params` JSON object (unset optionals omitted).
+    #[must_use]
+    pub fn build(self) -> Value {
+        let mut obj = Map::new();
+        obj.insert("text".to_string(), Value::from(self.text));
+        for (k, v) in self.extras {
+            obj.insert(k, v);
+        }
+        Value::Object(obj)
+    }
+}
+
+/// Named request parameters for the generated method (Rust options-builder
+/// idiom — required fields in `new`, optionals via setters, `extras` open door).
+#[derive(Debug, Clone, Default)]
+pub struct CallingAiSidecarRequest {
+    lang: String,
+    swaig: Option<serde_json::Value>,
+    action: Option<serde_json::Value>,
+    customer_role: Option<String>,
+    direction: Option<serde_json::Value>,
+    global_data: Option<serde_json::Value>,
+    hints: Option<serde_json::Value>,
+    model: Option<String>,
+    params: Option<serde_json::Value>,
+    permissions: Option<serde_json::Value>,
+    prompt: Option<serde_json::Value>,
+    url: Option<String>,
+    extras: Map<String, Value>,
+}
+
+impl CallingAiSidecarRequest {
+    /// Construct the request with its required fields.
+    pub fn new(lang: impl Into<String>) -> Self {
+        CallingAiSidecarRequest {
+            lang: lang.into(),
+            ..Default::default()
+        }
+    }
+    /// Set the optional `SWAIG` field.
+    #[must_use]
+    pub fn swaig(mut self, value: serde_json::Value) -> Self {
+        self.swaig = Some(value);
+        self
+    }
+    /// Set the optional `action` field.
+    #[must_use]
+    pub fn action(mut self, value: serde_json::Value) -> Self {
+        self.action = Some(value);
+        self
+    }
+    /// Set the optional `customer_role` field.
+    #[must_use]
+    pub fn customer_role(mut self, value: impl Into<String>) -> Self {
+        self.customer_role = Some(value.into());
+        self
+    }
+    /// Set the optional `direction` field.
+    #[must_use]
+    pub fn direction(mut self, value: serde_json::Value) -> Self {
+        self.direction = Some(value);
+        self
+    }
+    /// Set the optional `global_data` field.
+    #[must_use]
+    pub fn global_data(mut self, value: serde_json::Value) -> Self {
+        self.global_data = Some(value);
+        self
+    }
+    /// Set the optional `hints` field.
+    #[must_use]
+    pub fn hints(mut self, value: serde_json::Value) -> Self {
+        self.hints = Some(value);
+        self
+    }
+    /// Set the optional `model` field.
+    #[must_use]
+    pub fn model(mut self, value: impl Into<String>) -> Self {
+        self.model = Some(value.into());
+        self
+    }
+    /// Set the optional `params` field.
+    #[must_use]
+    pub fn params(mut self, value: serde_json::Value) -> Self {
+        self.params = Some(value);
+        self
+    }
+    /// Set the optional `permissions` field.
+    #[must_use]
+    pub fn permissions(mut self, value: serde_json::Value) -> Self {
+        self.permissions = Some(value);
+        self
+    }
+    /// Set the optional `prompt` field.
+    #[must_use]
+    pub fn prompt(mut self, value: serde_json::Value) -> Self {
+        self.prompt = Some(value);
+        self
+    }
+    /// Set the optional `url` field.
+    #[must_use]
+    pub fn url(mut self, value: impl Into<String>) -> Self {
+        self.url = Some(value.into());
+        self
+    }
+    /// Add a forward-compat field the spec does not yet name.
+    #[must_use]
+    pub fn extra(mut self, key: impl Into<String>, value: impl Into<Value>) -> Self {
+        self.extras.insert(key.into(), value.into());
+        self
+    }
+    /// Assemble the `params` JSON object (unset optionals omitted).
+    #[must_use]
+    pub fn build(self) -> Value {
+        let mut obj = Map::new();
+        obj.insert("lang".to_string(), Value::from(self.lang));
+        if let Some(v) = self.swaig {
+            obj.insert("SWAIG".to_string(), v);
+        }
+        if let Some(v) = self.action {
+            obj.insert("action".to_string(), v);
+        }
+        if let Some(v) = self.customer_role {
+            obj.insert("customer_role".to_string(), Value::from(v));
+        }
+        if let Some(v) = self.direction {
+            obj.insert("direction".to_string(), v);
+        }
+        if let Some(v) = self.global_data {
+            obj.insert("global_data".to_string(), v);
+        }
+        if let Some(v) = self.hints {
+            obj.insert("hints".to_string(), v);
+        }
+        if let Some(v) = self.model {
+            obj.insert("model".to_string(), Value::from(v));
+        }
+        if let Some(v) = self.params {
+            obj.insert("params".to_string(), v);
+        }
+        if let Some(v) = self.permissions {
+            obj.insert("permissions".to_string(), v);
+        }
+        if let Some(v) = self.prompt {
+            obj.insert("prompt".to_string(), v);
+        }
+        if let Some(v) = self.url {
+            obj.insert("url".to_string(), Value::from(v));
+        }
+        for (k, v) in self.extras {
+            obj.insert(k, v);
+        }
+        Value::Object(obj)
+    }
+}
+
+/// Named request parameters for the generated method (Rust options-builder
+/// idiom — required fields in `new`, optionals via setters, `extras` open door).
+#[derive(Debug, Clone, Default)]
+pub struct CallingAiSidecarStatusRequest {
+    extras: Map<String, Value>,
+}
+
+impl CallingAiSidecarStatusRequest {
+    /// Construct the request with its required fields.
+    pub fn new() -> Self {
+        CallingAiSidecarStatusRequest {
+            ..Default::default()
+        }
+    }
+    /// Add a forward-compat field the spec does not yet name.
+    #[must_use]
+    pub fn extra(mut self, key: impl Into<String>, value: impl Into<Value>) -> Self {
+        self.extras.insert(key.into(), value.into());
+        self
+    }
+    /// Assemble the `params` JSON object (unset optionals omitted).
+    #[must_use]
+    pub fn build(self) -> Value {
+        let mut obj = Map::new();
+        for (k, v) in self.extras {
+            obj.insert(k, v);
+        }
+        Value::Object(obj)
+    }
+}
+
+/// Named request parameters for the generated method (Rust options-builder
+/// idiom — required fields in `new`, optionals via setters, `extras` open door).
+#[derive(Debug, Clone, Default)]
+pub struct CallingAiSidecarStopRequest {
+    extras: Map<String, Value>,
+}
+
+impl CallingAiSidecarStopRequest {
+    /// Construct the request with its required fields.
+    pub fn new() -> Self {
+        CallingAiSidecarStopRequest {
+            ..Default::default()
+        }
+    }
+    /// Add a forward-compat field the spec does not yet name.
+    #[must_use]
+    pub fn extra(mut self, key: impl Into<String>, value: impl Into<Value>) -> Self {
+        self.extras.insert(key.into(), value.into());
+        self
+    }
+    /// Assemble the `params` JSON object (unset optionals omitted).
+    #[must_use]
+    pub fn build(self) -> Value {
+        let mut obj = Map::new();
+        for (k, v) in self.extras {
+            obj.insert(k, v);
+        }
+        Value::Object(obj)
+    }
+}
+
+/// Named request parameters for the generated method (Rust options-builder
+/// idiom — required fields in `new`, optionals via setters, `extras` open door).
+#[derive(Debug, Clone, Default)]
+pub struct CallingAiStopRequest {
+    control_id: Option<String>,
+    extras: Map<String, Value>,
+}
+
+impl CallingAiStopRequest {
+    /// Construct the request with its required fields.
+    pub fn new() -> Self {
+        CallingAiStopRequest {
+            ..Default::default()
+        }
+    }
+    /// Set the optional `control_id` field.
+    #[must_use]
+    pub fn control_id(mut self, value: impl Into<String>) -> Self {
+        self.control_id = Some(value.into());
+        self
+    }
+    /// Add a forward-compat field the spec does not yet name.
+    #[must_use]
+    pub fn extra(mut self, key: impl Into<String>, value: impl Into<Value>) -> Self {
+        self.extras.insert(key.into(), value.into());
+        self
+    }
+    /// Assemble the `params` JSON object (unset optionals omitted).
+    #[must_use]
+    pub fn build(self) -> Value {
+        let mut obj = Map::new();
+        if let Some(v) = self.control_id {
+            obj.insert("control_id".to_string(), Value::from(v));
+        }
         for (k, v) in self.extras {
             obj.insert(k, v);
         }
@@ -212,44 +493,31 @@ impl CallingAiUnholdRequest {
 /// idiom — required fields in `new`, optionals via setters, `extras` open door).
 #[derive(Debug, Clone, Default)]
 pub struct CallingCollectRequest {
-    control_id: Option<String>,
-    initial_timeout: Option<f64>,
-    digits: Option<serde_json::Value>,
-    speech: Option<serde_json::Value>,
+    control_id: String,
+    r#continue: Option<bool>,
     continuous: Option<bool>,
+    digits: Option<serde_json::Value>,
+    initial_timeout: Option<f64>,
     partial_results: Option<bool>,
+    send_start_of_input: Option<bool>,
+    speech: Option<serde_json::Value>,
+    start_input_timers: Option<bool>,
+    status_url: Option<String>,
     extras: Map<String, Value>,
 }
 
 impl CallingCollectRequest {
     /// Construct the request with its required fields.
-    pub fn new() -> Self {
+    pub fn new(control_id: impl Into<String>) -> Self {
         CallingCollectRequest {
+            control_id: control_id.into(),
             ..Default::default()
         }
     }
-    /// Set the optional `control_id` field.
+    /// Set the optional `continue` field.
     #[must_use]
-    pub fn control_id(mut self, value: impl Into<String>) -> Self {
-        self.control_id = Some(value.into());
-        self
-    }
-    /// Set the optional `initial_timeout` field.
-    #[must_use]
-    pub fn initial_timeout(mut self, value: f64) -> Self {
-        self.initial_timeout = Some(value);
-        self
-    }
-    /// Set the optional `digits` field.
-    #[must_use]
-    pub fn digits(mut self, value: serde_json::Value) -> Self {
-        self.digits = Some(value);
-        self
-    }
-    /// Set the optional `speech` field.
-    #[must_use]
-    pub fn speech(mut self, value: serde_json::Value) -> Self {
-        self.speech = Some(value);
+    pub fn r#continue(mut self, value: bool) -> Self {
+        self.r#continue = Some(value);
         self
     }
     /// Set the optional `continuous` field.
@@ -258,10 +526,46 @@ impl CallingCollectRequest {
         self.continuous = Some(value);
         self
     }
+    /// Set the optional `digits` field.
+    #[must_use]
+    pub fn digits(mut self, value: serde_json::Value) -> Self {
+        self.digits = Some(value);
+        self
+    }
+    /// Set the optional `initial_timeout` field.
+    #[must_use]
+    pub fn initial_timeout(mut self, value: f64) -> Self {
+        self.initial_timeout = Some(value);
+        self
+    }
     /// Set the optional `partial_results` field.
     #[must_use]
     pub fn partial_results(mut self, value: bool) -> Self {
         self.partial_results = Some(value);
+        self
+    }
+    /// Set the optional `send_start_of_input` field.
+    #[must_use]
+    pub fn send_start_of_input(mut self, value: bool) -> Self {
+        self.send_start_of_input = Some(value);
+        self
+    }
+    /// Set the optional `speech` field.
+    #[must_use]
+    pub fn speech(mut self, value: serde_json::Value) -> Self {
+        self.speech = Some(value);
+        self
+    }
+    /// Set the optional `start_input_timers` field.
+    #[must_use]
+    pub fn start_input_timers(mut self, value: bool) -> Self {
+        self.start_input_timers = Some(value);
+        self
+    }
+    /// Set the optional `status_url` field.
+    #[must_use]
+    pub fn status_url(mut self, value: impl Into<String>) -> Self {
+        self.status_url = Some(value.into());
         self
     }
     /// Add a forward-compat field the spec does not yet name.
@@ -274,23 +578,33 @@ impl CallingCollectRequest {
     #[must_use]
     pub fn build(self) -> Value {
         let mut obj = Map::new();
-        if let Some(v) = self.control_id {
-            obj.insert("control_id".to_string(), Value::from(v));
-        }
-        if let Some(v) = self.initial_timeout {
-            obj.insert("initial_timeout".to_string(), Value::from(v));
-        }
-        if let Some(v) = self.digits {
-            obj.insert("digits".to_string(), v);
-        }
-        if let Some(v) = self.speech {
-            obj.insert("speech".to_string(), v);
+        obj.insert("control_id".to_string(), Value::from(self.control_id));
+        if let Some(v) = self.r#continue {
+            obj.insert("continue".to_string(), Value::from(v));
         }
         if let Some(v) = self.continuous {
             obj.insert("continuous".to_string(), Value::from(v));
         }
+        if let Some(v) = self.digits {
+            obj.insert("digits".to_string(), v);
+        }
+        if let Some(v) = self.initial_timeout {
+            obj.insert("initial_timeout".to_string(), Value::from(v));
+        }
         if let Some(v) = self.partial_results {
             obj.insert("partial_results".to_string(), Value::from(v));
+        }
+        if let Some(v) = self.send_start_of_input {
+            obj.insert("send_start_of_input".to_string(), Value::from(v));
+        }
+        if let Some(v) = self.speech {
+            obj.insert("speech".to_string(), v);
+        }
+        if let Some(v) = self.start_input_timers {
+            obj.insert("start_input_timers".to_string(), Value::from(v));
+        }
+        if let Some(v) = self.status_url {
+            obj.insert("status_url".to_string(), Value::from(v));
         }
         for (k, v) in self.extras {
             obj.insert(k, v);
@@ -433,24 +747,26 @@ impl CallingDenoiseStopRequest {
 /// idiom — required fields in `new`, optionals via setters, `extras` open door).
 #[derive(Debug, Clone, Default)]
 pub struct CallingDetectRequest {
+    control_id: String,
     detect: serde_json::Value,
-    control_id: Option<String>,
+    status_url: Option<String>,
     timeout: Option<f64>,
     extras: Map<String, Value>,
 }
 
 impl CallingDetectRequest {
     /// Construct the request with its required fields.
-    pub fn new(detect: serde_json::Value) -> Self {
+    pub fn new(control_id: impl Into<String>, detect: serde_json::Value) -> Self {
         CallingDetectRequest {
+            control_id: control_id.into(),
             detect,
             ..Default::default()
         }
     }
-    /// Set the optional `control_id` field.
+    /// Set the optional `status_url` field.
     #[must_use]
-    pub fn control_id(mut self, value: impl Into<String>) -> Self {
-        self.control_id = Some(value.into());
+    pub fn status_url(mut self, value: impl Into<String>) -> Self {
+        self.status_url = Some(value.into());
         self
     }
     /// Set the optional `timeout` field.
@@ -469,9 +785,10 @@ impl CallingDetectRequest {
     #[must_use]
     pub fn build(self) -> Value {
         let mut obj = Map::new();
+        obj.insert("control_id".to_string(), Value::from(self.control_id));
         obj.insert("detect".to_string(), self.detect);
-        if let Some(v) = self.control_id {
-            obj.insert("control_id".to_string(), Value::from(v));
+        if let Some(v) = self.status_url {
+            obj.insert("status_url".to_string(), Value::from(v));
         }
         if let Some(v) = self.timeout {
             obj.insert("timeout".to_string(), Value::from(v));
@@ -522,26 +839,40 @@ impl CallingDetectStopRequest {
 #[derive(Debug, Clone, Default)]
 pub struct CallingDialRequest {
     from: String,
-    to: String,
+    to: Option<String>,
     caller_id: Option<String>,
     fallback_url: Option<String>,
     status_url: Option<String>,
     status_events: Option<serde_json::Value>,
     url_method: Option<String>,
-    url: Option<String>,
     codecs: Option<serde_json::Value>,
+    to_script: Option<serde_json::Value>,
+    timeout: Option<i64>,
+    max_price_per_minute: Option<f64>,
+    send_digits: Option<String>,
+    region: Option<serde_json::Value>,
+    username: Option<String>,
+    password: Option<String>,
+    headers: Option<serde_json::Value>,
+    custom_variables: Option<serde_json::Value>,
+    url: Option<String>,
     swml: Option<serde_json::Value>,
     extras: Map<String, Value>,
 }
 
 impl CallingDialRequest {
     /// Construct the request with its required fields.
-    pub fn new(from: impl Into<String>, to: impl Into<String>) -> Self {
+    pub fn new(from: impl Into<String>) -> Self {
         CallingDialRequest {
             from: from.into(),
-            to: to.into(),
             ..Default::default()
         }
+    }
+    /// Set the optional `to` field.
+    #[must_use]
+    pub fn to(mut self, value: impl Into<String>) -> Self {
+        self.to = Some(value.into());
+        self
     }
     /// Set the optional `caller_id` field.
     #[must_use]
@@ -573,16 +904,70 @@ impl CallingDialRequest {
         self.url_method = Some(value.into());
         self
     }
-    /// Set the optional `url` field.
-    #[must_use]
-    pub fn url(mut self, value: impl Into<String>) -> Self {
-        self.url = Some(value.into());
-        self
-    }
     /// Set the optional `codecs` field.
     #[must_use]
     pub fn codecs(mut self, value: serde_json::Value) -> Self {
         self.codecs = Some(value);
+        self
+    }
+    /// Set the optional `to_script` field.
+    #[must_use]
+    pub fn to_script(mut self, value: serde_json::Value) -> Self {
+        self.to_script = Some(value);
+        self
+    }
+    /// Set the optional `timeout` field.
+    #[must_use]
+    pub fn timeout(mut self, value: i64) -> Self {
+        self.timeout = Some(value);
+        self
+    }
+    /// Set the optional `max_price_per_minute` field.
+    #[must_use]
+    pub fn max_price_per_minute(mut self, value: f64) -> Self {
+        self.max_price_per_minute = Some(value);
+        self
+    }
+    /// Set the optional `send_digits` field.
+    #[must_use]
+    pub fn send_digits(mut self, value: impl Into<String>) -> Self {
+        self.send_digits = Some(value.into());
+        self
+    }
+    /// Set the optional `region` field.
+    #[must_use]
+    pub fn region(mut self, value: serde_json::Value) -> Self {
+        self.region = Some(value);
+        self
+    }
+    /// Set the optional `username` field.
+    #[must_use]
+    pub fn username(mut self, value: impl Into<String>) -> Self {
+        self.username = Some(value.into());
+        self
+    }
+    /// Set the optional `password` field.
+    #[must_use]
+    pub fn password(mut self, value: impl Into<String>) -> Self {
+        self.password = Some(value.into());
+        self
+    }
+    /// Set the optional `headers` field.
+    #[must_use]
+    pub fn headers(mut self, value: serde_json::Value) -> Self {
+        self.headers = Some(value);
+        self
+    }
+    /// Set the optional `custom_variables` field.
+    #[must_use]
+    pub fn custom_variables(mut self, value: serde_json::Value) -> Self {
+        self.custom_variables = Some(value);
+        self
+    }
+    /// Set the optional `url` field.
+    #[must_use]
+    pub fn url(mut self, value: impl Into<String>) -> Self {
+        self.url = Some(value.into());
         self
     }
     /// Set the optional `swml` field.
@@ -602,7 +987,9 @@ impl CallingDialRequest {
     pub fn build(self) -> Value {
         let mut obj = Map::new();
         obj.insert("from".to_string(), Value::from(self.from));
-        obj.insert("to".to_string(), Value::from(self.to));
+        if let Some(v) = self.to {
+            obj.insert("to".to_string(), Value::from(v));
+        }
         if let Some(v) = self.caller_id {
             obj.insert("caller_id".to_string(), Value::from(v));
         }
@@ -618,11 +1005,38 @@ impl CallingDialRequest {
         if let Some(v) = self.url_method {
             obj.insert("url_method".to_string(), Value::from(v));
         }
-        if let Some(v) = self.url {
-            obj.insert("url".to_string(), Value::from(v));
-        }
         if let Some(v) = self.codecs {
             obj.insert("codecs".to_string(), v);
+        }
+        if let Some(v) = self.to_script {
+            obj.insert("to_script".to_string(), v);
+        }
+        if let Some(v) = self.timeout {
+            obj.insert("timeout".to_string(), Value::from(v));
+        }
+        if let Some(v) = self.max_price_per_minute {
+            obj.insert("max_price_per_minute".to_string(), Value::from(v));
+        }
+        if let Some(v) = self.send_digits {
+            obj.insert("send_digits".to_string(), Value::from(v));
+        }
+        if let Some(v) = self.region {
+            obj.insert("region".to_string(), v);
+        }
+        if let Some(v) = self.username {
+            obj.insert("username".to_string(), Value::from(v));
+        }
+        if let Some(v) = self.password {
+            obj.insert("password".to_string(), Value::from(v));
+        }
+        if let Some(v) = self.headers {
+            obj.insert("headers".to_string(), v);
+        }
+        if let Some(v) = self.custom_variables {
+            obj.insert("custom_variables".to_string(), v);
+        }
+        if let Some(v) = self.url {
+            obj.insert("url".to_string(), Value::from(v));
         }
         if let Some(v) = self.swml {
             obj.insert("swml".to_string(), v);
@@ -711,6 +1125,7 @@ impl CallingEndRequest {
 #[derive(Debug, Clone, Default)]
 pub struct CallingLiveTranscribeRequest {
     action: serde_json::Value,
+    hints: Option<serde_json::Value>,
     extras: Map<String, Value>,
 }
 
@@ -721,6 +1136,12 @@ impl CallingLiveTranscribeRequest {
             action,
             ..Default::default()
         }
+    }
+    /// Set the optional `hints` field.
+    #[must_use]
+    pub fn hints(mut self, value: serde_json::Value) -> Self {
+        self.hints = Some(value);
+        self
     }
     /// Add a forward-compat field the spec does not yet name.
     #[must_use]
@@ -733,6 +1154,9 @@ impl CallingLiveTranscribeRequest {
     pub fn build(self) -> Value {
         let mut obj = Map::new();
         obj.insert("action".to_string(), self.action);
+        if let Some(v) = self.hints {
+            obj.insert("hints".to_string(), v);
+        }
         for (k, v) in self.extras {
             obj.insert(k, v);
         }
@@ -822,39 +1246,43 @@ impl CallingPlayPauseRequest {
 /// idiom — required fields in `new`, optionals via setters, `extras` open door).
 #[derive(Debug, Clone, Default)]
 pub struct CallingPlayRequest {
+    control_id: String,
     play: serde_json::Value,
-    control_id: Option<String>,
-    volume: Option<f64>,
     direction: Option<String>,
+    gender: Option<String>,
+    language: Option<String>,
     r#loop: Option<i64>,
     status_url: Option<String>,
+    voice: Option<String>,
+    volume: Option<f64>,
     extras: Map<String, Value>,
 }
 
 impl CallingPlayRequest {
     /// Construct the request with its required fields.
-    pub fn new(play: serde_json::Value) -> Self {
+    pub fn new(control_id: impl Into<String>, play: serde_json::Value) -> Self {
         CallingPlayRequest {
+            control_id: control_id.into(),
             play,
             ..Default::default()
         }
-    }
-    /// Set the optional `control_id` field.
-    #[must_use]
-    pub fn control_id(mut self, value: impl Into<String>) -> Self {
-        self.control_id = Some(value.into());
-        self
-    }
-    /// Set the optional `volume` field.
-    #[must_use]
-    pub fn volume(mut self, value: f64) -> Self {
-        self.volume = Some(value);
-        self
     }
     /// Set the optional `direction` field.
     #[must_use]
     pub fn direction(mut self, value: impl Into<String>) -> Self {
         self.direction = Some(value.into());
+        self
+    }
+    /// Set the optional `gender` field.
+    #[must_use]
+    pub fn gender(mut self, value: impl Into<String>) -> Self {
+        self.gender = Some(value.into());
+        self
+    }
+    /// Set the optional `language` field.
+    #[must_use]
+    pub fn language(mut self, value: impl Into<String>) -> Self {
+        self.language = Some(value.into());
         self
     }
     /// Set the optional `loop` field.
@@ -869,6 +1297,18 @@ impl CallingPlayRequest {
         self.status_url = Some(value.into());
         self
     }
+    /// Set the optional `voice` field.
+    #[must_use]
+    pub fn voice(mut self, value: impl Into<String>) -> Self {
+        self.voice = Some(value.into());
+        self
+    }
+    /// Set the optional `volume` field.
+    #[must_use]
+    pub fn volume(mut self, value: f64) -> Self {
+        self.volume = Some(value);
+        self
+    }
     /// Add a forward-compat field the spec does not yet name.
     #[must_use]
     pub fn extra(mut self, key: impl Into<String>, value: impl Into<Value>) -> Self {
@@ -879,21 +1319,28 @@ impl CallingPlayRequest {
     #[must_use]
     pub fn build(self) -> Value {
         let mut obj = Map::new();
+        obj.insert("control_id".to_string(), Value::from(self.control_id));
         obj.insert("play".to_string(), self.play);
-        if let Some(v) = self.control_id {
-            obj.insert("control_id".to_string(), Value::from(v));
-        }
-        if let Some(v) = self.volume {
-            obj.insert("volume".to_string(), Value::from(v));
-        }
         if let Some(v) = self.direction {
             obj.insert("direction".to_string(), Value::from(v));
+        }
+        if let Some(v) = self.gender {
+            obj.insert("gender".to_string(), Value::from(v));
+        }
+        if let Some(v) = self.language {
+            obj.insert("language".to_string(), Value::from(v));
         }
         if let Some(v) = self.r#loop {
             obj.insert("loop".to_string(), Value::from(v));
         }
         if let Some(v) = self.status_url {
             obj.insert("status_url".to_string(), Value::from(v));
+        }
+        if let Some(v) = self.voice {
+            obj.insert("voice".to_string(), Value::from(v));
+        }
+        if let Some(v) = self.volume {
+            obj.insert("volume".to_string(), Value::from(v));
         }
         for (k, v) in self.extras {
             obj.insert(k, v);
@@ -1046,6 +1493,7 @@ impl CallingReceiveFaxStopRequest {
 #[derive(Debug, Clone, Default)]
 pub struct CallingRecordPauseRequest {
     control_id: String,
+    behavior: Option<String>,
     extras: Map<String, Value>,
 }
 
@@ -1056,6 +1504,12 @@ impl CallingRecordPauseRequest {
             control_id: control_id.into(),
             ..Default::default()
         }
+    }
+    /// Set the optional `behavior` field.
+    #[must_use]
+    pub fn behavior(mut self, value: impl Into<String>) -> Self {
+        self.behavior = Some(value.into());
+        self
     }
     /// Add a forward-compat field the spec does not yet name.
     #[must_use]
@@ -1068,6 +1522,9 @@ impl CallingRecordPauseRequest {
     pub fn build(self) -> Value {
         let mut obj = Map::new();
         obj.insert("control_id".to_string(), Value::from(self.control_id));
+        if let Some(v) = self.behavior {
+            obj.insert("behavior".to_string(), Value::from(v));
+        }
         for (k, v) in self.extras {
             obj.insert(k, v);
         }
@@ -1079,30 +1536,20 @@ impl CallingRecordPauseRequest {
 /// idiom — required fields in `new`, optionals via setters, `extras` open door).
 #[derive(Debug, Clone, Default)]
 pub struct CallingRecordRequest {
-    control_id: Option<String>,
-    audio: Option<serde_json::Value>,
+    control_id: String,
+    record: serde_json::Value,
     status_url: Option<String>,
     extras: Map<String, Value>,
 }
 
 impl CallingRecordRequest {
     /// Construct the request with its required fields.
-    pub fn new() -> Self {
+    pub fn new(control_id: impl Into<String>, record: serde_json::Value) -> Self {
         CallingRecordRequest {
+            control_id: control_id.into(),
+            record,
             ..Default::default()
         }
-    }
-    /// Set the optional `control_id` field.
-    #[must_use]
-    pub fn control_id(mut self, value: impl Into<String>) -> Self {
-        self.control_id = Some(value.into());
-        self
-    }
-    /// Set the optional `audio` field.
-    #[must_use]
-    pub fn audio(mut self, value: serde_json::Value) -> Self {
-        self.audio = Some(value);
-        self
     }
     /// Set the optional `status_url` field.
     #[must_use]
@@ -1120,12 +1567,8 @@ impl CallingRecordRequest {
     #[must_use]
     pub fn build(self) -> Value {
         let mut obj = Map::new();
-        if let Some(v) = self.control_id {
-            obj.insert("control_id".to_string(), Value::from(v));
-        }
-        if let Some(v) = self.audio {
-            obj.insert("audio".to_string(), v);
-        }
+        obj.insert("control_id".to_string(), Value::from(self.control_id));
+        obj.insert("record".to_string(), self.record);
         if let Some(v) = self.status_url {
             obj.insert("status_url".to_string(), Value::from(v));
         }
@@ -1286,27 +1729,31 @@ impl CallingSendFaxStopRequest {
 /// idiom — required fields in `new`, optionals via setters, `extras` open door).
 #[derive(Debug, Clone, Default)]
 pub struct CallingStreamRequest {
+    control_id: String,
     url: String,
-    control_id: Option<String>,
-    codec: Option<String>,
-    track: Option<String>,
     authorization_bearer_token: Option<String>,
+    codec: Option<String>,
     custom_parameters: Option<serde_json::Value>,
+    name: Option<String>,
+    status_url: Option<String>,
+    status_url_method: Option<String>,
+    track: Option<String>,
     extras: Map<String, Value>,
 }
 
 impl CallingStreamRequest {
     /// Construct the request with its required fields.
-    pub fn new(url: impl Into<String>) -> Self {
+    pub fn new(control_id: impl Into<String>, url: impl Into<String>) -> Self {
         CallingStreamRequest {
+            control_id: control_id.into(),
             url: url.into(),
             ..Default::default()
         }
     }
-    /// Set the optional `control_id` field.
+    /// Set the optional `authorization_bearer_token` field.
     #[must_use]
-    pub fn control_id(mut self, value: impl Into<String>) -> Self {
-        self.control_id = Some(value.into());
+    pub fn authorization_bearer_token(mut self, value: impl Into<String>) -> Self {
+        self.authorization_bearer_token = Some(value.into());
         self
     }
     /// Set the optional `codec` field.
@@ -1315,22 +1762,34 @@ impl CallingStreamRequest {
         self.codec = Some(value.into());
         self
     }
-    /// Set the optional `track` field.
-    #[must_use]
-    pub fn track(mut self, value: impl Into<String>) -> Self {
-        self.track = Some(value.into());
-        self
-    }
-    /// Set the optional `authorization_bearer_token` field.
-    #[must_use]
-    pub fn authorization_bearer_token(mut self, value: impl Into<String>) -> Self {
-        self.authorization_bearer_token = Some(value.into());
-        self
-    }
     /// Set the optional `custom_parameters` field.
     #[must_use]
     pub fn custom_parameters(mut self, value: serde_json::Value) -> Self {
         self.custom_parameters = Some(value);
+        self
+    }
+    /// Set the optional `name` field.
+    #[must_use]
+    pub fn name(mut self, value: impl Into<String>) -> Self {
+        self.name = Some(value.into());
+        self
+    }
+    /// Set the optional `status_url` field.
+    #[must_use]
+    pub fn status_url(mut self, value: impl Into<String>) -> Self {
+        self.status_url = Some(value.into());
+        self
+    }
+    /// Set the optional `status_url_method` field.
+    #[must_use]
+    pub fn status_url_method(mut self, value: impl Into<String>) -> Self {
+        self.status_url_method = Some(value.into());
+        self
+    }
+    /// Set the optional `track` field.
+    #[must_use]
+    pub fn track(mut self, value: impl Into<String>) -> Self {
+        self.track = Some(value.into());
         self
     }
     /// Add a forward-compat field the spec does not yet name.
@@ -1343,21 +1802,28 @@ impl CallingStreamRequest {
     #[must_use]
     pub fn build(self) -> Value {
         let mut obj = Map::new();
+        obj.insert("control_id".to_string(), Value::from(self.control_id));
         obj.insert("url".to_string(), Value::from(self.url));
-        if let Some(v) = self.control_id {
-            obj.insert("control_id".to_string(), Value::from(v));
+        if let Some(v) = self.authorization_bearer_token {
+            obj.insert("authorization_bearer_token".to_string(), Value::from(v));
         }
         if let Some(v) = self.codec {
             obj.insert("codec".to_string(), Value::from(v));
         }
-        if let Some(v) = self.track {
-            obj.insert("track".to_string(), Value::from(v));
-        }
-        if let Some(v) = self.authorization_bearer_token {
-            obj.insert("authorization_bearer_token".to_string(), Value::from(v));
-        }
         if let Some(v) = self.custom_parameters {
             obj.insert("custom_parameters".to_string(), v);
+        }
+        if let Some(v) = self.name {
+            obj.insert("name".to_string(), Value::from(v));
+        }
+        if let Some(v) = self.status_url {
+            obj.insert("status_url".to_string(), Value::from(v));
+        }
+        if let Some(v) = self.status_url_method {
+            obj.insert("status_url_method".to_string(), Value::from(v));
+        }
+        if let Some(v) = self.track {
+            obj.insert("track".to_string(), Value::from(v));
         }
         for (k, v) in self.extras {
             obj.insert(k, v);
@@ -1404,25 +1870,31 @@ impl CallingStreamStopRequest {
 /// idiom — required fields in `new`, optionals via setters, `extras` open door).
 #[derive(Debug, Clone, Default)]
 pub struct CallingTapRequest {
-    tap: serde_json::Value,
+    control_id: String,
     device: serde_json::Value,
-    control_id: Option<String>,
+    tap: serde_json::Value,
+    status_url: Option<String>,
     extras: Map<String, Value>,
 }
 
 impl CallingTapRequest {
     /// Construct the request with its required fields.
-    pub fn new(tap: serde_json::Value, device: serde_json::Value) -> Self {
+    pub fn new(
+        control_id: impl Into<String>,
+        device: serde_json::Value,
+        tap: serde_json::Value,
+    ) -> Self {
         CallingTapRequest {
-            tap,
+            control_id: control_id.into(),
             device,
+            tap,
             ..Default::default()
         }
     }
-    /// Set the optional `control_id` field.
+    /// Set the optional `status_url` field.
     #[must_use]
-    pub fn control_id(mut self, value: impl Into<String>) -> Self {
-        self.control_id = Some(value.into());
+    pub fn status_url(mut self, value: impl Into<String>) -> Self {
+        self.status_url = Some(value.into());
         self
     }
     /// Add a forward-compat field the spec does not yet name.
@@ -1435,10 +1907,11 @@ impl CallingTapRequest {
     #[must_use]
     pub fn build(self) -> Value {
         let mut obj = Map::new();
-        obj.insert("tap".to_string(), self.tap);
+        obj.insert("control_id".to_string(), Value::from(self.control_id));
         obj.insert("device".to_string(), self.device);
-        if let Some(v) = self.control_id {
-            obj.insert("control_id".to_string(), Value::from(v));
+        obj.insert("tap".to_string(), self.tap);
+        if let Some(v) = self.status_url {
+            obj.insert("status_url".to_string(), Value::from(v));
         }
         for (k, v) in self.extras {
             obj.insert(k, v);
@@ -1485,23 +1958,18 @@ impl CallingTapStopRequest {
 /// idiom — required fields in `new`, optionals via setters, `extras` open door).
 #[derive(Debug, Clone, Default)]
 pub struct CallingTranscribeRequest {
-    control_id: Option<String>,
+    control_id: String,
     status_url: Option<String>,
     extras: Map<String, Value>,
 }
 
 impl CallingTranscribeRequest {
     /// Construct the request with its required fields.
-    pub fn new() -> Self {
+    pub fn new(control_id: impl Into<String>) -> Self {
         CallingTranscribeRequest {
+            control_id: control_id.into(),
             ..Default::default()
         }
-    }
-    /// Set the optional `control_id` field.
-    #[must_use]
-    pub fn control_id(mut self, value: impl Into<String>) -> Self {
-        self.control_id = Some(value.into());
-        self
     }
     /// Set the optional `status_url` field.
     #[must_use]
@@ -1519,9 +1987,7 @@ impl CallingTranscribeRequest {
     #[must_use]
     pub fn build(self) -> Value {
         let mut obj = Map::new();
-        if let Some(v) = self.control_id {
-            obj.insert("control_id".to_string(), Value::from(v));
-        }
+        obj.insert("control_id".to_string(), Value::from(self.control_id));
         if let Some(v) = self.status_url {
             obj.insert("status_url".to_string(), Value::from(v));
         }
@@ -2354,6 +2820,96 @@ impl<'a> Calling<'a> {
     ) -> Result<Value, SignalWireRestError> {
         self.execute(
             "calling.ai.stop",
+            Some(call_id),
+            request.build(),
+            request_options,
+        )
+    }
+
+    /// `calling.ai_sidecar` — generated command method.
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] on transport failure or a non-2xx status.
+    pub fn ai_sidecar(
+        &self,
+        call_id: &str,
+        request: CallingAiSidecarRequest,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.execute(
+            "calling.ai_sidecar",
+            Some(call_id),
+            request.build(),
+            request_options,
+        )
+    }
+
+    /// `calling.ai_sidecar.ask` — generated command method.
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] on transport failure or a non-2xx status.
+    pub fn ai_sidecar_ask(
+        &self,
+        call_id: &str,
+        request: CallingAiSidecarAskRequest,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.execute(
+            "calling.ai_sidecar.ask",
+            Some(call_id),
+            request.build(),
+            request_options,
+        )
+    }
+
+    /// `calling.ai_sidecar.poke` — generated command method.
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] on transport failure or a non-2xx status.
+    pub fn ai_sidecar_poke(
+        &self,
+        call_id: &str,
+        request: CallingAiSidecarPokeRequest,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.execute(
+            "calling.ai_sidecar.poke",
+            Some(call_id),
+            request.build(),
+            request_options,
+        )
+    }
+
+    /// `calling.ai_sidecar.stop` — generated command method.
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] on transport failure or a non-2xx status.
+    pub fn ai_sidecar_stop(
+        &self,
+        call_id: &str,
+        request: CallingAiSidecarStopRequest,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.execute(
+            "calling.ai_sidecar.stop",
+            Some(call_id),
+            request.build(),
+            request_options,
+        )
+    }
+
+    /// `calling.ai_sidecar.status` — generated command method.
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] on transport failure or a non-2xx status.
+    pub fn ai_sidecar_status(
+        &self,
+        call_id: &str,
+        request: CallingAiSidecarStatusRequest,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.execute(
+            "calling.ai_sidecar.status",
             Some(call_id),
             request.build(),
             request_options,

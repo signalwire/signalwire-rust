@@ -29,17 +29,17 @@ pub struct ActiveSession {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub display_name: Option<String>,
+    pub display_name: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub join_from: Option<String>,
+    pub join_from: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub join_until: Option<String>,
+    pub join_until: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub remove_at: Option<String>,
+    pub remove_at: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub remove_after_seconds_elapsed: Option<i64>,
+    pub remove_after_seconds_elapsed: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub layout: Option<String>,
+    pub layout: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub max_members: Option<i64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -59,9 +59,27 @@ pub struct ActiveSession {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub enable_room_previews: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub preview_url: Option<String>,
+    pub preview_url: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub audio_video_sync: Option<bool>,
+    pub sync_audio_video: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tone_on_entry_and_exit: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub room_join_video_off: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub user_join_video_off: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub locked: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cost_in_dollars: Option<f64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub created_at: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub updated_at: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub locked_cover: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub prioritize_handraise: Option<serde_json::Value>,
 }
 
 /// `ChargeDetail` — generated read-side wire type ('video' REST API, schema 'ChargeDetail').
@@ -140,6 +158,70 @@ pub struct Conference {
     pub updated_at: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub active_session: Option<serde_json::Value>,
+}
+
+/// `ConferenceMutationResponse` — generated read-side wire type ('video' REST API, schema 'ConferenceMutationResponse').
+///
+/// Method-less serde DTO: each field maps a snake wire key (via
+/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct ConferenceMutationResponse {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub display_name: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub description: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub join_from: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub join_until: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub quality: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub layout: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub size: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub record_on_start: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tone_on_entry_and_exit: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub user_join_video_off: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub room_join_video_off: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub enable_chat: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub enable_room_previews: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub dark_primary: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub dark_background: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub dark_foreground: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub dark_success: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub dark_negative: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub light_primary: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub light_background: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub light_foreground: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub light_success: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub light_negative: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub meta: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub created_at: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub updated_at: Option<String>,
 }
 
 /// `ConferenceToken` — generated read-side wire type ('video' REST API, schema 'ConferenceToken').
@@ -578,6 +660,58 @@ pub struct RoomResponse {
     pub updated_at: Option<String>,
 }
 
+/// `RoomMutationResponse` — generated read-side wire type ('video' REST API, schema 'RoomMutationResponse').
+///
+/// Method-less serde DTO: each field maps a snake wire key (via
+/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct RoomMutationResponse {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub display_name: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub description: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub max_members: Option<i64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub quality: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fps: Option<i64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub join_from: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub join_until: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub remove_at: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub remove_after_seconds_elapsed: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub layout: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub record_on_start: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tone_on_entry_and_exit: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub room_join_video_off: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub user_join_video_off: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub enable_room_previews: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sync_audio_video: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub meta: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub prioritize_handraise: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub created_at: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub updated_at: Option<String>,
+}
+
 /// `RoomSession` — generated read-side wire type ('video' REST API, schema 'RoomSession').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
@@ -749,7 +883,7 @@ pub struct RoomSessionSummary {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub preview_url: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub prioritize_handraise: Option<serde_json::Value>,
+    pub prioritize_handraise: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub sync_audio_video: Option<serde_json::Value>,
 }

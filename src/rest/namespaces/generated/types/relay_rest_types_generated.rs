@@ -58,6 +58,12 @@ pub struct Address {
     pub postal_code: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub zip_code: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub emergency_enabled: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub validated: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub validated_at: Option<String>,
 }
 
 /// `AddressListResponse` — generated read-side wire type ('relay-rest' REST API, schema 'AddressListResponse').
@@ -104,6 +110,12 @@ pub struct AddressResponse {
     pub postal_code: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub zip_code: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub emergency_enabled: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub validated: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub validated_at: Option<String>,
 }
 
 /// `AssignedNumber` — generated read-side wire type ('relay-rest' REST API, schema 'AssignedNumber').
@@ -120,6 +132,8 @@ pub struct AssignedNumber {
     pub campaign_id: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub phone_number: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub status_callback_url: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub created_at: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -150,8 +164,6 @@ pub struct AssignedPhoneNumber {
     pub name: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub number: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub status_callback_url: Option<String>,
 }
 
 /// `AvailablePhoneNumber` — generated read-side wire type ('relay-rest' REST API, schema 'AvailablePhoneNumber').
@@ -161,17 +173,19 @@ pub struct AssignedPhoneNumber {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct AvailablePhoneNumber {
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub number: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub region: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub city: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub rate_center: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub lata: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub capabilities: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub e164: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub national_number_formatted: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub international_number_formatted: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub country_code: Option<String>,
 }
 
 /// `AvailablePhoneNumbersResponse` — generated read-side wire type ('relay-rest' REST API, schema 'AvailablePhoneNumbersResponse').
@@ -215,8 +229,6 @@ pub struct Brand {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub company_vertical: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub company_website: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub csp_brand_reference: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub csp_self_registered: Option<bool>,
@@ -226,6 +238,12 @@ pub struct Brand {
     pub created_at: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub updated_at: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub signalwire_contact_emails: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub large_message_limit: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub number_pooling_for_company: Option<String>,
 }
 
 /// `BrandListResponse` — generated read-side wire type ('relay-rest' REST API, schema 'BrandListResponse').
@@ -269,8 +287,6 @@ pub struct BrandResponse {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub company_vertical: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub company_website: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub csp_brand_reference: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub csp_self_registered: Option<bool>,
@@ -280,6 +296,12 @@ pub struct BrandResponse {
     pub created_at: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub updated_at: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub signalwire_contact_emails: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub large_message_limit: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub number_pooling_for_company: Option<String>,
 }
 
 /// `Campaign` — generated read-side wire type ('relay-rest' REST API, schema 'Campaign').
@@ -313,8 +335,6 @@ pub struct Campaign {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub sample5: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub dynamic_templates: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub message_flow: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub opt_in_message: Option<String>,
@@ -328,8 +348,6 @@ pub struct Campaign {
     pub opt_out_keywords: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub help_keywords: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub number_pooling_required: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub number_pooling_per_campaign: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -350,6 +368,18 @@ pub struct Campaign {
     pub created_at: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub updated_at: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub dynamic_messages: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub requested_throughput: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub daily_messages_per_number: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub privacy_policy_link: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub purchase_or_port_numbers: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub signalwire_contact_emails: Option<serde_json::Value>,
 }
 
 /// `CampaignListResponse` — generated read-side wire type ('relay-rest' REST API, schema 'CampaignListResponse').
@@ -395,8 +425,6 @@ pub struct CampaignResponse {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub sample5: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub dynamic_templates: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub message_flow: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub opt_in_message: Option<String>,
@@ -410,8 +438,6 @@ pub struct CampaignResponse {
     pub opt_out_keywords: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub help_keywords: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub number_pooling_required: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub number_pooling_per_campaign: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -432,6 +458,18 @@ pub struct CampaignResponse {
     pub created_at: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub updated_at: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub dynamic_messages: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub requested_throughput: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub daily_messages_per_number: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub privacy_policy_link: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub purchase_or_port_numbers: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub signalwire_contact_emails: Option<serde_json::Value>,
 }
 
 /// `CarrierLookupInfo` — generated read-side wire type ('relay-rest' REST API, schema 'CarrierLookupInfo').
@@ -458,6 +496,8 @@ pub struct CarrierLookupInfo {
     pub lec: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub linetype: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub dnc: Option<String>,
 }
 
 /// `CnamInfo` — generated read-side wire type ('relay-rest' REST API, schema 'CnamInfo').
@@ -479,7 +519,7 @@ pub struct CreateAddressRequest {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub label: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub country: Option<String>,
+    pub country: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub first_name: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -498,6 +538,10 @@ pub struct CreateAddressRequest {
     pub state: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub postal_code: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub emergency_enabled: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub auto_correct_address: Option<bool>,
 }
 
 /// `CreateCspBrandRequest` — generated read-side wire type ('relay-rest' REST API, schema 'CreateCspBrandRequest').
@@ -514,6 +558,8 @@ pub struct CreateCspBrandRequest {
     pub csp_brand_reference: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub status_callback_url: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub signalwire_contact_emails: Option<serde_json::Value>,
 }
 
 /// `CreateDomainApplicationRequest` — generated read-side wire type ('relay-rest' REST API, schema 'CreateDomainApplicationRequest').
@@ -565,6 +611,8 @@ pub struct CreateDomainApplicationRequest {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub call_relay_script_url: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub call_relay_script_url_method: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub call_dialogflow_agent_id: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub call_ai_agent_id: Option<serde_json::Value>,
@@ -606,6 +654,10 @@ pub struct CreateManagedBrandRequest {
     pub company_website: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub status_callback_url: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub csp_brand_reference: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub signalwire_contact_emails: Option<serde_json::Value>,
 }
 
 /// `CreateManagedCampaignRequest` — generated read-side wire type ('relay-rest' REST API, schema 'CreateManagedCampaignRequest').
@@ -617,9 +669,7 @@ pub struct CreateManagedCampaignRequest {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub brand_id: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub sms_use_case: Option<String>,
+    pub sms_use_case: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub sub_use_cases: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -670,6 +720,10 @@ pub struct CreateManagedCampaignRequest {
     pub terms_and_conditions: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub status_callback_url: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub csp_campaign_reference: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub signalwire_contact_emails: Option<serde_json::Value>,
 }
 
 /// `CreateNumberGroupRequest` — generated read-side wire type ('relay-rest' REST API, schema 'CreateNumberGroupRequest').
@@ -705,11 +759,11 @@ pub struct CreatePartnerCampaignRequest {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub brand_id: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub csp_campaign_reference: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub status_callback_url: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub signalwire_contact_emails: Option<serde_json::Value>,
 }
 
 /// `CreateQueueRequest` — generated read-side wire type ('relay-rest' REST API, schema 'CreateQueueRequest').
@@ -782,6 +836,8 @@ pub struct CreateSipEndpointRequest {
     pub call_ai_agent_id: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub call_relay_script_url: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub call_relay_script_url_method: Option<String>,
 }
 
 /// `CreateVerifiedCallerIDRequest` — generated read-side wire type ('relay-rest' REST API, schema 'CreateVerifiedCallerIDRequest').
@@ -1128,6 +1184,12 @@ pub struct Order {
     pub updated_at: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub status_callback_url: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub campaign_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub brand_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub phone_numbers: Option<serde_json::Value>,
 }
 
 /// `OrderListResponse` — generated read-side wire type ('relay-rest' REST API, schema 'OrderListResponse').
@@ -1160,6 +1222,12 @@ pub struct OrderResponse {
     pub updated_at: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub status_callback_url: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub campaign_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub brand_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub phone_numbers: Option<serde_json::Value>,
 }
 
 /// `PaginationLinks` — generated read-side wire type ('relay-rest' REST API, schema 'PaginationLinks').
@@ -1196,6 +1264,10 @@ pub struct PhoneNumber {
     pub number_type: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub e911_address_id: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub e911_status: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cnam: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub created_at: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -1380,6 +1452,10 @@ pub struct PhoneNumberResponse {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub e911_address_id: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub e911_status: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cnam: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub created_at: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub updated_at: Option<String>,
@@ -1472,7 +1548,7 @@ pub struct PstnRecording {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub price_unit: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub status: Option<String>,
+    pub status: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub url: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -1493,6 +1569,8 @@ pub struct PstnRecording {
 pub struct PurchasePhoneNumberRequest {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub number: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub number_type: Option<serde_json::Value>,
 }
 
 /// `Queue` — generated read-side wire type ('relay-rest' REST API, schema 'Queue').
@@ -1613,6 +1691,42 @@ pub struct QueueResponse {
     pub date_created: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub date_updated: Option<String>,
+}
+
+/// `RelayConferenceRecording` — generated read-side wire type ('relay-rest' REST API, schema 'RelayConferenceRecording').
+///
+/// Method-less serde DTO: each field maps a snake wire key (via
+/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct RelayConferenceRecording {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub id: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub project_id: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub created_at: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub updated_at: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub duration_in_seconds: Option<i64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub error_code: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub price: Option<f64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub price_unit: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub status: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub url: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub stereo: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub byte_size: Option<i64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub track: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub relay_conference_id: Option<serde_json::Value>,
 }
 
 /// `RecordingListResponse` — generated read-side wire type ('relay-rest' REST API, schema 'RecordingListResponse').
@@ -1873,6 +1987,8 @@ pub struct SipProfileResponse {
     pub default_encryption: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub default_send_as: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub default_outbound_policy: Option<serde_json::Value>,
 }
 
 /// `SipRecording` — generated read-side wire type ('relay-rest' REST API, schema 'SipRecording').
@@ -1898,7 +2014,7 @@ pub struct SipRecording {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub price_unit: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub status: Option<String>,
+    pub status: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub url: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -1985,6 +2101,10 @@ pub struct Types_StatusCodes_ValidationError {
 pub struct UpdateCampaignRequest {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub status_callback_url: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub signalwire_contact_emails: Option<serde_json::Value>,
 }
 
 /// `UpdateDomainApplicationRequest` — generated read-side wire type ('relay-rest' REST API, schema 'UpdateDomainApplicationRequest').
@@ -2036,6 +2156,8 @@ pub struct UpdateDomainApplicationRequest {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub call_relay_script_url: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub call_relay_script_url_method: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub call_dialogflow_agent_id: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub call_ai_agent_id: Option<serde_json::Value>,
@@ -2072,7 +2194,7 @@ pub struct UpdatePhoneNumberRequest {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub call_handler: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub call_receive_mode: Option<String>,
+    pub call_receive_mode: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub call_request_url: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -2095,6 +2217,8 @@ pub struct UpdatePhoneNumberRequest {
     pub call_relay_topic_status_callback_url: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub call_relay_script_url: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub call_relay_script_url_method: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub call_relay_context: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -2229,6 +2353,8 @@ pub struct UpdateSipEndpointRequest {
     pub call_ai_agent_id: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub call_relay_script_url: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub call_relay_script_url_method: Option<String>,
 }
 
 /// `UpdateSipProfileRequest` — generated read-side wire type ('relay-rest' REST API, schema 'UpdateSipProfileRequest').
@@ -2247,6 +2373,8 @@ pub struct UpdateSipProfileRequest {
     pub default_encryption: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub default_send_as: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub default_outbound_policy: Option<serde_json::Value>,
 }
 
 /// `UpdateVerifiedCallerIDRequest` — generated read-side wire type ('relay-rest' REST API, schema 'UpdateVerifiedCallerIDRequest').
@@ -2352,7 +2480,7 @@ pub struct WebRtcRecording {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub price_unit: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub status: Option<String>,
+    pub status: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub url: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -2363,4 +2491,176 @@ pub struct WebRtcRecording {
     pub track: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub relay_webrtc_leg_id: Option<serde_json::Value>,
+}
+
+/// `UpdateAddressRequest` — generated read-side wire type ('relay-rest' REST API, schema 'UpdateAddressRequest').
+///
+/// Method-less serde DTO: each field maps a snake wire key (via
+/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct UpdateAddressRequest {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub label: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub country: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub first_name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub last_name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub street_number: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub street_name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub address_type: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub address_number: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub city: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub state: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub postal_code: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub emergency_enabled: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub auto_correct_address: Option<bool>,
+}
+
+/// `AddressCandidate` — generated read-side wire type ('relay-rest' REST API, schema 'AddressCandidate').
+///
+/// Method-less serde DTO: each field maps a snake wire key (via
+/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct AddressCandidate {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub street_number: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub street_name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub city: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub state: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub postal_code: Option<String>,
+}
+
+/// `AddressValidationError` — generated read-side wire type ('relay-rest' REST API, schema 'AddressValidationError').
+///
+/// Method-less serde DTO: each field maps a snake wire key (via
+/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct AddressValidationError {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub errors: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub candidates: Option<serde_json::Value>,
+}
+
+/// `UpdateBrandRequest` — generated read-side wire type ('relay-rest' REST API, schema 'UpdateBrandRequest').
+///
+/// Method-less serde DTO: each field maps a snake wire key (via
+/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct UpdateBrandRequest {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub company_name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub contact_email: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub contact_phone: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ein_issuing_country: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub legal_entity_type: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ein: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub company_vertical: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub company_website: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub company_address: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub csp_brand_reference: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub status_callback_url: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub signalwire_contact_emails: Option<serde_json::Value>,
+}
+
+/// `Types_StatusCodes_RestApiErrorItem` — generated read-side wire type ('relay-rest' REST API, schema 'Types.StatusCodes.RestApiErrorItem').
+///
+/// Method-less serde DTO: each field maps a snake wire key (via
+/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct Types_StatusCodes_RestApiErrorItem {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub r#type: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub code: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub message: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub attribute: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub url: Option<String>,
+}
+
+/// `BrandUpdateStatusCode422` — generated read-side wire type ('relay-rest' REST API, schema 'BrandUpdateStatusCode422').
+///
+/// Method-less serde DTO: each field maps a snake wire key (via
+/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct BrandUpdateStatusCode422 {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub errors: Option<serde_json::Value>,
+}
+
+/// `AssignE911AddressRequest` — generated read-side wire type ('relay-rest' REST API, schema 'AssignE911AddressRequest').
+///
+/// Method-less serde DTO: each field maps a snake wire key (via
+/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct AssignE911AddressRequest {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub e911_address_id: Option<serde_json::Value>,
+}
+
+/// `CreatePhoneNumberCnamRequest` — generated read-side wire type ('relay-rest' REST API, schema 'CreatePhoneNumberCnamRequest').
+///
+/// Method-less serde DTO: each field maps a snake wire key (via
+/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct CreatePhoneNumberCnamRequest {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+}
+
+/// `PhoneNumberCnamResponse` — generated read-side wire type ('relay-rest' REST API, schema 'PhoneNumberCnamResponse').
+///
+/// Method-less serde DTO: each field maps a snake wire key (via
+/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct PhoneNumberCnamResponse {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub r#type: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub id: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub phone_number_id: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub status: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reason: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub required_action: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub created_at: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub updated_at: Option<String>,
 }

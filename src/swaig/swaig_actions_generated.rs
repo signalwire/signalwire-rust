@@ -16,6 +16,16 @@
 
 use serde::{Deserialize, Serialize};
 
+/// `ChangeVoiceAction` — generated read-side wire type (swaig-response action 'change_voice' value object).
+///
+/// Method-less serde DTO: each field maps a snake wire key (via
+/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct ChangeVoiceAction {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub voice: Option<serde_json::Value>,
+}
+
 /// `ContextSwitchAction` — generated read-side wire type (swaig-response action 'context_switch' value object).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
@@ -43,7 +53,11 @@ pub struct ContextSwitchAction {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct HoldAction {
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub step: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub timeout: Option<f64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub timeout_step: Option<String>,
 }
 
 /// `PlaybackBgAction` — generated read-side wire type (swaig-response action 'playback_bg' value object).
@@ -86,6 +100,8 @@ pub struct SwaigAction {
     pub change_context: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub change_step: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub change_voice: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub clear_dynamic_hints: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -141,7 +157,7 @@ pub struct SwaigAction {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct SwaigResponse {
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub response: Option<String>,
+    pub response: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub action: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]

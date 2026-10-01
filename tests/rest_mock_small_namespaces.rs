@@ -218,7 +218,7 @@ fn test_small_short_codes_update() {
         .short_codes()
         .update(
             "sc-1",
-            relay_gen::ShortCodesUpdateRequest::new("Marketing SMS", ""),
+            relay_gen::ShortCodesUpdateRequest::new().name("Marketing SMS"),
             None,
         )
         .expect("short_codes.update");

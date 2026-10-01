@@ -23,6 +23,11 @@ pub struct MessagesCreateRequest {
     send_as_mms: Option<bool>,
     status_callback: Option<String>,
     custom_variables: Option<serde_json::Value>,
+    message_type: Option<String>,
+    template_id: Option<String>,
+    header_template_parameters: Option<serde_json::Value>,
+    body_template_parameters: Option<serde_json::Value>,
+    button_template_parameters: Option<serde_json::Value>,
     extras: Map<String, Value>,
 }
 
@@ -65,6 +70,36 @@ impl MessagesCreateRequest {
         self.custom_variables = Some(value);
         self
     }
+    /// Set the optional `message_type` field.
+    #[must_use]
+    pub fn message_type(mut self, value: impl Into<String>) -> Self {
+        self.message_type = Some(value.into());
+        self
+    }
+    /// Set the optional `template_id` field.
+    #[must_use]
+    pub fn template_id(mut self, value: impl Into<String>) -> Self {
+        self.template_id = Some(value.into());
+        self
+    }
+    /// Set the optional `header_template_parameters` field.
+    #[must_use]
+    pub fn header_template_parameters(mut self, value: serde_json::Value) -> Self {
+        self.header_template_parameters = Some(value);
+        self
+    }
+    /// Set the optional `body_template_parameters` field.
+    #[must_use]
+    pub fn body_template_parameters(mut self, value: serde_json::Value) -> Self {
+        self.body_template_parameters = Some(value);
+        self
+    }
+    /// Set the optional `button_template_parameters` field.
+    #[must_use]
+    pub fn button_template_parameters(mut self, value: serde_json::Value) -> Self {
+        self.button_template_parameters = Some(value);
+        self
+    }
     /// Add a forward-compat field the spec does not yet name.
     #[must_use]
     pub fn extra(mut self, key: impl Into<String>, value: impl Into<Value>) -> Self {
@@ -92,6 +127,21 @@ impl MessagesCreateRequest {
         if let Some(v) = self.custom_variables {
             obj.insert("custom_variables".to_string(), v);
         }
+        if let Some(v) = self.message_type {
+            obj.insert("message_type".to_string(), Value::from(v));
+        }
+        if let Some(v) = self.template_id {
+            obj.insert("template_id".to_string(), Value::from(v));
+        }
+        if let Some(v) = self.header_template_parameters {
+            obj.insert("header_template_parameters".to_string(), v);
+        }
+        if let Some(v) = self.body_template_parameters {
+            obj.insert("body_template_parameters".to_string(), v);
+        }
+        if let Some(v) = self.button_template_parameters {
+            obj.insert("button_template_parameters".to_string(), v);
+        }
         for (k, v) in self.extras {
             obj.insert(k, v);
         }
@@ -103,17 +153,22 @@ impl MessagesCreateRequest {
 /// idiom — required fields in `new`, optionals via setters, `extras` open door).
 #[derive(Debug, Clone, Default)]
 pub struct MessagesUpdateRequest {
-    body: String,
+    body: Option<String>,
     extras: Map<String, Value>,
 }
 
 impl MessagesUpdateRequest {
     /// Construct the request with its required fields.
-    pub fn new(body: impl Into<String>) -> Self {
+    pub fn new() -> Self {
         MessagesUpdateRequest {
-            body: body.into(),
             ..Default::default()
         }
+    }
+    /// Set the optional `body` field.
+    #[must_use]
+    pub fn body(mut self, value: impl Into<String>) -> Self {
+        self.body = Some(value.into());
+        self
     }
     /// Add a forward-compat field the spec does not yet name.
     #[must_use]
@@ -125,7 +180,9 @@ impl MessagesUpdateRequest {
     #[must_use]
     pub fn build(self) -> Value {
         let mut obj = Map::new();
-        obj.insert("body".to_string(), Value::from(self.body));
+        if let Some(v) = self.body {
+            obj.insert("body".to_string(), Value::from(v));
+        }
         for (k, v) in self.extras {
             obj.insert(k, v);
         }

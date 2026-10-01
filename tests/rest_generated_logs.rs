@@ -25,6 +25,7 @@ use signalwire::rest::namespaces::generated::messages_resources_generated as mes
 use signalwire::rest::namespaces::generated::project_resources_generated as project_gen;
 use signalwire::rest::namespaces::generated::pubsub_resources_generated as pubsub_gen;
 use signalwire::rest::namespaces::generated::relay_rest_resources_generated as relay_gen;
+use signalwire::rest::namespaces::generated::space_resources_generated as space_gen;
 use signalwire::rest::namespaces::generated::video_resources_generated as video_gen;
 
 #[test]

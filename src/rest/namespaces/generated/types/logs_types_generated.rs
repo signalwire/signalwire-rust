@@ -25,7 +25,7 @@ pub struct ChargeDetails {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub charge: Option<String>,
+    pub charge: Option<f64>,
 }
 
 /// `ConferenceLogPaginationLinks` — generated read-side wire type ('logs' REST API, schema 'ConferenceLogPaginationLinks').
@@ -187,13 +187,13 @@ pub struct VideoRoomSessionConference {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub status: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub locked: Option<bool>,
+    pub locked: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub started_at: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub ended_at: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub charge: Option<String>,
+    pub charge: Option<f64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub charge_details: Option<serde_json::Value>,
 }

@@ -25,6 +25,7 @@ use signalwire::rest::namespaces::generated::messages_resources_generated as mes
 use signalwire::rest::namespaces::generated::project_resources_generated as project_gen;
 use signalwire::rest::namespaces::generated::pubsub_resources_generated as pubsub_gen;
 use signalwire::rest::namespaces::generated::relay_rest_resources_generated as relay_gen;
+use signalwire::rest::namespaces::generated::space_resources_generated as space_gen;
 use signalwire::rest::namespaces::generated::video_resources_generated as video_gen;
 
 #[test]
@@ -150,6 +151,39 @@ fn test_addresses_list_error() {
     assert_eq!(
         e.matched_route.as_deref(),
         Some("relay-rest.list_addresses")
+    );
+}
+
+#[test]
+fn test_addresses_update_success() {
+    let _g = common::mocktest::begin();
+    let c = common::mocktest::client();
+    let _ = c
+        .addresses()
+        .update("x", relay_gen::AddressesUpdateRequest::new(), None);
+    let e = common::mocktest::journal_last();
+    assert_eq!(e.method, "PUT");
+    assert_eq!(
+        e.matched_route.as_deref(),
+        Some("relay-rest.update_address")
+    );
+}
+
+#[test]
+fn test_addresses_update_error() {
+    let _g = common::mocktest::begin();
+    let c = common::mocktest::client();
+    common::mocktest::scenario_set("relay-rest.update_address", 500, json!({"error": "x"}));
+    let err = c
+        .addresses()
+        .update("x", relay_gen::AddressesUpdateRequest::new(), None)
+        .expect_err("expected a 500 error");
+    assert_eq!(err.status_code(), 500);
+    let e = common::mocktest::journal_last();
+    assert_eq!(e.response_status, Some(500));
+    assert_eq!(
+        e.matched_route.as_deref(),
+        Some("relay-rest.update_address")
     );
 }
 
@@ -632,6 +666,80 @@ fn test_number_groups_update_error() {
 }
 
 #[test]
+fn test_phone_numbers_assign_e911_address_success() {
+    let _g = common::mocktest::begin();
+    let c = common::mocktest::client();
+    let _ = c.phone_numbers().assign_e911_address(
+        "x",
+        relay_gen::PhoneNumbersAssignE911AddressRequest::new("x"),
+        None,
+    );
+    let e = common::mocktest::journal_last();
+    assert_eq!(e.method, "POST");
+    assert_eq!(
+        e.matched_route.as_deref(),
+        Some("relay-rest.assign_e911_address")
+    );
+}
+
+#[test]
+fn test_phone_numbers_assign_e911_address_error() {
+    let _g = common::mocktest::begin();
+    let c = common::mocktest::client();
+    common::mocktest::scenario_set("relay-rest.assign_e911_address", 500, json!({"error": "x"}));
+    let err = c
+        .phone_numbers()
+        .assign_e911_address(
+            "x",
+            relay_gen::PhoneNumbersAssignE911AddressRequest::new("x"),
+            None,
+        )
+        .expect_err("expected a 500 error");
+    assert_eq!(err.status_code(), 500);
+    let e = common::mocktest::journal_last();
+    assert_eq!(e.response_status, Some(500));
+    assert_eq!(
+        e.matched_route.as_deref(),
+        Some("relay-rest.assign_e911_address")
+    );
+}
+
+#[test]
+fn test_phone_numbers_clear_cnam_success() {
+    let _g = common::mocktest::begin();
+    let c = common::mocktest::client();
+    let _ = c.phone_numbers().clear_cnam("x", None);
+    let e = common::mocktest::journal_last();
+    assert_eq!(e.method, "DELETE");
+    assert_eq!(
+        e.matched_route.as_deref(),
+        Some("relay-rest.clear_caller_id_name")
+    );
+}
+
+#[test]
+fn test_phone_numbers_clear_cnam_error() {
+    let _g = common::mocktest::begin();
+    let c = common::mocktest::client();
+    common::mocktest::scenario_set(
+        "relay-rest.clear_caller_id_name",
+        500,
+        json!({"error": "x"}),
+    );
+    let err = c
+        .phone_numbers()
+        .clear_cnam("x", None)
+        .expect_err("expected a 500 error");
+    assert_eq!(err.status_code(), 500);
+    let e = common::mocktest::journal_last();
+    assert_eq!(e.response_status, Some(500));
+    assert_eq!(
+        e.matched_route.as_deref(),
+        Some("relay-rest.clear_caller_id_name")
+    );
+}
+
+#[test]
 fn test_phone_numbers_create_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
@@ -737,6 +845,43 @@ fn test_phone_numbers_get_error() {
 }
 
 #[test]
+fn test_phone_numbers_get_cnam_success() {
+    let _g = common::mocktest::begin();
+    let c = common::mocktest::client();
+    let _ = c
+        .phone_numbers()
+        .get_cnam("x", &std::collections::HashMap::new(), None);
+    let e = common::mocktest::journal_last();
+    assert_eq!(e.method, "GET");
+    assert_eq!(
+        e.matched_route.as_deref(),
+        Some("relay-rest.retrieve_caller_id_name")
+    );
+}
+
+#[test]
+fn test_phone_numbers_get_cnam_error() {
+    let _g = common::mocktest::begin();
+    let c = common::mocktest::client();
+    common::mocktest::scenario_set(
+        "relay-rest.retrieve_caller_id_name",
+        500,
+        json!({"error": "x"}),
+    );
+    let err = c
+        .phone_numbers()
+        .get_cnam("x", &std::collections::HashMap::new(), None)
+        .expect_err("expected a 500 error");
+    assert_eq!(err.status_code(), 500);
+    let e = common::mocktest::journal_last();
+    assert_eq!(e.response_status, Some(500));
+    assert_eq!(
+        e.matched_route.as_deref(),
+        Some("relay-rest.retrieve_caller_id_name")
+    );
+}
+
+#[test]
 fn test_phone_numbers_list_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
@@ -766,6 +911,80 @@ fn test_phone_numbers_list_error() {
     assert_eq!(
         e.matched_route.as_deref(),
         Some("relay-rest.list_phone_numbers")
+    );
+}
+
+#[test]
+fn test_phone_numbers_remove_e911_address_success() {
+    let _g = common::mocktest::begin();
+    let c = common::mocktest::client();
+    let _ = c.phone_numbers().remove_e911_address("x", None);
+    let e = common::mocktest::journal_last();
+    assert_eq!(e.method, "DELETE");
+    assert_eq!(
+        e.matched_route.as_deref(),
+        Some("relay-rest.remove_e911_address")
+    );
+}
+
+#[test]
+fn test_phone_numbers_remove_e911_address_error() {
+    let _g = common::mocktest::begin();
+    let c = common::mocktest::client();
+    common::mocktest::scenario_set("relay-rest.remove_e911_address", 500, json!({"error": "x"}));
+    let err = c
+        .phone_numbers()
+        .remove_e911_address("x", None)
+        .expect_err("expected a 500 error");
+    assert_eq!(err.status_code(), 500);
+    let e = common::mocktest::journal_last();
+    assert_eq!(e.response_status, Some(500));
+    assert_eq!(
+        e.matched_route.as_deref(),
+        Some("relay-rest.remove_e911_address")
+    );
+}
+
+#[test]
+fn test_phone_numbers_request_cnam_success() {
+    let _g = common::mocktest::begin();
+    let c = common::mocktest::client();
+    let _ = c.phone_numbers().request_cnam(
+        "x",
+        relay_gen::PhoneNumbersRequestCnamRequest::new("x"),
+        None,
+    );
+    let e = common::mocktest::journal_last();
+    assert_eq!(e.method, "POST");
+    assert_eq!(
+        e.matched_route.as_deref(),
+        Some("relay-rest.request_caller_id_name")
+    );
+}
+
+#[test]
+fn test_phone_numbers_request_cnam_error() {
+    let _g = common::mocktest::begin();
+    let c = common::mocktest::client();
+    common::mocktest::scenario_set(
+        "relay-rest.request_caller_id_name",
+        500,
+        json!({"error": "x"}),
+    );
+    let err = c
+        .phone_numbers()
+        .request_cnam(
+            "x",
+            relay_gen::PhoneNumbersRequestCnamRequest::new("x"),
+            None,
+        )
+        .expect_err("expected a 500 error");
+    assert_eq!(err.status_code(), 500);
+    let e = common::mocktest::journal_last();
+    assert_eq!(e.response_status, Some(500));
+    assert_eq!(
+        e.matched_route.as_deref(),
+        Some("relay-rest.request_caller_id_name")
     );
 }
 
@@ -1098,6 +1317,39 @@ fn test_recordings_delete_error() {
 }
 
 #[test]
+fn test_recordings_download_success() {
+    let _g = common::mocktest::begin();
+    let c = common::mocktest::client();
+    let _ = c
+        .recordings()
+        .download("x", &std::collections::HashMap::new(), None);
+    let e = common::mocktest::journal_last();
+    assert_eq!(e.method, "GET");
+    assert_eq!(
+        e.matched_route.as_deref(),
+        Some("relay-rest.download_recording")
+    );
+}
+
+#[test]
+fn test_recordings_download_error() {
+    let _g = common::mocktest::begin();
+    let c = common::mocktest::client();
+    common::mocktest::scenario_set("relay-rest.download_recording", 500, json!({"error": "x"}));
+    let err = c
+        .recordings()
+        .download("x", &std::collections::HashMap::new(), None)
+        .expect_err("expected a 500 error");
+    assert_eq!(err.status_code(), 500);
+    let e = common::mocktest::journal_last();
+    assert_eq!(e.response_status, Some(500));
+    assert_eq!(
+        e.matched_route.as_deref(),
+        Some("relay-rest.download_recording")
+    );
+}
+
+#[test]
 fn test_recordings_get_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
@@ -1316,12 +1568,41 @@ fn test_registry_brands_list_campaigns_error() {
 }
 
 #[test]
+fn test_registry_brands_update_success() {
+    let _g = common::mocktest::begin();
+    let c = common::mocktest::client();
+    let _ = c
+        .registry()
+        .brands()
+        .update("x", relay_gen::RegistryBrandsUpdateRequest::new(), None);
+    let e = common::mocktest::journal_last();
+    assert_eq!(e.method, "PUT");
+    assert_eq!(e.matched_route.as_deref(), Some("relay-rest.update_brand"));
+}
+
+#[test]
+fn test_registry_brands_update_error() {
+    let _g = common::mocktest::begin();
+    let c = common::mocktest::client();
+    common::mocktest::scenario_set("relay-rest.update_brand", 500, json!({"error": "x"}));
+    let err = c
+        .registry()
+        .brands()
+        .update("x", relay_gen::RegistryBrandsUpdateRequest::new(), None)
+        .expect_err("expected a 500 error");
+    assert_eq!(err.status_code(), 500);
+    let e = common::mocktest::journal_last();
+    assert_eq!(e.response_status, Some(500));
+    assert_eq!(e.matched_route.as_deref(), Some("relay-rest.update_brand"));
+}
+
+#[test]
 fn test_registry_campaigns_create_order_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
     let _ = c.registry().campaigns().create_order(
         "x",
-        relay_gen::RegistryCampaignsCreateOrderRequest::new(),
+        relay_gen::RegistryCampaignsCreateOrderRequest::new(json!({})),
         None,
     );
     let e = common::mocktest::journal_last();
@@ -1339,7 +1620,7 @@ fn test_registry_campaigns_create_order_error() {
         .campaigns()
         .create_order(
             "x",
-            relay_gen::RegistryCampaignsCreateOrderRequest::new(),
+            relay_gen::RegistryCampaignsCreateOrderRequest::new(json!({})),
             None,
         )
         .expect_err("expected a 500 error");
@@ -1631,7 +1912,7 @@ fn test_short_codes_update_success() {
     let c = common::mocktest::client();
     let _ = c
         .short_codes()
-        .update("x", relay_gen::ShortCodesUpdateRequest::new("x", "y"), None);
+        .update("x", relay_gen::ShortCodesUpdateRequest::new(), None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "PUT");
     assert_eq!(
@@ -1647,7 +1928,7 @@ fn test_short_codes_update_error() {
     common::mocktest::scenario_set("relay-rest.update_short_code", 500, json!({"error": "x"}));
     let err = c
         .short_codes()
-        .update("x", relay_gen::ShortCodesUpdateRequest::new("x", "y"), None)
+        .update("x", relay_gen::ShortCodesUpdateRequest::new(), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();

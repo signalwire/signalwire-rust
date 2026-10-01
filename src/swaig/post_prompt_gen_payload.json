@@ -84,7 +84,6 @@
     "PostPromptStampsUs": [
       "speech_start",
       "last_word_end",
-      "suspected_end",
       "turn_decided",
       "status_pushed",
       "request_detect",

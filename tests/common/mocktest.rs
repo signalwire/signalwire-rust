@@ -179,6 +179,25 @@ pub fn client() -> RestClient {
     RestClient::with_base_url(&project, REST_TOKEN, &h.url).expect("RestClient::with_base_url")
 }
 
+/// Like [`client`], but the client ALSO carries a unique random Personal Access
+/// Token (`pat_<12 hex>`), and this test's thread is scoped to THAT credential:
+/// the Space Administration API (`space_admin()`) authenticates with the PAT
+/// (HTTP Basic with an empty username), so its `Authorization` header is what
+/// the journal filter and scenario scoper must key on.
+pub fn pat_client() -> RestClient {
+    let h = harness();
+    let project = format!("test_proj_{}", random_hex12());
+    let pat = format!("pat_{}", random_hex12());
+    let auth_header = format!("Basic {}", BASE64.encode(format!(":{pat}")));
+    set_scope(Some(Scope {
+        project: project.clone(),
+        auth_header,
+    }));
+    RestClient::with_base_url(&project, REST_TOKEN, &h.url)
+        .expect("RestClient::with_base_url")
+        .with_personal_access_token(&pat)
+}
+
 /// Like [`client`], but constructs the [`RestClient`] with a client-default
 /// [`RequestOptions`] (plan 4.2) — the request-options envelope (timeout /
 /// retries / backoff / abort) applied to every request. Scopes this test's

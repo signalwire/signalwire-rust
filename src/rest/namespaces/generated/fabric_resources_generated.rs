@@ -10,7 +10,7 @@ use std::collections::HashMap;
 use serde_json::{Map, Value};
 
 use crate::rest::error::SignalWireRestError;
-use crate::rest::generated_bases::{BaseResource, FabricResource, ReadResource};
+use crate::rest::generated_bases::{BaseResource, CrudResource, FabricResource, ReadResource};
 use crate::rest::http_client::HttpClient;
 use crate::rest::pagination::PaginatedIterator;
 use crate::rest::request_options::RequestOptions;
@@ -19,20 +19,19 @@ use crate::rest::request_options::RequestOptions;
 /// idiom — required fields in `new`, optionals via setters, `extras` open door).
 #[derive(Debug, Clone, Default)]
 pub struct CxmlApplicationsUpdateRequest {
-    display_name: Option<String>,
-    account_sid: Option<String>,
-    voice_url: Option<String>,
-    voice_method: Option<serde_json::Value>,
-    voice_fallback_url: Option<String>,
-    voice_fallback_method: Option<serde_json::Value>,
-    status_callback: Option<String>,
-    status_callback_method: Option<serde_json::Value>,
-    sms_url: Option<String>,
-    sms_method: Option<serde_json::Value>,
-    sms_fallback_url: Option<String>,
-    sms_fallback_method: Option<serde_json::Value>,
-    sms_status_callback: Option<String>,
-    sms_status_callback_method: Option<serde_json::Value>,
+    name: Option<String>,
+    call_request_url: Option<String>,
+    call_request_method: Option<String>,
+    call_fallback_url: Option<String>,
+    call_fallback_method: Option<String>,
+    call_status_url: Option<String>,
+    call_status_method: Option<String>,
+    message_request_url: Option<String>,
+    message_request_method: Option<String>,
+    message_fallback_url: Option<String>,
+    message_fallback_method: Option<String>,
+    message_status_url: Option<String>,
+    message_status_method: Option<String>,
     extras: Map<String, Value>,
 }
 
@@ -43,88 +42,82 @@ impl CxmlApplicationsUpdateRequest {
             ..Default::default()
         }
     }
-    /// Set the optional `display_name` field.
+    /// Set the optional `name` field.
     #[must_use]
-    pub fn display_name(mut self, value: impl Into<String>) -> Self {
-        self.display_name = Some(value.into());
+    pub fn name(mut self, value: impl Into<String>) -> Self {
+        self.name = Some(value.into());
         self
     }
-    /// Set the optional `account_sid` field.
+    /// Set the optional `call_request_url` field.
     #[must_use]
-    pub fn account_sid(mut self, value: impl Into<String>) -> Self {
-        self.account_sid = Some(value.into());
+    pub fn call_request_url(mut self, value: impl Into<String>) -> Self {
+        self.call_request_url = Some(value.into());
         self
     }
-    /// Set the optional `voice_url` field.
+    /// Set the optional `call_request_method` field.
     #[must_use]
-    pub fn voice_url(mut self, value: impl Into<String>) -> Self {
-        self.voice_url = Some(value.into());
+    pub fn call_request_method(mut self, value: impl Into<String>) -> Self {
+        self.call_request_method = Some(value.into());
         self
     }
-    /// Set the optional `voice_method` field.
+    /// Set the optional `call_fallback_url` field.
     #[must_use]
-    pub fn voice_method(mut self, value: serde_json::Value) -> Self {
-        self.voice_method = Some(value);
+    pub fn call_fallback_url(mut self, value: impl Into<String>) -> Self {
+        self.call_fallback_url = Some(value.into());
         self
     }
-    /// Set the optional `voice_fallback_url` field.
+    /// Set the optional `call_fallback_method` field.
     #[must_use]
-    pub fn voice_fallback_url(mut self, value: impl Into<String>) -> Self {
-        self.voice_fallback_url = Some(value.into());
+    pub fn call_fallback_method(mut self, value: impl Into<String>) -> Self {
+        self.call_fallback_method = Some(value.into());
         self
     }
-    /// Set the optional `voice_fallback_method` field.
+    /// Set the optional `call_status_url` field.
     #[must_use]
-    pub fn voice_fallback_method(mut self, value: serde_json::Value) -> Self {
-        self.voice_fallback_method = Some(value);
+    pub fn call_status_url(mut self, value: impl Into<String>) -> Self {
+        self.call_status_url = Some(value.into());
         self
     }
-    /// Set the optional `status_callback` field.
+    /// Set the optional `call_status_method` field.
     #[must_use]
-    pub fn status_callback(mut self, value: impl Into<String>) -> Self {
-        self.status_callback = Some(value.into());
+    pub fn call_status_method(mut self, value: impl Into<String>) -> Self {
+        self.call_status_method = Some(value.into());
         self
     }
-    /// Set the optional `status_callback_method` field.
+    /// Set the optional `message_request_url` field.
     #[must_use]
-    pub fn status_callback_method(mut self, value: serde_json::Value) -> Self {
-        self.status_callback_method = Some(value);
+    pub fn message_request_url(mut self, value: impl Into<String>) -> Self {
+        self.message_request_url = Some(value.into());
         self
     }
-    /// Set the optional `sms_url` field.
+    /// Set the optional `message_request_method` field.
     #[must_use]
-    pub fn sms_url(mut self, value: impl Into<String>) -> Self {
-        self.sms_url = Some(value.into());
+    pub fn message_request_method(mut self, value: impl Into<String>) -> Self {
+        self.message_request_method = Some(value.into());
         self
     }
-    /// Set the optional `sms_method` field.
+    /// Set the optional `message_fallback_url` field.
     #[must_use]
-    pub fn sms_method(mut self, value: serde_json::Value) -> Self {
-        self.sms_method = Some(value);
+    pub fn message_fallback_url(mut self, value: impl Into<String>) -> Self {
+        self.message_fallback_url = Some(value.into());
         self
     }
-    /// Set the optional `sms_fallback_url` field.
+    /// Set the optional `message_fallback_method` field.
     #[must_use]
-    pub fn sms_fallback_url(mut self, value: impl Into<String>) -> Self {
-        self.sms_fallback_url = Some(value.into());
+    pub fn message_fallback_method(mut self, value: impl Into<String>) -> Self {
+        self.message_fallback_method = Some(value.into());
         self
     }
-    /// Set the optional `sms_fallback_method` field.
+    /// Set the optional `message_status_url` field.
     #[must_use]
-    pub fn sms_fallback_method(mut self, value: serde_json::Value) -> Self {
-        self.sms_fallback_method = Some(value);
+    pub fn message_status_url(mut self, value: impl Into<String>) -> Self {
+        self.message_status_url = Some(value.into());
         self
     }
-    /// Set the optional `sms_status_callback` field.
+    /// Set the optional `message_status_method` field.
     #[must_use]
-    pub fn sms_status_callback(mut self, value: impl Into<String>) -> Self {
-        self.sms_status_callback = Some(value.into());
-        self
-    }
-    /// Set the optional `sms_status_callback_method` field.
-    #[must_use]
-    pub fn sms_status_callback_method(mut self, value: serde_json::Value) -> Self {
-        self.sms_status_callback_method = Some(value);
+    pub fn message_status_method(mut self, value: impl Into<String>) -> Self {
+        self.message_status_method = Some(value.into());
         self
     }
     /// Add a forward-compat field the spec does not yet name.
@@ -137,47 +130,44 @@ impl CxmlApplicationsUpdateRequest {
     #[must_use]
     pub fn build(self) -> Value {
         let mut obj = Map::new();
-        if let Some(v) = self.display_name {
-            obj.insert("display_name".to_string(), Value::from(v));
+        if let Some(v) = self.name {
+            obj.insert("name".to_string(), Value::from(v));
         }
-        if let Some(v) = self.account_sid {
-            obj.insert("account_sid".to_string(), Value::from(v));
+        if let Some(v) = self.call_request_url {
+            obj.insert("call_request_url".to_string(), Value::from(v));
         }
-        if let Some(v) = self.voice_url {
-            obj.insert("voice_url".to_string(), Value::from(v));
+        if let Some(v) = self.call_request_method {
+            obj.insert("call_request_method".to_string(), Value::from(v));
         }
-        if let Some(v) = self.voice_method {
-            obj.insert("voice_method".to_string(), v);
+        if let Some(v) = self.call_fallback_url {
+            obj.insert("call_fallback_url".to_string(), Value::from(v));
         }
-        if let Some(v) = self.voice_fallback_url {
-            obj.insert("voice_fallback_url".to_string(), Value::from(v));
+        if let Some(v) = self.call_fallback_method {
+            obj.insert("call_fallback_method".to_string(), Value::from(v));
         }
-        if let Some(v) = self.voice_fallback_method {
-            obj.insert("voice_fallback_method".to_string(), v);
+        if let Some(v) = self.call_status_url {
+            obj.insert("call_status_url".to_string(), Value::from(v));
         }
-        if let Some(v) = self.status_callback {
-            obj.insert("status_callback".to_string(), Value::from(v));
+        if let Some(v) = self.call_status_method {
+            obj.insert("call_status_method".to_string(), Value::from(v));
         }
-        if let Some(v) = self.status_callback_method {
-            obj.insert("status_callback_method".to_string(), v);
+        if let Some(v) = self.message_request_url {
+            obj.insert("message_request_url".to_string(), Value::from(v));
         }
-        if let Some(v) = self.sms_url {
-            obj.insert("sms_url".to_string(), Value::from(v));
+        if let Some(v) = self.message_request_method {
+            obj.insert("message_request_method".to_string(), Value::from(v));
         }
-        if let Some(v) = self.sms_method {
-            obj.insert("sms_method".to_string(), v);
+        if let Some(v) = self.message_fallback_url {
+            obj.insert("message_fallback_url".to_string(), Value::from(v));
         }
-        if let Some(v) = self.sms_fallback_url {
-            obj.insert("sms_fallback_url".to_string(), Value::from(v));
+        if let Some(v) = self.message_fallback_method {
+            obj.insert("message_fallback_method".to_string(), Value::from(v));
         }
-        if let Some(v) = self.sms_fallback_method {
-            obj.insert("sms_fallback_method".to_string(), v);
+        if let Some(v) = self.message_status_url {
+            obj.insert("message_status_url".to_string(), Value::from(v));
         }
-        if let Some(v) = self.sms_status_callback {
-            obj.insert("sms_status_callback".to_string(), Value::from(v));
-        }
-        if let Some(v) = self.sms_status_callback_method {
-            obj.insert("sms_status_callback_method".to_string(), v);
+        if let Some(v) = self.message_status_method {
+            obj.insert("message_status_method".to_string(), Value::from(v));
         }
         for (k, v) in self.extras {
             obj.insert(k, v);
@@ -224,18 +214,33 @@ impl FabricTokensCreateEmbedTokenRequest {
 /// idiom — required fields in `new`, optionals via setters, `extras` open door).
 #[derive(Debug, Clone, Default)]
 pub struct FabricTokensCreateGuestTokenRequest {
-    allowed_addresses: serde_json::Value,
+    allowed_addresses: Option<serde_json::Value>,
     expire_at: Option<i64>,
+    ch: Option<String>,
+    region: Option<String>,
+    email: Option<String>,
+    first_name: Option<String>,
+    last_name: Option<String>,
+    display_name: Option<String>,
+    job_title: Option<String>,
+    time_zone: Option<String>,
+    country: Option<String>,
+    company_name: Option<String>,
     extras: Map<String, Value>,
 }
 
 impl FabricTokensCreateGuestTokenRequest {
     /// Construct the request with its required fields.
-    pub fn new(allowed_addresses: serde_json::Value) -> Self {
+    pub fn new() -> Self {
         FabricTokensCreateGuestTokenRequest {
-            allowed_addresses,
             ..Default::default()
         }
+    }
+    /// Set the optional `allowed_addresses` field.
+    #[must_use]
+    pub fn allowed_addresses(mut self, value: serde_json::Value) -> Self {
+        self.allowed_addresses = Some(value);
+        self
     }
     /// Set the optional `expire_at` field.
     #[must_use]
@@ -243,6 +248,66 @@ impl FabricTokensCreateGuestTokenRequest {
         self.expire_at = Some(value);
         self
     }
+    /// Set the optional `ch` field.
+    #[must_use]
+    pub fn ch(mut self, value: impl Into<String>) -> Self {
+        self.ch = Some(value.into());
+        self
+    }
+    /// Set the optional `region` field.
+    #[must_use]
+    pub fn region(mut self, value: impl Into<String>) -> Self {
+        self.region = Some(value.into());
+        self
+    }
+    /// Set the optional `email` field.
+    #[must_use]
+    pub fn email(mut self, value: impl Into<String>) -> Self {
+        self.email = Some(value.into());
+        self
+    }
+    /// Set the optional `first_name` field.
+    #[must_use]
+    pub fn first_name(mut self, value: impl Into<String>) -> Self {
+        self.first_name = Some(value.into());
+        self
+    }
+    /// Set the optional `last_name` field.
+    #[must_use]
+    pub fn last_name(mut self, value: impl Into<String>) -> Self {
+        self.last_name = Some(value.into());
+        self
+    }
+    /// Set the optional `display_name` field.
+    #[must_use]
+    pub fn display_name(mut self, value: impl Into<String>) -> Self {
+        self.display_name = Some(value.into());
+        self
+    }
+    /// Set the optional `job_title` field.
+    #[must_use]
+    pub fn job_title(mut self, value: impl Into<String>) -> Self {
+        self.job_title = Some(value.into());
+        self
+    }
+    /// Set the optional `time_zone` field.
+    #[must_use]
+    pub fn time_zone(mut self, value: impl Into<String>) -> Self {
+        self.time_zone = Some(value.into());
+        self
+    }
+    /// Set the optional `country` field.
+    #[must_use]
+    pub fn country(mut self, value: impl Into<String>) -> Self {
+        self.country = Some(value.into());
+        self
+    }
+    /// Set the optional `company_name` field.
+    #[must_use]
+    pub fn company_name(mut self, value: impl Into<String>) -> Self {
+        self.company_name = Some(value.into());
+        self
+    }
     /// Add a forward-compat field the spec does not yet name.
     #[must_use]
     pub fn extra(mut self, key: impl Into<String>, value: impl Into<Value>) -> Self {
@@ -253,53 +318,41 @@ impl FabricTokensCreateGuestTokenRequest {
     #[must_use]
     pub fn build(self) -> Value {
         let mut obj = Map::new();
-        obj.insert("allowed_addresses".to_string(), self.allowed_addresses);
+        if let Some(v) = self.allowed_addresses {
+            obj.insert("allowed_addresses".to_string(), v);
+        }
         if let Some(v) = self.expire_at {
             obj.insert("expire_at".to_string(), Value::from(v));
         }
-        for (k, v) in self.extras {
-            obj.insert(k, v);
+        if let Some(v) = self.ch {
+            obj.insert("ch".to_string(), Value::from(v));
         }
-        Value::Object(obj)
-    }
-}
-
-/// Named request parameters for the generated method (Rust options-builder
-/// idiom — required fields in `new`, optionals via setters, `extras` open door).
-#[derive(Debug, Clone, Default)]
-pub struct FabricTokensCreateInviteTokenRequest {
-    address_id: String,
-    expires_at: Option<i64>,
-    extras: Map<String, Value>,
-}
-
-impl FabricTokensCreateInviteTokenRequest {
-    /// Construct the request with its required fields.
-    pub fn new(address_id: impl Into<String>) -> Self {
-        FabricTokensCreateInviteTokenRequest {
-            address_id: address_id.into(),
-            ..Default::default()
+        if let Some(v) = self.region {
+            obj.insert("region".to_string(), Value::from(v));
         }
-    }
-    /// Set the optional `expires_at` field.
-    #[must_use]
-    pub fn expires_at(mut self, value: i64) -> Self {
-        self.expires_at = Some(value);
-        self
-    }
-    /// Add a forward-compat field the spec does not yet name.
-    #[must_use]
-    pub fn extra(mut self, key: impl Into<String>, value: impl Into<Value>) -> Self {
-        self.extras.insert(key.into(), value.into());
-        self
-    }
-    /// Assemble the `body` JSON object (unset optionals omitted).
-    #[must_use]
-    pub fn build(self) -> Value {
-        let mut obj = Map::new();
-        obj.insert("address_id".to_string(), Value::from(self.address_id));
-        if let Some(v) = self.expires_at {
-            obj.insert("expires_at".to_string(), Value::from(v));
+        if let Some(v) = self.email {
+            obj.insert("email".to_string(), Value::from(v));
+        }
+        if let Some(v) = self.first_name {
+            obj.insert("first_name".to_string(), Value::from(v));
+        }
+        if let Some(v) = self.last_name {
+            obj.insert("last_name".to_string(), Value::from(v));
+        }
+        if let Some(v) = self.display_name {
+            obj.insert("display_name".to_string(), Value::from(v));
+        }
+        if let Some(v) = self.job_title {
+            obj.insert("job_title".to_string(), Value::from(v));
+        }
+        if let Some(v) = self.time_zone {
+            obj.insert("time_zone".to_string(), Value::from(v));
+        }
+        if let Some(v) = self.country {
+            obj.insert("country".to_string(), Value::from(v));
+        }
+        if let Some(v) = self.company_name {
+            obj.insert("company_name".to_string(), Value::from(v));
         }
         for (k, v) in self.extras {
             obj.insert(k, v);
@@ -313,6 +366,7 @@ impl FabricTokensCreateInviteTokenRequest {
 #[derive(Debug, Clone, Default)]
 pub struct FabricTokensCreateSubscriberTokenRequest {
     reference: String,
+    ch: Option<String>,
     expire_at: Option<i64>,
     application_id: Option<String>,
     password: Option<String>,
@@ -324,6 +378,8 @@ pub struct FabricTokensCreateSubscriberTokenRequest {
     country: Option<String>,
     region: Option<String>,
     company_name: Option<String>,
+    scope: Option<String>,
+    fingerprint: Option<String>,
     extras: Map<String, Value>,
 }
 
@@ -334,6 +390,12 @@ impl FabricTokensCreateSubscriberTokenRequest {
             reference: reference.into(),
             ..Default::default()
         }
+    }
+    /// Set the optional `ch` field.
+    #[must_use]
+    pub fn ch(mut self, value: impl Into<String>) -> Self {
+        self.ch = Some(value.into());
+        self
     }
     /// Set the optional `expire_at` field.
     #[must_use]
@@ -401,6 +463,18 @@ impl FabricTokensCreateSubscriberTokenRequest {
         self.company_name = Some(value.into());
         self
     }
+    /// Set the optional `scope` field.
+    #[must_use]
+    pub fn scope(mut self, value: impl Into<String>) -> Self {
+        self.scope = Some(value.into());
+        self
+    }
+    /// Set the optional `fingerprint` field.
+    #[must_use]
+    pub fn fingerprint(mut self, value: impl Into<String>) -> Self {
+        self.fingerprint = Some(value.into());
+        self
+    }
     /// Add a forward-compat field the spec does not yet name.
     #[must_use]
     pub fn extra(mut self, key: impl Into<String>, value: impl Into<Value>) -> Self {
@@ -412,6 +486,9 @@ impl FabricTokensCreateSubscriberTokenRequest {
     pub fn build(self) -> Value {
         let mut obj = Map::new();
         obj.insert("reference".to_string(), Value::from(self.reference));
+        if let Some(v) = self.ch {
+            obj.insert("ch".to_string(), Value::from(v));
+        }
         if let Some(v) = self.expire_at {
             obj.insert("expire_at".to_string(), Value::from(v));
         }
@@ -444,6 +521,12 @@ impl FabricTokensCreateSubscriberTokenRequest {
         }
         if let Some(v) = self.company_name {
             obj.insert("company_name".to_string(), Value::from(v));
+        }
+        if let Some(v) = self.scope {
+            obj.insert("scope".to_string(), Value::from(v));
+        }
+        if let Some(v) = self.fingerprint {
+            obj.insert("fingerprint".to_string(), Value::from(v));
         }
         for (k, v) in self.extras {
             obj.insert(k, v);
@@ -554,6 +637,83 @@ impl GenericResourcesAssignPhoneRouteRequest {
         obj.insert(
             "phone_route_id".to_string(),
             Value::from(self.phone_route_id),
+        );
+        obj.insert("handler".to_string(), Value::from(self.handler));
+        for (k, v) in self.extras {
+            obj.insert(k, v);
+        }
+        Value::Object(obj)
+    }
+}
+
+/// Named request parameters for the generated method (Rust options-builder
+/// idiom — required fields in `new`, optionals via setters, `extras` open door).
+#[derive(Debug, Clone, Default)]
+pub struct GenericResourcesAssignSipEndpointRequest {
+    sip_endpoint_id: String,
+    extras: Map<String, Value>,
+}
+
+impl GenericResourcesAssignSipEndpointRequest {
+    /// Construct the request with its required fields.
+    pub fn new(sip_endpoint_id: impl Into<String>) -> Self {
+        GenericResourcesAssignSipEndpointRequest {
+            sip_endpoint_id: sip_endpoint_id.into(),
+            ..Default::default()
+        }
+    }
+    /// Add a forward-compat field the spec does not yet name.
+    #[must_use]
+    pub fn extra(mut self, key: impl Into<String>, value: impl Into<Value>) -> Self {
+        self.extras.insert(key.into(), value.into());
+        self
+    }
+    /// Assemble the `body` JSON object (unset optionals omitted).
+    #[must_use]
+    pub fn build(self) -> Value {
+        let mut obj = Map::new();
+        obj.insert(
+            "sip_endpoint_id".to_string(),
+            Value::from(self.sip_endpoint_id),
+        );
+        for (k, v) in self.extras {
+            obj.insert(k, v);
+        }
+        Value::Object(obj)
+    }
+}
+
+/// Named request parameters for the generated method (Rust options-builder
+/// idiom — required fields in `new`, optionals via setters, `extras` open door).
+#[derive(Debug, Clone, Default)]
+pub struct GenericResourcesAssignWhatsappNumberRequest {
+    whatsapp_number_id: String,
+    handler: String,
+    extras: Map<String, Value>,
+}
+
+impl GenericResourcesAssignWhatsappNumberRequest {
+    /// Construct the request with its required fields.
+    pub fn new(whatsapp_number_id: impl Into<String>, handler: impl Into<String>) -> Self {
+        GenericResourcesAssignWhatsappNumberRequest {
+            whatsapp_number_id: whatsapp_number_id.into(),
+            handler: handler.into(),
+            ..Default::default()
+        }
+    }
+    /// Add a forward-compat field the spec does not yet name.
+    #[must_use]
+    pub fn extra(mut self, key: impl Into<String>, value: impl Into<Value>) -> Self {
+        self.extras.insert(key.into(), value.into());
+        self
+    }
+    /// Assemble the `body` JSON object (unset optionals omitted).
+    #[must_use]
+    pub fn build(self) -> Value {
+        let mut obj = Map::new();
+        obj.insert(
+            "whatsapp_number_id".to_string(),
+            Value::from(self.whatsapp_number_id),
         );
         obj.insert("handler".to_string(), Value::from(self.handler));
         for (k, v) in self.extras {
@@ -751,6 +911,267 @@ impl SubscribersUpdateSipEndpointRequest {
     }
 }
 
+/// `AliasAddresses` resource for the SignalWire `fabric` REST API.
+///
+/// Composes [`CrudResource`] (its base path is baked in) and adds the
+/// resource's own methods.
+pub struct AliasAddresses<'a> {
+    base: CrudResource<'a>,
+}
+
+impl<'a> AliasAddresses<'a> {
+    /// Construct the resource; its base path (§4) is baked in.
+    #[must_use]
+    pub fn new(client: &'a HttpClient) -> Self {
+        AliasAddresses {
+            base: CrudResource::new(client, "/api/fabric/addresses/alias", "PATCH"),
+        }
+    }
+
+    #[must_use]
+    pub fn base_path(&self) -> &str {
+        self.base.base_path()
+    }
+
+    /// `list` (delegated to the base; GET base path).
+    ///
+    /// # Errors
+    /// See the base resource.
+    pub fn list(
+        &self,
+        params: &HashMap<String, String>,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base
+            .list_with_options(params, request_options.as_ref())
+    }
+
+    /// `get` (delegated to the base; GET base/{id}).
+    ///
+    /// # Errors
+    /// See the base resource.
+    pub fn get(
+        &self,
+        id: &str,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base.get_with_options(id, request_options.as_ref())
+    }
+
+    /// `create` (delegated to the base; POST base path).
+    ///
+    /// # Errors
+    /// See the base resource.
+    pub fn create(
+        &self,
+        data: &Value,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base
+            .create_with_options(data, request_options.as_ref())
+    }
+
+    /// `update` (delegated to the base; PUT/PATCH base/{id}).
+    ///
+    /// # Errors
+    /// See the base resource.
+    pub fn update(
+        &self,
+        id: &str,
+        data: &Value,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base
+            .update_with_options(id, data, request_options.as_ref())
+    }
+
+    /// `delete` (delegated to the base; DELETE base/{id}).
+    ///
+    /// # Errors
+    /// See the base resource.
+    pub fn delete(
+        &self,
+        id: &str,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base.delete_with_options(id, request_options.as_ref())
+    }
+}
+
+/// `SipAddresses` resource for the SignalWire `fabric` REST API.
+///
+/// Composes [`CrudResource`] (its base path is baked in) and adds the
+/// resource's own methods.
+pub struct SipAddresses<'a> {
+    base: CrudResource<'a>,
+}
+
+impl<'a> SipAddresses<'a> {
+    /// Construct the resource; its base path (§4) is baked in.
+    #[must_use]
+    pub fn new(client: &'a HttpClient) -> Self {
+        SipAddresses {
+            base: CrudResource::new(client, "/api/fabric/addresses/sip", "PATCH"),
+        }
+    }
+
+    #[must_use]
+    pub fn base_path(&self) -> &str {
+        self.base.base_path()
+    }
+
+    /// `list` (delegated to the base; GET base path).
+    ///
+    /// # Errors
+    /// See the base resource.
+    pub fn list(
+        &self,
+        params: &HashMap<String, String>,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base
+            .list_with_options(params, request_options.as_ref())
+    }
+
+    /// `get` (delegated to the base; GET base/{id}).
+    ///
+    /// # Errors
+    /// See the base resource.
+    pub fn get(
+        &self,
+        id: &str,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base.get_with_options(id, request_options.as_ref())
+    }
+
+    /// `create` (delegated to the base; POST base path).
+    ///
+    /// # Errors
+    /// See the base resource.
+    pub fn create(
+        &self,
+        data: &Value,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base
+            .create_with_options(data, request_options.as_ref())
+    }
+
+    /// `update` (delegated to the base; PUT/PATCH base/{id}).
+    ///
+    /// # Errors
+    /// See the base resource.
+    pub fn update(
+        &self,
+        id: &str,
+        data: &Value,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base
+            .update_with_options(id, data, request_options.as_ref())
+    }
+
+    /// `delete` (delegated to the base; DELETE base/{id}).
+    ///
+    /// # Errors
+    /// See the base resource.
+    pub fn delete(
+        &self,
+        id: &str,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base.delete_with_options(id, request_options.as_ref())
+    }
+}
+
+/// `PhoneNumberAddresses` resource for the SignalWire `fabric` REST API.
+///
+/// Composes [`CrudResource`] (its base path is baked in) and adds the
+/// resource's own methods.
+pub struct PhoneNumberAddresses<'a> {
+    base: CrudResource<'a>,
+}
+
+impl<'a> PhoneNumberAddresses<'a> {
+    /// Construct the resource; its base path (§4) is baked in.
+    #[must_use]
+    pub fn new(client: &'a HttpClient) -> Self {
+        PhoneNumberAddresses {
+            base: CrudResource::new(client, "/api/fabric/addresses/phone", "PATCH"),
+        }
+    }
+
+    #[must_use]
+    pub fn base_path(&self) -> &str {
+        self.base.base_path()
+    }
+
+    /// `list` (delegated to the base; GET base path).
+    ///
+    /// # Errors
+    /// See the base resource.
+    pub fn list(
+        &self,
+        params: &HashMap<String, String>,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base
+            .list_with_options(params, request_options.as_ref())
+    }
+
+    /// `get` (delegated to the base; GET base/{id}).
+    ///
+    /// # Errors
+    /// See the base resource.
+    pub fn get(
+        &self,
+        id: &str,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base.get_with_options(id, request_options.as_ref())
+    }
+
+    /// `create` (delegated to the base; POST base path).
+    ///
+    /// # Errors
+    /// See the base resource.
+    pub fn create(
+        &self,
+        data: &Value,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base
+            .create_with_options(data, request_options.as_ref())
+    }
+
+    /// `update` (delegated to the base; PUT/PATCH base/{id}).
+    ///
+    /// # Errors
+    /// See the base resource.
+    pub fn update(
+        &self,
+        id: &str,
+        data: &Value,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base
+            .update_with_options(id, data, request_options.as_ref())
+    }
+
+    /// `delete` (delegated to the base; DELETE base/{id}).
+    ///
+    /// # Errors
+    /// See the base resource.
+    pub fn delete(
+        &self,
+        id: &str,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base.delete_with_options(id, request_options.as_ref())
+    }
+}
+
 /// `FabricAddresses` resource for the SignalWire `fabric` REST API.
 ///
 /// Composes [`ReadResource`] (its base path is baked in) and adds the
@@ -771,6 +1192,14 @@ impl<'a> FabricAddresses<'a> {
     #[must_use]
     pub fn base_path(&self) -> &str {
         self.base.base_path()
+    }
+
+    fn client(&self) -> &HttpClient {
+        self.base.client()
+    }
+
+    fn path(&self, parts: &[&str]) -> String {
+        self.base.path(parts)
     }
 
     /// `list` (delegated to the base; GET base path).
@@ -807,6 +1236,19 @@ impl<'a> FabricAddresses<'a> {
         params: &HashMap<String, String>,
     ) -> PaginatedIterator<'a> {
         self.base.paginate(request_options, params)
+    }
+
+    /// `DELETE /addresses/{id}` (generated operation method).
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] on transport failure, a non-2xx status.
+    pub fn delete(
+        &self,
+        id: &str,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.client()
+            .delete_with_options(&self.path(&[id]), request_options.as_ref())
     }
 }
 
@@ -934,6 +1376,44 @@ impl<'a> GenericResources<'a> {
             request_options.as_ref(),
         )
     }
+
+    /// `POST /resources/{id}/sip_endpoints` (generated operation method).
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] on transport failure, a non-2xx
+    /// status, or an unparseable response body.
+    pub fn assign_sip_endpoint(
+        &self,
+        id: &str,
+        request: GenericResourcesAssignSipEndpointRequest,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.client().post_with_options(
+            &self.path(&[id, "sip_endpoints"]),
+            Some(&request.build()),
+            None,
+            request_options.as_ref(),
+        )
+    }
+
+    /// `POST /resources/{id}/whatsapp_numbers` (generated operation method).
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] on transport failure, a non-2xx
+    /// status, or an unparseable response body.
+    pub fn assign_whatsapp_number(
+        &self,
+        id: &str,
+        request: GenericResourcesAssignWhatsappNumberRequest,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.client().post_with_options(
+            &self.path(&[id, "whatsapp_numbers"]),
+            Some(&request.build()),
+            None,
+            request_options.as_ref(),
+        )
+    }
 }
 
 /// `AiAgents` resource for the SignalWire `fabric` REST API.
@@ -950,6 +1430,293 @@ impl<'a> AiAgents<'a> {
     pub fn new(client: &'a HttpClient) -> Self {
         AiAgents {
             base: FabricResource::new(client, "/api/fabric/resources/ai_agents", "PATCH"),
+        }
+    }
+
+    #[must_use]
+    pub fn base_path(&self) -> &str {
+        self.base.base_path()
+    }
+
+    fn client(&self) -> &HttpClient {
+        self.base.client()
+    }
+
+    fn path(&self, parts: &[&str]) -> String {
+        self.base.path(parts)
+    }
+
+    /// `list` (delegated to the base; GET base path).
+    ///
+    /// # Errors
+    /// See the base resource.
+    pub fn list(
+        &self,
+        params: &HashMap<String, String>,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base
+            .list_with_options(params, request_options.as_ref())
+    }
+
+    /// `get` (delegated to the base; GET base/{id}).
+    ///
+    /// # Errors
+    /// See the base resource.
+    pub fn get(
+        &self,
+        id: &str,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base.get_with_options(id, request_options.as_ref())
+    }
+
+    /// `create` (delegated to the base; POST base path).
+    ///
+    /// # Errors
+    /// See the base resource.
+    pub fn create(
+        &self,
+        data: &Value,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base
+            .create_with_options(data, request_options.as_ref())
+    }
+
+    /// `update` (delegated to the base; PUT/PATCH base/{id}).
+    ///
+    /// # Errors
+    /// See the base resource.
+    pub fn update(
+        &self,
+        id: &str,
+        data: &Value,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base
+            .update_with_options(id, data, request_options.as_ref())
+    }
+
+    /// `delete` (delegated to the base; DELETE base/{id}).
+    ///
+    /// # Errors
+    /// See the base resource.
+    pub fn delete(
+        &self,
+        id: &str,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base.delete_with_options(id, request_options.as_ref())
+    }
+
+    /// `list_addresses` (delegated to the Fabric base; GET base/{id}/addresses).
+    ///
+    /// # Errors
+    /// See the base resource.
+    pub fn list_addresses(
+        &self,
+        id: &str,
+        params: &HashMap<String, String>,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base
+            .list_addresses_with_options(id, params, request_options.as_ref())
+    }
+
+    /// `GET /resources/ai_agents/voices` (generated operation method; query params).
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] on transport failure, a non-2xx status.
+    pub fn list_voices(
+        &self,
+        params: &HashMap<String, String>,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.client().get_with_options(
+            &self.path(&["voices"]),
+            Some(params),
+            request_options.as_ref(),
+        )
+    }
+
+    /// `GET /resources/ai_agents/{ai_agent_id}/conversation_logs` (generated operation method; query params).
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] on transport failure, a non-2xx status.
+    pub fn list_conversation_logs(
+        &self,
+        id: &str,
+        params: &HashMap<String, String>,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.client().get_with_options(
+            &self.path(&[id, "conversation_logs"]),
+            Some(params),
+            request_options.as_ref(),
+        )
+    }
+}
+
+/// `CallFlows` resource for the SignalWire `fabric` REST API.
+///
+/// Composes [`FabricResource`] (its base path is baked in) and adds the
+/// resource's own methods.
+pub struct CallFlows<'a> {
+    base: FabricResource<'a>,
+}
+
+impl<'a> CallFlows<'a> {
+    /// Construct the resource; its base path (§4) is baked in.
+    #[must_use]
+    pub fn new(client: &'a HttpClient) -> Self {
+        CallFlows {
+            base: FabricResource::new(client, "/api/fabric/resources/call_flows", "PUT"),
+        }
+    }
+
+    #[must_use]
+    pub fn base_path(&self) -> &str {
+        self.base.base_path()
+    }
+
+    fn client(&self) -> &HttpClient {
+        self.base.client()
+    }
+
+    fn path(&self, parts: &[&str]) -> String {
+        self.base.path(parts)
+    }
+
+    /// `list` (delegated to the base; GET base path).
+    ///
+    /// # Errors
+    /// See the base resource.
+    pub fn list(
+        &self,
+        params: &HashMap<String, String>,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base
+            .list_with_options(params, request_options.as_ref())
+    }
+
+    /// `get` (delegated to the base; GET base/{id}).
+    ///
+    /// # Errors
+    /// See the base resource.
+    pub fn get(
+        &self,
+        id: &str,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base.get_with_options(id, request_options.as_ref())
+    }
+
+    /// `create` (delegated to the base; POST base path).
+    ///
+    /// # Errors
+    /// See the base resource.
+    pub fn create(
+        &self,
+        data: &Value,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base
+            .create_with_options(data, request_options.as_ref())
+    }
+
+    /// `update` (delegated to the base; PUT/PATCH base/{id}).
+    ///
+    /// # Errors
+    /// See the base resource.
+    pub fn update(
+        &self,
+        id: &str,
+        data: &Value,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base
+            .update_with_options(id, data, request_options.as_ref())
+    }
+
+    /// `delete` (delegated to the base; DELETE base/{id}).
+    ///
+    /// # Errors
+    /// See the base resource.
+    pub fn delete(
+        &self,
+        id: &str,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base.delete_with_options(id, request_options.as_ref())
+    }
+
+    /// `list_addresses` (delegated to the Fabric base; GET base/{id}/addresses).
+    ///
+    /// # Errors
+    /// See the base resource.
+    pub fn list_addresses(
+        &self,
+        id: &str,
+        params: &HashMap<String, String>,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base
+            .list_addresses_with_options(id, params, request_options.as_ref())
+    }
+
+    /// `GET /resources/call_flows/{id}/versions` (generated operation method; query params).
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] on transport failure, a non-2xx status.
+    pub fn list_versions(
+        &self,
+        id: &str,
+        params: &HashMap<String, String>,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.client().get_with_options(
+            &self.path(&[id, "versions"]),
+            Some(params),
+            request_options.as_ref(),
+        )
+    }
+
+    /// `POST /resources/call_flows/{id}/versions` (generated operation method; union body).
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] on transport failure, a non-2xx
+    /// status, or an unparseable response body.
+    pub fn deploy_version(
+        &self,
+        id: &str,
+        body: &Value,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.client().post_with_options(
+            &self.path(&[id, "versions"]),
+            Some(body),
+            None,
+            request_options.as_ref(),
+        )
+    }
+}
+
+/// `ConferenceRooms` resource for the SignalWire `fabric` REST API.
+///
+/// Composes [`FabricResource`] (its base path is baked in) and adds the
+/// resource's own methods.
+pub struct ConferenceRooms<'a> {
+    base: FabricResource<'a>,
+}
+
+impl<'a> ConferenceRooms<'a> {
+    /// Construct the resource; its base path (§4) is baked in.
+    #[must_use]
+    pub fn new(client: &'a HttpClient) -> Self {
+        ConferenceRooms {
+            base: FabricResource::new(client, "/api/fabric/resources/conference_rooms", "PUT"),
         }
     }
 
@@ -1034,258 +1801,6 @@ impl<'a> AiAgents<'a> {
     ) -> Result<Value, SignalWireRestError> {
         self.base
             .list_addresses_with_options(id, params, request_options.as_ref())
-    }
-}
-
-/// `CallFlows` resource for the SignalWire `fabric` REST API.
-///
-/// Composes [`FabricResource`] (its base path is baked in) and adds the
-/// resource's own methods.
-pub struct CallFlows<'a> {
-    base: FabricResource<'a>,
-}
-
-impl<'a> CallFlows<'a> {
-    /// Construct the resource; its base path (§4) is baked in.
-    #[must_use]
-    pub fn new(client: &'a HttpClient) -> Self {
-        CallFlows {
-            base: FabricResource::new(client, "/api/fabric/resources/call_flows", "PUT"),
-        }
-    }
-
-    #[must_use]
-    pub fn base_path(&self) -> &str {
-        self.base.base_path()
-    }
-
-    fn client(&self) -> &HttpClient {
-        self.base.client()
-    }
-
-    /// `list` (delegated to the base; GET base path).
-    ///
-    /// # Errors
-    /// See the base resource.
-    pub fn list(
-        &self,
-        params: &HashMap<String, String>,
-        request_options: Option<RequestOptions>,
-    ) -> Result<Value, SignalWireRestError> {
-        self.base
-            .list_with_options(params, request_options.as_ref())
-    }
-
-    /// `get` (delegated to the base; GET base/{id}).
-    ///
-    /// # Errors
-    /// See the base resource.
-    pub fn get(
-        &self,
-        id: &str,
-        request_options: Option<RequestOptions>,
-    ) -> Result<Value, SignalWireRestError> {
-        self.base.get_with_options(id, request_options.as_ref())
-    }
-
-    /// `create` (delegated to the base; POST base path).
-    ///
-    /// # Errors
-    /// See the base resource.
-    pub fn create(
-        &self,
-        data: &Value,
-        request_options: Option<RequestOptions>,
-    ) -> Result<Value, SignalWireRestError> {
-        self.base
-            .create_with_options(data, request_options.as_ref())
-    }
-
-    /// `update` (delegated to the base; PUT/PATCH base/{id}).
-    ///
-    /// # Errors
-    /// See the base resource.
-    pub fn update(
-        &self,
-        id: &str,
-        data: &Value,
-        request_options: Option<RequestOptions>,
-    ) -> Result<Value, SignalWireRestError> {
-        self.base
-            .update_with_options(id, data, request_options.as_ref())
-    }
-
-    /// `delete` (delegated to the base; DELETE base/{id}).
-    ///
-    /// # Errors
-    /// See the base resource.
-    pub fn delete(
-        &self,
-        id: &str,
-        request_options: Option<RequestOptions>,
-    ) -> Result<Value, SignalWireRestError> {
-        self.base.delete_with_options(id, request_options.as_ref())
-    }
-
-    /// `GET /resources/call_flow/{id}/addresses` (generated operation method; query params).
-    ///
-    /// # Errors
-    /// Returns [`SignalWireRestError`] on transport failure, a non-2xx status.
-    pub fn list_addresses(
-        &self,
-        id: &str,
-        params: &HashMap<String, String>,
-        request_options: Option<RequestOptions>,
-    ) -> Result<Value, SignalWireRestError> {
-        self.client().get_with_options(
-            &format!("/api/fabric/resources/call_flow/{id}/addresses"),
-            Some(params),
-            request_options.as_ref(),
-        )
-    }
-
-    /// `GET /resources/call_flow/{id}/versions` (generated operation method; query params).
-    ///
-    /// # Errors
-    /// Returns [`SignalWireRestError`] on transport failure, a non-2xx status.
-    pub fn list_versions(
-        &self,
-        id: &str,
-        params: &HashMap<String, String>,
-        request_options: Option<RequestOptions>,
-    ) -> Result<Value, SignalWireRestError> {
-        self.client().get_with_options(
-            &format!("/api/fabric/resources/call_flow/{id}/versions"),
-            Some(params),
-            request_options.as_ref(),
-        )
-    }
-
-    /// `POST /resources/call_flow/{id}/versions` (generated operation method; union body).
-    ///
-    /// # Errors
-    /// Returns [`SignalWireRestError`] on transport failure, a non-2xx
-    /// status, or an unparseable response body.
-    pub fn deploy_version(
-        &self,
-        id: &str,
-        body: &Value,
-        request_options: Option<RequestOptions>,
-    ) -> Result<Value, SignalWireRestError> {
-        self.client().post_with_options(
-            &format!("/api/fabric/resources/call_flow/{id}/versions"),
-            Some(body),
-            None,
-            request_options.as_ref(),
-        )
-    }
-}
-
-/// `ConferenceRooms` resource for the SignalWire `fabric` REST API.
-///
-/// Composes [`FabricResource`] (its base path is baked in) and adds the
-/// resource's own methods.
-pub struct ConferenceRooms<'a> {
-    base: FabricResource<'a>,
-}
-
-impl<'a> ConferenceRooms<'a> {
-    /// Construct the resource; its base path (§4) is baked in.
-    #[must_use]
-    pub fn new(client: &'a HttpClient) -> Self {
-        ConferenceRooms {
-            base: FabricResource::new(client, "/api/fabric/resources/conference_rooms", "PUT"),
-        }
-    }
-
-    #[must_use]
-    pub fn base_path(&self) -> &str {
-        self.base.base_path()
-    }
-
-    fn client(&self) -> &HttpClient {
-        self.base.client()
-    }
-
-    /// `list` (delegated to the base; GET base path).
-    ///
-    /// # Errors
-    /// See the base resource.
-    pub fn list(
-        &self,
-        params: &HashMap<String, String>,
-        request_options: Option<RequestOptions>,
-    ) -> Result<Value, SignalWireRestError> {
-        self.base
-            .list_with_options(params, request_options.as_ref())
-    }
-
-    /// `get` (delegated to the base; GET base/{id}).
-    ///
-    /// # Errors
-    /// See the base resource.
-    pub fn get(
-        &self,
-        id: &str,
-        request_options: Option<RequestOptions>,
-    ) -> Result<Value, SignalWireRestError> {
-        self.base.get_with_options(id, request_options.as_ref())
-    }
-
-    /// `create` (delegated to the base; POST base path).
-    ///
-    /// # Errors
-    /// See the base resource.
-    pub fn create(
-        &self,
-        data: &Value,
-        request_options: Option<RequestOptions>,
-    ) -> Result<Value, SignalWireRestError> {
-        self.base
-            .create_with_options(data, request_options.as_ref())
-    }
-
-    /// `update` (delegated to the base; PUT/PATCH base/{id}).
-    ///
-    /// # Errors
-    /// See the base resource.
-    pub fn update(
-        &self,
-        id: &str,
-        data: &Value,
-        request_options: Option<RequestOptions>,
-    ) -> Result<Value, SignalWireRestError> {
-        self.base
-            .update_with_options(id, data, request_options.as_ref())
-    }
-
-    /// `delete` (delegated to the base; DELETE base/{id}).
-    ///
-    /// # Errors
-    /// See the base resource.
-    pub fn delete(
-        &self,
-        id: &str,
-        request_options: Option<RequestOptions>,
-    ) -> Result<Value, SignalWireRestError> {
-        self.base.delete_with_options(id, request_options.as_ref())
-    }
-
-    /// `GET /resources/conference_room/{id}/addresses` (generated operation method; query params).
-    ///
-    /// # Errors
-    /// Returns [`SignalWireRestError`] on transport failure, a non-2xx status.
-    pub fn list_addresses(
-        &self,
-        id: &str,
-        params: &HashMap<String, String>,
-        request_options: Option<RequestOptions>,
-    ) -> Result<Value, SignalWireRestError> {
-        self.client().get_with_options(
-            &format!("/api/fabric/resources/conference_room/{id}/addresses"),
-            Some(params),
-            request_options.as_ref(),
-        )
     }
 }
 
@@ -2457,24 +2972,6 @@ impl<'a> FabricTokens<'a> {
     ) -> Result<Value, SignalWireRestError> {
         self.client().post_with_options(
             "/api/fabric/subscribers/tokens/refresh",
-            Some(&request.build()),
-            None,
-            request_options.as_ref(),
-        )
-    }
-
-    /// `POST /subscriber/invites` (generated operation method).
-    ///
-    /// # Errors
-    /// Returns [`SignalWireRestError`] on transport failure, a non-2xx
-    /// status, or an unparseable response body.
-    pub fn create_invite_token(
-        &self,
-        request: FabricTokensCreateInviteTokenRequest,
-        request_options: Option<RequestOptions>,
-    ) -> Result<Value, SignalWireRestError> {
-        self.client().post_with_options(
-            "/api/fabric/subscriber/invites",
             Some(&request.build()),
             None,
             request_options.as_ref(),

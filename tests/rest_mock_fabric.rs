@@ -204,32 +204,6 @@ fn test_fabric_subscribers_delete_sip_endpoint() {
 // ---------------------------------------------------------------------------
 
 #[test]
-fn test_fabric_tokens_create_invite_token() {
-    let _g = common::mocktest::begin();
-    let c = common::mocktest::client();
-    let body = c
-        .fabric()
-        .tokens()
-        .create_invite_token(
-            fabric_gen::FabricTokensCreateInviteTokenRequest::new("addr-1").expires_at(3600),
-            None,
-        )
-        .expect("create_invite_token");
-    assert!(body.is_object());
-
-    let entry = common::mocktest::journal_last();
-    assert_eq!(entry.method, "POST");
-    // singular 'subscriber' segment.
-    assert_eq!(entry.path, "/api/fabric/subscriber/invites");
-    let sent = entry.body_object().expect("body");
-    assert_eq!(
-        sent.get("address_id").and_then(Value::as_str),
-        Some("addr-1")
-    );
-    assert_eq!(sent.get("expires_at").and_then(Value::as_i64), Some(3600));
-}
-
-#[test]
 fn test_fabric_tokens_create_embed_token() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();

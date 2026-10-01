@@ -25,6 +25,7 @@ use signalwire::rest::namespaces::generated::messages_resources_generated as mes
 use signalwire::rest::namespaces::generated::project_resources_generated as project_gen;
 use signalwire::rest::namespaces::generated::pubsub_resources_generated as pubsub_gen;
 use signalwire::rest::namespaces::generated::relay_rest_resources_generated as relay_gen;
+use signalwire::rest::namespaces::generated::space_resources_generated as space_gen;
 use signalwire::rest::namespaces::generated::video_resources_generated as video_gen;
 
 #[test]
@@ -60,7 +61,7 @@ fn test_messages_update_success() {
     let c = common::mocktest::client();
     let _ = c
         .messages()
-        .update("x", messages_gen::MessagesUpdateRequest::new("x"), None);
+        .update("x", messages_gen::MessagesUpdateRequest::new(), None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "PATCH");
     assert_eq!(e.matched_route.as_deref(), Some("messages.update_message"));
@@ -73,7 +74,7 @@ fn test_messages_update_error() {
     common::mocktest::scenario_set("messages.update_message", 500, json!({"error": "x"}));
     let err = c
         .messages()
-        .update("x", messages_gen::MessagesUpdateRequest::new("x"), None)
+        .update("x", messages_gen::MessagesUpdateRequest::new(), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();

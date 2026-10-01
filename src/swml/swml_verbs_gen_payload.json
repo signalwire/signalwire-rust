@@ -4,397 +4,147 @@
     "AI": [
       "ai"
     ],
-    "AIObject": [
-      "global_data",
-      "hints",
-      "languages",
-      "params",
-      "post_prompt",
-      "post_prompt_url",
-      "pronounce",
-      "prompt",
-      "SWAIG"
-    ],
-    "AIParams": [
-      "acknowledge_interruptions",
-      "ai_model",
-      "ai_name",
-      "ai_volume",
-      "app_name",
-      "asr_smart_format",
-      "attention_timeout",
-      "attention_timeout_prompt",
-      "asr_diarize",
-      "asr_speaker_affinity",
-      "background_file",
-      "background_file_loops",
-      "background_file_volume",
-      "enable_barge",
-      "enable_inner_dialog",
-      "enable_pause",
-      "enable_turn_detection",
-      "barge_match_string",
-      "barge_min_words",
-      "barge_functions",
-      "conscience",
-      "convo",
-      "conversation_id",
-      "conversation_sliding_window",
-      "debug_webhook_level",
-      "debug_webhook_url",
-      "debug",
-      "direction",
-      "digit_terminators",
-      "digit_timeout",
-      "end_of_speech_timeout",
-      "enable_thinking",
-      "enable_vision",
-      "energy_level",
-      "first_word_timeout",
-      "function_wait_for_talking",
-      "functions_on_no_response",
-      "hard_stop_prompt",
-      "hard_stop_time",
-      "hold_music",
-      "hold_on_process",
-      "inactivity_timeout",
-      "inner_dialog_model",
-      "inner_dialog_prompt",
-      "inner_dialog_synced",
-      "initial_sleep_ms",
-      "input_poll_freq",
-      "interrupt_on_noise",
-      "interrupt_prompt",
-      "languages_enabled",
-      "local_tz",
-      "llm_diarize_aware",
-      "max_emotion",
-      "max_response_tokens",
-      "openai_asr_engine",
-      "outbound_attention_timeout",
-      "persist_global_data",
-      "pom_format",
-      "save_conversation",
-      "speech_event_timeout",
-      "speech_gen_quick_stops",
-      "speech_timeout",
-      "speak_when_spoken_to",
-      "start_paused",
-      "static_greeting",
-      "static_greeting_no_barge",
-      "summary_mode",
-      "swaig_allow_settings",
-      "swaig_allow_swml",
-      "swaig_post_conversation",
-      "swaig_set_global_data",
-      "swaig_post_swml_vars",
-      "thinking_model",
-      "transparent_barge",
-      "transparent_barge_max_time",
-      "transfer_summary",
-      "turn_detection_timeout",
-      "tts_number_format",
-      "video_listening_file",
-      "video_idle_file",
-      "video_talking_file",
-      "vision_model",
-      "vad_config",
-      "wait_for_user",
-      "wake_prefix",
-      "eleven_labs_stability",
-      "eleven_labs_similarity"
-    ],
-    "AIPostPromptPom": [
-      "max_tokens",
-      "temperature",
-      "top_p",
-      "confidence",
-      "presence_penalty",
-      "frequency_penalty",
-      "pom"
-    ],
-    "AIPostPromptText": [
-      "max_tokens",
-      "temperature",
-      "top_p",
-      "confidence",
-      "presence_penalty",
-      "frequency_penalty",
-      "text"
-    ],
-    "AIPromptPom": [
-      "max_tokens",
-      "temperature",
-      "top_p",
-      "confidence",
-      "presence_penalty",
-      "frequency_penalty",
-      "pom",
-      "contexts"
-    ],
-    "AIPromptText": [
-      "max_tokens",
-      "temperature",
-      "top_p",
-      "confidence",
-      "presence_penalty",
-      "frequency_penalty",
-      "text",
-      "contexts"
-    ],
     "AiSidecar": [
       "ai_sidecar"
-    ],
-    "AiSidecarConfig": [
-      "prompt",
-      "lang",
-      "model",
-      "direction",
-      "customer_role",
-      "url",
-      "SWAIG",
-      "permissions",
-      "global_data",
-      "hints",
-      "params",
-      "action"
-    ],
-    "AllOfProperty": [
-      "allOf"
     ],
     "AmazonBedrock": [
       "amazon_bedrock"
     ],
-    "AmazonBedrockObject": [
-      "global_data",
-      "params",
-      "post_prompt",
-      "post_prompt_url",
-      "prompt",
-      "SWAIG"
-    ],
     "Answer": [
       "answer"
     ],
-    "AnyOfProperty": [
-      "anyOf"
+    "BindDigit": [
+      "bind_digit"
     ],
-    "ArrayProperty": [
-      "description",
-      "nullable",
+    "BindDigitConfig": [
+      "digits",
+      "max_triggers",
+      "method",
+      "params",
+      "realm"
+    ],
+    "CallDeviceStream": [
+      "authorization_bearer_token",
+      "codec",
+      "custom_parameters",
+      "name",
+      "realtime",
+      "status_url",
+      "status_url_method",
+      "url"
+    ],
+    "CallPayParameters": [
+      "name",
+      "value"
+    ],
+    "CallPayPrompts": [
+      "actions",
+      "attempt",
+      "card_type",
+      "error_type",
+      "for",
+      "play",
+      "require_matching_inputs"
+    ],
+    "CallPayPromptsActions": [
       "type",
-      "default",
-      "items"
+      "phrase"
     ],
-    "BedrockParams": [
-      "attention_timeout",
-      "hard_stop_time",
-      "inactivity_timeout",
-      "video_listening_file",
-      "video_idle_file",
-      "video_talking_file",
-      "hard_stop_prompt"
+    "ClearDigitBindings": [
+      "clear_digit_bindings"
     ],
-    "BedrockSWAIG": [
-      "functions",
-      "defaults",
-      "native_functions",
-      "includes"
-    ],
-    "BooleanProperty": [
-      "description",
-      "nullable",
-      "type",
-      "default"
-    ],
-    "ChangeContextAction": [
-      "change_context"
-    ],
-    "ChangeStepAction": [
-      "change_step"
+    "ClearDigitBindingsConfig": [
+      "realm"
     ],
     "Cond": [
       "cond"
-    ],
-    "CondElse": [
-      "else"
-    ],
-    "CondReg": [
-      "when",
-      "then",
-      "else"
     ],
     "Connect": [
       "connect"
     ],
     "ConnectConfig": [
-      "from",
-      "headers",
-      "codecs",
-      "webrtc_media",
-      "session_timeout",
-      "ringback",
-      "result",
-      "timeout",
-      "max_duration",
       "answer_on_bridge",
+      "authorization_bearer_token",
+      "call_state_events",
+      "call_state_url",
+      "codec",
+      "codecs",
       "confirm",
       "confirm_timeout",
-      "username",
-      "password",
+      "custom_parameters",
       "encryption",
-      "call_state_url",
-      "transfer_after_bridge",
-      "call_state_events",
-      "to",
-      "serial",
+      "execute_after_queue",
+      "from",
+      "from_name",
+      "headers",
+      "max_duration",
+      "name",
       "parallel",
-      "serial_parallel"
-    ],
-    "ConnectDeviceParallel": [
-      "from",
-      "headers",
-      "codecs",
-      "webrtc_media",
-      "session_timeout",
-      "ringback",
+      "password",
+      "realtime",
       "result",
+      "ringback",
+      "serial",
+      "serial_parallel",
+      "session_timeout",
+      "status_url",
+      "status_url_method",
+      "stop_all_on_reject",
       "timeout",
-      "max_duration",
-      "answer_on_bridge",
+      "to",
+      "username",
+      "webrtc_media"
+    ],
+    "ConnectDevice": [
+      "authorization_bearer_token",
+      "call_state_events",
+      "call_state_url",
+      "codec",
+      "codecs",
       "confirm",
       "confirm_timeout",
-      "username",
-      "password",
+      "custom_parameters",
       "encryption",
-      "call_state_url",
-      "transfer_after_bridge",
-      "call_state_events",
-      "parallel"
-    ],
-    "ConnectDeviceSerial": [
       "from",
+      "from_name",
       "headers",
-      "codecs",
-      "webrtc_media",
-      "session_timeout",
-      "ringback",
-      "result",
-      "timeout",
-      "max_duration",
-      "answer_on_bridge",
-      "confirm",
-      "confirm_timeout",
-      "username",
+      "name",
       "password",
-      "encryption",
-      "call_state_url",
-      "transfer_after_bridge",
-      "call_state_events",
-      "serial"
-    ],
-    "ConnectDeviceSerialParallel": [
-      "from",
-      "headers",
-      "codecs",
-      "webrtc_media",
+      "realtime",
       "session_timeout",
-      "ringback",
-      "result",
+      "status_url",
+      "status_url_method",
       "timeout",
-      "max_duration",
-      "answer_on_bridge",
-      "confirm",
-      "confirm_timeout",
+      "to",
       "username",
-      "password",
-      "encryption",
-      "call_state_url",
-      "transfer_after_bridge",
-      "call_state_events",
-      "serial_parallel"
+      "webrtc_media"
     ],
-    "ConnectDeviceSingle": [
-      "from",
-      "headers",
-      "codecs",
-      "webrtc_media",
-      "session_timeout",
-      "ringback",
-      "result",
-      "timeout",
-      "max_duration",
-      "answer_on_bridge",
-      "confirm",
-      "confirm_timeout",
-      "username",
-      "password",
-      "encryption",
-      "call_state_url",
-      "transfer_after_bridge",
-      "call_state_events",
-      "to"
-    ],
-    "ConnectHeaders": [
+    "ConnectSipHeader": [
       "name",
       "value"
     ],
-    "ConnectSwitch": [
-      "variable",
-      "case",
-      "default"
-    ],
-    "ConstProperty": [
-      "const"
-    ],
-    "ContextPOMSteps": [
-      "name",
-      "step_criteria",
-      "functions",
-      "valid_contexts",
-      "skip_user_turn",
-      "end",
-      "valid_steps",
-      "pom"
-    ],
-    "ContextSwitchAction": [
-      "context_switch"
-    ],
-    "ContextTextSteps": [
-      "name",
-      "step_criteria",
-      "functions",
-      "valid_contexts",
-      "skip_user_turn",
-      "end",
-      "valid_steps",
-      "text"
-    ],
-    "Contexts": [
-      "default"
-    ],
-    "ContextsPOMObject": [
-      "steps",
-      "isolated",
+    "Context": [
+      "consolidate",
       "enter_fillers",
       "exit_fillers",
-      "pom"
-    ],
-    "ContextsTextObject": [
-      "steps",
+      "full_reset",
+      "history",
+      "initial_step",
       "isolated",
-      "enter_fillers",
-      "exit_fillers",
-      "text"
-    ],
-    "ConversationMessage": [
-      "role",
-      "content",
-      "lang"
+      "pom",
+      "post_prompt",
+      "prompt",
+      "reset",
+      "steps",
+      "system_prompt",
+      "user_prompt",
+      "valid_contexts",
+      "valid_steps"
     ],
     "DataMap": [
-      "output",
+      "contexts",
       "expressions",
+      "output",
       "webhooks"
     ],
     "Denoise": [
@@ -403,391 +153,205 @@
     "DetectMachine": [
       "detect_machine"
     ],
-    "DetectMachineConfig": [
-      "detect_message_end",
-      "detectors",
-      "end_silence_timeout",
-      "initial_timeout",
-      "machine_ready_timeout",
-      "machine_voice_threshold",
-      "machine_words_threshold",
+    "Dial": [
+      "dial"
+    ],
+    "DialConfig": [
+      "answer_on_bridge",
+      "call_state_events",
+      "call_state_url",
+      "codecs",
+      "confirm",
+      "confirm_timeout",
+      "dest_swml",
+      "encryption",
+      "execute_after_queue",
+      "from",
+      "from_name",
+      "headers",
+      "max_duration",
+      "parallel",
+      "password",
+      "result",
+      "ringback",
+      "serial",
+      "serial_parallel",
+      "session_timeout",
       "status_url",
+      "stop_all_on_reject",
       "timeout",
-      "tone",
-      "wait"
+      "to",
+      "username",
+      "webrtc_media"
+    ],
+    "Echo": [
+      "echo"
     ],
     "EnterQueue": [
       "enter_queue"
     ],
-    "EnterQueueObject": [
-      "queue_name",
-      "transfer_after_bridge",
-      "status_url",
-      "wait_url",
-      "wait_time"
+    "Eval": [
+      "eval"
     ],
     "Execute": [
       "execute"
     ],
-    "ExecuteConfig": [
-      "dest",
-      "params",
-      "meta",
-      "on_return",
-      "result"
-    ],
-    "ExecuteSwitch": [
-      "variable",
-      "case",
-      "default"
+    "ExecuteRpc": [
+      "execute_rpc"
     ],
     "Expression": [
-      "string",
       "pattern",
-      "output"
+      "expr",
+      "nomatch_output",
+      "output",
+      "string"
     ],
-    "FunctionParameters": [
-      "type",
-      "properties",
-      "required"
+    "Foreach": [
+      "append",
+      "input_key",
+      "max",
+      "output_key"
     ],
     "Goto": [
       "goto"
     ],
-    "GotoConfig": [
-      "label",
-      "when",
-      "max"
-    ],
-    "HangUpHookSWAIGFunction": [
-      "description",
-      "purpose",
-      "parameters",
-      "fillers",
-      "argument",
-      "active",
-      "meta_data",
-      "meta_data_token",
-      "data_map",
-      "skip_fillers",
-      "web_hook_url",
-      "wait_file",
-      "wait_file_loops",
-      "wait_for_fillers",
-      "function"
-    ],
     "Hangup": [
       "hangup"
     ],
-    "HangupAction": [
-      "hangup"
-    ],
-    "Hint": [
-      "hint",
-      "pattern",
-      "replace",
-      "ignore_case"
-    ],
-    "HoldAction": [
-      "hold"
-    ],
-    "InjectAction": [
-      "inject"
-    ],
-    "IntegerProperty": [
-      "description",
-      "nullable",
-      "type",
-      "enum",
-      "default"
+    "If": [
+      "if"
     ],
     "JoinConference": [
       "join_conference"
     ],
-    "JoinConferenceObject": [
-      "name",
-      "muted",
-      "beep",
-      "start_on_enter",
-      "end_on_exit",
-      "wait_url",
-      "max_participants",
-      "record",
-      "region",
-      "trim",
-      "coach",
-      "status_callback_event",
-      "status_callback",
-      "status_callback_method",
-      "recording_status_callback",
-      "recording_status_callback_method",
-      "recording_status_callback_event",
-      "result"
-    ],
     "JoinRoom": [
       "join_room"
     ],
-    "JoinRoomConfig": [
-      "name"
+    "JsonSchema": [
+      "title",
+      "description",
+      "type",
+      "const",
+      "enum",
+      "format",
+      "pattern",
+      "minimum",
+      "maximum",
+      "exclusiveMinimum",
+      "exclusiveMaximum",
+      "minLength",
+      "maxLength",
+      "minItems",
+      "maxItems",
+      "minProperties",
+      "maxProperties",
+      "default",
+      "examples",
+      "deprecated",
+      "properties",
+      "required",
+      "prefixItems",
+      "items",
+      "propertyNames",
+      "additionalProperties",
+      "unevaluatedProperties",
+      "oneOf",
+      "anyOf",
+      "allOf",
+      "not",
+      "contains",
+      "dependentRequired",
+      "dependentSchemas",
+      "else",
+      "if",
+      "maxContains",
+      "minContains",
+      "multipleOf",
+      "patternProperties",
+      "readOnly",
+      "then",
+      "unevaluatedItems",
+      "uniqueItems",
+      "writeOnly"
+    ],
+    "JsonSchemaUnion": [
+      "title",
+      "description",
+      "type",
+      "const",
+      "enum",
+      "format",
+      "pattern",
+      "minimum",
+      "maximum",
+      "exclusiveMinimum",
+      "exclusiveMaximum",
+      "minLength",
+      "maxLength",
+      "minItems",
+      "maxItems",
+      "minProperties",
+      "maxProperties",
+      "default",
+      "examples",
+      "deprecated",
+      "nullable",
+      "properties",
+      "required",
+      "prefixItems",
+      "items",
+      "propertyNames",
+      "additionalProperties",
+      "unevaluatedProperties",
+      "oneOf",
+      "anyOf",
+      "allOf",
+      "not",
+      "contains",
+      "dependentRequired",
+      "dependentSchemas",
+      "else",
+      "example",
+      "if",
+      "maxContains",
+      "minContains",
+      "multipleOf",
+      "patternProperties",
+      "propertyOrdering",
+      "readOnly",
+      "then",
+      "unevaluatedItems",
+      "uniqueItems",
+      "writeOnly"
     ],
     "Label": [
       "label"
     ],
-    "LanguageParams": [
-      "stability",
-      "similarity"
-    ],
-    "LanguagesWithFillers": [
-      "name",
-      "code",
-      "voice",
-      "model",
-      "emotion",
-      "speed",
-      "engine",
-      "params",
-      "function_fillers",
-      "speech_fillers"
-    ],
-    "LanguagesWithSoloFillers": [
-      "name",
-      "code",
-      "voice",
-      "model",
-      "emotion",
-      "speed",
-      "engine",
-      "params",
-      "fillers"
-    ],
     "LiveTranscribe": [
       "live_transcribe"
-    ],
-    "LiveTranscribeConfig": [
-      "action"
     ],
     "LiveTranslate": [
       "live_translate"
     ],
-    "LiveTranslateConfig": [
-      "action"
-    ],
-    "NullProperty": [
-      "type",
-      "description"
-    ],
-    "NumberProperty": [
-      "description",
-      "nullable",
-      "type",
-      "enum",
-      "default"
-    ],
-    "ObjectProperty": [
-      "description",
-      "nullable",
-      "type",
-      "default",
-      "properties",
-      "required"
-    ],
-    "OmitPropertiesBedrockPostPomptTextOmittedPromptProps": [
-      "max_tokens",
-      "temperature",
-      "top_p",
-      "confidence",
-      "presence_penalty",
-      "frequency_penalty",
-      "text"
-    ],
-    "OmitPropertiesBedrockPostPromptPomOmittedPromptProps": [
-      "max_tokens",
-      "temperature",
-      "top_p",
-      "confidence",
-      "presence_penalty",
-      "frequency_penalty",
-      "pom"
-    ],
-    "OmitPropertiesBedrockPromptPomOmittedPromptProps": [
-      "voice_id",
-      "max_tokens",
-      "temperature",
-      "top_p",
-      "confidence",
-      "presence_penalty",
-      "frequency_penalty",
-      "pom"
-    ],
-    "OmitPropertiesBedrockPromptTextOmittedPromptProps": [
-      "voice_id",
-      "max_tokens",
-      "temperature",
-      "top_p",
-      "confidence",
-      "presence_penalty",
-      "frequency_penalty",
-      "text"
-    ],
-    "OneOfProperty": [
-      "oneOf"
-    ],
-    "Output": [
-      "response",
-      "action"
-    ],
     "Pay": [
       "pay"
-    ],
-    "PayConfig": [
-      "payment_connector_url",
-      "charge_amount",
-      "currency",
-      "description",
-      "input",
-      "language",
-      "max_attempts",
-      "min_postal_code_length",
-      "parameters",
-      "payment_method",
-      "postal_code",
-      "prompts",
-      "security_code",
-      "status_url",
-      "timeout",
-      "token_type",
-      "valid_card_types",
-      "voice"
-    ],
-    "PayParameters": [
-      "name",
-      "value"
-    ],
-    "PayPromptPlayAction": [
-      "type",
-      "phrase"
-    ],
-    "PayPromptSayAction": [
-      "type",
-      "phrase"
-    ],
-    "PayPrompts": [
-      "actions",
-      "for",
-      "attempts",
-      "card_type",
-      "error_type"
-    ],
-    "PickPropertiesHangUpHookSWAIGFunctionPickedSWAIGFunctionProps": [
-      "description",
-      "parameters",
-      "active",
-      "meta_data",
-      "meta_data_token",
-      "data_map",
-      "web_hook_url",
-      "function"
-    ],
-    "PickPropertiesStartUpHookSWAIGFunctionPickedSWAIGFunctionProps": [
-      "description",
-      "parameters",
-      "active",
-      "meta_data",
-      "meta_data_token",
-      "data_map",
-      "web_hook_url",
-      "function"
-    ],
-    "PickPropertiesSummarizeConversationSWAIGFunctionPickedSWAIGFunctionProps": [
-      "description",
-      "parameters",
-      "active",
-      "meta_data",
-      "meta_data_token",
-      "data_map",
-      "web_hook_url",
-      "function"
-    ],
-    "PickPropertiesUserSWAIGFunctionPickedSWAIGFunctionProps": [
-      "description",
-      "parameters",
-      "active",
-      "meta_data",
-      "meta_data_token",
-      "data_map",
-      "web_hook_url",
-      "function"
     ],
     "Play": [
       "play"
     ],
-    "PlayWithURL": [
-      "auto_answer",
-      "volume",
-      "say_voice",
-      "say_language",
-      "say_gender",
-      "status_url",
-      "url"
-    ],
-    "PlayWithURLS": [
-      "auto_answer",
-      "volume",
-      "say_voice",
-      "say_language",
-      "say_gender",
-      "status_url",
-      "urls"
-    ],
-    "PlaybackBGAction": [
-      "playback_bg"
-    ],
-    "PomSectionBodyContent": [
-      "title",
-      "subsections",
-      "numbered",
-      "numberedBullets",
-      "body",
-      "bullets"
-    ],
-    "PomSectionBulletsContent": [
-      "title",
-      "subsections",
-      "numbered",
-      "numberedBullets",
-      "body",
-      "bullets"
-    ],
     "Prompt": [
       "prompt"
     ],
-    "PromptConfig": [
-      "play",
-      "volume",
-      "say_voice",
-      "say_language",
-      "say_gender",
-      "max_digits",
-      "terminators",
-      "digit_timeout",
-      "initial_timeout",
-      "speech_timeout",
-      "speech_end_timeout",
-      "speech_language",
-      "speech_hints",
-      "speech_engine",
-      "status_url"
-    ],
-    "Pronounce": [
-      "replace",
-      "with",
-      "ignore_case"
+    "PromptPomSection": [
+      "title",
+      "body",
+      "bullets",
+      "numbered",
+      "numberedBullets",
+      "subsections"
     ],
     "ReceiveFax": [
       "receive_fax"
-    ],
-    "ReceiveFaxConfig": [
-      "status_url"
     ],
     "Record": [
       "record"
@@ -795,106 +359,22 @@
     "RecordCall": [
       "record_call"
     ],
-    "RecordCallConfig": [
-      "control_id",
-      "stereo",
-      "format",
-      "direction",
-      "terminators",
-      "beep",
-      "input_sensitivity",
-      "initial_timeout",
-      "end_silence_timeout",
-      "max_length",
-      "status_url"
-    ],
-    "RecordConfig": [
-      "stereo",
-      "format",
-      "direction",
-      "terminators",
-      "beep",
-      "input_sensitivity",
-      "initial_timeout",
-      "end_silence_timeout",
-      "max_length",
-      "status_url"
-    ],
     "Request": [
       "request"
-    ],
-    "RequestConfig": [
-      "url",
-      "method",
-      "headers",
-      "body",
-      "timeout",
-      "connect_timeout",
-      "save_variables"
     ],
     "Return": [
       "return"
     ],
+    "Ring": [
+      "ring"
+    ],
     "RingbackConfig": [
       "url",
       "urls",
-      "volume",
-      "auto_answer",
-      "say_voice",
-      "say_language",
-      "say_gender",
-      "status_url",
-      "loop"
+      "volume"
     ],
     "SIPRefer": [
       "sip_refer"
-    ],
-    "SMSWithBody": [
-      "to_number",
-      "from_number",
-      "region",
-      "tags",
-      "body"
-    ],
-    "SMSWithMedia": [
-      "to_number",
-      "from_number",
-      "region",
-      "tags",
-      "media",
-      "body"
-    ],
-    "SWAIG": [
-      "defaults",
-      "native_functions",
-      "includes",
-      "functions",
-      "internal_fillers"
-    ],
-    "SWAIGDefaults": [
-      "web_hook_url"
-    ],
-    "SWAIGIncludes": [
-      "functions",
-      "url",
-      "meta_data"
-    ],
-    "SWAIGInternalFiller": [
-      "hangup",
-      "check_time",
-      "wait_for_user",
-      "wait_seconds",
-      "adjust_response_latency",
-      "next_step",
-      "change_context",
-      "get_visual_input",
-      "get_ideal_strategy"
-    ],
-    "SWMLAction": [
-      "SWML"
-    ],
-    "SayAction": [
-      "say"
     ],
     "Section": [
       "main"
@@ -902,191 +382,132 @@
     "SendDigits": [
       "send_digits"
     ],
-    "SendDigitsConfig": [
-      "digits"
-    ],
     "SendFax": [
       "send_fax"
-    ],
-    "SendFaxConfig": [
-      "document",
-      "header_info",
-      "identity",
-      "status_url"
     ],
     "SendSMS": [
       "send_sms"
     ],
+    "SendSmsConfig": [
+      "body",
+      "from_number",
+      "media",
+      "region",
+      "status_callback",
+      "tags",
+      "to_number"
+    ],
     "Set": [
       "set"
     ],
-    "SetGlobalDataAction": [
-      "set_global_data"
+    "SetCapabilities": [
+      "set_capabilities"
     ],
-    "SetMetaDataAction": [
-      "set_meta_data"
-    ],
-    "SipReferConfig": [
-      "to_uri",
-      "status_url",
-      "username",
-      "password"
+    "SetMeta": [
+      "set_meta"
     ],
     "Sleep": [
       "sleep"
     ],
-    "StartAction": [
-      "start"
-    ],
-    "StartUpHookSWAIGFunction": [
-      "description",
-      "purpose",
-      "parameters",
-      "fillers",
-      "argument",
-      "active",
-      "meta_data",
-      "meta_data_token",
-      "data_map",
-      "skip_fillers",
-      "web_hook_url",
-      "wait_file",
-      "wait_file_loops",
-      "wait_for_fillers",
-      "function"
-    ],
-    "StopAction": [
-      "stop"
+    "Step": [
+      "end",
+      "functions",
+      "gather_info",
+      "history",
+      "name",
+      "pom",
+      "reset",
+      "skip_to_next_step",
+      "skip_user_turn",
+      "step_criteria",
+      "text",
+      "valid_contexts",
+      "valid_steps"
     ],
     "StopDenoise": [
       "stop_denoise"
     ],
-    "StopPlaybackBGAction": [
-      "stop_playback_bg"
-    ],
     "StopRecordCall": [
       "stop_record_call"
     ],
-    "StopRecordCallConfig": [
-      "control_id"
+    "StopStream": [
+      "stop_stream"
     ],
     "StopTap": [
       "stop_tap"
     ],
-    "StopTapConfig": [
-      "control_id"
+    "Stream": [
+      "stream"
     ],
-    "StringProperty": [
-      "description",
-      "nullable",
-      "type",
-      "enum",
-      "default",
-      "pattern",
-      "format"
+    "SwaigAction": [
+      "SWML",
+      "add_dynamic_hints",
+      "back_to_back_functions",
+      "change_context",
+      "change_step",
+      "change_voice",
+      "clear_dynamic_hints",
+      "context_switch",
+      "end_of_speech_timeout",
+      "extensive_data",
+      "functions_on_speaker_timeout",
+      "hangup",
+      "hold",
+      "playback_bg",
+      "replace_in_history",
+      "say",
+      "set_global_data",
+      "set_meta_data",
+      "settings",
+      "speech_event_timeout",
+      "stop",
+      "stop_playback_bg",
+      "toggle_functions",
+      "transfer",
+      "unset_global_data",
+      "unset_meta_data",
+      "user_event",
+      "user_input",
+      "wait_for_user"
     ],
-    "SummarizeAction": [
-      "summarize"
-    ],
-    "SummarizeConversationSWAIGFunction": [
-      "description",
-      "purpose",
-      "parameters",
-      "fillers",
-      "argument",
-      "active",
-      "meta_data",
-      "meta_data_token",
-      "data_map",
-      "skip_fillers",
-      "web_hook_url",
-      "wait_file",
-      "wait_file_loops",
-      "wait_for_fillers",
-      "function"
+    "SwaigResponse": [
+      "action",
+      "post_process",
+      "response"
     ],
     "Switch": [
       "switch"
     ],
-    "SwitchConfig": [
-      "variable",
-      "case",
-      "default"
-    ],
     "Tap": [
       "tap"
     ],
-    "TapConfig": [
-      "uri",
-      "control_id",
-      "direction",
-      "codec",
-      "rtp_ptime",
-      "status_url"
+    "Transcribe": [
+      "transcribe"
     ],
-    "ToggleFunctionsAction": [
-      "toggle_functions"
-    ],
-    "TranscribeStartAction": [
-      "start"
-    ],
-    "TranscribeSummarizeAction": [
-      "summarize"
+    "TranscribeStop": [
+      "transcribe_stop"
     ],
     "Transfer": [
       "transfer"
     ],
-    "TransferConfig": [
-      "dest",
-      "params",
-      "meta"
-    ],
     "Unset": [
       "unset"
-    ],
-    "UnsetGlobalDataAction": [
-      "unset_global_data"
-    ],
-    "UnsetMetaDataAction": [
-      "unset_meta_data"
     ],
     "UserEvent": [
       "user_event"
     ],
-    "UserEventConfig": [
-      "event"
-    ],
-    "UserInputAction": [
-      "user_input"
-    ],
-    "UserSWAIGFunction": [
-      "description",
-      "purpose",
-      "parameters",
-      "fillers",
-      "argument",
-      "active",
-      "meta_data",
-      "meta_data_token",
-      "data_map",
-      "skip_fillers",
-      "web_hook_url",
-      "wait_file",
-      "wait_file_loops",
-      "wait_for_fillers",
-      "function"
-    ],
     "Webhook": [
-      "expressions",
       "error_keys",
-      "url",
+      "expressions",
       "foreach",
+      "form_param",
       "headers",
-      "method",
       "input_args_as_params",
+      "method",
+      "output",
       "params",
       "require_args",
-      "output"
+      "url"
     ]
   },
   "module": "signalwire.core.swml_verbs_generated"

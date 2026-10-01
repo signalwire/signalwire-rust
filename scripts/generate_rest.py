@@ -97,6 +97,7 @@ _NS_ORDER = (
     "projects",
     "chat",
     "pubsub",
+    "space",
     "swml-webhooks",
 )
 
@@ -447,8 +448,12 @@ def field_ident(field: str) -> str:
     """The Rust identifier for a wire field / path-param name. A Rust keyword
     becomes a raw identifier ``r#kw`` (a genuine rename recorded for the report,
     NOT an omission); a keyword with no legal raw form gets a trailing ``_``. A
-    non-identifier rune folds to ``_``."""
+    non-identifier rune folds to ``_``. An upper-case wire name (``SWAIG``) folds
+    to snake_case (``swaig``) so the emitted ident is ``non_snake_case``-clean; the
+    wire key itself is always emitted from the spec name, never from this ident."""
     ident = snake_of(field)
+    if ident != ident.lower():
+        ident = snake(field)
     if not ident:
         ident = "field"
     if ident[0].isdigit():
@@ -751,18 +756,79 @@ def gen_imports(body: str) -> str:
     return "\n".join(lines) + ("\n" if lines else "")
 
 
+#: A path segment carrying ONE param with literal text around it (``{id}.mp3``).
+_EMBEDDED_PARAM = re.compile(r"([^{}]*)\{([^{}]+)\}([^{}]*)")
+
+
+def op_response_kind(spec: Spec, op_id: str) -> tuple[str, str]:
+    """How an operation's success is read — mirrors the reference generator
+    (generate_python_rest_types.py): ``("json", "")`` by default; ``("text",
+    media)`` when the 2xx body is another media type (``text/csv``);
+    ``("redirect", "")`` when the only success IS a 3xx carrying ``Location`` (a
+    recording's presigned download URL) — the method returns that URL instead of
+    following it. Only a GET may be non-JSON (fail loud otherwise)."""
+    verb, op_path, _ = spec.ops[op_id]
+    op = ((spec.doc.get("paths") or {}).get(op_path) or {}).get(verb) or {}
+    responses = op.get("responses") or {}
+    ok = responses.get("200") or responses.get("201") or responses.get("2XX") or {}
+    content = ok.get("content") or {}
+    text_media = next((m for m in content if m != "application/json"), None)
+    kind, media = "json", ""
+    if ok and "application/json" not in content and text_media is not None:
+        kind, media = "text", text_media
+    elif not ok:
+        for code, r in sorted(responses.items()):
+            if str(code).startswith("3") and "Location" in ((r or {}).get("headers") or {}):
+                kind = "redirect"
+                break
+    if kind != "json" and verb != "get":
+        raise SystemExit(
+            f"generate_rest.py: {op_id} has a {kind} success on {verb.upper()}; "
+            "only GET is supported"
+        )
+    return kind, media
+
+
+def op_header_params(spec: Spec, op_id: str) -> list[tuple[str, str, bool]]:
+    """The operation's ``in: header`` parameters as (wire name, rust arg, required)
+    — e.g. the balance top-up's ``Idempotency-Key`` the server answers 400
+    without. Path-level parameters first, then the op's own (the reference's
+    order)."""
+    verb, op_path, _ = spec.ops[op_id]
+    item = (spec.doc.get("paths") or {}).get(op_path) or {}
+    out: list[tuple[str, str, bool]] = []
+    for raw in [*(item.get("parameters") or []), *((item.get(verb) or {}).get("parameters") or [])]:
+        prm = raw
+        if isinstance(raw, dict) and "$ref" in raw:
+            leaf = raw["$ref"].rsplit("/", 1)[-1]
+            prm = ((spec.doc.get("components") or {}).get("parameters") or {}).get(leaf) or {}
+        if (prm or {}).get("in") == "header":
+            name = prm["name"]
+            out.append((name, field_ident(snake(name)), bool(prm.get("required"))))
+    return out
+
+
 def method_call_path(spec: Spec, anchor: str, markup: dict, op_path: str):
     """Return (id_arg_names, rust_path_expr, sibling)."""
     segs, sibling = relative_tail(spec, anchor, markup, op_path)
     id_args: list[str] = []
     pieces: list[str] = []
     for s in segs:
-        if s.startswith("{") and s.endswith("}"):
+        if s.startswith("{") and s.endswith("}") and s.count("{") == 1:
             arg = arg_for(s[1:-1])
             while arg in id_args:
                 arg += "2"
             id_args.append(arg)
             pieces.append(arg)  # a variable ref
+        elif (m := _EMBEDDED_PARAM.fullmatch(s)) is not None:
+            # A param embedded in a segment with literal text around it
+            # (``{id}.mp3`` — a recording's download): the arg is still a path
+            # param; the segment is formatted around it.
+            arg = arg_for(m.group(2))
+            while arg in id_args:
+                arg += "2"
+            id_args.append(arg)
+            pieces.append(f'format!("{m.group(1)}{{{arg}}}{m.group(3)}").as_str()')
         else:
             pieces.append(rs_str(s))  # a literal
     if sibling:
@@ -1000,9 +1066,44 @@ def emit_operation_method(
         if is_object_body(spec, body_schema):
             fields = object_body_fields(spec, body_schema)
             sname = _request_struct_name(cls, name)
-            src, _ = emit_request_struct(sname, spec, [], fields, "body")
+            hdrs = op_header_params(spec, op_id)
+            if any(not req for _, _, req in hdrs):
+                raise SystemExit(
+                    f"generate_rest.py: {op_id}: an OPTIONAL header parameter is not "
+                    "supported by the request-struct emitter (only required ones)"
+                )
+            leading = [(arg, "String") for _, arg, _ in hdrs]
+            src, _ = emit_request_struct(sname, spec, leading, fields, "body")
             structs[sname] = src
             params = [*id_params, f"request: {sname}", ro_param]
+            if hdrs and verb == "post":
+                lines.append(
+                    f"    /// `{verb.upper()} {op_path}` (generated operation method; "
+                    "header parameters)."
+                )
+                lines.append("    ///")
+                lines.append("    /// # Errors")
+                lines.append(
+                    "    /// Returns [`SignalWireRestError`] on transport failure, a non-2xx"
+                )
+                lines.append("    /// status, or an unparseable response body.")
+                lines.append(
+                    f"    pub fn {name}(&self, {', '.join(params)}) -> Result<Value, SignalWireRestError> {{"
+                )
+                lines.append("        let mut headers = HashMap::new();")
+                for wire, arg, _ in hdrs:
+                    lines.append(
+                        f"        headers.insert({rs_str(wire)}.to_string(), request.take_{arg}());"
+                    )
+                lines.append(
+                    f"        self.client().post_with_headers({path_expr}, Some(&request.build()), None, {ro_fwd}, Some(&headers))"
+                )
+                lines.append("    }")
+                return "\n".join(lines)
+            if hdrs:
+                raise SystemExit(
+                    f"generate_rest.py: {op_id}: header parameters are supported on POST only"
+                )
             lines.append(
                 f"    /// `{verb.upper()} {op_path}` (generated operation method)."
             )
@@ -1054,6 +1155,45 @@ def emit_operation_method(
         lines.append(
             f"        self.client().{verb_fn}_with_options({path_expr}, {_body('&Value::Object(Map::new())')}, {post_params_fwd}{ro_fwd})"
         )
+        lines.append("    }")
+    elif verb == "get" and op_response_kind(spec, op_id)[0] != "json":
+        kind, media = op_response_kind(spec, op_id)
+        params = [*id_params, "params: &HashMap<String, String>", ro_param]
+        if kind == "text":
+            lines.append(
+                f"    /// `GET {op_path}` (generated operation method) — returns the "
+                f"`{media}` body as text."
+            )
+        else:
+            lines.append(
+                f"    /// `GET {op_path}` (generated operation method) — returns the URL this"
+            )
+            lines.append(
+                "    /// endpoint redirects to (the `Location` of its redirect), without"
+            )
+            lines.append(
+                "    /// following it or downloading anything; fetch it with any HTTP client."
+            )
+        lines.append("    ///")
+        lines.append("    /// # Errors")
+        lines.append(
+            "    /// Returns [`SignalWireRestError`] on transport failure or an error status."
+        )
+        lines.append(
+            f"    pub fn {name}(&self, {', '.join(params)}) -> Result<String, SignalWireRestError> {{"
+        )
+        if kind == "text":
+            lines.append("        let mut headers = HashMap::new();")
+            lines.append(
+                f'        headers.insert("Accept".to_string(), {rs_str(media)}.to_string());'
+            )
+            lines.append(
+                f"        self.client().get_text_with_options({path_expr}, Some(params), {ro_fwd}, Some(&headers))"
+            )
+        else:
+            lines.append(
+                f"        self.client().get_redirect_location_with_options({path_expr}, Some(params), {ro_fwd})"
+            )
         lines.append("    }")
     elif verb == "get":
         # §5.3 GET query door — a trailing params map + request_options.
@@ -1565,14 +1705,50 @@ def emit_resource(
 # Client tree (§8).
 # ---------------------------------------------------------------------------
 
-CONTAINERS = {
-    "fabric": ("FabricNamespace", "fabric"),
-    "video": ("VideoNamespace", "video"),
-    "logs": ("LogsNamespace", "logs"),
-    "registry": ("RegistryNamespace", "registry"),
-    "project": ("ProjectNamespace", "project"),
-    "datasphere": ("DatasphereNamespace", "datasphere"),
-}
+#: The security scheme a Personal-Access-Token spec declares (rest-apis/space) — the
+#: same name the reference generator (generate_python_rest_types.py
+#: ``PAT_SECURITY_SCHEME``) and the mock route by.
+PAT_SECURITY_SCHEME = "SignalWirePersonalAccessToken"
+
+
+def container_names(container: str) -> tuple[str, str]:
+    """(struct name, accessor) for a namespace container, DERIVED exactly as the
+    reference does (``pascal(container) + "Namespace"``) — no curated table, so a new
+    x-sdk-namespace group (``whatsapp``, ``space``) is picked up automatically."""
+    pascal = "".join(w[:1].upper() + w[1:] for w in re.split(r"[-_]", container) if w)
+    return f"{pascal}Namespace", snake_of(container)
+
+
+def _is_pat_spec(spec: "Spec") -> bool:
+    """True when the spec's root ``security`` accepts ONLY the Personal Access Token —
+    its resources are wired to the client's PAT credential, never the project token
+    (mirrors the reference's ``_is_pat_spec``)."""
+    security = spec.doc.get("security") or []
+    names = [n for req in security if isinstance(req, dict) for n in req]
+    return bool(names) and all(n == PAT_SECURITY_SCHEME for n in names)
+
+
+def pat_containers(placed) -> set[str]:
+    """The containers whose resources ALL come from a PAT spec; fail loud on a
+    container mixing PAT and project-token resources (one container = one client),
+    and on a PAT resource placed flat (it needs a container to carry its client)."""
+    kinds: dict[str, set[bool]] = {}
+    for spec, _anchor, _markup, container in placed:
+        kinds.setdefault(container, set()).add(_is_pat_spec(spec))
+    mixed = sorted(c or "<flat>" for c, k in kinds.items() if len(k) > 1)
+    if mixed:
+        raise SystemExit(
+            f"generate_rest.py: placement container(s) {mixed} mix Personal-Access-Token "
+            "and project-token resources; a container is wired to one credential"
+        )
+    pat = {c for c, k in kinds.items() if k == {True}}
+    if "" in pat:
+        raise SystemExit(
+            "generate_rest.py: a Personal-Access-Token spec must declare x-sdk-namespace "
+            "(a container)"
+        )
+    return pat
+
 
 ATTR_OVERRIDE = {
     "GenericResources": "resources",
@@ -1628,6 +1804,7 @@ def emit_client_tree(placed) -> str:
     """Emit the generated client-tree: one container struct per namespace group +
     a `GeneratedResourceTree` the hand RestClient composes (lazy accessor per flat
     resource + per container). Base paths per §4, placement per §8."""
+    pat = pat_containers(placed)
     flats = []  # (accessor, struct, module)
     containers: dict[str, list[tuple[str, str, str]]] = {}
     corder: list[str] = []
@@ -1663,7 +1840,7 @@ def emit_client_tree(placed) -> str:
 
     # container structs
     for c in corder:
-        clsname, acc = CONTAINERS[c]
+        clsname, _acc = container_names(c)
         members = containers[c]
         lines.append(
             f"/// `{clsname}` — generated container grouping the {c} namespace resources (§8)."
@@ -1698,14 +1875,21 @@ def emit_client_tree(placed) -> str:
         "/// this; each accessor constructs the resource with the client's `HttpClient`"
     )
     lines.append("/// (base paths baked in per §4).")
+    lines.append(
+        "/// `client` carries the project token; `pat_client` the Personal Access Token"
+    )
+    lines.append("/// (the namespaces whose spec security requires it).")
     lines.append("pub struct GeneratedResourceTree<'a> {")
     lines.append("    client: &'a HttpClient,")
+    lines.append("    pat_client: &'a HttpClient,")
     lines.append("}")
     lines.append("")
     lines.append("impl<'a> GeneratedResourceTree<'a> {")
     lines.append("    #[must_use]")
-    lines.append("    pub fn new(client: &'a HttpClient) -> Self {")
-    lines.append("        GeneratedResourceTree { client }")
+    lines.append(
+        "    pub fn new(client: &'a HttpClient, pat_client: &'a HttpClient) -> Self {"
+    )
+    lines.append("        GeneratedResourceTree { client, pat_client }")
     lines.append("    }")
     for accessor, struct, _ in flats:
         lines.append("")
@@ -1715,12 +1899,19 @@ def emit_client_tree(placed) -> str:
         lines.append(f"        {struct}::new(self.client)")
         lines.append("    }")
     for c in corder:
-        clsname, acc = CONTAINERS[c]
+        clsname, acc = container_names(c)
+        cred = "self.pat_client" if c in pat else "self.client"
         lines.append("")
         lines.append(f"    /// Access the `{c}` namespace container.")
+        if c in pat:
+            lines.append("    ///")
+            lines.append(
+                "    /// Authenticated with the client's Personal Access Token, not the"
+            )
+            lines.append("    /// project token (the spec's security requires it).")
         lines.append("    #[must_use]")
         lines.append(f"    pub fn {acc}(&self) -> {clsname}<'a> {{")
-        lines.append(f"        {clsname}::new(self.client)")
+        lines.append(f"        {clsname}::new({cred})")
         lines.append("    }")
     lines.append("}")
     return "\n".join(lines) + "\n"
@@ -2247,6 +2438,10 @@ def sidecar_operation_method(
         body_schema = spec.op_body.get(op_id) or {}
         if is_object_body(spec, body_schema):
             fields = object_body_fields(spec, body_schema)
+            params += [
+                _param(arg, "keyword", True, "string")
+                for _, arg, _ in op_header_params(spec, op_id)
+            ]
             params += _body_field_params(spec, fields, "keyword", "extras", True)
         else:
             # union body → a single ``body`` param (L10 watch-out: do NOT explode). A
@@ -2417,8 +2612,8 @@ def build_sidecar(specs) -> dict:
         for _anchor, markup in spec.resources():
             res_module[markup["name"]] = f"signalwire.rest.namespaces.{module}"
     for _spec, _anchor, markup, container in placed:
-        if container and container in CONTAINERS:
-            clsname, _acc = CONTAINERS[container]
+        if container:
+            clsname, _acc = container_names(container)
             entry = containers.setdefault(
                 clsname,
                 {

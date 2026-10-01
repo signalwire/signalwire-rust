@@ -16,120 +16,6 @@
 
 use serde::{Deserialize, Serialize};
 
-/// `SwaigRequestData` — generated read-side wire type ('swml-webhooks' REST API, schema 'SwaigRequestData').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct SwaigRequestData {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub call_id: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub ai_session_id: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub app_name: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub project_id: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub space_id: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub action: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub function: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub argument: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub meta_data: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub conversation_id: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub content_type: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub version: Option<String>,
-}
-
-/// `SwaigArgument` — generated read-side wire type ('swml-webhooks' REST API, schema 'SwaigArgument').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct SwaigArgument {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub parsed: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub raw: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub substituted: Option<String>,
-}
-
-/// `PostPromptData` — generated read-side wire type ('swml-webhooks' REST API, schema 'PostPromptData').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct PostPromptData {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub event_type: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub event_channel: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub timestamp: Option<f64>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub project_id: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub space_id: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub params: Option<serde_json::Value>,
-}
-
-/// `PostPromptParams` — generated read-side wire type ('swml-webhooks' REST API, schema 'PostPromptParams').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct PostPromptParams {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub call_id: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub ai_session_id: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub summary: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub post_prompt_result: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub end_reason: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub conversation: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub function_calls: Option<serde_json::Value>,
-}
-
-/// `PostPromptConversationTurn` — generated read-side wire type ('swml-webhooks' REST API, schema 'PostPromptConversationTurn').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct PostPromptConversationTurn {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub role: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub content: Option<String>,
-}
-
-/// `PostPromptFunctionCall` — generated read-side wire type ('swml-webhooks' REST API, schema 'PostPromptFunctionCall').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct PostPromptFunctionCall {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub function: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub params: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub result: Option<serde_json::Value>,
-}
-
 /// `SwmlRequestData` — generated read-side wire type ('swml-webhooks' REST API, schema 'SwmlRequestData').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
@@ -146,12 +32,42 @@ pub struct SwmlRequestData {
     pub params: Option<serde_json::Value>,
 }
 
-/// `SwmlRequestCall` — generated read-side wire type ('swml-webhooks' REST API, schema 'SwmlRequestCall').
+/// `SwmlRequestCallParent` — generated read-side wire type ('swml-webhooks' REST API, schema 'SwmlRequestCallParent').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct SwmlRequestCall {
+pub struct SwmlRequestCallParent {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub device_type: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub call_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub node_id: Option<String>,
+}
+
+/// `SwmlRequestCallPeer` — generated read-side wire type ('swml-webhooks' REST API, schema 'SwmlRequestCallPeer').
+///
+/// Method-less serde DTO: each field maps a snake wire key (via
+/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct SwmlRequestCallPeer {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub call_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub node_id: Option<String>,
+}
+
+/// `SwmlRequestCallPhone` — generated read-side wire type ('swml-webhooks' REST API, schema 'SwmlRequestCallPhone').
+///
+/// Method-less serde DTO: each field maps a snake wire key (via
+/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct SwmlRequestCallPhone {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub project_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub space_id: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub call_id: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -159,13 +75,27 @@ pub struct SwmlRequestCall {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub segment_id: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub project_id: Option<String>,
+    pub tag: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub space_id: Option<String>,
+    pub call_state: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub call_state: Option<String>,
+    pub parent: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub direction: Option<String>,
+    pub peer: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub direction: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub end_reason: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub end_source: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub dial_winner: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub address_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub subscriber_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub subscriber_name: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub r#type: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -180,18 +110,206 @@ pub struct SwmlRequestCall {
     pub headers: Option<serde_json::Value>,
 }
 
-/// `SignalWireErrorBody` — generated read-side wire type ('swml-webhooks' REST API, schema 'SignalWireErrorBody').
+/// `SwmlRequestCallPhoneHeadersItem` — generated read-side wire type ('swml-webhooks' REST API, schema 'SwmlRequestCallPhoneHeadersItem').
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct SignalWireErrorBody {
+pub struct SwmlRequestCallPhoneHeadersItem {
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub code: Option<i64>,
+    pub name: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub message: Option<String>,
+    pub value: Option<String>,
+}
+
+/// `SwmlRequestCallSip` — generated read-side wire type ('swml-webhooks' REST API, schema 'SwmlRequestCallSip').
+///
+/// Method-less serde DTO: each field maps a snake wire key (via
+/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct SwmlRequestCallSip {
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub more_info: Option<String>,
+    pub project_id: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub status: Option<i64>,
+    pub space_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub call_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub node_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub segment_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tag: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub call_state: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub parent: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub peer: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub direction: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub end_reason: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub end_source: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub dial_winner: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub address_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub subscriber_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub subscriber_name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub r#type: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub from: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub to: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub headers: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sip_data: Option<serde_json::Value>,
+}
+
+/// `SwmlRequestCallSipHeadersItem` — generated read-side wire type ('swml-webhooks' REST API, schema 'SwmlRequestCallSipHeadersItem').
+///
+/// Method-less serde DTO: each field maps a snake wire key (via
+/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct SwmlRequestCallSipHeadersItem {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub value: Option<String>,
+}
+
+/// `SwmlRequestCallSipSipData` — generated read-side wire type ('swml-webhooks' REST API, schema 'SwmlRequestCallSipSipData').
+///
+/// Method-less serde DTO: each field maps a snake wire key (via
+/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct SwmlRequestCallSipSipData {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sip_req_user: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sip_req_uri: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sip_req_host: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sip_from_user: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sip_from_uri: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sip_from_host: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sip_to_user: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sip_to_uri: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sip_to_host: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sip_contact_user: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sip_contact_port: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sip_contact_uri: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sip_contact_host: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sip_from_params: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sip_to_params: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sip_contact_params: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sip_req_params: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sip_p_asserted_identity: Option<String>,
+}
+
+/// `SwmlRequestCallWebrtc` — generated read-side wire type ('swml-webhooks' REST API, schema 'SwmlRequestCallWebrtc').
+///
+/// Method-less serde DTO: each field maps a snake wire key (via
+/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct SwmlRequestCallWebrtc {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub project_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub space_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub call_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub node_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub segment_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tag: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub call_state: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub parent: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub peer: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub direction: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub end_reason: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub end_source: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub dial_winner: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub address_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub subscriber_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub subscriber_name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub r#type: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub from: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub to: Option<String>,
+}
+
+/// `SwmlRequestCallOther` — generated read-side wire type ('swml-webhooks' REST API, schema 'SwmlRequestCallOther').
+///
+/// Method-less serde DTO: each field maps a snake wire key (via
+/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct SwmlRequestCallOther {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub project_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub space_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub call_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub node_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub segment_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tag: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub call_state: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub parent: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub peer: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub direction: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub end_reason: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub end_source: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub dial_winner: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub address_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub subscriber_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub subscriber_name: Option<String>,
 }

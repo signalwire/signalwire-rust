@@ -415,8 +415,6 @@ pub struct PostPromptStampsUs {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub last_word_end: Option<i64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub suspected_end: Option<i64>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub turn_decided: Option<i64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub status_pushed: Option<i64>,

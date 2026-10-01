@@ -36,6 +36,16 @@ pub struct CreateMessageRequest {
     pub status_callback: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub custom_variables: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub message_type: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub template_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub header_template_parameters: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub body_template_parameters: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub button_template_parameters: Option<serde_json::Value>,
 }
 
 /// `UpdateMessageRequest` — generated read-side wire type ('messages' REST API, schema 'UpdateMessageRequest').

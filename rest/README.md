@@ -25,7 +25,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Make a phone call
     client.calling().dial(
-        CallingDialRequest::new("+15559876543", "+15551234567")
+        CallingDialRequest::new("+15559876543")
+            .to("+15551234567")
             .url("https://example.com/call-handler"),
         None,
     )?;
