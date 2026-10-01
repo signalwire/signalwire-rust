@@ -161,8 +161,8 @@ PARAM_RECONCILE[
 }
 # Same type-alias leak for the call-end handler (`CallEndHandler` =
 # `Box<dyn Fn(&[Value], &Map) + ..>`), the `HoldPrompt` sum type spelling the
-# reference's `prompt: str | int`, and `dialogue_turns`' role set (a Rust slice
-# is the spelling of the reference's homogeneous `tuple[str, ...]`).
+# reference's `prompt: str | int`, and `dialogue_turns`' role set (a Rust
+# slice, `None` = the default set; the reference records `list<string>`).
 PARAM_RECONCILE["signalwire.core.agent_base.AgentBase.on_call_end"] = {
     "handler": {"type": "callable<list<list<dict<string,any>>,dict<string,any>>,void>"},
 }
@@ -173,10 +173,15 @@ PARAM_RECONCILE["signalwire.core.function_result.FunctionResult.hold_with"] = {
 # reference's ParamSpec-typed callable) and `args` is the argument pack — Rust's
 # spelling of `*args` (no splat: one value, a tuple for several).
 PARAM_RECONCILE["signalwire.core._sync_handlers.run_sync_handler"] = {
-    "func": {
-        "type": "callable<list<class:signalwire.core._sync_handlers._P>,"
-        "class:signalwire.core._sync_handlers._T>"
-    },
+    "func": {"type": "callable<list<any>,any>"},
+    "args": {"type": "any", "kind": "var_positional"},
+}
+# `strip_control_chars(args)`: the reference's `*args` exists only for
+# structlog's `(logger, method_name, event_dict)` processor call and reads just
+# the LAST positional — the event dict, which is the one value Rust's single
+# event-map parameter takes. Behaviour is identical; the variadic spelling folds
+# here (owner ruling 2026-10-01, option A: idiom, not an omission).
+PARAM_RECONCILE["signalwire.core.logging_config.strip_control_chars"] = {
     "args": {"type": "any", "kind": "var_positional"},
 }
 # `add_per_call_config(callback)`: `DynamicConfigCallback` =
@@ -188,7 +193,7 @@ PARAM_RECONCILE["signalwire.core.agent_base.AgentBase.add_per_call_config"] = {
     },
 }
 PARAM_RECONCILE["signalwire.core.post_prompt.dialogue_turns"] = {
-    "roles": {"type": "tuple<string,any>"},
+    "roles": {"type": "list<string>"},
 }
 
 # EXPLICIT-RECEIVER ELISION for public-surface trait methods. Python binds a
@@ -242,15 +247,16 @@ KWARGS_MAP_EXPLODE: dict[str, str] = {
 # Rust type aliases / sum types that rustdoc leaks as class names, mapped to the
 # canonical type they spell (the tool handling the idiom, not an omission):
 #   * `MountHandler` — the mountable-router type `AgentBase::mount` takes; the
-#     reference's `router()` returns its framework's router (`APIRouter`);
+#     reference records `router()` as the host-app router
+#     (`signalwire.core.web.HostAppRouter`);
 #   * `reqwest::Response` with its body unread — the streamable response the
 #     reference's `raw_post` yields through an async context manager;
 #   * `FunctionResponse` — the `str | dict` union of `FunctionResult.response`;
 #   * `PreparedCall` — the type alias for `ChatGateway.prepare`'s tuple.
 RETURN_TYPE_OVERRIDE.update(
     {
-        "signalwire.ai_chat.gateway.ChatGateway.router": "class:APIRouter",
-        "signalwire.ai_chat.handoff.HandoffRouter.router": "class:APIRouter",
+        "signalwire.ai_chat.gateway.ChatGateway.router": "class:signalwire.core.web.HostAppRouter",
+        "signalwire.ai_chat.handoff.HandoffRouter.router": "class:signalwire.core.web.HostAppRouter",
         "signalwire.ai_chat.client.AIChatClient.raw_post": "class:AsyncIterator",
         "signalwire.core.function_result.FunctionResult.response": "union<dict<string,any>,string>",
         # `PreparedCall` = `(String, Map, Option<String>)`, the reference's tuple.

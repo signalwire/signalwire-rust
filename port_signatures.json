@@ -1163,7 +1163,7 @@
                   "kind": "self"
                 }
               ],
-              "returns": "class:APIRouter"
+              "returns": "class:signalwire.core.web.HostAppRouter"
             },
             "visible_messages": {
               "params": [
@@ -1371,7 +1371,7 @@
                   "kind": "self"
                 }
               ],
-              "returns": "class:APIRouter"
+              "returns": "class:signalwire.core.web.HostAppRouter"
             },
             "say": {
               "params": [
@@ -1479,7 +1479,7 @@
           "params": [
             {
               "name": "func",
-              "type": "callable<list<class:signalwire.core._sync_handlers._P>,class:signalwire.core._sync_handlers._T>",
+              "type": "callable<list<any>,any>",
               "required": true
             },
             {
@@ -6201,7 +6201,8 @@
           "params": [
             {
               "name": "args",
-              "type": "dict<string,class:signalwire.value.Value>",
+              "type": "any",
+              "kind": "var_positional",
               "required": false
             }
           ],
@@ -7539,7 +7540,7 @@
             },
             {
               "name": "roles",
-              "type": "tuple<string,any>",
+              "type": "list<string>",
               "required": false,
               "kind": "keyword"
             },
