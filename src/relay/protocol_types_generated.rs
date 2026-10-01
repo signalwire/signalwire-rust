@@ -5,18 +5,13 @@
 // Read-side wire types (open shapes) — method-less serde structs / closed-set
 // enums. Regenerate with: python3 scripts/generate_relay_protocol.py
 //
-// Two narrow lint allows, both grounded in the generated wire shape:
-//   * non_camel_case_types — a few wire schema keys carry dotted names
-//     (``Types.StatusCodes.StatusCode400``); the type identifier folds the dots
-//     to underscores (``Types_StatusCodes_StatusCode400``) and must stay verbatim
-//     so it matches the wire schema key, which the naming lint would rewrite.
-//   * clippy::doc_markdown — the generated doc comments echo raw wire schema key
-//     names in prose; backticking every one mechanically is not meaningful here.
-#![allow(non_camel_case_types, clippy::doc_markdown)]
+// A wire schema key with a dotted name (``Types.StatusCodes.StatusCode400``)
+// folds to an underscored type identifier that must stay verbatim to match the
+// key; only those items carry an item-level `non_camel_case_types` allow.
 
 use serde::{Deserialize, Serialize};
 
-/// `CallingAiHoldParams` — generated read-side wire type (RELAY method 'calling.ai_hold', params).
+/// `CallingAiHoldParams` — generated read-side wire type (RELAY method `calling.ai_hold`, params).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -36,7 +31,7 @@ pub struct CallingAiHoldParams {
     pub timeout: Option<String>,
 }
 
-/// `CallingAiMessageParams` — generated read-side wire type (RELAY method 'calling.ai_message', params).
+/// `CallingAiMessageParams` — generated read-side wire type (RELAY method `calling.ai_message`, params).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -60,7 +55,7 @@ pub struct CallingAiMessageParams {
     pub swml: Option<bool>,
 }
 
-/// `CallingAiUnholdParams` — generated read-side wire type (RELAY method 'calling.ai_unhold', params).
+/// `CallingAiUnholdParams` — generated read-side wire type (RELAY method `calling.ai_unhold`, params).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -78,7 +73,7 @@ pub struct CallingAiUnholdParams {
     pub swml: Option<bool>,
 }
 
-/// `CallingAmazonBedrockParams` — generated read-side wire type (RELAY method 'calling.amazon_bedrock', params).
+/// `CallingAmazonBedrockParams` — generated read-side wire type (RELAY method `calling.amazon_bedrock`, params).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -106,7 +101,7 @@ pub struct CallingAmazonBedrockParams {
     pub swml: Option<bool>,
 }
 
-/// `CallingAnswerParams` — generated read-side wire type (RELAY method 'calling.answer', params).
+/// `CallingAnswerParams` — generated read-side wire type (RELAY method `calling.answer`, params).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -120,7 +115,7 @@ pub struct CallingAnswerParams {
     pub node_id: Option<String>,
 }
 
-/// `CallingBeginParams` — generated read-side wire type (RELAY method 'calling.begin', params).
+/// `CallingBeginParams` — generated read-side wire type (RELAY method `calling.begin`, params).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -138,7 +133,7 @@ pub struct CallingBeginParams {
     pub tag: Option<String>,
 }
 
-/// `CallingBindDigitParams` — generated read-side wire type (RELAY method 'calling.bind_digit', params).
+/// `CallingBindDigitParams` — generated read-side wire type (RELAY method `calling.bind_digit`, params).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -162,7 +157,7 @@ pub struct CallingBindDigitParams {
     pub swml: Option<bool>,
 }
 
-/// `CallingClearDigitBindingsParams` — generated read-side wire type (RELAY method 'calling.clear_digit_bindings', params).
+/// `CallingClearDigitBindingsParams` — generated read-side wire type (RELAY method `calling.clear_digit_bindings`, params).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -178,7 +173,7 @@ pub struct CallingClearDigitBindingsParams {
     pub swml: Option<bool>,
 }
 
-/// `CallingCollectParams` — generated read-side wire type (RELAY method 'calling.collect', params).
+/// `CallingCollectParams` — generated read-side wire type (RELAY method `calling.collect`, params).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -208,7 +203,7 @@ pub struct CallingCollectParams {
     pub start_input_timers: Option<bool>,
 }
 
-/// `CallingCollectStartInputTimersParams` — generated read-side wire type (RELAY method 'calling.collect.start_input_timers', params).
+/// `CallingCollectStartInputTimersParams` — generated read-side wire type (RELAY method `calling.collect.start_input_timers`, params).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -222,7 +217,7 @@ pub struct CallingCollectStartInputTimersParams {
     pub node_id: Option<String>,
 }
 
-/// `CallingCollectStopParams` — generated read-side wire type (RELAY method 'calling.collect.stop', params).
+/// `CallingCollectStopParams` — generated read-side wire type (RELAY method `calling.collect.stop`, params).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -236,7 +231,7 @@ pub struct CallingCollectStopParams {
     pub node_id: Option<String>,
 }
 
-/// `CallingConnectParams` — generated read-side wire type (RELAY method 'calling.connect', params).
+/// `CallingConnectParams` — generated read-side wire type (RELAY method `calling.connect`, params).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -260,7 +255,7 @@ pub struct CallingConnectParams {
     pub tag: Option<String>,
 }
 
-/// `CallingDenoiseParams` — generated read-side wire type (RELAY method 'calling.denoise', params).
+/// `CallingDenoiseParams` — generated read-side wire type (RELAY method `calling.denoise`, params).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -272,7 +267,7 @@ pub struct CallingDenoiseParams {
     pub node_id: Option<String>,
 }
 
-/// `CallingDenoiseStopParams` — generated read-side wire type (RELAY method 'calling.denoise.stop', params).
+/// `CallingDenoiseStopParams` — generated read-side wire type (RELAY method `calling.denoise.stop`, params).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -284,7 +279,7 @@ pub struct CallingDenoiseStopParams {
     pub node_id: Option<String>,
 }
 
-/// `CallingDetectParams` — generated read-side wire type (RELAY method 'calling.detect', params).
+/// `CallingDetectParams` — generated read-side wire type (RELAY method `calling.detect`, params).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -302,7 +297,7 @@ pub struct CallingDetectParams {
     pub timeout: Option<f64>,
 }
 
-/// `CallingDetectStopParams` — generated read-side wire type (RELAY method 'calling.detect.stop', params).
+/// `CallingDetectStopParams` — generated read-side wire type (RELAY method `calling.detect.stop`, params).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -316,7 +311,7 @@ pub struct CallingDetectStopParams {
     pub node_id: Option<String>,
 }
 
-/// `CallingDialParams` — generated read-side wire type (RELAY method 'calling.dial', params).
+/// `CallingDialParams` — generated read-side wire type (RELAY method `calling.dial`, params).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -336,7 +331,7 @@ pub struct CallingDialParams {
     pub tag: Option<String>,
 }
 
-/// `CallingDisconnectParams` — generated read-side wire type (RELAY method 'calling.disconnect', params).
+/// `CallingDisconnectParams` — generated read-side wire type (RELAY method `calling.disconnect`, params).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -348,7 +343,7 @@ pub struct CallingDisconnectParams {
     pub node_id: Option<String>,
 }
 
-/// `CallingEchoParams` — generated read-side wire type (RELAY method 'calling.echo', params).
+/// `CallingEchoParams` — generated read-side wire type (RELAY method `calling.echo`, params).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -366,7 +361,7 @@ pub struct CallingEchoParams {
     pub timeout: Option<f64>,
 }
 
-/// `CallingEndParams` — generated read-side wire type (RELAY method 'calling.end', params).
+/// `CallingEndParams` — generated read-side wire type (RELAY method `calling.end`, params).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -380,7 +375,7 @@ pub struct CallingEndParams {
     pub reason: Option<String>,
 }
 
-/// `CallingJoinConferenceParams` — generated read-side wire type (RELAY method 'calling.join_conference', params).
+/// `CallingJoinConferenceParams` — generated read-side wire type (RELAY method `calling.join_conference`, params).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -436,7 +431,7 @@ pub struct CallingJoinConferenceParams {
     pub wait_url: Option<String>,
 }
 
-/// `CallingJoinRoomParams` — generated read-side wire type (RELAY method 'calling.join_room', params).
+/// `CallingJoinRoomParams` — generated read-side wire type (RELAY method `calling.join_room`, params).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -458,7 +453,7 @@ pub struct CallingJoinRoomParams {
     pub swml: Option<bool>,
 }
 
-/// `CallingLeaveConferenceParams` — generated read-side wire type (RELAY method 'calling.leave_conference', params).
+/// `CallingLeaveConferenceParams` — generated read-side wire type (RELAY method `calling.leave_conference`, params).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -474,7 +469,7 @@ pub struct CallingLeaveConferenceParams {
     pub node_id: Option<String>,
 }
 
-/// `CallingLeaveRoomParams` — generated read-side wire type (RELAY method 'calling.leave_room', params).
+/// `CallingLeaveRoomParams` — generated read-side wire type (RELAY method `calling.leave_room`, params).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -488,7 +483,7 @@ pub struct CallingLeaveRoomParams {
     pub node_id: Option<String>,
 }
 
-/// `CallingLiveTranscribeParams` — generated read-side wire type (RELAY method 'calling.live_transcribe', params).
+/// `CallingLiveTranscribeParams` — generated read-side wire type (RELAY method `calling.live_transcribe`, params).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -506,7 +501,7 @@ pub struct CallingLiveTranscribeParams {
     pub swml: Option<bool>,
 }
 
-/// `CallingLiveTranslateParams` — generated read-side wire type (RELAY method 'calling.live_translate', params).
+/// `CallingLiveTranslateParams` — generated read-side wire type (RELAY method `calling.live_translate`, params).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -526,7 +521,7 @@ pub struct CallingLiveTranslateParams {
     pub swml: Option<bool>,
 }
 
-/// `CallingPassParams` — generated read-side wire type (RELAY method 'calling.pass', params).
+/// `CallingPassParams` — generated read-side wire type (RELAY method `calling.pass`, params).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -538,7 +533,7 @@ pub struct CallingPassParams {
     pub node_id: Option<String>,
 }
 
-/// `CallingPayParams` — generated read-side wire type (RELAY method 'calling.pay', params).
+/// `CallingPayParams` — generated read-side wire type (RELAY method `calling.pay`, params).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -590,7 +585,7 @@ pub struct CallingPayParams {
     pub voice: Option<String>,
 }
 
-/// `CallingPayStopParams` — generated read-side wire type (RELAY method 'calling.pay.stop', params).
+/// `CallingPayStopParams` — generated read-side wire type (RELAY method `calling.pay.stop`, params).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -604,7 +599,7 @@ pub struct CallingPayStopParams {
     pub node_id: Option<String>,
 }
 
-/// `CallingPlayParams` — generated read-side wire type (RELAY method 'calling.play', params).
+/// `CallingPlayParams` — generated read-side wire type (RELAY method `calling.play`, params).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -622,7 +617,7 @@ pub struct CallingPlayParams {
     pub volume: Option<f64>,
 }
 
-/// `CallingPlayPauseParams` — generated read-side wire type (RELAY method 'calling.play.pause', params).
+/// `CallingPlayPauseParams` — generated read-side wire type (RELAY method `calling.play.pause`, params).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -636,7 +631,7 @@ pub struct CallingPlayPauseParams {
     pub node_id: Option<String>,
 }
 
-/// `CallingPlayResumeParams` — generated read-side wire type (RELAY method 'calling.play.resume', params).
+/// `CallingPlayResumeParams` — generated read-side wire type (RELAY method `calling.play.resume`, params).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -650,7 +645,7 @@ pub struct CallingPlayResumeParams {
     pub node_id: Option<String>,
 }
 
-/// `CallingPlayStopParams` — generated read-side wire type (RELAY method 'calling.play.stop', params).
+/// `CallingPlayStopParams` — generated read-side wire type (RELAY method `calling.play.stop`, params).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -664,7 +659,7 @@ pub struct CallingPlayStopParams {
     pub node_id: Option<String>,
 }
 
-/// `CallingPlayVolumeParams` — generated read-side wire type (RELAY method 'calling.play.volume', params).
+/// `CallingPlayVolumeParams` — generated read-side wire type (RELAY method `calling.play.volume`, params).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -680,7 +675,7 @@ pub struct CallingPlayVolumeParams {
     pub volume: Option<f64>,
 }
 
-/// `CallingPlayAndCollectParams` — generated read-side wire type (RELAY method 'calling.play_and_collect', params).
+/// `CallingPlayAndCollectParams` — generated read-side wire type (RELAY method `calling.play_and_collect`, params).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -700,7 +695,7 @@ pub struct CallingPlayAndCollectParams {
     pub volume: Option<f64>,
 }
 
-/// `CallingPlayAndCollectStopParams` — generated read-side wire type (RELAY method 'calling.play_and_collect.stop', params).
+/// `CallingPlayAndCollectStopParams` — generated read-side wire type (RELAY method `calling.play_and_collect.stop`, params).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -714,7 +709,7 @@ pub struct CallingPlayAndCollectStopParams {
     pub node_id: Option<String>,
 }
 
-/// `CallingPlayAndCollectVolumeParams` — generated read-side wire type (RELAY method 'calling.play_and_collect.volume', params).
+/// `CallingPlayAndCollectVolumeParams` — generated read-side wire type (RELAY method `calling.play_and_collect.volume`, params).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -730,7 +725,7 @@ pub struct CallingPlayAndCollectVolumeParams {
     pub volume: Option<f64>,
 }
 
-/// `CallingQueueEnterParams` — generated read-side wire type (RELAY method 'calling.queue.enter', params).
+/// `CallingQueueEnterParams` — generated read-side wire type (RELAY method `calling.queue.enter`, params).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -750,7 +745,7 @@ pub struct CallingQueueEnterParams {
     pub wait_url: Option<String>,
 }
 
-/// `CallingQueueLeaveParams` — generated read-side wire type (RELAY method 'calling.queue.leave', params).
+/// `CallingQueueLeaveParams` — generated read-side wire type (RELAY method `calling.queue.leave`, params).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -770,7 +765,7 @@ pub struct CallingQueueLeaveParams {
     pub status_url: Option<String>,
 }
 
-/// `CallingReceiveParams` — generated read-side wire type (RELAY method 'calling.receive', params).
+/// `CallingReceiveParams` — generated read-side wire type (RELAY method `calling.receive`, params).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -782,7 +777,7 @@ pub struct CallingReceiveParams {
     pub contexts: Option<serde_json::Value>,
 }
 
-/// `CallingReceiveFaxParams` — generated read-side wire type (RELAY method 'calling.receive_fax', params).
+/// `CallingReceiveFaxParams` — generated read-side wire type (RELAY method `calling.receive_fax`, params).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -796,7 +791,7 @@ pub struct CallingReceiveFaxParams {
     pub node_id: Option<String>,
 }
 
-/// `CallingReceiveFaxStopParams` — generated read-side wire type (RELAY method 'calling.receive_fax.stop', params).
+/// `CallingReceiveFaxStopParams` — generated read-side wire type (RELAY method `calling.receive_fax.stop`, params).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -810,7 +805,7 @@ pub struct CallingReceiveFaxStopParams {
     pub node_id: Option<String>,
 }
 
-/// `CallingRecordParams` — generated read-side wire type (RELAY method 'calling.record', params).
+/// `CallingRecordParams` — generated read-side wire type (RELAY method `calling.record`, params).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -826,7 +821,7 @@ pub struct CallingRecordParams {
     pub record: Option<serde_json::Value>,
 }
 
-/// `CallingRecordPauseParams` — generated read-side wire type (RELAY method 'calling.record.pause', params).
+/// `CallingRecordPauseParams` — generated read-side wire type (RELAY method `calling.record.pause`, params).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -842,7 +837,7 @@ pub struct CallingRecordPauseParams {
     pub node_id: Option<String>,
 }
 
-/// `CallingRecordResumeParams` — generated read-side wire type (RELAY method 'calling.record.resume', params).
+/// `CallingRecordResumeParams` — generated read-side wire type (RELAY method `calling.record.resume`, params).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -856,7 +851,7 @@ pub struct CallingRecordResumeParams {
     pub node_id: Option<String>,
 }
 
-/// `CallingRecordStopParams` — generated read-side wire type (RELAY method 'calling.record.stop', params).
+/// `CallingRecordStopParams` — generated read-side wire type (RELAY method `calling.record.stop`, params).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -870,7 +865,7 @@ pub struct CallingRecordStopParams {
     pub node_id: Option<String>,
 }
 
-/// `CallingReferParams` — generated read-side wire type (RELAY method 'calling.refer', params).
+/// `CallingReferParams` — generated read-side wire type (RELAY method `calling.refer`, params).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -884,7 +879,7 @@ pub struct CallingReferParams {
     pub node_id: Option<String>,
 }
 
-/// `CallingSendDigitsParams` — generated read-side wire type (RELAY method 'calling.send_digits', params).
+/// `CallingSendDigitsParams` — generated read-side wire type (RELAY method `calling.send_digits`, params).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -900,7 +895,7 @@ pub struct CallingSendDigitsParams {
     pub node_id: Option<String>,
 }
 
-/// `CallingSendFaxParams` — generated read-side wire type (RELAY method 'calling.send_fax', params).
+/// `CallingSendFaxParams` — generated read-side wire type (RELAY method `calling.send_fax`, params).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -920,7 +915,7 @@ pub struct CallingSendFaxParams {
     pub node_id: Option<String>,
 }
 
-/// `CallingSendFaxStopParams` — generated read-side wire type (RELAY method 'calling.send_fax.stop', params).
+/// `CallingSendFaxStopParams` — generated read-side wire type (RELAY method `calling.send_fax.stop`, params).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -934,7 +929,7 @@ pub struct CallingSendFaxStopParams {
     pub node_id: Option<String>,
 }
 
-/// `CallingStreamParams` — generated read-side wire type (RELAY method 'calling.stream', params).
+/// `CallingStreamParams` — generated read-side wire type (RELAY method `calling.stream`, params).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -968,7 +963,7 @@ pub struct CallingStreamParams {
     pub url: Option<String>,
 }
 
-/// `CallingStreamStopParams` — generated read-side wire type (RELAY method 'calling.stream.stop', params).
+/// `CallingStreamStopParams` — generated read-side wire type (RELAY method `calling.stream.stop`, params).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -986,7 +981,7 @@ pub struct CallingStreamStopParams {
     pub swml: Option<bool>,
 }
 
-/// `CallingTapParams` — generated read-side wire type (RELAY method 'calling.tap', params).
+/// `CallingTapParams` — generated read-side wire type (RELAY method `calling.tap`, params).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1004,7 +999,7 @@ pub struct CallingTapParams {
     pub tap: Option<serde_json::Value>,
 }
 
-/// `CallingTapStopParams` — generated read-side wire type (RELAY method 'calling.tap.stop', params).
+/// `CallingTapStopParams` — generated read-side wire type (RELAY method `calling.tap.stop`, params).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1018,7 +1013,7 @@ pub struct CallingTapStopParams {
     pub node_id: Option<String>,
 }
 
-/// `CallingTransferParams` — generated read-side wire type (RELAY method 'calling.transfer', params).
+/// `CallingTransferParams` — generated read-side wire type (RELAY method `calling.transfer`, params).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1032,7 +1027,7 @@ pub struct CallingTransferParams {
     pub node_id: Option<String>,
 }
 
-/// `CallingUserEventParams` — generated read-side wire type (RELAY method 'calling.user_event', params).
+/// `CallingUserEventParams` — generated read-side wire type (RELAY method `calling.user_event`, params).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1050,7 +1045,7 @@ pub struct CallingUserEventParams {
     pub swml: Option<bool>,
 }
 
-/// `MessagingSendParams` — generated read-side wire type (RELAY method 'messaging.send', params).
+/// `MessagingSendParams` — generated read-side wire type (RELAY method `messaging.send`, params).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1072,7 +1067,7 @@ pub struct MessagingSendParams {
     pub to_number: Option<String>,
 }
 
-/// `SignalwireConnectParams` — generated read-side wire type (RELAY method 'signalwire.connect', params).
+/// `SignalwireConnectParams` — generated read-side wire type (RELAY method `signalwire.connect`, params).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1094,7 +1089,7 @@ pub struct SignalwireConnectParams {
     pub version: Option<serde_json::Value>,
 }
 
-/// `SignalwireDisconnectParams` — generated read-side wire type (RELAY method 'signalwire.disconnect', params).
+/// `SignalwireDisconnectParams` — generated read-side wire type (RELAY method `signalwire.disconnect`, params).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1104,7 +1099,7 @@ pub struct SignalwireDisconnectParams {
     pub restart: Option<bool>,
 }
 
-/// `SignalwireExecuteParams` — generated read-side wire type (RELAY method 'signalwire.execute', params).
+/// `SignalwireExecuteParams` — generated read-side wire type (RELAY method `signalwire.execute`, params).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1128,7 +1123,7 @@ pub struct SignalwireExecuteParams {
     pub responder_nodeid: Option<String>,
 }
 
-/// `SignalwirePingParams` — generated read-side wire type (RELAY method 'signalwire.ping', params).
+/// `SignalwirePingParams` — generated read-side wire type (RELAY method `signalwire.ping`, params).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1140,7 +1135,7 @@ pub struct SignalwirePingParams {
     pub timestamp: Option<f64>,
 }
 
-/// `SignalwireReauthenticateParams` — generated read-side wire type (RELAY method 'signalwire.reauthenticate', params).
+/// `SignalwireReauthenticateParams` — generated read-side wire type (RELAY method `signalwire.reauthenticate`, params).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1152,7 +1147,7 @@ pub struct SignalwireReauthenticateParams {
     pub dpop_token: Option<String>,
 }
 
-/// `CallingAiHoldResult` — generated read-side wire type (RELAY method 'calling.ai_hold', result).
+/// `CallingAiHoldResult` — generated read-side wire type (RELAY method `calling.ai_hold`, result).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1168,7 +1163,7 @@ pub struct CallingAiHoldResult {
     pub message: Option<String>,
 }
 
-/// `CallingAiMessageResult` — generated read-side wire type (RELAY method 'calling.ai_message', result).
+/// `CallingAiMessageResult` — generated read-side wire type (RELAY method `calling.ai_message`, result).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1184,7 +1179,7 @@ pub struct CallingAiMessageResult {
     pub message: Option<String>,
 }
 
-/// `CallingAiUnholdResult` — generated read-side wire type (RELAY method 'calling.ai_unhold', result).
+/// `CallingAiUnholdResult` — generated read-side wire type (RELAY method `calling.ai_unhold`, result).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1200,7 +1195,7 @@ pub struct CallingAiUnholdResult {
     pub message: Option<String>,
 }
 
-/// `CallingAmazonBedrockResult` — generated read-side wire type (RELAY method 'calling.amazon_bedrock', result).
+/// `CallingAmazonBedrockResult` — generated read-side wire type (RELAY method `calling.amazon_bedrock`, result).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1216,7 +1211,7 @@ pub struct CallingAmazonBedrockResult {
     pub message: Option<String>,
 }
 
-/// `CallingAnswerResult` — generated read-side wire type (RELAY method 'calling.answer', result).
+/// `CallingAnswerResult` — generated read-side wire type (RELAY method `calling.answer`, result).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1230,7 +1225,7 @@ pub struct CallingAnswerResult {
     pub message: Option<String>,
 }
 
-/// `CallingBeginResult` — generated read-side wire type (RELAY method 'calling.begin', result).
+/// `CallingBeginResult` — generated read-side wire type (RELAY method `calling.begin`, result).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1250,7 +1245,7 @@ pub struct CallingBeginResult {
     pub node_id: Option<String>,
 }
 
-/// `CallingBindDigitResult` — generated read-side wire type (RELAY method 'calling.bind_digit', result).
+/// `CallingBindDigitResult` — generated read-side wire type (RELAY method `calling.bind_digit`, result).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1266,7 +1261,7 @@ pub struct CallingBindDigitResult {
     pub message: Option<String>,
 }
 
-/// `CallingClearDigitBindingsResult` — generated read-side wire type (RELAY method 'calling.clear_digit_bindings', result).
+/// `CallingClearDigitBindingsResult` — generated read-side wire type (RELAY method `calling.clear_digit_bindings`, result).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1282,7 +1277,7 @@ pub struct CallingClearDigitBindingsResult {
     pub message: Option<String>,
 }
 
-/// `CallingCollectResult` — generated read-side wire type (RELAY method 'calling.collect', result).
+/// `CallingCollectResult` — generated read-side wire type (RELAY method `calling.collect`, result).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1300,7 +1295,7 @@ pub struct CallingCollectResult {
     pub message: Option<String>,
 }
 
-/// `CallingCollectStartInputTimersResult` — generated read-side wire type (RELAY method 'calling.collect.start_input_timers', result).
+/// `CallingCollectStartInputTimersResult` — generated read-side wire type (RELAY method `calling.collect.start_input_timers`, result).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1318,7 +1313,7 @@ pub struct CallingCollectStartInputTimersResult {
     pub message: Option<String>,
 }
 
-/// `CallingCollectStopResult` — generated read-side wire type (RELAY method 'calling.collect.stop', result).
+/// `CallingCollectStopResult` — generated read-side wire type (RELAY method `calling.collect.stop`, result).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1336,7 +1331,7 @@ pub struct CallingCollectStopResult {
     pub message: Option<String>,
 }
 
-/// `CallingConnectResult` — generated read-side wire type (RELAY method 'calling.connect', result).
+/// `CallingConnectResult` — generated read-side wire type (RELAY method `calling.connect`, result).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1352,7 +1347,7 @@ pub struct CallingConnectResult {
     pub message_data: Option<serde_json::Value>,
 }
 
-/// `CallingDenoiseResult` — generated read-side wire type (RELAY method 'calling.denoise', result).
+/// `CallingDenoiseResult` — generated read-side wire type (RELAY method `calling.denoise`, result).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1368,7 +1363,7 @@ pub struct CallingDenoiseResult {
     pub message: Option<String>,
 }
 
-/// `CallingDenoiseStopResult` — generated read-side wire type (RELAY method 'calling.denoise.stop', result).
+/// `CallingDenoiseStopResult` — generated read-side wire type (RELAY method `calling.denoise.stop`, result).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1384,7 +1379,7 @@ pub struct CallingDenoiseStopResult {
     pub message: Option<String>,
 }
 
-/// `CallingDetectResult` — generated read-side wire type (RELAY method 'calling.detect', result).
+/// `CallingDetectResult` — generated read-side wire type (RELAY method `calling.detect`, result).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1402,7 +1397,7 @@ pub struct CallingDetectResult {
     pub message: Option<String>,
 }
 
-/// `CallingDetectStopResult` — generated read-side wire type (RELAY method 'calling.detect.stop', result).
+/// `CallingDetectStopResult` — generated read-side wire type (RELAY method `calling.detect.stop`, result).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1420,7 +1415,7 @@ pub struct CallingDetectStopResult {
     pub message: Option<String>,
 }
 
-/// `CallingDialResult` — generated read-side wire type (RELAY method 'calling.dial', result).
+/// `CallingDialResult` — generated read-side wire type (RELAY method `calling.dial`, result).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1436,7 +1431,7 @@ pub struct CallingDialResult {
     pub message_data: Option<serde_json::Value>,
 }
 
-/// `CallingDisconnectResult` — generated read-side wire type (RELAY method 'calling.disconnect', result).
+/// `CallingDisconnectResult` — generated read-side wire type (RELAY method `calling.disconnect`, result).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1450,7 +1445,7 @@ pub struct CallingDisconnectResult {
     pub message: Option<String>,
 }
 
-/// `CallingEchoResult` — generated read-side wire type (RELAY method 'calling.echo', result).
+/// `CallingEchoResult` — generated read-side wire type (RELAY method `calling.echo`, result).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1466,7 +1461,7 @@ pub struct CallingEchoResult {
     pub message: Option<String>,
 }
 
-/// `CallingEndResult` — generated read-side wire type (RELAY method 'calling.end', result).
+/// `CallingEndResult` — generated read-side wire type (RELAY method `calling.end`, result).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1480,7 +1475,7 @@ pub struct CallingEndResult {
     pub message: Option<String>,
 }
 
-/// `CallingJoinConferenceResult` — generated read-side wire type (RELAY method 'calling.join_conference', result).
+/// `CallingJoinConferenceResult` — generated read-side wire type (RELAY method `calling.join_conference`, result).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1498,7 +1493,7 @@ pub struct CallingJoinConferenceResult {
     pub message: Option<String>,
 }
 
-/// `CallingJoinRoomResult` — generated read-side wire type (RELAY method 'calling.join_room', result).
+/// `CallingJoinRoomResult` — generated read-side wire type (RELAY method `calling.join_room`, result).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1514,7 +1509,7 @@ pub struct CallingJoinRoomResult {
     pub message: Option<String>,
 }
 
-/// `CallingLeaveConferenceResult` — generated read-side wire type (RELAY method 'calling.leave_conference', result).
+/// `CallingLeaveConferenceResult` — generated read-side wire type (RELAY method `calling.leave_conference`, result).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1530,7 +1525,7 @@ pub struct CallingLeaveConferenceResult {
     pub message: Option<String>,
 }
 
-/// `CallingLeaveRoomResult` — generated read-side wire type (RELAY method 'calling.leave_room', result).
+/// `CallingLeaveRoomResult` — generated read-side wire type (RELAY method `calling.leave_room`, result).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1546,7 +1541,7 @@ pub struct CallingLeaveRoomResult {
     pub message: Option<String>,
 }
 
-/// `CallingLiveTranscribeResult` — generated read-side wire type (RELAY method 'calling.live_transcribe', result).
+/// `CallingLiveTranscribeResult` — generated read-side wire type (RELAY method `calling.live_transcribe`, result).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1562,7 +1557,7 @@ pub struct CallingLiveTranscribeResult {
     pub message: Option<String>,
 }
 
-/// `CallingLiveTranslateResult` — generated read-side wire type (RELAY method 'calling.live_translate', result).
+/// `CallingLiveTranslateResult` — generated read-side wire type (RELAY method `calling.live_translate`, result).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1578,7 +1573,7 @@ pub struct CallingLiveTranslateResult {
     pub message: Option<String>,
 }
 
-/// `CallingPassResult` — generated read-side wire type (RELAY method 'calling.pass', result).
+/// `CallingPassResult` — generated read-side wire type (RELAY method `calling.pass`, result).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1594,7 +1589,7 @@ pub struct CallingPassResult {
     pub message: Option<String>,
 }
 
-/// `CallingPayResult` — generated read-side wire type (RELAY method 'calling.pay', result).
+/// `CallingPayResult` — generated read-side wire type (RELAY method `calling.pay`, result).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1612,7 +1607,7 @@ pub struct CallingPayResult {
     pub message: Option<String>,
 }
 
-/// `CallingPayStopResult` — generated read-side wire type (RELAY method 'calling.pay.stop', result).
+/// `CallingPayStopResult` — generated read-side wire type (RELAY method `calling.pay.stop`, result).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1630,7 +1625,7 @@ pub struct CallingPayStopResult {
     pub message: Option<String>,
 }
 
-/// `CallingPlayResult` — generated read-side wire type (RELAY method 'calling.play', result).
+/// `CallingPlayResult` — generated read-side wire type (RELAY method `calling.play`, result).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1648,7 +1643,7 @@ pub struct CallingPlayResult {
     pub message: Option<String>,
 }
 
-/// `CallingPlayPauseResult` — generated read-side wire type (RELAY method 'calling.play.pause', result).
+/// `CallingPlayPauseResult` — generated read-side wire type (RELAY method `calling.play.pause`, result).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1666,7 +1661,7 @@ pub struct CallingPlayPauseResult {
     pub message: Option<String>,
 }
 
-/// `CallingPlayResumeResult` — generated read-side wire type (RELAY method 'calling.play.resume', result).
+/// `CallingPlayResumeResult` — generated read-side wire type (RELAY method `calling.play.resume`, result).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1684,7 +1679,7 @@ pub struct CallingPlayResumeResult {
     pub message: Option<String>,
 }
 
-/// `CallingPlayStopResult` — generated read-side wire type (RELAY method 'calling.play.stop', result).
+/// `CallingPlayStopResult` — generated read-side wire type (RELAY method `calling.play.stop`, result).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1702,7 +1697,7 @@ pub struct CallingPlayStopResult {
     pub message: Option<String>,
 }
 
-/// `CallingPlayVolumeResult` — generated read-side wire type (RELAY method 'calling.play.volume', result).
+/// `CallingPlayVolumeResult` — generated read-side wire type (RELAY method `calling.play.volume`, result).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1720,7 +1715,7 @@ pub struct CallingPlayVolumeResult {
     pub message: Option<String>,
 }
 
-/// `CallingPlayAndCollectResult` — generated read-side wire type (RELAY method 'calling.play_and_collect', result).
+/// `CallingPlayAndCollectResult` — generated read-side wire type (RELAY method `calling.play_and_collect`, result).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1738,7 +1733,7 @@ pub struct CallingPlayAndCollectResult {
     pub message: Option<String>,
 }
 
-/// `CallingPlayAndCollectStopResult` — generated read-side wire type (RELAY method 'calling.play_and_collect.stop', result).
+/// `CallingPlayAndCollectStopResult` — generated read-side wire type (RELAY method `calling.play_and_collect.stop`, result).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1756,7 +1751,7 @@ pub struct CallingPlayAndCollectStopResult {
     pub message: Option<String>,
 }
 
-/// `CallingPlayAndCollectVolumeResult` — generated read-side wire type (RELAY method 'calling.play_and_collect.volume', result).
+/// `CallingPlayAndCollectVolumeResult` — generated read-side wire type (RELAY method `calling.play_and_collect.volume`, result).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1774,7 +1769,7 @@ pub struct CallingPlayAndCollectVolumeResult {
     pub message: Option<String>,
 }
 
-/// `CallingQueueEnterResult` — generated read-side wire type (RELAY method 'calling.queue.enter', result).
+/// `CallingQueueEnterResult` — generated read-side wire type (RELAY method `calling.queue.enter`, result).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1792,7 +1787,7 @@ pub struct CallingQueueEnterResult {
     pub message: Option<String>,
 }
 
-/// `CallingQueueLeaveResult` — generated read-side wire type (RELAY method 'calling.queue.leave', result).
+/// `CallingQueueLeaveResult` — generated read-side wire type (RELAY method `calling.queue.leave`, result).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1810,7 +1805,7 @@ pub struct CallingQueueLeaveResult {
     pub message: Option<String>,
 }
 
-/// `CallingReceiveResult` — generated read-side wire type (RELAY method 'calling.receive', result).
+/// `CallingReceiveResult` — generated read-side wire type (RELAY method `calling.receive`, result).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1822,7 +1817,7 @@ pub struct CallingReceiveResult {
     pub message: Option<String>,
 }
 
-/// `CallingReceiveFaxResult` — generated read-side wire type (RELAY method 'calling.receive_fax', result).
+/// `CallingReceiveFaxResult` — generated read-side wire type (RELAY method `calling.receive_fax`, result).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1840,7 +1835,7 @@ pub struct CallingReceiveFaxResult {
     pub message: Option<String>,
 }
 
-/// `CallingReceiveFaxStopResult` — generated read-side wire type (RELAY method 'calling.receive_fax.stop', result).
+/// `CallingReceiveFaxStopResult` — generated read-side wire type (RELAY method `calling.receive_fax.stop`, result).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1858,7 +1853,7 @@ pub struct CallingReceiveFaxStopResult {
     pub message: Option<String>,
 }
 
-/// `CallingRecordResult` — generated read-side wire type (RELAY method 'calling.record', result).
+/// `CallingRecordResult` — generated read-side wire type (RELAY method `calling.record`, result).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1878,7 +1873,7 @@ pub struct CallingRecordResult {
     pub url: Option<String>,
 }
 
-/// `CallingRecordPauseResult` — generated read-side wire type (RELAY method 'calling.record.pause', result).
+/// `CallingRecordPauseResult` — generated read-side wire type (RELAY method `calling.record.pause`, result).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1896,7 +1891,7 @@ pub struct CallingRecordPauseResult {
     pub message: Option<String>,
 }
 
-/// `CallingRecordResumeResult` — generated read-side wire type (RELAY method 'calling.record.resume', result).
+/// `CallingRecordResumeResult` — generated read-side wire type (RELAY method `calling.record.resume`, result).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1914,7 +1909,7 @@ pub struct CallingRecordResumeResult {
     pub message: Option<String>,
 }
 
-/// `CallingRecordStopResult` — generated read-side wire type (RELAY method 'calling.record.stop', result).
+/// `CallingRecordStopResult` — generated read-side wire type (RELAY method `calling.record.stop`, result).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1932,7 +1927,7 @@ pub struct CallingRecordStopResult {
     pub message: Option<String>,
 }
 
-/// `CallingReferResult` — generated read-side wire type (RELAY method 'calling.refer', result).
+/// `CallingReferResult` — generated read-side wire type (RELAY method `calling.refer`, result).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1946,7 +1941,7 @@ pub struct CallingReferResult {
     pub message: Option<String>,
 }
 
-/// `CallingSendDigitsResult` — generated read-side wire type (RELAY method 'calling.send_digits', result).
+/// `CallingSendDigitsResult` — generated read-side wire type (RELAY method `calling.send_digits`, result).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1964,7 +1959,7 @@ pub struct CallingSendDigitsResult {
     pub message: Option<String>,
 }
 
-/// `CallingSendFaxResult` — generated read-side wire type (RELAY method 'calling.send_fax', result).
+/// `CallingSendFaxResult` — generated read-side wire type (RELAY method `calling.send_fax`, result).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1982,7 +1977,7 @@ pub struct CallingSendFaxResult {
     pub message: Option<String>,
 }
 
-/// `CallingSendFaxStopResult` — generated read-side wire type (RELAY method 'calling.send_fax.stop', result).
+/// `CallingSendFaxStopResult` — generated read-side wire type (RELAY method `calling.send_fax.stop`, result).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2000,7 +1995,7 @@ pub struct CallingSendFaxStopResult {
     pub message: Option<String>,
 }
 
-/// `CallingStreamResult` — generated read-side wire type (RELAY method 'calling.stream', result).
+/// `CallingStreamResult` — generated read-side wire type (RELAY method `calling.stream`, result).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2018,7 +2013,7 @@ pub struct CallingStreamResult {
     pub message: Option<String>,
 }
 
-/// `CallingStreamStopResult` — generated read-side wire type (RELAY method 'calling.stream.stop', result).
+/// `CallingStreamStopResult` — generated read-side wire type (RELAY method `calling.stream.stop`, result).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2036,7 +2031,7 @@ pub struct CallingStreamStopResult {
     pub message: Option<String>,
 }
 
-/// `CallingTapResult` — generated read-side wire type (RELAY method 'calling.tap', result).
+/// `CallingTapResult` — generated read-side wire type (RELAY method `calling.tap`, result).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2056,7 +2051,7 @@ pub struct CallingTapResult {
     pub source_device: Option<serde_json::Value>,
 }
 
-/// `CallingTapStopResult` — generated read-side wire type (RELAY method 'calling.tap.stop', result).
+/// `CallingTapStopResult` — generated read-side wire type (RELAY method `calling.tap.stop`, result).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2074,7 +2069,7 @@ pub struct CallingTapStopResult {
     pub message: Option<String>,
 }
 
-/// `CallingTransferResult` — generated read-side wire type (RELAY method 'calling.transfer', result).
+/// `CallingTransferResult` — generated read-side wire type (RELAY method `calling.transfer`, result).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2090,7 +2085,7 @@ pub struct CallingTransferResult {
     pub message: Option<String>,
 }
 
-/// `CallingUserEventResult` — generated read-side wire type (RELAY method 'calling.user_event', result).
+/// `CallingUserEventResult` — generated read-side wire type (RELAY method `calling.user_event`, result).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2106,7 +2101,7 @@ pub struct CallingUserEventResult {
     pub message: Option<String>,
 }
 
-/// `MessagingSendResult` — generated read-side wire type (RELAY method 'messaging.send', result).
+/// `MessagingSendResult` — generated read-side wire type (RELAY method `messaging.send`, result).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2120,7 +2115,7 @@ pub struct MessagingSendResult {
     pub message_id: Option<String>,
 }
 
-/// `SignalwireConnectResult` — generated read-side wire type (RELAY method 'signalwire.connect', result).
+/// `SignalwireConnectResult` — generated read-side wire type (RELAY method `signalwire.connect`, result).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2158,7 +2153,7 @@ pub struct SignalwireConnectResult {
     pub subscriptions: Option<serde_json::Value>,
 }
 
-/// `SignalwireExecuteResult` — generated read-side wire type (RELAY method 'signalwire.execute', result).
+/// `SignalwireExecuteResult` — generated read-side wire type (RELAY method `signalwire.execute`, result).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2172,7 +2167,7 @@ pub struct SignalwireExecuteResult {
     pub result: Option<serde_json::Value>,
 }
 
-/// `SignalwirePingResult` — generated read-side wire type (RELAY method 'signalwire.ping', result).
+/// `SignalwirePingResult` — generated read-side wire type (RELAY method `signalwire.ping`, result).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2184,7 +2179,7 @@ pub struct SignalwirePingResult {
     pub timestamp: Option<f64>,
 }
 
-/// `SignalwireReauthenticateResult` — generated read-side wire type (RELAY method 'signalwire.reauthenticate', result).
+/// `SignalwireReauthenticateResult` — generated read-side wire type (RELAY method `signalwire.reauthenticate`, result).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.

@@ -166,6 +166,7 @@ rest_coverage_gate() {
         --test rest_generated_projects \
         --test rest_generated_pubsub \
         --test rest_generated_relay_rest \
+        --test rest_generated_space \
         --test rest_generated_video \
         --test rest_generated_voice \
         -- --test-threads=1 || return 1
@@ -298,6 +299,13 @@ sched_gate GEN-FRESH desc="generated REST layer matches the canonical specs (gen
 
 sched_gate GEN-FRESH-SWML desc="generated SWML-verbs config tree matches schema.json (\$defs)" \
     -- python3 scripts/generate_swml_verbs.py --check
+
+# SCHEMA-BUNDLE (porting-sdk docs/SCHEMA_ROUND_TRIP.md): the embedded
+# src/swml/schema.json is byte-identical to porting-sdk's (== the ARS output at
+# its recorded commit) and src/swml/schema.json.sha256 names those bytes.
+sched_gate SCHEMA-BUNDLE desc="bundled schema.json == porting-sdk's == ARS output (record matches)" \
+    -- python3 "$PORTING_SDK_DIR/scripts/port_schema_bundle.py" check \
+        --port signalwire-rust --port-root "$PORT_ROOT" --selftest
 
 sched_gate GEN-FRESH-RELAY desc="generated RELAY-protocol tree matches relay-protocol/*.json" \
     -- python3 scripts/generate_relay_protocol.py --check

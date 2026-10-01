@@ -5,18 +5,13 @@
 // Read-side wire types (open shapes) — method-less serde structs / closed-set
 // enums. Regenerate with: python3 scripts/generate_rest.py
 //
-// Two narrow lint allows, both grounded in the generated wire shape:
-//   * non_camel_case_types — a few wire schema keys carry dotted names
-//     (``Types.StatusCodes.StatusCode400``); the type identifier folds the dots
-//     to underscores (``Types_StatusCodes_StatusCode400``) and must stay verbatim
-//     so it matches the wire schema key, which the naming lint would rewrite.
-//   * clippy::doc_markdown — the generated doc comments echo raw wire schema key
-//     names in prose; backticking every one mechanically is not meaningful here.
-#![allow(non_camel_case_types, clippy::doc_markdown)]
+// A wire schema key with a dotted name (``Types.StatusCodes.StatusCode400``)
+// folds to an underscored type identifier that must stay verbatim to match the
+// key; only those items carry an item-level `non_camel_case_types` allow.
 
 use serde::{Deserialize, Serialize};
 
-/// `AddNumberGroupMembershipRequest` — generated read-side wire type ('relay-rest' REST API, schema 'AddNumberGroupMembershipRequest').
+/// `AddNumberGroupMembershipRequest` — generated read-side wire type (`relay-rest` REST API, schema `AddNumberGroupMembershipRequest`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -26,7 +21,7 @@ pub struct AddNumberGroupMembershipRequest {
     pub phone_number_id: Option<serde_json::Value>,
 }
 
-/// `Address` — generated read-side wire type ('relay-rest' REST API, schema 'Address').
+/// `Address` — generated read-side wire type (`relay-rest` REST API, schema `Address`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -66,7 +61,7 @@ pub struct Address {
     pub validated_at: Option<String>,
 }
 
-/// `AddressListResponse` — generated read-side wire type ('relay-rest' REST API, schema 'AddressListResponse').
+/// `AddressListResponse` — generated read-side wire type (`relay-rest` REST API, schema `AddressListResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -78,7 +73,7 @@ pub struct AddressListResponse {
     pub data: Option<serde_json::Value>,
 }
 
-/// `AddressResponse` — generated read-side wire type ('relay-rest' REST API, schema 'AddressResponse').
+/// `AddressResponse` — generated read-side wire type (`relay-rest` REST API, schema `AddressResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -118,7 +113,7 @@ pub struct AddressResponse {
     pub validated_at: Option<String>,
 }
 
-/// `AssignedNumber` — generated read-side wire type ('relay-rest' REST API, schema 'AssignedNumber').
+/// `AssignedNumber` — generated read-side wire type (`relay-rest` REST API, schema `AssignedNumber`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -140,7 +135,7 @@ pub struct AssignedNumber {
     pub updated_at: Option<String>,
 }
 
-/// `AssignedNumberListResponse` — generated read-side wire type ('relay-rest' REST API, schema 'AssignedNumberListResponse').
+/// `AssignedNumberListResponse` — generated read-side wire type (`relay-rest` REST API, schema `AssignedNumberListResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -152,7 +147,7 @@ pub struct AssignedNumberListResponse {
     pub data: Option<serde_json::Value>,
 }
 
-/// `AssignedPhoneNumber` — generated read-side wire type ('relay-rest' REST API, schema 'AssignedPhoneNumber').
+/// `AssignedPhoneNumber` — generated read-side wire type (`relay-rest` REST API, schema `AssignedPhoneNumber`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -166,7 +161,7 @@ pub struct AssignedPhoneNumber {
     pub number: Option<String>,
 }
 
-/// `AvailablePhoneNumber` — generated read-side wire type ('relay-rest' REST API, schema 'AvailablePhoneNumber').
+/// `AvailablePhoneNumber` — generated read-side wire type (`relay-rest` REST API, schema `AvailablePhoneNumber`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -188,7 +183,7 @@ pub struct AvailablePhoneNumber {
     pub country_code: Option<String>,
 }
 
-/// `AvailablePhoneNumbersResponse` — generated read-side wire type ('relay-rest' REST API, schema 'AvailablePhoneNumbersResponse').
+/// `AvailablePhoneNumbersResponse` — generated read-side wire type (`relay-rest` REST API, schema `AvailablePhoneNumbersResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -200,7 +195,7 @@ pub struct AvailablePhoneNumbersResponse {
     pub data: Option<serde_json::Value>,
 }
 
-/// `Brand` — generated read-side wire type ('relay-rest' REST API, schema 'Brand').
+/// `Brand` — generated read-side wire type (`relay-rest` REST API, schema `Brand`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -246,7 +241,7 @@ pub struct Brand {
     pub number_pooling_for_company: Option<String>,
 }
 
-/// `BrandListResponse` — generated read-side wire type ('relay-rest' REST API, schema 'BrandListResponse').
+/// `BrandListResponse` — generated read-side wire type (`relay-rest` REST API, schema `BrandListResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -258,7 +253,7 @@ pub struct BrandListResponse {
     pub data: Option<serde_json::Value>,
 }
 
-/// `BrandResponse` — generated read-side wire type ('relay-rest' REST API, schema 'BrandResponse').
+/// `BrandResponse` — generated read-side wire type (`relay-rest` REST API, schema `BrandResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -304,7 +299,7 @@ pub struct BrandResponse {
     pub number_pooling_for_company: Option<String>,
 }
 
-/// `Campaign` — generated read-side wire type ('relay-rest' REST API, schema 'Campaign').
+/// `Campaign` — generated read-side wire type (`relay-rest` REST API, schema `Campaign`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -382,7 +377,7 @@ pub struct Campaign {
     pub signalwire_contact_emails: Option<serde_json::Value>,
 }
 
-/// `CampaignListResponse` — generated read-side wire type ('relay-rest' REST API, schema 'CampaignListResponse').
+/// `CampaignListResponse` — generated read-side wire type (`relay-rest` REST API, schema `CampaignListResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -394,7 +389,7 @@ pub struct CampaignListResponse {
     pub data: Option<serde_json::Value>,
 }
 
-/// `CampaignResponse` — generated read-side wire type ('relay-rest' REST API, schema 'CampaignResponse').
+/// `CampaignResponse` — generated read-side wire type (`relay-rest` REST API, schema `CampaignResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -472,7 +467,7 @@ pub struct CampaignResponse {
     pub signalwire_contact_emails: Option<serde_json::Value>,
 }
 
-/// `CarrierLookupInfo` — generated read-side wire type ('relay-rest' REST API, schema 'CarrierLookupInfo').
+/// `CarrierLookupInfo` — generated read-side wire type (`relay-rest` REST API, schema `CarrierLookupInfo`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -500,7 +495,7 @@ pub struct CarrierLookupInfo {
     pub dnc: Option<String>,
 }
 
-/// `CnamInfo` — generated read-side wire type ('relay-rest' REST API, schema 'CnamInfo').
+/// `CnamInfo` — generated read-side wire type (`relay-rest` REST API, schema `CnamInfo`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -510,7 +505,7 @@ pub struct CnamInfo {
     pub caller_id: Option<String>,
 }
 
-/// `CreateAddressRequest` — generated read-side wire type ('relay-rest' REST API, schema 'CreateAddressRequest').
+/// `CreateAddressRequest` — generated read-side wire type (`relay-rest` REST API, schema `CreateAddressRequest`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -544,7 +539,7 @@ pub struct CreateAddressRequest {
     pub auto_correct_address: Option<bool>,
 }
 
-/// `CreateCspBrandRequest` — generated read-side wire type ('relay-rest' REST API, schema 'CreateCspBrandRequest').
+/// `CreateCspBrandRequest` — generated read-side wire type (`relay-rest` REST API, schema `CreateCspBrandRequest`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -562,7 +557,7 @@ pub struct CreateCspBrandRequest {
     pub signalwire_contact_emails: Option<serde_json::Value>,
 }
 
-/// `CreateDomainApplicationRequest` — generated read-side wire type ('relay-rest' REST API, schema 'CreateDomainApplicationRequest').
+/// `CreateDomainApplicationRequest` — generated read-side wire type (`relay-rest` REST API, schema `CreateDomainApplicationRequest`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -626,7 +621,7 @@ pub struct CreateDomainApplicationRequest {
     pub call_relay_context_status_callback_url: Option<String>,
 }
 
-/// `CreateManagedBrandRequest` — generated read-side wire type ('relay-rest' REST API, schema 'CreateManagedBrandRequest').
+/// `CreateManagedBrandRequest` — generated read-side wire type (`relay-rest` REST API, schema `CreateManagedBrandRequest`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -660,7 +655,7 @@ pub struct CreateManagedBrandRequest {
     pub signalwire_contact_emails: Option<serde_json::Value>,
 }
 
-/// `CreateManagedCampaignRequest` — generated read-side wire type ('relay-rest' REST API, schema 'CreateManagedCampaignRequest').
+/// `CreateManagedCampaignRequest` — generated read-side wire type (`relay-rest` REST API, schema `CreateManagedCampaignRequest`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -726,7 +721,7 @@ pub struct CreateManagedCampaignRequest {
     pub signalwire_contact_emails: Option<serde_json::Value>,
 }
 
-/// `CreateNumberGroupRequest` — generated read-side wire type ('relay-rest' REST API, schema 'CreateNumberGroupRequest').
+/// `CreateNumberGroupRequest` — generated read-side wire type (`relay-rest` REST API, schema `CreateNumberGroupRequest`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -738,7 +733,7 @@ pub struct CreateNumberGroupRequest {
     pub sticky_sender: Option<bool>,
 }
 
-/// `CreateOrderRequest` — generated read-side wire type ('relay-rest' REST API, schema 'CreateOrderRequest').
+/// `CreateOrderRequest` — generated read-side wire type (`relay-rest` REST API, schema `CreateOrderRequest`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -750,7 +745,7 @@ pub struct CreateOrderRequest {
     pub status_callback_url: Option<String>,
 }
 
-/// `CreatePartnerCampaignRequest` — generated read-side wire type ('relay-rest' REST API, schema 'CreatePartnerCampaignRequest').
+/// `CreatePartnerCampaignRequest` — generated read-side wire type (`relay-rest` REST API, schema `CreatePartnerCampaignRequest`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -766,7 +761,7 @@ pub struct CreatePartnerCampaignRequest {
     pub signalwire_contact_emails: Option<serde_json::Value>,
 }
 
-/// `CreateQueueRequest` — generated read-side wire type ('relay-rest' REST API, schema 'CreateQueueRequest').
+/// `CreateQueueRequest` — generated read-side wire type (`relay-rest` REST API, schema `CreateQueueRequest`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -778,7 +773,7 @@ pub struct CreateQueueRequest {
     pub max_size: Option<i64>,
 }
 
-/// `CreateSipEndpointRequest` — generated read-side wire type ('relay-rest' REST API, schema 'CreateSipEndpointRequest').
+/// `CreateSipEndpointRequest` — generated read-side wire type (`relay-rest` REST API, schema `CreateSipEndpointRequest`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -840,7 +835,7 @@ pub struct CreateSipEndpointRequest {
     pub call_relay_script_url_method: Option<String>,
 }
 
-/// `CreateVerifiedCallerIDRequest` — generated read-side wire type ('relay-rest' REST API, schema 'CreateVerifiedCallerIDRequest').
+/// `CreateVerifiedCallerIDRequest` — generated read-side wire type (`relay-rest` REST API, schema `CreateVerifiedCallerIDRequest`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -854,7 +849,7 @@ pub struct CreateVerifiedCallerIDRequest {
     pub extension: Option<String>,
 }
 
-/// `DomainApplication` — generated read-side wire type ('relay-rest' REST API, schema 'DomainApplication').
+/// `DomainApplication` — generated read-side wire type (`relay-rest` REST API, schema `DomainApplication`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -914,7 +909,7 @@ pub struct DomainApplication {
     pub ciphers: Option<serde_json::Value>,
 }
 
-/// `DomainApplicationListResponse` — generated read-side wire type ('relay-rest' REST API, schema 'DomainApplicationListResponse').
+/// `DomainApplicationListResponse` — generated read-side wire type (`relay-rest` REST API, schema `DomainApplicationListResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -926,7 +921,7 @@ pub struct DomainApplicationListResponse {
     pub data: Option<serde_json::Value>,
 }
 
-/// `DomainApplicationResponse` — generated read-side wire type ('relay-rest' REST API, schema 'DomainApplicationResponse').
+/// `DomainApplicationResponse` — generated read-side wire type (`relay-rest` REST API, schema `DomainApplicationResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -986,7 +981,7 @@ pub struct DomainApplicationResponse {
     pub ciphers: Option<serde_json::Value>,
 }
 
-/// `ImportPhoneNumberRequest` — generated read-side wire type ('relay-rest' REST API, schema 'ImportPhoneNumberRequest').
+/// `ImportPhoneNumberRequest` — generated read-side wire type (`relay-rest` REST API, schema `ImportPhoneNumberRequest`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1000,7 +995,7 @@ pub struct ImportPhoneNumberRequest {
     pub capabilities: Option<serde_json::Value>,
 }
 
-/// `MembershipPhoneNumber` — generated read-side wire type ('relay-rest' REST API, schema 'MembershipPhoneNumber').
+/// `MembershipPhoneNumber` — generated read-side wire type (`relay-rest` REST API, schema `MembershipPhoneNumber`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1016,7 +1011,7 @@ pub struct MembershipPhoneNumber {
     pub capabilities: Option<serde_json::Value>,
 }
 
-/// `MfaRequest` — generated read-side wire type ('relay-rest' REST API, schema 'MfaRequest').
+/// `MfaRequest` — generated read-side wire type (`relay-rest` REST API, schema `MfaRequest`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1038,7 +1033,7 @@ pub struct MfaRequest {
     pub allow_alphas: Option<bool>,
 }
 
-/// `MfaResponse` — generated read-side wire type ('relay-rest' REST API, schema 'MfaResponse').
+/// `MfaResponse` — generated read-side wire type (`relay-rest` REST API, schema `MfaResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1054,7 +1049,7 @@ pub struct MfaResponse {
     pub channel: Option<String>,
 }
 
-/// `MfaVerifyRequest` — generated read-side wire type ('relay-rest' REST API, schema 'MfaVerifyRequest').
+/// `MfaVerifyRequest` — generated read-side wire type (`relay-rest` REST API, schema `MfaVerifyRequest`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1064,7 +1059,7 @@ pub struct MfaVerifyRequest {
     pub token: Option<String>,
 }
 
-/// `MfaVerifyResponse` — generated read-side wire type ('relay-rest' REST API, schema 'MfaVerifyResponse').
+/// `MfaVerifyResponse` — generated read-side wire type (`relay-rest` REST API, schema `MfaVerifyResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1074,7 +1069,7 @@ pub struct MfaVerifyResponse {
     pub success: Option<bool>,
 }
 
-/// `NumberGroup` — generated read-side wire type ('relay-rest' REST API, schema 'NumberGroup').
+/// `NumberGroup` — generated read-side wire type (`relay-rest` REST API, schema `NumberGroup`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1090,7 +1085,7 @@ pub struct NumberGroup {
     pub phone_number_count: Option<i64>,
 }
 
-/// `NumberGroupListResponse` — generated read-side wire type ('relay-rest' REST API, schema 'NumberGroupListResponse').
+/// `NumberGroupListResponse` — generated read-side wire type (`relay-rest` REST API, schema `NumberGroupListResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1102,7 +1097,7 @@ pub struct NumberGroupListResponse {
     pub data: Option<serde_json::Value>,
 }
 
-/// `NumberGroupMembership` — generated read-side wire type ('relay-rest' REST API, schema 'NumberGroupMembership').
+/// `NumberGroupMembership` — generated read-side wire type (`relay-rest` REST API, schema `NumberGroupMembership`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1120,7 +1115,7 @@ pub struct NumberGroupMembership {
     pub updated_at: Option<String>,
 }
 
-/// `NumberGroupMembershipListResponse` — generated read-side wire type ('relay-rest' REST API, schema 'NumberGroupMembershipListResponse').
+/// `NumberGroupMembershipListResponse` — generated read-side wire type (`relay-rest` REST API, schema `NumberGroupMembershipListResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1132,7 +1127,7 @@ pub struct NumberGroupMembershipListResponse {
     pub data: Option<serde_json::Value>,
 }
 
-/// `NumberGroupMembershipResponse` — generated read-side wire type ('relay-rest' REST API, schema 'NumberGroupMembershipResponse').
+/// `NumberGroupMembershipResponse` — generated read-side wire type (`relay-rest` REST API, schema `NumberGroupMembershipResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1150,7 +1145,7 @@ pub struct NumberGroupMembershipResponse {
     pub updated_at: Option<String>,
 }
 
-/// `NumberGroupResponse` — generated read-side wire type ('relay-rest' REST API, schema 'NumberGroupResponse').
+/// `NumberGroupResponse` — generated read-side wire type (`relay-rest` REST API, schema `NumberGroupResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1166,7 +1161,7 @@ pub struct NumberGroupResponse {
     pub phone_number_count: Option<i64>,
 }
 
-/// `Order` — generated read-side wire type ('relay-rest' REST API, schema 'Order').
+/// `Order` — generated read-side wire type (`relay-rest` REST API, schema `Order`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1192,7 +1187,7 @@ pub struct Order {
     pub phone_numbers: Option<serde_json::Value>,
 }
 
-/// `OrderListResponse` — generated read-side wire type ('relay-rest' REST API, schema 'OrderListResponse').
+/// `OrderListResponse` — generated read-side wire type (`relay-rest` REST API, schema `OrderListResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1204,7 +1199,7 @@ pub struct OrderListResponse {
     pub data: Option<serde_json::Value>,
 }
 
-/// `OrderResponse` — generated read-side wire type ('relay-rest' REST API, schema 'OrderResponse').
+/// `OrderResponse` — generated read-side wire type (`relay-rest` REST API, schema `OrderResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1230,7 +1225,7 @@ pub struct OrderResponse {
     pub phone_numbers: Option<serde_json::Value>,
 }
 
-/// `PaginationLinks` — generated read-side wire type ('relay-rest' REST API, schema 'PaginationLinks').
+/// `PaginationLinks` — generated read-side wire type (`relay-rest` REST API, schema `PaginationLinks`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1246,7 +1241,7 @@ pub struct PaginationLinks {
     pub prev: Option<String>,
 }
 
-/// `PhoneNumber` — generated read-side wire type ('relay-rest' REST API, schema 'PhoneNumber').
+/// `PhoneNumber` — generated read-side wire type (`relay-rest` REST API, schema `PhoneNumber`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1338,7 +1333,7 @@ pub struct PhoneNumber {
     pub country_code: Option<serde_json::Value>,
 }
 
-/// `PhoneCallHandler` — generated public closed-set ('relay-rest' REST API, schema 'PhoneNumberCallHandlerRequest').
+/// `PhoneCallHandler` — generated public closed-set (`relay-rest` REST API, schema `PhoneNumberCallHandlerRequest`).
 ///
 /// Each variant serialises to its wire string via `#[serde(rename)]`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -1371,7 +1366,7 @@ pub enum PhoneCallHandler {
     CallFlow,
 }
 
-/// `PhoneNumberCapabilities` — generated read-side wire type ('relay-rest' REST API, schema 'PhoneNumberCapabilities').
+/// `PhoneNumberCapabilities` — generated read-side wire type (`relay-rest` REST API, schema `PhoneNumberCapabilities`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1387,7 +1382,7 @@ pub struct PhoneNumberCapabilities {
     pub fax: Option<bool>,
 }
 
-/// `PhoneNumberListResponse` — generated read-side wire type ('relay-rest' REST API, schema 'PhoneNumberListResponse').
+/// `PhoneNumberListResponse` — generated read-side wire type (`relay-rest` REST API, schema `PhoneNumberListResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1399,7 +1394,7 @@ pub struct PhoneNumberListResponse {
     pub data: Option<serde_json::Value>,
 }
 
-/// `PhoneNumberLookupResponse` — generated read-side wire type ('relay-rest' REST API, schema 'PhoneNumberLookupResponse').
+/// `PhoneNumberLookupResponse` — generated read-side wire type (`relay-rest` REST API, schema `PhoneNumberLookupResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1433,7 +1428,7 @@ pub struct PhoneNumberLookupResponse {
     pub cnam: Option<serde_json::Value>,
 }
 
-/// `PhoneNumberResponse` — generated read-side wire type ('relay-rest' REST API, schema 'PhoneNumberResponse').
+/// `PhoneNumberResponse` — generated read-side wire type (`relay-rest` REST API, schema `PhoneNumberResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1525,7 +1520,7 @@ pub struct PhoneNumberResponse {
     pub country_code: Option<serde_json::Value>,
 }
 
-/// `PstnRecording` — generated read-side wire type ('relay-rest' REST API, schema 'PstnRecording').
+/// `PstnRecording` — generated read-side wire type (`relay-rest` REST API, schema `PstnRecording`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1561,7 +1556,7 @@ pub struct PstnRecording {
     pub relay_pstn_leg_id: Option<serde_json::Value>,
 }
 
-/// `PurchasePhoneNumberRequest` — generated read-side wire type ('relay-rest' REST API, schema 'PurchasePhoneNumberRequest').
+/// `PurchasePhoneNumberRequest` — generated read-side wire type (`relay-rest` REST API, schema `PurchasePhoneNumberRequest`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1573,7 +1568,7 @@ pub struct PurchasePhoneNumberRequest {
     pub number_type: Option<serde_json::Value>,
 }
 
-/// `Queue` — generated read-side wire type ('relay-rest' REST API, schema 'Queue').
+/// `Queue` — generated read-side wire type (`relay-rest` REST API, schema `Queue`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1599,7 +1594,7 @@ pub struct Queue {
     pub date_updated: Option<String>,
 }
 
-/// `QueueListResponse` — generated read-side wire type ('relay-rest' REST API, schema 'QueueListResponse').
+/// `QueueListResponse` — generated read-side wire type (`relay-rest` REST API, schema `QueueListResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1611,7 +1606,7 @@ pub struct QueueListResponse {
     pub data: Option<serde_json::Value>,
 }
 
-/// `QueueMember` — generated read-side wire type ('relay-rest' REST API, schema 'QueueMember').
+/// `QueueMember` — generated read-side wire type (`relay-rest` REST API, schema `QueueMember`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1633,7 +1628,7 @@ pub struct QueueMember {
     pub date_enqueued: Option<String>,
 }
 
-/// `QueueMemberListResponse` — generated read-side wire type ('relay-rest' REST API, schema 'QueueMemberListResponse').
+/// `QueueMemberListResponse` — generated read-side wire type (`relay-rest` REST API, schema `QueueMemberListResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1645,7 +1640,7 @@ pub struct QueueMemberListResponse {
     pub data: Option<serde_json::Value>,
 }
 
-/// `QueueMemberResponse` — generated read-side wire type ('relay-rest' REST API, schema 'QueueMemberResponse').
+/// `QueueMemberResponse` — generated read-side wire type (`relay-rest` REST API, schema `QueueMemberResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1667,7 +1662,7 @@ pub struct QueueMemberResponse {
     pub date_enqueued: Option<String>,
 }
 
-/// `QueueResponse` — generated read-side wire type ('relay-rest' REST API, schema 'QueueResponse').
+/// `QueueResponse` — generated read-side wire type (`relay-rest` REST API, schema `QueueResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1693,7 +1688,7 @@ pub struct QueueResponse {
     pub date_updated: Option<String>,
 }
 
-/// `RelayConferenceRecording` — generated read-side wire type ('relay-rest' REST API, schema 'RelayConferenceRecording').
+/// `RelayConferenceRecording` — generated read-side wire type (`relay-rest` REST API, schema `RelayConferenceRecording`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1729,7 +1724,7 @@ pub struct RelayConferenceRecording {
     pub relay_conference_id: Option<serde_json::Value>,
 }
 
-/// `RecordingListResponse` — generated read-side wire type ('relay-rest' REST API, schema 'RecordingListResponse').
+/// `RecordingListResponse` — generated read-side wire type (`relay-rest` REST API, schema `RecordingListResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1741,7 +1736,7 @@ pub struct RecordingListResponse {
     pub data: Option<serde_json::Value>,
 }
 
-/// `ShortCode` — generated read-side wire type ('relay-rest' REST API, schema 'ShortCode').
+/// `ShortCode` — generated read-side wire type (`relay-rest` REST API, schema `ShortCode`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1785,7 +1780,7 @@ pub struct ShortCode {
     pub message_relay_context: Option<serde_json::Value>,
 }
 
-/// `ShortCodeListResponse` — generated read-side wire type ('relay-rest' REST API, schema 'ShortCodeListResponse').
+/// `ShortCodeListResponse` — generated read-side wire type (`relay-rest` REST API, schema `ShortCodeListResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1797,7 +1792,7 @@ pub struct ShortCodeListResponse {
     pub data: Option<serde_json::Value>,
 }
 
-/// `ShortCodeResponse` — generated read-side wire type ('relay-rest' REST API, schema 'ShortCodeResponse').
+/// `ShortCodeResponse` — generated read-side wire type (`relay-rest` REST API, schema `ShortCodeResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1841,7 +1836,7 @@ pub struct ShortCodeResponse {
     pub message_relay_context: Option<serde_json::Value>,
 }
 
-/// `SipEndpoint` — generated read-side wire type ('relay-rest' REST API, schema 'SipEndpoint').
+/// `SipEndpoint` — generated read-side wire type (`relay-rest` REST API, schema `SipEndpoint`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1899,7 +1894,7 @@ pub struct SipEndpoint {
     pub call_relay_script_url: Option<serde_json::Value>,
 }
 
-/// `SipEndpointListResponse` — generated read-side wire type ('relay-rest' REST API, schema 'SipEndpointListResponse').
+/// `SipEndpointListResponse` — generated read-side wire type (`relay-rest` REST API, schema `SipEndpointListResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1911,7 +1906,7 @@ pub struct SipEndpointListResponse {
     pub data: Option<serde_json::Value>,
 }
 
-/// `SipEndpointResponse` — generated read-side wire type ('relay-rest' REST API, schema 'SipEndpointResponse').
+/// `SipEndpointResponse` — generated read-side wire type (`relay-rest` REST API, schema `SipEndpointResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1969,7 +1964,7 @@ pub struct SipEndpointResponse {
     pub call_relay_script_url: Option<serde_json::Value>,
 }
 
-/// `SipProfileResponse` — generated read-side wire type ('relay-rest' REST API, schema 'SipProfileResponse').
+/// `SipProfileResponse` — generated read-side wire type (`relay-rest` REST API, schema `SipProfileResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1991,7 +1986,7 @@ pub struct SipProfileResponse {
     pub default_outbound_policy: Option<serde_json::Value>,
 }
 
-/// `SipRecording` — generated read-side wire type ('relay-rest' REST API, schema 'SipRecording').
+/// `SipRecording` — generated read-side wire type (`relay-rest` REST API, schema `SipRecording`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2027,11 +2022,12 @@ pub struct SipRecording {
     pub relay_sip_leg_id: Option<serde_json::Value>,
 }
 
-/// `Types_StatusCodes_SpaceApiErrorItem` — generated read-side wire type ('relay-rest' REST API, schema 'Types.StatusCodes.SpaceApiErrorItem').
+/// `Types_StatusCodes_SpaceApiErrorItem` — generated read-side wire type (`relay-rest` REST API, schema `Types.StatusCodes.SpaceApiErrorItem`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[allow(non_camel_case_types)]
 pub struct Types_StatusCodes_SpaceApiErrorItem {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub detail: Option<String>,
@@ -2043,57 +2039,62 @@ pub struct Types_StatusCodes_SpaceApiErrorItem {
     pub code: Option<String>,
 }
 
-/// `Types_StatusCodes_StatusCode400` — generated read-side wire type ('relay-rest' REST API, schema 'Types.StatusCodes.StatusCode400').
+/// `Types_StatusCodes_StatusCode400` — generated read-side wire type (`relay-rest` REST API, schema `Types.StatusCodes.StatusCode400`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[allow(non_camel_case_types)]
 pub struct Types_StatusCodes_StatusCode400 {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub error: Option<serde_json::Value>,
 }
 
-/// `Types_StatusCodes_StatusCode401` — generated read-side wire type ('relay-rest' REST API, schema 'Types.StatusCodes.StatusCode401').
+/// `Types_StatusCodes_StatusCode401` — generated read-side wire type (`relay-rest` REST API, schema `Types.StatusCodes.StatusCode401`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[allow(non_camel_case_types)]
 pub struct Types_StatusCodes_StatusCode401 {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub error: Option<serde_json::Value>,
 }
 
-/// `Types_StatusCodes_StatusCode404` — generated read-side wire type ('relay-rest' REST API, schema 'Types.StatusCodes.StatusCode404').
+/// `Types_StatusCodes_StatusCode404` — generated read-side wire type (`relay-rest` REST API, schema `Types.StatusCodes.StatusCode404`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[allow(non_camel_case_types)]
 pub struct Types_StatusCodes_StatusCode404 {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub error: Option<serde_json::Value>,
 }
 
-/// `Types_StatusCodes_StatusCode500` — generated read-side wire type ('relay-rest' REST API, schema 'Types.StatusCodes.StatusCode500').
+/// `Types_StatusCodes_StatusCode500` — generated read-side wire type (`relay-rest` REST API, schema `Types.StatusCodes.StatusCode500`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[allow(non_camel_case_types)]
 pub struct Types_StatusCodes_StatusCode500 {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub error: Option<serde_json::Value>,
 }
 
-/// `Types_StatusCodes_ValidationError` — generated read-side wire type ('relay-rest' REST API, schema 'Types.StatusCodes.ValidationError').
+/// `Types_StatusCodes_ValidationError` — generated read-side wire type (`relay-rest` REST API, schema `Types.StatusCodes.ValidationError`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[allow(non_camel_case_types)]
 pub struct Types_StatusCodes_ValidationError {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub errors: Option<serde_json::Value>,
 }
 
-/// `UpdateCampaignRequest` — generated read-side wire type ('relay-rest' REST API, schema 'UpdateCampaignRequest').
+/// `UpdateCampaignRequest` — generated read-side wire type (`relay-rest` REST API, schema `UpdateCampaignRequest`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2107,7 +2108,7 @@ pub struct UpdateCampaignRequest {
     pub signalwire_contact_emails: Option<serde_json::Value>,
 }
 
-/// `UpdateDomainApplicationRequest` — generated read-side wire type ('relay-rest' REST API, schema 'UpdateDomainApplicationRequest').
+/// `UpdateDomainApplicationRequest` — generated read-side wire type (`relay-rest` REST API, schema `UpdateDomainApplicationRequest`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2171,7 +2172,7 @@ pub struct UpdateDomainApplicationRequest {
     pub call_relay_context_status_callback_url: Option<String>,
 }
 
-/// `UpdateNumberGroupRequest` — generated read-side wire type ('relay-rest' REST API, schema 'UpdateNumberGroupRequest').
+/// `UpdateNumberGroupRequest` — generated read-side wire type (`relay-rest` REST API, schema `UpdateNumberGroupRequest`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2183,7 +2184,7 @@ pub struct UpdateNumberGroupRequest {
     pub sticky_sender: Option<bool>,
 }
 
-/// `UpdatePhoneNumberRequest` — generated read-side wire type ('relay-rest' REST API, schema 'UpdatePhoneNumberRequest').
+/// `UpdatePhoneNumberRequest` — generated read-side wire type (`relay-rest` REST API, schema `UpdatePhoneNumberRequest`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2259,7 +2260,7 @@ pub struct UpdatePhoneNumberRequest {
     pub message_relay_application: Option<String>,
 }
 
-/// `UpdateQueueRequest` — generated read-side wire type ('relay-rest' REST API, schema 'UpdateQueueRequest').
+/// `UpdateQueueRequest` — generated read-side wire type (`relay-rest` REST API, schema `UpdateQueueRequest`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2271,7 +2272,7 @@ pub struct UpdateQueueRequest {
     pub max_size: Option<i64>,
 }
 
-/// `UpdateShortCodeRequest` — generated read-side wire type ('relay-rest' REST API, schema 'UpdateShortCodeRequest').
+/// `UpdateShortCodeRequest` — generated read-side wire type (`relay-rest` REST API, schema `UpdateShortCodeRequest`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2295,7 +2296,7 @@ pub struct UpdateShortCodeRequest {
     pub message_relay_context: Option<String>,
 }
 
-/// `UpdateSipEndpointRequest` — generated read-side wire type ('relay-rest' REST API, schema 'UpdateSipEndpointRequest').
+/// `UpdateSipEndpointRequest` — generated read-side wire type (`relay-rest` REST API, schema `UpdateSipEndpointRequest`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2357,7 +2358,7 @@ pub struct UpdateSipEndpointRequest {
     pub call_relay_script_url_method: Option<String>,
 }
 
-/// `UpdateSipProfileRequest` — generated read-side wire type ('relay-rest' REST API, schema 'UpdateSipProfileRequest').
+/// `UpdateSipProfileRequest` — generated read-side wire type (`relay-rest` REST API, schema `UpdateSipProfileRequest`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2377,7 +2378,7 @@ pub struct UpdateSipProfileRequest {
     pub default_outbound_policy: Option<serde_json::Value>,
 }
 
-/// `UpdateVerifiedCallerIDRequest` — generated read-side wire type ('relay-rest' REST API, schema 'UpdateVerifiedCallerIDRequest').
+/// `UpdateVerifiedCallerIDRequest` — generated read-side wire type (`relay-rest` REST API, schema `UpdateVerifiedCallerIDRequest`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2387,7 +2388,7 @@ pub struct UpdateVerifiedCallerIDRequest {
     pub name: Option<String>,
 }
 
-/// `VerifiedCallerID` — generated read-side wire type ('relay-rest' REST API, schema 'VerifiedCallerID').
+/// `VerifiedCallerID` — generated read-side wire type (`relay-rest` REST API, schema `VerifiedCallerID`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2411,7 +2412,7 @@ pub struct VerifiedCallerID {
     pub status: Option<serde_json::Value>,
 }
 
-/// `VerifiedCallerIDListResponse` — generated read-side wire type ('relay-rest' REST API, schema 'VerifiedCallerIDListResponse').
+/// `VerifiedCallerIDListResponse` — generated read-side wire type (`relay-rest` REST API, schema `VerifiedCallerIDListResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2423,7 +2424,7 @@ pub struct VerifiedCallerIDListResponse {
     pub data: Option<serde_json::Value>,
 }
 
-/// `VerifiedCallerIDResponse` — generated read-side wire type ('relay-rest' REST API, schema 'VerifiedCallerIDResponse').
+/// `VerifiedCallerIDResponse` — generated read-side wire type (`relay-rest` REST API, schema `VerifiedCallerIDResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2447,7 +2448,7 @@ pub struct VerifiedCallerIDResponse {
     pub status: Option<serde_json::Value>,
 }
 
-/// `VerifyCallerIDRequest` — generated read-side wire type ('relay-rest' REST API, schema 'VerifyCallerIDRequest').
+/// `VerifyCallerIDRequest` — generated read-side wire type (`relay-rest` REST API, schema `VerifyCallerIDRequest`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2457,7 +2458,7 @@ pub struct VerifyCallerIDRequest {
     pub verification_code: Option<String>,
 }
 
-/// `WebRtcRecording` — generated read-side wire type ('relay-rest' REST API, schema 'WebRtcRecording').
+/// `WebRtcRecording` — generated read-side wire type (`relay-rest` REST API, schema `WebRtcRecording`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2493,7 +2494,7 @@ pub struct WebRtcRecording {
     pub relay_webrtc_leg_id: Option<serde_json::Value>,
 }
 
-/// `UpdateAddressRequest` — generated read-side wire type ('relay-rest' REST API, schema 'UpdateAddressRequest').
+/// `UpdateAddressRequest` — generated read-side wire type (`relay-rest` REST API, schema `UpdateAddressRequest`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2527,7 +2528,7 @@ pub struct UpdateAddressRequest {
     pub auto_correct_address: Option<bool>,
 }
 
-/// `AddressCandidate` — generated read-side wire type ('relay-rest' REST API, schema 'AddressCandidate').
+/// `AddressCandidate` — generated read-side wire type (`relay-rest` REST API, schema `AddressCandidate`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2545,7 +2546,7 @@ pub struct AddressCandidate {
     pub postal_code: Option<String>,
 }
 
-/// `AddressValidationError` — generated read-side wire type ('relay-rest' REST API, schema 'AddressValidationError').
+/// `AddressValidationError` — generated read-side wire type (`relay-rest` REST API, schema `AddressValidationError`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2557,7 +2558,7 @@ pub struct AddressValidationError {
     pub candidates: Option<serde_json::Value>,
 }
 
-/// `UpdateBrandRequest` — generated read-side wire type ('relay-rest' REST API, schema 'UpdateBrandRequest').
+/// `UpdateBrandRequest` — generated read-side wire type (`relay-rest` REST API, schema `UpdateBrandRequest`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2591,11 +2592,12 @@ pub struct UpdateBrandRequest {
     pub signalwire_contact_emails: Option<serde_json::Value>,
 }
 
-/// `Types_StatusCodes_RestApiErrorItem` — generated read-side wire type ('relay-rest' REST API, schema 'Types.StatusCodes.RestApiErrorItem').
+/// `Types_StatusCodes_RestApiErrorItem` — generated read-side wire type (`relay-rest` REST API, schema `Types.StatusCodes.RestApiErrorItem`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[allow(non_camel_case_types)]
 pub struct Types_StatusCodes_RestApiErrorItem {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub r#type: Option<String>,
@@ -2609,7 +2611,7 @@ pub struct Types_StatusCodes_RestApiErrorItem {
     pub url: Option<String>,
 }
 
-/// `BrandUpdateStatusCode422` — generated read-side wire type ('relay-rest' REST API, schema 'BrandUpdateStatusCode422').
+/// `BrandUpdateStatusCode422` — generated read-side wire type (`relay-rest` REST API, schema `BrandUpdateStatusCode422`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2619,7 +2621,7 @@ pub struct BrandUpdateStatusCode422 {
     pub errors: Option<serde_json::Value>,
 }
 
-/// `AssignE911AddressRequest` — generated read-side wire type ('relay-rest' REST API, schema 'AssignE911AddressRequest').
+/// `AssignE911AddressRequest` — generated read-side wire type (`relay-rest` REST API, schema `AssignE911AddressRequest`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2629,7 +2631,7 @@ pub struct AssignE911AddressRequest {
     pub e911_address_id: Option<serde_json::Value>,
 }
 
-/// `CreatePhoneNumberCnamRequest` — generated read-side wire type ('relay-rest' REST API, schema 'CreatePhoneNumberCnamRequest').
+/// `CreatePhoneNumberCnamRequest` — generated read-side wire type (`relay-rest` REST API, schema `CreatePhoneNumberCnamRequest`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2639,7 +2641,7 @@ pub struct CreatePhoneNumberCnamRequest {
     pub name: Option<String>,
 }
 
-/// `PhoneNumberCnamResponse` — generated read-side wire type ('relay-rest' REST API, schema 'PhoneNumberCnamResponse').
+/// `PhoneNumberCnamResponse` — generated read-side wire type (`relay-rest` REST API, schema `PhoneNumberCnamResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.

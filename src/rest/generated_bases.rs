@@ -403,6 +403,30 @@ impl<'a> FabricResource<'a> {
     }
 }
 
+/// A random (version 4) UUID — the value a generated request fills in for a
+/// server-required id the caller omitted (`x-sdk-autofill: uuid4`, the RELAY
+/// `control_id` idiom).
+pub(crate) fn autofill_uuid4() -> String {
+    use rand::RngExt;
+    let mut data = [0u8; 16];
+    rand::rng().fill(&mut data);
+    data[6] = (data[6] & 0x0f) | 0x40;
+    data[8] = (data[8] & 0x3f) | 0x80;
+    let hex: String = data.iter().fold(String::with_capacity(32), |mut acc, b| {
+        use std::fmt::Write as _;
+        let _ = write!(acc, "{b:02x}");
+        acc
+    });
+    format!(
+        "{}-{}-{}-{}-{}",
+        &hex[0..8],
+        &hex[8..12],
+        &hex[12..16],
+        &hex[16..20],
+        &hex[20..32]
+    )
+}
+
 #[cfg(test)]
 mod path_encoding_tests {
     use super::*;

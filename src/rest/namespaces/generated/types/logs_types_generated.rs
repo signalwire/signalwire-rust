@@ -5,18 +5,13 @@
 // Read-side wire types (open shapes) — method-less serde structs / closed-set
 // enums. Regenerate with: python3 scripts/generate_rest.py
 //
-// Two narrow lint allows, both grounded in the generated wire shape:
-//   * non_camel_case_types — a few wire schema keys carry dotted names
-//     (``Types.StatusCodes.StatusCode400``); the type identifier folds the dots
-//     to underscores (``Types_StatusCodes_StatusCode400``) and must stay verbatim
-//     so it matches the wire schema key, which the naming lint would rewrite.
-//   * clippy::doc_markdown — the generated doc comments echo raw wire schema key
-//     names in prose; backticking every one mechanically is not meaningful here.
-#![allow(non_camel_case_types, clippy::doc_markdown)]
+// A wire schema key with a dotted name (``Types.StatusCodes.StatusCode400``)
+// folds to an underscored type identifier that must stay verbatim to match the
+// key; only those items carry an item-level `non_camel_case_types` allow.
 
 use serde::{Deserialize, Serialize};
 
-/// `ChargeDetails` — generated read-side wire type ('logs' REST API, schema 'ChargeDetails').
+/// `ChargeDetails` — generated read-side wire type (`logs` REST API, schema `ChargeDetails`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -28,7 +23,7 @@ pub struct ChargeDetails {
     pub charge: Option<f64>,
 }
 
-/// `ConferenceLogPaginationLinks` — generated read-side wire type ('logs' REST API, schema 'ConferenceLogPaginationLinks').
+/// `ConferenceLogPaginationLinks` — generated read-side wire type (`logs` REST API, schema `ConferenceLogPaginationLinks`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -44,7 +39,7 @@ pub struct ConferenceLogPaginationLinks {
     pub prev: Option<String>,
 }
 
-/// `ConferenceLogsStatusCode422` — generated read-side wire type ('logs' REST API, schema 'ConferenceLogsStatusCode422').
+/// `ConferenceLogsStatusCode422` — generated read-side wire type (`logs` REST API, schema `ConferenceLogsStatusCode422`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -54,7 +49,7 @@ pub struct ConferenceLogsStatusCode422 {
     pub errors: Option<serde_json::Value>,
 }
 
-/// `ConferencesResponse` — generated read-side wire type ('logs' REST API, schema 'ConferencesResponse').
+/// `ConferencesResponse` — generated read-side wire type (`logs` REST API, schema `ConferencesResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -66,7 +61,7 @@ pub struct ConferencesResponse {
     pub data: Option<serde_json::Value>,
 }
 
-/// `CxmlConference` — generated read-side wire type ('logs' REST API, schema 'CxmlConference').
+/// `CxmlConference` — generated read-side wire type (`logs` REST API, schema `CxmlConference`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -94,7 +89,7 @@ pub struct CxmlConference {
     pub r#type: Option<serde_json::Value>,
 }
 
-/// `RelayConference` — generated read-side wire type ('logs' REST API, schema 'RelayConference').
+/// `RelayConference` — generated read-side wire type (`logs` REST API, schema `RelayConference`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -128,11 +123,12 @@ pub struct RelayConference {
     pub recording_file_size: Option<serde_json::Value>,
 }
 
-/// `Types_StatusCodes_RestApiErrorItem` — generated read-side wire type ('logs' REST API, schema 'Types.StatusCodes.RestApiErrorItem').
+/// `Types_StatusCodes_RestApiErrorItem` — generated read-side wire type (`logs` REST API, schema `Types.StatusCodes.RestApiErrorItem`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[allow(non_camel_case_types)]
 pub struct Types_StatusCodes_RestApiErrorItem {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub r#type: Option<String>,
@@ -146,27 +142,29 @@ pub struct Types_StatusCodes_RestApiErrorItem {
     pub url: Option<String>,
 }
 
-/// `Types_StatusCodes_StatusCode401` — generated read-side wire type ('logs' REST API, schema 'Types.StatusCodes.StatusCode401').
+/// `Types_StatusCodes_StatusCode401` — generated read-side wire type (`logs` REST API, schema `Types.StatusCodes.StatusCode401`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[allow(non_camel_case_types)]
 pub struct Types_StatusCodes_StatusCode401 {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub error: Option<serde_json::Value>,
 }
 
-/// `Types_StatusCodes_StatusCode500` — generated read-side wire type ('logs' REST API, schema 'Types.StatusCodes.StatusCode500').
+/// `Types_StatusCodes_StatusCode500` — generated read-side wire type (`logs` REST API, schema `Types.StatusCodes.StatusCode500`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[allow(non_camel_case_types)]
 pub struct Types_StatusCodes_StatusCode500 {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub error: Option<serde_json::Value>,
 }
 
-/// `VideoRoomSessionConference` — generated read-side wire type ('logs' REST API, schema 'VideoRoomSessionConference').
+/// `VideoRoomSessionConference` — generated read-side wire type (`logs` REST API, schema `VideoRoomSessionConference`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.

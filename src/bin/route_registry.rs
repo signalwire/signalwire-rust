@@ -305,35 +305,31 @@ fn invoke_all(c: &RestClient) {
     let _ = cl.end(id, cg::CallingEndRequest::new(), None);
     let _ = cl.transfer(id, cg::CallingTransferRequest::new(json!({})), None);
     let _ = cl.disconnect(id, cg::CallingDisconnectRequest::new(), None);
-    let _ = cl.play(id, cg::CallingPlayRequest::new("x", json!({})), None);
+    let _ = cl.play(id, cg::CallingPlayRequest::new(json!({})), None);
     let _ = cl.play_pause(id, cg::CallingPlayPauseRequest::new("x"), None);
     let _ = cl.play_resume(id, cg::CallingPlayResumeRequest::new("x"), None);
     let _ = cl.play_stop(id, cg::CallingPlayStopRequest::new("x"), None);
     let _ = cl.play_volume(id, cg::CallingPlayVolumeRequest::new("x", 0.0), None);
-    let _ = cl.record(id, cg::CallingRecordRequest::new("x", json!({})), None);
+    let _ = cl.record(id, cg::CallingRecordRequest::new(), None);
     let _ = cl.record_pause(id, cg::CallingRecordPauseRequest::new("x"), None);
     let _ = cl.record_resume(id, cg::CallingRecordResumeRequest::new("x"), None);
     let _ = cl.record_stop(id, cg::CallingRecordStopRequest::new("x"), None);
-    let _ = cl.collect(id, cg::CallingCollectRequest::new("x"), None);
+    let _ = cl.collect(id, cg::CallingCollectRequest::new(), None);
     let _ = cl.collect_stop(id, cg::CallingCollectStopRequest::new("x"), None);
     let _ = cl.collect_start_input_timers(
         id,
         cg::CallingCollectStartInputTimersRequest::new("x"),
         None,
     );
-    let _ = cl.detect(id, cg::CallingDetectRequest::new("x", json!({})), None);
+    let _ = cl.detect(id, cg::CallingDetectRequest::new(json!({})), None);
     let _ = cl.detect_stop(id, cg::CallingDetectStopRequest::new("x"), None);
-    let _ = cl.tap(
-        id,
-        cg::CallingTapRequest::new("x", json!({}), json!({})),
-        None,
-    );
+    let _ = cl.tap(id, cg::CallingTapRequest::new(json!({}), json!({})), None);
     let _ = cl.tap_stop(id, cg::CallingTapStopRequest::new("x"), None);
-    let _ = cl.stream(id, cg::CallingStreamRequest::new("x", "x"), None);
+    let _ = cl.stream(id, cg::CallingStreamRequest::new("x"), None);
     let _ = cl.stream_stop(id, cg::CallingStreamStopRequest::new("x"), None);
     let _ = cl.denoise(id, cg::CallingDenoiseRequest::new(), None);
     let _ = cl.denoise_stop(id, cg::CallingDenoiseStopRequest::new(), None);
-    let _ = cl.transcribe(id, cg::CallingTranscribeRequest::new("x"), None);
+    let _ = cl.transcribe(id, cg::CallingTranscribeRequest::new(), None);
     let _ = cl.transcribe_stop(id, cg::CallingTranscribeStopRequest::new("x"), None);
     let _ = cl.ai_message(id, cg::CallingAiMessageRequest::new(), None);
     let _ = cl.ai_hold(id, cg::CallingAiHoldRequest::new(), None);

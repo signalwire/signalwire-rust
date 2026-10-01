@@ -42,6 +42,7 @@ Read by `SecurityConfig` (`src/core/security_config.rs`); all are secure-by-defa
 | `SIGNALWIRE_JWT_TOKEN` | RELAY JWT — the **alternative** to `SIGNALWIRE_PROJECT_ID` + `SIGNALWIRE_API_TOKEN`, not an addition. When set, `Client::from_env` authenticates with the JWT alone (the project id is inside the token) and neither of those two is required; when unset, both are. The connect handshake sends one credential set or the other, never both |
 | `SIGNALWIRE_SPACE` | Space hostname (e.g. `example.signalwire.com`) |
 | `SIGNALWIRE_REST_BASE_URL` | Override the REST base URL (used by `RestClient::from_env`). When set, it replaces the `https://{SIGNALWIRE_SPACE}` resolution — point the client at a regional host, a proxy, or a local fixture without a code change; `SIGNALWIRE_SPACE` is then not required |
+| `SIGNALWIRE_PERSONAL_ACCESS_TOKEN` | A user's Personal Access Token (`pat_...`), read by `RestClient::from_env`. It authenticates the Space Administration API (`space_admin()` — settings, members, billing, usage), which the platform serves only to a Personal Access Token. With it set and `SIGNALWIRE_PROJECT_ID` / `SIGNALWIRE_API_TOKEN` unset, the client is PAT-only |
 | `SIGNALWIRE_RELAY_HOST` | Override the RELAY WebSocket host (advanced/testing) |
 | `SIGNALWIRE_RELAY_SCHEME` | Override the RELAY WebSocket scheme (`ws`/`wss`; default `wss`) |
 | `SIGNALWIRE_RELAY_CA_FILE` | Path to a PEM CA bundle for the RELAY WebSocket TLS trust store |

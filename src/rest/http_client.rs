@@ -75,26 +75,6 @@ pub trait HttpTransport: Send + Sync {
         let (status, body) = self.execute(method, url, headers, body, timeout)?;
         Ok((status, HashMap::new(), body))
     }
-
-    /// Like [`execute_with_headers`](Self::execute_with_headers) but WITHOUT
-    /// following a redirect: a 3xx is returned as-is, with its `location`
-    /// header, for an endpoint whose answer IS a redirect (a recording's
-    /// presigned download URL). The default delegates to
-    /// `execute_with_headers` (stub transports never redirect); the real
-    /// [`UreqTransport`] overrides it to disable redirect-following.
-    ///
-    /// # Errors
-    /// Same as [`execute`](Self::execute).
-    fn execute_no_redirect(
-        &self,
-        method: &str,
-        url: &str,
-        headers: &HashMap<String, String>,
-        body: Option<&str>,
-        timeout: Duration,
-    ) -> Result<(u16, HashMap<String, String>, String), String> {
-        self.execute_with_headers(method, url, headers, body, timeout)
-    }
 }
 
 /// Real HTTP transport backed by ureq.
@@ -336,18 +316,15 @@ impl HttpTransport for UreqTransport {
         body: Option<&str>,
         timeout: Duration,
     ) -> Result<(u16, HashMap<String, String>, String), String> {
+        // The client marks a request whose answer IS a redirect (a presigned
+        // download URL) with the internal NO_REDIRECT_MARKER; it is consumed here
+        // and never sent.
+        if headers.contains_key(NO_REDIRECT_MARKER) {
+            let mut sent = headers.clone();
+            sent.remove(NO_REDIRECT_MARKER);
+            return self.execute_raw(method, url, &sent, body, timeout, false);
+        }
         self.execute_raw(method, url, headers, body, timeout, true)
-    }
-
-    fn execute_no_redirect(
-        &self,
-        method: &str,
-        url: &str,
-        headers: &HashMap<String, String>,
-        body: Option<&str>,
-        timeout: Duration,
-    ) -> Result<(u16, HashMap<String, String>, String), String> {
-        self.execute_raw(method, url, headers, body, timeout, false)
     }
 }
 
@@ -400,6 +377,11 @@ impl HttpTransport for StubTransport {
         Ok(resp)
     }
 }
+
+/// Internal request marker: the success of this request IS a redirect, so the
+/// transport must return the 3xx (with its `location`) rather than follow it.
+/// [`UreqTransport`] removes it before sending.
+pub(crate) const NO_REDIRECT_MARKER: &str = "x-signalwire-sdk-no-redirect";
 
 /// How a request's success is read.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -963,6 +945,11 @@ impl HttpClient {
         headers.insert("Accept".to_string(), "application/json".to_string());
         headers.insert("Authorization".to_string(), self.auth_header.clone());
         headers.insert("User-Agent".to_string(), self.user_agent.clone());
+        if kind == ResponseKind::Redirect {
+            // Ask the transport to hand the 3xx back instead of following it
+            // (UreqTransport consumes the marker; it never reaches the wire).
+            headers.insert(NO_REDIRECT_MARKER.to_string(), "1".to_string());
+        }
         // Per-request headers go on THIS request only, over the defaults.
         if let Some(extra) = extra_headers {
             for (k, v) in extra {
@@ -992,13 +979,9 @@ impl HttpClient {
                 ));
             }
 
-            let outcome = if kind == ResponseKind::Redirect {
+            let outcome =
                 self.transport
-                    .execute_no_redirect(method, &url, &headers, body, opts.timeout)
-            } else {
-                self.transport
-                    .execute_with_headers(method, &url, &headers, body, opts.timeout)
-            };
+                    .execute_with_headers(method, &url, &headers, body, opts.timeout);
 
             match outcome {
                 Err(e) => {
@@ -1017,10 +1000,11 @@ impl HttpClient {
                     ));
                 }
                 Ok((status, resp_headers, response_body)) => {
-                    if kind == ResponseKind::Redirect && (300..400).contains(&status) {
-                        if let Some(location) = resp_headers.get("location") {
-                            return Ok(Reply::Text(location.clone()));
-                        }
+                    if kind == ResponseKind::Redirect
+                        && (300..400).contains(&status)
+                        && let Some(location) = resp_headers.get("location")
+                    {
+                        return Ok(Reply::Text(location.clone()));
                     }
                     if kind == ResponseKind::Redirect && (200..400).contains(&status) {
                         // A success that is not the redirect the endpoint answers with.

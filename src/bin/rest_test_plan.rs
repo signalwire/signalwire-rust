@@ -612,11 +612,11 @@ fn enumerate(rec: &mut Recorder) {
     rec.record(
         &["calling"],
         "play",
-        &[A_ID, "cg::CallingPlayRequest::new(\"x\", json!({}))"],
+        &[A_ID, "cg::CallingPlayRequest::new(json!({}))"],
         |c| {
             let _ = c
                 .calling()
-                .play(id, cg::CallingPlayRequest::new("x", json!({})), None);
+                .play(id, cg::CallingPlayRequest::new(json!({})), None);
         },
     );
     rec.record(
@@ -662,11 +662,11 @@ fn enumerate(rec: &mut Recorder) {
     rec.record(
         &["calling"],
         "record",
-        &[A_ID, "cg::CallingRecordRequest::new(\"x\", json!({}))"],
+        &[A_ID, "cg::CallingRecordRequest::new()"],
         |c| {
             let _ = c
                 .calling()
-                .record(id, cg::CallingRecordRequest::new("x", json!({})), None);
+                .record(id, cg::CallingRecordRequest::new(), None);
         },
     );
     rec.record(
@@ -702,11 +702,11 @@ fn enumerate(rec: &mut Recorder) {
     rec.record(
         &["calling"],
         "collect",
-        &[A_ID, "cg::CallingCollectRequest::new(\"x\")"],
+        &[A_ID, "cg::CallingCollectRequest::new()"],
         |c| {
             let _ = c
                 .calling()
-                .collect(id, cg::CallingCollectRequest::new("x"), None);
+                .collect(id, cg::CallingCollectRequest::new(), None);
         },
     );
     rec.record(
@@ -737,11 +737,11 @@ fn enumerate(rec: &mut Recorder) {
     rec.record(
         &["calling"],
         "detect",
-        &[A_ID, "cg::CallingDetectRequest::new(\"x\", json!({}))"],
+        &[A_ID, "cg::CallingDetectRequest::new(json!({}))"],
         |c| {
             let _ = c
                 .calling()
-                .detect(id, cg::CallingDetectRequest::new("x", json!({})), None);
+                .detect(id, cg::CallingDetectRequest::new(json!({})), None);
         },
     );
     rec.record(
@@ -757,16 +757,11 @@ fn enumerate(rec: &mut Recorder) {
     rec.record(
         &["calling"],
         "tap",
-        &[
-            A_ID,
-            "cg::CallingTapRequest::new(\"x\", json!({}), json!({}))",
-        ],
+        &[A_ID, "cg::CallingTapRequest::new(json!({}), json!({}))"],
         |c| {
-            let _ = c.calling().tap(
-                id,
-                cg::CallingTapRequest::new("x", json!({}), json!({})),
-                None,
-            );
+            let _ = c
+                .calling()
+                .tap(id, cg::CallingTapRequest::new(json!({}), json!({})), None);
         },
     );
     rec.record(
@@ -782,11 +777,11 @@ fn enumerate(rec: &mut Recorder) {
     rec.record(
         &["calling"],
         "stream",
-        &[A_ID, "cg::CallingStreamRequest::new(\"x\", \"x\")"],
+        &[A_ID, "cg::CallingStreamRequest::new(\"x\")"],
         |c| {
             let _ = c
                 .calling()
-                .stream(id, cg::CallingStreamRequest::new("x", "x"), None);
+                .stream(id, cg::CallingStreamRequest::new("x"), None);
         },
     );
     rec.record(
@@ -822,11 +817,11 @@ fn enumerate(rec: &mut Recorder) {
     rec.record(
         &["calling"],
         "transcribe",
-        &[A_ID, "cg::CallingTranscribeRequest::new(\"x\")"],
+        &[A_ID, "cg::CallingTranscribeRequest::new()"],
         |c| {
             let _ = c
                 .calling()
-                .transcribe(id, cg::CallingTranscribeRequest::new("x"), None);
+                .transcribe(id, cg::CallingTranscribeRequest::new(), None);
         },
     );
     rec.record(

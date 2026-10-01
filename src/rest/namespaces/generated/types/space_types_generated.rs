@@ -5,18 +5,13 @@
 // Read-side wire types (open shapes) — method-less serde structs / closed-set
 // enums. Regenerate with: python3 scripts/generate_rest.py
 //
-// Two narrow lint allows, both grounded in the generated wire shape:
-//   * non_camel_case_types — a few wire schema keys carry dotted names
-//     (``Types.StatusCodes.StatusCode400``); the type identifier folds the dots
-//     to underscores (``Types_StatusCodes_StatusCode400``) and must stay verbatim
-//     so it matches the wire schema key, which the naming lint would rewrite.
-//   * clippy::doc_markdown — the generated doc comments echo raw wire schema key
-//     names in prose; backticking every one mechanically is not meaningful here.
-#![allow(non_camel_case_types, clippy::doc_markdown)]
+// A wire schema key with a dotted name (``Types.StatusCodes.StatusCode400``)
+// folds to an underscored type identifier that must stay verbatim to match the
+// key; only those items carry an item-level `non_camel_case_types` allow.
 
 use serde::{Deserialize, Serialize};
 
-/// `Space` — generated read-side wire type ('space' REST API, schema 'Space').
+/// `Space` — generated read-side wire type (`space` REST API, schema `Space`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -40,7 +35,7 @@ pub struct Space {
     pub updated_at: Option<String>,
 }
 
-/// `SpaceUpdate` — generated read-side wire type ('space' REST API, schema 'SpaceUpdate').
+/// `SpaceUpdate` — generated read-side wire type (`space` REST API, schema `SpaceUpdate`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -50,7 +45,7 @@ pub struct SpaceUpdate {
     pub name: Option<String>,
 }
 
-/// `GeographicPermission` — generated read-side wire type ('space' REST API, schema 'GeographicPermission').
+/// `GeographicPermission` — generated read-side wire type (`space` REST API, schema `GeographicPermission`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -64,7 +59,7 @@ pub struct GeographicPermission {
     pub supported_countries: Option<serde_json::Value>,
 }
 
-/// `GeographicPermissionUpdate` — generated read-side wire type ('space' REST API, schema 'GeographicPermissionUpdate').
+/// `GeographicPermissionUpdate` — generated read-side wire type (`space` REST API, schema `GeographicPermissionUpdate`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -74,7 +69,7 @@ pub struct GeographicPermissionUpdate {
     pub countries: Option<serde_json::Value>,
 }
 
-/// `BillingProfile` — generated read-side wire type ('space' REST API, schema 'BillingProfile').
+/// `BillingProfile` — generated read-side wire type (`space` REST API, schema `BillingProfile`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -112,7 +107,7 @@ pub struct BillingProfile {
     pub monthly_invoices_locked: Option<bool>,
 }
 
-/// `BillingProfileUpdate` — generated read-side wire type ('space' REST API, schema 'BillingProfileUpdate').
+/// `BillingProfileUpdate` — generated read-side wire type (`space` REST API, schema `BillingProfileUpdate`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -144,7 +139,7 @@ pub struct BillingProfileUpdate {
     pub monthly_invoices: Option<bool>,
 }
 
-/// `BillingStatementPeriod` — generated read-side wire type ('space' REST API, schema 'BillingStatementPeriod').
+/// `BillingStatementPeriod` — generated read-side wire type (`space` REST API, schema `BillingStatementPeriod`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -160,7 +155,7 @@ pub struct BillingStatementPeriod {
     pub formats: Option<serde_json::Value>,
 }
 
-/// `BillingStatementPeriodList` — generated read-side wire type ('space' REST API, schema 'BillingStatementPeriodList').
+/// `BillingStatementPeriodList` — generated read-side wire type (`space` REST API, schema `BillingStatementPeriodList`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -170,7 +165,7 @@ pub struct BillingStatementPeriodList {
     pub data: Option<serde_json::Value>,
 }
 
-/// `BillingStatement` — generated read-side wire type ('space' REST API, schema 'BillingStatement').
+/// `BillingStatement` — generated read-side wire type (`space` REST API, schema `BillingStatement`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -188,7 +183,7 @@ pub struct BillingStatement {
     pub projects: Option<serde_json::Value>,
 }
 
-/// `BillingStatementSummary` — generated read-side wire type ('space' REST API, schema 'BillingStatementSummary').
+/// `BillingStatementSummary` — generated read-side wire type (`space` REST API, schema `BillingStatementSummary`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -210,7 +205,7 @@ pub struct BillingStatementSummary {
     pub adjustments: Option<serde_json::Value>,
 }
 
-/// `AmountByKind` — generated read-side wire type ('space' REST API, schema 'AmountByKind').
+/// `AmountByKind` — generated read-side wire type (`space` REST API, schema `AmountByKind`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -226,7 +221,7 @@ pub struct AmountByKind {
     pub amount_in_dollars: Option<f64>,
 }
 
-/// `ProjectUsage` — generated read-side wire type ('space' REST API, schema 'ProjectUsage').
+/// `ProjectUsage` — generated read-side wire type (`space` REST API, schema `ProjectUsage`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -244,7 +239,7 @@ pub struct ProjectUsage {
     pub usage_by_kind: Option<serde_json::Value>,
 }
 
-/// `Usage` — generated read-side wire type ('space' REST API, schema 'Usage').
+/// `Usage` — generated read-side wire type (`space` REST API, schema `Usage`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -264,7 +259,7 @@ pub struct Usage {
     pub projects: Option<serde_json::Value>,
 }
 
-/// `BalanceAdjustment` — generated read-side wire type ('space' REST API, schema 'BalanceAdjustment').
+/// `BalanceAdjustment` — generated read-side wire type (`space` REST API, schema `BalanceAdjustment`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -286,7 +281,7 @@ pub struct BalanceAdjustment {
     pub payment_method_last4: Option<serde_json::Value>,
 }
 
-/// `PaymentHistoryList` — generated read-side wire type ('space' REST API, schema 'PaymentHistoryList').
+/// `PaymentHistoryList` — generated read-side wire type (`space` REST API, schema `PaymentHistoryList`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -298,7 +293,7 @@ pub struct PaymentHistoryList {
     pub data: Option<serde_json::Value>,
 }
 
-/// `Member` — generated read-side wire type ('space' REST API, schema 'Member').
+/// `Member` — generated read-side wire type (`space` REST API, schema `Member`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -326,7 +321,7 @@ pub struct Member {
     pub updated_at: Option<String>,
 }
 
-/// `MemberList` — generated read-side wire type ('space' REST API, schema 'MemberList').
+/// `MemberList` — generated read-side wire type (`space` REST API, schema `MemberList`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -338,7 +333,7 @@ pub struct MemberList {
     pub data: Option<serde_json::Value>,
 }
 
-/// `MemberCreate` — generated read-side wire type ('space' REST API, schema 'MemberCreate').
+/// `MemberCreate` — generated read-side wire type (`space` REST API, schema `MemberCreate`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -352,7 +347,7 @@ pub struct MemberCreate {
     pub name: Option<String>,
 }
 
-/// `MemberUpdate` — generated read-side wire type ('space' REST API, schema 'MemberUpdate').
+/// `MemberUpdate` — generated read-side wire type (`space` REST API, schema `MemberUpdate`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -366,7 +361,7 @@ pub struct MemberUpdate {
     pub job_title: Option<serde_json::Value>,
 }
 
-/// `SpaceProject` — generated read-side wire type ('space' REST API, schema 'SpaceProject').
+/// `SpaceProject` — generated read-side wire type (`space` REST API, schema `SpaceProject`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -384,7 +379,7 @@ pub struct SpaceProject {
     pub updated_at: Option<String>,
 }
 
-/// `MemberProject` — generated read-side wire type ('space' REST API, schema 'MemberProject').
+/// `MemberProject` — generated read-side wire type (`space` REST API, schema `MemberProject`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -404,7 +399,7 @@ pub struct MemberProject {
     pub subprojects: Option<serde_json::Value>,
 }
 
-/// `MemberProjectList` — generated read-side wire type ('space' REST API, schema 'MemberProjectList').
+/// `MemberProjectList` — generated read-side wire type (`space` REST API, schema `MemberProjectList`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -416,7 +411,7 @@ pub struct MemberProjectList {
     pub data: Option<serde_json::Value>,
 }
 
-/// `Balance` — generated read-side wire type ('space' REST API, schema 'Balance').
+/// `Balance` — generated read-side wire type (`space` REST API, schema `Balance`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -436,7 +431,7 @@ pub struct Balance {
     pub auto_topup_enabled: Option<bool>,
 }
 
-/// `TopUpCreate` — generated read-side wire type ('space' REST API, schema 'TopUpCreate').
+/// `TopUpCreate` — generated read-side wire type (`space` REST API, schema `TopUpCreate`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -448,7 +443,7 @@ pub struct TopUpCreate {
     pub payment_method_id: Option<String>,
 }
 
-/// `LowBalanceSetting` — generated read-side wire type ('space' REST API, schema 'LowBalanceSetting').
+/// `LowBalanceSetting` — generated read-side wire type (`space` REST API, schema `LowBalanceSetting`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -478,7 +473,7 @@ pub struct LowBalanceSetting {
     pub topup_payment_method_id: Option<serde_json::Value>,
 }
 
-/// `LowBalanceSettingUpdate` — generated read-side wire type ('space' REST API, schema 'LowBalanceSettingUpdate').
+/// `LowBalanceSettingUpdate` — generated read-side wire type (`space` REST API, schema `LowBalanceSettingUpdate`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -502,7 +497,7 @@ pub struct LowBalanceSettingUpdate {
     pub topup_payment_method_id: Option<String>,
 }
 
-/// `PaymentMethod` — generated read-side wire type ('space' REST API, schema 'PaymentMethod').
+/// `PaymentMethod` — generated read-side wire type (`space` REST API, schema `PaymentMethod`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -526,7 +521,7 @@ pub struct PaymentMethod {
     pub auto_topup_source: Option<bool>,
 }
 
-/// `SpacePaginationLinks` — generated read-side wire type ('space' REST API, schema 'SpacePaginationLinks').
+/// `SpacePaginationLinks` — generated read-side wire type (`space` REST API, schema `SpacePaginationLinks`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -542,7 +537,7 @@ pub struct SpacePaginationLinks {
     pub prev: Option<String>,
 }
 
-/// `SpaceStatusCode422` — generated read-side wire type ('space' REST API, schema 'SpaceStatusCode422').
+/// `SpaceStatusCode422` — generated read-side wire type (`space` REST API, schema `SpaceStatusCode422`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -552,11 +547,12 @@ pub struct SpaceStatusCode422 {
     pub errors: Option<serde_json::Value>,
 }
 
-/// `Types_StatusCodes_RestApiErrorItem` — generated read-side wire type ('space' REST API, schema 'Types.StatusCodes.RestApiErrorItem').
+/// `Types_StatusCodes_RestApiErrorItem` — generated read-side wire type (`space` REST API, schema `Types.StatusCodes.RestApiErrorItem`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[allow(non_camel_case_types)]
 pub struct Types_StatusCodes_RestApiErrorItem {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub r#type: Option<String>,
@@ -570,7 +566,7 @@ pub struct Types_StatusCodes_RestApiErrorItem {
     pub url: Option<String>,
 }
 
-/// `SpaceUnverifiedError` — generated read-side wire type ('space' REST API, schema 'SpaceUnverifiedError').
+/// `SpaceUnverifiedError` — generated read-side wire type (`space` REST API, schema `SpaceUnverifiedError`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -580,7 +576,7 @@ pub struct SpaceUnverifiedError {
     pub message: Option<String>,
 }
 
-/// `TopUpMessageError` — generated read-side wire type ('space' REST API, schema 'TopUpMessageError').
+/// `TopUpMessageError` — generated read-side wire type (`space` REST API, schema `TopUpMessageError`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -590,7 +586,7 @@ pub struct TopUpMessageError {
     pub message: Option<String>,
 }
 
-/// `TopUpDeclinedError` — generated read-side wire type ('space' REST API, schema 'TopUpDeclinedError').
+/// `TopUpDeclinedError` — generated read-side wire type (`space` REST API, schema `TopUpDeclinedError`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -602,7 +598,7 @@ pub struct TopUpDeclinedError {
     pub decline_code: Option<String>,
 }
 
-/// `TopUpDepositFailedError` — generated read-side wire type ('space' REST API, schema 'TopUpDepositFailedError').
+/// `TopUpDepositFailedError` — generated read-side wire type (`space` REST API, schema `TopUpDepositFailedError`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.

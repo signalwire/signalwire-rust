@@ -509,6 +509,13 @@ METHOD_RENAMES: dict[str, dict[str, str]] = {
     # `to_dict` (dict) — both serialize identically.
     "FunctionResult": {
         "to_value": "to_dict",
+        # Arity idiom (Rust has no default/keyword args): the reference's ONE
+        # `hold(prompt=None, timeout=300, step=None, timeout_step=None)` and
+        # `rpc_ai_message(call_id, message_text=None, role="system",
+        # global_data=None)` keep their published minimal spellings and gain a
+        # full-arity `_with` companion; both spellings ARE the one reference method.
+        "hold_with": "hold",
+        "rpc_ai_message_with": "rpc_ai_message",
     },
     # PomBuilder: Rust's `to_value` == Python's `to_dict`; `pom` is the Rust
     # read accessor for the wrapped PromptObjectModel (Python's `self.pom`
@@ -598,6 +605,29 @@ METHOD_RENAMES: dict[str, dict[str, str]] = {
         "delete_with_options": "delete",
         "with_options": "__init__",
         "request_options": None,
+        # Per-request `headers` (the reference's keyword `headers=` on get/post):
+        # Rust has no keyword args, so the header-carrying spelling is a sibling
+        # of the same reference method — the arity idiom, folded like
+        # `*_with_options` (the fuller spelling wins the collision).
+        "get_with_headers": "get",
+        "post_with_headers": "post",
+        "get_text_with_options": "get_text",
+        "get_redirect_location_with_options": "get_redirect_location",
+    },
+    # RestClient: the reference's ONE constructor takes `personal_access_token=`
+    # as a keyword next to project/token/host. Rust has no keyword or default
+    # arguments, so the credential is added by a chained builder
+    # (`RestClient::new(..)?.with_personal_access_token(pat)`) and the PAT-only
+    # form is its own constructor (`from_personal_access_token(pat, space)`).
+    # Both ARE that `__init__` (the same arity idiom as SecurityConfig /
+    # relay Client.with_jwt_token above). `space_admin` IS the reference's
+    # `space` namespace attribute: Rust cannot reuse the name because `space()`
+    # is the published space-hostname accessor (signalwire-sdk 1.1.2), which a
+    # rename would break.
+    "RestClient": {
+        "with_personal_access_token": "__init__",
+        "from_personal_access_token": "__init__",
+        "space_admin": "space",
     },
     # relay::Client (RelayClient): `execute_call_verb` + `has_live_socket` are
     # `pub(crate)` crate-internal helpers the Call verbs route their frames

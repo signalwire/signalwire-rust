@@ -625,6 +625,26 @@
             "type": "optional<class:signalwire.rest._request_options.RequestOptions>"
           }
         ],
+        "list_addresses": [
+          {
+            "kind": "positional",
+            "name": "id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "kind": "keyword",
+            "name": "request_options",
+            "required": false,
+            "type": "optional<class:signalwire.rest._request_options.RequestOptions>"
+          },
+          {
+            "kind": "var_keyword",
+            "name": "params",
+            "required": false,
+            "type": "any"
+          }
+        ],
         "list_versions": [
           {
             "kind": "positional",
@@ -999,12 +1019,6 @@
           },
           {
             "kind": "keyword",
-            "name": "control_id",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "kind": "keyword",
             "name": "r#continue",
             "required": false,
             "type": "bool"
@@ -1014,6 +1028,12 @@
             "name": "continuous",
             "required": false,
             "type": "bool"
+          },
+          {
+            "kind": "keyword",
+            "name": "control_id",
+            "required": false,
+            "type": "string"
           },
           {
             "kind": "keyword",
@@ -1171,15 +1191,15 @@
           },
           {
             "kind": "keyword",
-            "name": "control_id",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "kind": "keyword",
             "name": "detect",
             "required": true,
             "type": "class:signalwire.rest.namespaces.calling_types_generated.RelayCallDetectInner"
+          },
+          {
+            "kind": "keyword",
+            "name": "control_id",
+            "required": false,
+            "type": "string"
           },
           {
             "kind": "keyword",
@@ -1479,15 +1499,15 @@
           },
           {
             "kind": "keyword",
-            "name": "control_id",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "kind": "keyword",
             "name": "play",
             "required": true,
             "type": "list<class:signalwire.rest.namespaces.calling_types_generated.RelayCallPlayInner>"
+          },
+          {
+            "kind": "keyword",
+            "name": "control_id",
+            "required": false,
+            "type": "string"
           },
           {
             "kind": "keyword",
@@ -1690,13 +1710,13 @@
           {
             "kind": "keyword",
             "name": "control_id",
-            "required": true,
+            "required": false,
             "type": "string"
           },
           {
             "kind": "keyword",
             "name": "record",
-            "required": true,
+            "required": false,
             "type": "class:signalwire.rest.namespaces.calling_types_generated.RelayCallRecordInner"
           },
           {
@@ -1704,6 +1724,12 @@
             "name": "status_url",
             "required": false,
             "type": "string"
+          },
+          {
+            "kind": "keyword",
+            "name": "audio",
+            "required": false,
+            "type": "class:signalwire.rest.namespaces.calling_types_generated.RelayCallRecordAudio"
           },
           {
             "kind": "keyword",
@@ -1869,12 +1895,6 @@
           },
           {
             "kind": "keyword",
-            "name": "control_id",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "kind": "keyword",
             "name": "url",
             "required": true,
             "type": "string"
@@ -1888,6 +1908,12 @@
           {
             "kind": "keyword",
             "name": "codec",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "kind": "keyword",
+            "name": "control_id",
             "required": false,
             "type": "string"
           },
@@ -1969,12 +1995,6 @@
           },
           {
             "kind": "keyword",
-            "name": "control_id",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "kind": "keyword",
             "name": "device",
             "required": true,
             "type": "class:signalwire.rest.namespaces.calling_types_generated.RelayCallTapDevice"
@@ -1984,6 +2004,12 @@
             "name": "tap",
             "required": true,
             "type": "class:signalwire.rest.namespaces.calling_types_generated.RelayTap"
+          },
+          {
+            "kind": "keyword",
+            "name": "control_id",
+            "required": false,
+            "type": "string"
           },
           {
             "kind": "keyword",
@@ -2040,7 +2066,7 @@
           {
             "kind": "keyword",
             "name": "control_id",
-            "required": true,
+            "required": false,
             "type": "string"
           },
           {
@@ -2290,6 +2316,26 @@
             "name": "request_options",
             "required": false,
             "type": "optional<class:signalwire.rest._request_options.RequestOptions>"
+          }
+        ],
+        "list_addresses": [
+          {
+            "kind": "positional",
+            "name": "id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "kind": "keyword",
+            "name": "request_options",
+            "required": false,
+            "type": "optional<class:signalwire.rest._request_options.RequestOptions>"
+          },
+          {
+            "kind": "var_keyword",
+            "name": "params",
+            "required": false,
+            "type": "any"
           }
         ],
         "update": [

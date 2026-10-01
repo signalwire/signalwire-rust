@@ -8,7 +8,7 @@
 //! |-------------------|-------------|------------------------------------------|
 //! | `record_call`     | `format`    | `"wav"`, `"mp3"`, `"mp4"`                 |
 //! | `record_call`     | `direction` | `"speak"`, `"listen"`, `"both"`          |
-//! | `tap`             | `direction` | `"speak"`, `"hear"`, `"both"`            |
+//! | `tap`             | `direction` | `"speak"`, `"listen"`, `"both"`          |
 //! | `tap`             | `codec`     | `"PCMU"`, `"PCMA"`                        |
 //!
 //! In Python a typo (`record_call(format="ogg")`) only fails at runtime with a
@@ -35,11 +35,10 @@
 //! fr.record_call("rec2", false, "mp3", "both", "", false, 44.0, None, None, None, "").unwrap();
 //! ```
 //!
-//! Note that `record_call`'s direction set (`speak`/`listen`/`both`) and
-//! `tap`'s direction set (`speak`/`hear`/`both`) are **different** — `tap` uses
-//! `hear` where `record_call` uses `listen` — so they are modelled as two
-//! distinct enums, [`RecordDirection`] and [`TapDirection`], faithfully
-//! matching the two separate validation lists.
+//! `record_call` and `tap` share the direction set (`speak`/`listen`/`both` —
+//! the engine's tap validator rejects anything else, including the `hear` an
+//! earlier revision of this crate emitted); they stay two distinct enums,
+//! [`RecordDirection`] and [`TapDirection`], one per helper.
 
 use std::fmt;
 use std::str::FromStr;
@@ -187,8 +186,7 @@ impl From<RecordFormat> for &'static str {
 /// Audio direction for [`FunctionResult::record_call`].
 ///
 /// Mirrors the Python reference's
-/// `direction in ["speak", "listen", "both"]` validation. Note this differs
-/// from [`TapDirection`], which uses `hear` instead of `listen`.
+/// `direction in ["speak", "listen", "both"]` validation.
 ///
 /// [`FunctionResult::record_call`]: crate::swaig::FunctionResult::record_call
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -252,8 +250,7 @@ impl AsRef<str> for RecordDirection {
     }
 }
 
-/// Idiomatic `"listen".parse::<RecordDirection>()`. Note `hear` (valid for
-/// `tap`) is rejected here — `record_call` uses `listen`.
+/// Idiomatic `"listen".parse::<RecordDirection>()`.
 impl FromStr for RecordDirection {
     type Err = ParseMediaEnumError;
 
@@ -283,8 +280,8 @@ impl From<RecordDirection> for &'static str {
 /// Audio direction for [`FunctionResult::tap`].
 ///
 /// Mirrors the Python reference's
-/// `valid_directions = ["speak", "hear", "both"]` validation. Note this differs
-/// from [`RecordDirection`], which uses `listen` instead of `hear`.
+/// `valid_directions = ["speak", "listen", "both"]` validation — the set the
+/// engine's tap validator accepts (`combined-specs/swml.yaml` `tap.direction`).
 ///
 /// [`FunctionResult::tap`]: crate::swaig::FunctionResult::tap
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -292,8 +289,8 @@ impl From<RecordDirection> for &'static str {
 pub enum TapDirection {
     /// `speak` — what the party says.
     Speak,
-    /// `hear` — what the party hears.
-    Hear,
+    /// `listen` — what the party hears.
+    Listen,
     /// `both` — what the party hears and says (the default).
     Both,
 }
@@ -304,14 +301,18 @@ impl TapDirection {
     pub fn as_str(&self) -> &'static str {
         match self {
             TapDirection::Speak => "speak",
-            TapDirection::Hear => "hear",
+            TapDirection::Listen => "listen",
             TapDirection::Both => "both",
         }
     }
 
     /// Every [`TapDirection`], in declaration order.
     pub fn all() -> &'static [TapDirection] {
-        &[TapDirection::Speak, TapDirection::Hear, TapDirection::Both]
+        &[
+            TapDirection::Speak,
+            TapDirection::Listen,
+            TapDirection::Both,
+        ]
     }
 
     /// Parse a wire string into a [`TapDirection`], or `None` if it is not a
@@ -344,8 +345,7 @@ impl AsRef<str> for TapDirection {
     }
 }
 
-/// Idiomatic `"hear".parse::<TapDirection>()`. Note `listen` (valid for
-/// `record_call`) is rejected here — `tap` uses `hear`.
+/// Idiomatic `"listen".parse::<TapDirection>()`.
 impl FromStr for TapDirection {
     type Err = ParseMediaEnumError;
 
@@ -354,7 +354,9 @@ impl FromStr for TapDirection {
             .iter()
             .copied()
             .find(|d| d.as_str() == s)
-            .ok_or_else(|| ParseMediaEnumError::new(s, "TapDirection", &["speak", "hear", "both"]))
+            .ok_or_else(|| {
+                ParseMediaEnumError::new(s, "TapDirection", &["speak", "listen", "both"])
+            })
     }
 }
 
@@ -694,7 +696,7 @@ mod tests {
             RecordDirection::from_str("both"),
             Some(RecordDirection::Both)
         );
-        // `hear` is valid for tap but NOT for record_call — reject it here.
+        // `hear` is not a direction the engine accepts.
         assert_eq!(RecordDirection::from_str("hear"), None);
         assert_eq!(RecordDirection::from_str("listenn"), None);
         assert_eq!(RecordDirection::all().len(), 3);
@@ -710,14 +712,14 @@ mod tests {
 
     #[test]
     fn test_tap_direction_enum_and_string_produce_identical_swml() {
-        assert_eq!(TapDirection::Hear.as_str(), "hear");
+        assert_eq!(TapDirection::Listen.as_str(), "listen");
 
         let mut enum_fr = FunctionResult::new();
         enum_fr
             .tap(
                 "wss://example.com",
                 Some("t1"),
-                Some(TapDirection::Hear.as_str().into()),
+                Some(TapDirection::Listen.as_str().into()),
                 None,
                 None,
                 None,
@@ -728,7 +730,7 @@ mod tests {
             .tap(
                 "wss://example.com",
                 Some("t1"),
-                Some("hear".into()),
+                Some("listen".into()),
                 None,
                 None,
                 None,
@@ -739,17 +741,17 @@ mod tests {
         let v: Value = enum_fr.to_value();
         assert_eq!(
             v["action"][0]["SWML"]["sections"]["main"][0]["tap"]["direction"],
-            "hear"
+            "listen"
         );
     }
 
     #[test]
     fn test_tap_direction_from_str_roundtrips_and_rejects_typo() {
         assert_eq!(TapDirection::from_str("speak"), Some(TapDirection::Speak));
-        assert_eq!(TapDirection::from_str("hear"), Some(TapDirection::Hear));
+        assert_eq!(TapDirection::from_str("listen"), Some(TapDirection::Listen));
         assert_eq!(TapDirection::from_str("both"), Some(TapDirection::Both));
-        // `listen` is valid for record_call but NOT for tap — reject it here.
-        assert_eq!(TapDirection::from_str("listen"), None);
+        // `hear` is not a direction the engine's tap validator accepts.
+        assert_eq!(TapDirection::from_str("hear"), None);
         assert_eq!(TapDirection::from_str("haer"), None);
         assert_eq!(TapDirection::all().len(), 3);
         for d in TapDirection::all() {
@@ -867,13 +869,13 @@ mod tests {
         );
         assert!("hear".parse::<RecordDirection>().is_err());
 
-        assert_eq!("hear".parse::<TapDirection>(), Ok(TapDirection::Hear));
-        assert!("listen".parse::<TapDirection>().is_err());
+        assert_eq!("listen".parse::<TapDirection>(), Ok(TapDirection::Listen));
+        assert!("hear".parse::<TapDirection>().is_err());
 
-        // Diagnostic for the cross-vocab miss names the right target enum.
-        let e = "listen".parse::<TapDirection>().unwrap_err();
+        // The diagnostic names the target enum and its accepted set.
+        let e = "hear".parse::<TapDirection>().unwrap_err();
         assert!(e.to_string().contains("TapDirection"));
-        assert!(e.to_string().contains("hear"));
+        assert!(e.to_string().contains("listen"));
     }
 
     #[test]
@@ -969,7 +971,7 @@ mod tests {
             .tap(
                 "wss://example.com",
                 Some("t1"),
-                Some(TapDirection::Hear.into()),
+                Some(TapDirection::Listen.into()),
                 Some(Codec::Pcma.into()),
                 None,
                 None,
@@ -980,7 +982,7 @@ mod tests {
             .tap(
                 "wss://example.com",
                 Some("t1"),
-                Some("hear".into()),
+                Some("listen".into()),
                 Some("PCMA".into()),
                 None,
                 None,
@@ -990,7 +992,7 @@ mod tests {
 
         let v = typed_fr.to_value();
         let tap = &v["action"][0]["SWML"]["sections"]["main"][0]["tap"];
-        assert_eq!(tap["direction"], "hear");
+        assert_eq!(tap["direction"], "listen");
         assert_eq!(tap["codec"], "PCMA");
     }
 
@@ -1040,10 +1042,10 @@ mod tests {
             .tap("wss://x", None, None, None, None, None)
             .unwrap();
         assert_eq!(typed_tap.to_value(), raw_tap.to_value());
-        // Default direction/codec are omitted from the tap verb in both.
+        // The default codec is omitted; the direction is always sent.
         let tv = typed_tap.to_value();
         let tap = &tv["action"][0]["SWML"]["sections"]["main"][0]["tap"];
-        assert!(tap.get("direction").is_none());
+        assert_eq!(tap["direction"], "both");
         assert!(tap.get("codec").is_none());
     }
 
@@ -1093,7 +1095,7 @@ mod tests {
         assert_eq!(
             fr.tap("wss://x", None, Some("sideways".into()), None, None, None)
                 .unwrap_err(),
-            "direction must be one of ['speak', 'hear', 'both']"
+            "direction must be one of ['speak', 'listen', 'both']"
         );
         let mut fr = FunctionResult::new();
         assert_eq!(

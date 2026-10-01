@@ -493,9 +493,9 @@ impl CallingAiUnholdRequest {
 /// idiom — required fields in `new`, optionals via setters, `extras` open door).
 #[derive(Debug, Clone, Default)]
 pub struct CallingCollectRequest {
-    control_id: String,
     r#continue: Option<bool>,
     continuous: Option<bool>,
+    control_id: Option<String>,
     digits: Option<serde_json::Value>,
     initial_timeout: Option<f64>,
     partial_results: Option<bool>,
@@ -508,9 +508,8 @@ pub struct CallingCollectRequest {
 
 impl CallingCollectRequest {
     /// Construct the request with its required fields.
-    pub fn new(control_id: impl Into<String>) -> Self {
+    pub fn new() -> Self {
         CallingCollectRequest {
-            control_id: control_id.into(),
             ..Default::default()
         }
     }
@@ -524,6 +523,12 @@ impl CallingCollectRequest {
     #[must_use]
     pub fn continuous(mut self, value: bool) -> Self {
         self.continuous = Some(value);
+        self
+    }
+    /// Set the optional `control_id` field.
+    #[must_use]
+    pub fn control_id(mut self, value: impl Into<String>) -> Self {
+        self.control_id = Some(value.into());
         self
     }
     /// Set the optional `digits` field.
@@ -578,12 +583,14 @@ impl CallingCollectRequest {
     #[must_use]
     pub fn build(self) -> Value {
         let mut obj = Map::new();
-        obj.insert("control_id".to_string(), Value::from(self.control_id));
         if let Some(v) = self.r#continue {
             obj.insert("continue".to_string(), Value::from(v));
         }
         if let Some(v) = self.continuous {
             obj.insert("continuous".to_string(), Value::from(v));
+        }
+        if let Some(v) = self.control_id {
+            obj.insert("control_id".to_string(), Value::from(v));
         }
         if let Some(v) = self.digits {
             obj.insert("digits".to_string(), v);
@@ -609,6 +616,9 @@ impl CallingCollectRequest {
         for (k, v) in self.extras {
             obj.insert(k, v);
         }
+        // `control_id` is server-required: generated when the caller omits it.
+        obj.entry("control_id".to_string())
+            .or_insert_with(|| Value::from(crate::rest::generated_bases::autofill_uuid4()));
         Value::Object(obj)
     }
 }
@@ -747,8 +757,8 @@ impl CallingDenoiseStopRequest {
 /// idiom — required fields in `new`, optionals via setters, `extras` open door).
 #[derive(Debug, Clone, Default)]
 pub struct CallingDetectRequest {
-    control_id: String,
     detect: serde_json::Value,
+    control_id: Option<String>,
     status_url: Option<String>,
     timeout: Option<f64>,
     extras: Map<String, Value>,
@@ -756,12 +766,17 @@ pub struct CallingDetectRequest {
 
 impl CallingDetectRequest {
     /// Construct the request with its required fields.
-    pub fn new(control_id: impl Into<String>, detect: serde_json::Value) -> Self {
+    pub fn new(detect: serde_json::Value) -> Self {
         CallingDetectRequest {
-            control_id: control_id.into(),
             detect,
             ..Default::default()
         }
+    }
+    /// Set the optional `control_id` field.
+    #[must_use]
+    pub fn control_id(mut self, value: impl Into<String>) -> Self {
+        self.control_id = Some(value.into());
+        self
     }
     /// Set the optional `status_url` field.
     #[must_use]
@@ -785,8 +800,10 @@ impl CallingDetectRequest {
     #[must_use]
     pub fn build(self) -> Value {
         let mut obj = Map::new();
-        obj.insert("control_id".to_string(), Value::from(self.control_id));
         obj.insert("detect".to_string(), self.detect);
+        if let Some(v) = self.control_id {
+            obj.insert("control_id".to_string(), Value::from(v));
+        }
         if let Some(v) = self.status_url {
             obj.insert("status_url".to_string(), Value::from(v));
         }
@@ -796,6 +813,9 @@ impl CallingDetectRequest {
         for (k, v) in self.extras {
             obj.insert(k, v);
         }
+        // `control_id` is server-required: generated when the caller omits it.
+        obj.entry("control_id".to_string())
+            .or_insert_with(|| Value::from(crate::rest::generated_bases::autofill_uuid4()));
         Value::Object(obj)
     }
 }
@@ -1246,8 +1266,8 @@ impl CallingPlayPauseRequest {
 /// idiom — required fields in `new`, optionals via setters, `extras` open door).
 #[derive(Debug, Clone, Default)]
 pub struct CallingPlayRequest {
-    control_id: String,
     play: serde_json::Value,
+    control_id: Option<String>,
     direction: Option<String>,
     gender: Option<String>,
     language: Option<String>,
@@ -1260,12 +1280,17 @@ pub struct CallingPlayRequest {
 
 impl CallingPlayRequest {
     /// Construct the request with its required fields.
-    pub fn new(control_id: impl Into<String>, play: serde_json::Value) -> Self {
+    pub fn new(play: serde_json::Value) -> Self {
         CallingPlayRequest {
-            control_id: control_id.into(),
             play,
             ..Default::default()
         }
+    }
+    /// Set the optional `control_id` field.
+    #[must_use]
+    pub fn control_id(mut self, value: impl Into<String>) -> Self {
+        self.control_id = Some(value.into());
+        self
     }
     /// Set the optional `direction` field.
     #[must_use]
@@ -1319,8 +1344,10 @@ impl CallingPlayRequest {
     #[must_use]
     pub fn build(self) -> Value {
         let mut obj = Map::new();
-        obj.insert("control_id".to_string(), Value::from(self.control_id));
         obj.insert("play".to_string(), self.play);
+        if let Some(v) = self.control_id {
+            obj.insert("control_id".to_string(), Value::from(v));
+        }
         if let Some(v) = self.direction {
             obj.insert("direction".to_string(), Value::from(v));
         }
@@ -1345,6 +1372,9 @@ impl CallingPlayRequest {
         for (k, v) in self.extras {
             obj.insert(k, v);
         }
+        // `control_id` is server-required: generated when the caller omits it.
+        obj.entry("control_id".to_string())
+            .or_insert_with(|| Value::from(crate::rest::generated_bases::autofill_uuid4()));
         Value::Object(obj)
     }
 }
@@ -1536,25 +1566,42 @@ impl CallingRecordPauseRequest {
 /// idiom — required fields in `new`, optionals via setters, `extras` open door).
 #[derive(Debug, Clone, Default)]
 pub struct CallingRecordRequest {
-    control_id: String,
-    record: serde_json::Value,
+    control_id: Option<String>,
+    record: Option<serde_json::Value>,
     status_url: Option<String>,
+    audio: Option<serde_json::Value>,
     extras: Map<String, Value>,
 }
 
 impl CallingRecordRequest {
     /// Construct the request with its required fields.
-    pub fn new(control_id: impl Into<String>, record: serde_json::Value) -> Self {
+    pub fn new() -> Self {
         CallingRecordRequest {
-            control_id: control_id.into(),
-            record,
             ..Default::default()
         }
+    }
+    /// Set the optional `control_id` field.
+    #[must_use]
+    pub fn control_id(mut self, value: impl Into<String>) -> Self {
+        self.control_id = Some(value.into());
+        self
+    }
+    /// Set the optional `record` field.
+    #[must_use]
+    pub fn record(mut self, value: serde_json::Value) -> Self {
+        self.record = Some(value);
+        self
     }
     /// Set the optional `status_url` field.
     #[must_use]
     pub fn status_url(mut self, value: impl Into<String>) -> Self {
         self.status_url = Some(value.into());
+        self
+    }
+    /// Set the optional `audio` field.
+    #[must_use]
+    pub fn audio(mut self, value: serde_json::Value) -> Self {
+        self.audio = Some(value);
         self
     }
     /// Add a forward-compat field the spec does not yet name.
@@ -1567,14 +1614,30 @@ impl CallingRecordRequest {
     #[must_use]
     pub fn build(self) -> Value {
         let mut obj = Map::new();
-        obj.insert("control_id".to_string(), Value::from(self.control_id));
-        obj.insert("record".to_string(), self.record);
+        if let Some(v) = self.control_id {
+            obj.insert("control_id".to_string(), Value::from(v));
+        }
+        if let Some(v) = self.record {
+            obj.insert("record".to_string(), v);
+        }
         if let Some(v) = self.status_url {
             obj.insert("status_url".to_string(), Value::from(v));
+        }
+        // `audio` is sent INTO `record.audio` (x-sdk-compat-kwargs).
+        if let Some(v) = self.audio {
+            let entry = obj
+                .entry("record".to_string())
+                .or_insert_with(|| Value::Object(Map::new()));
+            if let Value::Object(m) = entry {
+                m.insert("audio".to_string(), v);
+            }
         }
         for (k, v) in self.extras {
             obj.insert(k, v);
         }
+        // `control_id` is server-required: generated when the caller omits it.
+        obj.entry("control_id".to_string())
+            .or_insert_with(|| Value::from(crate::rest::generated_bases::autofill_uuid4()));
         Value::Object(obj)
     }
 }
@@ -1729,10 +1792,10 @@ impl CallingSendFaxStopRequest {
 /// idiom — required fields in `new`, optionals via setters, `extras` open door).
 #[derive(Debug, Clone, Default)]
 pub struct CallingStreamRequest {
-    control_id: String,
     url: String,
     authorization_bearer_token: Option<String>,
     codec: Option<String>,
+    control_id: Option<String>,
     custom_parameters: Option<serde_json::Value>,
     name: Option<String>,
     status_url: Option<String>,
@@ -1743,9 +1806,8 @@ pub struct CallingStreamRequest {
 
 impl CallingStreamRequest {
     /// Construct the request with its required fields.
-    pub fn new(control_id: impl Into<String>, url: impl Into<String>) -> Self {
+    pub fn new(url: impl Into<String>) -> Self {
         CallingStreamRequest {
-            control_id: control_id.into(),
             url: url.into(),
             ..Default::default()
         }
@@ -1760,6 +1822,12 @@ impl CallingStreamRequest {
     #[must_use]
     pub fn codec(mut self, value: impl Into<String>) -> Self {
         self.codec = Some(value.into());
+        self
+    }
+    /// Set the optional `control_id` field.
+    #[must_use]
+    pub fn control_id(mut self, value: impl Into<String>) -> Self {
+        self.control_id = Some(value.into());
         self
     }
     /// Set the optional `custom_parameters` field.
@@ -1802,13 +1870,15 @@ impl CallingStreamRequest {
     #[must_use]
     pub fn build(self) -> Value {
         let mut obj = Map::new();
-        obj.insert("control_id".to_string(), Value::from(self.control_id));
         obj.insert("url".to_string(), Value::from(self.url));
         if let Some(v) = self.authorization_bearer_token {
             obj.insert("authorization_bearer_token".to_string(), Value::from(v));
         }
         if let Some(v) = self.codec {
             obj.insert("codec".to_string(), Value::from(v));
+        }
+        if let Some(v) = self.control_id {
+            obj.insert("control_id".to_string(), Value::from(v));
         }
         if let Some(v) = self.custom_parameters {
             obj.insert("custom_parameters".to_string(), v);
@@ -1828,6 +1898,9 @@ impl CallingStreamRequest {
         for (k, v) in self.extras {
             obj.insert(k, v);
         }
+        // `control_id` is server-required: generated when the caller omits it.
+        obj.entry("control_id".to_string())
+            .or_insert_with(|| Value::from(crate::rest::generated_bases::autofill_uuid4()));
         Value::Object(obj)
     }
 }
@@ -1870,26 +1943,27 @@ impl CallingStreamStopRequest {
 /// idiom — required fields in `new`, optionals via setters, `extras` open door).
 #[derive(Debug, Clone, Default)]
 pub struct CallingTapRequest {
-    control_id: String,
     device: serde_json::Value,
     tap: serde_json::Value,
+    control_id: Option<String>,
     status_url: Option<String>,
     extras: Map<String, Value>,
 }
 
 impl CallingTapRequest {
     /// Construct the request with its required fields.
-    pub fn new(
-        control_id: impl Into<String>,
-        device: serde_json::Value,
-        tap: serde_json::Value,
-    ) -> Self {
+    pub fn new(device: serde_json::Value, tap: serde_json::Value) -> Self {
         CallingTapRequest {
-            control_id: control_id.into(),
             device,
             tap,
             ..Default::default()
         }
+    }
+    /// Set the optional `control_id` field.
+    #[must_use]
+    pub fn control_id(mut self, value: impl Into<String>) -> Self {
+        self.control_id = Some(value.into());
+        self
     }
     /// Set the optional `status_url` field.
     #[must_use]
@@ -1907,15 +1981,20 @@ impl CallingTapRequest {
     #[must_use]
     pub fn build(self) -> Value {
         let mut obj = Map::new();
-        obj.insert("control_id".to_string(), Value::from(self.control_id));
         obj.insert("device".to_string(), self.device);
         obj.insert("tap".to_string(), self.tap);
+        if let Some(v) = self.control_id {
+            obj.insert("control_id".to_string(), Value::from(v));
+        }
         if let Some(v) = self.status_url {
             obj.insert("status_url".to_string(), Value::from(v));
         }
         for (k, v) in self.extras {
             obj.insert(k, v);
         }
+        // `control_id` is server-required: generated when the caller omits it.
+        obj.entry("control_id".to_string())
+            .or_insert_with(|| Value::from(crate::rest::generated_bases::autofill_uuid4()));
         Value::Object(obj)
     }
 }
@@ -1958,18 +2037,23 @@ impl CallingTapStopRequest {
 /// idiom — required fields in `new`, optionals via setters, `extras` open door).
 #[derive(Debug, Clone, Default)]
 pub struct CallingTranscribeRequest {
-    control_id: String,
+    control_id: Option<String>,
     status_url: Option<String>,
     extras: Map<String, Value>,
 }
 
 impl CallingTranscribeRequest {
     /// Construct the request with its required fields.
-    pub fn new(control_id: impl Into<String>) -> Self {
+    pub fn new() -> Self {
         CallingTranscribeRequest {
-            control_id: control_id.into(),
             ..Default::default()
         }
+    }
+    /// Set the optional `control_id` field.
+    #[must_use]
+    pub fn control_id(mut self, value: impl Into<String>) -> Self {
+        self.control_id = Some(value.into());
+        self
     }
     /// Set the optional `status_url` field.
     #[must_use]
@@ -1987,13 +2071,18 @@ impl CallingTranscribeRequest {
     #[must_use]
     pub fn build(self) -> Value {
         let mut obj = Map::new();
-        obj.insert("control_id".to_string(), Value::from(self.control_id));
+        if let Some(v) = self.control_id {
+            obj.insert("control_id".to_string(), Value::from(v));
+        }
         if let Some(v) = self.status_url {
             obj.insert("status_url".to_string(), Value::from(v));
         }
         for (k, v) in self.extras {
             obj.insert(k, v);
         }
+        // `control_id` is server-required: generated when the caller omits it.
+        obj.entry("control_id".to_string())
+            .or_insert_with(|| Value::from(crate::rest::generated_bases::autofill_uuid4()));
         Value::Object(obj)
     }
 }

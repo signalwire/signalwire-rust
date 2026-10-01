@@ -313,7 +313,7 @@ impl ParamsBuilder {
     ///     .build();
     /// assert_eq!(
     ///     params["direction"]["enum"],
-    ///     json!(["speak", "hear", "both"])
+    ///     json!(["speak", "listen", "both"])
     /// );
     /// ```
     pub fn enum_of<I, S>(self, name: &str, variants: I, description: &str) -> Self
@@ -538,7 +538,7 @@ mod tests {
             .build();
         assert_eq!(
             tap_dir,
-            json!({"dir": {"type": "string", "enum": ["speak", "hear", "both"], "description": "direction"}})
+            json!({"dir": {"type": "string", "enum": ["speak", "listen", "both"], "description": "direction"}})
         );
 
         let codec = ParamsBuilder::new()
@@ -549,8 +549,8 @@ mod tests {
             json!({"codec": {"type": "string", "enum": ["PCMU", "PCMA"], "description": "codec"}})
         );
 
-        // The record vocabulary's `listen` is NOT the tap vocabulary's `hear`.
-        assert_ne!(rec_dir["dir"]["enum"], tap_dir["dir"]["enum"]);
+        // record_call and tap share the engine's direction vocabulary.
+        assert_eq!(rec_dir["dir"]["enum"], tap_dir["dir"]["enum"]);
     }
 
     #[test]

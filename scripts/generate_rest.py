@@ -646,7 +646,41 @@ def command_param_fields(
         for name, psc in (v.get("properties") or {}).items():
             all_props.setdefault(name, psc)
     req_all = set.intersection(*req_sets) if req_sets else set()
-    return [(name, psc, name in req_all) for name, psc in all_props.items()], has_id
+    fields = []
+    for name, psc in all_props.items():
+        autofill = isinstance(psc, dict) and psc.get("x-sdk-autofill")
+        if autofill not in (None, False, "uuid4"):
+            raise SystemExit(
+                f"generate_rest.py: {name}: x-sdk-autofill {autofill!r} is not a known "
+                "generator (uuid4)"
+            )
+        # x-sdk-autofill: uuid4 — a server-required id the SDK generates when the
+        # caller omits it (the RELAY control_id idiom), so the field stays OPTIONAL.
+        fields.append((name, psc, name in req_all and not autofill))
+    # x-sdk-compat-kwargs (on the ``params`` schema): an SDK kwarg kept for
+    # compatibility that is sent INTO a nested wire key (calling.record ``audio`` ->
+    # params.record.audio). The nested root it fills becomes OPTIONAL; the kwarg is
+    # an optional field marked with where it goes (emitted after every other field).
+    compat = (ps.get("x-sdk-compat-kwargs") or {}) if isinstance(ps, dict) else {}
+    for carg, cspec in compat.items():
+        into = (cspec or {}).get("into", "") if isinstance(cspec, dict) else ""
+        parts = into.split(".")
+        if len(parts) != 2 or carg in all_props or parts[0] not in all_props:
+            raise SystemExit(
+                f"generate_rest.py: x-sdk-compat-kwargs.{carg} into {into!r} must name "
+                "<existing param>.<key> and must not shadow a param"
+            )
+        root_schema = resolve_schema(spec, all_props[parts[0]])
+        leaf_schema = (root_schema.get("properties") or {}).get(parts[1])
+        if leaf_schema is None:
+            raise SystemExit(
+                f"generate_rest.py: x-sdk-compat-kwargs.{carg}: {into!r} not found"
+            )
+        fields = [(n, sc, r and n != parts[0]) for n, sc, r in fields]
+        fields.append(
+            (carg, {**leaf_schema, "x-rs-compat-into": [parts[0], parts[1]]}, False)
+        )
+    return fields, has_id
 
 
 def is_object_body(spec: Spec, body_schema: dict) -> bool:
@@ -778,7 +812,9 @@ def op_response_kind(spec: Spec, op_id: str) -> tuple[str, str]:
         kind, media = "text", text_media
     elif not ok:
         for code, r in sorted(responses.items()):
-            if str(code).startswith("3") and "Location" in ((r or {}).get("headers") or {}):
+            if str(code).startswith("3") and "Location" in (
+                (r or {}).get("headers") or {}
+            ):
                 kind = "redirect"
                 break
     if kind != "json" and verb != "get":
@@ -797,11 +833,16 @@ def op_header_params(spec: Spec, op_id: str) -> list[tuple[str, str, bool]]:
     verb, op_path, _ = spec.ops[op_id]
     item = (spec.doc.get("paths") or {}).get(op_path) or {}
     out: list[tuple[str, str, bool]] = []
-    for raw in [*(item.get("parameters") or []), *((item.get(verb) or {}).get("parameters") or [])]:
+    for raw in [
+        *(item.get("parameters") or []),
+        *((item.get(verb) or {}).get("parameters") or []),
+    ]:
         prm = raw
         if isinstance(raw, dict) and "$ref" in raw:
             leaf = raw["$ref"].rsplit("/", 1)[-1]
-            prm = ((spec.doc.get("components") or {}).get("parameters") or {}).get(leaf) or {}
+            prm = ((spec.doc.get("components") or {}).get("parameters") or {}).get(
+                leaf
+            ) or {}
         if (prm or {}).get("in") == "header":
             name = prm["name"]
             out.append((name, field_ident(snake(name)), bool(prm.get("required"))))
@@ -1004,15 +1045,44 @@ def emit_request_struct(
         )
         lines.append(f"        obj.insert({rs_str(wire)}.to_string(), {conv});")
     for wire, sch, _ in opt:
+        if sch.get("x-rs-compat-into"):
+            continue
         ident = field_ident(wire)
         ty = rust_field_type(spec, sch)
         conv = ("Value::from(v)") if ty in ("String", "i64", "f64", "bool") else "v"
         lines.append(f"        if let Some(v) = self.{ident} {{")
         lines.append(f"            obj.insert({rs_str(wire)}.to_string(), {conv});")
         lines.append("        }")
+    for wire, sch, _ in opt:
+        into = sch.get("x-rs-compat-into")
+        if not into:
+            continue
+        ident = field_ident(wire)
+        ty = rust_field_type(spec, sch)
+        conv = ("Value::from(v)") if ty in ("String", "i64", "f64", "bool") else "v"
+        root, leaf = into
+        lines.append(
+            f"        // `{wire}` is sent INTO `{root}.{leaf}` (x-sdk-compat-kwargs)."
+        )
+        lines.append(f"        if let Some(v) = self.{ident} {{")
+        lines.append(
+            f"            let entry = obj.entry({rs_str(root)}.to_string()).or_insert_with(|| Value::Object(Map::new()));"
+        )
+        lines.append("            if let Value::Object(m) = entry {")
+        lines.append(f"                m.insert({rs_str(leaf)}.to_string(), {conv});")
+        lines.append("            }")
+        lines.append("        }")
     lines.append("        for (k, v) in self.extras {")
     lines.append("            obj.insert(k, v);")
     lines.append("        }")
+    for wire, sch, _ in opt:
+        if isinstance(sch, dict) and sch.get("x-sdk-autofill") == "uuid4":
+            lines.append(
+                f"        // `{wire}` is server-required: generated when the caller omits it."
+            )
+            lines.append(
+                f"        obj.entry({rs_str(wire)}.to_string()).or_insert_with(|| Value::from(crate::rest::generated_bases::autofill_uuid4()));"
+            )
     lines.append("        Value::Object(obj)")
     lines.append("    }")
     # leading-arg accessors (command call_id) — the method needs them out of the struct.
@@ -1719,7 +1789,7 @@ def container_names(container: str) -> tuple[str, str]:
     return f"{pascal}Namespace", snake_of(container)
 
 
-def _is_pat_spec(spec: "Spec") -> bool:
+def _is_pat_spec(spec: Spec) -> bool:
     """True when the spec's root ``security`` accepts ONLY the Personal Access Token —
     its resources are wired to the client's PAT credential, never the project token
     (mirrors the reference's ``_is_pat_spec``)."""
@@ -1957,14 +2027,9 @@ TYPES_HEADER = """// Code generated by scripts/{gen}; DO NOT EDIT.
 // Read-side wire types (open shapes) — method-less serde structs / closed-set
 // enums. Regenerate with: python3 scripts/{gen}
 //
-// Two narrow lint allows, both grounded in the generated wire shape:
-//   * non_camel_case_types — a few wire schema keys carry dotted names
-//     (``Types.StatusCodes.StatusCode400``); the type identifier folds the dots
-//     to underscores (``Types_StatusCodes_StatusCode400``) and must stay verbatim
-//     so it matches the wire schema key, which the naming lint would rewrite.
-//   * clippy::doc_markdown — the generated doc comments echo raw wire schema key
-//     names in prose; backticking every one mechanically is not meaningful here.
-#![allow(non_camel_case_types, clippy::doc_markdown)]
+// A wire schema key with a dotted name (``Types.StatusCodes.StatusCode400``)
+// folds to an underscored type identifier that must stay verbatim to match the
+// key; only those items carry an item-level `non_camel_case_types` allow.
 
 use serde::{{Deserialize, Serialize}};
 """
@@ -2048,6 +2113,18 @@ def _struct_field_ident(wire: str, used: set) -> str:
     return ident
 
 
+def _doc_ticks(text: str) -> str:
+    """Quote wire names in generated doc prose as code (``'X'`` -> `` `X` ``), so the
+    doc comment is `clippy::doc_markdown`-clean without a lint allow."""
+    return re.sub(r"'([^'`]*)'", r"`\1`", text)
+
+
+def _non_camel(rs_name: str) -> bool:
+    """A type identifier folded from a dotted wire schema key
+    (``Types_StatusCodes_StatusCode400``) — not UpperCamelCase, kept verbatim."""
+    return "_" in rs_name.strip("_")
+
+
 def emit_methodless_struct(
     rs_name: str,
     properties: dict,
@@ -2067,6 +2144,7 @@ def emit_methodless_struct(
     dropped from the SDK surface (still on the wire) and deprecated fields carry a
     ``#[deprecated]`` marker. It is the SPEC name, NOT ``rs_name`` (the emitted type)."""
     lines: list[str] = []
+    source_desc = _doc_ticks(source_desc)
     lines.append(f"/// `{rs_name}` — generated read-side wire type ({source_desc}).")
     lines.append("///")
     lines.append("/// Method-less serde DTO: each field maps a snake wire key (via")
@@ -2074,6 +2152,8 @@ def emit_methodless_struct(
         "/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted."
     )
     lines.append("#[derive(Debug, Clone, Default, Serialize, Deserialize)]")
+    if _non_camel(rs_name):
+        lines.append("#[allow(non_camel_case_types)]")
     lines.append(f"pub struct {rs_name} {{")
     used: set = set()
     for wire_key, psc in properties.items():
@@ -2125,12 +2205,15 @@ def emit_type_enum(rs_name: str, values: list, source_desc: str, gen: str) -> st
     type name on the surface, dropped by the signature enumerator (matching the
     reference, which records the public enum method-less)."""
     lines: list[str] = []
+    source_desc = _doc_ticks(source_desc)
     lines.append(f"/// `{rs_name}` — generated public closed-set ({source_desc}).")
     lines.append("///")
     lines.append(
         "/// Each variant serialises to its wire string via `#[serde(rename)]`."
     )
     lines.append("#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]")
+    if _non_camel(rs_name):
+        lines.append("#[allow(non_camel_case_types)]")
     lines.append(f"pub enum {rs_name} {{")
     used: set = set()
     for v in values:
@@ -2239,7 +2322,7 @@ def gen_payload_accessors(
         # accessor is a synthesized symbol name in the sidecar, and the oracle
         # records the wire field name verbatim, e.g. ``SWAIG``). Fold only
         # non-idents; keep case (SWAIG stays SWAIG).
-        m = re.sub(r"[^A-Za-z0-9_]", "_", wire_key)
+        m = re.sub(r"[^A-Za-z0-9_-]", "_", wire_key)
         if not m:
             m = "field"
         if m[0].isdigit():
@@ -2547,14 +2630,11 @@ def sidecar_for_resource(spec: Spec, anchor: str, markup: dict) -> dict:
             continue
         if m_snake in provided and m_snake != "list_addresses":
             continue
-        if m_snake == "list_addresses" and m_snake in provided:
-            # only a SIBLING override is emitted (base delegation otherwise)
-            _verb, op_path, _ = spec.ops.get(op_id, (None, None, None))
-            if op_path is None:
-                continue
-            _, sibling = relative_tail(spec, anchor, markup, op_path)
-            if not sibling:
-                continue
+        # A DECLARED list_addresses is recorded on the class either way: a SIBLING
+        # path is an emitted override, a nested one is the base delegation — the
+        # reference declares it on the class in both cases (CallFlows /
+        # ConferenceRooms, whose addresses route is nested under the plural
+        # collection). An op missing from the spec records nothing (None below).
         p = sidecar_operation_method(spec, anchor, markup, base, m_snake, op_id)
         if p is not None:
             methods[m_snake] = p

@@ -5,18 +5,13 @@
 // Read-side wire types (open shapes) — method-less serde structs / closed-set
 // enums. Regenerate with: python3 scripts/generate_swaig_payloads.py
 //
-// Two narrow lint allows, both grounded in the generated wire shape:
-//   * non_camel_case_types — a few wire schema keys carry dotted names
-//     (``Types.StatusCodes.StatusCode400``); the type identifier folds the dots
-//     to underscores (``Types_StatusCodes_StatusCode400``) and must stay verbatim
-//     so it matches the wire schema key, which the naming lint would rewrite.
-//   * clippy::doc_markdown — the generated doc comments echo raw wire schema key
-//     names in prose; backticking every one mechanically is not meaningful here.
-#![allow(non_camel_case_types, clippy::doc_markdown)]
+// A wire schema key with a dotted name (``Types.StatusCodes.StatusCode400``)
+// folds to an underscored type identifier that must stay verbatim to match the
+// key; only those items carry an item-level `non_camel_case_types` allow.
 
 use serde::{Deserialize, Serialize};
 
-/// `ChangeVoiceAction` — generated read-side wire type (swaig-response action 'change_voice' value object).
+/// `ChangeVoiceAction` — generated read-side wire type (swaig-response action `change_voice` value object).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -26,7 +21,7 @@ pub struct ChangeVoiceAction {
     pub voice: Option<serde_json::Value>,
 }
 
-/// `ContextSwitchAction` — generated read-side wire type (swaig-response action 'context_switch' value object).
+/// `ContextSwitchAction` — generated read-side wire type (swaig-response action `context_switch` value object).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -46,7 +41,7 @@ pub struct ContextSwitchAction {
     pub user_prompt: Option<String>,
 }
 
-/// `HoldAction` — generated read-side wire type (swaig-response action 'hold' value object).
+/// `HoldAction` — generated read-side wire type (swaig-response action `hold` value object).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -60,7 +55,7 @@ pub struct HoldAction {
     pub timeout_step: Option<String>,
 }
 
-/// `PlaybackBgAction` — generated read-side wire type (swaig-response action 'playback_bg' value object).
+/// `PlaybackBgAction` — generated read-side wire type (swaig-response action `playback_bg` value object).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -72,7 +67,7 @@ pub struct PlaybackBgAction {
     pub wait: Option<bool>,
 }
 
-/// `TransferAction` — generated read-side wire type (swaig-response action 'transfer' value object).
+/// `TransferAction` — generated read-side wire type (swaig-response action `transfer` value object).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.

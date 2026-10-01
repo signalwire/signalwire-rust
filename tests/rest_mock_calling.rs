@@ -345,7 +345,7 @@ fn test_calling_record() {
         .calling()
         .record(
             "call-1",
-            calling_gen::CallingRecordRequest::new("rec-1", json!({"format": "mp3"})),
+            calling_gen::CallingRecordRequest::new().record(json!({"format": "mp3"})),
             None,
         )
         .expect("record");
@@ -445,7 +445,7 @@ fn test_calling_collect() {
             // The recorded wire value for initial_timeout is the integer 5; the
             // generated setter is f64, so pass it through `.extra` to keep the
             // JSON number an integer (matching the `as_i64` assertion below).
-            calling_gen::CallingCollectRequest::new("collect-1")
+            calling_gen::CallingCollectRequest::new()
                 .extra("initial_timeout", json!(5))
                 .digits(json!({"max": 4})),
             None,
@@ -541,10 +541,7 @@ fn test_calling_detect() {
         .calling()
         .detect(
             "call-1",
-            calling_gen::CallingDetectRequest::new(
-                "detect-1",
-                json!({"type": "machine", "params": {}}),
-            ),
+            calling_gen::CallingDetectRequest::new(json!({"type": "machine", "params": {}})),
             None,
         )
         .expect("detect");
@@ -607,11 +604,7 @@ fn test_calling_tap() {
         .calling()
         .tap(
             "call-1",
-            calling_gen::CallingTapRequest::new(
-                "tap-1",
-                json!({"type": "rtp"}),
-                json!({"type": "audio"}),
-            ),
+            calling_gen::CallingTapRequest::new(json!({"type": "rtp"}), json!({"type": "audio"})),
             None,
         )
         .expect("tap");
@@ -674,7 +667,7 @@ fn test_calling_stream() {
         .calling()
         .stream(
             "call-1",
-            calling_gen::CallingStreamRequest::new("stream-1", "wss://example.com/audio"),
+            calling_gen::CallingStreamRequest::new("wss://example.com/audio"),
             None,
         )
         .expect("stream");
@@ -797,7 +790,7 @@ fn test_calling_transcribe() {
         .calling()
         .transcribe(
             "call-1",
-            calling_gen::CallingTranscribeRequest::new("transcribe-1")
+            calling_gen::CallingTranscribeRequest::new()
                 .extra("language", json!("en-US"))
                 .extra("transcribe", json!({"engine": "google"})),
             None,

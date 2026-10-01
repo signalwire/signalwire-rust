@@ -97,6 +97,10 @@ impl From<&[&str]> for KeysArg {
 #[must_use]
 pub struct FunctionResult {
     response: String,
+    /// The structured response form (`{tool_result?, tool_prompt?}`) set by
+    /// [`set_tool_response`](FunctionResult::set_tool_response); when present it
+    /// is emitted as `response` in place of the text form.
+    tool_response: Option<Map<String, Value>>,
     actions: Vec<Value>,
     post_process: bool,
 }
@@ -112,6 +116,7 @@ impl FunctionResult {
     pub fn new() -> Self {
         FunctionResult {
             response: String::new(),
+            tool_response: None,
             actions: Vec::new(),
             post_process: false,
         }
@@ -125,6 +130,7 @@ impl FunctionResult {
     pub fn with_response(response: &str) -> Self {
         FunctionResult {
             response: response.to_string(),
+            tool_response: None,
             actions: Vec::new(),
             post_process: false,
         }
@@ -141,6 +147,37 @@ impl FunctionResult {
     /// Returns `&mut Self` for chaining.
     pub fn set_response(&mut self, text: &str) -> &mut Self {
         self.response = text.to_string();
+        self.tool_response = None;
+        self
+    }
+
+    /// Set the STRUCTURED response form, separating outcome from instruction:
+    /// `{"tool_result": ..., "tool_prompt": ...}`.
+    ///
+    /// - `tool_result` — what the tool DID: a factual status line for the model
+    ///   to reason from (`"hold initiated"`, `"payment declined"`).
+    /// - `tool_prompt` — what the model should now SAY: an instruction, exactly
+    ///   like the text form of the response.
+    ///
+    /// Splitting them keeps the model from reading a status line aloud. Either
+    /// may be `None` (both `None` leaves no response). Replaces any text set by
+    /// [`set_response`](FunctionResult::set_response).
+    ///
+    /// Returns `&mut Self` for chaining.
+    pub fn set_tool_response(
+        &mut self,
+        tool_result: Option<&str>,
+        tool_prompt: Option<&str>,
+    ) -> &mut Self {
+        let mut payload = Map::new();
+        if let Some(r) = tool_result {
+            payload.insert("tool_result".to_string(), json!(r));
+        }
+        if let Some(p) = tool_prompt {
+            payload.insert("tool_prompt".to_string(), json!(p));
+        }
+        self.response.clear();
+        self.tool_response = Some(payload);
         self
     }
 
@@ -210,8 +247,11 @@ impl FunctionResult {
     #[must_use]
     pub fn to_value(&self) -> Value {
         let mut map = Map::new();
-        // response is omitted when empty (Python parity).
-        if !self.response.is_empty() {
+        // response is omitted when empty (Python parity) — the text form, or the
+        // structured {tool_result, tool_prompt} form when one was set.
+        if let Some(tr) = self.tool_response.as_ref().filter(|m| !m.is_empty()) {
+            map.insert("response".to_string(), Value::Object(tr.clone()));
+        } else if !self.response.is_empty() {
             map.insert("response".to_string(), Value::String(self.response.clone()));
         }
 
@@ -373,10 +413,48 @@ impl FunctionResult {
     /// `timeout` is `Option<i64>` because the argument is optional
     /// (`timeout: int = 300`); `None` is the omit-it call and takes 300.
     pub fn hold(&mut self, timeout: Option<i64>) -> &mut Self {
-        let timeout = timeout.unwrap_or(300);
-        // Python: add_action("hold", timeout) — the value is the bare clamped int.
-        let clamped = timeout.clamp(0, 900);
-        self.actions.push(json!({"hold": clamped}));
+        self.hold_with(None, timeout, None, None)
+    }
+
+    /// Put the call on hold, optionally announcing it and routing what happens
+    /// next — the full form of [`hold`](FunctionResult::hold).
+    ///
+    /// The SWML hold action carries no prompt of its own, and during hold the
+    /// agent does not respond, so anything the caller must hear has to be said
+    /// BEFORE the hold lands. `prompt` wires that up: it becomes the structured
+    /// response's `tool_prompt` (with `tool_result: "status: on hold"`) and
+    /// switches `post_process` on, so the model speaks before the hold executes.
+    ///
+    /// `step` / `timeout_step` land the caller in a chosen step when the hold
+    /// ends (taken off hold / timed out). With neither, the action is the bare
+    /// integer timeout and the caller resumes where they were. `timeout` is
+    /// clamped to `0..=900` (default 300).
+    pub fn hold_with(
+        &mut self,
+        prompt: Option<&str>,
+        timeout: Option<i64>,
+        step: Option<&str>,
+        timeout_step: Option<&str>,
+    ) -> &mut Self {
+        if let Some(p) = prompt {
+            self.set_tool_response(Some("status: on hold"), Some(p));
+            self.post_process = true;
+        }
+        let clamped = timeout.unwrap_or(300).clamp(0, 900);
+        if step.is_none() && timeout_step.is_none() {
+            // Bare integer unless routing is requested.
+            self.actions.push(json!({"hold": clamped}));
+            return self;
+        }
+        let mut cfg = Map::new();
+        cfg.insert("timeout".to_string(), json!(clamped));
+        if let Some(s) = step {
+            cfg.insert("step".to_string(), json!(s));
+        }
+        if let Some(s) = timeout_step {
+            cfg.insert("timeout_step".to_string(), json!(s));
+        }
+        self.actions.push(json!({"hold": cfg}));
         self
     }
 
@@ -612,6 +690,19 @@ impl FunctionResult {
         self
     }
 
+    /// Change the agent's voice for the rest of the call (SWAIG `change_voice`).
+    ///
+    /// `voice` is an `engine.voice:model` spec — the form a language's voice
+    /// takes in the SWML `languages` list (e.g. `"elevenlabs.rachel"`); the
+    /// `engine.` prefix and `:model` suffix are optional. It replaces the voice of
+    /// the language currently in use, applies at the next speech batch boundary
+    /// (never mid-utterance), and persists for that language for the rest of the
+    /// call. An empty spec is ignored by the platform.
+    pub fn change_voice(&mut self, voice: &str) -> &mut Self {
+        self.actions.push(json!({"change_voice": voice}));
+        self
+    }
+
     /// Start background call recording (SWML `record_call`).
     ///
     /// The verb is
@@ -827,13 +918,14 @@ impl FunctionResult {
     ///
     /// The action
     /// key is **always** `"SWML"`; when `transfer` is set, a `"transfer": "true"`
-    /// flag is added **inside** the SWML dict (it is not a separate action key).
+    /// key is added to the action BESIDE the SWML document (inside it, it is not
+    /// a SWML key and the platform ignores it).
     ///
     /// Input normalisation matches Python:
-    /// - A JSON **string** is parsed to a dict so the transfer flag can be added;
+    /// - A JSON **string** is parsed to the document object;
     ///   if it is not valid JSON it falls back to `{"raw_swml": "<text>"}`.
-    /// - A JSON **object** is used as-is (a copy, so the transfer flag does not
-    ///   mutate the caller's value).
+    /// - A JSON **object** is used as-is (a copy, so the caller's value is not
+    ///   mutated).
     /// - Any other JSON scalar/array is wrapped as `{"raw_swml": <value-as-string>}`,
     ///   the same fallback Python uses for a non-dict, non-string `swml_content`.
     ///
@@ -841,10 +933,10 @@ impl FunctionResult {
     /// (`transfer: bool = False`); `None` is the omit-it call and takes `false`.
     pub fn execute_swml(&mut self, swml_content: Value, transfer: Option<bool>) -> &mut Self {
         let transfer = transfer.unwrap_or(false);
-        let mut swml_data: Map<String, Value> = match swml_content {
+        let swml_data: Map<String, Value> = match swml_content {
             Value::String(s) => {
-                // Raw SWML string — parse to an object so the transfer key can be
-                // added; on parse failure fall back to the raw_swml wrapper.
+                // Raw SWML string — parse it to the document object; on parse
+                // failure fall back to the raw_swml wrapper.
                 if let Ok(Value::Object(m)) = serde_json::from_str::<Value>(&s) {
                     m
                 } else {
@@ -869,12 +961,15 @@ impl FunctionResult {
             }
         };
 
+        // `transfer` rides BESIDE the SWML document, not inside it — the same
+        // shape connect() and swml_transfer() emit; inside the document it is
+        // not a SWML key and the platform ignores it.
+        let mut action = Map::new();
+        action.insert("SWML".to_string(), Value::Object(swml_data));
         if transfer {
-            swml_data.insert("transfer".to_string(), json!("true"));
+            action.insert("transfer".to_string(), json!("true"));
         }
-
-        self.actions
-            .push(json!({ "SWML": Value::Object(swml_data) }));
+        self.actions.push(Value::Object(action));
         self
     }
 
@@ -893,7 +988,8 @@ impl FunctionResult {
     /// unwraps `Result<T, E>` to `T`):
     ///
     /// - `beep` ∈ `{true, false, onEnter, onExit}`
-    /// - `0 < max_participants <= 250`
+    /// - `max_participants`, when given, `>= 2` (`None` leaves it out so the
+    ///   platform's default applies)
     /// - `record` ∈ `{do-not-record, record-from-start}`
     /// - `trim` ∈ `{trim-silence, do-not-trim}`
     /// - `status_callback_method` ∈ `{GET, POST}`
@@ -913,8 +1009,8 @@ impl FunctionResult {
     /// Returns `Err(String)` (the exact error text)
     /// on any of the seven closed-set / range checks: `beep` outside
     /// `{true, false, onEnter, onExit}` (`"beep must be one of ..."`),
-    /// `max_participants` not in `1..=250`
-    /// (`"max_participants must be a positive integer <= 250"`),
+    /// `max_participants` below 2
+    /// (`"max_participants must be an integer of at least 2, got N"`),
     /// `record` outside `{do-not-record, record-from-start}`,
     /// `trim` outside `{trim-silence, do-not-trim}`,
     /// `status_callback_method` or `recording_status_callback_method`
@@ -947,7 +1043,6 @@ impl FunctionResult {
         let beep = beep.unwrap_or("true");
         let start_on_enter = start_on_enter.unwrap_or(true);
         let end_on_exit = end_on_exit.unwrap_or(false);
-        let max_participants = max_participants.unwrap_or(250);
         let record = record.unwrap_or("do-not-record");
         let trim = trim.unwrap_or("trim-silence");
         let status_callback_method = status_callback_method.unwrap_or("POST");
@@ -960,8 +1055,12 @@ impl FunctionResult {
             return Err(format!("beep must be one of {}", render_list(&valid_beep)));
         }
 
-        if max_participants <= 0 || max_participants > 250 {
-            return Err("max_participants must be a positive integer <= 250".to_string());
+        if let Some(n) = max_participants
+            && n < 2
+        {
+            return Err(format!(
+                "max_participants must be an integer of at least 2, got {n}"
+            ));
         }
 
         let valid_record = ["do-not-record", "record-from-start"];
@@ -1001,7 +1100,7 @@ impl FunctionResult {
             && start_on_enter
             && !end_on_exit
             && wait_url.is_none()
-            && max_participants == 250
+            && max_participants.is_none()
             && record == "do-not-record"
             && region.is_none()
             && trim == "trim-silence"
@@ -1037,8 +1136,8 @@ impl FunctionResult {
             if let Some(v) = wait_url {
                 p.insert("wait_url".to_string(), json!(v));
             }
-            if max_participants != 250 {
-                p.insert("max_participants".to_string(), json!(max_participants));
+            if let Some(n) = max_participants {
+                p.insert("max_participants".to_string(), json!(n));
             }
             if record != "do-not-record" {
                 p.insert("record".to_string(), json!(record));
@@ -1112,7 +1211,8 @@ impl FunctionResult {
     /// validations are reproduced, returning `Err(message)` with the exact
     /// error text:
     ///
-    /// - `direction` ∈ `{speak, hear, both}`
+    /// - `direction` ∈ `{speak, listen, both}` (always emitted: the verb's own
+    ///   default is `speak`)
     /// - `codec` ∈ `{PCMU, PCMA}`
     /// - `rtp_ptime > 0`
     ///
@@ -1124,7 +1224,7 @@ impl FunctionResult {
     ///
     /// Returns `Err(String)` (the exact error text)
     /// when a closed-set / range argument is invalid: `direction`
-    /// outside `{speak, hear, both}` (`"direction must be one of ..."`),
+    /// outside `{speak, listen, both}` (`"direction must be one of ..."`),
     /// `codec` outside `{PCMU, PCMA}` (`"codec must be one of ..."`), or
     /// `rtp_ptime <= 0` (`"rtp_ptime must be a positive integer"`).
     pub fn tap(
@@ -1140,7 +1240,7 @@ impl FunctionResult {
     ) -> Result<&mut Self, String> {
         let rtp_ptime = rtp_ptime.unwrap_or(20);
         // Resolve the typed-or-raw closed-set args to their wire strings. Both
-        // `TapDirection::Hear` / `Codec::Pcma` (typed) and `"hear"` / `"PCMA"`
+        // `TapDirection::Listen` / `Codec::Pcma` (typed) and `"listen"` / `"PCMA"`
         // (raw) collapse here to the same `&str`, so validation and emitted
         // SWML are identical regardless of call style (Python-reference parity).
         // `None` takes the reference defaults `"both"` / `"PCMU"`.
@@ -1148,7 +1248,7 @@ impl FunctionResult {
         let codec: &str = codec.as_ref().map_or("PCMU", MediaArg::wire);
 
         // ── Validation (exact reference ValueError messages) ─────────────
-        let valid_directions = ["speak", "hear", "both"];
+        let valid_directions = ["speak", "listen", "both"];
         if !valid_directions.contains(&direction) {
             return Err(format!(
                 "direction must be one of {}",
@@ -1172,9 +1272,9 @@ impl FunctionResult {
         if let Some(c) = control_id.filter(|c| !c.is_empty()) {
             tap_obj.insert("control_id".to_string(), json!(c));
         }
-        if direction != "both" {
-            tap_obj.insert("direction".to_string(), json!(direction));
-        }
+        // Always sent: the verb's own default is "speak", not this helper's
+        // "both", so omitting it would tap less than the caller asked for.
+        tap_obj.insert("direction".to_string(), json!(direction));
         if codec != "PCMU" {
             tap_obj.insert("codec".to_string(), json!(codec));
         }
@@ -1469,6 +1569,51 @@ impl FunctionResult {
             "role": role,
             "message_text": message_text
         });
+        self.execute_rpc("ai_message", Some(params), Some(call_id), None)
+    }
+
+    /// Send a message and/or `global_data` to an AI agent on another call —
+    /// the full form of [`rpc_ai_message`](FunctionResult::rpc_ai_message).
+    ///
+    /// `message_text` lands as a turn in the other agent's conversation;
+    /// `global_data` is MERGED into the other call's `global_data`, silent until
+    /// something expands it (`${global_data.key}` in the destination step).
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err("rpc_ai_message needs message_text, global_data, or both")`
+    /// when both are `None`.
+    pub fn rpc_ai_message_with(
+        &mut self,
+        call_id: &str,
+        message_text: Option<&str>,
+        role: Option<&str>,
+        global_data: Option<Value>,
+    ) -> Result<&mut Self, String> {
+        let mut params = Map::new();
+        if let Some(text) = message_text {
+            params.insert("role".to_string(), json!(role.unwrap_or("system")));
+            params.insert("message_text".to_string(), json!(text));
+        }
+        if let Some(data) = global_data {
+            params.insert("global_data".to_string(), data);
+        }
+        if params.is_empty() {
+            return Err("rpc_ai_message needs message_text, global_data, or both".to_string());
+        }
+        Ok(self.execute_rpc(
+            "ai_message",
+            Some(Value::Object(params)),
+            Some(call_id),
+            None,
+        ))
+    }
+
+    /// Merge `data` into another call's `global_data`, with no conversation
+    /// turn — use it when the other call needs a value rather than an
+    /// instruction (the destination prompt reads it with `${global_data.key}`).
+    pub fn rpc_ai_global_data(&mut self, call_id: &str, data: Value) -> &mut Self {
+        let params = json!({"global_data": data});
         self.execute_rpc("ai_message", Some(params), Some(call_id), None)
     }
 
@@ -2219,14 +2364,15 @@ mod tests {
     }
 
     #[test]
-    fn test_execute_swml_transfer_true_adds_inner_transfer_key() {
-        // Python: transfer=True sets "transfer":"true" INSIDE the SWML dict.
+    fn test_execute_swml_transfer_true_adds_sibling_transfer_key() {
+        // transfer rides BESIDE the SWML document, never inside it.
         let mut fr = FunctionResult::new();
         fr.execute_swml(
             json!({"version": "1.0.0", "sections": {"main": []}}),
             Some(true),
         );
-        assert_eq!(action0(&fr)["SWML"]["transfer"], "true");
+        assert_eq!(action0(&fr)["transfer"], "true");
+        assert!(action0(&fr)["SWML"].get("transfer").is_none());
     }
 
     #[test]
@@ -2345,8 +2491,19 @@ mod tests {
     }
 
     #[test]
+    fn test_change_voice_emits_action() {
+        let mut fr = FunctionResult::new();
+        fr.change_voice("elevenlabs.rachel");
+        assert_eq!(
+            fr.to_value()["action"],
+            json!([{"change_voice": "elevenlabs.rachel"}])
+        );
+    }
+
+    #[test]
     fn test_join_conference_max_participants_err() {
-        for bad in [300_i64, 0, -5] {
+        // The reference's floor is 2 (no upper cap: the platform enforces its own).
+        for bad in [1_i64, 0, -5] {
             let mut fr = FunctionResult::new();
             let err = fr
                 .join_conference(
@@ -2370,7 +2527,10 @@ mod tests {
                     None,
                 )
                 .unwrap_err();
-            assert_eq!(err, "max_participants must be a positive integer <= 250");
+            assert_eq!(
+                err,
+                format!("max_participants must be an integer of at least 2, got {bad}")
+            );
         }
     }
 
@@ -2526,14 +2686,15 @@ mod tests {
 
     #[test]
     fn test_tap_defaults_omit_optional_keys() {
-        // Python tap(): only `uri` always present; direction/codec/rtp_ptime
-        // omitted at their defaults; SWML-wrapped.
+        // Python tap(): `uri` and `direction` always present (the verb's own
+        // direction default is "speak", not the helper's "both");
+        // codec/rtp_ptime omitted at their defaults; SWML-wrapped.
         let mut fr = FunctionResult::new();
         fr.tap("rtp://192.168.1.1:5000", None, None, None, None, None)
             .unwrap();
         let tap = &swml_main(&fr)[0]["tap"];
         assert_eq!(tap["uri"], "rtp://192.168.1.1:5000");
-        assert!(tap.get("direction").is_none());
+        assert_eq!(tap["direction"], "both");
         assert!(tap.get("codec").is_none());
         assert!(tap.get("rtp_ptime").is_none());
         assert!(tap.get("control_id").is_none());
@@ -2562,18 +2723,31 @@ mod tests {
     }
 
     #[test]
-    fn test_tap_direction_hear_allowed() {
+    fn test_tap_direction_listen_allowed() {
         let mut fr = FunctionResult::new();
         fr.tap(
             "rtp://1.2.3.4:5000",
             None,
-            Some("hear".into()),
+            Some("listen".into()),
             None,
             None,
             None,
         )
         .unwrap();
-        assert_eq!(swml_main(&fr)[0]["tap"]["direction"], "hear");
+        assert_eq!(swml_main(&fr)[0]["tap"]["direction"], "listen");
+        // `hear` is not a direction the engine's tap validator accepts.
+        let mut bad = FunctionResult::new();
+        let err = bad
+            .tap(
+                "rtp://1.2.3.4:5000",
+                None,
+                Some("hear".into()),
+                None,
+                None,
+                None,
+            )
+            .unwrap_err();
+        assert_eq!(err, "direction must be one of ['speak', 'listen', 'both']");
     }
 
     #[test]
@@ -2589,7 +2763,7 @@ mod tests {
                 None,
             )
             .unwrap_err();
-        assert_eq!(err, "direction must be one of ['speak', 'hear', 'both']");
+        assert_eq!(err, "direction must be one of ['speak', 'listen', 'both']");
         assert!(fr.to_value().get("action").is_none());
     }
 

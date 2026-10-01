@@ -196,13 +196,23 @@ impl DataMap {
         self
     }
 
+    /// Set the JSON request body for the last webhook — the same as
+    /// [`params`](Self::params).
+    ///
+    /// The platform reads a webhook's body from its `params` field and has no
+    /// `body` field, so this sets `params` (a `body` key would be
+    /// schema-forbidden and silently discard the payload).
+    pub fn body(&mut self, data: Value) -> &mut Self {
+        self.params(data)
+    }
+
     /// Set params on the last webhook — the method for POST/PUT request data.
     ///
     /// `params` is part of the webhook contract: `schema.json` `$defs/Webhook` lists
     /// it among the ten permitted properties and forbids everything else, and the
-    /// engine's webhook readers look it up. There is deliberately no `body` setter —
-    /// a `body` key is schema-forbidden and read by no engine reader, so writing one
-    /// produced an invalid document and silently discarded the caller's payload.
+    /// engine's webhook readers look it up. The platform sends `params` as the
+    /// request's JSON body, so a webhook with params is sent as a POST whatever
+    /// its method; put query parameters in the URL instead.
     pub fn params(&mut self, data: Value) -> &mut Self {
         if let Some(Value::Object(map)) = self.webhooks.last_mut() {
             map.insert("params".to_string(), data);
@@ -566,6 +576,19 @@ mod tests {
             val["data_map"]["webhooks"][0]["params"]["q"],
             "${args.query}"
         );
+    }
+
+    /// `body` sends its data as the webhook's `params` (the platform's body
+    /// field) and never writes a `body` key.
+    #[test]
+    fn test_body_sets_params() {
+        let mut dm = DataMap::new("func");
+        dm.webhook("POST", "https://api.example.com", None, None, None, None);
+        dm.body(json!({"q": "${args.query}"}));
+        let val = dm.to_swaig_function();
+        let wh = &val["data_map"]["webhooks"][0];
+        assert_eq!(wh["params"]["q"], "${args.query}");
+        assert!(wh.get("body").is_none());
     }
 
     #[test]

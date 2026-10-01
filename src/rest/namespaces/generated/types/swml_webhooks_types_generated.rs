@@ -5,18 +5,13 @@
 // Read-side wire types (open shapes) — method-less serde structs / closed-set
 // enums. Regenerate with: python3 scripts/generate_rest.py
 //
-// Two narrow lint allows, both grounded in the generated wire shape:
-//   * non_camel_case_types — a few wire schema keys carry dotted names
-//     (``Types.StatusCodes.StatusCode400``); the type identifier folds the dots
-//     to underscores (``Types_StatusCodes_StatusCode400``) and must stay verbatim
-//     so it matches the wire schema key, which the naming lint would rewrite.
-//   * clippy::doc_markdown — the generated doc comments echo raw wire schema key
-//     names in prose; backticking every one mechanically is not meaningful here.
-#![allow(non_camel_case_types, clippy::doc_markdown)]
+// A wire schema key with a dotted name (``Types.StatusCodes.StatusCode400``)
+// folds to an underscored type identifier that must stay verbatim to match the
+// key; only those items carry an item-level `non_camel_case_types` allow.
 
 use serde::{Deserialize, Serialize};
 
-/// `SwmlRequestData` — generated read-side wire type ('swml-webhooks' REST API, schema 'SwmlRequestData').
+/// `SwmlRequestData` — generated read-side wire type (`swml-webhooks` REST API, schema `SwmlRequestData`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -32,7 +27,7 @@ pub struct SwmlRequestData {
     pub params: Option<serde_json::Value>,
 }
 
-/// `SwmlRequestCallParent` — generated read-side wire type ('swml-webhooks' REST API, schema 'SwmlRequestCallParent').
+/// `SwmlRequestCallParent` — generated read-side wire type (`swml-webhooks` REST API, schema `SwmlRequestCallParent`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -46,7 +41,7 @@ pub struct SwmlRequestCallParent {
     pub node_id: Option<String>,
 }
 
-/// `SwmlRequestCallPeer` — generated read-side wire type ('swml-webhooks' REST API, schema 'SwmlRequestCallPeer').
+/// `SwmlRequestCallPeer` — generated read-side wire type (`swml-webhooks` REST API, schema `SwmlRequestCallPeer`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -58,7 +53,7 @@ pub struct SwmlRequestCallPeer {
     pub node_id: Option<String>,
 }
 
-/// `SwmlRequestCallPhone` — generated read-side wire type ('swml-webhooks' REST API, schema 'SwmlRequestCallPhone').
+/// `SwmlRequestCallPhone` — generated read-side wire type (`swml-webhooks` REST API, schema `SwmlRequestCallPhone`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -110,7 +105,7 @@ pub struct SwmlRequestCallPhone {
     pub headers: Option<serde_json::Value>,
 }
 
-/// `SwmlRequestCallPhoneHeadersItem` — generated read-side wire type ('swml-webhooks' REST API, schema 'SwmlRequestCallPhoneHeadersItem').
+/// `SwmlRequestCallPhoneHeadersItem` — generated read-side wire type (`swml-webhooks` REST API, schema `SwmlRequestCallPhoneHeadersItem`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -122,7 +117,7 @@ pub struct SwmlRequestCallPhoneHeadersItem {
     pub value: Option<String>,
 }
 
-/// `SwmlRequestCallSip` — generated read-side wire type ('swml-webhooks' REST API, schema 'SwmlRequestCallSip').
+/// `SwmlRequestCallSip` — generated read-side wire type (`swml-webhooks` REST API, schema `SwmlRequestCallSip`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -172,7 +167,7 @@ pub struct SwmlRequestCallSip {
     pub sip_data: Option<serde_json::Value>,
 }
 
-/// `SwmlRequestCallSipHeadersItem` — generated read-side wire type ('swml-webhooks' REST API, schema 'SwmlRequestCallSipHeadersItem').
+/// `SwmlRequestCallSipHeadersItem` — generated read-side wire type (`swml-webhooks` REST API, schema `SwmlRequestCallSipHeadersItem`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -184,7 +179,7 @@ pub struct SwmlRequestCallSipHeadersItem {
     pub value: Option<String>,
 }
 
-/// `SwmlRequestCallSipSipData` — generated read-side wire type ('swml-webhooks' REST API, schema 'SwmlRequestCallSipSipData').
+/// `SwmlRequestCallSipSipData` — generated read-side wire type (`swml-webhooks` REST API, schema `SwmlRequestCallSipSipData`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -228,7 +223,7 @@ pub struct SwmlRequestCallSipSipData {
     pub sip_p_asserted_identity: Option<String>,
 }
 
-/// `SwmlRequestCallWebrtc` — generated read-side wire type ('swml-webhooks' REST API, schema 'SwmlRequestCallWebrtc').
+/// `SwmlRequestCallWebrtc` — generated read-side wire type (`swml-webhooks` REST API, schema `SwmlRequestCallWebrtc`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -274,7 +269,7 @@ pub struct SwmlRequestCallWebrtc {
     pub to: Option<String>,
 }
 
-/// `SwmlRequestCallOther` — generated read-side wire type ('swml-webhooks' REST API, schema 'SwmlRequestCallOther').
+/// `SwmlRequestCallOther` — generated read-side wire type (`swml-webhooks` REST API, schema `SwmlRequestCallOther`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.

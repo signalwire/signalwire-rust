@@ -503,3 +503,69 @@ fn test_small_queues_get_member() {
     assert_eq!(entry.method, "GET");
     assert_eq!(entry.path, "/api/relay/rest/queues/q-1/members/mem-7");
 }
+
+// ---------------------------------------------------------------------------
+// Redirect / text successes — recordings download, billing statement CSV
+// ---------------------------------------------------------------------------
+
+/// A recording download answers 302 to a presigned URL: the SDK returns that
+/// `Location` WITHOUT following it (the internal no-redirect marker never
+/// reaches the wire).
+#[test]
+fn test_recordings_download_returns_redirect_location() {
+    let _g = common::mocktest::begin();
+    let c = common::mocktest::client();
+    let location = c
+        .recordings()
+        .download("rec-1", &HashMap::new(), None)
+        .expect("download");
+    assert!(
+        !location.is_empty(),
+        "download must return the Location URL"
+    );
+    let entry = common::mocktest::journal_last();
+    assert_eq!(entry.method, "GET");
+    assert_eq!(entry.path, "/api/relay/rest/recordings/rec-1.mp3");
+    assert_eq!(entry.response_status, Some(302));
+    assert!(
+        !entry.headers.contains_key("x-signalwire-sdk-no-redirect"),
+        "the internal no-redirect marker must not be sent"
+    );
+}
+
+/// The billing statement CSV is a `text/csv` success, returned as text, and
+/// the Space Administration API goes out under the Personal Access Token.
+#[test]
+fn test_space_billing_statement_csv_is_text_over_pat() {
+    let _g = common::mocktest::begin();
+    let c = common::mocktest::pat_client();
+    let _csv: String = c
+        .space_admin()
+        .billing_statements()
+        .get_csv(&HashMap::new(), None)
+        .expect("get_csv");
+    let entry = common::mocktest::journal_last();
+    assert_eq!(entry.method, "GET");
+    assert_eq!(entry.path, "/api/space/billing_statement.csv");
+    assert_eq!(
+        entry.matched_route.as_deref(),
+        Some("space.get_billing_statement_csv")
+    );
+    let auth = entry.headers.get("authorization").expect("auth header");
+    assert!(auth.starts_with("Basic "), "{auth}");
+}
+
+/// A client with no Personal Access Token fails a Space Administration call
+/// before sending anything, naming the missing credential.
+#[test]
+fn test_space_without_pat_fails_without_sending() {
+    let _g = common::mocktest::begin();
+    let c = common::mocktest::client();
+    let err = c
+        .space_admin()
+        .members()
+        .list(&HashMap::new(), None)
+        .expect_err("no PAT");
+    assert!(err.to_string().contains("personal_access_token"), "{err}");
+    assert!(common::mocktest::journal_all().is_empty());
+}

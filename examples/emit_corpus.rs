@@ -440,18 +440,18 @@ fn corpus() -> Vec<Entry> {
             )
             .expect("tap.speak_pcma");
         }),
-        entry!("tap.hear_pcmu", "", |fr| {
-            // Typed path: TapDirection::Hear / Codec::Pcmu collapse to the same
-            // wire strings as "hear"/"PCMU".
+        entry!("tap.listen_pcmu", "", |fr| {
+            // Typed path: TapDirection::Listen / Codec::Pcmu collapse to the same
+            // wire strings as "listen"/"PCMU".
             fr.tap(
                 "wss://ex.com/tap",
                 None,
-                Some(TapDirection::Hear.into()),
+                Some(TapDirection::Listen.into()),
                 Some(Codec::Pcmu.into()),
                 None,
                 None,
             )
-            .expect("tap.hear_pcmu");
+            .expect("tap.listen_pcmu");
         }),
         entry!("tap.both_full", "", |fr| {
             fr.tap(
@@ -629,6 +629,51 @@ fn corpus() -> Vec<Entry> {
                 json!({"version": "1.0.0", "sections": {"main": [{"hangup": {}}]}}),
                 None,
             );
+        }),
+        // ---- structured tool response (tool_result / tool_prompt) -----------
+        entry!("tool_response.ctor", "", |fr| {
+            fr.set_tool_response(
+                Some("Order 1042 placed."),
+                Some("Tell the caller their order number."),
+            );
+        }),
+        entry!("tool_response.set", "", |fr| {
+            fr.set_tool_response(
+                Some("Balance is $12.50."),
+                Some("Read the balance to the caller."),
+            );
+        }),
+        entry!("tool_response.result_only", "", |fr| {
+            fr.set_tool_response(Some("Saved."), None);
+        }),
+        // ---- hold with a prompt and step routing ----------------------------
+        entry!("hold.prompt", "", |fr| {
+            fr.hold_with(Some("Please hold while I check."), None, None, None);
+        }),
+        entry!("hold.routing", "", |fr| {
+            fr.hold_with(
+                Some("One moment."),
+                Some(60),
+                Some("resume"),
+                Some("timed_out"),
+            );
+        }),
+        // ---- RPC global data ------------------------------------------------
+        entry!("rpc_ai_message.global_data", "", |fr| {
+            fr.rpc_ai_message_with(
+                "call-abc",
+                Some("The caller is back."),
+                None,
+                Some(json!({"status": "returned"})),
+            )
+            .expect("rpc_ai_message.global_data");
+        }),
+        entry!("rpc_ai_message.data_only", "", |fr| {
+            fr.rpc_ai_message_with("call-abc", None, None, Some(json!({"order_id": "1042"})))
+                .expect("rpc_ai_message.data_only");
+        }),
+        entry!("rpc_ai_global_data", "", |fr| {
+            fr.rpc_ai_global_data("call-abc", json!({"order_id": "1042", "paid": true}));
         }),
     ]
 }

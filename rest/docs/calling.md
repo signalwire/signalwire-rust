@@ -46,14 +46,13 @@ let _ = client.calling().end("call-id", CallingEndRequest::new(), None).unwrap()
 
 ## Playing Media
 
-`play` takes a `CallingPlayRequest::new(control_id, play)` — a `control_id` you
-choose (it names this playback for later pause/resume/stop calls) and the media
-array value:
+`play` takes a `CallingPlayRequest::new(play)` where `play` is the media array
+value (the `control_id` naming this playback is generated when you don't set one):
 
 ```rust
 let _ = client.calling().play(
     "call-id",
-    CallingPlayRequest::new("play-1", json!([
+    CallingPlayRequest::new(json!([
         {"type": "tts", "params": {"text": "Please hold."}}
     ])),
     None,

@@ -931,7 +931,27 @@ def _closer_to_reference(
     cand_gap, inc_gap = abs(len(cand) - len(ref)), abs(len(inc) - len(ref))
     if cand_gap != inc_gap:
         return cand_gap < inc_gap
-    return len(set(ref) & set(cand)) > len(set(ref) & set(inc))
+    cand_names, inc_names = len(set(ref) & set(cand)), len(set(ref) & set(inc))
+    if cand_names != inc_names:
+        return cand_names > inc_names
+
+    # Same arity, same shared names (two zero-arg accessors landing on one
+    # reference attribute — RestClient `space()` hostname vs `space_admin()`
+    # namespace): the spelling whose RETURN type is the reference's wins.
+    # Compared by class LEAF (module paths are port idiom; the drift tool compares
+    # class returns by leaf name too).
+    def _leaf(ret: object) -> object:
+        return (
+            ret.rsplit(".", 1)[-1]
+            if isinstance(ret, str) and ret.startswith("class:")
+            else ret
+        )
+
+    ref_ret = _leaf((ref_sig or {}).get("returns"))
+    return (
+        _leaf(candidate.get("returns")) == ref_ret
+        and _leaf(incumbent.get("returns")) != ref_ret
+    )
 
 
 # Rust parameter names used as the ``*args`` / ``**kwargs`` variadic-equivalent

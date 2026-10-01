@@ -11,22 +11,11 @@
 // generator — so these catch SDK-vs-contract drift, not a generator self-snapshot.
 // Full-mock harness fixtures (common::mocktest).
 
-#![allow(unused_imports)]
-
 #[path = "common/mod.rs"]
 mod common;
 
 use serde_json::json;
-use signalwire::rest::namespaces::generated::calling_resources_generated as cg;
-use signalwire::rest::namespaces::generated::chat_resources_generated as chat_gen;
-use signalwire::rest::namespaces::generated::datasphere_resources_generated as datasphere_gen;
-use signalwire::rest::namespaces::generated::fabric_resources_generated as fabric_gen;
 use signalwire::rest::namespaces::generated::messages_resources_generated as messages_gen;
-use signalwire::rest::namespaces::generated::project_resources_generated as project_gen;
-use signalwire::rest::namespaces::generated::pubsub_resources_generated as pubsub_gen;
-use signalwire::rest::namespaces::generated::relay_rest_resources_generated as relay_gen;
-use signalwire::rest::namespaces::generated::space_resources_generated as space_gen;
-use signalwire::rest::namespaces::generated::video_resources_generated as video_gen;
 
 #[test]
 fn test_messages_create_success() {

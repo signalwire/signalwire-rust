@@ -258,32 +258,73 @@ impl SchemaUtils {
         }
     }
 
-    /// The set of KNOWN top-level property names for a verb's config object,
-    /// resolving one `$ref` into `$defs` when the verb's inner schema is a
-    /// reference (the `ai` verb's inner schema is `{"$ref": "#/$defs/AIObject"}`,
-    /// so the property names live on `AIObject`, not inline). Returns an empty
-    /// set when the names can't be determined (an open/unknown shape), which
-    /// callers treat as "don't reject any key".
+    /// The set of KNOWN top-level property names for a verb's config object —
+    /// the settled `anyOf` contract (porting-sdk task #223,
+    /// `docs/legacy-census/DISC-g-d21.md` §1.4/§4), applied exactly:
+    ///
+    /// * follow ONE `$ref` hop into `$defs` (the verb body may be a reference);
+    /// * a body with no `anyOf`/`oneOf`: its `properties` when it is a closed
+    ///   object or an object-typed node;
+    /// * a body that IS an `anyOf`/`oneOf` (the C grammar's real multi-form body —
+    ///   `check_method_type_and_unknown_params`, `swml_schema.c`, admits an object,
+    ///   string, number or array): resolve each arm (one `$ref` hop) and keep the
+    ///   arms that are CLOSED objects-with-properties. **Exactly one** such arm →
+    ///   its property set. Zero or more than one → empty (ambiguous — a shallow
+    ///   check must not guess).
+    ///
+    /// An empty set means "the names can't be determined", which the caller
+    /// treats as "don't reject any key".
     fn verb_top_level_property_names(&self, verb_name: &str) -> std::collections::HashSet<String> {
         // `get_verb_properties` returns the inner `{verb_name: <schema>}` node.
-        let inner = self.get_verb_properties(verb_name);
-        // Resolve one `$ref` hop into `$defs` if present.
-        let resolved: std::borrow::Cow<'_, Map<String, Value>> =
-            if let Some(ref_str) = inner.get("$ref").and_then(|r| r.as_str()) {
-                let prefix = "#/$defs/";
-                ref_str
-                    .strip_prefix(prefix)
-                    .and_then(|name| self.schema.get("$defs").and_then(|d| d.get(name)))
-                    .and_then(|d| d.as_object())
-                    .map_or(std::borrow::Cow::Borrowed(&inner), |o| {
-                        std::borrow::Cow::Owned(o.clone())
-                    })
+        let inner = Value::Object(self.get_verb_properties(verb_name));
+        let body = self.deref_one(&inner);
+        let arms = ["anyOf", "oneOf"]
+            .iter()
+            .find_map(|k| body.get(*k).and_then(Value::as_array));
+        let Some(arms) = arms else {
+            let keys = Self::property_names(body);
+            let object_typed = body.get("type").and_then(Value::as_str) == Some("object");
+            return if Self::is_closed(body) || object_typed {
+                keys
             } else {
-                std::borrow::Cow::Borrowed(&inner)
+                std::collections::HashSet::new()
             };
-        resolved
-            .get("properties")
-            .and_then(|p| p.as_object())
+        };
+        let mut closed_arms = arms
+            .iter()
+            .map(|arm| self.deref_one(arm))
+            .filter(|arm| Self::is_closed(arm))
+            .map(Self::property_names)
+            .filter(|keys| !keys.is_empty());
+        match (closed_arms.next(), closed_arms.next()) {
+            (Some(only), None) => only,
+            _ => std::collections::HashSet::new(),
+        }
+    }
+
+    /// Follow ONE local `$ref` (`#/$defs/<name>`) hop; any other node, or a
+    /// dangling reference, is returned unchanged.
+    fn deref_one<'a>(&'a self, node: &'a Value) -> &'a Value {
+        node.get("$ref")
+            .and_then(Value::as_str)
+            .and_then(|r| r.strip_prefix("#/$defs/"))
+            .and_then(|name| self.schema.get("$defs").and_then(|d| d.get(name)))
+            .unwrap_or(node)
+    }
+
+    /// A CLOSED object node: `unevaluatedProperties: {"not": {}}` /
+    /// `unevaluatedProperties: false` / `additionalProperties: false`.
+    fn is_closed(node: &Value) -> bool {
+        let up = node.get("unevaluatedProperties");
+        up == Some(&serde_json::json!({"not": {}}))
+            || up == Some(&Value::Bool(false))
+            || node.get("additionalProperties") == Some(&Value::Bool(false))
+    }
+
+    /// The node's `properties` key names (empty when it declares none).
+    fn property_names(node: &Value) -> std::collections::HashSet<String> {
+        node.get("properties")
+            .and_then(Value::as_object)
             .map(|o| o.keys().cloned().collect())
             .unwrap_or_default()
     }
@@ -712,7 +753,14 @@ mod tests {
             !props.is_empty(),
             "expected non-empty properties for 'answer'"
         );
-        assert_eq!(props.get("type").and_then(|v| v.as_str()), Some("object"));
+        // The bundled body is the C grammar's multi-form `anyOf` (object /
+        // string / number / array), or a plain object node.
+        assert!(
+            props.contains_key("anyOf")
+                || props.get("type").and_then(|v| v.as_str()) == Some("object"),
+            "unexpected answer body shape: {:?}",
+            props.keys().collect::<Vec<_>>()
+        );
     }
 
     #[test]
@@ -1086,5 +1134,77 @@ mod tests {
         );
         let (valid, errors) = su.validate_verb("answer", &json!({"max_duration": 5}));
         assert!(valid, "valid answer config must pass: {errors:?}");
+    }
+
+    // ---- #223: the anyOf closed-key contract (exactly one closed arm) ------
+    //
+    // DISC-g-d21: the verb-body resolver behind the handler-verb (`ai`) closed-key
+    // check used to follow one `$ref` and read `.properties`; on an `anyOf`-shaped
+    // body it found none and the caller read the empty set as "accept every key",
+    // so a misspelled `ai` key passed silently. These pin the contract.
+
+    /// The bundled `ai` body IS `anyOf`-shaped (the fixture shape the regression
+    /// below depends on — without it the rejection test would pass vacuously on a
+    /// `$ref`-shaped artifact) and a misspelled top-level key is REJECTED.
+    #[test]
+    fn ai_anyof_body_rejects_misspelled_top_level_key() {
+        let (_g, su) = fresh();
+        let inner = su.get_verb_properties("ai");
+        assert!(
+            inner.contains_key("anyOf"),
+            "fixture: the bundled ai body must be anyOf-shaped, got keys {:?}",
+            inner.keys().collect::<Vec<_>>()
+        );
+        let (ok, errors) =
+            su.validate_verb_top_keys("ai", &json!({"prompt": {"text": "hi"}, "temperatur": 0.3}));
+        assert!(!ok, "a misspelled ai key must be rejected");
+        assert!(
+            errors.iter().any(|e| e.contains("temperatur")),
+            "{errors:?}"
+        );
+        let (ok, errors) = su.validate_verb_top_keys(
+            "ai",
+            &json!({"prompt": {"text": "hi"}, "params": {}, "SWAIG": {}, "post_prompt_url": "x"}),
+        );
+        assert!(ok, "known ai keys must pass: {errors:?}");
+    }
+
+    /// Exactly one closed object arm engages; two closed arms are ambiguous and
+    /// disengage (the contract, not a union); a non-object arm never counts.
+    #[test]
+    fn anyof_resolver_is_exactly_one_closed_arm() {
+        let _g = env_guard();
+        let closed = |k: &str| json!({"type": "object", "properties": {k: {}}, "unevaluatedProperties": {"not": {}}});
+        let schema = json!({
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "type": "object",
+            "$defs": {
+                "SWMLMethod": {"anyOf": [
+                    {"$ref": "#/$defs/SingleMethod"},
+                    {"$ref": "#/$defs/MultiMethod"}
+                ]},
+                "SingleMethod": {
+                    "type": "object",
+                    "properties": {"single": {"anyOf": [closed("a"), {"type": "string"}]}},
+                    "unevaluatedProperties": {"not": {}}
+                },
+                "MultiMethod": {
+                    "type": "object",
+                    "properties": {"multi": {"anyOf": [closed("a"), closed("b")]}},
+                    "unevaluatedProperties": {"not": {}}
+                }
+            }
+        });
+        let path = write_temp_schema("anyof_contract.json", &schema);
+        let su = SchemaUtils::new(Some(path.to_string_lossy().to_string()), true);
+        let (ok, errors) = su.validate_verb_top_keys("single", &json!({"a": 1, "zzz": 2}));
+        assert!(!ok, "one closed arm must engage: {errors:?}");
+        let (ok, _) = su.validate_verb_top_keys("single", &json!({"a": 1}));
+        assert!(ok);
+        let (ok, errors) = su.validate_verb_top_keys("multi", &json!({"a": 1, "zzz": 2}));
+        assert!(
+            ok,
+            "two closed arms are ambiguous and must disengage: {errors:?}"
+        );
     }
 }

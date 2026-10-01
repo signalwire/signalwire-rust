@@ -122,12 +122,53 @@ def _flatten_union(defs: dict, node) -> dict:
     return out
 
 
+def _reference_shaping(psdk: Path):
+    """The reference generator's two schema-shaping passes, loaded by path from
+    porting-sdk (``generate_python_rest_types.py``) so the class set and names are
+    the reference's BY CONSTRUCTION rather than re-derived:
+
+    * ``drop_deprecated_swml_verbs`` — a ``deprecated: true`` verb (dial/eval/if,
+      owner ruling 2026-09-24) is not SDK surface: neither its wrapper nor config.
+    * ``hoist_inline_objects`` — every inline property-bearing object is lifted to
+      a named $def (``AiConfig``, ``AiParams``, ``AiHintsItem`` ...), so an
+      ``anyOf``-shaped verb body keeps its typed shape.
+    """
+    scripts = psdk / "scripts"
+    if str(scripts) not in sys.path:
+        sys.path.insert(0, str(scripts))
+    spec = importlib.util.spec_from_file_location(
+        "_psdk_generate_python_rest_types", scripts / "generate_python_rest_types.py"
+    )
+    if spec is None or spec.loader is None:  # pragma: no cover
+        raise SystemExit("generate_swml_verbs.py: cannot load the reference generator")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def _shaped_defs(psdk: Path) -> tuple[dict, tuple[str, ...]]:
+    """schema.json ``$defs`` after the reference's deprecated-verb drop and
+    inline-object hoist, plus the SWAIG envelope type names (declared by the SWAIG
+    action module, so not re-declared here)."""
+    ref = _reference_shaping(psdk)
+    defs, _dropped = ref.drop_deprecated_swml_verbs(_load_defs(psdk))
+    verb_roots: dict[str, str] = {}
+    for arm in (defs.get("SWMLMethod") or {}).get("anyOf") or []:
+        wrapper = _ref_leaf(arm.get("$ref", ""))
+        wprops = list(((defs.get(wrapper) or {}).get("properties") or {}).keys())
+        if wprops:
+            verb_roots[wrapper] = wprops[0]
+    defs, _hoisted = ref.hoist_inline_objects(defs, verb_roots)
+    return defs, tuple(ref.SWAIG_ENVELOPE_TYPES)
+
+
 def build_types(psdk: Path) -> list[tuple[str, dict, str, str | None]]:
     """Return [(rs_name, properties, desc, spec_name)] in reference declaration
     order. ``spec_name`` is the field's containing SPEC schema name (the $defs key)
     passed to the x-sdk-overlay check — ``None`` for synthesized union configs that
     have no single spec schema name."""
-    defs = _load_defs(psdk)
+    defs, envelope = _shaped_defs(psdk)
+    imported = [n for n in envelope if n in defs]
     out: list[tuple[str, dict, str, str | None]] = []
     seen: set = set()
 
@@ -141,6 +182,11 @@ def build_types(psdk: Path) -> list[tuple[str, dict, str, str | None]]:
     for raw_name, node in defs.items():
         if not isinstance(node, dict) or not GR.is_object_schema(node):
             continue
+        if raw_name in imported or any(
+            raw_name.startswith(n) and raw_name[len(n) : len(n) + 1].isupper()
+            for n in imported
+        ):
+            continue  # declared by the SWAIG action module (and its hoisted interiors)
         add(
             GR.type_name(raw_name),
             node.get("properties") or {},
