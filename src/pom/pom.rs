@@ -14,7 +14,7 @@ use std::fmt;
 
 use serde_json::Value;
 
-use crate::pom::section::Section;
+use crate::pom::section::{Bullets, Section};
 
 /// Error returned by the [`PromptObjectModel`] parse constructors
 /// ([`from_json`](PromptObjectModel::from_json) /
@@ -51,9 +51,7 @@ impl fmt::Display for PomParseError {
 
 impl std::error::Error for PomParseError {}
 
-/// Root container for a Prompt Object Model document.
-///
-/// Mirrors Python's `signalwire.pom.pom.PromptObjectModel`. Construct
+/// Root container for a Prompt Object Model document. Construct
 /// with [`PromptObjectModel::new`], populate with [`add_section`],
 /// then render via [`render_markdown`], [`render_xml`], [`to_json`],
 /// or [`to_yaml`].
@@ -72,7 +70,7 @@ pub struct PromptObjectModel {
     /// `add_section`).
     pub sections: Vec<Section>,
     /// When true, `render_markdown` writes per-section numbering diagnostics.
-    /// Mirrors the reference's `PromptObjectModel(debug=False)` ctor param,
+    /// Matches the `PromptObjectModel(debug=False)` ctor param,
     /// which it stores as the public attribute `self.debug` and consults at
     /// `pom.py:509` and `:530`.
     pub debug: bool,
@@ -89,7 +87,7 @@ impl PromptObjectModel {
     }
 
     /// Construct an empty model with debug rendering diagnostics enabled.
-    /// Mirrors the reference's `PromptObjectModel(debug=True)`.
+    /// Matches the `PromptObjectModel(debug=True)`.
     pub fn with_debug(debug: bool) -> Self {
         PromptObjectModel {
             sections: Vec::new(),
@@ -97,8 +95,7 @@ impl PromptObjectModel {
         }
     }
 
-    /// Parse a JSON string into a [`PromptObjectModel`]. Mirrors
-    /// Python's `PromptObjectModel.from_json(json_data)`.
+    /// Parse a JSON string into a [`PromptObjectModel`].
     ///
     /// Returns [`PomParseError`] with a descriptive message on parse
     /// errors, matching Python's `ValueError`.
@@ -119,8 +116,7 @@ impl PromptObjectModel {
         Self::from_value(&value)
     }
 
-    /// Parse a YAML string into a [`PromptObjectModel`]. Mirrors
-    /// Python's `PromptObjectModel.from_yaml(yaml_data)`.
+    /// Parse a YAML string into a [`PromptObjectModel`].
     ///
     /// # Errors
     ///
@@ -171,7 +167,7 @@ impl PromptObjectModel {
 
     /// Append a top-level section with the given title and body.
     ///
-    /// Mirrors Python's `PromptObjectModel.add_section(title, body=...)`.
+    /// Matches `PromptObjectModel.add_section(title, body=...)`.
     /// Only the *first* section may pass `title = None`; subsequent
     /// `None` titles return `Err`.
     ///
@@ -201,7 +197,12 @@ impl PromptObjectModel {
 
     /// Append a top-level section with title + body in one call.
     /// Convenience wrapper that mirrors Python's keyword-style
-    /// `add_section(title=..., body=...)`.
+    /// `add_section(title=..., body=..., bullets=..., numbered=...,
+    /// numberedBullets=...)` — the full optional-kwarg form. Each
+    /// omittable kwarg is an `Option`, which is how Rust spells
+    /// "the caller may leave this out": `None` reproduces the
+    /// reference's default (`body=""`, `bullets=[]`,
+    /// `numbered=None`, `numberedBullets=false`).
     ///
     /// # Errors
     ///
@@ -213,16 +214,21 @@ impl PromptObjectModel {
     pub fn add_section_with(
         &mut self,
         title: Option<String>,
-        body: impl Into<String>,
+        body: Option<String>,
+        bullets: Option<Bullets>,
+        numbered: Option<bool>,
+        numbered_bullets: Option<bool>,
     ) -> Result<&mut Section, String> {
         let sec = self.add_section(title)?;
-        sec.body = body.into();
+        sec.body = body.unwrap_or_default();
+        sec.bullets = bullets.map(Bullets::into_vec).unwrap_or_default();
+        sec.numbered = numbered;
+        sec.numbered_bullets = numbered_bullets.unwrap_or(false);
         Ok(sec)
     }
 
     /// Find the first section (recursively, depth-first) with the
-    /// given title. Returns `None` when no match. Mirrors Python's
-    /// `find_section`.
+    /// given title. Returns `None` when no match.
     pub fn find_section(&self, title: &str) -> Option<&Section> {
         fn recurse<'a>(sections: &'a [Section], title: &str) -> Option<&'a Section> {
             for section in sections {
@@ -257,7 +263,7 @@ impl PromptObjectModel {
     }
 
     /// Convert the model to a `serde_json::Value` (a JSON array of
-    /// section dicts). Mirrors Python's `to_dict`. The Rust name
+    /// section dicts). Matches `to_dict`. The Rust name
     /// follows serde idiom (`to_value`) but the cross-port surface
     /// audit treats `to_value` ≡ `to_dict`.
     pub fn to_value(&self) -> Value {
@@ -299,7 +305,7 @@ impl PromptObjectModel {
     ///
     /// # Errors
     ///
-    /// The fallible `Result` signature mirrors Python's `to_yaml`. The
+    /// The fallible `Result` signature The
     /// hand-rolled emitter walks a fully-constrained document shape and
     /// always succeeds, so no `Err` is currently produced; the
     /// signature is retained for API stability and to allow
@@ -394,7 +400,7 @@ impl PromptObjectModel {
     /// Append every top-level section of `pom_to_add` as a
     /// subsection of the section identified by `target_title`.
     ///
-    /// Mirrors Python's `add_pom_as_subsection(target, pom_to_add)`
+    /// Matches `add_pom_as_subsection(target, pom_to_add)`
     /// where `target` is a section title. Returns `Err` when no
     /// section with the given title exists.
     ///
@@ -421,7 +427,7 @@ impl PromptObjectModel {
 // ─── Internal helpers ────────────────────────────────────────────────
 
 /// Recursively build a [`Section`] from a parsed JSON/YAML value.
-/// Mirrors Python's nested `build_section(d, is_subsection)` helper
+/// Matches nested `build_section(d, is_subsection)` helper
 /// inside `_from_dict`.
 fn build_section(value: &Value, is_subsection: bool, top_index: usize) -> Result<Section, String> {
     let map = value

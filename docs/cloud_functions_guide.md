@@ -107,7 +107,7 @@ let request_body = String::new();
 
 ```rust
 let (status, headers, body) =
-    agent.handle_request("POST", "/", &request_headers, &request_body);
+    agent.handle_request("POST", "/", &request_headers, Some(&request_body));
 ```
 
 ## Deployment Considerations

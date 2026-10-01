@@ -86,6 +86,10 @@ pub trait HttpTransport: Send + Sync {
 /// so any regression in serialization is caught.
 pub struct UreqTransport {
     agent: ureq::Agent,
+    /// Whether `SIGNALWIRE_REST_CA_FILE` supplied a custom trust anchor at
+    /// construction. Recorded because the resulting `TlsConfig` is silently
+    /// unused on a plaintext URL — see the downgrade refusal in `execute_raw`.
+    custom_ca: bool,
 }
 
 impl Default for UreqTransport {
@@ -95,6 +99,20 @@ impl Default for UreqTransport {
 }
 
 impl UreqTransport {
+    /// Build the real network transport.
+    ///
+    /// The agent carries **no** fixed global timeout — the per-attempt
+    /// deadline comes from the resolved `RequestOptions.timeout` and is
+    /// applied at call time. `http_status_as_error(false)` keeps a non-2xx
+    /// response an ordinary response for the client to interpret, rather
+    /// than a transport error.
+    ///
+    /// TLS verifies against the bundled webpki (Mozilla) roots and, like all
+    /// rustls users, ignores `SSL_CERT_FILE` and the OS trust store. To
+    /// trust a private or self-signed CA, point `SIGNALWIRE_REST_CA_FILE` at
+    /// a PEM bundle; it is then loaded as the **only** trust anchor.
+    /// Verification is always performed — there is no accept-invalid escape
+    /// hatch.
     pub fn new() -> Self {
         // No fixed global timeout on the agent: the per-attempt deadline is
         // supplied per request (from the resolved RequestOptions.timeout) and
@@ -109,12 +127,16 @@ impl UreqTransport {
         // test CA, or a corporate proxy CA), set SIGNALWIRE_REST_CA_FILE to a
         // PEM bundle; we load it as the *only* trust anchor. Real verification
         // against a caller-chosen CA — never disabled / accept-invalid.
-        if let Some(tls_config) = custom_ca_tls_config() {
-            builder = builder.tls_config(tls_config);
-        }
+        let custom_ca = match custom_ca_tls_config() {
+            Some(tls_config) => {
+                builder = builder.tls_config(tls_config);
+                true
+            }
+            None => false,
+        };
 
         let agent: ureq::Agent = builder.build().into();
-        UreqTransport { agent }
+        UreqTransport { agent, custom_ca }
     }
 }
 
@@ -151,7 +173,25 @@ impl UreqTransport {
         headers: &HashMap<String, String>,
         body: Option<&str>,
         timeout: Duration,
+        follow_redirects: bool,
     ) -> Result<(u16, HashMap<String, String>, String), String> {
+        // `max_redirects(0)` makes ureq hand a 3xx back as an ordinary response
+        // (its `location` header intact) instead of following it.
+        let max_redirects: u32 = if follow_redirects { 10 } else { 0 };
+        // NO SILENT DOWNGRADE. Setting SIGNALWIRE_REST_CA_FILE is a request to
+        // verify the peer against that CA — meaningless over plaintext. The
+        // agent's TlsConfig is chosen at construction and simply goes unused on
+        // an `http://` URL, so a caller who set the CA and a plain base URL (or
+        // whose paginated `next` link came back as `http://`) would have the
+        // request sent in the clear with no diagnostic. Refuse instead, naming
+        // the setting that would otherwise have been ignored.
+        if self.custom_ca && !url.starts_with("https://") {
+            return Err(format!(
+                "SIGNALWIRE_REST_CA_FILE is set (TLS verification requested) but the request \
+                 URL is not https: {url} — refusing to downgrade to plaintext. Use an https:// \
+                 base URL, or unset SIGNALWIRE_REST_CA_FILE to send in the clear deliberately."
+            ));
+        }
         // Apply the resolved per-attempt timeout to THIS request (request-level
         // config overrides the agent default). A timeout surfaces as
         // `ureq::Error::Timeout`, mapped below into the typed transport error.
@@ -162,6 +202,7 @@ impl UreqTransport {
                     .get(url)
                     .config()
                     .timeout_global(Some(timeout))
+                    .max_redirects(max_redirects)
                     .build();
                 for (k, v) in headers {
                     req = req.header(k, v);
@@ -174,6 +215,7 @@ impl UreqTransport {
                     .post(url)
                     .config()
                     .timeout_global(Some(timeout))
+                    .max_redirects(max_redirects)
                     .build();
                 for (k, v) in headers {
                     req = req.header(k, v);
@@ -189,6 +231,7 @@ impl UreqTransport {
                     .put(url)
                     .config()
                     .timeout_global(Some(timeout))
+                    .max_redirects(max_redirects)
                     .build();
                 for (k, v) in headers {
                     req = req.header(k, v);
@@ -204,6 +247,7 @@ impl UreqTransport {
                     .patch(url)
                     .config()
                     .timeout_global(Some(timeout))
+                    .max_redirects(max_redirects)
                     .build();
                 for (k, v) in headers {
                     req = req.header(k, v);
@@ -219,6 +263,7 @@ impl UreqTransport {
                     .delete(url)
                     .config()
                     .timeout_global(Some(timeout))
+                    .max_redirects(max_redirects)
                     .build();
                 for (k, v) in headers {
                     req = req.header(k, v);
@@ -258,7 +303,8 @@ impl HttpTransport for UreqTransport {
         body: Option<&str>,
         timeout: Duration,
     ) -> Result<(u16, String), String> {
-        let (status, _headers, body) = self.execute_raw(method, url, headers, body, timeout)?;
+        let (status, _headers, body) =
+            self.execute_raw(method, url, headers, body, timeout, true)?;
         Ok((status, body))
     }
 
@@ -270,7 +316,15 @@ impl HttpTransport for UreqTransport {
         body: Option<&str>,
         timeout: Duration,
     ) -> Result<(u16, HashMap<String, String>, String), String> {
-        self.execute_raw(method, url, headers, body, timeout)
+        // The client marks a request whose answer IS a redirect (a presigned
+        // download URL) with the internal NO_REDIRECT_MARKER; it is consumed here
+        // and never sent.
+        if headers.contains_key(NO_REDIRECT_MARKER) {
+            let mut sent = headers.clone();
+            sent.remove(NO_REDIRECT_MARKER);
+            return self.execute_raw(method, url, &sent, body, timeout, false);
+        }
+        self.execute_raw(method, url, headers, body, timeout, true)
     }
 }
 
@@ -284,6 +338,11 @@ pub struct StubTransport {
 }
 
 impl StubTransport {
+    /// Create a stub that answers every request with `status` and `body`
+    /// until [`set_response`](StubTransport::set_response) changes it.
+    ///
+    /// Requests are recorded in `requests` as `(method, url, body)` for
+    /// assertions.
     pub fn new(status: u16, body: &str) -> Self {
         StubTransport {
             response: std::sync::Mutex::new((status, body.to_string())),
@@ -319,6 +378,28 @@ impl HttpTransport for StubTransport {
     }
 }
 
+/// Internal request marker: the success of this request IS a redirect, so the
+/// transport must return the 3xx (with its `location`) rather than follow it.
+/// [`UreqTransport`] removes it before sending.
+pub(crate) const NO_REDIRECT_MARKER: &str = "x-signalwire-sdk-no-redirect";
+
+/// How a request's success is read.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ResponseKind {
+    /// The decoded JSON body (every ordinary endpoint).
+    Json,
+    /// The body as text (a non-JSON media type such as `text/csv`).
+    Text,
+    /// The `Location` of a 3xx, not followed (a presigned download URL).
+    Redirect,
+}
+
+/// A successful reply, per [`ResponseKind`].
+enum Reply {
+    Json(Value),
+    Text(String),
+}
+
 /// Low-level HTTP client for SignalWire REST APIs.
 ///
 /// Uses Basic Auth with `project_id:token` and returns parsed JSON
@@ -338,6 +419,16 @@ pub struct HttpClient {
 }
 
 impl HttpClient {
+    /// Build a client for `project_id` / `token` against `base_url`, using
+    /// `transport` to issue requests.
+    ///
+    /// The credentials are pre-encoded into an HTTP Basic `Authorization`
+    /// header once at construction. Trailing slashes on `base_url` are
+    /// trimmed.
+    ///
+    /// Request behaviour uses the built-in defaults — **no retry**, 30s
+    /// timeout. Use [`with_options`](HttpClient::with_options) to change
+    /// them.
     pub fn new(
         project_id: &str,
         token: &str,
@@ -389,18 +480,30 @@ impl HttpClient {
 
     // -- Accessors --
 
+    /// The project ID used as the HTTP Basic username.
     pub fn project_id(&self) -> &str {
         &self.project_id
     }
 
+    /// The API token used as the HTTP Basic password.
+    ///
+    /// This is a **secret** granting full project API access — never log it
+    /// or surface it in an error.
     pub fn token(&self) -> &str {
         &self.token
     }
 
+    /// The base URL every request path is appended to, with any trailing
+    /// slash trimmed.
     pub fn base_url(&self) -> &str {
         &self.base_url
     }
 
+    /// The pre-computed `Authorization` header value —
+    /// `Basic <base64(project_id:token)>`.
+    ///
+    /// This **contains the API token in recoverable form**: base64 is an
+    /// encoding, not encryption. Treat it exactly as you would the token.
     pub fn auth_header(&self) -> &str {
         &self.auth_header
     }
@@ -416,10 +519,12 @@ impl HttpClient {
     /// 404 when the addressed resource does not exist), or a 2xx response body
     /// is present but not valid JSON. This is the authoritative description of
     /// the three failure modes shared by every HTTP method on this client.
+    /// `params` is optional — `None` sends no query string, matching the
+    /// reference's `params=None` default.
     pub fn get(
         &self,
         path: &str,
-        params: &HashMap<String, String>,
+        params: Option<&HashMap<String, String>>,
     ) -> Result<Value, SignalWireRestError> {
         self.request("GET", path, params, None, None)
     }
@@ -438,35 +543,187 @@ impl HttpClient {
     pub fn get_with_options(
         &self,
         path: &str,
-        params: &HashMap<String, String>,
+        params: Option<&HashMap<String, String>>,
         options: Option<&RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
         self.request("GET", path, params, None, options)
     }
 
-    /// Issue a `POST` request to `path` with `data` serialized as the JSON body.
+    /// `GET` with a per-request [`RequestOptions`] override AND per-request
+    /// `headers` (sent over the client defaults — e.g. an `Accept` for a
+    /// non-JSON endpoint).
+    ///
+    /// # Errors
+    /// Same as [`get`](Self::get).
+    pub fn get_with_headers(
+        &self,
+        path: &str,
+        params: Option<&HashMap<String, String>>,
+        options: Option<&RequestOptions>,
+        headers: Option<&HashMap<String, String>>,
+    ) -> Result<Value, SignalWireRestError> {
+        match self.request_as(
+            "GET",
+            path,
+            params,
+            None,
+            options,
+            headers,
+            ResponseKind::Json,
+        )? {
+            Reply::Json(v) => Ok(v),
+            Reply::Text(t) => Ok(Value::String(t)),
+        }
+    }
+
+    /// Issue a `GET` whose success body is NOT JSON and return it as text —
+    /// for an endpoint that answers with another media type (e.g. `text/csv`).
+    ///
+    /// # Errors
+    /// Same as [`get`](Self::get), except a 2xx body is never parsed.
+    pub fn get_text(
+        &self,
+        path: &str,
+        params: Option<&HashMap<String, String>>,
+    ) -> Result<String, SignalWireRestError> {
+        self.get_text_with_options(path, params, None, None)
+    }
+
+    /// [`get_text`](Self::get_text) with a per-request [`RequestOptions`]
+    /// override and per-request `headers` (pass the media type as `Accept`).
+    ///
+    /// # Errors
+    /// Same as [`get_text`](Self::get_text).
+    pub fn get_text_with_options(
+        &self,
+        path: &str,
+        params: Option<&HashMap<String, String>>,
+        options: Option<&RequestOptions>,
+        headers: Option<&HashMap<String, String>>,
+    ) -> Result<String, SignalWireRestError> {
+        match self.request_as(
+            "GET",
+            path,
+            params,
+            None,
+            options,
+            headers,
+            ResponseKind::Text,
+        )? {
+            Reply::Text(t) => Ok(t),
+            Reply::Json(v) => Ok(v.to_string()),
+        }
+    }
+
+    /// Issue a `GET` whose success IS a redirect and return its `Location` —
+    /// the URL of the resource (e.g. a presigned download URL), which the caller
+    /// fetches with any HTTP client. The redirect is NOT followed and nothing is
+    /// downloaded.
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] for a transport failure, an error status,
+    /// or a success that is not a redirect carrying a `Location`.
+    pub fn get_redirect_location(
+        &self,
+        path: &str,
+        params: Option<&HashMap<String, String>>,
+    ) -> Result<String, SignalWireRestError> {
+        self.get_redirect_location_with_options(path, params, None)
+    }
+
+    /// [`get_redirect_location`](Self::get_redirect_location) with a
+    /// per-request [`RequestOptions`] override.
+    ///
+    /// # Errors
+    /// Same as [`get_redirect_location`](Self::get_redirect_location).
+    pub fn get_redirect_location_with_options(
+        &self,
+        path: &str,
+        params: Option<&HashMap<String, String>>,
+        options: Option<&RequestOptions>,
+    ) -> Result<String, SignalWireRestError> {
+        match self.request_as(
+            "GET",
+            path,
+            params,
+            None,
+            options,
+            None,
+            ResponseKind::Redirect,
+        )? {
+            Reply::Text(t) => Ok(t),
+            Reply::Json(v) => Ok(v.to_string()),
+        }
+    }
+
+    /// Issue a `POST` request to `path` with `data` serialized as the JSON body
+    /// and `params` sent as the QUERY STRING.
+    ///
+    /// The two carriers are independent, exactly as in the reference
+    /// (`_base.py` `_request` passes `json=body, params=params`): `data`
+    /// becomes the JSON request body and `params` becomes the URL query — a
+    /// `POST` may carry both at once. `params` is optional; `None` sends no
+    /// query string, matching the wire contract's `params=None` default.
     ///
     /// # Errors
     /// Returns [`SignalWireRestError`] if the request cannot reach the Space
     /// (transport failure), the API responds with a non-2xx status (e.g. 422
     /// when the payload fails server-side validation), or a 2xx response body
     /// is not valid JSON. See [`get`](Self::get) for the canonical description.
-    pub fn post(&self, path: &str, data: &Value) -> Result<Value, SignalWireRestError> {
-        self.post_with_options(path, data, None)
+    pub fn post(
+        &self,
+        path: &str,
+        data: Option<&Value>,
+        params: Option<&HashMap<String, String>>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.post_with_options(path, data, params, None)
     }
 
     /// `POST` with a per-request [`RequestOptions`] override.
+    ///
+    /// `data` is optional — `None` sends no request body, matching the
+    /// reference's `body=None` default.
     ///
     /// # Errors
     /// Same as [`post`](Self::post).
     pub fn post_with_options(
         &self,
         path: &str,
-        data: &Value,
+        data: Option<&Value>,
+        params: Option<&HashMap<String, String>>,
         options: Option<&RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        let body = serde_json::to_string(data).unwrap_or_else(|_| "{}".to_string());
-        self.request("POST", path, &HashMap::new(), Some(&body), options)
+        let body = data.map(|d| serde_json::to_string(d).unwrap_or_else(|_| "{}".to_string()));
+        self.request("POST", path, params, body.as_deref(), options)
+    }
+
+    /// `POST` with a per-request [`RequestOptions`] override AND per-request
+    /// `headers` (sent over the client defaults — e.g. the `Idempotency-Key` a
+    /// balance top-up requires).
+    ///
+    /// # Errors
+    /// Same as [`post`](Self::post).
+    pub fn post_with_headers(
+        &self,
+        path: &str,
+        data: Option<&Value>,
+        params: Option<&HashMap<String, String>>,
+        options: Option<&RequestOptions>,
+        headers: Option<&HashMap<String, String>>,
+    ) -> Result<Value, SignalWireRestError> {
+        let body = data.map(|d| serde_json::to_string(d).unwrap_or_else(|_| "{}".to_string()));
+        match self.request_as(
+            "POST",
+            path,
+            params,
+            body.as_deref(),
+            options,
+            headers,
+            ResponseKind::Json,
+        )? {
+            Reply::Json(v) => Ok(v),
+            Reply::Text(t) => Ok(Value::String(t)),
+        }
     }
 
     /// Issue a `PUT` request to `path` with `data` serialized as the JSON body.
@@ -476,22 +733,25 @@ impl HttpClient {
     /// (transport failure), the API responds with a non-2xx status (e.g. 404
     /// for a missing resource or 422 when the payload fails validation), or a
     /// 2xx response body is not valid JSON. See [`get`](Self::get).
-    pub fn put(&self, path: &str, data: &Value) -> Result<Value, SignalWireRestError> {
+    pub fn put(&self, path: &str, data: Option<&Value>) -> Result<Value, SignalWireRestError> {
         self.put_with_options(path, data, None)
     }
 
     /// `PUT` with a per-request [`RequestOptions`] override.
+    ///
+    /// `data` is optional — `None` sends no request body, matching the
+    /// reference's `body=None` default.
     ///
     /// # Errors
     /// Same as [`put`](Self::put).
     pub fn put_with_options(
         &self,
         path: &str,
-        data: &Value,
+        data: Option<&Value>,
         options: Option<&RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        let body = serde_json::to_string(data).unwrap_or_else(|_| "{}".to_string());
-        self.request("PUT", path, &HashMap::new(), Some(&body), options)
+        let body = data.map(|d| serde_json::to_string(d).unwrap_or_else(|_| "{}".to_string()));
+        self.request("PUT", path, None, body.as_deref(), options)
     }
 
     /// Issue a `PATCH` request to `path` with `data` serialized as the JSON body.
@@ -501,22 +761,25 @@ impl HttpClient {
     /// (transport failure), the API responds with a non-2xx status (e.g. 404
     /// for a missing resource or 422 when the payload fails validation), or a
     /// 2xx response body is not valid JSON. See [`get`](Self::get).
-    pub fn patch(&self, path: &str, data: &Value) -> Result<Value, SignalWireRestError> {
+    pub fn patch(&self, path: &str, data: Option<&Value>) -> Result<Value, SignalWireRestError> {
         self.patch_with_options(path, data, None)
     }
 
     /// `PATCH` with a per-request [`RequestOptions`] override.
+    ///
+    /// `data` is optional — `None` sends no request body, matching the
+    /// reference's `body=None` default.
     ///
     /// # Errors
     /// Same as [`patch`](Self::patch).
     pub fn patch_with_options(
         &self,
         path: &str,
-        data: &Value,
+        data: Option<&Value>,
         options: Option<&RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        let body = serde_json::to_string(data).unwrap_or_else(|_| "{}".to_string());
-        self.request("PATCH", path, &HashMap::new(), Some(&body), options)
+        let body = data.map(|d| serde_json::to_string(d).unwrap_or_else(|_| "{}".to_string()));
+        self.request("PATCH", path, None, body.as_deref(), options)
     }
 
     /// Issue a `DELETE` request to `path`.
@@ -539,7 +802,7 @@ impl HttpClient {
         path: &str,
         options: Option<&RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.request("DELETE", path, &HashMap::new(), None, options)
+        self.request("DELETE", path, None, None, options)
     }
 
     // -- Paginated list support --
@@ -566,7 +829,7 @@ impl HttpClient {
         let mut seen_next: std::collections::HashSet<String> = std::collections::HashSet::new();
 
         loop {
-            let response = self.get(&current_path, &current_params)?;
+            let response = self.get(&current_path, Some(&current_params))?;
 
             // Extract data items
             let data = response
@@ -626,18 +889,44 @@ impl HttpClient {
 
     // -- Internal request engine --
 
-    #[allow(clippy::too_many_lines)]
     fn request(
         &self,
         method: &str,
         path: &str,
-        params: &HashMap<String, String>,
+        params: Option<&HashMap<String, String>>,
         body: Option<&str>,
         request_options: Option<&RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
+        match self.request_as(
+            method,
+            path,
+            params,
+            body,
+            request_options,
+            None,
+            ResponseKind::Json,
+        )? {
+            Reply::Json(v) => Ok(v),
+            Reply::Text(t) => Ok(Value::String(t)),
+        }
+    }
+
+    #[allow(clippy::too_many_lines, clippy::too_many_arguments)]
+    fn request_as(
+        &self,
+        method: &str,
+        path: &str,
+        params: Option<&HashMap<String, String>>,
+        body: Option<&str>,
+        request_options: Option<&RequestOptions>,
+        extra_headers: Option<&HashMap<String, String>>,
+        kind: ResponseKind,
+    ) -> Result<Reply, SignalWireRestError> {
         let mut url = format!("{}{}", self.base_url, path);
 
-        if !params.is_empty() {
+        // `params` go on the QUERY STRING (never merged into the JSON body) —
+        // the reference routes them the same way for every verb.
+        if let Some(params) = params.filter(|p| !p.is_empty()) {
             // Percent-encode keys AND values as application/x-www-form-urlencoded
             // so reserved characters (space, &, =, +, /, unicode) can't corrupt
             // the query or inject extra parameters. Sort by key for a stable,
@@ -656,6 +945,17 @@ impl HttpClient {
         headers.insert("Accept".to_string(), "application/json".to_string());
         headers.insert("Authorization".to_string(), self.auth_header.clone());
         headers.insert("User-Agent".to_string(), self.user_agent.clone());
+        if kind == ResponseKind::Redirect {
+            // Ask the transport to hand the 3xx back instead of following it
+            // (UreqTransport consumes the marker; it never reaches the wire).
+            headers.insert(NO_REDIRECT_MARKER.to_string(), "1".to_string());
+        }
+        // Per-request headers go on THIS request only, over the defaults.
+        if let Some(extra) = extra_headers {
+            for (k, v) in extra {
+                headers.insert(k.clone(), v.clone());
+            }
+        }
 
         // Resolve the effective options: per-request over client-default over
         // built-in. total attempts = retries + 1; retry on a retryable status
@@ -700,6 +1000,23 @@ impl HttpClient {
                     ));
                 }
                 Ok((status, resp_headers, response_body)) => {
+                    if kind == ResponseKind::Redirect
+                        && (300..400).contains(&status)
+                        && let Some(location) = resp_headers.get("location")
+                    {
+                        return Ok(Reply::Text(location.clone()));
+                    }
+                    if kind == ResponseKind::Redirect && (200..400).contains(&status) {
+                        // A success that is not the redirect the endpoint answers with.
+                        return Err(SignalWireRestError::new(
+                            &format!("{method} {path} returned {status} without a redirect"),
+                            status,
+                            &response_body,
+                            &url,
+                            method,
+                        )
+                        .with_headers(resp_headers));
+                    }
                     if !(200..300).contains(&status) {
                         if attempt <= opts.retries && status_is_retryable(method, status, &opts) {
                             // §6.6: the real RESPONSE headers are now available, so
@@ -719,21 +1036,27 @@ impl HttpClient {
                         .with_headers(resp_headers));
                     }
 
-                    // 204 or empty body
-                    if status == 204 || response_body.is_empty() {
-                        return Ok(serde_json::json!({}));
+                    if kind == ResponseKind::Text {
+                        return Ok(Reply::Text(response_body));
                     }
 
-                    return serde_json::from_str(&response_body).map_err(|_| {
-                        SignalWireRestError::new(
-                            &format!("{method} {path} returned non-JSON"),
-                            status,
-                            &response_body,
-                            &url,
-                            method,
-                        )
-                        .with_headers(resp_headers)
-                    });
+                    // 204 or empty body
+                    if status == 204 || response_body.is_empty() {
+                        return Ok(Reply::Json(serde_json::json!({})));
+                    }
+
+                    return serde_json::from_str(&response_body)
+                        .map(Reply::Json)
+                        .map_err(|_| {
+                            SignalWireRestError::new(
+                                &format!("{method} {path} returned non-JSON"),
+                                status,
+                                &response_body,
+                                &url,
+                                method,
+                            )
+                            .with_headers(resp_headers)
+                        });
                 }
             }
         }
@@ -802,6 +1125,14 @@ pub struct SequencedTransport {
 
 #[cfg(test)]
 impl SequencedTransport {
+    /// Create a transport that answers successive requests with each entry
+    /// of `responses` in turn.
+    ///
+    /// Once the queue is exhausted the **last** response repeats for every
+    /// further request, so a test can drive N distinct answers and then
+    /// settle. An empty `responses` makes every request return `200 {}`.
+    ///
+    /// Test-only (`#[cfg(test)]`): not part of the public REST surface.
     #[must_use]
     pub fn new(responses: Vec<(u16, String)>) -> Self {
         let last = responses.last().cloned().unwrap_or((200, "{}".to_string()));
@@ -940,7 +1271,7 @@ mod tests {
                 body: r#"{"error":"not found"}"#.to_string(),
             }),
         );
-        let err = client.get("/api/missing", &HashMap::new()).unwrap_err();
+        let err = client.get("/api/missing", None).unwrap_err();
         assert_eq!(err.request_id(), Some("req-abc-123"));
         assert_eq!(
             err.headers()
@@ -963,7 +1294,7 @@ mod tests {
         stub.set_response(404, r#"{"error":"missing"}"#);
         let mut params = HashMap::new();
         params.insert("page".to_string(), "2".to_string());
-        let err = client.get("/api/missing", &params).unwrap_err();
+        let err = client.get("/api/missing", Some(&params)).unwrap_err();
         // Full origin, path, AND the encoded query — never just "/api/missing".
         assert_eq!(
             err.url(),
@@ -998,7 +1329,7 @@ mod tests {
         );
         let mut params = HashMap::new();
         params.insert("q".to_string(), "x y".to_string());
-        let err = client.get("/api/x", &params).unwrap_err();
+        let err = client.get("/api/x", Some(&params)).unwrap_err();
         assert!(err.is_transport());
         assert_eq!(
             err.url(),
@@ -1013,7 +1344,7 @@ mod tests {
     fn test_non_json_error_url_is_full() {
         let (client, stub) = make_client();
         stub.set_response(200, "not json at all");
-        let err = client.get("/api/weird", &HashMap::new()).unwrap_err();
+        let err = client.get("/api/weird", None).unwrap_err();
         assert_eq!(err.url(), "https://test.signalwire.com/api/weird");
     }
 
@@ -1038,7 +1369,7 @@ mod tests {
         let (client, stub) = make_client();
         stub.set_response(200, r#"{"data": [1,2,3]}"#);
 
-        let result = client.get("/api/test", &HashMap::new()).unwrap();
+        let result = client.get("/api/test", None).unwrap();
         assert_eq!(result["data"], json!([1, 2, 3]));
 
         let reqs = stub.requests.lock().unwrap();
@@ -1053,7 +1384,7 @@ mod tests {
 
         let mut params = HashMap::new();
         params.insert("page".to_string(), "2".to_string());
-        client.get("/api/test", &params).unwrap();
+        client.get("/api/test", Some(&params)).unwrap();
 
         let reqs = stub.requests.lock().unwrap();
         assert!(reqs[0].1.contains("page=2"));
@@ -1065,12 +1396,84 @@ mod tests {
         stub.set_response(201, r#"{"id":"new-1"}"#);
 
         let data = json!({"name": "test"});
-        let result = client.post("/api/test", &data).unwrap();
+        let result = client.post("/api/test", Some(&data), None).unwrap();
         assert_eq!(result["id"], "new-1");
 
         let reqs = stub.requests.lock().unwrap();
         assert_eq!(reqs[0].0, "POST");
         assert!(reqs[0].2.as_ref().unwrap().contains("test"));
+    }
+
+    /// WIRE CONTRACT: `params` go on the QUERY STRING and `body` goes in the
+    /// JSON body — the two carriers are INDEPENDENT, for `post` exactly as for
+    /// `get`. The reference (`rest/_base.py` `_request`) calls
+    /// `session.request(method, url, json=body, params=params)`, so a POST may
+    /// carry both at once and a query param must NEVER be merged into the body
+    /// dict (nor a body field leak into the query).
+    ///
+    /// This is the assertion that fails if `post` is ever wired to route
+    /// `params` into the body instead of the query.
+    #[test]
+    fn test_post_routes_params_to_query_and_body_to_json() {
+        let (client, stub) = make_client();
+        stub.set_response(201, r#"{"id":"new-1"}"#);
+
+        let mut params = HashMap::new();
+        params.insert("expand".to_string(), "detail".to_string());
+        params.insert("page".to_string(), "2".to_string());
+        let data = json!({"name": "widget", "count": 3});
+        client
+            .post("/api/test", Some(&data), Some(&params))
+            .unwrap();
+
+        let reqs = stub.requests.lock().unwrap();
+        let (method, url, body) = reqs.last().expect("a request was recorded");
+        assert_eq!(method, "POST");
+
+        // -- query carries the params, and ONLY the params --
+        let query = url
+            .split_once('?')
+            .unwrap_or_else(|| panic!("POST params must be on the query string, got url {url}"))
+            .1;
+        assert!(
+            query.contains("expand=detail") && query.contains("page=2"),
+            "both params must be on the query, got {query}"
+        );
+        assert!(
+            !query.contains("name") && !query.contains("widget") && !query.contains("count"),
+            "body fields must NOT leak into the query, got {query}"
+        );
+
+        // -- body carries the JSON, and ONLY the JSON --
+        let sent = body.as_ref().expect("POST must send a JSON body");
+        let parsed: Value = serde_json::from_str(sent).expect("body must be JSON");
+        assert_eq!(parsed["name"], "widget");
+        assert_eq!(parsed["count"], 3);
+        assert!(
+            parsed.get("expand").is_none() && parsed.get("page").is_none(),
+            "query params must NOT be merged into the JSON body, got {sent}"
+        );
+    }
+
+    /// `params: None` is the reference's `params=None` default — no query
+    /// string is emitted at all (not an empty `?`).
+    #[test]
+    fn test_none_params_emits_no_query_string() {
+        let (client, stub) = make_client();
+        stub.set_response(200, "{}");
+
+        client.get("/api/test", None).unwrap();
+        client
+            .post("/api/test", Some(&json!({"a": 1})), None)
+            .unwrap();
+
+        let reqs = stub.requests.lock().unwrap();
+        for (method, url, _) in reqs.iter() {
+            assert!(
+                !url.contains('?'),
+                "{method} with params=None must emit no query string, got {url}"
+            );
+        }
     }
 
     #[test]
@@ -1079,7 +1482,7 @@ mod tests {
         stub.set_response(200, r#"{"updated":true}"#);
 
         let result = client
-            .put("/api/test/1", &json!({"name": "updated"}))
+            .put("/api/test/1", Some(&json!({"name": "updated"})))
             .unwrap();
         assert_eq!(result["updated"], true);
 
@@ -1093,7 +1496,7 @@ mod tests {
         stub.set_response(200, r#"{"patched":true}"#);
 
         let result = client
-            .patch("/api/test/1", &json!({"field": "val"}))
+            .patch("/api/test/1", Some(&json!({"field": "val"})))
             .unwrap();
         assert_eq!(result["patched"], true);
 
@@ -1118,7 +1521,7 @@ mod tests {
         let (client, stub) = make_client();
         stub.set_response(404, r#"{"error":"not found"}"#);
 
-        let err = client.get("/api/missing", &HashMap::new()).unwrap_err();
+        let err = client.get("/api/missing", None).unwrap_err();
         assert_eq!(err.status_code(), 404);
         assert!(err.message().contains("404"));
     }
@@ -1128,7 +1531,7 @@ mod tests {
         let (client, stub) = make_client();
         stub.set_response(500, "server error");
 
-        let err = client.get("/api/fail", &HashMap::new()).unwrap_err();
+        let err = client.get("/api/fail", None).unwrap_err();
         assert_eq!(err.status_code(), 500);
     }
 
@@ -1293,7 +1696,7 @@ mod tests {
     fn test_empty_body_200() {
         let (client, stub) = make_client();
         stub.set_response(200, "");
-        let result = client.get("/api/test", &HashMap::new()).unwrap();
+        let result = client.get("/api/test", None).unwrap();
         assert!(result.is_object());
     }
 
@@ -1308,7 +1711,7 @@ mod tests {
         // Values carrying reserved chars: `&`, `=`, `+`, space, `/`, unicode.
         params.insert("q".to_string(), "a b&c=d+e/f".to_string());
         params.insert("name".to_string(), "café ☕".to_string());
-        client.get("/api/test", &params).unwrap();
+        client.get("/api/test", Some(&params)).unwrap();
 
         let reqs = stub.requests.lock().unwrap();
         let (_method, url, _body) = reqs.last().expect("a request was recorded");
@@ -1347,7 +1750,7 @@ mod tests {
             Box::new(UreqTransport::new()),
         );
 
-        let err = client.get("/api/test", &HashMap::new()).unwrap_err();
+        let err = client.get("/api/test", None).unwrap_err();
         assert!(
             err.is_transport(),
             "conn-refused must be a transport error, got: {err}"

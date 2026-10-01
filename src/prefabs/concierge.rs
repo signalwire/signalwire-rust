@@ -23,7 +23,7 @@ pub struct ConciergeAgent {
 
 /// Options for constructing a [`ConciergeAgent`].
 ///
-/// Field-for-field the Python reference's `__init__`
+/// Field-for-field the `__init__`
 /// (`prefabs/concierge.py:45-55`). `venue_name`, `services`, and `amenities`
 /// are the reference's REQUIRED positionals, so they are the arguments to
 /// [`ConciergeOptions::new`]; every other field carries the reference's
@@ -42,37 +42,32 @@ pub struct ConciergeOptions {
     pub special_instructions: Vec<String>,
     /// Custom welcome message; `None` generates one from `venue_name`.
     pub welcome_message: Option<String>,
-    /// Agent name (reference default `"concierge"`).
+    /// Agent name (default `"concierge"`).
     pub name: String,
-    /// HTTP route (reference default `"/concierge"`).
+    /// HTTP route (default `"/concierge"`).
     pub route: String,
-}
-
-impl Default for ConciergeOptions {
-    fn default() -> Self {
-        ConciergeOptions {
-            venue_name: "Venue".to_string(),
-            services: Vec::new(),
-            amenities: HashMap::new(),
-            hours_of_operation: HashMap::new(),
-            special_instructions: Vec::new(),
-            welcome_message: None,
-            name: "concierge".to_string(),
-            route: "/concierge".to_string(),
-        }
-    }
 }
 
 impl ConciergeOptions {
     /// Options for the reference's three required positionals, with every
     /// other field at its default — the port of
     /// `ConciergeAgent(venue_name, services, amenities)`.
+    ///
+    /// There is deliberately **no** `Default` impl and no zero-argument
+    /// constructor: `venue_name` is a bare `str` positional in the reference
+    /// (`concierge.py:47`), so omitting it must not compile here either. A
+    /// caller who cannot name the venue has no valid `ConciergeOptions` to
+    /// build.
     pub fn new(venue_name: &str, services: Vec<String>, amenities: HashMap<String, Value>) -> Self {
         ConciergeOptions {
             venue_name: venue_name.to_string(),
             services,
             amenities,
-            ..Default::default()
+            hours_of_operation: HashMap::new(),
+            special_instructions: Vec::new(),
+            welcome_message: None,
+            name: "concierge".to_string(),
+            route: "/concierge".to_string(),
         }
     }
 
@@ -127,8 +122,14 @@ impl ConciergeOptions {
     /// Build options from the legacy `venue_info` map shape. Provided so
     /// callers holding a JSON blob can still construct without unpacking it by
     /// hand; the map's keys are the option names.
-    pub fn from_venue_info(venue_info: &Map<String, Value>) -> Self {
-        let mut opts = ConciergeOptions::default();
+    ///
+    /// `venue_name` is the reference's REQUIRED first positional, so it is an
+    /// explicit argument rather than an optional map key: a `venue_info` blob
+    /// that happens to omit `"venue_name"` must not silently produce an
+    /// anonymous venue. A `"venue_name"` key present in the map overrides the
+    /// argument.
+    pub fn from_venue_info(venue_name: &str, venue_info: &Map<String, Value>) -> Self {
+        let mut opts = ConciergeOptions::new(venue_name, Vec::new(), HashMap::new());
         if let Some(v) = venue_info.get("venue_name").and_then(Value::as_str) {
             opts.venue_name = v.to_string();
         }
@@ -351,28 +352,41 @@ impl ConciergeAgent {
         }
     }
 
+    /// Borrow the underlying [`AgentBase`] this prefab wraps.
+    ///
+    /// `ConciergeAgent` composes an agent rather than inheriting from one, so
+    /// this is how you read the configured prompt, tools, and skills.
     pub fn agent(&self) -> &AgentBase {
         &self.agent
     }
 
+    /// Mutably borrow the underlying [`AgentBase`].
+    ///
+    /// Use this to layer extra configuration — additional tools, skills,
+    /// hints, or verbs — on top of what the prefab already set up.
     pub fn agent_mut(&mut self) -> &mut AgentBase {
         &mut self.agent
     }
 
+    /// The venue this concierge represents, as configured. Woven into the
+    /// agent's prompt so the model refers to the venue by name.
     pub fn venue_name(&self) -> &str {
         &self.venue_name
     }
 
+    /// The services the concierge can arrange, as configured.
     pub fn services(&self) -> &[String] {
         &self.services
     }
 
+    /// The venue's amenities, keyed by name, with each value describing
+    /// that amenity.
     pub fn amenities(&self) -> &HashMap<String, Value> {
         &self.amenities
     }
 
     /// The venue's operating hours, keyed by label — the caller's map or the
-    /// reference default `{"default": "9 AM - 5 PM"}` (`concierge.py:78`).
+    /// default `{"default": "9 AM - 5 PM"}` (`concierge.py:78`).
     pub fn hours_of_operation(&self) -> &HashMap<String, String> {
         &self.hours_of_operation
     }
@@ -385,7 +399,7 @@ impl ConciergeAgent {
 
     /// Check availability for a service on a specific date and time.
     ///
-    /// Ported from Python `ConciergeAgent.check_availability`. Simulated: if the
+    /// Simulated: if the
     /// requested service is one of the venue's offered services it reports it as
     /// available, otherwise it lists the available services. `args` reads
     /// `service`, `date`, and `time`; `raw_data` is accepted for
@@ -419,7 +433,7 @@ impl ConciergeAgent {
 
     /// Provide directions to a specific location or amenity.
     ///
-    /// Ported from Python `ConciergeAgent.get_directions`. If the requested
+    /// If the requested
     /// location matches an amenity that declares a `location`, it gives directions
     /// there; otherwise it defers to front-desk staff. `args` reads `location`;
     /// `raw_data` is accepted for handler-signature compatibility but unused.
@@ -487,10 +501,70 @@ mod tests {
         info
     }
 
+    /// `venue_name` is a bare `str` positional in the reference
+    /// (`concierge.py:47`) — genuinely REQUIRED. The port previously shipped an
+    /// `impl Default for ConciergeOptions` seeding it with the invented literal
+    /// `"Venue"`, so a caller who never named the venue silently got a
+    /// concierge for "Venue" instead of the compile error the reference and
+    /// every other port give them. `from_venue_info` made it worse: a JSON blob
+    /// missing the `"venue_name"` key produced an anonymous venue at runtime.
+    ///
+    /// `ConciergeOptions::new` is now the ONLY constructor and both it and
+    /// `from_venue_info` take `venue_name`, so omitting it does not compile.
+    /// The compile-time half of that guarantee is enforced by the build itself
+    /// (there is no zero-argument path to reach); this test is the runtime
+    /// half: whatever the caller passes is the value the agent uses EVERYWHERE
+    /// it surfaces, including through `from_venue_info` with a blob that omits
+    /// the key, with no fallback literal reachable on any of those paths.
+    #[test]
+    fn test_venue_name_is_required_and_the_callers_value_is_used_throughout() {
+        // A name that could not possibly be produced by a default.
+        let agent = ConciergeAgent::new(ConciergeOptions::new(
+            "Oceanview Resort & Spa",
+            vec!["valet".to_string()],
+            HashMap::new(),
+        ));
+
+        assert_eq!(agent.venue_name(), "Oceanview Resort & Spa");
+        assert_eq!(
+            agent.agent().get_global_data()["venue_name"],
+            "Oceanview Resort & Spa"
+        );
+        // The derived welcome message is built FROM venue_name.
+        let prompt = agent.agent().get_prompt().to_string();
+        assert!(
+            prompt.contains("Welcome to Oceanview Resort & Spa."),
+            "venue_name did not reach the derived welcome: {prompt}"
+        );
+
+        // `from_venue_info` with a blob that OMITS the key still uses the
+        // caller's argument — there is no invented fallback left to reach.
+        let mut bare = Map::new();
+        bare.insert("services".to_string(), json!(["valet"]));
+        let from_blob = ConciergeAgent::new(ConciergeOptions::from_venue_info(
+            "Oceanview Resort & Spa",
+            &bare,
+        ));
+        assert_eq!(from_blob.venue_name(), "Oceanview Resort & Spa");
+
+        // And nothing anywhere carries the old invented default.
+        let global = agent.agent().get_global_data().to_string();
+        assert!(
+            !prompt.contains("Welcome to Venue."),
+            "invented default venue_name leaked into the prompt: {prompt}"
+        );
+        assert!(
+            !global.contains("\"venue_name\":\"Venue\""),
+            "invented default venue_name leaked into global data: {global}"
+        );
+    }
+
     #[test]
     fn test_concierge_construction() {
         let info = sample_venue_info();
-        let agent = ConciergeAgent::new(ConciergeOptions::from_venue_info(&info).name("test"));
+        let agent = ConciergeAgent::new(
+            ConciergeOptions::from_venue_info("Grand Hotel", &info).name("test"),
+        );
         assert_eq!(agent.agent().service().name(), "test");
         assert_eq!(agent.agent().service().route(), "/concierge");
         assert_eq!(agent.venue_name(), "Grand Hotel");
@@ -502,7 +576,7 @@ mod tests {
     fn test_hours_and_special_instructions_are_retained_and_reach_the_wire() {
         let info = sample_venue_info();
         let agent = ConciergeAgent::new(
-            ConciergeOptions::from_venue_info(&info)
+            ConciergeOptions::from_venue_info("Grand Hotel", &info)
                 .name("test")
                 .special_instructions(vec!["Escort VIPs personally".to_string()]),
         );
@@ -552,21 +626,23 @@ mod tests {
     #[test]
     fn test_concierge_has_tools() {
         let info = sample_venue_info();
-        let agent = ConciergeAgent::new(ConciergeOptions::from_venue_info(&info).name("test"));
+        let agent = ConciergeAgent::new(
+            ConciergeOptions::from_venue_info("Grand Hotel", &info).name("test"),
+        );
         let raw = serde_json::Map::new();
 
         let mut args = serde_json::Map::new();
         args.insert("service".to_string(), json!("Spa"));
         let result = agent
             .agent()
-            .on_function_call("check_availability", &args, &raw);
+            .on_function_call("check_availability", &args, Some(&raw));
         assert!(result.is_some());
 
         let mut args2 = serde_json::Map::new();
         args2.insert("destination".to_string(), json!("Pool"));
         let result2 = agent
             .agent()
-            .on_function_call("get_directions", &args2, &raw);
+            .on_function_call("get_directions", &args2, Some(&raw));
         assert!(result2.is_some());
         let json_str = result2.unwrap().to_json();
         assert!(json_str.contains("Floor 3"));
@@ -575,14 +651,17 @@ mod tests {
     #[test]
     fn test_concierge_default_name() {
         let info = sample_venue_info();
-        let agent = ConciergeAgent::new(ConciergeOptions::from_venue_info(&info).name(""));
+        let agent =
+            ConciergeAgent::new(ConciergeOptions::from_venue_info("Grand Hotel", &info).name(""));
         assert_eq!(agent.agent().service().name(), "concierge");
     }
 
     #[test]
     fn test_check_availability_known_service() {
         let info = sample_venue_info();
-        let agent = ConciergeAgent::new(ConciergeOptions::from_venue_info(&info).name("test"));
+        let agent = ConciergeAgent::new(
+            ConciergeOptions::from_venue_info("Grand Hotel", &info).name("test"),
+        );
         let raw = Map::new();
         let mut args = Map::new();
         args.insert("service".to_string(), json!("Spa"));
@@ -595,7 +674,9 @@ mod tests {
     #[test]
     fn test_check_availability_unknown_service() {
         let info = sample_venue_info();
-        let agent = ConciergeAgent::new(ConciergeOptions::from_venue_info(&info).name("test"));
+        let agent = ConciergeAgent::new(
+            ConciergeOptions::from_venue_info("Grand Hotel", &info).name("test"),
+        );
         let raw = Map::new();
         let mut args = Map::new();
         args.insert("service".to_string(), json!("Skydiving"));
@@ -614,7 +695,9 @@ mod tests {
             "amenities".to_string(),
             json!({"pool": {"hours": "6am-10pm", "location": "Floor 3"}}),
         );
-        let agent = ConciergeAgent::new(ConciergeOptions::from_venue_info(&info).name("test"));
+        let agent = ConciergeAgent::new(
+            ConciergeOptions::from_venue_info("Grand Hotel", &info).name("test"),
+        );
         let raw = Map::new();
         let mut args = Map::new();
         args.insert("location".to_string(), json!("Pool"));
@@ -626,7 +709,9 @@ mod tests {
     #[test]
     fn test_get_directions_unknown_location() {
         let info = sample_venue_info();
-        let agent = ConciergeAgent::new(ConciergeOptions::from_venue_info(&info).name("test"));
+        let agent = ConciergeAgent::new(
+            ConciergeOptions::from_venue_info("Grand Hotel", &info).name("test"),
+        );
         let raw = Map::new();
         let mut args = Map::new();
         args.insert("location".to_string(), json!("Rooftop"));
@@ -639,7 +724,9 @@ mod tests {
         use std::sync::{Arc, Mutex};
 
         let info = sample_venue_info();
-        let mut agent = ConciergeAgent::new(ConciergeOptions::from_venue_info(&info).name("test"));
+        let mut agent = ConciergeAgent::new(
+            ConciergeOptions::from_venue_info("Grand Hotel", &info).name("test"),
+        );
 
         let captured = Arc::new(Mutex::new(String::new()));
         let captured_clone = Arc::clone(&captured);
@@ -662,7 +749,7 @@ mod tests {
             "POST",
             "/concierge/post_prompt",
             &headers,
-            &body.to_string(),
+            Some(&body.to_string()),
         );
         assert_eq!(status, 200);
         assert_eq!(*captured.lock().unwrap(), "Great concierge call");

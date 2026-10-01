@@ -7,6 +7,8 @@
       "substituted"
     ],
     "SwaigRequest": [
+      "SWMLCall",
+      "SWMLVars",
       "ai_session_id",
       "app_name",
       "args",

@@ -9,6 +9,11 @@ pub struct SwmlTransfer {
 }
 
 impl SwmlTransfer {
+    /// Create the skill from its configuration `params`.
+    ///
+    /// Requires a non-empty `transfers` **object** param mapping transfer
+    /// names to their destinations. Setup fails when it is absent, not an
+    /// object, or empty.
     pub fn new(params: Map<String, Value>) -> Self {
         SwmlTransfer {
             sp: SkillParams::new(params),

@@ -1,0 +1,48 @@
+# Rust toolchain PIN — the version that compiles and lints this crate, everywhere.
+#
+# WHY THIS FILE EXISTS
+# --------------------
+# Cargo.toml denies lints aggressively:
+#
+#     [lints.clippy]
+#     all      = { level = "deny", priority = -1 }
+#     pedantic = { level = "deny", priority = -1 }
+#
+# plus `-D warnings` in the gates. Every new clippy lint — and the `pedantic`
+# group gains lints on a six-week cadence — is therefore an instant BUILD FAILURE
+# the moment it ships, with no dependency release and no commit of ours involved.
+#
+# Before this file, both halves floated:
+#   * .github/workflows/test.yml used `dtolnay/rust-toolchain@stable`, which
+#     resolves to whatever is newest on the day the job runs;
+#   * scripts/_env.sh invoked `cargo +stable`, i.e. whatever the contributor last
+#     ran `rustup update` on.
+# So a new stable release could red CI on a commit that was green locally, with
+# nothing in the diff to explain it and no local run able to reproduce it. That is
+# the same failure mode an unpinned linter causes in every other port; Rust just
+# ships the linter inside the compiler.
+#
+# `rust-version = "1.88"` in Cargo.toml is NOT this. That is an MSRV FLOOR — the
+# oldest toolchain that can build the crate (let-chains). It constrains nothing
+# above itself, so it cannot stop a newer stable from introducing new lints.
+#
+# HOW THE PIN APPLIES
+# -------------------
+# rustup reads this file for ANY cargo/rustc invocation inside the repo, so it
+# governs local runs, CI, and editors alike — including bare `cargo build` by a
+# contributor who never read a script. dtolnay/rust-toolchain honours it too when
+# the workflow passes no explicit toolchain.
+#
+# BUMPING
+# -------
+# Deliberate, in one commit: raise `channel` here, run the FMT + LINT gates, and
+# fix whatever the new clippy release flags (that burndown is the POINT of the
+# pin — it happens when we choose, not when upstream ships). The SIGNATURES gate
+# separately installs a nightly for rustdoc-json; that is unaffected by this pin
+# and is invoked explicitly as `+nightly`.
+[toolchain]
+channel = "1.96.0"
+# The gates need both: `cargo fmt` (FMT) and `cargo clippy` (LINT). Declaring them
+# here means a fresh clone gets a working toolchain from the first `cargo` call,
+# with no separate bootstrap step.
+components = ["rustfmt", "clippy"]

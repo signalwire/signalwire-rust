@@ -5,28 +5,13 @@
 // Read-side wire types (open shapes) — method-less serde structs / closed-set
 // enums. Regenerate with: python3 scripts/generate_rest.py
 //
-// Two narrow lint allows, both grounded in the generated wire shape:
-//   * non_camel_case_types — a few wire schema keys carry dotted names
-//     (``Types.StatusCodes.StatusCode400``); the type identifier folds the dots
-//     to underscores (``Types_StatusCodes_StatusCode400``) and must stay verbatim
-//     so it matches the wire schema key, which the naming lint would rewrite.
-//   * clippy::doc_markdown — the generated doc comments echo raw wire schema key
-//     names in prose; backticking every one mechanically is not meaningful here.
-#![allow(non_camel_case_types, clippy::doc_markdown)]
+// A wire schema key with a dotted name (``Types.StatusCodes.StatusCode400``)
+// folds to an underscored type identifier that must stay verbatim to match the
+// key; only those items carry an item-level `non_camel_case_types` allow.
 
 use serde::{Deserialize, Serialize};
 
-/// `AI` — generated read-side wire type ('fabric' REST API, schema 'AI').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct AI {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub ai: Option<serde_json::Value>,
-}
-
-/// `AIAddressPaginationResponse` — generated read-side wire type ('fabric' REST API, schema 'AIAddressPaginationResponse').
+/// `AIAddressPaginationResponse` — generated read-side wire type (`fabric` REST API, schema `AIAddressPaginationResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -42,7 +27,7 @@ pub struct AIAddressPaginationResponse {
     pub prev: Option<String>,
 }
 
-/// `AIAgent` — generated read-side wire type ('fabric' REST API, schema 'AIAgent').
+/// `AIAgent` — generated read-side wire type (`fabric` REST API, schema `AIAgent`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -70,9 +55,89 @@ pub struct AIAgent {
     pub agent_id: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub multilingual: Option<serde_json::Value>,
 }
 
-/// `AIAgentAddressListResponse` — generated read-side wire type ('fabric' REST API, schema 'AIAgentAddressListResponse').
+/// `AIAgentLanguage` — generated read-side wire type (`fabric` REST API, schema `AIAgentLanguage`).
+///
+/// Method-less serde DTO: each field maps a snake wire key (via
+/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct AIAgentLanguage {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub auto_emotion: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub auto_speed: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub code: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub double_turn_fillers: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub engine: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fillers: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub function_fillers: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub listen_language: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub model: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub params: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pronounce: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub speech_fillers: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub turn_fillers: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub voice: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub provider: Option<String>,
+}
+
+/// `AIAgentSWAIG` — generated read-side wire type (`fabric` REST API, schema `AIAgentSWAIG`).
+///
+/// Method-less serde DTO: each field maps a snake wire key (via
+/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct AIAgentSWAIG {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub defaults: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub functions: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub hooks: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub includes: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub internal_fillers: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub mcp_servers: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub native_functions: Option<serde_json::Value>,
+}
+
+/// `AIAgentSWAIGInclude` — generated read-side wire type (`fabric` REST API, schema `AIAgentSWAIGInclude`).
+///
+/// Method-less serde DTO: each field maps a snake wire key (via
+/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct AIAgentSWAIGInclude {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub functions: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub url: Option<String>,
+}
+
+/// `AIAgentAddressListResponse` — generated read-side wire type (`fabric` REST API, schema `AIAgentAddressListResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -84,7 +149,57 @@ pub struct AIAgentAddressListResponse {
     pub links: Option<serde_json::Value>,
 }
 
-/// `AIAgentCreateRequest` — generated read-side wire type ('fabric' REST API, schema 'AIAgentCreateRequest').
+/// `AIAgentVoice` — generated read-side wire type (`fabric` REST API, schema `AIAgentVoice`).
+///
+/// Method-less serde DTO: each field maps a snake wire key (via
+/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct AIAgentVoice {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub provider: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub language: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub language_code: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub voice: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub premium: Option<i64>,
+}
+
+/// `AIAgentConversationLogListResponse` — generated read-side wire type (`fabric` REST API, schema `AIAgentConversationLogListResponse`).
+///
+/// Method-less serde DTO: each field maps a snake wire key (via
+/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct AIAgentConversationLogListResponse {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub links: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub data: Option<serde_json::Value>,
+}
+
+/// `AIAgentConversationLog` — generated read-side wire type (`fabric` REST API, schema `AIAgentConversationLog`).
+///
+/// Method-less serde DTO: each field maps a snake wire key (via
+/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct AIAgentConversationLog {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub caller_id_number: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub duration_in_seconds: Option<i64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub messages: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub redacted_at: Option<String>,
+}
+
+/// `AIAgentCreateRequest` — generated read-side wire type (`fabric` REST API, schema `AIAgentCreateRequest`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -109,12 +224,16 @@ pub struct AIAgentCreateRequest {
     #[serde(rename = "SWAIG", default, skip_serializing_if = "Option::is_none")]
     pub swaig: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub agent_id: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub post_prompt_auth_user: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub post_prompt_auth_password: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub multilingual: Option<serde_json::Value>,
 }
 
-/// `AIAgentCreateStatusCode422` — generated read-side wire type ('fabric' REST API, schema 'AIAgentCreateStatusCode422').
+/// `AIAgentCreateStatusCode422` — generated read-side wire type (`fabric` REST API, schema `AIAgentCreateStatusCode422`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -124,7 +243,7 @@ pub struct AIAgentCreateStatusCode422 {
     pub errors: Option<serde_json::Value>,
 }
 
-/// `AIAgentListResponse` — generated read-side wire type ('fabric' REST API, schema 'AIAgentListResponse').
+/// `AIAgentListResponse` — generated read-side wire type (`fabric` REST API, schema `AIAgentListResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -136,7 +255,7 @@ pub struct AIAgentListResponse {
     pub links: Option<serde_json::Value>,
 }
 
-/// `AIAgentPaginationResponse` — generated read-side wire type ('fabric' REST API, schema 'AIAgentPaginationResponse').
+/// `AIAgentPaginationResponse` — generated read-side wire type (`fabric` REST API, schema `AIAgentPaginationResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -152,7 +271,7 @@ pub struct AIAgentPaginationResponse {
     pub prev: Option<String>,
 }
 
-/// `AIAgentResponse` — generated read-side wire type ('fabric' REST API, schema 'AIAgentResponse').
+/// `AIAgentResponse` — generated read-side wire type (`fabric` REST API, schema `AIAgentResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -174,7 +293,7 @@ pub struct AIAgentResponse {
     pub ai_agent: Option<serde_json::Value>,
 }
 
-/// `AIAgentUpdateRequest` — generated read-side wire type ('fabric' REST API, schema 'AIAgentUpdateRequest').
+/// `AIAgentUpdateRequest` — generated read-side wire type (`fabric` REST API, schema `AIAgentUpdateRequest`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -199,12 +318,16 @@ pub struct AIAgentUpdateRequest {
     #[serde(rename = "SWAIG", default, skip_serializing_if = "Option::is_none")]
     pub swaig: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub agent_id: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub post_prompt_auth_user: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub post_prompt_auth_password: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub multilingual: Option<serde_json::Value>,
 }
 
-/// `AIAgentUpdateStatusCode422` — generated read-side wire type ('fabric' REST API, schema 'AIAgentUpdateStatusCode422').
+/// `AIAgentUpdateStatusCode422` — generated read-side wire type (`fabric` REST API, schema `AIAgentUpdateStatusCode422`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -214,33 +337,7 @@ pub struct AIAgentUpdateStatusCode422 {
     pub errors: Option<serde_json::Value>,
 }
 
-/// `AIObject` — generated read-side wire type ('fabric' REST API, schema 'AIObject').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct AIObject {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub global_data: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub hints: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub languages: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub params: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub post_prompt: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub post_prompt_url: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub pronounce: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub prompt: Option<serde_json::Value>,
-    #[serde(rename = "SWAIG", default, skip_serializing_if = "Option::is_none")]
-    pub swaig: Option<serde_json::Value>,
-}
-
-/// `AIParams` — generated read-side wire type ('fabric' REST API, schema 'AIParams').
+/// `AIParams` — generated read-side wire type (`fabric` REST API, schema `AIParams`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -249,7 +346,11 @@ pub struct AIParams {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub acknowledge_interruptions: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub ai_model: Option<serde_json::Value>,
+    pub acoustic_eot_gate_prob: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub acoustic_eot_trust_prob: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ai_model: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub ai_name: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -257,15 +358,27 @@ pub struct AIParams {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub app_name: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub asr_diarize: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub asr_params: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub asr_smart_format: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub asr_speaker_affinity: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub attention_escalate_prompt: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub attention_timeout: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub attention_timeout_prompt: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub asr_diarize: Option<serde_json::Value>,
+    pub auth_token: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub asr_speaker_affinity: Option<serde_json::Value>,
+    pub auto_correct: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub azure_stream_first: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub azure_tts_key: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub background_file: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -273,57 +386,121 @@ pub struct AIParams {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub background_file_volume: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub barge_functions: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub barge_match_string: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub barge_min_words: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub bill_all_tts: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cache: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub call_uuid: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cartesia_key: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cartesia_model: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cartesia_stream_first: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub confidence: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub conscience: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub conversation_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub conversation_sliding_window: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub convo: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub debug_webhook_level: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub debug_webhook_url: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub deepgram_key_override: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub deepgram_stream_first: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub deepgram_tts_key: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub deepgram_url_override: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub developer_prompt: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub digit_terminators: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub digit_timeout: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub direction: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub double_turn_filler_every_n: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub double_turn_filler_min_ms: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub double_turn_model: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub double_turn_prompt: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub double_turn_wait_ms: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub double_turns: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub eleven_labs_key: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub eleven_labs_model: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub eleven_labs_similarity: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub eleven_labs_stability: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub eleven_labs_stream_first: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub enable_barge: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub enable_inner_dialog: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub enable_pause: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub enable_turn_detection: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub barge_match_string: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub barge_min_words: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub barge_functions: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub conscience: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub convo: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub conversation_id: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub conversation_sliding_window: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub debug_webhook_level: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub debug_webhook_url: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub debug: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub direction: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub digit_terminators: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub digit_timeout: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub end_of_speech_timeout: Option<serde_json::Value>,
+    pub enable_text_normalization: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub enable_thinking: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub enable_turn_detection: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub enable_vision: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub end_of_speech_timeout: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub energy_level: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub escalate_after_ms: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub escalate_after_turns: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub event_webhook_url: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ext: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub first_word_timeout: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fish_key: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fish_model: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub function_filler_sequence_gap_ms: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub function_wait_for_talking: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub functions_on_no_response: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub grok_key: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub groq_tts_key: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub hard_stop_prompt: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub hard_stop_time: Option<serde_json::Value>,
+    pub hard_stop_time: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub hold_music: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -331,13 +508,15 @@ pub struct AIParams {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub inactivity_timeout: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub inner_dialog_model: Option<serde_json::Value>,
+    pub initial_sleep_ms: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub inner_dialog: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub inner_dialog_model: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub inner_dialog_prompt: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub inner_dialog_synced: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub initial_sleep_ms: Option<serde_json::Value>,
+    pub inner_dialog_scorecard: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub input_poll_freq: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -345,26 +524,92 @@ pub struct AIParams {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub interrupt_prompt: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub inworld_apikey: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub inworld_key: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub inworld_model: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub language: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     #[deprecated(note = "languages_enabled: deprecated per x-sdk-overlay")]
     pub languages_enabled: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub local_tz: Option<String>,
+    pub lipsync_debug: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub llm_diarize_aware: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub local_tz: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub max_emotion: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub max_response_tokens: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub min_utterance_ms: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub minimax_key: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub minimax_model: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub mistral_key: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub mistral_model: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub model: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub openai_asr_engine: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub openai_azure: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub openai_gcloud_version: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub openai_stream_first: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub openai_tts_key: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub openai_tts_url: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub outbound_attention_timeout: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pcm_channels: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pcm_rate: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub persist_global_data: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub pom_format: Option<serde_json::Value>,
+    pub pom_format: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub provider: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pvt_params: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub realtime: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub redact_prompt: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub rime_apikey: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub rime_key: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub rime_model: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub rime_stream_first: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sample_rate: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub save_conversation: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub send_single_llm_response: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub similarity: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub smallest_key: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub smallest_model: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub speak_when_spoken_to: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub speaker: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub speech_event_timeout: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -372,7 +617,21 @@ pub struct AIParams {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub speech_timeout: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub speak_when_spoken_to: Option<serde_json::Value>,
+    pub speechify_key: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub speechify_loudness_normalization: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub speechify_model: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub speechify_output_format: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub speechify_stream_first: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub speechify_text_normalization: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub speed: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub stability: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub start_paused: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -380,7 +639,13 @@ pub struct AIParams {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub static_greeting_no_barge: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub summary_mode: Option<serde_json::Value>,
+    pub stream_first: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub streaming: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub strict_mode: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub summary_mode: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub swaig_allow_settings: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -388,304 +653,132 @@ pub struct AIParams {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub swaig_post_conversation: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub swaig_set_global_data: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub swaig_post_swml_vars: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub thinking_model: Option<serde_json::Value>,
+    pub swaig_set_global_data: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub target_first_segment_ms: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub text_normalization_far_dir: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub thinking_model: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tool_result_distill: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub transfer_summary: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub transparent_barge: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub transparent_barge_max_time: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub transfer_summary: Option<serde_json::Value>,
+    pub tts_number_format: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub turn_detection: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub turn_detection_min_length: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub turn_detection_timeout: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub tts_number_format: Option<serde_json::Value>,
+    pub turn_filler_every_n: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub video_listening_file: Option<String>,
+    pub turn_filler_min_ms: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub turn_filler_sources: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub url: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub utility_model: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub vad_config: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub video_fps: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub video_idle_file: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub video_listening_file: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub video_scale: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub video_talking_file: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub vision_model: Option<serde_json::Value>,
+    pub vision_model: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub vad_config: Option<String>,
+    pub voice_name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub vol: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub wait_for_user: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub wake_prefix: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub eleven_labs_stability: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub eleven_labs_similarity: Option<serde_json::Value>,
 }
 
-/// `AIPostPromptPom` — generated read-side wire type ('fabric' REST API, schema 'AIPostPromptPom').
+/// `Action` — generated read-side wire type (`fabric` REST API, schema `Action`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct AIPostPromptPom {
+pub struct Action {
+    #[serde(rename = "SWML", default, skip_serializing_if = "Option::is_none")]
+    pub swml: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub max_tokens: Option<i64>,
+    pub add_dynamic_hints: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub temperature: Option<serde_json::Value>,
+    pub back_to_back_functions: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub top_p: Option<serde_json::Value>,
+    pub change_context: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub confidence: Option<serde_json::Value>,
+    pub change_step: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub presence_penalty: Option<serde_json::Value>,
+    pub change_voice: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub frequency_penalty: Option<serde_json::Value>,
+    pub clear_dynamic_hints: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub pom: Option<serde_json::Value>,
+    pub context_switch: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub end_of_speech_timeout: Option<i64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub extensive_data: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub functions_on_speaker_timeout: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub hangup: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub hold: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub playback_bg: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub replace_in_history: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub say: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub set_global_data: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub set_meta_data: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub settings: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub speech_event_timeout: Option<i64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub stop: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub stop_playback_bg: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub toggle_functions: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub transfer: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub unset_global_data: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub unset_meta_data: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub user_event: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub user_input: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub wait_for_user: Option<serde_json::Value>,
 }
 
-/// `AIPostPromptPomUpdate` — generated read-side wire type ('fabric' REST API, schema 'AIPostPromptPomUpdate').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct AIPostPromptPomUpdate {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub max_tokens: Option<i64>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub temperature: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub top_p: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub confidence: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub presence_penalty: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub frequency_penalty: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub pom: Option<serde_json::Value>,
-}
-
-/// `AIPostPromptText` — generated read-side wire type ('fabric' REST API, schema 'AIPostPromptText').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct AIPostPromptText {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub max_tokens: Option<i64>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub temperature: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub top_p: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub confidence: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub presence_penalty: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub frequency_penalty: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub text: Option<String>,
-}
-
-/// `AIPostPromptTextUpdate` — generated read-side wire type ('fabric' REST API, schema 'AIPostPromptTextUpdate').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct AIPostPromptTextUpdate {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub max_tokens: Option<i64>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub temperature: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub top_p: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub confidence: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub presence_penalty: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub frequency_penalty: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub text: Option<String>,
-}
-
-/// `AIPromptPom` — generated read-side wire type ('fabric' REST API, schema 'AIPromptPom').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct AIPromptPom {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub max_tokens: Option<i64>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub temperature: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub top_p: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub confidence: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub presence_penalty: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub frequency_penalty: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub pom: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub contexts: Option<serde_json::Value>,
-}
-
-/// `AIPromptPomUpdate` — generated read-side wire type ('fabric' REST API, schema 'AIPromptPomUpdate').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct AIPromptPomUpdate {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub max_tokens: Option<i64>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub temperature: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub top_p: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub confidence: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub presence_penalty: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub frequency_penalty: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub pom: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub contexts: Option<serde_json::Value>,
-}
-
-/// `AIPromptText` — generated read-side wire type ('fabric' REST API, schema 'AIPromptText').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct AIPromptText {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub max_tokens: Option<i64>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub temperature: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub top_p: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub confidence: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub presence_penalty: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub frequency_penalty: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub text: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub contexts: Option<serde_json::Value>,
-}
-
-/// `AIPromptTextUpdate` — generated read-side wire type ('fabric' REST API, schema 'AIPromptTextUpdate').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct AIPromptTextUpdate {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub max_tokens: Option<i64>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub temperature: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub top_p: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub confidence: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub presence_penalty: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub frequency_penalty: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub text: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub contexts: Option<serde_json::Value>,
-}
-
-/// `AllOfProperty` — generated read-side wire type ('fabric' REST API, schema 'AllOfProperty').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct AllOfProperty {
-    #[serde(rename = "allOf", default, skip_serializing_if = "Option::is_none")]
-    pub all_of: Option<serde_json::Value>,
-}
-
-/// `AmazonBedrock` — generated read-side wire type ('fabric' REST API, schema 'AmazonBedrock').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct AmazonBedrock {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub amazon_bedrock: Option<serde_json::Value>,
-}
-
-/// `AmazonBedrockObject` — generated read-side wire type ('fabric' REST API, schema 'AmazonBedrockObject').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct AmazonBedrockObject {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub global_data: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub params: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub post_prompt: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub post_prompt_url: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub prompt: Option<serde_json::Value>,
-    #[serde(rename = "SWAIG", default, skip_serializing_if = "Option::is_none")]
-    pub swaig: Option<serde_json::Value>,
-}
-
-/// `Answer` — generated read-side wire type ('fabric' REST API, schema 'Answer').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct Answer {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub answer: Option<serde_json::Value>,
-}
-
-/// `AnyOfProperty` — generated read-side wire type ('fabric' REST API, schema 'AnyOfProperty').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct AnyOfProperty {
-    #[serde(rename = "anyOf", default, skip_serializing_if = "Option::is_none")]
-    pub any_of: Option<serde_json::Value>,
-}
-
-/// `ArrayProperty` — generated read-side wire type ('fabric' REST API, schema 'ArrayProperty').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct ArrayProperty {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub description: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub nullable: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub r#type: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub default: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub items: Option<serde_json::Value>,
-}
-
-/// `AudioChannel` — generated read-side wire type ('fabric' REST API, schema 'AudioChannel').
+/// `AudioChannel` — generated read-side wire type (`fabric` REST API, schema `AudioChannel`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -695,61 +788,7 @@ pub struct AudioChannel {
     pub audio: Option<String>,
 }
 
-/// `BedrockParams` — generated read-side wire type ('fabric' REST API, schema 'BedrockParams').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct BedrockParams {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub attention_timeout: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub hard_stop_time: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub inactivity_timeout: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub video_listening_file: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub video_idle_file: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub video_talking_file: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub hard_stop_prompt: Option<String>,
-}
-
-/// `BedrockSWAIG` — generated read-side wire type ('fabric' REST API, schema 'BedrockSWAIG').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct BedrockSWAIG {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub functions: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub defaults: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub native_functions: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub includes: Option<serde_json::Value>,
-}
-
-/// `BooleanProperty` — generated read-side wire type ('fabric' REST API, schema 'BooleanProperty').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct BooleanProperty {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub description: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub nullable: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub r#type: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub default: Option<serde_json::Value>,
-}
-
-/// `CXMLScript` — generated read-side wire type ('fabric' REST API, schema 'CXMLScript').
+/// `CXMLScript` — generated read-side wire type (`fabric` REST API, schema `CXMLScript`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -768,14 +807,14 @@ pub struct CXMLScript {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub script_type: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub display_name: Option<String>,
+    pub name: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub status_callback_url: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub status_callback_method: Option<serde_json::Value>,
 }
 
-/// `CXMLScriptAddressListResponse` — generated read-side wire type ('fabric' REST API, schema 'CXMLScriptAddressListResponse').
+/// `CXMLScriptAddressListResponse` — generated read-side wire type (`fabric` REST API, schema `CXMLScriptAddressListResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -787,7 +826,7 @@ pub struct CXMLScriptAddressListResponse {
     pub links: Option<serde_json::Value>,
 }
 
-/// `CXMLScriptAddressPaginationResponse` — generated read-side wire type ('fabric' REST API, schema 'CXMLScriptAddressPaginationResponse').
+/// `CXMLScriptAddressPaginationResponse` — generated read-side wire type (`fabric` REST API, schema `CXMLScriptAddressPaginationResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -803,23 +842,25 @@ pub struct CXMLScriptAddressPaginationResponse {
     pub prev: Option<String>,
 }
 
-/// `CXMLScriptCreateRequest` — generated read-side wire type ('fabric' REST API, schema 'CXMLScriptCreateRequest').
+/// `CXMLScriptCreateRequest` — generated read-side wire type (`fabric` REST API, schema `CXMLScriptCreateRequest`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct CXMLScriptCreateRequest {
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub display_name: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub contents: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub status_callback_url: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub status_callback_method: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub script_type: Option<serde_json::Value>,
 }
 
-/// `CXMLScriptCreateStatusCode422` — generated read-side wire type ('fabric' REST API, schema 'CXMLScriptCreateStatusCode422').
+/// `CXMLScriptCreateStatusCode422` — generated read-side wire type (`fabric` REST API, schema `CXMLScriptCreateStatusCode422`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -829,7 +870,7 @@ pub struct CXMLScriptCreateStatusCode422 {
     pub errors: Option<serde_json::Value>,
 }
 
-/// `CXMLScriptListResponse` — generated read-side wire type ('fabric' REST API, schema 'CXMLScriptListResponse').
+/// `CXMLScriptListResponse` — generated read-side wire type (`fabric` REST API, schema `CXMLScriptListResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -841,7 +882,7 @@ pub struct CXMLScriptListResponse {
     pub links: Option<serde_json::Value>,
 }
 
-/// `CXMLScriptResponse` — generated read-side wire type ('fabric' REST API, schema 'CXMLScriptResponse').
+/// `CXMLScriptResponse` — generated read-side wire type (`fabric` REST API, schema `CXMLScriptResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -852,7 +893,7 @@ pub struct CXMLScriptResponse {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub project_id: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub name: Option<String>,
+    pub display_name: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub r#type: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -863,23 +904,25 @@ pub struct CXMLScriptResponse {
     pub cxml_script: Option<serde_json::Value>,
 }
 
-/// `CXMLScriptUpdateRequest` — generated read-side wire type ('fabric' REST API, schema 'CXMLScriptUpdateRequest').
+/// `CXMLScriptUpdateRequest` — generated read-side wire type (`fabric` REST API, schema `CXMLScriptUpdateRequest`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct CXMLScriptUpdateRequest {
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub display_name: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub contents: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub status_callback_url: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub status_callback_method: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub script_type: Option<serde_json::Value>,
 }
 
-/// `CXMLScriptUpdateStatusCode422` — generated read-side wire type ('fabric' REST API, schema 'CXMLScriptUpdateStatusCode422').
+/// `CXMLScriptUpdateStatusCode422` — generated read-side wire type (`fabric` REST API, schema `CXMLScriptUpdateStatusCode422`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -889,7 +932,7 @@ pub struct CXMLScriptUpdateStatusCode422 {
     pub errors: Option<serde_json::Value>,
 }
 
-/// `CXMLWebhook` — generated read-side wire type ('fabric' REST API, schema 'CXMLWebhook').
+/// `CXMLWebhook` — generated read-side wire type (`fabric` REST API, schema `CXMLWebhook`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -915,7 +958,7 @@ pub struct CXMLWebhook {
     pub status_callback_method: Option<serde_json::Value>,
 }
 
-/// `CXMLWebhookAddressListResponse` — generated read-side wire type ('fabric' REST API, schema 'CXMLWebhookAddressListResponse').
+/// `CXMLWebhookAddressListResponse` — generated read-side wire type (`fabric` REST API, schema `CXMLWebhookAddressListResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -927,7 +970,7 @@ pub struct CXMLWebhookAddressListResponse {
     pub links: Option<serde_json::Value>,
 }
 
-/// `CXMLWebhookAddressPaginationResponse` — generated read-side wire type ('fabric' REST API, schema 'CXMLWebhookAddressPaginationResponse').
+/// `CXMLWebhookAddressPaginationResponse` — generated read-side wire type (`fabric` REST API, schema `CXMLWebhookAddressPaginationResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -943,7 +986,7 @@ pub struct CXMLWebhookAddressPaginationResponse {
     pub prev: Option<String>,
 }
 
-/// `CXMLWebhookCreateRequest` — generated read-side wire type ('fabric' REST API, schema 'CXMLWebhookCreateRequest').
+/// `CXMLWebhookCreateRequest` — generated read-side wire type (`fabric` REST API, schema `CXMLWebhookCreateRequest`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -967,7 +1010,7 @@ pub struct CXMLWebhookCreateRequest {
     pub status_callback_method: Option<serde_json::Value>,
 }
 
-/// `CXMLWebhookCreateStatusCode422` — generated read-side wire type ('fabric' REST API, schema 'CXMLWebhookCreateStatusCode422').
+/// `CXMLWebhookCreateStatusCode422` — generated read-side wire type (`fabric` REST API, schema `CXMLWebhookCreateStatusCode422`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -977,7 +1020,7 @@ pub struct CXMLWebhookCreateStatusCode422 {
     pub errors: Option<serde_json::Value>,
 }
 
-/// `CXMLWebhookListResponse` — generated read-side wire type ('fabric' REST API, schema 'CXMLWebhookListResponse').
+/// `CXMLWebhookListResponse` — generated read-side wire type (`fabric` REST API, schema `CXMLWebhookListResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -989,7 +1032,7 @@ pub struct CXMLWebhookListResponse {
     pub links: Option<serde_json::Value>,
 }
 
-/// `CXMLWebhookPaginationResponse` — generated read-side wire type ('fabric' REST API, schema 'CXMLWebhookPaginationResponse').
+/// `CXMLWebhookPaginationResponse` — generated read-side wire type (`fabric` REST API, schema `CXMLWebhookPaginationResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1005,7 +1048,7 @@ pub struct CXMLWebhookPaginationResponse {
     pub prev: Option<String>,
 }
 
-/// `CXMLWebhookResponse` — generated read-side wire type ('fabric' REST API, schema 'CXMLWebhookResponse').
+/// `CXMLWebhookResponse` — generated read-side wire type (`fabric` REST API, schema `CXMLWebhookResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1027,7 +1070,7 @@ pub struct CXMLWebhookResponse {
     pub cxml_webhook: Option<serde_json::Value>,
 }
 
-/// `CXMLWebhookUpdateRequest` — generated read-side wire type ('fabric' REST API, schema 'CXMLWebhookUpdateRequest').
+/// `CXMLWebhookUpdateRequest` — generated read-side wire type (`fabric` REST API, schema `CXMLWebhookUpdateRequest`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1051,7 +1094,7 @@ pub struct CXMLWebhookUpdateRequest {
     pub status_callback_method: Option<serde_json::Value>,
 }
 
-/// `CXMLWebhookUpdateStatusCode422` — generated read-side wire type ('fabric' REST API, schema 'CXMLWebhookUpdateStatusCode422').
+/// `CXMLWebhookUpdateStatusCode422` — generated read-side wire type (`fabric` REST API, schema `CXMLWebhookUpdateStatusCode422`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1061,7 +1104,7 @@ pub struct CXMLWebhookUpdateStatusCode422 {
     pub errors: Option<serde_json::Value>,
 }
 
-/// `CallFlow` — generated read-side wire type ('fabric' REST API, schema 'CallFlow').
+/// `CallFlow` — generated read-side wire type (`fabric` REST API, schema `CallFlow`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1072,14 +1115,14 @@ pub struct CallFlow {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub title: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub flow_data: Option<String>,
+    pub flow_data: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub relayml: Option<String>,
+    pub relayml: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub document_version: Option<i64>,
 }
 
-/// `CallFlowAddressListResponse` — generated read-side wire type ('fabric' REST API, schema 'CallFlowAddressListResponse').
+/// `CallFlowAddressListResponse` — generated read-side wire type (`fabric` REST API, schema `CallFlowAddressListResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1091,7 +1134,7 @@ pub struct CallFlowAddressListResponse {
     pub links: Option<serde_json::Value>,
 }
 
-/// `CallFlowAddressPaginationResponse` — generated read-side wire type ('fabric' REST API, schema 'CallFlowAddressPaginationResponse').
+/// `CallFlowAddressPaginationResponse` — generated read-side wire type (`fabric` REST API, schema `CallFlowAddressPaginationResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1107,7 +1150,7 @@ pub struct CallFlowAddressPaginationResponse {
     pub prev: Option<String>,
 }
 
-/// `CallFlowCreateRequest` — generated read-side wire type ('fabric' REST API, schema 'CallFlowCreateRequest').
+/// `CallFlowCreateRequest` — generated read-side wire type (`fabric` REST API, schema `CallFlowCreateRequest`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1115,9 +1158,13 @@ pub struct CallFlowAddressPaginationResponse {
 pub struct CallFlowCreateRequest {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub title: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub flow_data: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub relayml: Option<serde_json::Value>,
 }
 
-/// `CallFlowCreateStatusCode422` — generated read-side wire type ('fabric' REST API, schema 'CallFlowCreateStatusCode422').
+/// `CallFlowCreateStatusCode422` — generated read-side wire type (`fabric` REST API, schema `CallFlowCreateStatusCode422`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1127,7 +1174,7 @@ pub struct CallFlowCreateStatusCode422 {
     pub errors: Option<serde_json::Value>,
 }
 
-/// `CallFlowListResponse` — generated read-side wire type ('fabric' REST API, schema 'CallFlowListResponse').
+/// `CallFlowListResponse` — generated read-side wire type (`fabric` REST API, schema `CallFlowListResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1139,7 +1186,7 @@ pub struct CallFlowListResponse {
     pub data: Option<serde_json::Value>,
 }
 
-/// `CallFlowResponse` — generated read-side wire type ('fabric' REST API, schema 'CallFlowResponse').
+/// `CallFlowResponse` — generated read-side wire type (`fabric` REST API, schema `CallFlowResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1161,7 +1208,7 @@ pub struct CallFlowResponse {
     pub call_flow: Option<serde_json::Value>,
 }
 
-/// `CallFlowUpdateRequest` — generated read-side wire type ('fabric' REST API, schema 'CallFlowUpdateRequest').
+/// `CallFlowUpdateRequest` — generated read-side wire type (`fabric` REST API, schema `CallFlowUpdateRequest`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1171,9 +1218,13 @@ pub struct CallFlowUpdateRequest {
     pub title: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub document_version: Option<i64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub flow_data: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub relayml: Option<serde_json::Value>,
 }
 
-/// `CallFlowUpdateStatusCode422` — generated read-side wire type ('fabric' REST API, schema 'CallFlowUpdateStatusCode422').
+/// `CallFlowUpdateStatusCode422` — generated read-side wire type (`fabric` REST API, schema `CallFlowUpdateStatusCode422`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1183,7 +1234,7 @@ pub struct CallFlowUpdateStatusCode422 {
     pub errors: Option<serde_json::Value>,
 }
 
-/// `CallFlowVersion` — generated read-side wire type ('fabric' REST API, schema 'CallFlowVersion').
+/// `CallFlowVersion` — generated read-side wire type (`fabric` REST API, schema `CallFlowVersion`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1192,18 +1243,18 @@ pub struct CallFlowVersion {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub id: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub version: Option<String>,
+    pub document_version: Option<i64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub created_at: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub updated_at: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub flow_data: Option<String>,
+    pub flow_data: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub relayml: Option<String>,
+    pub relayml: Option<serde_json::Value>,
 }
 
-/// `CallFlowVersionDeployByDocumentVersion` — generated read-side wire type ('fabric' REST API, schema 'CallFlowVersionDeployByDocumentVersion').
+/// `CallFlowVersionDeployByDocumentVersion` — generated read-side wire type (`fabric` REST API, schema `CallFlowVersionDeployByDocumentVersion`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1213,7 +1264,7 @@ pub struct CallFlowVersionDeployByDocumentVersion {
     pub document_version: Option<i64>,
 }
 
-/// `CallFlowVersionDeployByVersionId` — generated read-side wire type ('fabric' REST API, schema 'CallFlowVersionDeployByVersionId').
+/// `CallFlowVersionDeployByVersionId` — generated read-side wire type (`fabric` REST API, schema `CallFlowVersionDeployByVersionId`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1223,7 +1274,7 @@ pub struct CallFlowVersionDeployByVersionId {
     pub call_flow_version_id: Option<serde_json::Value>,
 }
 
-/// `CallFlowVersionDeployResponse` — generated read-side wire type ('fabric' REST API, schema 'CallFlowVersionDeployResponse').
+/// `CallFlowVersionDeployResponse` — generated read-side wire type (`fabric` REST API, schema `CallFlowVersionDeployResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1238,12 +1289,12 @@ pub struct CallFlowVersionDeployResponse {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub document_version: Option<i64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub flow_data: Option<String>,
+    pub flow_data: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub relayml: Option<String>,
+    pub relayml: Option<serde_json::Value>,
 }
 
-/// `CallFlowVersionListResponse` — generated read-side wire type ('fabric' REST API, schema 'CallFlowVersionListResponse').
+/// `CallFlowVersionListResponse` — generated read-side wire type (`fabric` REST API, schema `CallFlowVersionListResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1255,7 +1306,7 @@ pub struct CallFlowVersionListResponse {
     pub links: Option<serde_json::Value>,
 }
 
-/// `CallFlowVersionsPaginationResponse` — generated read-side wire type ('fabric' REST API, schema 'CallFlowVersionsPaginationResponse').
+/// `CallFlowVersionsPaginationResponse` — generated read-side wire type (`fabric` REST API, schema `CallFlowVersionsPaginationResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1271,61 +1322,7 @@ pub struct CallFlowVersionsPaginationResponse {
     pub prev: Option<String>,
 }
 
-/// `ChangeContextAction` — generated read-side wire type ('fabric' REST API, schema 'ChangeContextAction').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct ChangeContextAction {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub change_context: Option<String>,
-}
-
-/// `ChangeStepAction` — generated read-side wire type ('fabric' REST API, schema 'ChangeStepAction').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct ChangeStepAction {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub change_step: Option<String>,
-}
-
-/// `Cond` — generated read-side wire type ('fabric' REST API, schema 'Cond').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct Cond {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub cond: Option<serde_json::Value>,
-}
-
-/// `CondElse` — generated read-side wire type ('fabric' REST API, schema 'CondElse').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct CondElse {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub r#else: Option<serde_json::Value>,
-}
-
-/// `CondReg` — generated read-side wire type ('fabric' REST API, schema 'CondReg').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct CondReg {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub when: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub then: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub r#else: Option<serde_json::Value>,
-}
-
-/// `ConferenceRoom` — generated read-side wire type ('fabric' REST API, schema 'ConferenceRoom').
+/// `ConferenceRoom` — generated read-side wire type (`fabric` REST API, schema `ConferenceRoom`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1344,7 +1341,7 @@ pub struct ConferenceRoom {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub quality: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub fps: Option<f64>,
+    pub fps: Option<i64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub join_from: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -1373,7 +1370,7 @@ pub struct ConferenceRoom {
     pub prioritize_handraise: Option<bool>,
 }
 
-/// `ConferenceRoomAddressListResponse` — generated read-side wire type ('fabric' REST API, schema 'ConferenceRoomAddressListResponse').
+/// `ConferenceRoomAddressListResponse` — generated read-side wire type (`fabric` REST API, schema `ConferenceRoomAddressListResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1385,7 +1382,7 @@ pub struct ConferenceRoomAddressListResponse {
     pub links: Option<serde_json::Value>,
 }
 
-/// `ConferenceRoomAddressPaginationResponse` — generated read-side wire type ('fabric' REST API, schema 'ConferenceRoomAddressPaginationResponse').
+/// `ConferenceRoomAddressPaginationResponse` — generated read-side wire type (`fabric` REST API, schema `ConferenceRoomAddressPaginationResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1401,7 +1398,7 @@ pub struct ConferenceRoomAddressPaginationResponse {
     pub prev: Option<String>,
 }
 
-/// `ConferenceRoomCreateRequest` — generated read-side wire type ('fabric' REST API, schema 'ConferenceRoomCreateRequest').
+/// `ConferenceRoomCreateRequest` — generated read-side wire type (`fabric` REST API, schema `ConferenceRoomCreateRequest`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1443,7 +1440,7 @@ pub struct ConferenceRoomCreateRequest {
     pub user_join_video_off: Option<bool>,
 }
 
-/// `ConferenceRoomCreateStatusCode422` — generated read-side wire type ('fabric' REST API, schema 'ConferenceRoomCreateStatusCode422').
+/// `ConferenceRoomCreateStatusCode422` — generated read-side wire type (`fabric` REST API, schema `ConferenceRoomCreateStatusCode422`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1453,7 +1450,7 @@ pub struct ConferenceRoomCreateStatusCode422 {
     pub errors: Option<serde_json::Value>,
 }
 
-/// `ConferenceRoomListResponse` — generated read-side wire type ('fabric' REST API, schema 'ConferenceRoomListResponse').
+/// `ConferenceRoomListResponse` — generated read-side wire type (`fabric` REST API, schema `ConferenceRoomListResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1465,7 +1462,7 @@ pub struct ConferenceRoomListResponse {
     pub data: Option<serde_json::Value>,
 }
 
-/// `ConferenceRoomResponse` — generated read-side wire type ('fabric' REST API, schema 'ConferenceRoomResponse').
+/// `ConferenceRoomResponse` — generated read-side wire type (`fabric` REST API, schema `ConferenceRoomResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1487,18 +1484,14 @@ pub struct ConferenceRoomResponse {
     pub conference_room: Option<serde_json::Value>,
 }
 
-/// `ConferenceRoomUpdateRequest` — generated read-side wire type ('fabric' REST API, schema 'ConferenceRoomUpdateRequest').
+/// `ConferenceRoomUpdateRequest` — generated read-side wire type (`fabric` REST API, schema `ConferenceRoomUpdateRequest`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct ConferenceRoomUpdateRequest {
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub name: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub display_name: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub description: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub join_from: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -1521,15 +1514,9 @@ pub struct ConferenceRoomUpdateRequest {
     pub meta: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub sync_audio_video: Option<bool>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub tone_on_entry_and_exit: Option<bool>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub room_join_video_off: Option<bool>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub user_join_video_off: Option<bool>,
 }
 
-/// `ConferenceRoomUpdateStatusCode422` — generated read-side wire type ('fabric' REST API, schema 'ConferenceRoomUpdateStatusCode422').
+/// `ConferenceRoomUpdateStatusCode422` — generated read-side wire type (`fabric` REST API, schema `ConferenceRoomUpdateStatusCode422`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1539,421 +1526,25 @@ pub struct ConferenceRoomUpdateStatusCode422 {
     pub errors: Option<serde_json::Value>,
 }
 
-/// `Connect` — generated read-side wire type ('fabric' REST API, schema 'Connect').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct Connect {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub connect: Option<serde_json::Value>,
-}
-
-/// `ConnectDeviceParallel` — generated read-side wire type ('fabric' REST API, schema 'ConnectDeviceParallel').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct ConnectDeviceParallel {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub from: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub headers: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub codecs: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub webrtc_media: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub session_timeout: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub ringback: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub result: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub timeout: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub max_duration: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub answer_on_bridge: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub confirm: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub confirm_timeout: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub username: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub password: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub encryption: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub call_state_url: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub transfer_after_bridge: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub call_state_events: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub status_url: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub parallel: Option<serde_json::Value>,
-}
-
-/// `ConnectDeviceSerial` — generated read-side wire type ('fabric' REST API, schema 'ConnectDeviceSerial').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct ConnectDeviceSerial {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub from: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub headers: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub codecs: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub webrtc_media: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub session_timeout: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub ringback: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub result: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub timeout: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub max_duration: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub answer_on_bridge: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub confirm: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub confirm_timeout: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub username: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub password: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub encryption: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub call_state_url: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub transfer_after_bridge: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub call_state_events: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub status_url: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub serial: Option<serde_json::Value>,
-}
-
-/// `ConnectDeviceSerialParallel` — generated read-side wire type ('fabric' REST API, schema 'ConnectDeviceSerialParallel').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct ConnectDeviceSerialParallel {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub from: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub headers: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub codecs: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub webrtc_media: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub session_timeout: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub ringback: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub result: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub timeout: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub max_duration: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub answer_on_bridge: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub confirm: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub confirm_timeout: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub username: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub password: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub encryption: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub call_state_url: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub transfer_after_bridge: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub call_state_events: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub status_url: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub serial_parallel: Option<serde_json::Value>,
-}
-
-/// `ConnectDeviceSingle` — generated read-side wire type ('fabric' REST API, schema 'ConnectDeviceSingle').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct ConnectDeviceSingle {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub from: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub headers: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub codecs: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub webrtc_media: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub session_timeout: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub ringback: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub result: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub timeout: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub max_duration: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub answer_on_bridge: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub confirm: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub confirm_timeout: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub username: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub password: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub encryption: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub call_state_url: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub transfer_after_bridge: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub call_state_events: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub status_url: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub to: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub name: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub codec: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub realtime: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub status_url_method: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub authorization_bearer_token: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub custom_parameters: Option<serde_json::Value>,
-}
-
-/// `ConnectHeaders` — generated read-side wire type ('fabric' REST API, schema 'ConnectHeaders').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct ConnectHeaders {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub name: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub value: Option<String>,
-}
-
-/// `ConnectSwitch` — generated read-side wire type ('fabric' REST API, schema 'ConnectSwitch').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct ConnectSwitch {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub variable: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub case: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub default: Option<serde_json::Value>,
-}
-
-/// `ConstProperty` — generated read-side wire type ('fabric' REST API, schema 'ConstProperty').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct ConstProperty {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub r#const: Option<serde_json::Value>,
-}
-
-/// `ContextPOMSteps` — generated read-side wire type ('fabric' REST API, schema 'ContextPOMSteps').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct ContextPOMSteps {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub name: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub step_criteria: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub functions: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub valid_contexts: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub skip_user_turn: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub end: Option<bool>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub valid_steps: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub pom: Option<serde_json::Value>,
-}
-
-/// `ContextSwitchAction` — generated read-side wire type ('fabric' REST API, schema 'ContextSwitchAction').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct ContextSwitchAction {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub context_switch: Option<serde_json::Value>,
-}
-
-/// `ContextTextSteps` — generated read-side wire type ('fabric' REST API, schema 'ContextTextSteps').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct ContextTextSteps {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub name: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub step_criteria: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub functions: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub valid_contexts: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub skip_user_turn: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub end: Option<bool>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub valid_steps: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub text: Option<String>,
-}
-
-/// `Contexts` — generated read-side wire type ('fabric' REST API, schema 'Contexts').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct Contexts {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub default: Option<serde_json::Value>,
-}
-
-/// `ContextsPOMObject` — generated read-side wire type ('fabric' REST API, schema 'ContextsPOMObject').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct ContextsPOMObject {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub steps: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub isolated: Option<bool>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub enter_fillers: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub exit_fillers: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub pom: Option<serde_json::Value>,
-}
-
-/// `ContextsPOMObjectUpdate` — generated read-side wire type ('fabric' REST API, schema 'ContextsPOMObjectUpdate').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct ContextsPOMObjectUpdate {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub steps: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub isolated: Option<bool>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub enter_fillers: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub exit_fillers: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub pom: Option<serde_json::Value>,
-}
-
-/// `ContextsTextObject` — generated read-side wire type ('fabric' REST API, schema 'ContextsTextObject').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct ContextsTextObject {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub steps: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub isolated: Option<bool>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub enter_fillers: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub exit_fillers: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub text: Option<String>,
-}
-
-/// `ContextsTextObjectUpdate` — generated read-side wire type ('fabric' REST API, schema 'ContextsTextObjectUpdate').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct ContextsTextObjectUpdate {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub steps: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub isolated: Option<bool>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub enter_fillers: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub exit_fillers: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub text: Option<String>,
-}
-
-/// `ContextsUpdate` — generated read-side wire type ('fabric' REST API, schema 'ContextsUpdate').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct ContextsUpdate {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub default: Option<serde_json::Value>,
-}
-
-/// `ConversationMessage` — generated read-side wire type ('fabric' REST API, schema 'ConversationMessage').
+/// `ConversationMessage` — generated read-side wire type (`fabric` REST API, schema `ConversationMessage`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct ConversationMessage {
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub role: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub content: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub lang: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub role: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tool_call_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tool_calls: Option<serde_json::Value>,
 }
 
-/// `CxmlApplication` — generated read-side wire type ('fabric' REST API, schema 'CxmlApplication').
+/// `CxmlApplication` — generated read-side wire type (`fabric` REST API, schema `CxmlApplication`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -1989,9 +1580,15 @@ pub struct CxmlApplication {
     pub sms_status_callback: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub sms_status_callback_method: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub message_status_callback: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub api_version: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub uri: Option<String>,
 }
 
-/// `CxmlApplicationAddressListResponse` — generated read-side wire type ('fabric' REST API, schema 'CxmlApplicationAddressListResponse').
+/// `CxmlApplicationAddressListResponse` — generated read-side wire type (`fabric` REST API, schema `CxmlApplicationAddressListResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2003,7 +1600,7 @@ pub struct CxmlApplicationAddressListResponse {
     pub links: Option<serde_json::Value>,
 }
 
-/// `CxmlApplicationAddressPaginationResponse` — generated read-side wire type ('fabric' REST API, schema 'CxmlApplicationAddressPaginationResponse').
+/// `CxmlApplicationAddressPaginationResponse` — generated read-side wire type (`fabric` REST API, schema `CxmlApplicationAddressPaginationResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2019,7 +1616,7 @@ pub struct CxmlApplicationAddressPaginationResponse {
     pub prev: Option<String>,
 }
 
-/// `CxmlApplicationListResponse` — generated read-side wire type ('fabric' REST API, schema 'CxmlApplicationListResponse').
+/// `CxmlApplicationListResponse` — generated read-side wire type (`fabric` REST API, schema `CxmlApplicationListResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2031,7 +1628,7 @@ pub struct CxmlApplicationListResponse {
     pub links: Option<serde_json::Value>,
 }
 
-/// `CxmlApplicationPaginationResponse` — generated read-side wire type ('fabric' REST API, schema 'CxmlApplicationPaginationResponse').
+/// `CxmlApplicationPaginationResponse` — generated read-side wire type (`fabric` REST API, schema `CxmlApplicationPaginationResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2047,7 +1644,7 @@ pub struct CxmlApplicationPaginationResponse {
     pub prev: Option<String>,
 }
 
-/// `CxmlApplicationResponse` — generated read-side wire type ('fabric' REST API, schema 'CxmlApplicationResponse').
+/// `CxmlApplicationResponse` — generated read-side wire type (`fabric` REST API, schema `CxmlApplicationResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2069,43 +1666,41 @@ pub struct CxmlApplicationResponse {
     pub cxml_application: Option<serde_json::Value>,
 }
 
-/// `CxmlApplicationUpdateRequest` — generated read-side wire type ('fabric' REST API, schema 'CxmlApplicationUpdateRequest').
+/// `CxmlApplicationUpdateRequest` — generated read-side wire type (`fabric` REST API, schema `CxmlApplicationUpdateRequest`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct CxmlApplicationUpdateRequest {
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub display_name: Option<String>,
+    pub name: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub account_sid: Option<serde_json::Value>,
+    pub call_request_url: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub voice_url: Option<String>,
+    pub call_request_method: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub voice_method: Option<serde_json::Value>,
+    pub call_fallback_url: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub voice_fallback_url: Option<String>,
+    pub call_fallback_method: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub voice_fallback_method: Option<serde_json::Value>,
+    pub call_status_url: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub status_callback: Option<String>,
+    pub call_status_method: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub status_callback_method: Option<serde_json::Value>,
+    pub message_request_url: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub sms_url: Option<String>,
+    pub message_request_method: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub sms_method: Option<serde_json::Value>,
+    pub message_fallback_url: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub sms_fallback_url: Option<String>,
+    pub message_fallback_method: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub sms_fallback_method: Option<serde_json::Value>,
+    pub message_status_url: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub sms_status_callback: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub sms_status_callback_method: Option<serde_json::Value>,
+    pub message_status_method: Option<serde_json::Value>,
 }
 
-/// `CxmlApplicationUpdateStatusCode422` — generated read-side wire type ('fabric' REST API, schema 'CxmlApplicationUpdateStatusCode422').
+/// `CxmlApplicationUpdateStatusCode422` — generated read-side wire type (`fabric` REST API, schema `CxmlApplicationUpdateStatusCode422`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2115,41 +1710,23 @@ pub struct CxmlApplicationUpdateStatusCode422 {
     pub errors: Option<serde_json::Value>,
 }
 
-/// `DataMap` — generated read-side wire type ('fabric' REST API, schema 'DataMap').
+/// `DataMap` — generated read-side wire type (`fabric` REST API, schema `DataMap`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct DataMap {
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub output: Option<serde_json::Value>,
+    pub contexts: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub expressions: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub output: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub webhooks: Option<serde_json::Value>,
 }
 
-/// `Denoise` — generated read-side wire type ('fabric' REST API, schema 'Denoise').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct Denoise {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub denoise: Option<serde_json::Value>,
-}
-
-/// `DetectMachine` — generated read-side wire type ('fabric' REST API, schema 'DetectMachine').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct DetectMachine {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub detect_machine: Option<serde_json::Value>,
-}
-
-/// `DialogFlowPaginationResponse` — generated read-side wire type ('fabric' REST API, schema 'DialogFlowPaginationResponse').
+/// `DialogFlowPaginationResponse` — generated read-side wire type (`fabric` REST API, schema `DialogFlowPaginationResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2165,7 +1742,7 @@ pub struct DialogFlowPaginationResponse {
     pub prev: Option<String>,
 }
 
-/// `DialogflowAgent` — generated read-side wire type ('fabric' REST API, schema 'DialogflowAgent').
+/// `DialogflowAgent` — generated read-side wire type (`fabric` REST API, schema `DialogflowAgent`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2187,7 +1764,7 @@ pub struct DialogflowAgent {
     pub dialogflow_reference_name: Option<String>,
 }
 
-/// `DialogflowAgentAddressListResponse` — generated read-side wire type ('fabric' REST API, schema 'DialogflowAgentAddressListResponse').
+/// `DialogflowAgentAddressListResponse` — generated read-side wire type (`fabric` REST API, schema `DialogflowAgentAddressListResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2199,7 +1776,7 @@ pub struct DialogflowAgentAddressListResponse {
     pub links: Option<serde_json::Value>,
 }
 
-/// `DialogflowAgentAddressPaginationResponse` — generated read-side wire type ('fabric' REST API, schema 'DialogflowAgentAddressPaginationResponse').
+/// `DialogflowAgentAddressPaginationResponse` — generated read-side wire type (`fabric` REST API, schema `DialogflowAgentAddressPaginationResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2215,7 +1792,7 @@ pub struct DialogflowAgentAddressPaginationResponse {
     pub prev: Option<String>,
 }
 
-/// `DialogflowAgentListResponse` — generated read-side wire type ('fabric' REST API, schema 'DialogflowAgentListResponse').
+/// `DialogflowAgentListResponse` — generated read-side wire type (`fabric` REST API, schema `DialogflowAgentListResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2227,7 +1804,7 @@ pub struct DialogflowAgentListResponse {
     pub links: Option<serde_json::Value>,
 }
 
-/// `DialogflowAgentResponse` — generated read-side wire type ('fabric' REST API, schema 'DialogflowAgentResponse').
+/// `DialogflowAgentResponse` — generated read-side wire type (`fabric` REST API, schema `DialogflowAgentResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2249,7 +1826,7 @@ pub struct DialogflowAgentResponse {
     pub dialogflow_agent: Option<serde_json::Value>,
 }
 
-/// `DialogflowAgentUpdateRequest` — generated read-side wire type ('fabric' REST API, schema 'DialogflowAgentUpdateRequest').
+/// `DialogflowAgentUpdateRequest` — generated read-side wire type (`fabric` REST API, schema `DialogflowAgentUpdateRequest`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2262,10 +1839,10 @@ pub struct DialogflowAgentUpdateRequest {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub say: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub voice: Option<String>,
+    pub voice: Option<serde_json::Value>,
 }
 
-/// `DialogflowAgentUpdateStatusCode422` — generated read-side wire type ('fabric' REST API, schema 'DialogflowAgentUpdateStatusCode422').
+/// `DialogflowAgentUpdateStatusCode422` — generated read-side wire type (`fabric` REST API, schema `DialogflowAgentUpdateStatusCode422`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2275,7 +1852,7 @@ pub struct DialogflowAgentUpdateStatusCode422 {
     pub errors: Option<serde_json::Value>,
 }
 
-/// `DomainApplicationAssignRequest` — generated read-side wire type ('fabric' REST API, schema 'DomainApplicationAssignRequest').
+/// `DomainApplicationAssignRequest` — generated read-side wire type (`fabric` REST API, schema `DomainApplicationAssignRequest`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2285,7 +1862,7 @@ pub struct DomainApplicationAssignRequest {
     pub domain_application_id: Option<serde_json::Value>,
 }
 
-/// `DomainApplicationCreateStatusCode422` — generated read-side wire type ('fabric' REST API, schema 'DomainApplicationCreateStatusCode422').
+/// `DomainApplicationCreateStatusCode422` — generated read-side wire type (`fabric` REST API, schema `DomainApplicationCreateStatusCode422`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2295,7 +1872,7 @@ pub struct DomainApplicationCreateStatusCode422 {
     pub errors: Option<serde_json::Value>,
 }
 
-/// `DomainApplicationResponse` — generated read-side wire type ('fabric' REST API, schema 'DomainApplicationResponse').
+/// `DomainApplicationResponse` — generated read-side wire type (`fabric` REST API, schema `DomainApplicationResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2316,12 +1893,12 @@ pub struct DomainApplicationResponse {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub channels: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub created_at: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub r#type: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub resource_id: Option<String>,
 }
 
-/// `EmbedTokenCreateStatusCode422` — generated read-side wire type ('fabric' REST API, schema 'EmbedTokenCreateStatusCode422').
+/// `EmbedTokenCreateStatusCode422` — generated read-side wire type (`fabric` REST API, schema `EmbedTokenCreateStatusCode422`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2331,7 +1908,7 @@ pub struct EmbedTokenCreateStatusCode422 {
     pub errors: Option<serde_json::Value>,
 }
 
-/// `EmbedsTokensRequest` — generated read-side wire type ('fabric' REST API, schema 'EmbedsTokensRequest').
+/// `EmbedsTokensRequest` — generated read-side wire type (`fabric` REST API, schema `EmbedsTokensRequest`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2341,7 +1918,7 @@ pub struct EmbedsTokensRequest {
     pub token: Option<String>,
 }
 
-/// `EmbedsTokensResponse` — generated read-side wire type ('fabric' REST API, schema 'EmbedsTokensResponse').
+/// `EmbedsTokensResponse` — generated read-side wire type (`fabric` REST API, schema `EmbedsTokensResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2351,73 +1928,29 @@ pub struct EmbedsTokensResponse {
     pub token: Option<String>,
 }
 
-/// `EnterQueue` — generated read-side wire type ('fabric' REST API, schema 'EnterQueue').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct EnterQueue {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub enter_queue: Option<serde_json::Value>,
-}
-
-/// `EnterQueueObject` — generated read-side wire type ('fabric' REST API, schema 'EnterQueueObject').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct EnterQueueObject {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub queue_name: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub transfer_after_bridge: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub status_url: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub wait_url: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub wait_time: Option<serde_json::Value>,
-}
-
-/// `Execute` — generated read-side wire type ('fabric' REST API, schema 'Execute').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct Execute {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub execute: Option<serde_json::Value>,
-}
-
-/// `ExecuteSwitch` — generated read-side wire type ('fabric' REST API, schema 'ExecuteSwitch').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct ExecuteSwitch {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub variable: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub case: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub default: Option<serde_json::Value>,
-}
-
-/// `Expression` — generated read-side wire type ('fabric' REST API, schema 'Expression').
+/// `Expression` — generated read-side wire type (`fabric` REST API, schema `Expression`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct Expression {
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub string: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub pattern: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub expr: Option<String>,
+    #[serde(
+        rename = "nomatch-output",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub nomatch_output: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub output: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub string: Option<String>,
 }
 
-/// `FabricAddress` — generated read-side wire type ('fabric' REST API, schema 'FabricAddress').
+/// `FabricAddress` — generated read-side wire type (`fabric` REST API, schema `FabricAddress`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2438,12 +1971,12 @@ pub struct FabricAddress {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub channels: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub created_at: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub r#type: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub resource_id: Option<String>,
 }
 
-/// `FabricAddressApp` — generated read-side wire type ('fabric' REST API, schema 'FabricAddressApp').
+/// `FabricAddressApp` — generated read-side wire type (`fabric` REST API, schema `FabricAddressApp`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2464,12 +1997,12 @@ pub struct FabricAddressApp {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub channels: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub created_at: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub r#type: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub resource_id: Option<String>,
 }
 
-/// `FabricAddressCall` — generated read-side wire type ('fabric' REST API, schema 'FabricAddressCall').
+/// `FabricAddressCall` — generated read-side wire type (`fabric` REST API, schema `FabricAddressCall`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2490,12 +2023,12 @@ pub struct FabricAddressCall {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub channels: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub created_at: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub r#type: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub resource_id: Option<String>,
 }
 
-/// `FabricAddressPaginationResponse` — generated read-side wire type ('fabric' REST API, schema 'FabricAddressPaginationResponse').
+/// `FabricAddressPaginationResponse` — generated read-side wire type (`fabric` REST API, schema `FabricAddressPaginationResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2511,7 +2044,7 @@ pub struct FabricAddressPaginationResponse {
     pub prev: Option<String>,
 }
 
-/// `FabricAddressRoom` — generated read-side wire type ('fabric' REST API, schema 'FabricAddressRoom').
+/// `FabricAddressRoom` — generated read-side wire type (`fabric` REST API, schema `FabricAddressRoom`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2532,12 +2065,12 @@ pub struct FabricAddressRoom {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub channels: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub created_at: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub r#type: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub resource_id: Option<String>,
 }
 
-/// `FabricAddressSubscriber` — generated read-side wire type ('fabric' REST API, schema 'FabricAddressSubscriber').
+/// `FabricAddressSubscriber` — generated read-side wire type (`fabric` REST API, schema `FabricAddressSubscriber`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2558,24 +2091,26 @@ pub struct FabricAddressSubscriber {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub channels: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub created_at: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub r#type: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub resource_id: Option<String>,
 }
 
-/// `FabricAddressesResponse` — generated read-side wire type ('fabric' REST API, schema 'FabricAddressesResponse').
+/// `FabricAddressListResponse` — generated read-side wire type (`fabric` REST API, schema `FabricAddressListResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct FabricAddressesResponse {
+pub struct FabricAddressListResponse {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub data: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub links: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub items_count: Option<i64>,
 }
 
-/// `FreeswitchConectorPaginationResponse` — generated read-side wire type ('fabric' REST API, schema 'FreeswitchConectorPaginationResponse').
+/// `FreeswitchConectorPaginationResponse` — generated read-side wire type (`fabric` REST API, schema `FreeswitchConectorPaginationResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2591,7 +2126,7 @@ pub struct FreeswitchConectorPaginationResponse {
     pub prev: Option<String>,
 }
 
-/// `FreeswitchConnector` — generated read-side wire type ('fabric' REST API, schema 'FreeswitchConnector').
+/// `FreeswitchConnector` — generated read-side wire type (`fabric` REST API, schema `FreeswitchConnector`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2607,7 +2142,7 @@ pub struct FreeswitchConnector {
     pub send_as: Option<serde_json::Value>,
 }
 
-/// `FreeswitchConnectorAddressListResponse` — generated read-side wire type ('fabric' REST API, schema 'FreeswitchConnectorAddressListResponse').
+/// `FreeswitchConnectorAddressListResponse` — generated read-side wire type (`fabric` REST API, schema `FreeswitchConnectorAddressListResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2619,7 +2154,7 @@ pub struct FreeswitchConnectorAddressListResponse {
     pub links: Option<serde_json::Value>,
 }
 
-/// `FreeswitchConnectorAddressPaginationResponse` — generated read-side wire type ('fabric' REST API, schema 'FreeswitchConnectorAddressPaginationResponse').
+/// `FreeswitchConnectorAddressPaginationResponse` — generated read-side wire type (`fabric` REST API, schema `FreeswitchConnectorAddressPaginationResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2635,7 +2170,7 @@ pub struct FreeswitchConnectorAddressPaginationResponse {
     pub prev: Option<String>,
 }
 
-/// `FreeswitchConnectorCreateRequest` — generated read-side wire type ('fabric' REST API, schema 'FreeswitchConnectorCreateRequest').
+/// `FreeswitchConnectorCreateRequest` — generated read-side wire type (`fabric` REST API, schema `FreeswitchConnectorCreateRequest`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2647,7 +2182,7 @@ pub struct FreeswitchConnectorCreateRequest {
     pub token: Option<serde_json::Value>,
 }
 
-/// `FreeswitchConnectorCreateStatusCode422` — generated read-side wire type ('fabric' REST API, schema 'FreeswitchConnectorCreateStatusCode422').
+/// `FreeswitchConnectorCreateStatusCode422` — generated read-side wire type (`fabric` REST API, schema `FreeswitchConnectorCreateStatusCode422`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2657,7 +2192,7 @@ pub struct FreeswitchConnectorCreateStatusCode422 {
     pub errors: Option<serde_json::Value>,
 }
 
-/// `FreeswitchConnectorListResponse` — generated read-side wire type ('fabric' REST API, schema 'FreeswitchConnectorListResponse').
+/// `FreeswitchConnectorListResponse` — generated read-side wire type (`fabric` REST API, schema `FreeswitchConnectorListResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2669,7 +2204,7 @@ pub struct FreeswitchConnectorListResponse {
     pub data: Option<serde_json::Value>,
 }
 
-/// `FreeswitchConnectorResponse` — generated read-side wire type ('fabric' REST API, schema 'FreeswitchConnectorResponse').
+/// `FreeswitchConnectorResponse` — generated read-side wire type (`fabric` REST API, schema `FreeswitchConnectorResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2691,7 +2226,7 @@ pub struct FreeswitchConnectorResponse {
     pub freeswitch_connector: Option<serde_json::Value>,
 }
 
-/// `FreeswitchConnectorUpdateRequest` — generated read-side wire type ('fabric' REST API, schema 'FreeswitchConnectorUpdateRequest').
+/// `FreeswitchConnectorUpdateRequest` — generated read-side wire type (`fabric` REST API, schema `FreeswitchConnectorUpdateRequest`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2705,7 +2240,7 @@ pub struct FreeswitchConnectorUpdateRequest {
     pub send_as: Option<String>,
 }
 
-/// `FreeswitchConnectorUpdateStatusCode422` — generated read-side wire type ('fabric' REST API, schema 'FreeswitchConnectorUpdateStatusCode422').
+/// `FreeswitchConnectorUpdateStatusCode422` — generated read-side wire type (`fabric` REST API, schema `FreeswitchConnectorUpdateStatusCode422`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2715,31 +2250,191 @@ pub struct FreeswitchConnectorUpdateStatusCode422 {
     pub errors: Option<serde_json::Value>,
 }
 
-/// `FunctionParameters` — generated read-side wire type ('fabric' REST API, schema 'FunctionParameters').
+/// `FunctionFillers` — generated read-side wire type (`fabric` REST API, schema `FunctionFillers`).
+///
+/// Method-less serde DTO: each field maps a snake wire key (via
+/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct FunctionFillers {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub default: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub auto: Option<serde_json::Value>,
+}
+
+/// `FunctionParameters` — generated read-side wire type (`fabric` REST API, schema `FunctionParameters`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct FunctionParameters {
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub title: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub r#type: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub r#const: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub r#enum: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub format: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pattern: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub minimum: Option<f64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub maximum: Option<f64>,
+    #[serde(
+        rename = "exclusiveMinimum",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub exclusive_minimum: Option<f64>,
+    #[serde(
+        rename = "exclusiveMaximum",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub exclusive_maximum: Option<f64>,
+    #[serde(rename = "minLength", default, skip_serializing_if = "Option::is_none")]
+    pub min_length: Option<i64>,
+    #[serde(rename = "maxLength", default, skip_serializing_if = "Option::is_none")]
+    pub max_length: Option<i64>,
+    #[serde(rename = "minItems", default, skip_serializing_if = "Option::is_none")]
+    pub min_items: Option<i64>,
+    #[serde(rename = "maxItems", default, skip_serializing_if = "Option::is_none")]
+    pub max_items: Option<i64>,
+    #[serde(
+        rename = "minProperties",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub min_properties: Option<i64>,
+    #[serde(
+        rename = "maxProperties",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub max_properties: Option<i64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub default: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub examples: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub deprecated: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub nullable: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub properties: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub required: Option<serde_json::Value>,
-}
-
-/// `Goto` — generated read-side wire type ('fabric' REST API, schema 'Goto').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct Goto {
+    #[serde(
+        rename = "prefixItems",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub prefix_items: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub goto: Option<serde_json::Value>,
+    pub items: Option<serde_json::Value>,
+    #[serde(
+        rename = "propertyNames",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub property_names: Option<serde_json::Value>,
+    #[serde(
+        rename = "additionalProperties",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub additional_properties: Option<serde_json::Value>,
+    #[serde(
+        rename = "unevaluatedProperties",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub unevaluated_properties: Option<serde_json::Value>,
+    #[serde(rename = "oneOf", default, skip_serializing_if = "Option::is_none")]
+    pub one_of: Option<serde_json::Value>,
+    #[serde(rename = "anyOf", default, skip_serializing_if = "Option::is_none")]
+    pub any_of: Option<serde_json::Value>,
+    #[serde(rename = "allOf", default, skip_serializing_if = "Option::is_none")]
+    pub all_of: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub not: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub contains: Option<serde_json::Value>,
+    #[serde(
+        rename = "dependentRequired",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub dependent_required: Option<serde_json::Value>,
+    #[serde(
+        rename = "dependentSchemas",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub dependent_schemas: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub r#else: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub example: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub r#if: Option<serde_json::Value>,
+    #[serde(
+        rename = "maxContains",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub max_contains: Option<i64>,
+    #[serde(
+        rename = "minContains",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub min_contains: Option<i64>,
+    #[serde(
+        rename = "multipleOf",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub multiple_of: Option<f64>,
+    #[serde(
+        rename = "patternProperties",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub pattern_properties: Option<serde_json::Value>,
+    #[serde(
+        rename = "propertyOrdering",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub property_ordering: Option<serde_json::Value>,
+    #[serde(rename = "readOnly", default, skip_serializing_if = "Option::is_none")]
+    pub read_only: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub then: Option<serde_json::Value>,
+    #[serde(
+        rename = "unevaluatedItems",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub unevaluated_items: Option<serde_json::Value>,
+    #[serde(
+        rename = "uniqueItems",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub unique_items: Option<bool>,
+    #[serde(rename = "writeOnly", default, skip_serializing_if = "Option::is_none")]
+    pub write_only: Option<bool>,
 }
 
-/// `GuestTokenCreateStatusCode422` — generated read-side wire type ('fabric' REST API, schema 'GuestTokenCreateStatusCode422').
+/// `GuestTokenCreateStatusCode422` — generated read-side wire type (`fabric` REST API, schema `GuestTokenCreateStatusCode422`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -2749,289 +2444,37 @@ pub struct GuestTokenCreateStatusCode422 {
     pub errors: Option<serde_json::Value>,
 }
 
-/// `HangUpHookSWAIGFunction` — generated read-side wire type ('fabric' REST API, schema 'HangUpHookSWAIGFunction').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct HangUpHookSWAIGFunction {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub description: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub purpose: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub parameters: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub fillers: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub argument: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub active: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub meta_data: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub meta_data_token: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub data_map: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub skip_fillers: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub web_hook_url: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub wait_file: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub wait_file_loops: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub wait_for_fillers: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub function: Option<serde_json::Value>,
-}
-
-/// `Hangup` — generated read-side wire type ('fabric' REST API, schema 'Hangup').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct Hangup {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub hangup: Option<serde_json::Value>,
-}
-
-/// `HangupAction` — generated read-side wire type ('fabric' REST API, schema 'HangupAction').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct HangupAction {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub hangup: Option<serde_json::Value>,
-}
-
-/// `Hint` — generated read-side wire type ('fabric' REST API, schema 'Hint').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct Hint {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub hint: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub pattern: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub replace: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub ignore_case: Option<serde_json::Value>,
-}
-
-/// `HoldAction` — generated read-side wire type ('fabric' REST API, schema 'HoldAction').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct HoldAction {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub hold: Option<serde_json::Value>,
-}
-
-/// `InjectAction` — generated read-side wire type ('fabric' REST API, schema 'InjectAction').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct InjectAction {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub inject: Option<serde_json::Value>,
-}
-
-/// `IntegerProperty` — generated read-side wire type ('fabric' REST API, schema 'IntegerProperty').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct IntegerProperty {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub description: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub nullable: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub r#type: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub r#enum: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub default: Option<serde_json::Value>,
-}
-
-/// `InviteTokenCreateStatusCode422` — generated read-side wire type ('fabric' REST API, schema 'InviteTokenCreateStatusCode422').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct InviteTokenCreateStatusCode422 {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub errors: Option<serde_json::Value>,
-}
-
-/// `JoinConference` — generated read-side wire type ('fabric' REST API, schema 'JoinConference').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct JoinConference {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub join_conference: Option<serde_json::Value>,
-}
-
-/// `JoinConferenceObject` — generated read-side wire type ('fabric' REST API, schema 'JoinConferenceObject').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct JoinConferenceObject {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub name: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub muted: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub beep: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub start_on_enter: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub end_on_exit: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub wait_url: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub max_participants: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub record: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub region: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub trim: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub coach: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub status_callback_event: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub status_callback: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub status_callback_method: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub recording_status_callback: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub recording_status_callback_method: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub recording_status_callback_event: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub result: Option<serde_json::Value>,
-}
-
-/// `JoinRoom` — generated read-side wire type ('fabric' REST API, schema 'JoinRoom').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct JoinRoom {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub join_room: Option<serde_json::Value>,
-}
-
-/// `Label` — generated read-side wire type ('fabric' REST API, schema 'Label').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct Label {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub label: Option<String>,
-}
-
-/// `LanguageParams` — generated read-side wire type ('fabric' REST API, schema 'LanguageParams').
+/// `LanguageParams` — generated read-side wire type (`fabric` REST API, schema `LanguageParams`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct LanguageParams {
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub stability: Option<serde_json::Value>,
+    pub emotion: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pitch: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub similarity: Option<serde_json::Value>,
-}
-
-/// `LanguagesWithFillers` — generated read-side wire type ('fabric' REST API, schema 'LanguagesWithFillers').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct LanguagesWithFillers {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub name: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub code: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub voice: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub model: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub emotion: Option<serde_json::Value>,
+    #[serde(
+        rename = "speakingRate",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub speaking_rate: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub speed: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub engine: Option<String>,
+    pub stability: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub params: Option<serde_json::Value>,
+    pub streaming: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub function_fillers: Option<serde_json::Value>,
+    pub temperature: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub speech_fillers: Option<serde_json::Value>,
+    pub vol: Option<serde_json::Value>,
 }
 
-/// `LanguagesWithSoloFillers` — generated read-side wire type ('fabric' REST API, schema 'LanguagesWithSoloFillers').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct LanguagesWithSoloFillers {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub name: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub code: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub voice: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub model: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub emotion: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub speed: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub engine: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub params: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub fillers: Option<serde_json::Value>,
-}
-
-/// `LiveTranscribe` — generated read-side wire type ('fabric' REST API, schema 'LiveTranscribe').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct LiveTranscribe {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub live_transcribe: Option<serde_json::Value>,
-}
-
-/// `LiveTranslate` — generated read-side wire type ('fabric' REST API, schema 'LiveTranslate').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct LiveTranslate {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub live_translate: Option<serde_json::Value>,
-}
-
-/// `MessagingChannel` — generated read-side wire type ('fabric' REST API, schema 'MessagingChannel').
+/// `MessagingChannel` — generated read-side wire type (`fabric` REST API, schema `MessagingChannel`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -3041,143 +2484,45 @@ pub struct MessagingChannel {
     pub messaging: Option<String>,
 }
 
-/// `NullProperty` — generated read-side wire type ('fabric' REST API, schema 'NullProperty').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct NullProperty {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub r#type: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub description: Option<String>,
-}
-
-/// `NumberProperty` — generated read-side wire type ('fabric' REST API, schema 'NumberProperty').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct NumberProperty {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub description: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub nullable: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub r#type: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub r#enum: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub default: Option<serde_json::Value>,
-}
-
-/// `ObjectProperty` — generated read-side wire type ('fabric' REST API, schema 'ObjectProperty').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct ObjectProperty {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub description: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub nullable: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub r#type: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub default: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub properties: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub required: Option<serde_json::Value>,
-}
-
-/// `OneOfProperty` — generated read-side wire type ('fabric' REST API, schema 'OneOfProperty').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct OneOfProperty {
-    #[serde(rename = "oneOf", default, skip_serializing_if = "Option::is_none")]
-    pub one_of: Option<serde_json::Value>,
-}
-
-/// `Output` — generated read-side wire type ('fabric' REST API, schema 'Output').
+/// `Output` — generated read-side wire type (`fabric` REST API, schema `Output`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct Output {
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub response: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub action: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub post_process: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub response: Option<serde_json::Value>,
 }
 
-/// `Pay` — generated read-side wire type ('fabric' REST API, schema 'Pay').
+/// `POM` — generated read-side wire type (`fabric` REST API, schema `POM`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct Pay {
+pub struct POM {
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub pay: Option<serde_json::Value>,
+    pub title: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub body: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub bullets: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub numbered: Option<bool>,
+    #[serde(
+        rename = "numberedBullets",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub numbered_bullets: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub subsections: Option<serde_json::Value>,
 }
 
-/// `PayParameters` — generated read-side wire type ('fabric' REST API, schema 'PayParameters').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct PayParameters {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub name: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub value: Option<String>,
-}
-
-/// `PayPromptPlayAction` — generated read-side wire type ('fabric' REST API, schema 'PayPromptPlayAction').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct PayPromptPlayAction {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub r#type: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub phrase: Option<String>,
-}
-
-/// `PayPromptSayAction` — generated read-side wire type ('fabric' REST API, schema 'PayPromptSayAction').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct PayPromptSayAction {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub r#type: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub phrase: Option<String>,
-}
-
-/// `PayPrompts` — generated read-side wire type ('fabric' REST API, schema 'PayPrompts').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct PayPrompts {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub actions: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub r#for: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub attempts: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub card_type: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub error_type: Option<String>,
-}
-
-/// `PhoneRouteAssignRequest` — generated read-side wire type ('fabric' REST API, schema 'PhoneRouteAssignRequest').
+/// `PhoneRouteAssignRequest` — generated read-side wire type (`fabric` REST API, schema `PhoneRouteAssignRequest`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -3189,7 +2534,7 @@ pub struct PhoneRouteAssignRequest {
     pub handler: Option<serde_json::Value>,
 }
 
-/// `PhoneRouteCreateStatusCode422` — generated read-side wire type ('fabric' REST API, schema 'PhoneRouteCreateStatusCode422').
+/// `PhoneRouteCreateStatusCode422` — generated read-side wire type (`fabric` REST API, schema `PhoneRouteCreateStatusCode422`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -3199,7 +2544,7 @@ pub struct PhoneRouteCreateStatusCode422 {
     pub errors: Option<serde_json::Value>,
 }
 
-/// `PhoneRouteResponse` — generated read-side wire type ('fabric' REST API, schema 'PhoneRouteResponse').
+/// `PhoneRouteResponse` — generated read-side wire type (`fabric` REST API, schema `PhoneRouteResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -3220,178 +2565,12 @@ pub struct PhoneRouteResponse {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub channels: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub created_at: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub r#type: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub resource_id: Option<String>,
 }
 
-/// `Play` — generated read-side wire type ('fabric' REST API, schema 'Play').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct Play {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub play: Option<serde_json::Value>,
-}
-
-/// `PlayWithURL` — generated read-side wire type ('fabric' REST API, schema 'PlayWithURL').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct PlayWithURL {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub auto_answer: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub volume: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub say_voice: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub say_language: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub say_gender: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub status_url: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub url: Option<serde_json::Value>,
-}
-
-/// `PlayWithURLS` — generated read-side wire type ('fabric' REST API, schema 'PlayWithURLS').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct PlayWithURLS {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub auto_answer: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub volume: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub say_voice: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub say_language: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub say_gender: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub status_url: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub urls: Option<serde_json::Value>,
-}
-
-/// `PlaybackBGAction` — generated read-side wire type ('fabric' REST API, schema 'PlaybackBGAction').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct PlaybackBGAction {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub playback_bg: Option<serde_json::Value>,
-}
-
-/// `PomSectionBodyContent` — generated read-side wire type ('fabric' REST API, schema 'PomSectionBodyContent').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct PomSectionBodyContent {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub title: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub subsections: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub numbered: Option<serde_json::Value>,
-    #[serde(
-        rename = "numberedBullets",
-        default,
-        skip_serializing_if = "Option::is_none"
-    )]
-    pub numbered_bullets: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub body: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub bullets: Option<serde_json::Value>,
-}
-
-/// `PomSectionBulletsContent` — generated read-side wire type ('fabric' REST API, schema 'PomSectionBulletsContent').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct PomSectionBulletsContent {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub title: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub subsections: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub numbered: Option<serde_json::Value>,
-    #[serde(
-        rename = "numberedBullets",
-        default,
-        skip_serializing_if = "Option::is_none"
-    )]
-    pub numbered_bullets: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub body: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub bullets: Option<serde_json::Value>,
-}
-
-/// `Prompt` — generated read-side wire type ('fabric' REST API, schema 'Prompt').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct Prompt {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub prompt: Option<serde_json::Value>,
-}
-
-/// `Pronounce` — generated read-side wire type ('fabric' REST API, schema 'Pronounce').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct Pronounce {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub replace: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub with: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub ignore_case: Option<serde_json::Value>,
-}
-
-/// `ReceiveFax` — generated read-side wire type ('fabric' REST API, schema 'ReceiveFax').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct ReceiveFax {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub receive_fax: Option<serde_json::Value>,
-}
-
-/// `Record` — generated read-side wire type ('fabric' REST API, schema 'Record').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct Record {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub record: Option<serde_json::Value>,
-}
-
-/// `RecordCall` — generated read-side wire type ('fabric' REST API, schema 'RecordCall').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct RecordCall {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub record_call: Option<serde_json::Value>,
-}
-
-/// `RefreshTokenStatusCode422` — generated read-side wire type ('fabric' REST API, schema 'RefreshTokenStatusCode422').
+/// `RefreshTokenStatusCode422` — generated read-side wire type (`fabric` REST API, schema `RefreshTokenStatusCode422`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -3401,7 +2580,7 @@ pub struct RefreshTokenStatusCode422 {
     pub errors: Option<serde_json::Value>,
 }
 
-/// `RelayApplication` — generated read-side wire type ('fabric' REST API, schema 'RelayApplication').
+/// `RelayApplication` — generated read-side wire type (`fabric` REST API, schema `RelayApplication`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -3417,7 +2596,7 @@ pub struct RelayApplication {
     pub call_status_callback_url: Option<serde_json::Value>,
 }
 
-/// `RelayApplicationAddressListResponse` — generated read-side wire type ('fabric' REST API, schema 'RelayApplicationAddressListResponse').
+/// `RelayApplicationAddressListResponse` — generated read-side wire type (`fabric` REST API, schema `RelayApplicationAddressListResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -3429,7 +2608,7 @@ pub struct RelayApplicationAddressListResponse {
     pub links: Option<serde_json::Value>,
 }
 
-/// `RelayApplicationAddressPaginationResponse` — generated read-side wire type ('fabric' REST API, schema 'RelayApplicationAddressPaginationResponse').
+/// `RelayApplicationAddressPaginationResponse` — generated read-side wire type (`fabric` REST API, schema `RelayApplicationAddressPaginationResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -3445,7 +2624,7 @@ pub struct RelayApplicationAddressPaginationResponse {
     pub prev: Option<String>,
 }
 
-/// `RelayApplicationCreateRequest` — generated read-side wire type ('fabric' REST API, schema 'RelayApplicationCreateRequest').
+/// `RelayApplicationCreateRequest` — generated read-side wire type (`fabric` REST API, schema `RelayApplicationCreateRequest`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -3459,7 +2638,7 @@ pub struct RelayApplicationCreateRequest {
     pub call_status_callback_url: Option<String>,
 }
 
-/// `RelayApplicationCreateStatusCode422` — generated read-side wire type ('fabric' REST API, schema 'RelayApplicationCreateStatusCode422').
+/// `RelayApplicationCreateStatusCode422` — generated read-side wire type (`fabric` REST API, schema `RelayApplicationCreateStatusCode422`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -3469,7 +2648,7 @@ pub struct RelayApplicationCreateStatusCode422 {
     pub errors: Option<serde_json::Value>,
 }
 
-/// `RelayApplicationListResponse` — generated read-side wire type ('fabric' REST API, schema 'RelayApplicationListResponse').
+/// `RelayApplicationListResponse` — generated read-side wire type (`fabric` REST API, schema `RelayApplicationListResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -3481,7 +2660,7 @@ pub struct RelayApplicationListResponse {
     pub links: Option<serde_json::Value>,
 }
 
-/// `RelayApplicationResponse` — generated read-side wire type ('fabric' REST API, schema 'RelayApplicationResponse').
+/// `RelayApplicationResponse` — generated read-side wire type (`fabric` REST API, schema `RelayApplicationResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -3503,7 +2682,7 @@ pub struct RelayApplicationResponse {
     pub relay_application: Option<serde_json::Value>,
 }
 
-/// `RelayApplicationUpdateRequest` — generated read-side wire type ('fabric' REST API, schema 'RelayApplicationUpdateRequest').
+/// `RelayApplicationUpdateRequest` — generated read-side wire type (`fabric` REST API, schema `RelayApplicationUpdateRequest`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -3517,7 +2696,7 @@ pub struct RelayApplicationUpdateRequest {
     pub call_status_callback_url: Option<String>,
 }
 
-/// `RelayApplicationUpdateStatusCode422` — generated read-side wire type ('fabric' REST API, schema 'RelayApplicationUpdateStatusCode422').
+/// `RelayApplicationUpdateStatusCode422` — generated read-side wire type (`fabric` REST API, schema `RelayApplicationUpdateStatusCode422`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -3527,17 +2706,7 @@ pub struct RelayApplicationUpdateStatusCode422 {
     pub errors: Option<serde_json::Value>,
 }
 
-/// `Request` — generated read-side wire type ('fabric' REST API, schema 'Request').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct Request {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub request: Option<serde_json::Value>,
-}
-
-/// `ResourceAddressListResponse` — generated read-side wire type ('fabric' REST API, schema 'ResourceAddressListResponse').
+/// `ResourceAddressListResponse` — generated read-side wire type (`fabric` REST API, schema `ResourceAddressListResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -3549,7 +2718,7 @@ pub struct ResourceAddressListResponse {
     pub links: Option<serde_json::Value>,
 }
 
-/// `ResourceAddressPaginationResponse` — generated read-side wire type ('fabric' REST API, schema 'ResourceAddressPaginationResponse').
+/// `ResourceAddressPaginationResponse` — generated read-side wire type (`fabric` REST API, schema `ResourceAddressPaginationResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -3565,7 +2734,7 @@ pub struct ResourceAddressPaginationResponse {
     pub prev: Option<String>,
 }
 
-/// `ResourceListResponse` — generated read-side wire type ('fabric' REST API, schema 'ResourceListResponse').
+/// `ResourceListResponse` — generated read-side wire type (`fabric` REST API, schema `ResourceListResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -3577,7 +2746,7 @@ pub struct ResourceListResponse {
     pub links: Option<serde_json::Value>,
 }
 
-/// `ResourcePaginationResponse` — generated read-side wire type ('fabric' REST API, schema 'ResourcePaginationResponse').
+/// `ResourcePaginationResponse` — generated read-side wire type (`fabric` REST API, schema `ResourcePaginationResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -3593,7 +2762,7 @@ pub struct ResourcePaginationResponse {
     pub prev: Option<String>,
 }
 
-/// `ResourceResponseAI` — generated read-side wire type ('fabric' REST API, schema 'ResourceResponseAI').
+/// `ResourceResponseAI` — generated read-side wire type (`fabric` REST API, schema `ResourceResponseAI`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -3615,7 +2784,7 @@ pub struct ResourceResponseAI {
     pub ai_agent: Option<serde_json::Value>,
 }
 
-/// `ResourceResponseCXMLApplication` — generated read-side wire type ('fabric' REST API, schema 'ResourceResponseCXMLApplication').
+/// `ResourceResponseCXMLApplication` — generated read-side wire type (`fabric` REST API, schema `ResourceResponseCXMLApplication`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -3637,7 +2806,7 @@ pub struct ResourceResponseCXMLApplication {
     pub cxml_application: Option<serde_json::Value>,
 }
 
-/// `ResourceResponseCXMLScript` — generated read-side wire type ('fabric' REST API, schema 'ResourceResponseCXMLScript').
+/// `ResourceResponseCXMLScript` — generated read-side wire type (`fabric` REST API, schema `ResourceResponseCXMLScript`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -3659,7 +2828,7 @@ pub struct ResourceResponseCXMLScript {
     pub cxml_script: Option<serde_json::Value>,
 }
 
-/// `ResourceResponseCXMLWebhook` — generated read-side wire type ('fabric' REST API, schema 'ResourceResponseCXMLWebhook').
+/// `ResourceResponseCXMLWebhook` — generated read-side wire type (`fabric` REST API, schema `ResourceResponseCXMLWebhook`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -3681,7 +2850,7 @@ pub struct ResourceResponseCXMLWebhook {
     pub cxml_webhook: Option<serde_json::Value>,
 }
 
-/// `ResourceResponseCallFlow` — generated read-side wire type ('fabric' REST API, schema 'ResourceResponseCallFlow').
+/// `ResourceResponseCallFlow` — generated read-side wire type (`fabric` REST API, schema `ResourceResponseCallFlow`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -3703,7 +2872,7 @@ pub struct ResourceResponseCallFlow {
     pub call_flow: Option<serde_json::Value>,
 }
 
-/// `ResourceResponseConferenceRoom` — generated read-side wire type ('fabric' REST API, schema 'ResourceResponseConferenceRoom').
+/// `ResourceResponseConferenceRoom` — generated read-side wire type (`fabric` REST API, schema `ResourceResponseConferenceRoom`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -3725,7 +2894,7 @@ pub struct ResourceResponseConferenceRoom {
     pub conference_room: Option<serde_json::Value>,
 }
 
-/// `ResourceResponseDialogFlowAgent` — generated read-side wire type ('fabric' REST API, schema 'ResourceResponseDialogFlowAgent').
+/// `ResourceResponseDialogFlowAgent` — generated read-side wire type (`fabric` REST API, schema `ResourceResponseDialogFlowAgent`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -3747,7 +2916,7 @@ pub struct ResourceResponseDialogFlowAgent {
     pub dialogflow_agent: Option<serde_json::Value>,
 }
 
-/// `ResourceResponseFSConnector` — generated read-side wire type ('fabric' REST API, schema 'ResourceResponseFSConnector').
+/// `ResourceResponseFSConnector` — generated read-side wire type (`fabric` REST API, schema `ResourceResponseFSConnector`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -3769,7 +2938,7 @@ pub struct ResourceResponseFSConnector {
     pub freeswitch_connector: Option<serde_json::Value>,
 }
 
-/// `ResourceResponseRelayApp` — generated read-side wire type ('fabric' REST API, schema 'ResourceResponseRelayApp').
+/// `ResourceResponseRelayApp` — generated read-side wire type (`fabric` REST API, schema `ResourceResponseRelayApp`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -3791,7 +2960,7 @@ pub struct ResourceResponseRelayApp {
     pub relay_application: Option<serde_json::Value>,
 }
 
-/// `ResourceResponseSWMLScript` — generated read-side wire type ('fabric' REST API, schema 'ResourceResponseSWMLScript').
+/// `ResourceResponseSWMLScript` — generated read-side wire type (`fabric` REST API, schema `ResourceResponseSWMLScript`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -3813,7 +2982,7 @@ pub struct ResourceResponseSWMLScript {
     pub swml_script: Option<serde_json::Value>,
 }
 
-/// `ResourceResponseSWMLWebhook` — generated read-side wire type ('fabric' REST API, schema 'ResourceResponseSWMLWebhook').
+/// `ResourceResponseSWMLWebhook` — generated read-side wire type (`fabric` REST API, schema `ResourceResponseSWMLWebhook`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -3835,7 +3004,7 @@ pub struct ResourceResponseSWMLWebhook {
     pub swml_webhook: Option<serde_json::Value>,
 }
 
-/// `ResourceResponseSipEndpoint` — generated read-side wire type ('fabric' REST API, schema 'ResourceResponseSipEndpoint').
+/// `ResourceResponseSipEndpoint` — generated read-side wire type (`fabric` REST API, schema `ResourceResponseSipEndpoint`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -3857,7 +3026,7 @@ pub struct ResourceResponseSipEndpoint {
     pub sip_endpoint: Option<serde_json::Value>,
 }
 
-/// `ResourceResponseSipGateway` — generated read-side wire type ('fabric' REST API, schema 'ResourceResponseSipGateway').
+/// `ResourceResponseSipGateway` — generated read-side wire type (`fabric` REST API, schema `ResourceResponseSipGateway`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -3879,7 +3048,7 @@ pub struct ResourceResponseSipGateway {
     pub sip_gateway: Option<serde_json::Value>,
 }
 
-/// `ResourceResponseSubscriber` — generated read-side wire type ('fabric' REST API, schema 'ResourceResponseSubscriber').
+/// `ResourceResponseSubscriber` — generated read-side wire type (`fabric` REST API, schema `ResourceResponseSubscriber`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -3901,7 +3070,7 @@ pub struct ResourceResponseSubscriber {
     pub subscriber: Option<serde_json::Value>,
 }
 
-/// `ResourceSipEndpointAssignRequest` — generated read-side wire type ('fabric' REST API, schema 'ResourceSipEndpointAssignRequest').
+/// `ResourceSipEndpointAssignRequest` — generated read-side wire type (`fabric` REST API, schema `ResourceSipEndpointAssignRequest`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -3911,7 +3080,7 @@ pub struct ResourceSipEndpointAssignRequest {
     pub sip_endpoint_id: Option<serde_json::Value>,
 }
 
-/// `ResourceSipEndpointCreateStatusCode422` — generated read-side wire type ('fabric' REST API, schema 'ResourceSipEndpointCreateStatusCode422').
+/// `ResourceSipEndpointCreateStatusCode422` — generated read-side wire type (`fabric` REST API, schema `ResourceSipEndpointCreateStatusCode422`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -3921,27 +3090,7 @@ pub struct ResourceSipEndpointCreateStatusCode422 {
     pub errors: Option<serde_json::Value>,
 }
 
-/// `ResourceSipEndpointResponse` — generated read-side wire type ('fabric' REST API, schema 'ResourceSipEndpointResponse').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct ResourceSipEndpointResponse {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub id: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub name: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub r#type: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub cover_url: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub preview_url: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub channels: Option<serde_json::Value>,
-}
-
-/// `ResourceSipEndpointUpdateStatusCode422` — generated read-side wire type ('fabric' REST API, schema 'ResourceSipEndpointUpdateStatusCode422').
+/// `ResourceSipEndpointUpdateStatusCode422` — generated read-side wire type (`fabric` REST API, schema `ResourceSipEndpointUpdateStatusCode422`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -3951,7 +3100,7 @@ pub struct ResourceSipEndpointUpdateStatusCode422 {
     pub errors: Option<serde_json::Value>,
 }
 
-/// `ResourceSubSipEndpointCreateStatusCode422` — generated read-side wire type ('fabric' REST API, schema 'ResourceSubSipEndpointCreateStatusCode422').
+/// `ResourceSubSipEndpointCreateStatusCode422` — generated read-side wire type (`fabric` REST API, schema `ResourceSubSipEndpointCreateStatusCode422`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -3961,199 +3110,53 @@ pub struct ResourceSubSipEndpointCreateStatusCode422 {
     pub errors: Option<serde_json::Value>,
 }
 
-/// `Return` — generated read-side wire type ('fabric' REST API, schema 'Return').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct Return {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub r#return: Option<serde_json::Value>,
-}
-
-/// `SIPRefer` — generated read-side wire type ('fabric' REST API, schema 'SIPRefer').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct SIPRefer {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub sip_refer: Option<serde_json::Value>,
-}
-
-/// `SMSWithBody` — generated read-side wire type ('fabric' REST API, schema 'SMSWithBody').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct SMSWithBody {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub to_number: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub from_number: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub region: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub tags: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub body: Option<String>,
-}
-
-/// `SMSWithMedia` — generated read-side wire type ('fabric' REST API, schema 'SMSWithMedia').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct SMSWithMedia {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub to_number: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub from_number: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub region: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub tags: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub media: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub body: Option<String>,
-}
-
-/// `SWAIG` — generated read-side wire type ('fabric' REST API, schema 'SWAIG').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct SWAIG {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub defaults: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub native_functions: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub includes: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub functions: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub internal_fillers: Option<serde_json::Value>,
-}
-
-/// `SWAIGDefaults` — generated read-side wire type ('fabric' REST API, schema 'SWAIGDefaults').
+/// `SWAIGDefaults` — generated read-side wire type (`fabric` REST API, schema `SWAIGDefaults`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct SWAIGDefaults {
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub meta_data: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub meta_data_token: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub web_hook_auth_pass: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub web_hook_auth_password: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub web_hook_auth_user: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub web_hook_url: Option<String>,
 }
 
-/// `SWAIGIncludes` — generated read-side wire type ('fabric' REST API, schema 'SWAIGIncludes').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct SWAIGIncludes {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub functions: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub url: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub meta_data: Option<serde_json::Value>,
-}
-
-/// `SWAIGInternalFiller` — generated read-side wire type ('fabric' REST API, schema 'SWAIGInternalFiller').
+/// `SWAIGInternalFiller` — generated read-side wire type (`fabric` REST API, schema `SWAIGInternalFiller`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct SWAIGInternalFiller {
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub hangup: Option<serde_json::Value>,
+    pub adjust_response_latency: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub change_context: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub check_time: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub get_ideal_strategy: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub get_visual_input: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub next_step: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pause_conversation: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub wait_for_user: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub wait_seconds: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub adjust_response_latency: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub next_step: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub change_context: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub get_visual_input: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub get_ideal_strategy: Option<serde_json::Value>,
 }
 
-/// `SWAIGInternalFillerUpdate` — generated read-side wire type ('fabric' REST API, schema 'SWAIGInternalFillerUpdate').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct SWAIGInternalFillerUpdate {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub hangup: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub check_time: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub wait_for_user: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub wait_seconds: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub adjust_response_latency: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub next_step: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub change_context: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub get_visual_input: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub get_ideal_strategy: Option<serde_json::Value>,
-}
-
-/// `SWAIGUpdate` — generated read-side wire type ('fabric' REST API, schema 'SWAIGUpdate').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct SWAIGUpdate {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub defaults: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub native_functions: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub includes: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub functions: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub internal_fillers: Option<serde_json::Value>,
-}
-
-/// `SWMLAction` — generated read-side wire type ('fabric' REST API, schema 'SWMLAction').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct SWMLAction {
-    #[serde(rename = "SWML", default, skip_serializing_if = "Option::is_none")]
-    pub swml: Option<serde_json::Value>,
-}
-
-/// `SWMLObject` — generated read-side wire type ('fabric' REST API, schema 'SWMLObject').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct SWMLObject {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub version: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub sections: Option<serde_json::Value>,
-}
-
-/// `SWMLScriptAddressListResponse` — generated read-side wire type ('fabric' REST API, schema 'SWMLScriptAddressListResponse').
+/// `SWMLScriptAddressListResponse` — generated read-side wire type (`fabric` REST API, schema `SWMLScriptAddressListResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -4165,7 +3168,7 @@ pub struct SWMLScriptAddressListResponse {
     pub links: Option<serde_json::Value>,
 }
 
-/// `SWMLScriptAddressPaginationResponse` — generated read-side wire type ('fabric' REST API, schema 'SWMLScriptAddressPaginationResponse').
+/// `SWMLScriptAddressPaginationResponse` — generated read-side wire type (`fabric` REST API, schema `SWMLScriptAddressPaginationResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -4181,7 +3184,7 @@ pub struct SWMLScriptAddressPaginationResponse {
     pub prev: Option<String>,
 }
 
-/// `SWMLWebhook` — generated read-side wire type ('fabric' REST API, schema 'SWMLWebhook').
+/// `SWMLWebhook` — generated read-side wire type (`fabric` REST API, schema `SWMLWebhook`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -4207,7 +3210,7 @@ pub struct SWMLWebhook {
     pub status_callback_method: Option<serde_json::Value>,
 }
 
-/// `SWMLWebhookAddressListResponse` — generated read-side wire type ('fabric' REST API, schema 'SWMLWebhookAddressListResponse').
+/// `SWMLWebhookAddressListResponse` — generated read-side wire type (`fabric` REST API, schema `SWMLWebhookAddressListResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -4219,7 +3222,7 @@ pub struct SWMLWebhookAddressListResponse {
     pub links: Option<serde_json::Value>,
 }
 
-/// `SWMLWebhookAddressPaginationResponse` — generated read-side wire type ('fabric' REST API, schema 'SWMLWebhookAddressPaginationResponse').
+/// `SWMLWebhookAddressPaginationResponse` — generated read-side wire type (`fabric` REST API, schema `SWMLWebhookAddressPaginationResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -4235,7 +3238,7 @@ pub struct SWMLWebhookAddressPaginationResponse {
     pub prev: Option<String>,
 }
 
-/// `SWMLWebhookCreateRequest` — generated read-side wire type ('fabric' REST API, schema 'SWMLWebhookCreateRequest').
+/// `SWMLWebhookCreateRequest` — generated read-side wire type (`fabric` REST API, schema `SWMLWebhookCreateRequest`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -4259,7 +3262,7 @@ pub struct SWMLWebhookCreateRequest {
     pub status_callback_method: Option<serde_json::Value>,
 }
 
-/// `SWMLWebhookListResponse` — generated read-side wire type ('fabric' REST API, schema 'SWMLWebhookListResponse').
+/// `SWMLWebhookListResponse` — generated read-side wire type (`fabric` REST API, schema `SWMLWebhookListResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -4271,7 +3274,7 @@ pub struct SWMLWebhookListResponse {
     pub links: Option<serde_json::Value>,
 }
 
-/// `SWMLWebhookPaginationResponse` — generated read-side wire type ('fabric' REST API, schema 'SWMLWebhookPaginationResponse').
+/// `SWMLWebhookPaginationResponse` — generated read-side wire type (`fabric` REST API, schema `SWMLWebhookPaginationResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -4287,7 +3290,7 @@ pub struct SWMLWebhookPaginationResponse {
     pub prev: Option<String>,
 }
 
-/// `SWMLWebhookResponse` — generated read-side wire type ('fabric' REST API, schema 'SWMLWebhookResponse').
+/// `SWMLWebhookResponse` — generated read-side wire type (`fabric` REST API, schema `SWMLWebhookResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -4309,7 +3312,7 @@ pub struct SWMLWebhookResponse {
     pub swml_webhook: Option<serde_json::Value>,
 }
 
-/// `SWMLWebhookUpdateRequest` — generated read-side wire type ('fabric' REST API, schema 'SWMLWebhookUpdateRequest').
+/// `SWMLWebhookUpdateRequest` — generated read-side wire type (`fabric` REST API, schema `SWMLWebhookUpdateRequest`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -4333,87 +3336,7 @@ pub struct SWMLWebhookUpdateRequest {
     pub status_callback_method: Option<serde_json::Value>,
 }
 
-/// `SayAction` — generated read-side wire type ('fabric' REST API, schema 'SayAction').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct SayAction {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub say: Option<String>,
-}
-
-/// `Section` — generated read-side wire type ('fabric' REST API, schema 'Section').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct Section {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub main: Option<serde_json::Value>,
-}
-
-/// `SendDigits` — generated read-side wire type ('fabric' REST API, schema 'SendDigits').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct SendDigits {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub send_digits: Option<serde_json::Value>,
-}
-
-/// `SendFax` — generated read-side wire type ('fabric' REST API, schema 'SendFax').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct SendFax {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub send_fax: Option<serde_json::Value>,
-}
-
-/// `SendSMS` — generated read-side wire type ('fabric' REST API, schema 'SendSMS').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct SendSMS {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub send_sms: Option<serde_json::Value>,
-}
-
-/// `Set` — generated read-side wire type ('fabric' REST API, schema 'Set').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct Set {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub set: Option<serde_json::Value>,
-}
-
-/// `SetGlobalDataAction` — generated read-side wire type ('fabric' REST API, schema 'SetGlobalDataAction').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct SetGlobalDataAction {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub set_global_data: Option<serde_json::Value>,
-}
-
-/// `SetMetaDataAction` — generated read-side wire type ('fabric' REST API, schema 'SetMetaDataAction').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct SetMetaDataAction {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub set_meta_data: Option<serde_json::Value>,
-}
-
-/// `SipEndpoint` — generated read-side wire type ('fabric' REST API, schema 'SipEndpoint').
+/// `SipEndpoint` — generated read-side wire type (`fabric` REST API, schema `SipEndpoint`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -4439,7 +3362,7 @@ pub struct SipEndpoint {
     pub calling_handler_resource_id: Option<serde_json::Value>,
 }
 
-/// `SipEndpointAddressListResponse` — generated read-side wire type ('fabric' REST API, schema 'SipEndpointAddressListResponse').
+/// `SipEndpointAddressListResponse` — generated read-side wire type (`fabric` REST API, schema `SipEndpointAddressListResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -4451,7 +3374,7 @@ pub struct SipEndpointAddressListResponse {
     pub links: Option<serde_json::Value>,
 }
 
-/// `SipEndpointAddressPaginationResponse` — generated read-side wire type ('fabric' REST API, schema 'SipEndpointAddressPaginationResponse').
+/// `SipEndpointAddressPaginationResponse` — generated read-side wire type (`fabric` REST API, schema `SipEndpointAddressPaginationResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -4467,14 +3390,12 @@ pub struct SipEndpointAddressPaginationResponse {
     pub prev: Option<String>,
 }
 
-/// `SipEndpointCreateRequest` — generated read-side wire type ('fabric' REST API, schema 'SipEndpointCreateRequest').
+/// `SipEndpointCreateRequest` — generated read-side wire type (`fabric` REST API, schema `SipEndpointCreateRequest`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct SipEndpointCreateRequest {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub id: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub username: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -4491,9 +3412,11 @@ pub struct SipEndpointCreateRequest {
     pub call_handler: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub calling_handler_resource_id: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub password: Option<String>,
 }
 
-/// `SipEndpointCreateStatusCode422` — generated read-side wire type ('fabric' REST API, schema 'SipEndpointCreateStatusCode422').
+/// `SipEndpointCreateStatusCode422` — generated read-side wire type (`fabric` REST API, schema `SipEndpointCreateStatusCode422`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -4503,7 +3426,7 @@ pub struct SipEndpointCreateStatusCode422 {
     pub errors: Option<serde_json::Value>,
 }
 
-/// `SipEndpointListResponse` — generated read-side wire type ('fabric' REST API, schema 'SipEndpointListResponse').
+/// `SipEndpointListResponse` — generated read-side wire type (`fabric` REST API, schema `SipEndpointListResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -4515,7 +3438,7 @@ pub struct SipEndpointListResponse {
     pub links: Option<serde_json::Value>,
 }
 
-/// `SipEndpointPaginationResponse` — generated read-side wire type ('fabric' REST API, schema 'SipEndpointPaginationResponse').
+/// `SipEndpointPaginationResponse` — generated read-side wire type (`fabric` REST API, schema `SipEndpointPaginationResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -4531,7 +3454,7 @@ pub struct SipEndpointPaginationResponse {
     pub prev: Option<String>,
 }
 
-/// `SipEndpointResponse` — generated read-side wire type ('fabric' REST API, schema 'SipEndpointResponse').
+/// `SipEndpointResponse` — generated read-side wire type (`fabric` REST API, schema `SipEndpointResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -4553,7 +3476,7 @@ pub struct SipEndpointResponse {
     pub sip_endpoint: Option<serde_json::Value>,
 }
 
-/// `SipEndpointUpdateRequest` — generated read-side wire type ('fabric' REST API, schema 'SipEndpointUpdateRequest').
+/// `SipEndpointUpdateRequest` — generated read-side wire type (`fabric` REST API, schema `SipEndpointUpdateRequest`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -4575,9 +3498,11 @@ pub struct SipEndpointUpdateRequest {
     pub call_handler: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub calling_handler_resource_id: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub password: Option<String>,
 }
 
-/// `SipEndpointUpdateStatusCode422` — generated read-side wire type ('fabric' REST API, schema 'SipEndpointUpdateStatusCode422').
+/// `SipEndpointUpdateStatusCode422` — generated read-side wire type (`fabric` REST API, schema `SipEndpointUpdateStatusCode422`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -4587,7 +3512,7 @@ pub struct SipEndpointUpdateStatusCode422 {
     pub errors: Option<serde_json::Value>,
 }
 
-/// `SipGateway` — generated read-side wire type ('fabric' REST API, schema 'SipGateway').
+/// `SipGateway` — generated read-side wire type (`fabric` REST API, schema `SipGateway`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -4607,7 +3532,7 @@ pub struct SipGateway {
     pub encryption: Option<serde_json::Value>,
 }
 
-/// `SipGatewayAddressListResponse` — generated read-side wire type ('fabric' REST API, schema 'SipGatewayAddressListResponse').
+/// `SipGatewayAddressListResponse` — generated read-side wire type (`fabric` REST API, schema `SipGatewayAddressListResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -4619,7 +3544,7 @@ pub struct SipGatewayAddressListResponse {
     pub links: Option<serde_json::Value>,
 }
 
-/// `SipGatewayAddressPaginationResponse` — generated read-side wire type ('fabric' REST API, schema 'SipGatewayAddressPaginationResponse').
+/// `SipGatewayAddressPaginationResponse` — generated read-side wire type (`fabric` REST API, schema `SipGatewayAddressPaginationResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -4635,7 +3560,7 @@ pub struct SipGatewayAddressPaginationResponse {
     pub prev: Option<String>,
 }
 
-/// `SipGatewayCreateStatusCode422` — generated read-side wire type ('fabric' REST API, schema 'SipGatewayCreateStatusCode422').
+/// `SipGatewayCreateStatusCode422` — generated read-side wire type (`fabric` REST API, schema `SipGatewayCreateStatusCode422`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -4645,7 +3570,7 @@ pub struct SipGatewayCreateStatusCode422 {
     pub errors: Option<serde_json::Value>,
 }
 
-/// `SipGatewayListResponse` — generated read-side wire type ('fabric' REST API, schema 'SipGatewayListResponse').
+/// `SipGatewayListResponse` — generated read-side wire type (`fabric` REST API, schema `SipGatewayListResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -4657,7 +3582,7 @@ pub struct SipGatewayListResponse {
     pub links: Option<serde_json::Value>,
 }
 
-/// `SipGatewayPaginationResponse` — generated read-side wire type ('fabric' REST API, schema 'SipGatewayPaginationResponse').
+/// `SipGatewayPaginationResponse` — generated read-side wire type (`fabric` REST API, schema `SipGatewayPaginationResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -4673,7 +3598,7 @@ pub struct SipGatewayPaginationResponse {
     pub prev: Option<String>,
 }
 
-/// `SipGatewayRequest` — generated read-side wire type ('fabric' REST API, schema 'SipGatewayRequest').
+/// `SipGatewayRequest` — generated read-side wire type (`fabric` REST API, schema `SipGatewayRequest`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -4691,7 +3616,7 @@ pub struct SipGatewayRequest {
     pub codecs: Option<serde_json::Value>,
 }
 
-/// `SipGatewayRequestUpdate` — generated read-side wire type ('fabric' REST API, schema 'SipGatewayRequestUpdate').
+/// `SipGatewayRequestUpdate` — generated read-side wire type (`fabric` REST API, schema `SipGatewayRequestUpdate`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -4709,7 +3634,7 @@ pub struct SipGatewayRequestUpdate {
     pub codecs: Option<serde_json::Value>,
 }
 
-/// `SipGatewayResponse` — generated read-side wire type ('fabric' REST API, schema 'SipGatewayResponse').
+/// `SipGatewayResponse` — generated read-side wire type (`fabric` REST API, schema `SipGatewayResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -4731,137 +3656,7 @@ pub struct SipGatewayResponse {
     pub sip_gateway: Option<serde_json::Value>,
 }
 
-/// `Sleep` — generated read-side wire type ('fabric' REST API, schema 'Sleep').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct Sleep {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub sleep: Option<serde_json::Value>,
-}
-
-/// `StartAction` — generated read-side wire type ('fabric' REST API, schema 'StartAction').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct StartAction {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub start: Option<serde_json::Value>,
-}
-
-/// `StartUpHookSWAIGFunction` — generated read-side wire type ('fabric' REST API, schema 'StartUpHookSWAIGFunction').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct StartUpHookSWAIGFunction {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub description: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub purpose: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub parameters: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub fillers: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub argument: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub active: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub meta_data: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub meta_data_token: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub data_map: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub skip_fillers: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub web_hook_url: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub wait_file: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub wait_file_loops: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub wait_for_fillers: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub function: Option<serde_json::Value>,
-}
-
-/// `StopAction` — generated read-side wire type ('fabric' REST API, schema 'StopAction').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct StopAction {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub stop: Option<serde_json::Value>,
-}
-
-/// `StopDenoise` — generated read-side wire type ('fabric' REST API, schema 'StopDenoise').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct StopDenoise {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub stop_denoise: Option<serde_json::Value>,
-}
-
-/// `StopPlaybackBGAction` — generated read-side wire type ('fabric' REST API, schema 'StopPlaybackBGAction').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct StopPlaybackBGAction {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub stop_playback_bg: Option<serde_json::Value>,
-}
-
-/// `StopRecordCall` — generated read-side wire type ('fabric' REST API, schema 'StopRecordCall').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct StopRecordCall {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub stop_record_call: Option<serde_json::Value>,
-}
-
-/// `StopTap` — generated read-side wire type ('fabric' REST API, schema 'StopTap').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct StopTap {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub stop_tap: Option<serde_json::Value>,
-}
-
-/// `StringProperty` — generated read-side wire type ('fabric' REST API, schema 'StringProperty').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct StringProperty {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub description: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub nullable: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub r#type: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub r#enum: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub default: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub pattern: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub format: Option<serde_json::Value>,
-}
-
-/// `Subscriber` — generated read-side wire type ('fabric' REST API, schema 'Subscriber').
+/// `Subscriber` — generated read-side wire type (`fabric` REST API, schema `Subscriber`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -4880,16 +3675,14 @@ pub struct Subscriber {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub job_title: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub timezone: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub country: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub region: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub company_name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub time_zone: Option<String>,
 }
 
-/// `SubscriberAddressPaginationResponse` — generated read-side wire type ('fabric' REST API, schema 'SubscriberAddressPaginationResponse').
+/// `SubscriberAddressPaginationResponse` — generated read-side wire type (`fabric` REST API, schema `SubscriberAddressPaginationResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -4905,7 +3698,7 @@ pub struct SubscriberAddressPaginationResponse {
     pub prev: Option<String>,
 }
 
-/// `SubscriberAddressesResponse` — generated read-side wire type ('fabric' REST API, schema 'SubscriberAddressesResponse').
+/// `SubscriberAddressesResponse` — generated read-side wire type (`fabric` REST API, schema `SubscriberAddressesResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -4917,7 +3710,7 @@ pub struct SubscriberAddressesResponse {
     pub links: Option<serde_json::Value>,
 }
 
-/// `SubscriberCreateStatusCode422` — generated read-side wire type ('fabric' REST API, schema 'SubscriberCreateStatusCode422').
+/// `SubscriberCreateStatusCode422` — generated read-side wire type (`fabric` REST API, schema `SubscriberCreateStatusCode422`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -4927,7 +3720,7 @@ pub struct SubscriberCreateStatusCode422 {
     pub errors: Option<serde_json::Value>,
 }
 
-/// `SubscriberGuestTokenCreateRequest` — generated read-side wire type ('fabric' REST API, schema 'SubscriberGuestTokenCreateRequest').
+/// `SubscriberGuestTokenCreateRequest` — generated read-side wire type (`fabric` REST API, schema `SubscriberGuestTokenCreateRequest`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -4937,9 +3730,29 @@ pub struct SubscriberGuestTokenCreateRequest {
     pub allowed_addresses: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub expire_at: Option<i64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ch: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub region: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub email: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub first_name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub last_name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub display_name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub job_title: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub time_zone: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub country: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub company_name: Option<String>,
 }
 
-/// `SubscriberGuestTokenCreateResponse` — generated read-side wire type ('fabric' REST API, schema 'SubscriberGuestTokenCreateResponse').
+/// `SubscriberGuestTokenCreateResponse` — generated read-side wire type (`fabric` REST API, schema `SubscriberGuestTokenCreateResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -4949,31 +3762,17 @@ pub struct SubscriberGuestTokenCreateResponse {
     pub token: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub refresh_token: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub address_uri: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub expires_at: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub expires_in: Option<i64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub issued_at: Option<String>,
 }
 
-/// `SubscriberInviteTokenCreateRequest` — generated read-side wire type ('fabric' REST API, schema 'SubscriberInviteTokenCreateRequest').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct SubscriberInviteTokenCreateRequest {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub address_id: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub expires_at: Option<i64>,
-}
-
-/// `SubscriberInviteTokenCreateResponse` — generated read-side wire type ('fabric' REST API, schema 'SubscriberInviteTokenCreateResponse').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct SubscriberInviteTokenCreateResponse {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub token: Option<serde_json::Value>,
-}
-
-/// `SubscriberListResponse` — generated read-side wire type ('fabric' REST API, schema 'SubscriberListResponse').
+/// `SubscriberListResponse` — generated read-side wire type (`fabric` REST API, schema `SubscriberListResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -4985,7 +3784,7 @@ pub struct SubscriberListResponse {
     pub links: Option<serde_json::Value>,
 }
 
-/// `SubscriberPaginationResponse` — generated read-side wire type ('fabric' REST API, schema 'SubscriberPaginationResponse').
+/// `SubscriberPaginationResponse` — generated read-side wire type (`fabric` REST API, schema `SubscriberPaginationResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -5001,7 +3800,7 @@ pub struct SubscriberPaginationResponse {
     pub prev: Option<String>,
 }
 
-/// `SubscriberRefreshTokenRequest` — generated read-side wire type ('fabric' REST API, schema 'SubscriberRefreshTokenRequest').
+/// `SubscriberRefreshTokenRequest` — generated read-side wire type (`fabric` REST API, schema `SubscriberRefreshTokenRequest`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -5011,7 +3810,7 @@ pub struct SubscriberRefreshTokenRequest {
     pub refresh_token: Option<serde_json::Value>,
 }
 
-/// `SubscriberRefreshTokenResponse` — generated read-side wire type ('fabric' REST API, schema 'SubscriberRefreshTokenResponse').
+/// `SubscriberRefreshTokenResponse` — generated read-side wire type (`fabric` REST API, schema `SubscriberRefreshTokenResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -5023,7 +3822,7 @@ pub struct SubscriberRefreshTokenResponse {
     pub refresh_token: Option<serde_json::Value>,
 }
 
-/// `SubscriberRequest` — generated read-side wire type ('fabric' REST API, schema 'SubscriberRequest').
+/// `SubscriberRequest` — generated read-side wire type (`fabric` REST API, schema `SubscriberRequest`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -5042,16 +3841,40 @@ pub struct SubscriberRequest {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub job_title: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub timezone: Option<String>,
+    pub country: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub company_name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub time_zone: Option<String>,
+}
+
+/// `SubscriberUpdateRequest` — generated read-side wire type (`fabric` REST API, schema `SubscriberUpdateRequest`).
+///
+/// Method-less serde DTO: each field maps a snake wire key (via
+/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct SubscriberUpdateRequest {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub password: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub email: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub first_name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub last_name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub display_name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub job_title: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub country: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub region: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub company_name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub time_zone: Option<String>,
 }
 
-/// `SubscriberResponse` — generated read-side wire type ('fabric' REST API, schema 'SubscriberResponse').
+/// `SubscriberResponse` — generated read-side wire type (`fabric` REST API, schema `SubscriberResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -5073,7 +3896,7 @@ pub struct SubscriberResponse {
     pub subscriber: Option<serde_json::Value>,
 }
 
-/// `SubscriberSIPEndpoint` — generated read-side wire type ('fabric' REST API, schema 'SubscriberSIPEndpoint').
+/// `SubscriberSIPEndpoint` — generated read-side wire type (`fabric` REST API, schema `SubscriberSIPEndpoint`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -5095,7 +3918,7 @@ pub struct SubscriberSIPEndpoint {
     pub encryption: Option<serde_json::Value>,
 }
 
-/// `SubscriberSipEndpointListResponse` — generated read-side wire type ('fabric' REST API, schema 'SubscriberSipEndpointListResponse').
+/// `SubscriberSipEndpointListResponse` — generated read-side wire type (`fabric` REST API, schema `SubscriberSipEndpointListResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -5107,7 +3930,7 @@ pub struct SubscriberSipEndpointListResponse {
     pub links: Option<serde_json::Value>,
 }
 
-/// `SubscriberSipEndpointPaginationResponse` — generated read-side wire type ('fabric' REST API, schema 'SubscriberSipEndpointPaginationResponse').
+/// `SubscriberSipEndpointPaginationResponse` — generated read-side wire type (`fabric` REST API, schema `SubscriberSipEndpointPaginationResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -5123,7 +3946,7 @@ pub struct SubscriberSipEndpointPaginationResponse {
     pub prev: Option<String>,
 }
 
-/// `SubscriberSipEndpointRequest` — generated read-side wire type ('fabric' REST API, schema 'SubscriberSipEndpointRequest').
+/// `SubscriberSipEndpointRequest` — generated read-side wire type (`fabric` REST API, schema `SubscriberSipEndpointRequest`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -5145,7 +3968,7 @@ pub struct SubscriberSipEndpointRequest {
     pub encryption: Option<serde_json::Value>,
 }
 
-/// `SubscriberSipEndpointRequestUpdate` — generated read-side wire type ('fabric' REST API, schema 'SubscriberSipEndpointRequestUpdate').
+/// `SubscriberSipEndpointRequestUpdate` — generated read-side wire type (`fabric` REST API, schema `SubscriberSipEndpointRequestUpdate`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -5167,12 +3990,14 @@ pub struct SubscriberSipEndpointRequestUpdate {
     pub encryption: Option<serde_json::Value>,
 }
 
-/// `SubscriberTokenRequest` — generated read-side wire type ('fabric' REST API, schema 'SubscriberTokenRequest').
+/// `SubscriberTokenRequest` — generated read-side wire type (`fabric` REST API, schema `SubscriberTokenRequest`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct SubscriberTokenRequest {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ch: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub reference: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -5197,9 +4022,13 @@ pub struct SubscriberTokenRequest {
     pub region: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub company_name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub scope: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fingerprint: Option<String>,
 }
 
-/// `SubscriberTokenResponse` — generated read-side wire type ('fabric' REST API, schema 'SubscriberTokenResponse').
+/// `SubscriberTokenResponse` — generated read-side wire type (`fabric` REST API, schema `SubscriberTokenResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -5213,7 +4042,7 @@ pub struct SubscriberTokenResponse {
     pub refresh_token: Option<serde_json::Value>,
 }
 
-/// `SubscriberTokenStatusCode422` — generated read-side wire type ('fabric' REST API, schema 'SubscriberTokenStatusCode422').
+/// `SubscriberTokenStatusCode422` — generated read-side wire type (`fabric` REST API, schema `SubscriberTokenStatusCode422`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -5223,7 +4052,7 @@ pub struct SubscriberTokenStatusCode422 {
     pub errors: Option<serde_json::Value>,
 }
 
-/// `SubscriberUpdateStatusCode422` — generated read-side wire type ('fabric' REST API, schema 'SubscriberUpdateStatusCode422').
+/// `SubscriberUpdateStatusCode422` — generated read-side wire type (`fabric` REST API, schema `SubscriberUpdateStatusCode422`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -5233,65 +4062,7 @@ pub struct SubscriberUpdateStatusCode422 {
     pub errors: Option<serde_json::Value>,
 }
 
-/// `SummarizeAction` — generated read-side wire type ('fabric' REST API, schema 'SummarizeAction').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct SummarizeAction {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub summarize: Option<serde_json::Value>,
-}
-
-/// `SummarizeConversationSWAIGFunction` — generated read-side wire type ('fabric' REST API, schema 'SummarizeConversationSWAIGFunction').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct SummarizeConversationSWAIGFunction {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub description: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub purpose: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub parameters: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub fillers: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub argument: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub active: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub meta_data: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub meta_data_token: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub data_map: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub skip_fillers: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub web_hook_url: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub wait_file: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub wait_file_loops: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub wait_for_fillers: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub function: Option<serde_json::Value>,
-}
-
-/// `Switch` — generated read-side wire type ('fabric' REST API, schema 'Switch').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct Switch {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub switch: Option<serde_json::Value>,
-}
-
-/// `SwmlScript` — generated read-side wire type ('fabric' REST API, schema 'SwmlScript').
+/// `SwmlScript` — generated read-side wire type (`fabric` REST API, schema `SwmlScript`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -5300,7 +4071,7 @@ pub struct SwmlScript {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub id: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub contents: Option<String>,
+    pub contents: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub request_url: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -5309,9 +4080,11 @@ pub struct SwmlScript {
     pub status_callback_url: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub status_callback_method: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub script_type: Option<serde_json::Value>,
 }
 
-/// `SwmlScriptCreateRequest` — generated read-side wire type ('fabric' REST API, schema 'SwmlScriptCreateRequest').
+/// `SwmlScriptCreateRequest` — generated read-side wire type (`fabric` REST API, schema `SwmlScriptCreateRequest`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -5323,9 +4096,11 @@ pub struct SwmlScriptCreateRequest {
     pub contents: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub status_callback_url: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub script_type: Option<serde_json::Value>,
 }
 
-/// `SwmlScriptCreateStatusCode422` — generated read-side wire type ('fabric' REST API, schema 'SwmlScriptCreateStatusCode422').
+/// `SwmlScriptCreateStatusCode422` — generated read-side wire type (`fabric` REST API, schema `SwmlScriptCreateStatusCode422`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -5335,7 +4110,7 @@ pub struct SwmlScriptCreateStatusCode422 {
     pub errors: Option<serde_json::Value>,
 }
 
-/// `SwmlScriptListResponse` — generated read-side wire type ('fabric' REST API, schema 'SwmlScriptListResponse').
+/// `SwmlScriptListResponse` — generated read-side wire type (`fabric` REST API, schema `SwmlScriptListResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -5347,7 +4122,7 @@ pub struct SwmlScriptListResponse {
     pub links: Option<serde_json::Value>,
 }
 
-/// `SwmlScriptPaginationresponse` — generated read-side wire type ('fabric' REST API, schema 'SwmlScriptPaginationresponse').
+/// `SwmlScriptPaginationresponse` — generated read-side wire type (`fabric` REST API, schema `SwmlScriptPaginationresponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -5363,7 +4138,7 @@ pub struct SwmlScriptPaginationresponse {
     pub prev: Option<String>,
 }
 
-/// `SwmlScriptResponse` — generated read-side wire type ('fabric' REST API, schema 'SwmlScriptResponse').
+/// `SwmlScriptResponse` — generated read-side wire type (`fabric` REST API, schema `SwmlScriptResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -5385,21 +4160,23 @@ pub struct SwmlScriptResponse {
     pub swml_script: Option<serde_json::Value>,
 }
 
-/// `SwmlScriptUpdateRequest` — generated read-side wire type ('fabric' REST API, schema 'SwmlScriptUpdateRequest').
+/// `SwmlScriptUpdateRequest` — generated read-side wire type (`fabric` REST API, schema `SwmlScriptUpdateRequest`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct SwmlScriptUpdateRequest {
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub display_name: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub contents: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub status_callback_url: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub script_type: Option<serde_json::Value>,
 }
 
-/// `SwmlScriptUpdateStatusCode422` — generated read-side wire type ('fabric' REST API, schema 'SwmlScriptUpdateStatusCode422').
+/// `SwmlScriptUpdateStatusCode422` — generated read-side wire type (`fabric` REST API, schema `SwmlScriptUpdateStatusCode422`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -5409,7 +4186,7 @@ pub struct SwmlScriptUpdateStatusCode422 {
     pub errors: Option<serde_json::Value>,
 }
 
-/// `SwmlWebhookCreateStatusCode422` — generated read-side wire type ('fabric' REST API, schema 'SwmlWebhookCreateStatusCode422').
+/// `SwmlWebhookCreateStatusCode422` — generated read-side wire type (`fabric` REST API, schema `SwmlWebhookCreateStatusCode422`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -5419,7 +4196,7 @@ pub struct SwmlWebhookCreateStatusCode422 {
     pub errors: Option<serde_json::Value>,
 }
 
-/// `SwmlWebhookUpdateStatusCode422` — generated read-side wire type ('fabric' REST API, schema 'SwmlWebhookUpdateStatusCode422').
+/// `SwmlWebhookUpdateStatusCode422` — generated read-side wire type (`fabric` REST API, schema `SwmlWebhookUpdateStatusCode422`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -5429,61 +4206,12 @@ pub struct SwmlWebhookUpdateStatusCode422 {
     pub errors: Option<serde_json::Value>,
 }
 
-/// `Tap` — generated read-side wire type ('fabric' REST API, schema 'Tap').
+/// `Types_StatusCodes_RestApiErrorItem` — generated read-side wire type (`fabric` REST API, schema `Types.StatusCodes.RestApiErrorItem`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct Tap {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub tap: Option<serde_json::Value>,
-}
-
-/// `ToggleFunctionsAction` — generated read-side wire type ('fabric' REST API, schema 'ToggleFunctionsAction').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct ToggleFunctionsAction {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub toggle_functions: Option<serde_json::Value>,
-}
-
-/// `TranscribeStartAction` — generated read-side wire type ('fabric' REST API, schema 'TranscribeStartAction').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct TranscribeStartAction {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub start: Option<serde_json::Value>,
-}
-
-/// `TranscribeSummarizeAction` — generated read-side wire type ('fabric' REST API, schema 'TranscribeSummarizeAction').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct TranscribeSummarizeAction {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub summarize: Option<serde_json::Value>,
-}
-
-/// `Transfer` — generated read-side wire type ('fabric' REST API, schema 'Transfer').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct Transfer {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub transfer: Option<serde_json::Value>,
-}
-
-/// `Types_StatusCodes_RestApiErrorItem` — generated read-side wire type ('fabric' REST API, schema 'Types.StatusCodes.RestApiErrorItem').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[allow(non_camel_case_types)]
 pub struct Types_StatusCodes_RestApiErrorItem {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub r#type: Option<String>,
@@ -5497,145 +4225,62 @@ pub struct Types_StatusCodes_RestApiErrorItem {
     pub url: Option<String>,
 }
 
-/// `Types_StatusCodes_StatusCode401` — generated read-side wire type ('fabric' REST API, schema 'Types.StatusCodes.StatusCode401').
+/// `Types_StatusCodes_StatusCode401` — generated read-side wire type (`fabric` REST API, schema `Types.StatusCodes.StatusCode401`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[allow(non_camel_case_types)]
 pub struct Types_StatusCodes_StatusCode401 {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub error: Option<serde_json::Value>,
 }
 
-/// `Types_StatusCodes_StatusCode403` — generated read-side wire type ('fabric' REST API, schema 'Types.StatusCodes.StatusCode403').
+/// `Types_StatusCodes_StatusCode403` — generated read-side wire type (`fabric` REST API, schema `Types.StatusCodes.StatusCode403`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[allow(non_camel_case_types)]
 pub struct Types_StatusCodes_StatusCode403 {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub error: Option<serde_json::Value>,
 }
 
-/// `Types_StatusCodes_StatusCode404` — generated read-side wire type ('fabric' REST API, schema 'Types.StatusCodes.StatusCode404').
+/// `Types_StatusCodes_StatusCode404` — generated read-side wire type (`fabric` REST API, schema `Types.StatusCodes.StatusCode404`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[allow(non_camel_case_types)]
 pub struct Types_StatusCodes_StatusCode404 {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub error: Option<serde_json::Value>,
 }
 
-/// `Types_StatusCodes_StatusCode422` — generated read-side wire type ('fabric' REST API, schema 'Types.StatusCodes.StatusCode422').
+/// `Types_StatusCodes_StatusCode422` — generated read-side wire type (`fabric` REST API, schema `Types.StatusCodes.StatusCode422`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[allow(non_camel_case_types)]
 pub struct Types_StatusCodes_StatusCode422 {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub errors: Option<serde_json::Value>,
 }
 
-/// `Types_StatusCodes_StatusCode500` — generated read-side wire type ('fabric' REST API, schema 'Types.StatusCodes.StatusCode500').
+/// `Types_StatusCodes_StatusCode500` — generated read-side wire type (`fabric` REST API, schema `Types.StatusCodes.StatusCode500`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[allow(non_camel_case_types)]
 pub struct Types_StatusCodes_StatusCode500 {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub error: Option<serde_json::Value>,
 }
 
-/// `Unset` — generated read-side wire type ('fabric' REST API, schema 'Unset').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct Unset {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub unset: Option<serde_json::Value>,
-}
-
-/// `UnsetGlobalDataAction` — generated read-side wire type ('fabric' REST API, schema 'UnsetGlobalDataAction').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct UnsetGlobalDataAction {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub unset_global_data: Option<serde_json::Value>,
-}
-
-/// `UnsetMetaDataAction` — generated read-side wire type ('fabric' REST API, schema 'UnsetMetaDataAction').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct UnsetMetaDataAction {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub unset_meta_data: Option<serde_json::Value>,
-}
-
-/// `UserEvent` — generated read-side wire type ('fabric' REST API, schema 'UserEvent').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct UserEvent {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub user_event: Option<serde_json::Value>,
-}
-
-/// `UserInputAction` — generated read-side wire type ('fabric' REST API, schema 'UserInputAction').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct UserInputAction {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub user_input: Option<String>,
-}
-
-/// `UserSWAIGFunction` — generated read-side wire type ('fabric' REST API, schema 'UserSWAIGFunction').
-///
-/// Method-less serde DTO: each field maps a snake wire key (via
-/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct UserSWAIGFunction {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub description: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub purpose: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub parameters: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub fillers: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub argument: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub active: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub meta_data: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub meta_data_token: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub data_map: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub skip_fillers: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub web_hook_url: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub wait_file: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub wait_file_loops: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub wait_for_fillers: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub function: Option<String>,
-}
-
-/// `VideoChannel` — generated read-side wire type ('fabric' REST API, schema 'VideoChannel').
+/// `VideoChannel` — generated read-side wire type (`fabric` REST API, schema `VideoChannel`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -5645,30 +4290,574 @@ pub struct VideoChannel {
     pub video: Option<String>,
 }
 
-/// `Webhook` — generated read-side wire type ('fabric' REST API, schema 'Webhook').
+/// `Webhook` — generated read-side wire type (`fabric` REST API, schema `Webhook`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct Webhook {
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub expressions: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub error_keys: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub url: Option<String>,
+    pub expressions: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub foreach: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub form_param: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub headers: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub method: Option<serde_json::Value>,
+    pub input_args_as_params: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub input_args_as_params: Option<serde_json::Value>,
+    pub method: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub output: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub params: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub require_args: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub output: Option<serde_json::Value>,
+    pub url: Option<String>,
+}
+
+/// `AliasAddress` — generated read-side wire type (`fabric` REST API, schema `AliasAddress`).
+///
+/// Method-less serde DTO: each field maps a snake wire key (via
+/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct AliasAddress {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub id: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub r#type: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub resource_id: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub display_name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub display_type: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub channels: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub codecs: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub context: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub uri: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub created_at: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub updated_at: Option<String>,
+}
+
+/// `AliasAddressCreateRequest` — generated read-side wire type (`fabric` REST API, schema `AliasAddressCreateRequest`).
+///
+/// Method-less serde DTO: each field maps a snake wire key (via
+/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct AliasAddressCreateRequest {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub display_name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub resource_id: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub channels: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub codecs: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub context: Option<serde_json::Value>,
+}
+
+/// `AliasAddressUpdateRequest` — generated read-side wire type (`fabric` REST API, schema `AliasAddressUpdateRequest`).
+///
+/// Method-less serde DTO: each field maps a snake wire key (via
+/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct AliasAddressUpdateRequest {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub display_name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub channels: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub codecs: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub context: Option<serde_json::Value>,
+}
+
+/// `SipAddress` — generated read-side wire type (`fabric` REST API, schema `SipAddress`).
+///
+/// Method-less serde DTO: each field maps a snake wire key (via
+/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct SipAddress {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub id: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub r#type: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub resource_id: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub display_name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub context: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub uri: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub user: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub encryption: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub codecs: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ciphers: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ip_auth_enabled: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ip_auth: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub calling_handler_resource_id: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub created_at: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub updated_at: Option<String>,
+}
+
+/// `SipAddressCreateRequest` — generated read-side wire type (`fabric` REST API, schema `SipAddressCreateRequest`).
+///
+/// Method-less serde DTO: each field maps a snake wire key (via
+/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct SipAddressCreateRequest {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub user: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub context_id: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub calling_handler_resource_id: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ip_auth_enabled: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ip_auth: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub codecs: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ciphers: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub encryption: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub password: Option<String>,
+}
+
+/// `SipAddressUpdateRequest` — generated read-side wire type (`fabric` REST API, schema `SipAddressUpdateRequest`).
+///
+/// Method-less serde DTO: each field maps a snake wire key (via
+/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct SipAddressUpdateRequest {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub user: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub context_id: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ip_auth_enabled: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ip_auth: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub codecs: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ciphers: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub encryption: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub password: Option<String>,
+}
+
+/// `PhoneNumberAddress` — generated read-side wire type (`fabric` REST API, schema `PhoneNumberAddress`).
+///
+/// Method-less serde DTO: each field maps a snake wire key (via
+/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct PhoneNumberAddress {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub id: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub r#type: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub handler_type: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub resource_id: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub phone_number: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub phone_number_id: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub created_at: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub updated_at: Option<String>,
+}
+
+/// `PhoneNumberAddressCreateRequest` — generated read-side wire type (`fabric` REST API, schema `PhoneNumberAddressCreateRequest`).
+///
+/// Method-less serde DTO: each field maps a snake wire key (via
+/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct PhoneNumberAddressCreateRequest {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub phone_number_id: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub number: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub resource_id: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub handler_type: Option<serde_json::Value>,
+}
+
+/// `PhoneNumberAddressUpdateRequest` — generated read-side wire type (`fabric` REST API, schema `PhoneNumberAddressUpdateRequest`).
+///
+/// Method-less serde DTO: each field maps a snake wire key (via
+/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct PhoneNumberAddressUpdateRequest {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub resource_id: Option<serde_json::Value>,
+}
+
+/// `AliasAddressListResponse` — generated read-side wire type (`fabric` REST API, schema `AliasAddressListResponse`).
+///
+/// Method-less serde DTO: each field maps a snake wire key (via
+/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct AliasAddressListResponse {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub links: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub items_count: Option<i64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub data: Option<serde_json::Value>,
+}
+
+/// `SipAddressListResponse` — generated read-side wire type (`fabric` REST API, schema `SipAddressListResponse`).
+///
+/// Method-less serde DTO: each field maps a snake wire key (via
+/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct SipAddressListResponse {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub links: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub items_count: Option<i64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub data: Option<serde_json::Value>,
+}
+
+/// `PhoneNumberAddressListResponse` — generated read-side wire type (`fabric` REST API, schema `PhoneNumberAddressListResponse`).
+///
+/// Method-less serde DTO: each field maps a snake wire key (via
+/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct PhoneNumberAddressListResponse {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub links: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub items_count: Option<i64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub data: Option<serde_json::Value>,
+}
+
+/// `WhatsappNumberAssignRequest` — generated read-side wire type (`fabric` REST API, schema `WhatsappNumberAssignRequest`).
+///
+/// Method-less serde DTO: each field maps a snake wire key (via
+/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct WhatsappNumberAssignRequest {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub whatsapp_number_id: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub handler: Option<serde_json::Value>,
+}
+
+/// `WhatsappNumberAddressResponse` — generated read-side wire type (`fabric` REST API, schema `WhatsappNumberAddressResponse`).
+///
+/// Method-less serde DTO: each field maps a snake wire key (via
+/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct WhatsappNumberAddressResponse {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub id: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub resource_id: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub display_name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub r#type: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cover_url: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub preview_url: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub locked: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub channels: Option<serde_json::Value>,
+}
+
+/// `Step` — generated read-side wire type (`fabric` REST API, schema `Step`).
+///
+/// Method-less serde DTO: each field maps a snake wire key (via
+/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct Step {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub end: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub functions: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub gather_info: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub history: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pom: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reset: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub skip_to_next_step: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub skip_user_turn: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub step_criteria: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub text: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub valid_contexts: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub valid_steps: Option<serde_json::Value>,
+}
+
+/// `PromptPomSection` — generated read-side wire type (`fabric` REST API, schema `PromptPomSection`).
+///
+/// Method-less serde DTO: each field maps a snake wire key (via
+/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct PromptPomSection {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub title: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub body: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub bullets: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub numbered: Option<bool>,
+    #[serde(
+        rename = "numberedBullets",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub numbered_bullets: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub subsections: Option<serde_json::Value>,
+}
+
+/// `Foreach` — generated read-side wire type (`fabric` REST API, schema `Foreach`).
+///
+/// Method-less serde DTO: each field maps a snake wire key (via
+/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct Foreach {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub append: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub input_key: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub max: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub output_key: Option<String>,
+}
+
+/// `Context` — generated read-side wire type (`fabric` REST API, schema `Context`).
+///
+/// Method-less serde DTO: each field maps a snake wire key (via
+/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct Context {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub consolidate: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub enter_fillers: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub exit_fillers: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub full_reset: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub history: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub initial_step: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub isolated: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pom: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub post_prompt: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub prompt: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reset: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub steps: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub system_prompt: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub user_prompt: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub valid_contexts: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub valid_steps: Option<serde_json::Value>,
+}
+
+/// `AIAgentPrompt` — generated read-side wire type (`fabric` REST API, schema `AIAgentPrompt`).
+///
+/// Method-less serde DTO: each field maps a snake wire key (via
+/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct AIAgentPrompt {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub contexts: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub frequency_penalty: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub max_completion_tokens: Option<f64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub max_tokens: Option<f64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub model: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pom: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub presence_penalty: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reasoning_effort: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub steps: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub temperature: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub text: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub top_p: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub verbosity: Option<String>,
+}
+
+/// `AIAgentPostPrompt` — generated read-side wire type (`fabric` REST API, schema `AIAgentPostPrompt`).
+///
+/// Method-less serde DTO: each field maps a snake wire key (via
+/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct AIAgentPostPrompt {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub frequency_penalty: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub max_completion_tokens: Option<f64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub max_tokens: Option<f64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub model: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pom: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub presence_penalty: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reasoning_effort: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub temperature: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub text: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub top_p: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub verbosity: Option<String>,
+}
+
+/// `AIAgentSWAIGFunction` — generated read-side wire type (`fabric` REST API, schema `AIAgentSWAIGFunction`).
+///
+/// Method-less serde DTO: each field maps a snake wire key (via
+/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct AIAgentSWAIGFunction {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub active: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub argument: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub data_map: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fillers: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub function: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub meta_data: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub meta_data_token: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub parameters: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub purpose: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub skip_fillers: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub wait_file: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub wait_file_loops: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub wait_for_fillers: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub web_hook_auth_pass: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub web_hook_auth_password: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub web_hook_auth_user: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub web_hook_url: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub arguments: Option<serde_json::Value>,
+}
+
+/// `AIAgentPronounce` — generated read-side wire type (`fabric` REST API, schema `AIAgentPronounce`).
+///
+/// Method-less serde DTO: each field maps a snake wire key (via
+/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct AIAgentPronounce {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub replace: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub with: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub replace_with: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ignore_case: Option<serde_json::Value>,
 }

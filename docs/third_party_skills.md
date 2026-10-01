@@ -110,7 +110,7 @@ let mut agent = AgentBase::new(AgentOptions::new("skills-user"));
 ```
 
 ```rust
-agent.add_skill("weather", json!({"api_key": "your-key"}));
+agent.add_skill("weather", Some(json!({"api_key": "your-key"})));
 ```
 
 ## DataMap Skills
@@ -170,7 +170,7 @@ fn main() {
     my_weather_skill::register();
 
     let mut agent = AgentBase::new(AgentOptions::new("my-agent"));
-    agent.add_skill("weather", json!({"api_key": "..."}));
+    agent.add_skill("weather", Some(json!({"api_key": "..."})));
     agent.run();
 }
 ```

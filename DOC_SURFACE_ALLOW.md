@@ -20,30 +20,53 @@ What is already documented (NOT in the budget):
   in `src/swaig/mod.rs`, `src/swml/mod.rs`, `src/relay/mod.rs`,
   `src/rest/namespaces/mod.rs`.
 
-## Budget (undocumented hand modules) — snapshot 2026-07-19
+## Relationship to the DOC-SURFACE gate
 
-The item counts are approximate (from `cargo clippy --lib -- -W missing_docs`)
-and exist to show relative size / track the ratchet, not as a hard gate.
+Two different measurements are in play and they do not agree — by design:
 
-| module (`src/lib.rs` decl) | ~undocumented items | notes |
+- **The DOC-SURFACE gate** (`porting-sdk/scripts/doc_surface.py`, floor in
+  `.doc_surface_floor`) counts *declarations*: `pub fn` / `pub struct` /
+  `pub enum` / `pub trait` / `pub type` / `pub const` in `src/**/*.rs`,
+  excluding generated trees. **That reading is 100.0% (1499/1499) and the
+  floor is pinned there** (2026-07-29).
+- **rustc's `missing_docs`** counts a *wider* surface: it also wants doc
+  comments on public struct FIELDS, enum VARIANTS, and trait ITEMS, which the
+  gate's declaration regex never sees. That residue is what this budget still
+  covers.
+
+So a module can be at 100% by the gate and still carry an `#[allow]` here.
+
+## Budget (undocumented hand modules) — measured 2026-07-29
+
+Exact counts from `cargo clippy --lib --all-features` with the
+`#[allow(missing_docs)]` lines temporarily stripped from `src/lib.rs`. These
+are fields / enum variants / trait items only — every counted *declaration*
+in these modules is documented.
+
+| module (`src/lib.rs` decl) | undocumented items | was (2026-07-19) |
 |---|---|---|
-| `relay` | ~150 | the RELAY "Simple-RPC" block (action.rs/call.rs/client.rs — the 57+ calling verbs) + constants/event; the largest cluster |
-| `agent` | ~49 | AgentBase builder methods + fields |
-| `contexts` | ~32 | ContextBuilder / Context / Step |
-| `swml` | ~35 | service.rs / renderer.rs / document.rs items |
-| `swaig` | ~17 | FunctionResult action methods |
-| `skills` | ~30 | skill_base + builtin skill structs |
-| `rest` | ~30 | http_client / client / request_options / pagination fields |
-| `prefabs` | ~17 | archetype builder methods |
-| `security` | ~1 | session/util items |
-| `server` | ~4 | agent_server items |
-| `serverless` | ~7 | adapter items |
-| `web` | ~8 | web_service items |
-| `core` | ~14 | security_config fields |
-| `datamap` | ~1 | datamap items |
-| `logging` | ~16 | Logger/Level items |
-| `utils` | ~6 | schema_utils items |
+| `relay` | 28 | ~150 |
+| `swml` | 26 | ~35 |
+| `skills` | 22 | ~30 |
+| `logging` | 16 | ~16 |
+| `core` | 15 | ~14 |
+| `rest` | 14 | ~30 |
+| `agent` | 10 | ~49 |
+| `web` | 8 | ~8 |
+| `utils` | 6 | ~6 |
+| `prefabs` | 5 | ~17 |
+| `swaig` | 1 | ~17 |
+| `serverless` | 1 | ~7 |
+| `server` | 1 | ~4 |
+| `security` | 1 | ~1 |
+| `contexts` | 1 | ~32 |
 
-Total starting budget: ~470 hand items (down from ~5950 before the generated
-exemptions). The next ratchet step is documenting the `relay` Simple-RPC block
-and dropping its allow.
+Total remaining budget: **155** items, down from ~470.
+
+**Ratchet step taken 2026-07-29:** `datamap` reached zero, so its
+`#[allow(missing_docs)]` was deleted from `src/lib.rs` and its row from this
+table. Adding an undocumented public item to `datamap` now reds LINT.
+
+The next ratchet steps are the five modules sitting at a single item —
+`swaig`, `serverless`, `server`, `security`, `contexts` — each needing one
+field/variant doc before its `#[allow(missing_docs)]` can be dropped too.

@@ -28,7 +28,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Dialing {to} from {from} ...");
 
     let result = client.calling().dial(
-        CallingDialRequest::new(from, to)
+        CallingDialRequest::new(from)
+            .to(to)
             .url(&url)
             .status_url(format!("{url}/status")),
         None,

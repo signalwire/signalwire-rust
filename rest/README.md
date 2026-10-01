@@ -25,7 +25,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Make a phone call
     client.calling().dial(
-        CallingDialRequest::new("+15559876543", "+15551234567")
+        CallingDialRequest::new("+15559876543")
+            .to("+15551234567")
             .url("https://example.com/call-handler"),
         None,
     )?;
@@ -53,6 +54,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 |----------|-------------|
 | `SIGNALWIRE_PROJECT_ID` | Your project ID |
 | `SIGNALWIRE_API_TOKEN` | Your API token |
+| `SIGNALWIRE_PERSONAL_ACCESS_TOKEN` | Optional: a Personal Access Token (`pat_...`) for the Space Administration API (`client.space_admin()`) |
 | `SIGNALWIRE_SPACE` | Your space hostname |
 
 ## Documentation

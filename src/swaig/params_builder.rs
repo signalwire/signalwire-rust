@@ -44,7 +44,7 @@
 //!   `{"type":"object","properties": <this>}`).
 //! - [`build_schema`](ParamsBuilder::build_schema) returns the **full** JSON
 //!   schema `{"type":"object","properties":{…},"required":[…]}` — exactly the
-//!   shape the Python reference's `_ensure_parameter_structure` emits and the
+//!   shape the `_ensure_parameter_structure` emits and the
 //!   shape hand-written for `register_swaig_function` / `DataMap` full
 //!   definitions. This is the form that carries a top-level
 //!   [`required`](ParamsBuilder::required) list.
@@ -313,7 +313,7 @@ impl ParamsBuilder {
     ///     .build();
     /// assert_eq!(
     ///     params["direction"]["enum"],
-    ///     json!(["speak", "hear", "both"])
+    ///     json!(["speak", "listen", "both"])
     /// );
     /// ```
     pub fn enum_of<I, S>(self, name: &str, variants: I, description: &str) -> Self
@@ -358,7 +358,7 @@ impl ParamsBuilder {
     /// `"required": [<name>, …]` in [`build_schema`](Self::build_schema).
     ///
     /// This is the JSON-Schema-style required array (sibling of `properties`),
-    /// matching the Python reference's `required=[…]` argument. Calling it more
+    /// matching the wire contract's `required=[…]` argument. Calling it more
     /// than once replaces the previous list. For a per-property flag instead,
     /// use [`PropertyBuilder::required`].
     pub fn required<I, S>(mut self, names: I) -> Self
@@ -387,7 +387,7 @@ impl ParamsBuilder {
     /// `{"type":"object","properties":{…}}`, plus `"required":[…]` when a
     /// top-level [`required`](Self::required) list was declared.
     ///
-    /// Byte-identical to the Python reference's `_ensure_parameter_structure`
+    /// Byte-identical to the `_ensure_parameter_structure`
     /// output and to the hand-written full-schema forms used with
     /// `register_swaig_function` / `DataMap` definitions.
     #[must_use]
@@ -538,7 +538,7 @@ mod tests {
             .build();
         assert_eq!(
             tap_dir,
-            json!({"dir": {"type": "string", "enum": ["speak", "hear", "both"], "description": "direction"}})
+            json!({"dir": {"type": "string", "enum": ["speak", "listen", "both"], "description": "direction"}})
         );
 
         let codec = ParamsBuilder::new()
@@ -549,8 +549,8 @@ mod tests {
             json!({"codec": {"type": "string", "enum": ["PCMU", "PCMA"], "description": "codec"}})
         );
 
-        // The record vocabulary's `listen` is NOT the tap vocabulary's `hear`.
-        assert_ne!(rec_dir["dir"]["enum"], tap_dir["dir"]["enum"]);
+        // record_call and tap share the engine's direction vocabulary.
+        assert_eq!(rec_dir["dir"]["enum"], tap_dir["dir"]["enum"]);
     }
 
     #[test]
@@ -704,7 +704,7 @@ mod tests {
         args.insert("query".to_string(), Value::from("pricing"));
         let raw = serde_json::Map::new();
         let result = agent
-            .on_function_call("search", &args, &raw)
+            .on_function_call("search", &args, Some(&raw))
             .expect("handler dispatched");
         let v = result.to_value();
         assert_eq!(v["response"], "hit: pricing");

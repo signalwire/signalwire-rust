@@ -11,21 +11,11 @@
 // generator — so these catch SDK-vs-contract drift, not a generator self-snapshot.
 // Full-mock harness fixtures (common::mocktest).
 
-#![allow(unused_imports)]
-
 #[path = "common/mod.rs"]
 mod common;
 
 use serde_json::json;
 use signalwire::rest::namespaces::generated::calling_resources_generated as cg;
-use signalwire::rest::namespaces::generated::chat_resources_generated as chat_gen;
-use signalwire::rest::namespaces::generated::datasphere_resources_generated as datasphere_gen;
-use signalwire::rest::namespaces::generated::fabric_resources_generated as fabric_gen;
-use signalwire::rest::namespaces::generated::messages_resources_generated as messages_gen;
-use signalwire::rest::namespaces::generated::project_resources_generated as project_gen;
-use signalwire::rest::namespaces::generated::pubsub_resources_generated as pubsub_gen;
-use signalwire::rest::namespaces::generated::relay_rest_resources_generated as relay_gen;
-use signalwire::rest::namespaces::generated::video_resources_generated as video_gen;
 
 #[test]
 fn test_calling_ai_hold_success() {
@@ -87,7 +77,7 @@ fn test_calling_ai_stop_success() {
     let c = common::mocktest::client();
     let _ = c
         .calling()
-        .ai_stop("x", cg::CallingAiStopRequest::new("x"), None);
+        .ai_stop("x", cg::CallingAiStopRequest::new(), None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "POST");
     assert_eq!(e.matched_route.as_deref(), Some("calling.call-commands"));
@@ -100,7 +90,7 @@ fn test_calling_ai_stop_error() {
     common::mocktest::scenario_set("calling.call-commands", 500, json!({"error": "x"}));
     let err = c
         .calling()
-        .ai_stop("x", cg::CallingAiStopRequest::new("x"), None)
+        .ai_stop("x", cg::CallingAiStopRequest::new(), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -280,11 +270,9 @@ fn test_calling_denoise_stop_error() {
 fn test_calling_detect_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let _ = c.calling().detect(
-        "x",
-        cg::CallingDetectRequest::new(serde_json::json!({})),
-        None,
-    );
+    let _ = c
+        .calling()
+        .detect("x", cg::CallingDetectRequest::new(json!({})), None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "POST");
     assert_eq!(e.matched_route.as_deref(), Some("calling.call-commands"));
@@ -297,11 +285,7 @@ fn test_calling_detect_error() {
     common::mocktest::scenario_set("calling.call-commands", 500, json!({"error": "x"}));
     let err = c
         .calling()
-        .detect(
-            "x",
-            cg::CallingDetectRequest::new(serde_json::json!({})),
-            None,
-        )
+        .detect("x", cg::CallingDetectRequest::new(json!({})), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -340,9 +324,7 @@ fn test_calling_detect_stop_error() {
 fn test_calling_dial_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let _ = c
-        .calling()
-        .dial(cg::CallingDialRequest::new("x", "y"), None);
+    let _ = c.calling().dial(cg::CallingDialRequest::new("x"), None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "POST");
     assert_eq!(e.matched_route.as_deref(), Some("calling.call-commands"));
@@ -355,7 +337,7 @@ fn test_calling_dial_error() {
     common::mocktest::scenario_set("calling.call-commands", 500, json!({"error": "x"}));
     let err = c
         .calling()
-        .dial(cg::CallingDialRequest::new("x", "y"), None)
+        .dial(cg::CallingDialRequest::new("x"), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -485,11 +467,9 @@ fn test_calling_live_translate_error() {
 fn test_calling_play_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let _ = c.calling().play(
-        "x",
-        cg::CallingPlayRequest::new(serde_json::json!({})),
-        None,
-    );
+    let _ = c
+        .calling()
+        .play("x", cg::CallingPlayRequest::new(json!({})), None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "POST");
     assert_eq!(e.matched_route.as_deref(), Some("calling.call-commands"));
@@ -502,11 +482,7 @@ fn test_calling_play_error() {
     common::mocktest::scenario_set("calling.call-commands", 500, json!({"error": "x"}));
     let err = c
         .calling()
-        .play(
-            "x",
-            cg::CallingPlayRequest::new(serde_json::json!({})),
-            None,
-        )
+        .play("x", cg::CallingPlayRequest::new(json!({})), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -875,11 +851,9 @@ fn test_calling_stream_stop_error() {
 fn test_calling_tap_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let _ = c.calling().tap(
-        "x",
-        cg::CallingTapRequest::new(serde_json::json!({}), serde_json::json!({})),
-        None,
-    );
+    let _ = c
+        .calling()
+        .tap("x", cg::CallingTapRequest::new(json!({}), json!({})), None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "POST");
     assert_eq!(e.matched_route.as_deref(), Some("calling.call-commands"));
@@ -892,11 +866,7 @@ fn test_calling_tap_error() {
     common::mocktest::scenario_set("calling.call-commands", 500, json!({"error": "x"}));
     let err = c
         .calling()
-        .tap(
-            "x",
-            cg::CallingTapRequest::new(serde_json::json!({}), serde_json::json!({})),
-            None,
-        )
+        .tap("x", cg::CallingTapRequest::new(json!({}), json!({})), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();

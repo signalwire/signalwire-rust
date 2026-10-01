@@ -7,7 +7,7 @@ use crate::swaig::FunctionResult;
 /// Perform a remote vector search: POST `{query, index_name, count, ...}` to
 /// `<remote_url>/search` and return the parsed `results` array.
 ///
-/// Mirrors Python `NativeVectorSearchSkill._search_remote`
+/// Matches `NativeVectorSearchSkill._search_remote`
 /// (`skills/native_vector_search/skill.py`): posts a JSON body to the
 /// `/search` sub-path of the configured remote URL and reads the
 /// `results: [{content, score, metadata}]` list from the JSON response.
@@ -111,6 +111,10 @@ pub struct NativeVectorSearch {
 }
 
 impl NativeVectorSearch {
+    /// Create the skill from its configuration `params`.
+    ///
+    /// Setup always succeeds — the search is performed natively by the
+    /// SignalWire platform, so the skill has no local dependency to verify.
     pub fn new(params: Map<String, Value>) -> Self {
         NativeVectorSearch {
             sp: SkillParams::new(params),
@@ -345,7 +349,7 @@ mod tests {
         let mut args = Map::new();
         args.insert("query".to_string(), json!("how do I configure widgets"));
         let result = agent
-            .on_function_call("search_knowledge", &args, &Map::new())
+            .on_function_call("search_knowledge", &args, Some(&Map::new()))
             .expect("search_knowledge tool should be registered");
         let response = result
             .to_value()
@@ -396,7 +400,7 @@ mod tests {
         let mut args = Map::new();
         args.insert("query".to_string(), json!("nonexistent topic"));
         let result = agent
-            .on_function_call("search_knowledge", &args, &Map::new())
+            .on_function_call("search_knowledge", &args, Some(&Map::new()))
             .expect("tool registered");
         let response = result
             .to_value()

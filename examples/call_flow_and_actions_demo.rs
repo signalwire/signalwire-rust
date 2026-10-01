@@ -47,7 +47,7 @@ fn main() {
     agent.add_post_ai_verb("hangup", json!({}));
 
     // -- Debug events --
-    agent.enable_debug_events("all");
+    agent.enable_debug_events(Some(3));
     agent.on_debug_event(Box::new(|event, _headers| {
         println!("Debug event: {event}");
     }));

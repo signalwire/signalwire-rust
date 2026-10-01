@@ -1,6 +1,6 @@
 //! Fluent SWML document builder.
 //!
-//! Port of Python `signalwire.core.swml_builder.SWMLBuilder`. Provides a
+//! Provides a
 //! fluent interface for building SWML documents by chaining method calls,
 //! delegating to an underlying [`Service`] for the actual document creation.
 //!
@@ -40,14 +40,30 @@ impl<'a> SwmlBuilder<'a> {
         self.service
     }
 
-    /// Add an `answer` verb to the main section.
-    pub fn answer(&mut self, max_duration: Option<i64>, codecs: Option<&str>) -> &mut Self {
+    /// Add an `answer` verb to the main section (`username` / `password` are
+    /// the SIP authentication credentials for the answered leg).
+    pub fn answer(
+        &mut self,
+        max_duration: Option<i64>,
+        codecs: Option<crate::swaig::KeysArg>,
+        username: Option<&str>,
+        password: Option<&str>,
+    ) -> &mut Self {
         let mut config = Map::new();
         if let Some(d) = max_duration {
             config.insert("max_duration".to_string(), Value::from(d));
         }
+        // Codecs to offer — a comma-separated string or a list (PCMU, PCMA,
+        // G722, G729, AMR-WB, OPUS, VP8, H264), emitted as given.
         if let Some(c) = codecs {
-            config.insert("codecs".to_string(), Value::from(c));
+            config.insert("codecs".to_string(), c.into_value());
+        }
+        // SIP authentication credentials for the answered leg.
+        if let Some(u) = username {
+            config.insert("username".to_string(), Value::from(u));
+        }
+        if let Some(p) = password {
+            config.insert("password".to_string(), Value::from(p));
         }
         self.service.add_verb("answer", Value::Object(config));
         self
@@ -120,9 +136,23 @@ impl<'a> SwmlBuilder<'a> {
     ///
     /// Panics if neither `url` nor `urls` is provided, matching Python's
     /// `ValueError`.
-    // Faithful port of Python `SWMLBuilder.play(url, urls, volume, say_voice,
-    // say_language, say_gender, auto_answer)` — the parameter set is the wire
-    // contract, not incidental; keeping them flat matches the reference.
+    ///
+    /// `url` takes precedence when both are supplied. `volume` is a gain in
+    /// decibels; the `say_*` parameters configure TTS for `say:` URLs; and
+    /// `auto_answer` answers the call first if it is not already answered;
+    /// `loop` repeats it (0 = until the call ends); `status_url` receives play
+    /// status events.
+    /// Every parameter is `Option` because the reference declares it
+    /// optional — `None` omits the key rather than sending a default.
+    ///
+    /// This is a faithful port of Python's `SWMLBuilder.play(url, urls,
+    /// volume, say_voice, say_language, say_gender, auto_answer, loop,
+    /// status_url)`: the
+    /// parameter set *is* the wire contract, not incidental, so keeping it
+    /// flat matches the reference and `clippy::too_many_arguments` is
+    /// suppressed.
+    ///
+    /// Returns `&mut Self` for chaining.
     #[allow(clippy::too_many_arguments)]
     pub fn play(
         &mut self,
@@ -133,6 +163,8 @@ impl<'a> SwmlBuilder<'a> {
         say_language: Option<&str>,
         say_gender: Option<&str>,
         auto_answer: Option<bool>,
+        r#loop: Option<i64>,
+        status_url: Option<&str>,
     ) -> &mut Self {
         let mut config = Map::new();
         if let Some(u) = url {
@@ -157,6 +189,14 @@ impl<'a> SwmlBuilder<'a> {
         if let Some(v) = auto_answer {
             config.insert("auto_answer".to_string(), Value::from(v));
         }
+        // How many times to play (0 = until the call ends).
+        if let Some(v) = r#loop {
+            config.insert("loop".to_string(), Value::from(v));
+        }
+        // http(s) URL that receives play status events.
+        if let Some(v) = status_url {
+            config.insert("status_url".to_string(), Value::from(v));
+        }
         self.service.add_verb("play", Value::Object(config));
         self
     }
@@ -171,7 +211,17 @@ impl<'a> SwmlBuilder<'a> {
         volume: Option<f64>,
     ) -> &mut Self {
         let url = format!("say:{text}");
-        self.play(Some(&url), None, volume, voice, language, gender, None)
+        self.play(
+            Some(&url),
+            None,
+            volume,
+            voice,
+            language,
+            gender,
+            None,
+            None,
+            None,
+        )
     }
 
     /// Generic verb accessor — the Rust idiom for Python's auto-vivified
@@ -235,7 +285,7 @@ mod tests {
         // "busy" is a schema-valid hangup reason (hangup|busy|decline); the
         // full validator now rejects an out-of-enum reason like "done" (which
         // the Python reference also rejects), so the chain uses a valid one.
-        b.answer(Some(3600), None).hangup(Some("busy"));
+        b.answer(Some(3600), None, None, None).hangup(Some("busy"));
         let doc = b.build();
         let main = doc["sections"]["main"].as_array().unwrap();
         assert_eq!(main[0]["answer"]["max_duration"], 3600);
@@ -275,11 +325,34 @@ mod tests {
     }
 
     #[test]
+    fn test_answer_sip_credentials_and_play_loop_status_url() {
+        let mut s = svc();
+        let mut b = SwmlBuilder::new(&mut s);
+        b.answer(None, None, Some("alice"), Some("s3cret")).play(
+            Some("https://example.com/a.mp3"),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            Some(2),
+            Some("https://example.com/status"),
+        );
+        let doc = b.build();
+        let main = doc["sections"]["main"].as_array().unwrap();
+        assert_eq!(main[0]["answer"]["username"], "alice");
+        assert_eq!(main[0]["answer"]["password"], "s3cret");
+        assert_eq!(main[1]["play"]["loop"], 2);
+        assert_eq!(main[1]["play"]["status_url"], "https://example.com/status");
+    }
+
+    #[test]
     #[should_panic(expected = "url or urls")]
     fn test_play_requires_url() {
         let mut s = svc();
         let mut b = SwmlBuilder::new(&mut s);
-        b.play(None, None, None, None, None, None, None);
+        b.play(None, None, None, None, None, None, None, None, None);
     }
 
     #[test]

@@ -5,18 +5,13 @@
 // Read-side wire types (open shapes) — method-less serde structs / closed-set
 // enums. Regenerate with: python3 scripts/generate_rest.py
 //
-// Two narrow lint allows, both grounded in the generated wire shape:
-//   * non_camel_case_types — a few wire schema keys carry dotted names
-//     (``Types.StatusCodes.StatusCode400``); the type identifier folds the dots
-//     to underscores (``Types_StatusCodes_StatusCode400``) and must stay verbatim
-//     so it matches the wire schema key, which the naming lint would rewrite.
-//   * clippy::doc_markdown — the generated doc comments echo raw wire schema key
-//     names in prose; backticking every one mechanically is not meaningful here.
-#![allow(non_camel_case_types, clippy::doc_markdown)]
+// A wire schema key with a dotted name (``Types.StatusCodes.StatusCode400``)
+// folds to an underscored type identifier that must stay verbatim to match the
+// key; only those items carry an item-level `non_camel_case_types` allow.
 
 use serde::{Deserialize, Serialize};
 
-/// `ActiveSession` — generated read-side wire type ('video' REST API, schema 'ActiveSession').
+/// `ActiveSession` — generated read-side wire type (`video` REST API, schema `ActiveSession`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -29,17 +24,17 @@ pub struct ActiveSession {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub display_name: Option<String>,
+    pub display_name: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub join_from: Option<String>,
+    pub join_from: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub join_until: Option<String>,
+    pub join_until: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub remove_at: Option<String>,
+    pub remove_at: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub remove_after_seconds_elapsed: Option<i64>,
+    pub remove_after_seconds_elapsed: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub layout: Option<String>,
+    pub layout: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub max_members: Option<i64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -59,12 +54,30 @@ pub struct ActiveSession {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub enable_room_previews: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub preview_url: Option<String>,
+    pub preview_url: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub audio_video_sync: Option<bool>,
+    pub sync_audio_video: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tone_on_entry_and_exit: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub room_join_video_off: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub user_join_video_off: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub locked: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cost_in_dollars: Option<f64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub created_at: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub updated_at: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub locked_cover: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub prioritize_handraise: Option<serde_json::Value>,
 }
 
-/// `ChargeDetail` — generated read-side wire type ('video' REST API, schema 'ChargeDetail').
+/// `ChargeDetail` — generated read-side wire type (`video` REST API, schema `ChargeDetail`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -76,7 +89,7 @@ pub struct ChargeDetail {
     pub charge: Option<f64>,
 }
 
-/// `Conference` — generated read-side wire type ('video' REST API, schema 'Conference').
+/// `Conference` — generated read-side wire type (`video` REST API, schema `Conference`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -142,7 +155,71 @@ pub struct Conference {
     pub active_session: Option<serde_json::Value>,
 }
 
-/// `ConferenceToken` — generated read-side wire type ('video' REST API, schema 'ConferenceToken').
+/// `ConferenceMutationResponse` — generated read-side wire type (`video` REST API, schema `ConferenceMutationResponse`).
+///
+/// Method-less serde DTO: each field maps a snake wire key (via
+/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct ConferenceMutationResponse {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub display_name: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub description: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub join_from: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub join_until: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub quality: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub layout: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub size: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub record_on_start: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tone_on_entry_and_exit: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub user_join_video_off: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub room_join_video_off: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub enable_chat: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub enable_room_previews: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub dark_primary: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub dark_background: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub dark_foreground: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub dark_success: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub dark_negative: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub light_primary: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub light_background: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub light_foreground: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub light_success: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub light_negative: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub meta: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub created_at: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub updated_at: Option<String>,
+}
+
+/// `ConferenceToken` — generated read-side wire type (`video` REST API, schema `ConferenceToken`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -158,7 +235,7 @@ pub struct ConferenceToken {
     pub scopes: Option<serde_json::Value>,
 }
 
-/// `CreateConferenceRequest` — generated read-side wire type ('video' REST API, schema 'CreateConferenceRequest').
+/// `CreateConferenceRequest` — generated read-side wire type (`video` REST API, schema `CreateConferenceRequest`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -208,7 +285,7 @@ pub struct CreateConferenceRequest {
     pub light_negative: Option<String>,
 }
 
-/// `CreateRoomRequest` — generated read-side wire type ('video' REST API, schema 'CreateRoomRequest').
+/// `CreateRoomRequest` — generated read-side wire type (`video` REST API, schema `CreateRoomRequest`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -244,7 +321,7 @@ pub struct CreateRoomRequest {
     pub sync_audio_video: Option<bool>,
 }
 
-/// `CreateRoomTokenRequest` — generated read-side wire type ('video' REST API, schema 'CreateRoomTokenRequest').
+/// `CreateRoomTokenRequest` — generated read-side wire type (`video` REST API, schema `CreateRoomTokenRequest`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -288,7 +365,7 @@ pub struct CreateRoomTokenRequest {
     pub sync_audio_video: Option<bool>,
 }
 
-/// `CreateStreamRequest` — generated read-side wire type ('video' REST API, schema 'CreateStreamRequest').
+/// `CreateStreamRequest` — generated read-side wire type (`video` REST API, schema `CreateStreamRequest`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -298,7 +375,7 @@ pub struct CreateStreamRequest {
     pub url: Option<String>,
 }
 
-/// `DiscardedLog` — generated read-side wire type ('video' REST API, schema 'DiscardedLog').
+/// `DiscardedLog` — generated read-side wire type (`video` REST API, schema `DiscardedLog`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -312,7 +389,7 @@ pub struct DiscardedLog {
     pub created_at: Option<String>,
 }
 
-/// `ListConferenceTokensResponse` — generated read-side wire type ('video' REST API, schema 'ListConferenceTokensResponse').
+/// `ListConferenceTokensResponse` — generated read-side wire type (`video` REST API, schema `ListConferenceTokensResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -324,7 +401,7 @@ pub struct ListConferenceTokensResponse {
     pub data: Option<serde_json::Value>,
 }
 
-/// `ListConferencesResponse` — generated read-side wire type ('video' REST API, schema 'ListConferencesResponse').
+/// `ListConferencesResponse` — generated read-side wire type (`video` REST API, schema `ListConferencesResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -336,7 +413,7 @@ pub struct ListConferencesResponse {
     pub data: Option<serde_json::Value>,
 }
 
-/// `ListLogsResponse` — generated read-side wire type ('video' REST API, schema 'ListLogsResponse').
+/// `ListLogsResponse` — generated read-side wire type (`video` REST API, schema `ListLogsResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -348,7 +425,7 @@ pub struct ListLogsResponse {
     pub data: Option<serde_json::Value>,
 }
 
-/// `ListRoomRecordingEventsResponse` — generated read-side wire type ('video' REST API, schema 'ListRoomRecordingEventsResponse').
+/// `ListRoomRecordingEventsResponse` — generated read-side wire type (`video` REST API, schema `ListRoomRecordingEventsResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -360,7 +437,7 @@ pub struct ListRoomRecordingEventsResponse {
     pub data: Option<serde_json::Value>,
 }
 
-/// `ListRoomRecordingsResponse` — generated read-side wire type ('video' REST API, schema 'ListRoomRecordingsResponse').
+/// `ListRoomRecordingsResponse` — generated read-side wire type (`video` REST API, schema `ListRoomRecordingsResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -372,7 +449,7 @@ pub struct ListRoomRecordingsResponse {
     pub data: Option<serde_json::Value>,
 }
 
-/// `ListRoomSessionEventsResponse` — generated read-side wire type ('video' REST API, schema 'ListRoomSessionEventsResponse').
+/// `ListRoomSessionEventsResponse` — generated read-side wire type (`video` REST API, schema `ListRoomSessionEventsResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -384,7 +461,7 @@ pub struct ListRoomSessionEventsResponse {
     pub data: Option<serde_json::Value>,
 }
 
-/// `ListRoomSessionMembersResponse` — generated read-side wire type ('video' REST API, schema 'ListRoomSessionMembersResponse').
+/// `ListRoomSessionMembersResponse` — generated read-side wire type (`video` REST API, schema `ListRoomSessionMembersResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -396,7 +473,7 @@ pub struct ListRoomSessionMembersResponse {
     pub data: Option<serde_json::Value>,
 }
 
-/// `ListRoomSessionRecordingsResponse` — generated read-side wire type ('video' REST API, schema 'ListRoomSessionRecordingsResponse').
+/// `ListRoomSessionRecordingsResponse` — generated read-side wire type (`video` REST API, schema `ListRoomSessionRecordingsResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -408,7 +485,7 @@ pub struct ListRoomSessionRecordingsResponse {
     pub data: Option<serde_json::Value>,
 }
 
-/// `ListRoomSessionsResponse` — generated read-side wire type ('video' REST API, schema 'ListRoomSessionsResponse').
+/// `ListRoomSessionsResponse` — generated read-side wire type (`video` REST API, schema `ListRoomSessionsResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -420,7 +497,7 @@ pub struct ListRoomSessionsResponse {
     pub data: Option<serde_json::Value>,
 }
 
-/// `ListRoomsResponse` — generated read-side wire type ('video' REST API, schema 'ListRoomsResponse').
+/// `ListRoomsResponse` — generated read-side wire type (`video` REST API, schema `ListRoomsResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -432,7 +509,7 @@ pub struct ListRoomsResponse {
     pub data: Option<serde_json::Value>,
 }
 
-/// `ListStreamsResponse` — generated read-side wire type ('video' REST API, schema 'ListStreamsResponse').
+/// `ListStreamsResponse` — generated read-side wire type (`video` REST API, schema `ListStreamsResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -444,7 +521,7 @@ pub struct ListStreamsResponse {
     pub data: Option<serde_json::Value>,
 }
 
-/// `Log` — generated read-side wire type ('video' REST API, schema 'Log').
+/// `Log` — generated read-side wire type (`video` REST API, schema `Log`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -476,7 +553,7 @@ pub struct Log {
     pub charge_details: Option<serde_json::Value>,
 }
 
-/// `PaginationLinks` — generated read-side wire type ('video' REST API, schema 'PaginationLinks').
+/// `PaginationLinks` — generated read-side wire type (`video` REST API, schema `PaginationLinks`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -492,7 +569,7 @@ pub struct PaginationLinks {
     pub prev: Option<String>,
 }
 
-/// `RoomRecording` — generated read-side wire type ('video' REST API, schema 'RoomRecording').
+/// `RoomRecording` — generated read-side wire type (`video` REST API, schema `RoomRecording`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -524,7 +601,7 @@ pub struct RoomRecording {
     pub updated_at: Option<String>,
 }
 
-/// `RoomResponse` — generated read-side wire type ('video' REST API, schema 'RoomResponse').
+/// `RoomResponse` — generated read-side wire type (`video` REST API, schema `RoomResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -578,7 +655,59 @@ pub struct RoomResponse {
     pub updated_at: Option<String>,
 }
 
-/// `RoomSession` — generated read-side wire type ('video' REST API, schema 'RoomSession').
+/// `RoomMutationResponse` — generated read-side wire type (`video` REST API, schema `RoomMutationResponse`).
+///
+/// Method-less serde DTO: each field maps a snake wire key (via
+/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct RoomMutationResponse {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub display_name: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub description: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub max_members: Option<i64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub quality: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fps: Option<i64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub join_from: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub join_until: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub remove_at: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub remove_after_seconds_elapsed: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub layout: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub record_on_start: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tone_on_entry_and_exit: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub room_join_video_off: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub user_join_video_off: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub enable_room_previews: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sync_audio_video: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub meta: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub prioritize_handraise: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub created_at: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub updated_at: Option<String>,
+}
+
+/// `RoomSession` — generated read-side wire type (`video` REST API, schema `RoomSession`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -644,7 +773,7 @@ pub struct RoomSession {
     pub locked_cover: Option<String>,
 }
 
-/// `RoomSessionEvent` — generated read-side wire type ('video' REST API, schema 'RoomSessionEvent').
+/// `RoomSessionEvent` — generated read-side wire type (`video` REST API, schema `RoomSessionEvent`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -672,7 +801,7 @@ pub struct RoomSessionEvent {
     pub created_at: Option<String>,
 }
 
-/// `RoomSessionMember` — generated read-side wire type ('video' REST API, schema 'RoomSessionMember').
+/// `RoomSessionMember` — generated read-side wire type (`video` REST API, schema `RoomSessionMember`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -694,7 +823,7 @@ pub struct RoomSessionMember {
     pub cost_in_dollars: Option<f64>,
 }
 
-/// `RoomSessionSummary` — generated read-side wire type ('video' REST API, schema 'RoomSessionSummary').
+/// `RoomSessionSummary` — generated read-side wire type (`video` REST API, schema `RoomSessionSummary`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -749,12 +878,12 @@ pub struct RoomSessionSummary {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub preview_url: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub prioritize_handraise: Option<serde_json::Value>,
+    pub prioritize_handraise: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub sync_audio_video: Option<serde_json::Value>,
 }
 
-/// `RoomTokenResponse` — generated read-side wire type ('video' REST API, schema 'RoomTokenResponse').
+/// `RoomTokenResponse` — generated read-side wire type (`video` REST API, schema `RoomTokenResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -764,7 +893,7 @@ pub struct RoomTokenResponse {
     pub token: Option<String>,
 }
 
-/// `Stream` — generated read-side wire type ('video' REST API, schema 'Stream').
+/// `Stream` — generated read-side wire type (`video` REST API, schema `Stream`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -788,11 +917,12 @@ pub struct Stream {
     pub updated_at: Option<String>,
 }
 
-/// `Types_StatusCodes_RestApiErrorItem` — generated read-side wire type ('video' REST API, schema 'Types.StatusCodes.RestApiErrorItem').
+/// `Types_StatusCodes_RestApiErrorItem` — generated read-side wire type (`video` REST API, schema `Types.StatusCodes.RestApiErrorItem`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[allow(non_camel_case_types)]
 pub struct Types_StatusCodes_RestApiErrorItem {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub r#type: Option<String>,
@@ -806,57 +936,62 @@ pub struct Types_StatusCodes_RestApiErrorItem {
     pub url: Option<String>,
 }
 
-/// `Types_StatusCodes_StatusCode400` — generated read-side wire type ('video' REST API, schema 'Types.StatusCodes.StatusCode400').
+/// `Types_StatusCodes_StatusCode400` — generated read-side wire type (`video` REST API, schema `Types.StatusCodes.StatusCode400`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[allow(non_camel_case_types)]
 pub struct Types_StatusCodes_StatusCode400 {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub error: Option<serde_json::Value>,
 }
 
-/// `Types_StatusCodes_StatusCode401` — generated read-side wire type ('video' REST API, schema 'Types.StatusCodes.StatusCode401').
+/// `Types_StatusCodes_StatusCode401` — generated read-side wire type (`video` REST API, schema `Types.StatusCodes.StatusCode401`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[allow(non_camel_case_types)]
 pub struct Types_StatusCodes_StatusCode401 {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub error: Option<serde_json::Value>,
 }
 
-/// `Types_StatusCodes_StatusCode403` — generated read-side wire type ('video' REST API, schema 'Types.StatusCodes.StatusCode403').
+/// `Types_StatusCodes_StatusCode403` — generated read-side wire type (`video` REST API, schema `Types.StatusCodes.StatusCode403`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[allow(non_camel_case_types)]
 pub struct Types_StatusCodes_StatusCode403 {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub error: Option<serde_json::Value>,
 }
 
-/// `Types_StatusCodes_StatusCode404` — generated read-side wire type ('video' REST API, schema 'Types.StatusCodes.StatusCode404').
+/// `Types_StatusCodes_StatusCode404` — generated read-side wire type (`video` REST API, schema `Types.StatusCodes.StatusCode404`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[allow(non_camel_case_types)]
 pub struct Types_StatusCodes_StatusCode404 {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub error: Option<serde_json::Value>,
 }
 
-/// `Types_StatusCodes_StatusCode500` — generated read-side wire type ('video' REST API, schema 'Types.StatusCodes.StatusCode500').
+/// `Types_StatusCodes_StatusCode500` — generated read-side wire type (`video` REST API, schema `Types.StatusCodes.StatusCode500`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[allow(non_camel_case_types)]
 pub struct Types_StatusCodes_StatusCode500 {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub error: Option<serde_json::Value>,
 }
 
-/// `UpdateConferenceRequest` — generated read-side wire type ('video' REST API, schema 'UpdateConferenceRequest').
+/// `UpdateConferenceRequest` — generated read-side wire type (`video` REST API, schema `UpdateConferenceRequest`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -910,7 +1045,7 @@ pub struct UpdateConferenceRequest {
     pub light_negative: Option<String>,
 }
 
-/// `UpdateRoomRequest` — generated read-side wire type ('video' REST API, schema 'UpdateRoomRequest').
+/// `UpdateRoomRequest` — generated read-side wire type (`video` REST API, schema `UpdateRoomRequest`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -944,7 +1079,7 @@ pub struct UpdateRoomRequest {
     pub sync_audio_video: Option<bool>,
 }
 
-/// `UpdateStreamRequest` — generated read-side wire type ('video' REST API, schema 'UpdateStreamRequest').
+/// `UpdateStreamRequest` — generated read-side wire type (`video` REST API, schema `UpdateStreamRequest`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -954,7 +1089,7 @@ pub struct UpdateStreamRequest {
     pub url: Option<String>,
 }
 
-/// `VideoStatusCode422` — generated read-side wire type ('video' REST API, schema 'VideoStatusCode422').
+/// `VideoStatusCode422` — generated read-side wire type (`video` REST API, schema `VideoStatusCode422`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.

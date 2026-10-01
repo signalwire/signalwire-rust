@@ -10,7 +10,7 @@ use std::collections::HashMap;
 use serde_json::Value;
 
 use crate::rest::error::SignalWireRestError;
-use crate::rest::generated_bases::ReadResource;
+use crate::rest::generated_bases::{BaseResource, CrudResource, ReadResource};
 use crate::rest::http_client::HttpClient;
 use crate::rest::pagination::PaginatedIterator;
 use crate::rest::request_options::RequestOptions;
@@ -67,9 +67,195 @@ impl<'a> MessageLogs<'a> {
     #[must_use]
     pub fn paginate(
         &self,
+        request_options: Option<RequestOptions>,
+        params: &HashMap<String, String>,
+    ) -> PaginatedIterator<'a> {
+        self.base.paginate(request_options, params)
+    }
+}
+
+/// `WhatsappNumbers` resource for the SignalWire `message` REST API.
+///
+/// Composes [`ReadResource`] (its base path is baked in) and adds the
+/// resource's own methods.
+pub struct WhatsappNumbers<'a> {
+    base: ReadResource<'a>,
+}
+
+impl<'a> WhatsappNumbers<'a> {
+    /// Construct the resource; its base path (§4) is baked in.
+    #[must_use]
+    pub fn new(client: &'a HttpClient) -> Self {
+        WhatsappNumbers {
+            base: ReadResource::new(client, "/api/messaging/whatsapp/numbers"),
+        }
+    }
+
+    #[must_use]
+    pub fn base_path(&self) -> &str {
+        self.base.base_path()
+    }
+
+    /// `list` (delegated to the base; GET base path).
+    ///
+    /// # Errors
+    /// See the base resource.
+    pub fn list(
+        &self,
         params: &HashMap<String, String>,
         request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base
+            .list_with_options(params, request_options.as_ref())
+    }
+
+    /// `get` (delegated to the base; GET base/{id}).
+    ///
+    /// # Errors
+    /// See the base resource.
+    pub fn get(
+        &self,
+        id: &str,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base.get_with_options(id, request_options.as_ref())
+    }
+
+    /// `paginate` (delegated to the base): iterate every item across all
+    /// pages, following the response's `links.next` cursor.
+    #[must_use]
+    pub fn paginate(
+        &self,
+        request_options: Option<RequestOptions>,
+        params: &HashMap<String, String>,
     ) -> PaginatedIterator<'a> {
-        self.base.paginate_with_options(params, request_options)
+        self.base.paginate(request_options, params)
+    }
+}
+
+/// `WhatsappBusinesses` resource for the SignalWire `message` REST API.
+///
+/// Composes [`BaseResource`] (its base path is baked in) and adds the
+/// resource's own methods.
+pub struct WhatsappBusinesses<'a> {
+    base: BaseResource<'a>,
+}
+
+impl<'a> WhatsappBusinesses<'a> {
+    /// Construct the resource; its base path (§4) is baked in.
+    #[must_use]
+    pub fn new(client: &'a HttpClient) -> Self {
+        WhatsappBusinesses {
+            base: BaseResource::new(client, "/api/messaging/whatsapp/businesses"),
+        }
+    }
+
+    #[must_use]
+    pub fn base_path(&self) -> &str {
+        self.base.base_path()
+    }
+
+    fn client(&self) -> &HttpClient {
+        self.base.client()
+    }
+
+    /// `GET /whatsapp/businesses` (generated operation method; query params).
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] on transport failure, a non-2xx status.
+    pub fn list(
+        &self,
+        params: &HashMap<String, String>,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.client()
+            .get_with_options(self.base_path(), Some(params), request_options.as_ref())
+    }
+}
+
+/// `WhatsappTemplates` resource for the SignalWire `message` REST API.
+///
+/// Composes [`CrudResource`] (its base path is baked in) and adds the
+/// resource's own methods.
+pub struct WhatsappTemplates<'a> {
+    base: CrudResource<'a>,
+}
+
+impl<'a> WhatsappTemplates<'a> {
+    /// Construct the resource; its base path (§4) is baked in.
+    #[must_use]
+    pub fn new(client: &'a HttpClient) -> Self {
+        WhatsappTemplates {
+            base: CrudResource::new(client, "/api/messaging/whatsapp/templates", "PATCH"),
+        }
+    }
+
+    #[must_use]
+    pub fn base_path(&self) -> &str {
+        self.base.base_path()
+    }
+
+    /// `list` (delegated to the base; GET base path).
+    ///
+    /// # Errors
+    /// See the base resource.
+    pub fn list(
+        &self,
+        params: &HashMap<String, String>,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base
+            .list_with_options(params, request_options.as_ref())
+    }
+
+    /// `get` (delegated to the base; GET base/{id}).
+    ///
+    /// # Errors
+    /// See the base resource.
+    pub fn get(
+        &self,
+        id: &str,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base.get_with_options(id, request_options.as_ref())
+    }
+
+    /// `create` (delegated to the base; POST base path).
+    ///
+    /// # Errors
+    /// See the base resource.
+    pub fn create(
+        &self,
+        data: &Value,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base
+            .create_with_options(data, request_options.as_ref())
+    }
+
+    /// `update` (delegated to the base; PUT/PATCH base/{id}).
+    ///
+    /// # Errors
+    /// See the base resource.
+    pub fn update(
+        &self,
+        id: &str,
+        data: &Value,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base
+            .update_with_options(id, data, request_options.as_ref())
+    }
+
+    /// `delete` (delegated to the base; DELETE base/{id}).
+    ///
+    /// # Errors
+    /// See the base resource.
+    pub fn delete(
+        &self,
+        id: &str,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.base.delete_with_options(id, request_options.as_ref())
     }
 }

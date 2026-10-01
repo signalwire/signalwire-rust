@@ -31,8 +31,8 @@ fn main() {
     );
 
     // Add built-in skills
-    agent.add_skill("datetime", json!({"timezone": "America/Chicago"}));
-    agent.add_skill("math", json!({}));
+    agent.add_skill("datetime", Some(json!({"timezone": "America/Chicago"})));
+    agent.add_skill("math", None);
 
     let (user, pass) = agent.get_basic_auth_credentials();
     println!("Skills demo running");

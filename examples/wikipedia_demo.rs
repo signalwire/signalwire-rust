@@ -36,14 +36,14 @@ fn main() {
     let mut wiki_tool = DataMap::new("search_wikipedia");
     wiki_tool
         .description("Search Wikipedia for information on a topic")
-        .parameter("topic", "string", "Topic to search for", true, vec![])
+        .parameter("topic", "string", "Topic to search for", Some(true), None)
         .webhook(
             "GET",
             "https://en.wikipedia.org/api/rest_v1/page/summary/${args.topic}",
-            json!({"Accept": "application/json"}),
-            "",
-            false,
-            vec![],
+            Some(json!({"Accept": "application/json"})),
+            None,
+            None,
+            None,
         )
         .output(
             FunctionResult::with_response(

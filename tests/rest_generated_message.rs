@@ -11,21 +11,10 @@
 // generator — so these catch SDK-vs-contract drift, not a generator self-snapshot.
 // Full-mock harness fixtures (common::mocktest).
 
-#![allow(unused_imports)]
-
 #[path = "common/mod.rs"]
 mod common;
 
 use serde_json::json;
-use signalwire::rest::namespaces::generated::calling_resources_generated as cg;
-use signalwire::rest::namespaces::generated::chat_resources_generated as chat_gen;
-use signalwire::rest::namespaces::generated::datasphere_resources_generated as datasphere_gen;
-use signalwire::rest::namespaces::generated::fabric_resources_generated as fabric_gen;
-use signalwire::rest::namespaces::generated::messages_resources_generated as messages_gen;
-use signalwire::rest::namespaces::generated::project_resources_generated as project_gen;
-use signalwire::rest::namespaces::generated::pubsub_resources_generated as pubsub_gen;
-use signalwire::rest::namespaces::generated::relay_rest_resources_generated as relay_gen;
-use signalwire::rest::namespaces::generated::video_resources_generated as video_gen;
 
 #[test]
 fn test_logs_messages_get_success() {
@@ -85,5 +74,304 @@ fn test_logs_messages_list_error() {
     assert_eq!(
         e.matched_route.as_deref(),
         Some("message.list_message_logs")
+    );
+}
+
+#[test]
+fn test_whatsapp_businesses_list_success() {
+    let _g = common::mocktest::begin();
+    let c = common::mocktest::client();
+    let _ = c
+        .whatsapp()
+        .businesses()
+        .list(&std::collections::HashMap::new(), None);
+    let e = common::mocktest::journal_last();
+    assert_eq!(e.method, "GET");
+    assert_eq!(
+        e.matched_route.as_deref(),
+        Some("message.list_whatsapp_businesses")
+    );
+}
+
+#[test]
+fn test_whatsapp_businesses_list_error() {
+    let _g = common::mocktest::begin();
+    let c = common::mocktest::client();
+    common::mocktest::scenario_set(
+        "message.list_whatsapp_businesses",
+        500,
+        json!({"error": "x"}),
+    );
+    let err = c
+        .whatsapp()
+        .businesses()
+        .list(&std::collections::HashMap::new(), None)
+        .expect_err("expected a 500 error");
+    assert_eq!(err.status_code(), 500);
+    let e = common::mocktest::journal_last();
+    assert_eq!(e.response_status, Some(500));
+    assert_eq!(
+        e.matched_route.as_deref(),
+        Some("message.list_whatsapp_businesses")
+    );
+}
+
+#[test]
+fn test_whatsapp_numbers_get_success() {
+    let _g = common::mocktest::begin();
+    let c = common::mocktest::client();
+    let _ = c.whatsapp().numbers().get("x", None);
+    let e = common::mocktest::journal_last();
+    assert_eq!(e.method, "GET");
+    assert_eq!(
+        e.matched_route.as_deref(),
+        Some("message.retrieve_whatsapp_number")
+    );
+}
+
+#[test]
+fn test_whatsapp_numbers_get_error() {
+    let _g = common::mocktest::begin();
+    let c = common::mocktest::client();
+    common::mocktest::scenario_set(
+        "message.retrieve_whatsapp_number",
+        500,
+        json!({"error": "x"}),
+    );
+    let err = c
+        .whatsapp()
+        .numbers()
+        .get("x", None)
+        .expect_err("expected a 500 error");
+    assert_eq!(err.status_code(), 500);
+    let e = common::mocktest::journal_last();
+    assert_eq!(e.response_status, Some(500));
+    assert_eq!(
+        e.matched_route.as_deref(),
+        Some("message.retrieve_whatsapp_number")
+    );
+}
+
+#[test]
+fn test_whatsapp_numbers_list_success() {
+    let _g = common::mocktest::begin();
+    let c = common::mocktest::client();
+    let _ = c
+        .whatsapp()
+        .numbers()
+        .list(&std::collections::HashMap::new(), None);
+    let e = common::mocktest::journal_last();
+    assert_eq!(e.method, "GET");
+    assert_eq!(
+        e.matched_route.as_deref(),
+        Some("message.list_whatsapp_numbers")
+    );
+}
+
+#[test]
+fn test_whatsapp_numbers_list_error() {
+    let _g = common::mocktest::begin();
+    let c = common::mocktest::client();
+    common::mocktest::scenario_set("message.list_whatsapp_numbers", 500, json!({"error": "x"}));
+    let err = c
+        .whatsapp()
+        .numbers()
+        .list(&std::collections::HashMap::new(), None)
+        .expect_err("expected a 500 error");
+    assert_eq!(err.status_code(), 500);
+    let e = common::mocktest::journal_last();
+    assert_eq!(e.response_status, Some(500));
+    assert_eq!(
+        e.matched_route.as_deref(),
+        Some("message.list_whatsapp_numbers")
+    );
+}
+
+#[test]
+fn test_whatsapp_templates_create_success() {
+    let _g = common::mocktest::begin();
+    let c = common::mocktest::client();
+    let _ = c
+        .whatsapp()
+        .templates()
+        .create(&serde_json::json!({}), None);
+    let e = common::mocktest::journal_last();
+    assert_eq!(e.method, "POST");
+    assert_eq!(
+        e.matched_route.as_deref(),
+        Some("message.create_whatsapp_template")
+    );
+}
+
+#[test]
+fn test_whatsapp_templates_create_error() {
+    let _g = common::mocktest::begin();
+    let c = common::mocktest::client();
+    common::mocktest::scenario_set(
+        "message.create_whatsapp_template",
+        500,
+        json!({"error": "x"}),
+    );
+    let err = c
+        .whatsapp()
+        .templates()
+        .create(&serde_json::json!({}), None)
+        .expect_err("expected a 500 error");
+    assert_eq!(err.status_code(), 500);
+    let e = common::mocktest::journal_last();
+    assert_eq!(e.response_status, Some(500));
+    assert_eq!(
+        e.matched_route.as_deref(),
+        Some("message.create_whatsapp_template")
+    );
+}
+
+#[test]
+fn test_whatsapp_templates_delete_success() {
+    let _g = common::mocktest::begin();
+    let c = common::mocktest::client();
+    let _ = c.whatsapp().templates().delete("x", None);
+    let e = common::mocktest::journal_last();
+    assert_eq!(e.method, "DELETE");
+    assert_eq!(
+        e.matched_route.as_deref(),
+        Some("message.delete_whatsapp_template")
+    );
+}
+
+#[test]
+fn test_whatsapp_templates_delete_error() {
+    let _g = common::mocktest::begin();
+    let c = common::mocktest::client();
+    common::mocktest::scenario_set(
+        "message.delete_whatsapp_template",
+        500,
+        json!({"error": "x"}),
+    );
+    let err = c
+        .whatsapp()
+        .templates()
+        .delete("x", None)
+        .expect_err("expected a 500 error");
+    assert_eq!(err.status_code(), 500);
+    let e = common::mocktest::journal_last();
+    assert_eq!(e.response_status, Some(500));
+    assert_eq!(
+        e.matched_route.as_deref(),
+        Some("message.delete_whatsapp_template")
+    );
+}
+
+#[test]
+fn test_whatsapp_templates_get_success() {
+    let _g = common::mocktest::begin();
+    let c = common::mocktest::client();
+    let _ = c.whatsapp().templates().get("x", None);
+    let e = common::mocktest::journal_last();
+    assert_eq!(e.method, "GET");
+    assert_eq!(
+        e.matched_route.as_deref(),
+        Some("message.retrieve_whatsapp_template")
+    );
+}
+
+#[test]
+fn test_whatsapp_templates_get_error() {
+    let _g = common::mocktest::begin();
+    let c = common::mocktest::client();
+    common::mocktest::scenario_set(
+        "message.retrieve_whatsapp_template",
+        500,
+        json!({"error": "x"}),
+    );
+    let err = c
+        .whatsapp()
+        .templates()
+        .get("x", None)
+        .expect_err("expected a 500 error");
+    assert_eq!(err.status_code(), 500);
+    let e = common::mocktest::journal_last();
+    assert_eq!(e.response_status, Some(500));
+    assert_eq!(
+        e.matched_route.as_deref(),
+        Some("message.retrieve_whatsapp_template")
+    );
+}
+
+#[test]
+fn test_whatsapp_templates_list_success() {
+    let _g = common::mocktest::begin();
+    let c = common::mocktest::client();
+    let _ = c
+        .whatsapp()
+        .templates()
+        .list(&std::collections::HashMap::new(), None);
+    let e = common::mocktest::journal_last();
+    assert_eq!(e.method, "GET");
+    assert_eq!(
+        e.matched_route.as_deref(),
+        Some("message.list_whatsapp_templates")
+    );
+}
+
+#[test]
+fn test_whatsapp_templates_list_error() {
+    let _g = common::mocktest::begin();
+    let c = common::mocktest::client();
+    common::mocktest::scenario_set(
+        "message.list_whatsapp_templates",
+        500,
+        json!({"error": "x"}),
+    );
+    let err = c
+        .whatsapp()
+        .templates()
+        .list(&std::collections::HashMap::new(), None)
+        .expect_err("expected a 500 error");
+    assert_eq!(err.status_code(), 500);
+    let e = common::mocktest::journal_last();
+    assert_eq!(e.response_status, Some(500));
+    assert_eq!(
+        e.matched_route.as_deref(),
+        Some("message.list_whatsapp_templates")
+    );
+}
+
+#[test]
+fn test_whatsapp_templates_update_success() {
+    let _g = common::mocktest::begin();
+    let c = common::mocktest::client();
+    let _ = c
+        .whatsapp()
+        .templates()
+        .update("x", &serde_json::json!({}), None);
+    let e = common::mocktest::journal_last();
+    assert_eq!(e.method, "PATCH");
+    assert_eq!(
+        e.matched_route.as_deref(),
+        Some("message.update_whatsapp_template")
+    );
+}
+
+#[test]
+fn test_whatsapp_templates_update_error() {
+    let _g = common::mocktest::begin();
+    let c = common::mocktest::client();
+    common::mocktest::scenario_set(
+        "message.update_whatsapp_template",
+        500,
+        json!({"error": "x"}),
+    );
+    let err = c
+        .whatsapp()
+        .templates()
+        .update("x", &serde_json::json!({}), None)
+        .expect_err("expected a 500 error");
+    assert_eq!(err.status_code(), 500);
+    let e = common::mocktest::journal_last();
+    assert_eq!(e.response_status, Some(500));
+    assert_eq!(
+        e.matched_route.as_deref(),
+        Some("message.update_whatsapp_template")
     );
 }

@@ -53,7 +53,8 @@ async fn dispatch(State(service): State<Arc<Service>>, request: Request<Body>) -
     };
     let body = String::from_utf8_lossy(&body_bytes).into_owned();
 
-    let (status, resp_headers, resp_body) = service.handle_request(&method, &path, &headers, &body);
+    let (status, resp_headers, resp_body) =
+        service.handle_request(&method, &path, &headers, Some(&body));
 
     // `handle_request` returns the framework-free bare-header triple; the HTTP
     // layer re-adds `Content-Type: application/json` for non-empty bodies

@@ -84,7 +84,6 @@
     "PostPromptStampsUs": [
       "speech_start",
       "last_word_end",
-      "suspected_end",
       "turn_decided",
       "status_pushed",
       "request_detect",
@@ -120,10 +119,7 @@
       "lang",
       "tokens",
       "content_type",
-      "metadata",
-      "context",
-      "step",
-      "step_index"
+      "metadata"
     ],
     "PostPromptThinkingEntry": [
       "role",

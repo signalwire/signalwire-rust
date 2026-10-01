@@ -1,5 +1,4 @@
-//! Typed-handler → SWAIG parameter-schema inference (Python
-//! `signalwire.core.agent.tools.type_inference`).
+//! Typed-handler → SWAIG parameter-schema inference.
 //!
 //! Python's `type_inference` reflects a tool handler's *signature and type
 //! hints at runtime* (`inspect.signature` / `typing.get_type_hints`) to derive
@@ -20,8 +19,7 @@ use serde_json::{Map, Value};
 use crate::swaig::FunctionResult;
 use crate::swaig::params_builder::ParamsBuilder;
 
-/// The tuple `infer_schema` returns (Python
-/// `tuple[dict[str, dict[str, Any]], list[str], str | None, bool, bool]`):
+/// The tuple `infer_schema` returns:
 ///
 /// - `parameters`: the `properties` object — a JSON object mapping each
 ///   parameter name to its JSON-Schema property dict.
@@ -31,8 +29,7 @@ use crate::swaig::params_builder::ParamsBuilder;
 /// - `has_raw_data`: `true` when the handler also receives the raw request data.
 pub type InferredSchema = (Value, Vec<String>, Option<String>, bool, bool);
 
-/// Derive the SWAIG parameter schema from a typed parameter declaration
-/// (Python `infer_schema`).
+/// Derive the SWAIG parameter schema from a typed parameter declaration.
 ///
 /// `params` is the developer's typed [`ParamsBuilder`] — the Rust idiom's
 /// stand-in for the reflected handler signature Python inspects. `description`
@@ -67,7 +64,7 @@ pub type TypedHandler =
     Box<dyn Fn(&Map<String, Value>, &Map<String, Value>) -> FunctionResult + Send + Sync>;
 
 /// Wrap a typed handler so it is invoked with the standard SWAIG calling
-/// convention (Python `create_typed_handler_wrapper`).
+/// convention.
 ///
 /// Python's wrapper unpacks the args dict into the handler's keyword arguments
 /// (and passes `raw_data` when the handler declares it). Rust handlers already

@@ -291,17 +291,22 @@ impl VideoRoomsCreateStreamRequest {
 /// idiom — required fields in `new`, optionals via setters, `extras` open door).
 #[derive(Debug, Clone, Default)]
 pub struct VideoStreamsUpdateRequest {
-    url: String,
+    url: Option<String>,
     extras: Map<String, Value>,
 }
 
 impl VideoStreamsUpdateRequest {
     /// Construct the request with its required fields.
-    pub fn new(url: impl Into<String>) -> Self {
+    pub fn new() -> Self {
         VideoStreamsUpdateRequest {
-            url: url.into(),
             ..Default::default()
         }
+    }
+    /// Set the optional `url` field.
+    #[must_use]
+    pub fn url(mut self, value: impl Into<String>) -> Self {
+        self.url = Some(value.into());
+        self
     }
     /// Add a forward-compat field the spec does not yet name.
     #[must_use]
@@ -313,7 +318,9 @@ impl VideoStreamsUpdateRequest {
     #[must_use]
     pub fn build(self) -> Value {
         let mut obj = Map::new();
-        obj.insert("url".to_string(), Value::from(self.url));
+        if let Some(v) = self.url {
+            obj.insert("url".to_string(), Value::from(v));
+        }
         for (k, v) in self.extras {
             obj.insert(k, v);
         }
@@ -362,7 +369,7 @@ impl<'a> VideoConferenceTokens<'a> {
         request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
         self.client()
-            .get_with_options(&self.path(&[id]), params, request_options.as_ref())
+            .get_with_options(&self.path(&[id]), Some(params), request_options.as_ref())
     }
 
     /// `POST /conference_tokens/{id}/reset` (generated operation method; no body).
@@ -376,7 +383,8 @@ impl<'a> VideoConferenceTokens<'a> {
     ) -> Result<Value, SignalWireRestError> {
         self.client().post_with_options(
             &self.path(&[id, "reset"]),
-            &Value::Object(Map::new()),
+            Some(&Value::Object(Map::new())),
+            None,
             request_options.as_ref(),
         )
     }
@@ -488,7 +496,7 @@ impl<'a> VideoConferences<'a> {
     ) -> Result<Value, SignalWireRestError> {
         self.client().get_with_options(
             &self.path(&[id, "conference_tokens"]),
-            params,
+            Some(params),
             request_options.as_ref(),
         )
     }
@@ -505,7 +513,7 @@ impl<'a> VideoConferences<'a> {
     ) -> Result<Value, SignalWireRestError> {
         self.client().get_with_options(
             &self.path(&[id, "streams"]),
-            params,
+            Some(params),
             request_options.as_ref(),
         )
     }
@@ -523,7 +531,8 @@ impl<'a> VideoConferences<'a> {
     ) -> Result<Value, SignalWireRestError> {
         self.client().post_with_options(
             &self.path(&[id, "streams"]),
-            &request.build(),
+            Some(&request.build()),
+            None,
             request_options.as_ref(),
         )
     }
@@ -569,7 +578,7 @@ impl<'a> VideoRoomRecordings<'a> {
         request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
         self.client()
-            .get_with_options(self.base_path(), params, request_options.as_ref())
+            .get_with_options(self.base_path(), Some(params), request_options.as_ref())
     }
 
     /// `GET /room_recordings/{id}` (generated operation method; query params).
@@ -583,7 +592,7 @@ impl<'a> VideoRoomRecordings<'a> {
         request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
         self.client()
-            .get_with_options(&self.path(&[id]), params, request_options.as_ref())
+            .get_with_options(&self.path(&[id]), Some(params), request_options.as_ref())
     }
 
     /// `DELETE /room_recordings/{id}` (generated operation method).
@@ -611,7 +620,26 @@ impl<'a> VideoRoomRecordings<'a> {
     ) -> Result<Value, SignalWireRestError> {
         self.client().get_with_options(
             &self.path(&[id, "events"]),
-            params,
+            Some(params),
+            request_options.as_ref(),
+        )
+    }
+
+    /// `GET /room_recordings/{id}.mp4` (generated operation method) — returns the URL this
+    /// endpoint redirects to (the `Location` of its redirect), without
+    /// following it or downloading anything; fetch it with any HTTP client.
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] on transport failure or an error status.
+    pub fn download(
+        &self,
+        id: &str,
+        params: &HashMap<String, String>,
+        request_options: Option<RequestOptions>,
+    ) -> Result<String, SignalWireRestError> {
+        self.client().get_redirect_location_with_options(
+            &self.path(&[format!("{id}.mp4").as_str()]),
+            Some(params),
             request_options.as_ref(),
         )
     }
@@ -677,10 +705,10 @@ impl<'a> VideoRoomSessions<'a> {
     #[must_use]
     pub fn paginate(
         &self,
-        params: &HashMap<String, String>,
         request_options: Option<RequestOptions>,
+        params: &HashMap<String, String>,
     ) -> PaginatedIterator<'a> {
-        self.base.paginate_with_options(params, request_options)
+        self.base.paginate(request_options, params)
     }
 
     /// `GET /room_sessions/{id}/events` (generated operation method; query params).
@@ -695,7 +723,7 @@ impl<'a> VideoRoomSessions<'a> {
     ) -> Result<Value, SignalWireRestError> {
         self.client().get_with_options(
             &self.path(&[id, "events"]),
-            params,
+            Some(params),
             request_options.as_ref(),
         )
     }
@@ -712,7 +740,7 @@ impl<'a> VideoRoomSessions<'a> {
     ) -> Result<Value, SignalWireRestError> {
         self.client().get_with_options(
             &self.path(&[id, "members"]),
-            params,
+            Some(params),
             request_options.as_ref(),
         )
     }
@@ -729,7 +757,7 @@ impl<'a> VideoRoomSessions<'a> {
     ) -> Result<Value, SignalWireRestError> {
         self.client().get_with_options(
             &self.path(&[id, "recordings"]),
-            params,
+            Some(params),
             request_options.as_ref(),
         )
     }
@@ -773,7 +801,8 @@ impl<'a> VideoRoomTokens<'a> {
     ) -> Result<Value, SignalWireRestError> {
         self.client().post_with_options(
             self.base_path(),
-            &request.build(),
+            Some(&request.build()),
+            None,
             request_options.as_ref(),
         )
     }
@@ -885,7 +914,7 @@ impl<'a> VideoRooms<'a> {
     ) -> Result<Value, SignalWireRestError> {
         self.client().get_with_options(
             &self.path(&[id, "streams"]),
-            params,
+            Some(params),
             request_options.as_ref(),
         )
     }
@@ -903,7 +932,8 @@ impl<'a> VideoRooms<'a> {
     ) -> Result<Value, SignalWireRestError> {
         self.client().post_with_options(
             &self.path(&[id, "streams"]),
-            &request.build(),
+            Some(&request.build()),
+            None,
             request_options.as_ref(),
         )
     }
@@ -950,7 +980,7 @@ impl<'a> VideoStreams<'a> {
         request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
         self.client()
-            .get_with_options(&self.path(&[id]), params, request_options.as_ref())
+            .get_with_options(&self.path(&[id]), Some(params), request_options.as_ref())
     }
 
     /// `PUT /streams/{id}` (generated operation method).
@@ -966,7 +996,7 @@ impl<'a> VideoStreams<'a> {
     ) -> Result<Value, SignalWireRestError> {
         self.client().put_with_options(
             &self.path(&[id]),
-            &request.build(),
+            Some(&request.build()),
             request_options.as_ref(),
         )
     }

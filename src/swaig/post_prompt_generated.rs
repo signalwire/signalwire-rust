@@ -5,18 +5,13 @@
 // Read-side wire types (open shapes) — method-less serde structs / closed-set
 // enums. Regenerate with: python3 scripts/generate_swaig_payloads.py
 //
-// Two narrow lint allows, both grounded in the generated wire shape:
-//   * non_camel_case_types — a few wire schema keys carry dotted names
-//     (``Types.StatusCodes.StatusCode400``); the type identifier folds the dots
-//     to underscores (``Types_StatusCodes_StatusCode400``) and must stay verbatim
-//     so it matches the wire schema key, which the naming lint would rewrite.
-//   * clippy::doc_markdown — the generated doc comments echo raw wire schema key
-//     names in prose; backticking every one mechanically is not meaningful here.
-#![allow(non_camel_case_types, clippy::doc_markdown)]
+// A wire schema key with a dotted name (``Types.StatusCodes.StatusCode400``)
+// folds to an underscored type identifier that must stay verbatim to match the
+// key; only those items carry an item-level `non_camel_case_types` allow.
 
 use serde::{Deserialize, Serialize};
 
-/// `PostPrompt` — generated read-side wire type (post-prompt components/schemas 'PostPrompt').
+/// `PostPrompt` — generated read-side wire type (post-prompt components/schemas `PostPrompt`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -108,7 +103,7 @@ pub struct PostPrompt {
     pub total_asr_cost_factor: Option<f64>,
 }
 
-/// `PostPromptData` — generated read-side wire type (post-prompt components/schemas 'PostPromptData').
+/// `PostPromptData` — generated read-side wire type (post-prompt components/schemas `PostPromptData`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -122,7 +117,7 @@ pub struct PostPromptData {
     pub substituted: Option<String>,
 }
 
-/// `PostPromptUserEntry` — generated read-side wire type (post-prompt components/schemas 'PostPromptUserEntry').
+/// `PostPromptUserEntry` — generated read-side wire type (post-prompt components/schemas `PostPromptUserEntry`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -164,7 +159,7 @@ pub struct PostPromptUserEntry {
     pub timing: Option<serde_json::Value>,
 }
 
-/// `PostPromptAssistantEntry` — generated read-side wire type (post-prompt components/schemas 'PostPromptAssistantEntry').
+/// `PostPromptAssistantEntry` — generated read-side wire type (post-prompt components/schemas `PostPromptAssistantEntry`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -212,7 +207,7 @@ pub struct PostPromptAssistantEntry {
     pub text_spoken_total: Option<String>,
 }
 
-/// `PostPromptThinkingEntry` — generated read-side wire type (post-prompt components/schemas 'PostPromptThinkingEntry').
+/// `PostPromptThinkingEntry` — generated read-side wire type (post-prompt components/schemas `PostPromptThinkingEntry`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -230,7 +225,7 @@ pub struct PostPromptThinkingEntry {
     pub tokens: Option<i64>,
 }
 
-/// `PostPromptToolEntry` — generated read-side wire type (post-prompt components/schemas 'PostPromptToolEntry').
+/// `PostPromptToolEntry` — generated read-side wire type (post-prompt components/schemas `PostPromptToolEntry`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -268,7 +263,7 @@ pub struct PostPromptToolEntry {
     pub original_result: Option<String>,
 }
 
-/// `PostPromptSystemLogEntry` — generated read-side wire type (post-prompt components/schemas 'PostPromptSystemLogEntry').
+/// `PostPromptSystemLogEntry` — generated read-side wire type (post-prompt components/schemas `PostPromptSystemLogEntry`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -281,7 +276,7 @@ pub struct PostPromptSystemLogEntry {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub timestamp: Option<i64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub action: Option<String>,
+    pub action: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub lang: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -290,15 +285,9 @@ pub struct PostPromptSystemLogEntry {
     pub content_type: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub metadata: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub context: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub step: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub step_index: Option<i64>,
 }
 
-/// `PostPromptSystemEntry` — generated read-side wire type (post-prompt components/schemas 'PostPromptSystemEntry').
+/// `PostPromptSystemEntry` — generated read-side wire type (post-prompt components/schemas `PostPromptSystemEntry`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -312,7 +301,7 @@ pub struct PostPromptSystemEntry {
     pub timestamp: Option<i64>,
 }
 
-/// `PostPromptSwaigLogEntry` — generated read-side wire type (post-prompt components/schemas 'PostPromptSwaigLogEntry').
+/// `PostPromptSwaigLogEntry` — generated read-side wire type (post-prompt components/schemas `PostPromptSwaigLogEntry`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -341,12 +330,12 @@ pub struct PostPromptSwaigLogEntry {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub mcp_tool: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub mcp_response: Option<serde_json::Value>,
+    pub mcp_response: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub mcp_error: Option<String>,
+    pub mcp_error: Option<bool>,
 }
 
-/// `PostPromptTimesEntry` — generated read-side wire type (post-prompt components/schemas 'PostPromptTimesEntry').
+/// `PostPromptTimesEntry` — generated read-side wire type (post-prompt components/schemas `PostPromptTimesEntry`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -368,7 +357,7 @@ pub struct PostPromptTimesEntry {
     pub tps: Option<f64>,
 }
 
-/// `PostPromptEntity` — generated read-side wire type (post-prompt components/schemas 'PostPromptEntity').
+/// `PostPromptEntity` — generated read-side wire type (post-prompt components/schemas `PostPromptEntity`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -382,7 +371,7 @@ pub struct PostPromptEntity {
     pub valid: Option<bool>,
 }
 
-/// `PostPromptEot` — generated read-side wire type (post-prompt components/schemas 'PostPromptEot').
+/// `PostPromptEot` — generated read-side wire type (post-prompt components/schemas `PostPromptEot`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -394,7 +383,7 @@ pub struct PostPromptEot {
     pub confidence: Option<f64>,
 }
 
-/// `PostPromptTiming` — generated read-side wire type (post-prompt components/schemas 'PostPromptTiming').
+/// `PostPromptTiming` — generated read-side wire type (post-prompt components/schemas `PostPromptTiming`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -410,7 +399,7 @@ pub struct PostPromptTiming {
     pub walkbacks: Option<i64>,
 }
 
-/// `PostPromptStampsUs` — generated read-side wire type (post-prompt components/schemas 'PostPromptStampsUs').
+/// `PostPromptStampsUs` — generated read-side wire type (post-prompt components/schemas `PostPromptStampsUs`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -420,8 +409,6 @@ pub struct PostPromptStampsUs {
     pub speech_start: Option<i64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub last_word_end: Option<i64>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub suspected_end: Option<i64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub turn_decided: Option<i64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]

@@ -1,6 +1,73 @@
 use std::collections::HashMap;
 use std::env;
 
+// ------------------------------------------------------------------
+// Query-string plumbing
+//
+// The SWAIG `__token` a `secure` tool requires rides the QUERY STRING on every
+// transport — `build_swaig_webhook_url`'s serverless branch keeps only
+// `__token` there, and the call_id travels in the POST body. Each serverless
+// host hands that query over in its own shape, so each `handle_*` recovers it
+// and re-attaches it to the path; the agent's single `handle_request` entry
+// point then splits and parses it exactly as it does for the built-in HTTP
+// server. Dropping the query here is not a routing nicety — it silently
+// disarms `secure`.
+// ------------------------------------------------------------------
+
+/// Re-encode an already-parsed `{key: value}` query mapping as `a=b&c=d`.
+/// Returns `None` when the value is absent, not an object, or empty.
+fn query_from_params(params: Option<&serde_json::Value>) -> Option<String> {
+    let obj = params?.as_object()?;
+    let encoded: Vec<String> = obj
+        .iter()
+        .map(|(k, v)| {
+            let raw = v.as_str().map_or_else(|| v.to_string(), str::to_string);
+            format!("{}={}", encode_component(k), encode_component(&raw))
+        })
+        .collect();
+    if encoded.is_empty() {
+        None
+    } else {
+        Some(encoded.join("&"))
+    }
+}
+
+/// Take a RAW `a=b&c=d` query string value, if present and non-empty.
+fn query_from_raw(raw: Option<&serde_json::Value>) -> Option<String> {
+    let s = raw?.as_str()?.trim_start_matches('?');
+    if s.is_empty() {
+        None
+    } else {
+        Some(s.to_string())
+    }
+}
+
+/// Percent-encode one query component, leaving the unreserved set intact.
+fn encode_component(s: &str) -> String {
+    use std::fmt::Write as _;
+    let mut out = String::with_capacity(s.len());
+    for b in s.bytes() {
+        if b.is_ascii_alphanumeric() || matches!(b, b'-' | b'_' | b'.' | b'~') {
+            out.push(b as char);
+        } else {
+            let _ = write!(out, "%{b:02X}");
+        }
+    }
+    out
+}
+
+/// Re-attach a query string to a path, preserving one already present.
+fn with_query(path: &str, query: &str) -> String {
+    if query.is_empty() {
+        return path.to_string();
+    }
+    if path.contains('?') {
+        format!("{path}&{query}")
+    } else {
+        format!("{path}?{query}")
+    }
+}
+
 /// Detected runtime environment.
 ///
 /// `#[non_exhaustive]` because the set of recognised serverless hosts mirrors
@@ -11,14 +78,26 @@ use std::env;
 #[must_use]
 #[non_exhaustive]
 pub enum RuntimeEnvironment {
+    /// AWS Lambda, whether behind API Gateway or a Function URL.
     Lambda,
+    /// Google Cloud Functions.
     Gcf,
+    /// Azure Functions.
     Azure,
+    /// A CGI host — the request arrives through CGI environment variables
+    /// and stdin rather than a live socket the process owns.
     Cgi,
+    /// No serverless host detected: the process runs its own long-lived HTTP
+    /// server. This is the fallback when nothing else matches.
     Server,
 }
 
 impl RuntimeEnvironment {
+    /// The canonical lowercase name of this environment — `"lambda"`,
+    /// `"gcf"`, `"azure"`, `"cgi"`, or `"server"`.
+    ///
+    /// This is the string form [`Adapter::detect`] reports and that
+    /// downstream config keys match on.
     #[must_use]
     pub fn as_str(&self) -> &'static str {
         match self {
@@ -55,7 +134,7 @@ impl RequestHandler for crate::agent::AgentBase {
         headers: &HashMap<String, String>,
         body: &str,
     ) -> (u16, HashMap<String, String>, String) {
-        crate::agent::AgentBase::handle_request(self, method, path, headers, body)
+        crate::agent::AgentBase::handle_request(self, method, path, headers, Some(body))
     }
 }
 
@@ -109,6 +188,19 @@ impl Adapter {
             .or_else(|| event.get("rawPath"))
             .and_then(|v| v.as_str())
             .unwrap_or("/");
+
+        // The credential rides the query string, and BOTH lambda payload shapes
+        // are reachable here: REST API v1 (and HTTP API v2) supply the parsed
+        // `queryStringParameters` mapping, while HTTP API v2 may instead supply
+        // the raw `rawQueryString`. Reading only one loses the token on the
+        // other shape. Re-attach it to the path so the agent's single
+        // `handle_request` entry point sees it exactly as the built-in HTTP
+        // server does — serverless is the same contract, a different envelope.
+        let query = query_from_params(event.get("queryStringParameters"))
+            .or_else(|| query_from_raw(event.get("rawQueryString")))
+            .unwrap_or_default();
+        let path = with_query(path, &query);
+        let path = path.as_str();
 
         let body = event.get("body").and_then(|v| v.as_str()).unwrap_or("");
 
@@ -186,6 +278,20 @@ impl Adapter {
             raw_url
         };
 
+        // Azure exposes the parsed query as `req.params`; fall back to the
+        // query component of the raw URL when a shim provides only the URL.
+        // Without this the `__token` a secure tool requires never arrives.
+        let query = query_from_params(request.get("params").or_else(|| request.get("Params")))
+            .or_else(|| {
+                raw_url
+                    .split_once('?')
+                    .map(|(_, q)| q.to_string())
+                    .filter(|q| !q.is_empty())
+            })
+            .unwrap_or_default();
+        let path = with_query(path, &query);
+        let path = path.as_str();
+
         let body = request
             .get("body")
             .or_else(|| request.get("Body"))
@@ -217,9 +323,9 @@ impl Adapter {
     /// GCF passes a Flask-style request object. We accept the same JSON
     /// envelope shape as the other handlers (`method`, `path`/`url`,
     /// `headers`, `body`), forward it to `agent.handle_request()`, and
-    /// return a `(status, headers, body)`-shaped response dict — mirroring
-    /// Python's `_handle_google_cloud_function_request`, which dispatches to
-    /// a real SWML doc / SWAIG result rather than falling through to `serve()`.
+    /// return a `(status, headers, body)`-shaped response dict. This
+    /// dispatches to a real SWML doc / SWAIG result; it never falls through to
+    /// `serve()`, which would try to bind a socket the host does not offer.
     pub fn handle_gcf(
         agent: &dyn RequestHandler,
         request: &serde_json::Value,
@@ -245,6 +351,20 @@ impl Adapter {
         } else {
             raw.find('?').map_or(raw, |q| &raw[..q])
         };
+
+        // GCF (Flask) exposes the parsed query as `request.args`; fall back to
+        // the raw `request.query_string`, then to the query component of the
+        // URL. Without this the `__token` a secure tool requires never arrives.
+        let query = query_from_params(request.get("args"))
+            .or_else(|| query_from_raw(request.get("query_string")))
+            .or_else(|| {
+                raw.split_once('?')
+                    .map(|(_, q)| q.to_string())
+                    .filter(|q| !q.is_empty())
+            })
+            .unwrap_or_default();
+        let path = with_query(path, &query);
+        let path = path.as_str();
 
         let body = request.get("body").and_then(|v| v.as_str()).unwrap_or("");
 
@@ -274,8 +394,9 @@ impl Adapter {
     /// stdin. This takes the env as a map and the already-read body so it is
     /// testable and CWD/stdin-independent, forwards to
     /// `agent.handle_request()`, and returns a `(status, headers, body)`
-    /// response — mirroring Python's `mode == "cgi"` branch, which dispatches
-    /// to a real SWML/SWAIG response rather than falling through to `serve()`.
+    /// response. This dispatches to a real SWML/SWAIG response; it never
+    /// falls through to `serve()`, which would try to bind a socket CGI does
+    /// not offer.
     ///
     /// `env` is the CGI variable map (e.g. from `std::env::vars()`), `body`
     /// is the stdin payload.
@@ -297,6 +418,14 @@ impl Adapter {
         } else {
             format!("/{path_info}")
         };
+
+        // CGI carries the query string in the QUERY_STRING variable. Without
+        // this the `__token` a secure tool requires never arrives.
+        let query = env
+            .get("QUERY_STRING")
+            .map(String::as_str)
+            .unwrap_or_default();
+        let path = with_query(&path, query);
 
         // Reconstruct request headers from CGI `HTTP_*` vars (HTTP_X_FOO →
         // X-Foo) plus the special-cased CONTENT_TYPE / CONTENT_LENGTH.
@@ -629,7 +758,10 @@ mod tests {
     }
 
     #[test]
-    fn test_handle_gcf_strips_query_and_scheme() {
+    fn test_handle_gcf_strips_scheme_and_host_but_keeps_the_query() {
+        // The scheme+host must go; the QUERY must NOT. It carries the SWAIG
+        // `__token`, so dropping it here silently disarms `secure`. The agent's
+        // `handle_request` splits the query off before routing.
         let agent = EchoHandler;
         let request = json!({
             "method": "GET",
@@ -640,7 +772,7 @@ mod tests {
         let response = Adapter::handle_gcf(&agent, &request);
         let body: serde_json::Value =
             serde_json::from_str(response["body"].as_str().unwrap()).unwrap();
-        assert_eq!(body["path"], "/agent/health");
+        assert_eq!(body["path"], "/agent/health?x=1");
     }
 
     #[test]

@@ -81,8 +81,11 @@ fn live_swml_render() {
         return;
     }
     let mut svc = Service::new(ServiceOptions::new("live-smoke"));
-    svc.document_mut()
-        .add_verb("answer", json!({ "max_duration": 3600 }));
+    // Route through the VALIDATING `Service::add_verb`, not the raw
+    // `document_mut()` entry point. `answer` is a schema verb with a valid
+    // config here, so there is no reason to skip validation — and a smoke test
+    // that bypasses the validator cannot catch a wrong wire key.
+    svc.add_verb("answer", json!({ "max_duration": 3600 }));
     let rendered = svc.render();
     assert!(
         rendered.contains("answer"),

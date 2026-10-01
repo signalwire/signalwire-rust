@@ -6,21 +6,20 @@ use crate::swaig::FunctionResult;
 
 /// Options for constructing a [`ReceptionistAgent`].
 ///
-/// Mirrors the Python reference's `__init__` (`prefabs/receptionist.py:38-45`)
-/// param-for-param. `departments` is the reference's one REQUIRED positional,
+/// `departments` is the one REQUIRED field,
 /// so it is the sole argument to [`ReceptionistOptions::new`]; every other
-/// field carries the reference's default.
+/// field carries the default.
 #[must_use]
 pub struct ReceptionistOptions {
     /// Departments to transfer to, each `{name, description, number?}`.
     pub departments: Vec<Value>,
-    /// Agent name (reference default `"receptionist"`).
+    /// Agent name (default `"receptionist"`).
     pub name: String,
-    /// HTTP route (reference default `"/receptionist"`).
+    /// HTTP route (default `"/receptionist"`).
     pub route: String,
     /// Initial greeting message.
     pub greeting: String,
-    /// Voice id used for the configured language (reference default
+    /// Voice id used for the configured language (default
     /// `"rime.spore"`).
     pub voice: String,
 }
@@ -204,14 +203,17 @@ impl ReceptionistAgent {
                                 result.swml_transfer(
                                     swml_url,
                                     &format!("Transferring you to {name} now."),
-                                    // final=true: permanent transfer (Python's
-                                    // swml_transfer default) — the receptionist
+                                    // `None` = the reference default final=true:
+                                    // permanent transfer — the receptionist
                                     // hands the call off entirely.
-                                    true,
+                                    None,
                                 );
                             }
                         } else if let Some(number) = dept.get("number").and_then(|v| v.as_str()) {
-                            result.connect(number, false, "");
+                            // final=false is DELIBERATE (not the default): the
+                            // caller returns to the receptionist afterwards. No
+                            // caller-ID override, so `from` is omitted.
+                            result.connect(number, Some(false), None);
                         }
 
                         return result;
@@ -230,18 +232,30 @@ impl ReceptionistAgent {
         }
     }
 
+    /// Borrow the underlying [`AgentBase`] this prefab wraps.
+    ///
+    /// `ReceptionistAgent` composes an agent rather than inheriting from one, so
+    /// this is how you read the configured prompt, tools, and skills.
     pub fn agent(&self) -> &AgentBase {
         &self.agent
     }
 
+    /// Mutably borrow the underlying [`AgentBase`].
+    ///
+    /// Use this to layer extra configuration — additional tools, skills,
+    /// hints, or verbs — on top of what the prefab already set up.
     pub fn agent_mut(&mut self) -> &mut AgentBase {
         &mut self.agent
     }
 
+    /// The departments this receptionist can transfer to, as configured.
+    /// Each entry carries the department's name and its destination.
     pub fn departments(&self) -> &[Value] {
         &self.departments
     }
 
+    /// The greeting spoken when the call is answered — the caller's value
+    /// or the default.
     pub fn greeting(&self) -> &str {
         &self.greeting
     }
@@ -287,14 +301,14 @@ mod tests {
         args.insert("reason".to_string(), json!("Billing inquiry"));
         let result = agent
             .agent()
-            .on_function_call("collect_caller_info", &args, &raw);
+            .on_function_call("collect_caller_info", &args, Some(&raw));
         assert!(result.is_some());
 
         let mut args2 = serde_json::Map::new();
         args2.insert("department".to_string(), json!("Sales"));
         let result2 = agent
             .agent()
-            .on_function_call("transfer_call", &args2, &raw);
+            .on_function_call("transfer_call", &args2, Some(&raw));
         assert!(result2.is_some());
     }
 
@@ -330,7 +344,7 @@ mod tests {
             "POST",
             "/receptionist/post_prompt",
             &headers,
-            &body.to_string(),
+            Some(&body.to_string()),
         );
         assert_eq!(status, 200);
         assert_eq!(*captured.lock().unwrap(), "Routed to Sales");

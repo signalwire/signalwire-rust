@@ -24,7 +24,7 @@ pub struct SessionManager {
     /// the HMAC key (`self.secret_key.encode()`, `session_manager.py:79` and `:152`).
     secret_key: String,
     token_expiry_secs: u64,
-    /// Whether `debug_token` returns component details (Python `_debug_mode`).
+    /// Whether `debug_token` returns component details.
     debug_mode: bool,
 }
 
@@ -53,9 +53,14 @@ impl SessionManager {
         self
     }
 
-    /// Create a new session manager with the default expiry (3600 seconds).
+    /// Create a new session manager with the default expiry (900 seconds).
+    ///
+    /// 900 seconds — 15 minutes — is the default
+    /// (`session_manager.py:30`, `token_expiry_secs: int = 900`). This used to be
+    /// 3600, which minted tokens valid four times longer than the reference and
+    /// every correctly-defaulted port.
     pub fn with_defaults() -> Self {
-        Self::new(3600)
+        Self::new(900)
     }
 
     /// Create a session manager with an explicit signing secret.
@@ -420,10 +425,42 @@ mod tests {
         assert_eq!(sm.token_expiry_secs(), 7200);
     }
 
+    /// The DEFAULT expiry is 900 seconds (15 minutes), matching the wire contract's
+    /// `token_expiry_secs: int = 900` (`session_manager.py:30`). Asserting an
+    /// explicitly-passed value (see `test_construction`) does NOT cover this — the
+    /// default is its own contract, and this port shipped 3600 until it was folded.
     #[test]
     fn test_construction_defaults() {
         let sm = SessionManager::with_defaults();
-        assert_eq!(sm.token_expiry_secs(), 3600);
+        assert_eq!(
+            sm.token_expiry_secs(),
+            900,
+            "expected default expiry 900, got {}",
+            sm.token_expiry_secs()
+        );
+    }
+
+    /// The default expiry is observable on the WIRE, not just via the accessor: a
+    /// token minted by a default-constructed manager carries `now + 900` in its
+    /// expiry field. This is what a peer validating the token actually sees.
+    #[test]
+    fn test_default_expiry_is_900_on_the_minted_token() {
+        let sm = SessionManager::with_defaults();
+        let before = current_time_secs();
+        let token = sm.create_token("func", "call-1");
+        let after = current_time_secs();
+
+        let decoded = String::from_utf8(URL_SAFE.decode(&token).expect("token is base64url"))
+            .expect("payload is utf-8");
+        let parts: Vec<&str> = decoded.split('.').collect();
+        let expiry: u64 = parts[2].parse().expect("expiry is numeric");
+
+        assert!(
+            expiry >= before + 900 && expiry <= after + 900,
+            "expected default expiry 900 (token expiry in [{}, {}]), got {expiry}",
+            before + 900,
+            after + 900
+        );
     }
 
     #[test]

@@ -38,7 +38,14 @@ fn tls_rest_client_https_get() {
 
     // Build the REST client with the test CA trusted. UreqTransport::new()
     // reads SIGNALWIRE_REST_CA_FILE at construction, so set it first.
-    // SAFETY: integration test runs single-threaded (`--test-threads=1`).
+    // SAFETY: this binary declares exactly ONE `#[test]`, so no sibling thread can
+    // observe or clobber the process env while it runs. That — NOT `--test-threads=1`
+    // (the TEST gate runs `cargo test --tests` fully parallel; only the REST-COVERAGE
+    // and RELAY-mock gates pass it) — is what makes this sound. If a SECOND test is
+    // ever added to this file it must take a file-local `ENV_LOCK` first, the way
+    // `tests/tls_no_silent_downgrade.rs` and `src/server/tls.rs` do: the SDK reads the
+    // CA path off the process env with no per-client override, so it is one shared
+    // resource and isolation must come from SCOPING it.
     unsafe {
         std::env::set_var("SIGNALWIRE_REST_CA_FILE", &ca);
     }

@@ -73,11 +73,12 @@ fn test_fabric_addresses_get_uses_address_id() {
 // ---------------------------------------------------------------------------
 
 // ---------------------------------------------------------------------------
-// CallFlowsResource.list_addresses — singular 'call_flow' subpath
+// CallFlowsResource.list_addresses — nested under the PLURAL collection
+// (prime-rails: no singular route exists)
 // ---------------------------------------------------------------------------
 
 #[test]
-fn test_fabric_call_flows_list_addresses_uses_singular_path() {
+fn test_fabric_call_flows_list_addresses_uses_plural_path() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
     let body = c
@@ -92,8 +93,11 @@ fn test_fabric_call_flows_list_addresses_uses_singular_path() {
 
     let entry = common::mocktest::journal_last();
     assert_eq!(entry.method, "GET");
-    // singular 'call_flow' (NOT 'call_flows') in the addresses sub-path.
-    assert_eq!(entry.path, "/api/fabric/resources/call_flow/cf-1/addresses");
+    // plural 'call_flows' — the only addresses route the platform serves.
+    assert_eq!(
+        entry.path,
+        "/api/fabric/resources/call_flows/cf-1/addresses"
+    );
     assert!(
         entry.matched_route.is_some(),
         "spec gap: call-flow addresses sub-path"
@@ -101,11 +105,11 @@ fn test_fabric_call_flows_list_addresses_uses_singular_path() {
 }
 
 // ---------------------------------------------------------------------------
-// ConferenceRoomsResource.list_addresses — singular 'conference_room'
+// ConferenceRoomsResource.list_addresses — nested under the PLURAL collection
 // ---------------------------------------------------------------------------
 
 #[test]
-fn test_fabric_conference_rooms_list_addresses_uses_singular_path() {
+fn test_fabric_conference_rooms_list_addresses_uses_plural_path() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
     let body = c
@@ -118,10 +122,10 @@ fn test_fabric_conference_rooms_list_addresses_uses_singular_path() {
 
     let entry = common::mocktest::journal_last();
     assert_eq!(entry.method, "GET");
-    // singular 'conference_room'.
+    // plural 'conference_rooms'.
     assert_eq!(
         entry.path,
-        "/api/fabric/resources/conference_room/cr-1/addresses"
+        "/api/fabric/resources/conference_rooms/cr-1/addresses"
     );
     assert!(entry.matched_route.is_some());
 }
@@ -202,32 +206,6 @@ fn test_fabric_subscribers_delete_sip_endpoint() {
 // ---------------------------------------------------------------------------
 // FabricTokens — every token-creation endpoint
 // ---------------------------------------------------------------------------
-
-#[test]
-fn test_fabric_tokens_create_invite_token() {
-    let _g = common::mocktest::begin();
-    let c = common::mocktest::client();
-    let body = c
-        .fabric()
-        .tokens()
-        .create_invite_token(
-            fabric_gen::FabricTokensCreateInviteTokenRequest::new("addr-1").expires_at(3600),
-            None,
-        )
-        .expect("create_invite_token");
-    assert!(body.is_object());
-
-    let entry = common::mocktest::journal_last();
-    assert_eq!(entry.method, "POST");
-    // singular 'subscriber' segment.
-    assert_eq!(entry.path, "/api/fabric/subscriber/invites");
-    let sent = entry.body_object().expect("body");
-    assert_eq!(
-        sent.get("address_id").and_then(Value::as_str),
-        Some("addr-1")
-    );
-    assert_eq!(sent.get("expires_at").and_then(Value::as_i64), Some(3600));
-}
 
 #[test]
 fn test_fabric_tokens_create_embed_token() {

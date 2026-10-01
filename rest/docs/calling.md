@@ -26,7 +26,8 @@ fields are set via chained builder methods:
 
 ```rust
 let response = client.calling().dial(
-    CallingDialRequest::new("+15559876543", "+15551234567")
+    CallingDialRequest::new("+15559876543")
+        .to("+15551234567")
         .url("https://example.com/call-handler")
         .status_url("https://example.com/call-status"),
     None,
@@ -46,7 +47,7 @@ let _ = client.calling().end("call-id", CallingEndRequest::new(), None).unwrap()
 ## Playing Media
 
 `play` takes a `CallingPlayRequest::new(play)` where `play` is the media array
-value:
+value (the `control_id` naming this playback is generated when you don't set one):
 
 ```rust
 let _ = client.calling().play(

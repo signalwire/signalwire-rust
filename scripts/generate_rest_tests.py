@@ -27,7 +27,7 @@ The assertion oracle is INDEPENDENT of the resource generator (RULES §1):
     generator self-snapshot.
 
 Inputs joined by (METHOD, normalized-path) (RULES §2): the plan's per-route call
-entries (path params already {id}) × the spec operationIds (spec path normalized
+entries (path params already {id}) x the spec operationIds (spec path normalized
 the SAME way before the join). Routing collisions are resolved
 longest-template-wins (RULES §7) so the asserted route is the one the mock
 ACTUALLY journals (e.g. GET /rooms/{id} vs GET /rooms/{name}).
@@ -46,6 +46,7 @@ Usage:
     python3 scripts/generate_rest_tests.py           # (re)write the test files
     python3 scripts/generate_rest_tests.py --check   # GEN-FRESH: fail if stale
 """
+
 from __future__ import annotations
 
 import argparse
@@ -66,6 +67,7 @@ except ImportError:  # pragma: no cover
 # ---------------------------------------------------------------------------
 # Resolution.
 # ---------------------------------------------------------------------------
+
 
 def resolve_porting_sdk() -> Path:
     env = os.environ.get("PORTING_SDK")
@@ -89,6 +91,7 @@ def repo_root() -> Path:
 # 1. Capture from the real client (RULES §3) — the rest-test-plan binary.
 #    Each entry: {method, path ({id}-normalized), chain, member, args}.
 # ---------------------------------------------------------------------------
+
 
 def load_plan() -> list[dict]:
     proc = subprocess.run(
@@ -115,7 +118,7 @@ def load_plan() -> list[dict]:
 
 
 # ---------------------------------------------------------------------------
-# 2. The join — plan routes × spec operationIds by (method, normalized-path).
+# 2. The join — plan routes x spec operationIds by (method, normalized-path).
 # ---------------------------------------------------------------------------
 
 _BRACE = re.compile(r"\{[^}]+\}")
@@ -135,24 +138,24 @@ def wire_key(p: str) -> str:
 def spec_prefix(doc: dict) -> str:
     url = ((doc.get("servers") or [{}])[0]).get("url", "")
     i = url.find("signalwire.com")
-    return url[i + len("signalwire.com"):] if i >= 0 else ""
+    return url[i + len("signalwire.com") :] if i >= 0 else ""
 
 
 def spec_dirs_with_openapi(psdk: Path) -> list[str]:
     root = psdk / "rest-apis"
     out = [
-        d.name
-        for d in root.iterdir()
-        if d.is_dir() and (d / "openapi.yaml").is_file()
+        d.name for d in root.iterdir() if d.is_dir() and (d / "openapi.yaml").is_file()
     ]
     return sorted(out)
 
 
-def build_index(psdk: Path, spec_dirs: list[str]) -> tuple[dict[str, str], dict[str, tuple[int, str]]]:
+def build_index(
+    psdk: Path, spec_dirs: list[str]
+) -> tuple[dict[str, str], dict[str, tuple[int, str]]]:
     """Return (op_by, wire_winner):
-      op_by:       "METHOD normPath" -> <spec>.<operationId>   (a route exists)
-      wire_winner: "METHOD wireKey"  -> (orig_len, <spec>.<operationId>)
-                   the longest original template — the route the mock journals.
+    op_by:       "METHOD normPath" -> <spec>.<operationId>   (a route exists)
+    wire_winner: "METHOD wireKey"  -> (orig_len, <spec>.<operationId>)
+                 the longest original template — the route the mock journals.
     """
     op_by: dict[str, str] = {}
     wire_winner: dict[str, tuple[int, str]] = {}
@@ -181,8 +184,9 @@ def build_index(psdk: Path, spec_dirs: list[str]) -> tuple[dict[str, str], dict[
     return op_by, wire_winner
 
 
-def build_rows(plan: list[dict], op_by: dict[str, str],
-               wire_winner: dict[str, tuple[int, str]]) -> tuple[list[dict], list[str]]:
+def build_rows(
+    plan: list[dict], op_by: dict[str, str], wire_winner: dict[str, tuple[int, str]]
+) -> tuple[list[dict], list[str]]:
     """One row per plan entry that has a spec op. Row carries the op_id the mock
     actually journals (longest-template winner). Entries with no spec op are
     coverage findings (returned separately), not generator bugs."""
@@ -200,21 +204,25 @@ def build_rows(plan: list[dict], op_by: dict[str, str],
             continue
         op_id = winner[1]
         spec = op_id[: op_id.index(".")]
-        rows.append({
-            "method": method,
-            "path": np,
-            "op_id": op_id,
-            "spec": spec,
-            "chain": e["chain"],
-            "member": e["member"],
-            "args": e["args"],
-        })
+        rows.append(
+            {
+                "method": method,
+                "path": np,
+                "op_id": op_id,
+                "spec": spec,
+                "chain": e["chain"],
+                "member": e["member"],
+                "args": e["args"],
+                "client": e.get("client", "project"),
+            }
+        )
     return rows, uncovered
 
 
 # ---------------------------------------------------------------------------
 # 3. Emit — one tests/rest/generated/<spec>_generated.rs per spec namespace.
 # ---------------------------------------------------------------------------
+
 
 def slug(chain: list[str], member: str) -> str:
     """A stable, unique-per-file test-method fragment from the call chain +
@@ -230,10 +238,10 @@ def call_expr(chain: list[str], member: str, args: list[str]) -> str:
     return f"c{accessors}.{member}({arglist})"
 
 
-# Every generated file `use`s the full module-alias set the plan's arg literals
-# reference (calling -> cg, fabric -> fabric_gen, …). Emitting all of them in
-# every file keeps the generator per-spec-agnostic; `#![allow(unused_imports)]`
-# tolerates the aliases a given namespace doesn't use. The alias names MUST match
+# The header carries the full module-alias set the plan's arg literals reference
+# (calling -> cg, fabric -> fabric_gen, …); each emitted file keeps only the
+# aliases its calls use (_used_aliases_only), so no unused-import allow is needed.
+# The alias names MUST match
 # the tokens rest_test_plan.rs emits in its `args`.
 HEADER_TMPL = """// Code generated by scripts/generate_rest_tests.py; DO NOT EDIT.
 //
@@ -248,8 +256,6 @@ HEADER_TMPL = """// Code generated by scripts/generate_rest_tests.py; DO NOT EDI
 // generator — so these catch SDK-vs-contract drift, not a generator self-snapshot.
 // Full-mock harness fixtures (common::mocktest).
 
-#![allow(unused_imports)]
-
 #[path = "common/mod.rs"]
 mod common;
 
@@ -262,6 +268,7 @@ use signalwire::rest::namespaces::generated::messages_resources_generated as mes
 use signalwire::rest::namespaces::generated::project_resources_generated as project_gen;
 use signalwire::rest::namespaces::generated::pubsub_resources_generated as pubsub_gen;
 use signalwire::rest::namespaces::generated::relay_rest_resources_generated as relay_gen;
+use signalwire::rest::namespaces::generated::space_resources_generated as space_gen;
 use signalwire::rest::namespaces::generated::video_resources_generated as video_gen;
 """
 
@@ -287,21 +294,44 @@ def rustfmt(src: str) -> str:
             return last.stdout
     if last is not None:
         sys.stderr.write(last.stderr)
-    raise SystemExit("rustfmt failed on generated REST test source (need `rustup run stable rustfmt` or `rustfmt` on PATH)")
+    raise SystemExit(
+        "rustfmt failed on generated REST test source (need `rustup run stable rustfmt` or `rustfmt` on PATH)"
+    )
+
+
+def _used_aliases_only(src: str) -> str:
+    """Keep only the module-alias `use` lines the file's calls reference (no
+    file-level `unused_imports` allow needed)."""
+    out = []
+    for line in src.splitlines(keepends=True):
+        m = re.match(
+            r"use signalwire::rest::namespaces::generated::\w+ as (\w+);", line
+        )
+        if m and f"{m.group(1)}::" not in src:
+            continue
+        out.append(line)
+    return "".join(out)
 
 
 def emit_spec_file(spec: str, rows: list[dict]) -> str:
+    return _used_aliases_only(_emit_spec_file(spec, rows))
+
+
+def _emit_spec_file(spec: str, rows: list[dict]) -> str:
     body = HEADER_TMPL.format(spec=spec)
     for r in rows:
         name = r["_name"]
         call = r["_call"]
         method = r["method"]
         op_id = r["op_id"]
+        # The Space Administration API authenticates with a Personal Access Token:
+        # the plan marks those calls ``client: pat`` and they run on a PAT client.
+        mk = "pat_client" if r.get("client") == "pat" else "client"
         body += f"""
 #[test]
 fn test_{name}_success() {{
     let _g = common::mocktest::begin();
-    let c = common::mocktest::client();
+    let c = common::mocktest::{mk}();
     let _ = {call};
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "{method}");
@@ -311,7 +341,7 @@ fn test_{name}_success() {{
 #[test]
 fn test_{name}_error() {{
     let _g = common::mocktest::begin();
-    let c = common::mocktest::client();
+    let c = common::mocktest::{mk}();
     common::mocktest::scenario_set("{op_id}", 500, json!({{"error": "x"}}));
     let err = {call}.expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
@@ -326,6 +356,7 @@ fn test_{name}_error() {{
 # ---------------------------------------------------------------------------
 # Driver.
 # ---------------------------------------------------------------------------
+
 
 def build_outputs(psdk: Path) -> tuple[dict[str, str], list[str], int]:
     plan = load_plan()
@@ -363,7 +394,9 @@ def build_outputs(psdk: Path) -> tuple[dict[str, str], list[str], int]:
 
 def main(argv: list[str]) -> int:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--check", action="store_true", help="GEN-FRESH: exit non-zero if stale")
+    ap.add_argument(
+        "--check", action="store_true", help="GEN-FRESH: exit non-zero if stale"
+    )
     ap.add_argument("--out", default="", help="scratch: emit into this dir")
     args = ap.parse_args(argv)
 
@@ -387,11 +420,15 @@ def main(argv: list[str]) -> int:
                 stale.append(str(p))
         expected = set(outs.keys())
         if out_dir.is_dir():
-            for p in sorted(out_dir.glob("rest_generated_*.rs")):
-                if p.name not in expected:
-                    stale.append(f"{p} (leftover — not in generator output)")
+            stale.extend(
+                f"{p} (leftover — not in generator output)"
+                for p in sorted(out_dir.glob("rest_generated_*.rs"))
+                if p.name not in expected
+            )
         if stale:
-            sys.stderr.write("GEN-FRESH FAIL: %d generated REST test file(s) stale:\n" % len(stale))
+            sys.stderr.write(
+                f"GEN-FRESH FAIL: {len(stale)} generated REST test file(s) stale:\n"
+            )
             for s in stale:
                 sys.stderr.write(f"  - {s}\n")
             return 1

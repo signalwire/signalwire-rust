@@ -12,8 +12,12 @@
 //! python reference `signalwire/ai_chat/client.py`.
 
 pub mod client;
+pub mod gateway;
+pub mod handoff;
 
 pub use client::{
     AIChatClient, AIChatClientBuilder, AIChatError, AIChatErrorKind, ChatLog, ChatOptions,
     ChatResponse, ConversationInfo, CreateOptions, SummarizeOptions,
 };
+pub use gateway::{ChatGateway, ChatGatewayOptions, GatewayRejection};
+pub use handoff::{HandoffRouter, HandoffRouterOptions, NonceEntry};

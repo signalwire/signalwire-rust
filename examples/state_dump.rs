@@ -194,8 +194,8 @@ fn main() {
     // ---- routing-callback registration on SWMLService (path-normalized) ----
     {
         let mut svc = demo_service();
-        svc.register_routing_callback(|_body, _headers| None, "/sip/");
-        svc.register_routing_callback(|_body, _headers| None, "voice");
+        svc.register_routing_callback(|_body, _headers| None, Some("/sip/"));
+        svc.register_routing_callback(|_body, _headers| None, Some("voice"));
         out.insert(
             "state_register_routing_callback",
             json!(svc.routing_callback_paths()),

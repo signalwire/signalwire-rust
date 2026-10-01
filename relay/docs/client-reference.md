@@ -105,7 +105,7 @@ The client exposes outbound calling and messaging directly (there are no
 
 | Method | Signature | Description |
 |--------|-----------|-------------|
-| `dial` | `(self: &Arc<Self>, devices: Value, tag: Option<&str>, max_duration: Option<u32>, dial_timeout: Duration) -> Result<Arc<Call>, RelayError>` | Place an outbound call, block until answered |
+| `dial` | `(self: &Arc<Self>, devices: Value, tag: Option<&str>, max_duration: Option<u32>, dial_timeout: Option<Duration>) -> Result<Arc<Call>, RelayError>` | Place an outbound call, block until answered (`dial_timeout: None` = 120s) |
 | `send_message` | `(&self, to_number: &str, from_number: &str, body: Option<&str>, media: Option<&[String]>, tags: Option<&[String]>, context: Option<&str>) -> Result<Arc<Message>, RelayError>` | Send an SMS/MMS |
 | `execute` | `(&self, method: &str, params: Value) -> Result<Value, RelayError>` | Send an arbitrary JSON-RPC request and block for its result |
 
@@ -114,7 +114,7 @@ let call = client.dial(
     json!([[{"type": "phone", "params": {"to_number": "+15551234567", "from_number": "+15559876543"}}]]),
     None,
     None,
-    Duration::from_secs(30),
+    Some(Duration::from_secs(30)),
 ).unwrap();
 ```
 

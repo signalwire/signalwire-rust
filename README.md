@@ -192,7 +192,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     )?;
 
     client.calling().dial(
-        CallingDialRequest::new("+15559876543", "+15551234567")
+        CallingDialRequest::new("+15559876543")
+            .to("+15551234567")
             .url("https://example.com/call-handler"),
         None,
     )?;
@@ -308,6 +309,7 @@ have one).
 | `SIGNALWIRE_API_TOKEN` | RELAY, REST | API token |
 | `SIGNALWIRE_SPACE` | RELAY, REST | Space hostname (e.g. `example.signalwire.com`) |
 | `SIGNALWIRE_REST_BASE_URL` | REST | Override the REST base URL (`RestClient::from_env`); replaces the `https://{SIGNALWIRE_SPACE}` resolution when set |
+| `SIGNALWIRE_PERSONAL_ACCESS_TOKEN` | REST | A user's Personal Access Token (`pat_...`); authenticates the Space Administration API (`RestClient::space_admin`) when read by `RestClient::from_env` |
 | `SWML_BASIC_AUTH_USER` | Agents | Basic auth username (default: auto-generated) |
 | `SWML_BASIC_AUTH_PASSWORD` | Agents | Basic auth password (default: auto-generated) |
 | `SWML_PROXY_URL_BASE` | Agents | Base URL when behind a reverse proxy |

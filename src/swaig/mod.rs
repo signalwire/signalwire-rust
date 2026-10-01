@@ -19,7 +19,7 @@ pub mod swaig_actions_generated;
 #[allow(missing_docs)]
 pub mod swaig_request_generated;
 
-pub use function_result::{FunctionResult, KeysArg};
+pub use function_result::{FunctionResponse, FunctionResult, HoldPrompt, KeysArg};
 pub use media_enums::{Codec, ParseMediaEnumError, RecordDirection, RecordFormat, TapDirection};
 pub use params_builder::{ParamKind, ParamsBuilder, PropertyBuilder};
 pub use swaig_function::{SwaigFunction, SwaigHandler};

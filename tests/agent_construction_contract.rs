@@ -462,7 +462,7 @@ fn trust_proxy_for_signature_gates_forwarded_headers() {
     // Default (trust_proxy_for_signature = false): forwarded headers ignored,
     // so the reconstructed URL is the agent's own host → signature mismatch.
     let untrusting = AgentBase::new(opts(false));
-    let (status, _, _) = untrusting.handle_request("POST", "/swaig", &headers, &body);
+    let (status, _, _) = untrusting.handle_request("POST", "/swaig", &headers, Some(&body));
     assert_eq!(
         status, 403,
         "spoofable X-Forwarded-* must NOT be honored by default"
@@ -470,7 +470,7 @@ fn trust_proxy_for_signature_gates_forwarded_headers() {
 
     // Opt in: the forwarded pair IS honored, so the same signature validates.
     let trusting = AgentBase::new(opts(true));
-    let (status, _, _) = trusting.handle_request("POST", "/swaig", &headers, &body);
+    let (status, _, _) = trusting.handle_request("POST", "/swaig", &headers, Some(&body));
     assert_ne!(
         status, 403,
         "trust_proxy_for_signature=true must honor X-Forwarded-*"

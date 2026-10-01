@@ -45,12 +45,16 @@ use signalwire::rest::http_client::HttpClient;
 // Short alias for the calling command request structs (dense enumeration below).
 use signalwire::rest::namespaces::generated::calling_resources_generated as cg;
 use signalwire::rest::namespaces::generated::chat_resources_generated as chat_gen;
+use signalwire::rest::namespaces::generated::client_tree_generated::{
+    GeneratedResourceTree, SpaceNamespace,
+};
 use signalwire::rest::namespaces::generated::datasphere_resources_generated as datasphere_gen;
 use signalwire::rest::namespaces::generated::fabric_resources_generated as fabric_gen;
 use signalwire::rest::namespaces::generated::messages_resources_generated as messages_gen;
 use signalwire::rest::namespaces::generated::project_resources_generated as project_gen;
 use signalwire::rest::namespaces::generated::pubsub_resources_generated as pubsub_gen;
 use signalwire::rest::namespaces::generated::relay_rest_resources_generated as relay_gen;
+use signalwire::rest::namespaces::generated::space_resources_generated as space_gen;
 use signalwire::rest::namespaces::generated::video_resources_generated as video_gen;
 
 /// One path segment standing in for any path parameter (resource id, sid,
@@ -83,13 +87,20 @@ fn main() {
 
     invoke_all(&client);
 
-    // Harvest every dispatched (method, url) from the recording stub.
-    let recorded = stub.requests.lock().expect("stub lock");
-    for (method, url, _body) in recorded.iter() {
-        let path = templatize(url);
-        routes.insert((method.clone(), path));
+    // The Space Administration API is reached through the client's Personal
+    // Access Token client; drive it through its own recording stub (the PAT
+    // client the generated tree hands the `space` container).
+    let (pat_http, pat_stub) = HttpClient::with_stub("", "pat_x", "https://example.signalwire.com");
+    invoke_space(&GeneratedResourceTree::new(client.http(), &pat_http).space());
+
+    // Harvest every dispatched (method, url) from both recording stubs.
+    for s in [&stub, &pat_stub] {
+        let recorded = s.requests.lock().expect("stub lock");
+        for (method, url, _body) in recorded.iter() {
+            let path = templatize(url);
+            routes.insert((method.clone(), path));
+        }
     }
-    drop(recorded);
 
     // `via` (accessor chain) is an optional field the diff tool tolerates
     // empty; the (method, path_template) pair is what Set B is matched on.
@@ -121,7 +132,7 @@ fn templatize(url: &str) -> String {
         |rest| format!("/{}", rest.split('?').next().unwrap_or(rest)),
     );
     path.split('/')
-        .map(|seg| if seg == SENTINEL { "{id}" } else { seg })
+        .map(|seg| seg.replace(SENTINEL, "{id}"))
         .collect::<Vec<_>>()
         .join("/")
 }
@@ -150,14 +161,9 @@ fn invoke_all(c: &RestClient) {
         fabric_gen::FabricTokensRefreshSubscriberTokenRequest::new("x"),
         None,
     );
-    let _ = f.tokens().create_invite_token(
-        fabric_gen::FabricTokensCreateInviteTokenRequest::new("x"),
-        None,
-    );
-    let _ = f.tokens().create_guest_token(
-        fabric_gen::FabricTokensCreateGuestTokenRequest::new(json!({})),
-        None,
-    );
+    let _ = f
+        .tokens()
+        .create_guest_token(fabric_gen::FabricTokensCreateGuestTokenRequest::new(), None);
     let _ = f.tokens().create_embed_token(
         fabric_gen::FabricTokensCreateEmbedTokenRequest::new("x"),
         None,
@@ -212,6 +218,39 @@ fn invoke_all(c: &RestClient) {
         fabric_gen::GenericResourcesAssignPhoneRouteRequest::new("x", "y"),
         None,
     );
+    let _ = r.assign_sip_endpoint(
+        id,
+        fabric_gen::GenericResourcesAssignSipEndpointRequest::new("x"),
+        None,
+    );
+    let _ = r.assign_whatsapp_number(
+        id,
+        fabric_gen::GenericResourcesAssignWhatsappNumberRequest::new("x", "y"),
+        None,
+    );
+    // ai_agents extras: the voice catalog + per-agent conversation logs.
+    let ag = f.ai_agents();
+    let _ = ag.list_voices(hm, None);
+    let _ = ag.list_conversation_logs(id, hm, None);
+    // Per-kind address resources (sip / alias / phone-number addresses).
+    let sa = f.sip_addresses();
+    let _ = sa.list(hm, None);
+    let _ = sa.create(p, None);
+    let _ = sa.get(id, None);
+    let _ = sa.update(id, p, None);
+    let _ = sa.delete(id, None);
+    let aa = f.alias_addresses();
+    let _ = aa.list(hm, None);
+    let _ = aa.create(p, None);
+    let _ = aa.get(id, None);
+    let _ = aa.update(id, p, None);
+    let _ = aa.delete(id, None);
+    let pa = f.phone_number_addresses();
+    let _ = pa.list(hm, None);
+    let _ = pa.create(p, None);
+    let _ = pa.get(id, None);
+    let _ = pa.update(id, p, None);
+    let _ = pa.delete(id, None);
     // conference_rooms / call_flows / addresses sub-resources.
     let cr = f.conference_rooms();
     let _ = cr.list(hm, None);
@@ -230,6 +269,7 @@ fn invoke_all(c: &RestClient) {
     let fa = f.addresses();
     let _ = fa.list(hm, None);
     let _ = fa.get(id, None);
+    let _ = fa.delete(id, None);
     // subscribers: CRUD + addresses + sip endpoint sub-resource + assignments.
     let s = f.subscribers();
     let _ = s.list(hm, None);
@@ -260,7 +300,7 @@ fn invoke_all(c: &RestClient) {
     // Each command now takes a generated request struct; only the required
     // constructor args are supplied (the route is independent of the body).
     let cl = c.calling();
-    let _ = cl.dial(cg::CallingDialRequest::new("x", "y"), None);
+    let _ = cl.dial(cg::CallingDialRequest::new("x"), None);
     let _ = cl.update(cg::CallingUpdateRequest::new("x"), None);
     let _ = cl.end(id, cg::CallingEndRequest::new(), None);
     let _ = cl.transfer(id, cg::CallingTransferRequest::new(json!({})), None);
@@ -294,7 +334,7 @@ fn invoke_all(c: &RestClient) {
     let _ = cl.ai_message(id, cg::CallingAiMessageRequest::new(), None);
     let _ = cl.ai_hold(id, cg::CallingAiHoldRequest::new(), None);
     let _ = cl.ai_unhold(id, cg::CallingAiUnholdRequest::new(), None);
-    let _ = cl.ai_stop(id, cg::CallingAiStopRequest::new("x"), None);
+    let _ = cl.ai_stop(id, cg::CallingAiStopRequest::new(), None);
     let _ = cl.live_transcribe(id, cg::CallingLiveTranscribeRequest::new(json!({})), None);
     let _ = cl.live_translate(id, cg::CallingLiveTranslateRequest::new(json!({})), None);
     let _ = cl.send_fax_stop(id, cg::CallingSendFaxStopRequest::new("x"), None);
@@ -367,7 +407,7 @@ fn invoke_all(c: &RestClient) {
     let _ = ct.reset(id, None);
     let vs = v.streams();
     let _ = vs.get(id, hm, None);
-    let _ = vs.update(id, video_gen::VideoStreamsUpdateRequest::new("x"), None);
+    let _ = vs.update(id, video_gen::VideoStreamsUpdateRequest::new(), None);
     let _ = vs.delete(id, None);
 
     // --- queues ---
@@ -426,7 +466,7 @@ fn invoke_all(c: &RestClient) {
     let _ = camps.list_orders(id, hm, None);
     let _ = camps.create_order(
         id,
-        relay_gen::RegistryCampaignsCreateOrderRequest::new(),
+        relay_gen::RegistryCampaignsCreateOrderRequest::new(json!({})),
         None,
     );
     let orders = reg.orders();
@@ -461,7 +501,7 @@ fn invoke_all(c: &RestClient) {
     // --- messages (flat /api/messaging/messages send + redact) ---
     let msg = c.messages();
     let _ = msg.create(messages_gen::MessagesCreateRequest::new("x", "x"), None);
-    let _ = msg.update(id, messages_gen::MessagesUpdateRequest::new("x"), None);
+    let _ = msg.update(id, messages_gen::MessagesUpdateRequest::new(), None);
 
     // --- projects (flat /api/projects CRUD + rotate_signing_key) ---
     let pj = c.projects();
@@ -511,8 +551,103 @@ fn invoke_all(c: &RestClient) {
     let sc = c.short_codes();
     let _ = sc.list(hm, None);
     let _ = sc.get(id, hm, None);
-    let _ = sc.update(id, relay_gen::ShortCodesUpdateRequest::new("x", "y"), None);
+    let _ = sc.update(id, relay_gen::ShortCodesUpdateRequest::new(), None);
     let _ = c
         .imported_numbers()
         .create(relay_gen::ImportedNumbersCreateRequest::new("x", "y"), None);
+    let _ = addr.update(id, relay_gen::AddressesUpdateRequest::new(), None);
+    let _ = rec.download(id, hm, None);
+    // phone_numbers: E911 address assignment + caller-ID name (CNAM).
+    let pn = c.phone_numbers();
+    let _ = pn.assign_e911_address(
+        id,
+        relay_gen::PhoneNumbersAssignE911AddressRequest::new("x"),
+        None,
+    );
+    let _ = pn.remove_e911_address(id, None);
+    let _ = pn.get_cnam(id, hm, None);
+    let _ = pn.request_cnam(
+        id,
+        relay_gen::PhoneNumbersRequestCnamRequest::new("x"),
+        None,
+    );
+    let _ = pn.clear_cnam(id, None);
+    let _ = c
+        .registry()
+        .brands()
+        .update(id, relay_gen::RegistryBrandsUpdateRequest::new(), None);
+    // video room-recording download (302 to the presigned .mp4).
+    let _ = c.video().room_recordings().download(id, hm, None);
+    // whatsapp (businesses / numbers / templates).
+    let wa = c.whatsapp();
+    let _ = wa.businesses().list(hm, None);
+    let wn = wa.numbers();
+    let _ = wn.list(hm, None);
+    let _ = wn.get(id, None);
+    let wt = wa.templates();
+    let _ = wt.list(hm, None);
+    let _ = wt.create(p, None);
+    let _ = wt.get(id, None);
+    let _ = wt.update(id, p, None);
+    let _ = wt.delete(id, None);
+}
+
+/// Invoke every Space Administration route once (PAT-authenticated container).
+fn invoke_space(sp: &SpaceNamespace<'_>) {
+    let p = &json!({});
+    let id = SENTINEL;
+    let hm = &std::collections::HashMap::<String, String>::new();
+    let st = sp.settings();
+    let _ = st.get(hm, None);
+    let _ = st.update(space_gen::SpaceSettingsUpdateRequest::new(), None);
+    let gp = sp.geographic_permissions();
+    let _ = gp.get(hm, None);
+    let _ = gp.update(
+        space_gen::SpaceGeographicPermissionsUpdateRequest::new(json!([])),
+        None,
+    );
+    let bp = sp.billing_profile();
+    let _ = bp.get(hm, None);
+    let _ = bp.update(
+        space_gen::SpaceBillingProfileUpdateRequest::new(
+            "x",
+            "x",
+            "x",
+            "x",
+            "x",
+            "x",
+            "x",
+            json!("x"),
+            "x",
+        ),
+        None,
+    );
+    let bs = sp.billing_statements();
+    let _ = bs.list(hm, None);
+    let _ = bs.get(hm, None);
+    let _ = bs.get_csv(hm, None);
+    let _ = bs.get_pdf(hm, None);
+    let _ = sp.usage().get(hm, None);
+    let _ = sp.payment_history().list(hm, None);
+    let m = sp.members();
+    let _ = m.list(hm, None);
+    let _ = m.create(p, None);
+    let _ = m.get(id, None);
+    let _ = m.update(id, p, None);
+    let _ = m.delete(id, None);
+    let _ = m.list_projects(id, hm, None);
+    let _ = m.enable_project(id, id, None);
+    let _ = m.disable_project(id, id, None);
+    let b = sp.balance();
+    let _ = b.get(hm, None);
+    let _ = b.create_top_up(
+        space_gen::SpaceBalanceCreateTopUpRequest::new("x", 0, "x"),
+        None,
+    );
+    let lb = sp.low_balance_setting();
+    let _ = lb.get(hm, None);
+    let _ = lb.update(space_gen::SpaceLowBalanceSettingUpdateRequest::new(), None);
+    let pm = sp.payment_methods();
+    let _ = pm.list(hm, None);
+    let _ = pm.delete(id, None);
 }

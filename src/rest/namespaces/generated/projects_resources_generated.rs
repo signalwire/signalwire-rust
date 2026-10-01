@@ -119,7 +119,8 @@ impl<'a> Projects<'a> {
     ) -> Result<Value, SignalWireRestError> {
         self.client().post_with_options(
             &self.path(&[id, "signing-key", "rotate"]),
-            &Value::Object(Map::new()),
+            Some(&Value::Object(Map::new())),
+            None,
             request_options.as_ref(),
         )
     }

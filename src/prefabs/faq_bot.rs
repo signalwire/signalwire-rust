@@ -8,8 +8,7 @@ use crate::swaig::FunctionResult;
 
 /// Options for constructing an [`FAQBotAgent`].
 ///
-/// Mirrors the Python reference's `__init__` (`prefabs/faq_bot.py:48-55`)
-/// param-for-param. `faqs` is the reference's one REQUIRED positional, so it is
+/// `faqs` is the one REQUIRED field, so it is
 /// the sole argument to [`FAQBotOptions::new`]; every other field carries the
 /// reference's default. `FAQBotOptions::new(faqs)` is therefore the exact
 /// equivalent of the minimal valid reference program `FAQBotAgent(faqs)`.
@@ -17,13 +16,13 @@ use crate::swaig::FunctionResult;
 pub struct FAQBotOptions {
     /// FAQ entries, each `{question, answer, categories?}`.
     pub faqs: Vec<Value>,
-    /// Whether to suggest related questions (reference default `true`).
+    /// Whether to suggest related questions (default `true`).
     pub suggest_related: bool,
     /// Custom personality description. `None` uses the reference's wording.
     pub persona: Option<String>,
-    /// Agent name (reference default `"faq_bot"`).
+    /// Agent name (default `"faq_bot"`).
     pub name: String,
-    /// HTTP route (reference default `"/faq"`).
+    /// HTTP route (default `"/faq"`).
     pub route: String,
 }
 
@@ -40,9 +39,9 @@ impl Default for FAQBotOptions {
 }
 
 impl FAQBotOptions {
-    /// Options for `faqs`, with every other field at its reference default —
+    /// Options for `faqs`, with every other field at its default —
     /// the port of the reference's `FAQBotAgent(faqs)`. `faqs` is required
-    /// because the reference declares it as a positional with no default.
+    /// because it has no default.
     pub fn new(faqs: Vec<Value>) -> Self {
         FAQBotOptions {
             faqs,
@@ -87,7 +86,7 @@ pub struct FAQBotAgent {
     faqs: Vec<Value>,
     suggest_related: bool,
     /// Resolved personality description — the caller's `persona` or the
-    /// reference default (`faq_bot.py:76-79`). Retained so a caller can read
+    /// default (`faq_bot.py:76-79`). Retained so a caller can read
     /// back the personality the agent is actually running with.
     persona: String,
 }
@@ -250,18 +249,29 @@ impl FAQBotAgent {
         }
     }
 
+    /// Borrow the underlying [`AgentBase`] this prefab wraps.
+    ///
+    /// `FAQBotAgent` composes an agent rather than inheriting from one, so
+    /// this is how you read the configured prompt, tools, and skills.
     pub fn agent(&self) -> &AgentBase {
         &self.agent
     }
 
+    /// Mutably borrow the underlying [`AgentBase`].
+    ///
+    /// Use this to layer extra configuration — additional tools, skills,
+    /// hints, or verbs — on top of what the prefab already set up.
     pub fn agent_mut(&mut self) -> &mut AgentBase {
         &mut self.agent
     }
 
+    /// The question/answer pairs this bot answers from, as configured.
     pub fn faqs(&self) -> &[Value] {
         &self.faqs
     }
 
+    /// Whether the bot offers related questions alongside each answer,
+    /// rather than answering and stopping.
     pub fn suggest_related(&self) -> bool {
         self.suggest_related
     }
@@ -274,7 +284,7 @@ impl FAQBotAgent {
 
     /// Search for FAQs matching a specific query and/or category.
     ///
-    /// Ported from Python `FAQBotAgent.search_faqs`. Scores each FAQ by
+    /// Scores each FAQ by
     /// substring/prefix match on the `query` (exact match 100, substring 50, a
     /// prefix bonus of 25) plus 30 for a matching `category`, then returns the
     /// top three matching questions. `raw_data` is accepted for
@@ -415,9 +425,10 @@ mod tests {
         let agent = FAQBotAgent::new(FAQBotOptions::new(sample_faqs()).name("test"));
         let mut args = serde_json::Map::new();
         args.insert("query".to_string(), json!("hours"));
-        let result = agent
-            .agent()
-            .on_function_call("search_faqs", &args, &serde_json::Map::new());
+        let result =
+            agent
+                .agent()
+                .on_function_call("search_faqs", &args, Some(&serde_json::Map::new()));
         assert!(result.is_some());
         let json_str = result.unwrap().to_json();
         assert!(json_str.contains("9am to 5pm"));
@@ -432,9 +443,10 @@ mod tests {
         );
         let mut args = serde_json::Map::new();
         args.insert("query".to_string(), json!("quantum physics"));
-        let result = agent
-            .agent()
-            .on_function_call("search_faqs", &args, &serde_json::Map::new());
+        let result =
+            agent
+                .agent()
+                .on_function_call("search_faqs", &args, Some(&serde_json::Map::new()));
         assert!(result.is_some());
         let json_str = result.unwrap().to_json();
         assert!(json_str.contains("No FAQ found"));
@@ -504,7 +516,7 @@ mod tests {
             "POST",
             "/faq/post_prompt",
             &headers,
-            &body.to_string(),
+            Some(&body.to_string()),
         );
         assert_eq!(status, 200);
         assert_eq!(*captured.lock().unwrap(), "FAQ answered");

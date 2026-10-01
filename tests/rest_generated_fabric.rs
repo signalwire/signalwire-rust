@@ -11,21 +11,43 @@
 // generator — so these catch SDK-vs-contract drift, not a generator self-snapshot.
 // Full-mock harness fixtures (common::mocktest).
 
-#![allow(unused_imports)]
-
 #[path = "common/mod.rs"]
 mod common;
 
 use serde_json::json;
-use signalwire::rest::namespaces::generated::calling_resources_generated as cg;
-use signalwire::rest::namespaces::generated::chat_resources_generated as chat_gen;
-use signalwire::rest::namespaces::generated::datasphere_resources_generated as datasphere_gen;
 use signalwire::rest::namespaces::generated::fabric_resources_generated as fabric_gen;
-use signalwire::rest::namespaces::generated::messages_resources_generated as messages_gen;
-use signalwire::rest::namespaces::generated::project_resources_generated as project_gen;
-use signalwire::rest::namespaces::generated::pubsub_resources_generated as pubsub_gen;
-use signalwire::rest::namespaces::generated::relay_rest_resources_generated as relay_gen;
-use signalwire::rest::namespaces::generated::video_resources_generated as video_gen;
+
+#[test]
+fn test_fabric_addresses_delete_success() {
+    let _g = common::mocktest::begin();
+    let c = common::mocktest::client();
+    let _ = c.fabric().addresses().delete("x", None);
+    let e = common::mocktest::journal_last();
+    assert_eq!(e.method, "DELETE");
+    assert_eq!(
+        e.matched_route.as_deref(),
+        Some("fabric.delete_fabric_address")
+    );
+}
+
+#[test]
+fn test_fabric_addresses_delete_error() {
+    let _g = common::mocktest::begin();
+    let c = common::mocktest::client();
+    common::mocktest::scenario_set("fabric.delete_fabric_address", 500, json!({"error": "x"}));
+    let err = c
+        .fabric()
+        .addresses()
+        .delete("x", None)
+        .expect_err("expected a 500 error");
+    assert_eq!(err.status_code(), 500);
+    let e = common::mocktest::journal_last();
+    assert_eq!(e.response_status, Some(500));
+    assert_eq!(
+        e.matched_route.as_deref(),
+        Some("fabric.delete_fabric_address")
+    );
+}
 
 #[test]
 fn test_fabric_addresses_get_success() {
@@ -237,6 +259,80 @@ fn test_fabric_ai_agents_list_addresses_error() {
 }
 
 #[test]
+fn test_fabric_ai_agents_list_conversation_logs_success() {
+    let _g = common::mocktest::begin();
+    let c = common::mocktest::client();
+    let _ =
+        c.fabric()
+            .ai_agents()
+            .list_conversation_logs("x", &std::collections::HashMap::new(), None);
+    let e = common::mocktest::journal_last();
+    assert_eq!(e.method, "GET");
+    assert_eq!(
+        e.matched_route.as_deref(),
+        Some("fabric.list_ai_agent_conversation_logs")
+    );
+}
+
+#[test]
+fn test_fabric_ai_agents_list_conversation_logs_error() {
+    let _g = common::mocktest::begin();
+    let c = common::mocktest::client();
+    common::mocktest::scenario_set(
+        "fabric.list_ai_agent_conversation_logs",
+        500,
+        json!({"error": "x"}),
+    );
+    let err = c
+        .fabric()
+        .ai_agents()
+        .list_conversation_logs("x", &std::collections::HashMap::new(), None)
+        .expect_err("expected a 500 error");
+    assert_eq!(err.status_code(), 500);
+    let e = common::mocktest::journal_last();
+    assert_eq!(e.response_status, Some(500));
+    assert_eq!(
+        e.matched_route.as_deref(),
+        Some("fabric.list_ai_agent_conversation_logs")
+    );
+}
+
+#[test]
+fn test_fabric_ai_agents_list_voices_success() {
+    let _g = common::mocktest::begin();
+    let c = common::mocktest::client();
+    let _ = c
+        .fabric()
+        .ai_agents()
+        .list_voices(&std::collections::HashMap::new(), None);
+    let e = common::mocktest::journal_last();
+    assert_eq!(e.method, "GET");
+    assert_eq!(
+        e.matched_route.as_deref(),
+        Some("fabric.list_ai_agent_voices")
+    );
+}
+
+#[test]
+fn test_fabric_ai_agents_list_voices_error() {
+    let _g = common::mocktest::begin();
+    let c = common::mocktest::client();
+    common::mocktest::scenario_set("fabric.list_ai_agent_voices", 500, json!({"error": "x"}));
+    let err = c
+        .fabric()
+        .ai_agents()
+        .list_voices(&std::collections::HashMap::new(), None)
+        .expect_err("expected a 500 error");
+    assert_eq!(err.status_code(), 500);
+    let e = common::mocktest::journal_last();
+    assert_eq!(e.response_status, Some(500));
+    assert_eq!(
+        e.matched_route.as_deref(),
+        Some("fabric.list_ai_agent_voices")
+    );
+}
+
+#[test]
 fn test_fabric_ai_agents_update_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
@@ -263,6 +359,169 @@ fn test_fabric_ai_agents_update_error() {
     let e = common::mocktest::journal_last();
     assert_eq!(e.response_status, Some(500));
     assert_eq!(e.matched_route.as_deref(), Some("fabric.update_ai_agent"));
+}
+
+#[test]
+fn test_fabric_alias_addresses_create_success() {
+    let _g = common::mocktest::begin();
+    let c = common::mocktest::client();
+    let _ = c
+        .fabric()
+        .alias_addresses()
+        .create(&serde_json::json!({}), None);
+    let e = common::mocktest::journal_last();
+    assert_eq!(e.method, "POST");
+    assert_eq!(
+        e.matched_route.as_deref(),
+        Some("fabric.create_alias_address")
+    );
+}
+
+#[test]
+fn test_fabric_alias_addresses_create_error() {
+    let _g = common::mocktest::begin();
+    let c = common::mocktest::client();
+    common::mocktest::scenario_set("fabric.create_alias_address", 500, json!({"error": "x"}));
+    let err = c
+        .fabric()
+        .alias_addresses()
+        .create(&serde_json::json!({}), None)
+        .expect_err("expected a 500 error");
+    assert_eq!(err.status_code(), 500);
+    let e = common::mocktest::journal_last();
+    assert_eq!(e.response_status, Some(500));
+    assert_eq!(
+        e.matched_route.as_deref(),
+        Some("fabric.create_alias_address")
+    );
+}
+
+#[test]
+fn test_fabric_alias_addresses_delete_success() {
+    let _g = common::mocktest::begin();
+    let c = common::mocktest::client();
+    let _ = c.fabric().alias_addresses().delete("x", None);
+    let e = common::mocktest::journal_last();
+    assert_eq!(e.method, "DELETE");
+    assert_eq!(
+        e.matched_route.as_deref(),
+        Some("fabric.delete_alias_address")
+    );
+}
+
+#[test]
+fn test_fabric_alias_addresses_delete_error() {
+    let _g = common::mocktest::begin();
+    let c = common::mocktest::client();
+    common::mocktest::scenario_set("fabric.delete_alias_address", 500, json!({"error": "x"}));
+    let err = c
+        .fabric()
+        .alias_addresses()
+        .delete("x", None)
+        .expect_err("expected a 500 error");
+    assert_eq!(err.status_code(), 500);
+    let e = common::mocktest::journal_last();
+    assert_eq!(e.response_status, Some(500));
+    assert_eq!(
+        e.matched_route.as_deref(),
+        Some("fabric.delete_alias_address")
+    );
+}
+
+#[test]
+fn test_fabric_alias_addresses_get_success() {
+    let _g = common::mocktest::begin();
+    let c = common::mocktest::client();
+    let _ = c.fabric().alias_addresses().get("x", None);
+    let e = common::mocktest::journal_last();
+    assert_eq!(e.method, "GET");
+    assert_eq!(e.matched_route.as_deref(), Some("fabric.get_alias_address"));
+}
+
+#[test]
+fn test_fabric_alias_addresses_get_error() {
+    let _g = common::mocktest::begin();
+    let c = common::mocktest::client();
+    common::mocktest::scenario_set("fabric.get_alias_address", 500, json!({"error": "x"}));
+    let err = c
+        .fabric()
+        .alias_addresses()
+        .get("x", None)
+        .expect_err("expected a 500 error");
+    assert_eq!(err.status_code(), 500);
+    let e = common::mocktest::journal_last();
+    assert_eq!(e.response_status, Some(500));
+    assert_eq!(e.matched_route.as_deref(), Some("fabric.get_alias_address"));
+}
+
+#[test]
+fn test_fabric_alias_addresses_list_success() {
+    let _g = common::mocktest::begin();
+    let c = common::mocktest::client();
+    let _ = c
+        .fabric()
+        .alias_addresses()
+        .list(&std::collections::HashMap::new(), None);
+    let e = common::mocktest::journal_last();
+    assert_eq!(e.method, "GET");
+    assert_eq!(
+        e.matched_route.as_deref(),
+        Some("fabric.list_alias_addresses")
+    );
+}
+
+#[test]
+fn test_fabric_alias_addresses_list_error() {
+    let _g = common::mocktest::begin();
+    let c = common::mocktest::client();
+    common::mocktest::scenario_set("fabric.list_alias_addresses", 500, json!({"error": "x"}));
+    let err = c
+        .fabric()
+        .alias_addresses()
+        .list(&std::collections::HashMap::new(), None)
+        .expect_err("expected a 500 error");
+    assert_eq!(err.status_code(), 500);
+    let e = common::mocktest::journal_last();
+    assert_eq!(e.response_status, Some(500));
+    assert_eq!(
+        e.matched_route.as_deref(),
+        Some("fabric.list_alias_addresses")
+    );
+}
+
+#[test]
+fn test_fabric_alias_addresses_update_success() {
+    let _g = common::mocktest::begin();
+    let c = common::mocktest::client();
+    let _ = c
+        .fabric()
+        .alias_addresses()
+        .update("x", &serde_json::json!({}), None);
+    let e = common::mocktest::journal_last();
+    assert_eq!(e.method, "PATCH");
+    assert_eq!(
+        e.matched_route.as_deref(),
+        Some("fabric.update_alias_address")
+    );
+}
+
+#[test]
+fn test_fabric_alias_addresses_update_error() {
+    let _g = common::mocktest::begin();
+    let c = common::mocktest::client();
+    common::mocktest::scenario_set("fabric.update_alias_address", 500, json!({"error": "x"}));
+    let err = c
+        .fabric()
+        .alias_addresses()
+        .update("x", &serde_json::json!({}), None)
+        .expect_err("expected a 500 error");
+    assert_eq!(err.status_code(), 500);
+    let e = common::mocktest::journal_last();
+    assert_eq!(e.response_status, Some(500));
+    assert_eq!(
+        e.matched_route.as_deref(),
+        Some("fabric.update_alias_address")
+    );
 }
 
 #[test]
@@ -1527,6 +1786,195 @@ fn test_fabric_freeswitch_connectors_update_error() {
 }
 
 #[test]
+fn test_fabric_phone_number_addresses_create_success() {
+    let _g = common::mocktest::begin();
+    let c = common::mocktest::client();
+    let _ = c
+        .fabric()
+        .phone_number_addresses()
+        .create(&serde_json::json!({}), None);
+    let e = common::mocktest::journal_last();
+    assert_eq!(e.method, "POST");
+    assert_eq!(
+        e.matched_route.as_deref(),
+        Some("fabric.create_phone_number_address")
+    );
+}
+
+#[test]
+fn test_fabric_phone_number_addresses_create_error() {
+    let _g = common::mocktest::begin();
+    let c = common::mocktest::client();
+    common::mocktest::scenario_set(
+        "fabric.create_phone_number_address",
+        500,
+        json!({"error": "x"}),
+    );
+    let err = c
+        .fabric()
+        .phone_number_addresses()
+        .create(&serde_json::json!({}), None)
+        .expect_err("expected a 500 error");
+    assert_eq!(err.status_code(), 500);
+    let e = common::mocktest::journal_last();
+    assert_eq!(e.response_status, Some(500));
+    assert_eq!(
+        e.matched_route.as_deref(),
+        Some("fabric.create_phone_number_address")
+    );
+}
+
+#[test]
+fn test_fabric_phone_number_addresses_delete_success() {
+    let _g = common::mocktest::begin();
+    let c = common::mocktest::client();
+    let _ = c.fabric().phone_number_addresses().delete("x", None);
+    let e = common::mocktest::journal_last();
+    assert_eq!(e.method, "DELETE");
+    assert_eq!(
+        e.matched_route.as_deref(),
+        Some("fabric.delete_phone_number_address")
+    );
+}
+
+#[test]
+fn test_fabric_phone_number_addresses_delete_error() {
+    let _g = common::mocktest::begin();
+    let c = common::mocktest::client();
+    common::mocktest::scenario_set(
+        "fabric.delete_phone_number_address",
+        500,
+        json!({"error": "x"}),
+    );
+    let err = c
+        .fabric()
+        .phone_number_addresses()
+        .delete("x", None)
+        .expect_err("expected a 500 error");
+    assert_eq!(err.status_code(), 500);
+    let e = common::mocktest::journal_last();
+    assert_eq!(e.response_status, Some(500));
+    assert_eq!(
+        e.matched_route.as_deref(),
+        Some("fabric.delete_phone_number_address")
+    );
+}
+
+#[test]
+fn test_fabric_phone_number_addresses_get_success() {
+    let _g = common::mocktest::begin();
+    let c = common::mocktest::client();
+    let _ = c.fabric().phone_number_addresses().get("x", None);
+    let e = common::mocktest::journal_last();
+    assert_eq!(e.method, "GET");
+    assert_eq!(
+        e.matched_route.as_deref(),
+        Some("fabric.get_phone_number_address")
+    );
+}
+
+#[test]
+fn test_fabric_phone_number_addresses_get_error() {
+    let _g = common::mocktest::begin();
+    let c = common::mocktest::client();
+    common::mocktest::scenario_set(
+        "fabric.get_phone_number_address",
+        500,
+        json!({"error": "x"}),
+    );
+    let err = c
+        .fabric()
+        .phone_number_addresses()
+        .get("x", None)
+        .expect_err("expected a 500 error");
+    assert_eq!(err.status_code(), 500);
+    let e = common::mocktest::journal_last();
+    assert_eq!(e.response_status, Some(500));
+    assert_eq!(
+        e.matched_route.as_deref(),
+        Some("fabric.get_phone_number_address")
+    );
+}
+
+#[test]
+fn test_fabric_phone_number_addresses_list_success() {
+    let _g = common::mocktest::begin();
+    let c = common::mocktest::client();
+    let _ = c
+        .fabric()
+        .phone_number_addresses()
+        .list(&std::collections::HashMap::new(), None);
+    let e = common::mocktest::journal_last();
+    assert_eq!(e.method, "GET");
+    assert_eq!(
+        e.matched_route.as_deref(),
+        Some("fabric.list_phone_number_addresses")
+    );
+}
+
+#[test]
+fn test_fabric_phone_number_addresses_list_error() {
+    let _g = common::mocktest::begin();
+    let c = common::mocktest::client();
+    common::mocktest::scenario_set(
+        "fabric.list_phone_number_addresses",
+        500,
+        json!({"error": "x"}),
+    );
+    let err = c
+        .fabric()
+        .phone_number_addresses()
+        .list(&std::collections::HashMap::new(), None)
+        .expect_err("expected a 500 error");
+    assert_eq!(err.status_code(), 500);
+    let e = common::mocktest::journal_last();
+    assert_eq!(e.response_status, Some(500));
+    assert_eq!(
+        e.matched_route.as_deref(),
+        Some("fabric.list_phone_number_addresses")
+    );
+}
+
+#[test]
+fn test_fabric_phone_number_addresses_update_success() {
+    let _g = common::mocktest::begin();
+    let c = common::mocktest::client();
+    let _ = c
+        .fabric()
+        .phone_number_addresses()
+        .update("x", &serde_json::json!({}), None);
+    let e = common::mocktest::journal_last();
+    assert_eq!(e.method, "PATCH");
+    assert_eq!(
+        e.matched_route.as_deref(),
+        Some("fabric.update_phone_number_address")
+    );
+}
+
+#[test]
+fn test_fabric_phone_number_addresses_update_error() {
+    let _g = common::mocktest::begin();
+    let c = common::mocktest::client();
+    common::mocktest::scenario_set(
+        "fabric.update_phone_number_address",
+        500,
+        json!({"error": "x"}),
+    );
+    let err = c
+        .fabric()
+        .phone_number_addresses()
+        .update("x", &serde_json::json!({}), None)
+        .expect_err("expected a 500 error");
+    assert_eq!(err.status_code(), 500);
+    let e = common::mocktest::journal_last();
+    assert_eq!(e.response_status, Some(500));
+    assert_eq!(
+        e.matched_route.as_deref(),
+        Some("fabric.update_phone_number_address")
+    );
+}
+
+#[test]
 fn test_fabric_relay_applications_create_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
@@ -1836,6 +2284,94 @@ fn test_fabric_resources_assign_phone_route_error() {
 }
 
 #[test]
+fn test_fabric_resources_assign_sip_endpoint_success() {
+    let _g = common::mocktest::begin();
+    let c = common::mocktest::client();
+    let _ = c.fabric().resources().assign_sip_endpoint(
+        "x",
+        fabric_gen::GenericResourcesAssignSipEndpointRequest::new("x"),
+        None,
+    );
+    let e = common::mocktest::journal_last();
+    assert_eq!(e.method, "POST");
+    assert_eq!(
+        e.matched_route.as_deref(),
+        Some("fabric.assign_resource_sip_endpoint")
+    );
+}
+
+#[test]
+fn test_fabric_resources_assign_sip_endpoint_error() {
+    let _g = common::mocktest::begin();
+    let c = common::mocktest::client();
+    common::mocktest::scenario_set(
+        "fabric.assign_resource_sip_endpoint",
+        500,
+        json!({"error": "x"}),
+    );
+    let err = c
+        .fabric()
+        .resources()
+        .assign_sip_endpoint(
+            "x",
+            fabric_gen::GenericResourcesAssignSipEndpointRequest::new("x"),
+            None,
+        )
+        .expect_err("expected a 500 error");
+    assert_eq!(err.status_code(), 500);
+    let e = common::mocktest::journal_last();
+    assert_eq!(e.response_status, Some(500));
+    assert_eq!(
+        e.matched_route.as_deref(),
+        Some("fabric.assign_resource_sip_endpoint")
+    );
+}
+
+#[test]
+fn test_fabric_resources_assign_whatsapp_number_success() {
+    let _g = common::mocktest::begin();
+    let c = common::mocktest::client();
+    let _ = c.fabric().resources().assign_whatsapp_number(
+        "x",
+        fabric_gen::GenericResourcesAssignWhatsappNumberRequest::new("x", "y"),
+        None,
+    );
+    let e = common::mocktest::journal_last();
+    assert_eq!(e.method, "POST");
+    assert_eq!(
+        e.matched_route.as_deref(),
+        Some("fabric.assign_resource_whatsapp_number")
+    );
+}
+
+#[test]
+fn test_fabric_resources_assign_whatsapp_number_error() {
+    let _g = common::mocktest::begin();
+    let c = common::mocktest::client();
+    common::mocktest::scenario_set(
+        "fabric.assign_resource_whatsapp_number",
+        500,
+        json!({"error": "x"}),
+    );
+    let err = c
+        .fabric()
+        .resources()
+        .assign_whatsapp_number(
+            "x",
+            fabric_gen::GenericResourcesAssignWhatsappNumberRequest::new("x", "y"),
+            None,
+        )
+        .expect_err("expected a 500 error");
+    assert_eq!(err.status_code(), 500);
+    let e = common::mocktest::journal_last();
+    assert_eq!(e.response_status, Some(500));
+    assert_eq!(
+        e.matched_route.as_deref(),
+        Some("fabric.assign_resource_whatsapp_number")
+    );
+}
+
+#[test]
 fn test_fabric_resources_delete_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
@@ -1951,6 +2487,169 @@ fn test_fabric_resources_list_addresses_error() {
     assert_eq!(
         e.matched_route.as_deref(),
         Some("fabric.list_resource_addresses")
+    );
+}
+
+#[test]
+fn test_fabric_sip_addresses_create_success() {
+    let _g = common::mocktest::begin();
+    let c = common::mocktest::client();
+    let _ = c
+        .fabric()
+        .sip_addresses()
+        .create(&serde_json::json!({}), None);
+    let e = common::mocktest::journal_last();
+    assert_eq!(e.method, "POST");
+    assert_eq!(
+        e.matched_route.as_deref(),
+        Some("fabric.create_sip_address")
+    );
+}
+
+#[test]
+fn test_fabric_sip_addresses_create_error() {
+    let _g = common::mocktest::begin();
+    let c = common::mocktest::client();
+    common::mocktest::scenario_set("fabric.create_sip_address", 500, json!({"error": "x"}));
+    let err = c
+        .fabric()
+        .sip_addresses()
+        .create(&serde_json::json!({}), None)
+        .expect_err("expected a 500 error");
+    assert_eq!(err.status_code(), 500);
+    let e = common::mocktest::journal_last();
+    assert_eq!(e.response_status, Some(500));
+    assert_eq!(
+        e.matched_route.as_deref(),
+        Some("fabric.create_sip_address")
+    );
+}
+
+#[test]
+fn test_fabric_sip_addresses_delete_success() {
+    let _g = common::mocktest::begin();
+    let c = common::mocktest::client();
+    let _ = c.fabric().sip_addresses().delete("x", None);
+    let e = common::mocktest::journal_last();
+    assert_eq!(e.method, "DELETE");
+    assert_eq!(
+        e.matched_route.as_deref(),
+        Some("fabric.delete_sip_address")
+    );
+}
+
+#[test]
+fn test_fabric_sip_addresses_delete_error() {
+    let _g = common::mocktest::begin();
+    let c = common::mocktest::client();
+    common::mocktest::scenario_set("fabric.delete_sip_address", 500, json!({"error": "x"}));
+    let err = c
+        .fabric()
+        .sip_addresses()
+        .delete("x", None)
+        .expect_err("expected a 500 error");
+    assert_eq!(err.status_code(), 500);
+    let e = common::mocktest::journal_last();
+    assert_eq!(e.response_status, Some(500));
+    assert_eq!(
+        e.matched_route.as_deref(),
+        Some("fabric.delete_sip_address")
+    );
+}
+
+#[test]
+fn test_fabric_sip_addresses_get_success() {
+    let _g = common::mocktest::begin();
+    let c = common::mocktest::client();
+    let _ = c.fabric().sip_addresses().get("x", None);
+    let e = common::mocktest::journal_last();
+    assert_eq!(e.method, "GET");
+    assert_eq!(e.matched_route.as_deref(), Some("fabric.get_sip_address"));
+}
+
+#[test]
+fn test_fabric_sip_addresses_get_error() {
+    let _g = common::mocktest::begin();
+    let c = common::mocktest::client();
+    common::mocktest::scenario_set("fabric.get_sip_address", 500, json!({"error": "x"}));
+    let err = c
+        .fabric()
+        .sip_addresses()
+        .get("x", None)
+        .expect_err("expected a 500 error");
+    assert_eq!(err.status_code(), 500);
+    let e = common::mocktest::journal_last();
+    assert_eq!(e.response_status, Some(500));
+    assert_eq!(e.matched_route.as_deref(), Some("fabric.get_sip_address"));
+}
+
+#[test]
+fn test_fabric_sip_addresses_list_success() {
+    let _g = common::mocktest::begin();
+    let c = common::mocktest::client();
+    let _ = c
+        .fabric()
+        .sip_addresses()
+        .list(&std::collections::HashMap::new(), None);
+    let e = common::mocktest::journal_last();
+    assert_eq!(e.method, "GET");
+    assert_eq!(
+        e.matched_route.as_deref(),
+        Some("fabric.list_sip_addresses")
+    );
+}
+
+#[test]
+fn test_fabric_sip_addresses_list_error() {
+    let _g = common::mocktest::begin();
+    let c = common::mocktest::client();
+    common::mocktest::scenario_set("fabric.list_sip_addresses", 500, json!({"error": "x"}));
+    let err = c
+        .fabric()
+        .sip_addresses()
+        .list(&std::collections::HashMap::new(), None)
+        .expect_err("expected a 500 error");
+    assert_eq!(err.status_code(), 500);
+    let e = common::mocktest::journal_last();
+    assert_eq!(e.response_status, Some(500));
+    assert_eq!(
+        e.matched_route.as_deref(),
+        Some("fabric.list_sip_addresses")
+    );
+}
+
+#[test]
+fn test_fabric_sip_addresses_update_success() {
+    let _g = common::mocktest::begin();
+    let c = common::mocktest::client();
+    let _ = c
+        .fabric()
+        .sip_addresses()
+        .update("x", &serde_json::json!({}), None);
+    let e = common::mocktest::journal_last();
+    assert_eq!(e.method, "PATCH");
+    assert_eq!(
+        e.matched_route.as_deref(),
+        Some("fabric.update_sip_address")
+    );
+}
+
+#[test]
+fn test_fabric_sip_addresses_update_error() {
+    let _g = common::mocktest::begin();
+    let c = common::mocktest::client();
+    common::mocktest::scenario_set("fabric.update_sip_address", 500, json!({"error": "x"}));
+    let err = c
+        .fabric()
+        .sip_addresses()
+        .update("x", &serde_json::json!({}), None)
+        .expect_err("expected a 500 error");
+    assert_eq!(err.status_code(), 500);
+    let e = common::mocktest::journal_last();
+    assert_eq!(e.response_status, Some(500));
+    assert_eq!(
+        e.matched_route.as_deref(),
+        Some("fabric.update_sip_address")
     );
 }
 
@@ -3176,10 +3875,10 @@ fn test_fabric_tokens_create_embed_token_error() {
 fn test_fabric_tokens_create_guest_token_success() {
     let _g = common::mocktest::begin();
     let c = common::mocktest::client();
-    let _ = c.fabric().tokens().create_guest_token(
-        fabric_gen::FabricTokensCreateGuestTokenRequest::new(serde_json::json!({})),
-        None,
-    );
+    let _ = c
+        .fabric()
+        .tokens()
+        .create_guest_token(fabric_gen::FabricTokensCreateGuestTokenRequest::new(), None);
     let e = common::mocktest::journal_last();
     assert_eq!(e.method, "POST");
     assert_eq!(
@@ -3200,10 +3899,7 @@ fn test_fabric_tokens_create_guest_token_error() {
     let err = c
         .fabric()
         .tokens()
-        .create_guest_token(
-            fabric_gen::FabricTokensCreateGuestTokenRequest::new(serde_json::json!({})),
-            None,
-        )
+        .create_guest_token(fabric_gen::FabricTokensCreateGuestTokenRequest::new(), None)
         .expect_err("expected a 500 error");
     assert_eq!(err.status_code(), 500);
     let e = common::mocktest::journal_last();
@@ -3211,48 +3907,6 @@ fn test_fabric_tokens_create_guest_token_error() {
     assert_eq!(
         e.matched_route.as_deref(),
         Some("fabric.create_subscriber_guest_token")
-    );
-}
-
-#[test]
-fn test_fabric_tokens_create_invite_token_success() {
-    let _g = common::mocktest::begin();
-    let c = common::mocktest::client();
-    let _ = c.fabric().tokens().create_invite_token(
-        fabric_gen::FabricTokensCreateInviteTokenRequest::new("x"),
-        None,
-    );
-    let e = common::mocktest::journal_last();
-    assert_eq!(e.method, "POST");
-    assert_eq!(
-        e.matched_route.as_deref(),
-        Some("fabric.create_subscriber_invite_token")
-    );
-}
-
-#[test]
-fn test_fabric_tokens_create_invite_token_error() {
-    let _g = common::mocktest::begin();
-    let c = common::mocktest::client();
-    common::mocktest::scenario_set(
-        "fabric.create_subscriber_invite_token",
-        500,
-        json!({"error": "x"}),
-    );
-    let err = c
-        .fabric()
-        .tokens()
-        .create_invite_token(
-            fabric_gen::FabricTokensCreateInviteTokenRequest::new("x"),
-            None,
-        )
-        .expect_err("expected a 500 error");
-    assert_eq!(err.status_code(), 500);
-    let e = common::mocktest::journal_last();
-    assert_eq!(e.response_status, Some(500));
-    assert_eq!(
-        e.matched_route.as_deref(),
-        Some("fabric.create_subscriber_invite_token")
     );
 }
 

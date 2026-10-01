@@ -42,7 +42,6 @@
 //
 //     cargo run --quiet --bin envelope-dump
 
-use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicI32, Ordering};
 use std::time::Duration;
@@ -365,9 +364,9 @@ fn issue_call(client: &RestClient, call: &CallSpec) -> Result<Value, SignalWireR
         "POST" => {
             let body = call.body.clone().unwrap_or_else(|| json!({}));
             // Drive the raw POST at the exact path so the mock's create route is hit.
-            client.http().post(call.path, &body)
+            client.http().post(call.path, Some(&body), None)
         }
-        _ => client.http().get(call.path, &HashMap::new()),
+        _ => client.http().get(call.path, None),
     }
 }
 
@@ -591,7 +590,7 @@ fn run_compose_leg(timeout: f64, abort_preset: bool) -> bool {
             .expect("construct client");
 
     let t0 = std::time::Instant::now();
-    let result = client.http().get("/api/fabric/addresses", &HashMap::new());
+    let result = client.http().get("/api/fabric/addresses", None);
     let elapsed = t0.elapsed().as_secs_f64();
     // A cancellation surfaces as the typed transport-error family (a timeout, or
     // a pre-attempt abort_signal). Bounded iff it cut within the window.

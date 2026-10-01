@@ -14,6 +14,7 @@ pub mod project_types_generated;
 pub mod projects_types_generated;
 pub mod pubsub_types_generated;
 pub mod relay_rest_types_generated;
+pub mod space_types_generated;
 pub mod swml_webhooks_types_generated;
 pub mod video_types_generated;
 pub mod voice_types_generated;

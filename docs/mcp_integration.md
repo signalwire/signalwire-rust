@@ -16,12 +16,12 @@ use signalwire::agent::{AgentBase, AgentOptions};
 use serde_json::json;
 
 let mut agent = AgentBase::new(AgentOptions::new("mcp-guide"));
-agent.add_skill("mcp_gateway", json!({
+agent.add_skill("mcp_gateway", Some(json!({
     "gateway_url": "http://localhost:8080",
     "auth_user": "admin",
     "auth_password": "changeme",
     "services": [{"name": "todo"}, {"name": "calendar"}]
-}));
+})));
 ```
 
 If `services` is omitted (or empty), the skill registers a single generic gateway tool
@@ -57,10 +57,10 @@ fn main() {
     let mut agent = AgentBase::new(AgentOptions::new("mcp-agent"));
 
     // Bridge external MCP services through a gateway
-    agent.add_skill("mcp_gateway", json!({
+    agent.add_skill("mcp_gateway", Some(json!({
         "gateway_url": "http://localhost:8080",
         "services": [{"name": "todo"}, {"name": "calendar"}]
-    }));
+    })));
 
     agent.prompt_add_section("Role", "You are a customer support agent.", vec![]);
 
@@ -81,5 +81,5 @@ fn main() {
 ```
 
 The MCP gateway *server* (which bridges multiple MCP services behind one endpoint) is
-provided separately by the Python SDK; run it there and point your agent's MCP server
-configuration at it.
+a separate component, not part of this crate; run it alongside your agent and point
+the agent's MCP server configuration at it.

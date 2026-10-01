@@ -89,7 +89,7 @@ pub struct AgentOptions {
     /// Recording container format for the `record_call` verb. The reference
     /// default is `"mp4"` (`agent_base.py:131`).
     pub record_format: String,
-    /// Whether `record_call` records in stereo. The reference default is
+    /// Whether `record_call` records in stereo. The default is
     /// `true` (`agent_base.py:132`).
     pub record_stereo: bool,
     /// Default `web_hook_url` applied to every SWAIG function that does not
@@ -117,6 +117,16 @@ pub struct AgentOptions {
 }
 
 impl AgentOptions {
+    /// Start a new options set for an agent named `name`.
+    ///
+    /// `name` is the agent's identity: it is the key [`AgentServer`] routes
+    /// on and, when no explicit `route` is given, the default mount path is
+    /// derived from it. Every other field takes its default —
+    /// notably `auto_answer` and `use_pom` are `true`, `record_call` is
+    /// `false`, `schema_validation` is `true`, and `token_expiry_secs` is
+    /// 3600 — so only the fields you actually want to change need setting.
+    ///
+    /// [`AgentServer`]: crate::server::AgentServer
     pub fn new(name: &str) -> Self {
         AgentOptions {
             name: name.to_string(),
@@ -348,6 +358,22 @@ type SummaryCallback = Box<dyn Fn(&str, &Value, &HashMap<String, String>) + Send
 
 type DebugEventCallback = Box<dyn Fn(&Value, &HashMap<String, String>) + Send + Sync>;
 
+/// A call-end handler: `(call_log, raw_data)` — the conversation as the
+/// platform recorded it, and the complete SWAIG request (`global_data`,
+/// `call_id`, ...). See [`AgentBase::on_call_end`].
+pub type CallEndHandler = Box<dyn Fn(&[Value], &Map<String, Value>) + Send + Sync>;
+
+/// A mounted router / app: `(method, path, headers, body)` → `Some((status,
+/// headers, body))` when it serves the request, `None` to let routing continue.
+/// `path` is relative to the mount prefix (`"/"` for the prefix itself). The
+/// response body is a reader, so a mount can stream it (the built-in server
+/// forwards it chunk by chunk, unbuffered). See [`AgentBase::mount`].
+pub type MountHandler =
+    Box<dyn Fn(&str, &str, &HashMap<String, String>, &str) -> Option<MountResponse> + Send + Sync>;
+
+/// A mounted router's response: `(status, headers, body reader)`.
+pub type MountResponse = (u16, HashMap<String, String>, Box<dyn std::io::Read + Send>);
+
 /// Core agent that extends `Service` with AI-specific capabilities.
 ///
 /// Manages prompt configuration, tool registration, SWML rendering,
@@ -357,11 +383,13 @@ type DebugEventCallback = Box<dyn Fn(&Value, &HashMap<String, String>) + Send + 
 /// equivalent of inheritance) so `Service` methods like `set_route`,
 /// `define_tool`, `on_function_call`, etc. are usable on `AgentBase`
 /// instances directly without needing forwarding wrappers.
-// The several `bool` fields (auto_answer, record_call, record_stereo, use_pom,
-// …) are independent feature flags mirroring Python AgentBase's boolean
-// __init__ kwargs 1:1. clippy::struct_excessive_bools suggests a state struct,
-// but that would diverge from the reference's flat flag surface for no
-// behavioral gain — they're orthogonal toggles, not a state machine.
+///
+/// The several `bool` fields (`auto_answer`, `record_call`, `record_stereo`,
+/// `use_pom`, …) are independent feature flags mirroring Python
+/// `AgentBase`'s boolean `__init__` kwargs 1:1, so
+/// `clippy::struct_excessive_bools` is suppressed: folding them into a state
+/// struct would diverge from the reference's flat flag surface for no
+/// behavioral gain — they are orthogonal toggles, not a state machine.
 #[allow(clippy::struct_excessive_bools)]
 pub struct AgentBase {
     // ── Service (composition + Deref<Service> for inheritance shape) ────
@@ -418,7 +446,7 @@ pub struct AgentBase {
     /// `internal_fillers: Vec<String>` above to preserve backward
     /// compatibility.
     internal_fillers_map: HashMap<String, HashMap<String, Vec<String>>>,
-    debug_events_level: Option<String>,
+    debug_events_level: Option<i64>,
 
     // ── LLM params ──────────────────────────────────────────────────────
     prompt_llm_params: Map<String, Value>,
@@ -431,7 +459,17 @@ pub struct AgentBase {
     answer_config: Map<String, Value>,
 
     // ── Callbacks ───────────────────────────────────────────────────────
-    dynamic_config_callback: Option<Arc<DynamicConfigCallback>>,
+    /// Per-request configuration callbacks, run in registration order
+    /// ([`add_per_call_config`](AgentBase::add_per_call_config) appends,
+    /// [`set_dynamic_config_callback`](AgentBase::set_dynamic_config_callback)
+    /// replaces).
+    dynamic_config_callback: Vec<Arc<DynamicConfigCallback>>,
+    /// Call-end handlers ([`on_call_end`](AgentBase::on_call_end)); shared
+    /// with the reserved `hangup_hook` tool that runs them.
+    call_end_handlers: Arc<std::sync::RwLock<Vec<Arc<CallEndHandler>>>>,
+    /// Extra routers / apps mounted alongside the agent's own routes
+    /// ([`mount`](AgentBase::mount)): `(prefix, name, handler)`.
+    mounts: Vec<(String, Option<String>, Arc<MountHandler>)>,
     summary_callback: Option<Arc<SummaryCallback>>,
     debug_event_handler: Option<Arc<DebugEventCallback>>,
 
@@ -519,7 +557,7 @@ impl Clone for AgentBase {
             native_functions: self.native_functions.clone(),
             internal_fillers: self.internal_fillers.clone(),
             internal_fillers_map: self.internal_fillers_map.clone(),
-            debug_events_level: self.debug_events_level.clone(),
+            debug_events_level: self.debug_events_level,
             prompt_llm_params: self.prompt_llm_params.clone(),
             post_prompt_llm_params: self.post_prompt_llm_params.clone(),
             pre_answer_verbs: self.pre_answer_verbs.clone(),
@@ -527,6 +565,8 @@ impl Clone for AgentBase {
             post_ai_verbs: self.post_ai_verbs.clone(),
             answer_config: self.answer_config.clone(),
             dynamic_config_callback: self.dynamic_config_callback.clone(),
+            call_end_handlers: Arc::clone(&self.call_end_handlers),
+            mounts: self.mounts.clone(),
             summary_callback: self.summary_callback.clone(),
             debug_event_handler: self.debug_event_handler.clone(),
             webhook_url: self.webhook_url.clone(),
@@ -570,6 +610,21 @@ impl std::ops::DerefMut for AgentBase {
 }
 
 impl AgentBase {
+    /// Construct an agent from `options`.
+    ///
+    /// Wraps a freshly built [`Service`] (reachable via `Deref`) and
+    /// initialises the prompt store, tool registry, skill manager, and AI
+    /// configuration.
+    ///
+    /// Where `options` carries a `config_file`, its `service` section is
+    /// consulted for `name` / `route` / `host` / `port`, but **constructor
+    /// values win**: the file is only read where the caller left the field
+    /// unset, matching the wire contract (`agent_base.py:189-196`).
+    ///
+    /// Basic-auth credentials are taken from `options` when supplied,
+    /// otherwise from `SWML_BASIC_AUTH_USER` / `SWML_BASIC_AUTH_PASSWORD`,
+    /// otherwise randomly generated — so an agent is never served
+    /// unauthenticated by accident.
     pub fn new(options: AgentOptions) -> Self {
         // Config-file `service` section, applied with CONSTRUCTOR params
         // taking precedence — the reference consults the file only where the
@@ -649,7 +704,9 @@ impl AgentBase {
             post_answer_verbs: Vec::new(),
             post_ai_verbs: Vec::new(),
             answer_config: Map::new(),
-            dynamic_config_callback: None,
+            dynamic_config_callback: Vec::new(),
+            call_end_handlers: Arc::new(std::sync::RwLock::new(Vec::new())),
+            mounts: Vec::new(),
             summary_callback: None,
             debug_event_handler: None,
             webhook_url: None,
@@ -675,7 +732,7 @@ impl AgentBase {
     }
 
     /// This agent's stable identifier — the `agent_id` option, or the UUID v4
-    /// generated at construction. Mirrors the reference's `agent.agent_id`.
+    /// generated at construction.
     #[must_use]
     pub fn agent_id(&self) -> &str {
         &self.agent_id
@@ -767,15 +824,71 @@ impl AgentBase {
             .validate_token(function_name, call_id, token)
     }
 
+    /// Enforce `secure` for ONE SWAIG call, independent of transport.
+    ///
+    /// A tool registered with `secure = true` REQUIRES a valid `__token`. An
+    /// ABSENT token is refused exactly like a forged one — omitting the
+    /// credential must never be weaker than presenting a wrong one, or
+    /// `secure` would be a flag that permits anonymous calls. A token can only
+    /// be checked against a `call_id`, so a missing `call_id` counts as
+    /// unvalidated rather than as a bypass.
+    ///
+    /// Takes three nullable strings and no transport type, so the HTTP server
+    /// and all four serverless envelopes reach the identical decision.
+    ///
+    /// Returns `None` to proceed, or the refusal to return instead. The
+    /// refusal is a `FunctionResult` body served with HTTP 200, never an error
+    /// status: the engine has no handling for a SWAIG refusal status, so the
+    /// tool reports that it cannot execute and the model relays it.
+    fn swaig_validate_token(
+        &self,
+        function_name: &str,
+        token: Option<&str>,
+        call_id: Option<&str>,
+    ) -> Option<FunctionResult> {
+        // Unknown function: not this check's business — dispatch reports it.
+        let tool = self.get_function(function_name)?;
+        if !tool.secure {
+            return None;
+        }
+        let is_valid = match (token, call_id) {
+            (Some(t), Some(c)) if !t.is_empty() => self.validate_tool_token(function_name, t, c),
+            _ => false,
+        };
+        if is_valid {
+            return None;
+        }
+        Some(FunctionResult::with_response(
+            "I'm sorry, the security token for this function is invalid \
+             or expired. I cannot execute this action.",
+        ))
+    }
+
     // ══════════════════════════════════════════════════════════════════════
     //  Prompt Methods
     // ══════════════════════════════════════════════════════════════════════
 
+    /// Set the agent's system prompt as raw text.
+    ///
+    /// Renders as `ai.prompt.text` in the SWML document. This is the
+    /// alternative to the structured POM path — if POM sections have been
+    /// added, `ai.prompt.pom` is emitted instead and this text is unused.
+    ///
+    /// Returns `&mut Self` for chaining.
     pub fn set_prompt_text(&mut self, text: &str) -> &mut Self {
         self.prompt_text = text.to_string();
         self
     }
 
+    /// Set the post-prompt: the instruction the AI follows *after* the
+    /// conversation ends, typically to produce a summary.
+    ///
+    /// Renders as `ai.post_prompt.text`. The whole `post_prompt` block is
+    /// omitted from the SWML when `text` is empty. The resulting summary is
+    /// POSTed to the agent's `/post_prompt` endpoint, where it reaches the
+    /// handler registered with [`on_summary`](AgentBase::on_summary).
+    ///
+    /// Returns `&mut Self` for chaining.
     pub fn set_post_prompt(&mut self, text: &str) -> &mut Self {
         self.post_prompt = text.to_string();
         self
@@ -915,7 +1028,7 @@ impl AgentBase {
     /// Returns the post-prompt text whatever `set_post_prompt` stored, or
     /// `None` when no post-prompt has been set.
     ///
-    /// Mirrors Python's `PromptManager.get_post_prompt` /
+    /// Matches `PromptManager.get_post_prompt` /
     /// `PromptMixin.get_post_prompt` — used by SWML rendering when a
     /// post-prompt is configured.
     pub fn get_post_prompt(&self) -> Option<&str> {
@@ -929,8 +1042,6 @@ impl AgentBase {
     /// Returns the raw prompt text whatever `set_prompt_text` stored, or
     /// `None` when no raw prompt has been set. Distinct from `get_prompt`
     /// which may return the POM array when `use_pom` is `true`.
-    ///
-    /// Mirrors Python's `PromptManager.get_raw_prompt`.
     pub fn get_raw_prompt(&self) -> Option<&str> {
         if self.prompt_text.is_empty() {
             None
@@ -944,7 +1055,7 @@ impl AgentBase {
     /// `"numbered_bullets"`, and "subsections". Switches the agent to POM
     /// mode.
     ///
-    /// Mirrors Python's `PromptManager.set_prompt_pom` — accepts a list
+    /// Matches `PromptManager.set_prompt_pom` — accepts a list
     /// of section dicts and stores them in `pom_sections`.
     pub fn set_prompt_pom(&mut self, pom: Vec<Value>) -> &mut Self {
         self.use_pom = true;
@@ -955,7 +1066,7 @@ impl AgentBase {
     /// Returns the contexts dictionary as a serialised `Value::Object`,
     /// or `None` when no contexts have been defined yet.
     ///
-    /// Mirrors Python's `PromptManager.get_contexts` which returns the
+    /// Matches `PromptManager.get_contexts` which returns the
     /// contexts dict or `None`.
     pub fn get_contexts(&self) -> Option<Value> {
         self.context_builder
@@ -1040,11 +1151,25 @@ impl AgentBase {
     //  AI Config Methods
     // ══════════════════════════════════════════════════════════════════════
 
+    /// Add one speech-recognition hint.
+    ///
+    /// Hints bias the ASR toward words it would otherwise mis-transcribe —
+    /// product names, jargon, proper nouns. They accumulate and render as
+    /// string entries in the `ai.hints` array, alongside any structured
+    /// pattern hints; the array is omitted entirely when empty.
+    ///
+    /// Returns `&mut Self` for chaining.
     pub fn add_hint(&mut self, hint: &str) -> &mut Self {
         self.hints.push(hint.to_string());
         self
     }
 
+    /// Add several speech-recognition hints at once.
+    ///
+    /// Equivalent to calling [`add_hint`](AgentBase::add_hint) for each
+    /// entry; hints are appended, not replaced.
+    ///
+    /// Returns `&mut Self` for chaining.
     pub fn add_hints(&mut self, hints: Vec<&str>) -> &mut Self {
         for h in hints {
             self.hints.push(h.to_string());
@@ -1169,7 +1294,7 @@ impl AgentBase {
     }
 
     /// Set (or replace) the per-language `params` dict on an already-added
-    /// language. Mirrors Python's `AIConfigMixin.set_language_params` —
+    /// language. Matches `AIConfigMixin.set_language_params` —
     /// engine-specific tuning (voice stability/similarity, model knobs,
     /// etc.) can be attached after the language entry was created.
     ///
@@ -1204,7 +1329,7 @@ impl AgentBase {
     }
 
     /// Read the per-language `params` dict for a previously-added
-    /// language. Mirrors Python's `AIConfigMixin.get_language_params`.
+    /// language.
     ///
     /// Returns `Some(&Value)` (always a JSON object) when params were set,
     /// `None` otherwise — including when the language code is unknown.
@@ -1218,6 +1343,19 @@ impl AgentBase {
         None
     }
 
+    /// Replace the whole language list with `languages`.
+    ///
+    /// Each entry is a raw language object as it will appear in the
+    /// `ai.languages` array (`name`, `code`, `voice`, optional `params`, …).
+    /// Unlike [`add_language`](AgentBase::add_language) this **replaces**
+    /// rather than appends, and performs no shape validation — the caller
+    /// owns the wire shape. The array is omitted from the SWML when empty.
+    ///
+    /// Mutually exclusive with
+    /// [`set_multilingual`](AgentBase::set_multilingual): if both are
+    /// configured the server honours `multilingual` and ignores `languages`.
+    ///
+    /// Returns `&mut Self` for chaining.
     pub fn set_languages(&mut self, languages: Vec<Value>) -> &mut Self {
         self.languages = languages;
         self
@@ -1241,7 +1379,15 @@ impl AgentBase {
     /// `add_pronunciation(replace, with_text, ignore_case=False)`: the SWML
     /// wire keys are `replace`, `with`, and `ignore_case` (a bool, emitted
     /// only when true — matches signalwire-agents schema.json `Pronounce`).
-    pub fn add_pronunciation(&mut self, replace: &str, with: &str, ignore_case: bool) -> &mut Self {
+    /// `ignore_case` is `Option<bool>` because the reference declares it
+    /// optional (`ignore_case: bool = False`); `None` takes `false`.
+    pub fn add_pronunciation(
+        &mut self,
+        replace: &str,
+        with: &str,
+        ignore_case: Option<bool>,
+    ) -> &mut Self {
+        let ignore_case = ignore_case.unwrap_or(false);
         let mut entry = Map::new();
         entry.insert("replace".to_string(), json!(replace));
         entry.insert("with".to_string(), json!(with));
@@ -1252,16 +1398,40 @@ impl AgentBase {
         self
     }
 
+    /// Replace the whole pronunciation list with `pronunciations`.
+    ///
+    /// Each entry is a raw object as it will appear in the `ai.pronounce`
+    /// array (`replace`, `with`, and `ignore_case` only when `true`).
+    /// Unlike [`add_pronunciation`](AgentBase::add_pronunciation) this
+    /// **replaces** rather than appends and does no shape validation — the
+    /// caller owns the wire shape. The array is omitted when empty.
+    ///
+    /// Returns `&mut Self` for chaining.
     pub fn set_pronunciations(&mut self, pronunciations: Vec<Value>) -> &mut Self {
         self.pronunciations = pronunciations;
         self
     }
 
+    /// Set a single AI parameter, overwriting any previous value for `key`.
+    ///
+    /// Parameters land in the `ai.params` object and tune engine behaviour
+    /// (timeouts, barge-in, verbosity, and so on). Other parameters already
+    /// set are left untouched.
+    ///
+    /// Returns `&mut Self` for chaining.
     pub fn set_param(&mut self, key: &str, value: Value) -> &mut Self {
         self.params.insert(key.to_string(), value);
         self
     }
 
+    /// Replace the entire `ai.params` object with `params`.
+    ///
+    /// Any parameters previously set with
+    /// [`set_param`](AgentBase::set_param) are discarded. A `params` value
+    /// that is not a JSON object is **ignored silently** — the existing map
+    /// is left as it was.
+    ///
+    /// Returns `&mut Self` for chaining.
     pub fn set_params(&mut self, params: Value) -> &mut Self {
         if let Value::Object(map) = params {
             self.params = map;
@@ -1269,6 +1439,20 @@ impl AgentBase {
         self
     }
 
+    /// Merge `data` into the agent's global data.
+    ///
+    /// Despite the `set_` name this is a **shallow merge**, not a replace:
+    /// keys in `data` overwrite same-named keys and every other key
+    /// survives. This matches the TypeScript reference, whose `setGlobalData`
+    /// merges exactly like `updateGlobalData` (issue #190) — so
+    /// [`update_global_data`](AgentBase::update_global_data) is a synonym
+    /// here, not a different operation.
+    ///
+    /// Global data renders as the `ai.global_data` object and is visible to
+    /// every SWAIG function invocation on the call. A `data` value that is
+    /// not a JSON object is ignored silently.
+    ///
+    /// Returns `&mut Self` for chaining.
     pub fn set_global_data(&mut self, data: Value) -> &mut Self {
         // #190: merge incoming keys over existing global data (shallow), matching
         // the TS reference (`setGlobalData` shallow-merges like `updateGlobalData`)
@@ -1281,6 +1465,13 @@ impl AgentBase {
         self
     }
 
+    /// Shallow-merge `data` into the agent's global data.
+    ///
+    /// Keys present in `data` overwrite same-named existing keys; all other
+    /// keys are preserved. Nested objects are replaced wholesale, not merged
+    /// recursively. A non-object `data` is ignored silently.
+    ///
+    /// Returns `&mut Self` for chaining.
     pub fn update_global_data(&mut self, data: Value) -> &mut Self {
         if let Value::Object(map) = data {
             for (k, v) in map {
@@ -1296,6 +1487,16 @@ impl AgentBase {
         Value::Object(self.global_data.clone())
     }
 
+    /// Replace the list of server-side native functions the AI may call.
+    ///
+    /// Native functions execute on SignalWire's infrastructure rather than
+    /// against this agent's `/swaig` webhook, so they need no handler here.
+    /// The list renders as `ai.SWAIG.native_functions`; passing an empty
+    /// vector clears it and the key is omitted from the SWML.
+    ///
+    /// This **replaces** the whole list rather than appending.
+    ///
+    /// Returns `&mut Self` for chaining.
     pub fn set_native_functions(&mut self, functions: Vec<&str>) -> &mut Self {
         self.native_functions = functions
             .into_iter()
@@ -1326,6 +1527,19 @@ impl AgentBase {
         "get_ideal_strategy",      // thinking (enable_thinking)
     ];
 
+    /// Replace the flat list of internal filler phrases.
+    ///
+    /// These are short phrases the agent speaks while an internal/native
+    /// function runs, so the caller does not hear dead air. This flat form
+    /// renders as the `ai.params.internal_fillers` array and applies to
+    /// internal work generally — it is **not** the per-function,
+    /// per-language form; for that, use
+    /// [`set_internal_fillers_map`](AgentBase::set_internal_fillers_map),
+    /// which is stored and rendered separately.
+    ///
+    /// Replaces the whole list; the key is omitted when the list is empty.
+    ///
+    /// Returns `&mut Self` for chaining.
     pub fn set_internal_fillers(&mut self, fillers: Vec<&str>) -> &mut Self {
         self.internal_fillers = fillers
             .into_iter()
@@ -1375,6 +1589,14 @@ impl AgentBase {
         self
     }
 
+    /// Append one phrase to the flat internal-filler list.
+    ///
+    /// Accumulates onto whatever
+    /// [`set_internal_fillers`](AgentBase::set_internal_fillers) established;
+    /// the combined list renders as `ai.params.internal_fillers`. No name
+    /// validation applies here — this form is not keyed by function name.
+    ///
+    /// Returns `&mut Self` for chaining.
     pub fn add_internal_filler(&mut self, filler: &str) -> &mut Self {
         self.internal_fillers.push(filler.to_string());
         self
@@ -1408,16 +1630,48 @@ impl AgentBase {
         self
     }
 
-    pub fn enable_debug_events(&mut self, level: &str) -> &mut Self {
-        self.debug_events_level = Some(level.to_string());
+    /// Enable the debug-event webhook at `level`.
+    ///
+    /// `level` is `Option<i64>` because the argument is optional
+    /// (`level: int = 1`): `None` is the omit-it call and, exactly like the
+    /// reference's no-arg call, enables debug events at the base tier `1`.
+    ///
+    /// The level is an INTEGER tier, not a label: the reference emits it as
+    /// `params.debug_webhook_level` (`core/agent_base.py:1259`) and this port's
+    /// own `schema.json` types `debug_webhook_level` as `integer`.
+    pub fn enable_debug_events(&mut self, level: Option<i64>) -> &mut Self {
+        self.debug_events_level = Some(level.unwrap_or(1));
         self
     }
 
+    /// Append one remote SWAIG function-include entry.
+    ///
+    /// An include points the AI at SWAIG functions hosted somewhere other
+    /// than this agent: the object carries a `url` and the `functions` array
+    /// naming which of that endpoint's functions to expose. Includes render
+    /// into `ai.SWAIG.includes`.
+    ///
+    /// Unlike [`set_function_includes`](AgentBase::set_function_includes),
+    /// this appends and applies **no** well-formedness filtering — a
+    /// malformed entry added here reaches the wire as given.
+    ///
+    /// Returns `&mut Self` for chaining.
     pub fn add_function_include(&mut self, include: Value) -> &mut Self {
         self.function_includes.push(include);
         self
     }
 
+    /// Replace the SWAIG function-include list with `includes`.
+    ///
+    /// Entries are filtered to the well-formed ones — a non-empty string
+    /// `url` **and** an array `functions` — matching the TypeScript
+    /// reference's `inc.url && Array.isArray(inc.functions)` check (issue
+    /// #191). Each rejected entry is logged rather than silently dropped;
+    /// the filtering is log-only and wire-neutral.
+    ///
+    /// The surviving entries render into `ai.SWAIG.includes`.
+    ///
+    /// Returns `&mut Self` for chaining.
     pub fn set_function_includes(&mut self, includes: Vec<Value>) -> &mut Self {
         // #191: keep only well-formed entries — a non-empty string `url` AND an
         // array `functions` — matching the TS reference's filter
@@ -1443,6 +1697,19 @@ impl AgentBase {
         self
     }
 
+    /// Merge LLM tuning parameters into the main prompt block.
+    ///
+    /// Keys such as `temperature`, `top_p`, and `confidence` are flattened
+    /// **into** `ai.prompt` alongside `text`/`pom` — they are not nested
+    /// under a sub-object.
+    ///
+    /// Despite the `set_` name this **merges**: repeated calls with distinct
+    /// keys accumulate and a repeated key overwrites its previous value,
+    /// matching `self._prompt_llm_params.update(params)`
+    /// (`ai_config_mixin.py:669`). A non-object `params` is ignored
+    /// silently.
+    ///
+    /// Returns `&mut Self` for chaining.
     pub fn set_prompt_llm_params(&mut self, params: Value) -> &mut Self {
         // MERGE, not replace — mirrors Python's
         // `self._prompt_llm_params.update(params)` (ai_config_mixin.py:669).
@@ -1456,6 +1723,19 @@ impl AgentBase {
         self
     }
 
+    /// Merge LLM tuning parameters into the post-prompt block.
+    ///
+    /// Keys are flattened into `ai.post_prompt` alongside its `text`. The
+    /// post-prompt block itself is only emitted when
+    /// [`set_post_prompt`](AgentBase::set_post_prompt) supplied non-empty
+    /// text, so params set here have no effect without it.
+    ///
+    /// **Merges** rather than replaces, mirroring Python's
+    /// `self._post_prompt_llm_params.update(params)`
+    /// (`ai_config_mixin.py:703`). A non-object `params` is ignored
+    /// silently.
+    ///
+    /// Returns `&mut Self` for chaining.
     pub fn set_post_prompt_llm_params(&mut self, params: Value) -> &mut Self {
         // MERGE, not replace — mirrors Python's
         // `self._post_prompt_llm_params.update(params)` (ai_config_mixin.py:703).
@@ -1471,31 +1751,71 @@ impl AgentBase {
     //  Verb Methods
     // ══════════════════════════════════════════════════════════════════════
 
+    /// Append a SWML verb to run **before** the call is answered.
+    ///
+    /// Emitted as `{verb: config}` in `sections.main`, in insertion order,
+    /// ahead of the `answer` verb — so this is where pre-answer signalling
+    /// belongs. Note that verbs which need answered media (`play`, `record`)
+    /// will not behave here.
+    ///
+    /// `verb` is the SWML verb name and `config` its parameter object; the
+    /// pair is passed through verbatim without validation.
+    ///
+    /// Returns `&mut Self` for chaining.
     pub fn add_pre_answer_verb(&mut self, verb: &str, config: Value) -> &mut Self {
         self.pre_answer_verbs.push((verb.to_string(), config));
         self
     }
 
+    /// Append a SWML verb to run **after** the call is answered but before
+    /// the `ai` verb.
+    ///
+    /// Emitted as `{verb: config}` in `sections.main`, in insertion order,
+    /// after `answer` (and after `record_call` when recording is enabled)
+    /// and immediately before the AI verb. Typical use is a greeting `play`
+    /// that must complete before the AI takes the turn.
+    ///
+    /// `verb` and `config` are passed through verbatim without validation.
+    ///
+    /// Returns `&mut Self` for chaining.
     pub fn add_post_answer_verb(&mut self, verb: &str, config: Value) -> &mut Self {
         self.post_answer_verbs.push((verb.to_string(), config));
         self
     }
 
+    /// Append a SWML verb to run **after** the `ai` verb completes.
+    ///
+    /// Emitted as `{verb: config}` in `sections.main`, in insertion order,
+    /// last in the document. This is what runs once the AI conversation
+    /// ends — a transfer, a closing message, or a hangup.
+    ///
+    /// `verb` and `config` are passed through verbatim without validation.
+    ///
+    /// Returns `&mut Self` for chaining.
     pub fn add_post_ai_verb(&mut self, verb: &str, config: Value) -> &mut Self {
         self.post_ai_verbs.push((verb.to_string(), config));
         self
     }
 
+    /// Remove every pre-answer verb.
+    ///
+    /// Returns `&mut Self` for chaining.
     pub fn clear_pre_answer_verbs(&mut self) -> &mut Self {
         self.pre_answer_verbs.clear();
         self
     }
 
+    /// Remove every post-answer verb.
+    ///
+    /// Returns `&mut Self` for chaining.
     pub fn clear_post_answer_verbs(&mut self) -> &mut Self {
         self.post_answer_verbs.clear();
         self
     }
 
+    /// Remove every post-AI verb.
+    ///
+    /// Returns `&mut Self` for chaining.
     pub fn clear_post_ai_verbs(&mut self) -> &mut Self {
         self.post_ai_verbs.clear();
         self
@@ -1563,7 +1883,10 @@ impl AgentBase {
     //  Skill Methods (stubs)
     // ══════════════════════════════════════════════════════════════════════
 
-    pub fn add_skill(&mut self, name: &str, params: Value) -> &mut Self {
+    /// `params` is `Option<Value>` because the argument is optional
+    /// (`params: dict | None = None`); `None` is the omit-it call.
+    pub fn add_skill(&mut self, name: &str, params: Option<Value>) -> &mut Self {
+        let params = params.unwrap_or(Value::Null);
         if !self.skills.contains(&name.to_string()) {
             self.skills.push(name.to_string());
         }
@@ -1627,15 +1950,26 @@ impl AgentBase {
         self
     }
 
+    /// Remove `name` from the agent's list of loaded skills.
+    ///
+    /// A no-op when the skill was never added. Note this drops the skill
+    /// from the tracking list only — tools the skill already registered on
+    /// the agent are not unregistered.
+    ///
+    /// Returns `&mut Self` for chaining.
     pub fn remove_skill(&mut self, name: &str) -> &mut Self {
         self.skills.retain(|s| s != name);
         self
     }
 
+    /// The names of the skills loaded on this agent, in the order they were
+    /// added.
     pub fn list_skills(&self) -> Vec<String> {
         self.skills.clone()
     }
 
+    /// Whether a skill named `name` is loaded. The comparison is exact and
+    /// case-sensitive.
     pub fn has_skill(&self, name: &str) -> bool {
         self.skills.contains(&name.to_string())
     }
@@ -1644,26 +1978,247 @@ impl AgentBase {
     //  Web / Callback Methods
     // ══════════════════════════════════════════════════════════════════════
 
+    /// Install a callback that reconfigures the agent per SWML request.
+    ///
+    /// When set, each request to the SWML endpoint **clones** the agent,
+    /// invokes `callback` with the request's query params, the parsed body,
+    /// the headers, and `&mut` access to that clone, then renders SWML from
+    /// the clone and discards it. The agent this method was called on is
+    /// never mutated by a request, so per-caller configuration cannot leak
+    /// between concurrent calls.
+    ///
+    /// Setting a second callback replaces the first (and any added with
+    /// [`add_per_call_config`](AgentBase::add_per_call_config)).
+    ///
+    /// Returns `&mut Self` for chaining.
     pub fn set_dynamic_config_callback(&mut self, callback: DynamicConfigCallback) -> &mut Self {
-        self.dynamic_config_callback = Some(Arc::new(callback));
+        self.dynamic_config_callback = vec![Arc::new(callback)];
         self
     }
 
+    /// Register a per-request configuration callback, KEEPING any already set.
+    ///
+    /// Same signature and contract as
+    /// [`set_dynamic_config_callback`](AgentBase::set_dynamic_config_callback),
+    /// except that callbacks accumulate instead of overwriting. They run in
+    /// registration order against the same per-request clone, so a later one
+    /// sees what an earlier one configured. This is the composable form — a
+    /// base agent and a mixin can each register what they own without knowing
+    /// the other exists. Configure the clone handed to the callback, never the
+    /// master agent.
+    ///
+    /// Returns `&mut Self` for chaining.
+    pub fn add_per_call_config(&mut self, callback: DynamicConfigCallback) -> &mut Self {
+        self.dynamic_config_callback.push(Arc::new(callback));
+        self
+    }
+
+    /// Mount an extra router or app alongside this agent's own routes.
+    ///
+    /// A request whose path is `prefix` or lies under `prefix/` is offered to
+    /// `app_or_router` (with the path relative to the prefix) before the agent's
+    /// own routing and auth — exactly as a router mounted on the reference's
+    /// app is reached ahead of the agent's catch-all; it answers `Some(response)`
+    /// to serve it or `None` to let routing continue. The agent's own route
+    /// (including the bare one the platform fetches) and `/health` / `/ready`
+    /// keep working; several mounts all stay reachable (longest prefix first).
+    /// `prefix` takes no trailing slash; `""` offers every request. `name` is an
+    /// optional label for the mount.
+    ///
+    /// Returns `&mut Self` for chaining.
+    pub fn mount(
+        &mut self,
+        app_or_router: MountHandler,
+        prefix: Option<&str>,
+        name: Option<&str>,
+    ) -> &mut Self {
+        let prefix = prefix.unwrap_or("").trim_end_matches('/').to_string();
+        self.mounts
+            .push((prefix, name.map(str::to_string), Arc::new(app_or_router)));
+        // Longest prefix first, so a nested mount wins over its parent.
+        self.mounts.sort_by_key(|m| std::cmp::Reverse(m.0.len()));
+        self
+    }
+
+    /// Offer a request to the mounted routers, longest prefix first.
+    fn dispatch_mounts(
+        &self,
+        method: &str,
+        path: &str,
+        headers: &HashMap<String, String>,
+        body: &str,
+    ) -> Option<MountResponse> {
+        let path = path.split_once('?').map_or(path, |(p, _)| p);
+        for (prefix, _name, handler) in &self.mounts {
+            let rest = if prefix.is_empty() {
+                Some(path)
+            } else if path == prefix {
+                Some("/")
+            } else {
+                path.strip_prefix(prefix.as_str())
+                    .filter(|r| r.starts_with('/'))
+            };
+            if let Some(rest) = rest
+                && let Some(response) = handler(method, rest, headers, body)
+            {
+                return Some(response);
+            }
+        }
+        None
+    }
+
+    /// Register a handler that runs when the call ends, with the transcript.
+    ///
+    /// Handlers run in registration order and receive `(call_log, raw_data)`:
+    /// the conversation as the platform recorded it (resolved from whichever of
+    /// `call_log` / `raw_call_log` carried it), and the complete SWAIG request,
+    /// including `global_data` and `call_id`.
+    ///
+    /// This wraps the platform's reserved `hangup_hook` function, which fires on
+    /// hangup and is never offered to the model. Registering a handler also turns
+    /// on the `swaig_post_conversation` param: `call_log` is a CONDITIONAL field
+    /// of a SWAIG request, and without that param the hook still fires but
+    /// carries no transcript — indistinguishable from the hook never having been
+    /// registered. If the param was explicitly set to `false` it is left alone
+    /// and a warning is logged.
+    ///
+    /// A handler that panics is caught and logged, so one failing teardown
+    /// handler cannot stop the others or fail the hangup.
+    ///
+    /// Returns `&mut Self` for chaining.
+    pub fn on_call_end(&mut self, handler: CallEndHandler) -> &mut Self {
+        let first = {
+            let mut handlers = self
+                .call_end_handlers
+                .write()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            handlers.push(Arc::new(handler));
+            handlers.len() == 1
+        };
+        if first {
+            self.ensure_call_end_hook();
+        }
+        self
+    }
+
+    /// Register the reserved `hangup_hook` once and enable its transcript payload.
+    fn ensure_call_end_hook(&mut self) {
+        match self.params.get("swaig_post_conversation") {
+            Some(Value::Bool(false)) => log::warn!(
+                "[signalwire] on_call_end handlers are registered but \
+                 swaig_post_conversation is explicitly false -- they will receive \
+                 an empty call_log"
+            ),
+            None => {
+                self.set_param("swaig_post_conversation", json!(true));
+            }
+            Some(_) => {}
+        }
+        let handlers = Arc::clone(&self.call_end_handlers);
+        let hook: FunctionHandler = Box::new(move |_args, raw_data| {
+            // Both spellings are seen in the wild depending on engine.
+            let call_log: Vec<Value> = ["call_log", "raw_call_log"]
+                .iter()
+                .find_map(|k| {
+                    raw_data
+                        .get(*k)
+                        .and_then(Value::as_array)
+                        .filter(|a| !a.is_empty())
+                })
+                .cloned()
+                .unwrap_or_default();
+            let snapshot: Vec<Arc<CallEndHandler>> = handlers
+                .read()
+                .unwrap_or_else(std::sync::PoisonError::into_inner)
+                .clone();
+            for handler in snapshot {
+                // Isolate each handler so one failure cannot stop the others.
+                let outcome = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                    handler(&call_log, raw_data);
+                }));
+                if outcome.is_err() {
+                    log::error!("[signalwire] call_end_handler_failed");
+                }
+            }
+            FunctionResult::with_response("")
+        });
+        self.tool(
+            "hangup_hook",
+            "Internal: fires when the call ends.",
+            json!({}),
+            hook,
+            false,
+        );
+    }
+
+    /// Point SWAIG function callbacks at an external `url` instead of this
+    /// agent's own `/swaig` endpoint.
+    ///
+    /// When set, every tool with a handler emits `web_hook_url: url`
+    /// **verbatim** — no per-tool `__token` is appended and no SWAIG query
+    /// params are added, matching the wire contract (`agent_base.py:1085`).
+    ///
+    /// Security consequence: because no token is minted, an external
+    /// webhook is not protected by the per-call token the platform would
+    /// otherwise validate; the external endpoint is responsible for
+    /// authenticating requests itself.
+    ///
+    /// Returns `&mut Self` for chaining.
     pub fn set_webhook_url(&mut self, url: &str) -> &mut Self {
         self.webhook_url = Some(url.to_string());
         self
     }
 
+    /// Send the post-prompt summary to `url` instead of this agent's own
+    /// `/post_prompt` endpoint.
+    ///
+    /// Emitted verbatim as `ai.post_prompt_url`. When unset, the agent
+    /// derives that URL from its proxy base, route, and basic-auth
+    /// credentials — so overriding this means the summary POST no longer
+    /// carries the agent's embedded credentials, and the receiving endpoint
+    /// must authenticate the request on its own.
+    ///
+    /// Returns `&mut Self` for chaining.
     pub fn set_post_prompt_url(&mut self, url: &str) -> &mut Self {
         self.post_prompt_url = Some(url.to_string());
         self
     }
 
+    /// Override the base URL the agent advertises in the webhook URLs it
+    /// emits.
+    ///
+    /// Use this when the agent sits behind a proxy or tunnel whose public
+    /// address it cannot infer. Any trailing `/` is stripped. This base
+    /// takes precedence over both `SWML_PROXY_URL_BASE` and the
+    /// `X-Forwarded-*` headers.
+    ///
+    /// Because it is operator-supplied configuration rather than request
+    /// data, it is also honoured when reconstructing the URL an inbound
+    /// webhook signature was computed over — regardless of the
+    /// `trust_proxy_for_signature` setting.
+    ///
+    /// Returns `&mut Self` for chaining.
     pub fn manual_set_proxy_url(&mut self, url: &str) -> &mut Self {
         self.manual_proxy_url = Some(url.trim_end_matches('/').to_string());
         self
     }
 
+    /// Merge `params` into the query string appended to the agent's
+    /// generated webhook URLs.
+    ///
+    /// The params are appended to **every** generated endpoint URL — the
+    /// `swaig` callback and the `debug_events` callback alike — matching the
+    /// reference, which passes the same map to both. Keys already present
+    /// are overwritten; others are preserved.
+    ///
+    /// Setting any query param also forces a per-tool `web_hook_url` to be
+    /// emitted for tools that would otherwise fall back to the shared
+    /// `SWAIG.defaults.web_hook_url`.
+    ///
+    /// Has no effect when [`set_webhook_url`](AgentBase::set_webhook_url)
+    /// has redirected callbacks to an external URL, which is used verbatim.
+    ///
+    /// Returns `&mut Self` for chaining.
     pub fn add_swaig_query_params(&mut self, params: HashMap<String, String>) -> &mut Self {
         for (k, v) in params {
             self.swaig_query_params.insert(k, v);
@@ -1671,16 +2226,42 @@ impl AgentBase {
         self
     }
 
+    /// Remove every SWAIG webhook query param previously added.
+    ///
+    /// Returns `&mut Self` for chaining.
     pub fn clear_swaig_query_params(&mut self) -> &mut Self {
         self.swaig_query_params.clear();
         self
     }
 
+    /// Register the handler invoked when the platform POSTs the
+    /// post-prompt summary to `/post_prompt`.
+    ///
+    /// The callback receives the summary text, the full request body, and
+    /// the request headers. The summary text is read from
+    /// `post_prompt_data.raw`, falling back to a top-level `summary` field,
+    /// and is the empty string when neither is present. The endpoint always
+    /// answers `200` whether or not a handler is registered.
+    ///
+    /// Setting a second handler replaces the first.
+    ///
+    /// Returns `&mut Self` for chaining.
     pub fn on_summary(&mut self, callback: SummaryCallback) -> &mut Self {
         self.summary_callback = Some(Arc::new(callback));
         self
     }
 
+    /// Register the handler invoked when the platform POSTs a debug event
+    /// to `/debug_events`.
+    ///
+    /// The callback receives the event body and the request headers. Debug
+    /// events are only delivered once
+    /// [`enable_debug_events`](AgentBase::enable_debug_events) has emitted
+    /// the `debug_webhook_url` / `debug_webhook_level` params into the SWML.
+    ///
+    /// Setting a second handler replaces the first.
+    ///
+    /// Returns `&mut Self` for chaining.
     pub fn on_debug_event(&mut self, callback: DebugEventCallback) -> &mut Self {
         self.debug_event_handler = Some(Arc::new(callback));
         self
@@ -1690,11 +2271,34 @@ impl AgentBase {
     //  SIP Methods
     // ══════════════════════════════════════════════════════════════════════
 
+    /// Enable SIP routing for this agent.
+    ///
+    /// Sets the `sip_routing` AI param to `true`, which is what tells the
+    /// platform to route SIP traffic addressed to this agent's registered
+    /// usernames here. Register the usernames themselves with
+    /// [`register_sip_username`](AgentBase::register_sip_username) or
+    /// [`auto_map_sip_usernames`](AgentBase::auto_map_sip_usernames).
+    ///
+    /// Returns `&mut Self` for chaining.
     pub fn enable_sip_routing(&mut self) -> &mut Self {
         self.set_param("sip_routing", json!(true));
         self
     }
 
+    /// Register a SIP `username` that should route to this agent, optionally
+    /// on a specific `route`.
+    ///
+    /// The name is stored case-folded and deduplicated, so registering
+    /// `"Bob"`, `"BOB"`, and `"bob"` collapses to one `bob` entry;
+    /// [`sip_usernames`](AgentBase::sip_usernames) reads the set back.
+    ///
+    /// On the wire this sets the `sip_username` AI param to the username as
+    /// **given** (not lower-cased), and sets `sip_route` when `route` is
+    /// non-empty. Because both are single-valued params, registering several
+    /// usernames leaves the last one in `sip_username` — the accumulated set
+    /// is local bookkeeping.
+    ///
+    /// Returns `&mut Self` for chaining.
     pub fn register_sip_username(&mut self, username: &str, route: &str) -> &mut Self {
         // Python parity (`AgentBase.register_sip_username`): accumulate the name
         // into a case-folded, deduplicated set. Registering "Bob"/"BOB"/"bob"
@@ -1759,8 +2363,12 @@ impl AgentBase {
     ///
     /// Prefers the manual proxy-URL override when set; otherwise composes from
     /// the service host/port/route.
+    ///
+    /// `include_auth` is `Option<bool>` because the reference declares it
+    /// optional (`include_auth: bool = False`); `None` takes `false`.
     #[must_use]
-    pub fn get_full_url(&self, include_auth: bool) -> String {
+    pub fn get_full_url(&self, include_auth: Option<bool>) -> String {
+        let include_auth = include_auth.unwrap_or(false);
         let base = if let Some(proxy) = &self.manual_proxy_url {
             proxy.trim_end_matches('/').to_string()
         } else {
@@ -1807,9 +2415,11 @@ impl AgentBase {
         &mut self,
         url: &str,
         headers: Option<Map<String, Value>>,
-        resources: bool,
+        resources: Option<bool>,
         resource_vars: Option<Map<String, Value>>,
     ) -> &mut Self {
+        // `None` is the omit-it call; the reference default is `False`.
+        let resources = resources.unwrap_or(false);
         let mut server = Map::new();
         server.insert("url".to_string(), json!(url));
         if let Some(h) = headers
@@ -1878,7 +2488,7 @@ impl AgentBase {
         self.debug_routes_enabled
     }
 
-    /// Start a web server for this agent (Python `WebMixin.serve`). Delegates
+    /// Start a web server for this agent. Delegates
     /// to [`AgentBase::run`], optionally overriding host/port first.
     pub fn serve(&mut self, host: Option<&str>, port: Option<u16>) {
         if let Some(h) = host {
@@ -1890,18 +2500,21 @@ impl AgentBase {
         self.run();
     }
 
-    /// Set up graceful shutdown signal handling (Python
-    /// `WebMixin.setup_graceful_shutdown`). The Rust `run` blocks
+    /// Set up graceful shutdown signal handling. The Rust `run` blocks
     /// synchronously; this is the entry point (a no-op placeholder
     /// until an async server backend is wired).
     pub fn setup_graceful_shutdown(&self) {}
 
     /// Register a routing callback for `path`.
-    pub fn register_routing_callback<F>(&mut self, callback: F, path: &str) -> &mut Self
+    ///
+    /// `path` is `Option<&str>` because the argument is optional
+    /// (`path: str = "/sip"`); `None` takes `"/sip"`.
+    pub fn register_routing_callback<F>(&mut self, callback: F, path: Option<&str>) -> &mut Self
     where
         F: Fn(&Value, &HashMap<String, String>) -> Option<String> + Send + Sync + 'static,
     {
-        self.service.register_routing_callback(callback, path);
+        let path = path.unwrap_or("/sip");
+        self.service.register_routing_callback(callback, Some(path));
         self
     }
 
@@ -2066,8 +2679,20 @@ impl AgentBase {
         if !self.internal_fillers.is_empty() {
             merged_params.insert("internal_fillers".to_string(), json!(self.internal_fillers));
         }
-        if let Some(ref level) = self.debug_events_level {
-            merged_params.insert("debug_events".to_string(), json!(level));
+        if let Some(level) = self.debug_events_level {
+            // Debug events emit a PAIR of params, exactly as the reference does
+            // (`core/agent_base.py:1254-1261`): the auth-embedded webhook URL
+            // built from the `debug_events` endpoint, and the INTEGER tier.
+            //
+            // The wire key for the tier is `debug_webhook_level` — see this
+            // crate's embedded `schema.json`, which types it as `integer` and
+            // has no `debug_events` param at all. `debug_events` is the webhook
+            // PATH segment, never a params key.
+            merged_params.insert(
+                "debug_webhook_url".to_string(),
+                json!(self.build_webhook_url("debug_events", headers)),
+            );
+            merged_params.insert("debug_webhook_level".to_string(), json!(level));
         }
         if !merged_params.is_empty() {
             ai.insert("params".to_string(), Value::Object(merged_params));
@@ -2134,16 +2759,44 @@ impl AgentBase {
 
     /// Handle an HTTP request. Overrides the service handler with agent-specific
     /// logic for SWML, SWAIG dispatch, and post-prompt callbacks.
+    ///
+    /// `body` is `Option<&str>` to match [`SWMLService::handle_request`], which
+    /// this overrides — a GET carries no body at all.
     pub fn handle_request(
         &self,
         method: &str,
         path: &str,
         headers: &HashMap<String, String>,
-        body: &str,
+        body: Option<&str>,
     ) -> (u16, HashMap<String, String>, String) {
+        // `unwrap_or_default()` (not `unwrap_or("")`) for the same reason as
+        // `SWMLService::handle_request`: the reference's default is `null`, and
+        // `unwrap_or(<literal>)` is the form the enumerator records a default from.
+        let body = body.unwrap_or_default();
+
+        // Split the query string off the path. `path` arrives as the RAW
+        // request target on every transport (the built-in server hands over
+        // `tiny_http`'s `request.url()`, which retains `?a=b`), so routing must
+        // match on the path alone — otherwise `/swaig?__token=…` misses the
+        // route and 404s, and the credential could never be read at all. The
+        // parsed query is merged into the SWAIG body under `query_params`
+        // below, which is where `swaig_request_token` looks for `__token`.
+        let (path, raw_query) = path.split_once('?').map_or((path, ""), |(p, q)| (p, q));
+
         // Health/ready: delegate to service
         if path == "/health" || path == "/ready" {
-            return self.service.handle_request(method, path, headers, body);
+            return self
+                .service
+                .handle_request(method, path, headers, Some(body));
+        }
+
+        // Mounted routers / apps are reached ahead of the agent's own routing.
+        if let Some((status, resp_headers, mut reader)) =
+            self.dispatch_mounts(method, path, headers, body)
+        {
+            let mut text = String::new();
+            let _ = reader.read_to_string(&mut text);
+            return (status, resp_headers, text);
         }
 
         // Determine sub-path relative to route
@@ -2193,11 +2846,35 @@ impl AgentBase {
         }
 
         // Parse body
-        let request_data: Option<Value> = if body.is_empty() {
+        let mut request_data: Option<Value> = if body.is_empty() {
             None
         } else {
             serde_json::from_str(body).ok()
         };
+
+        // Merge the request's own query string into `query_params`. A caller
+        // that already embedded `query_params` in the body keeps precedence
+        // (that shape is what the dynamic-config callback and the existing
+        // dispatch tests drive), so this only ADDS the transport-supplied
+        // parameters that were previously dropped on the floor.
+        if !raw_query.is_empty() {
+            let parsed = parse_query_string(raw_query);
+            if !parsed.is_empty() {
+                let target = request_data.get_or_insert_with(|| json!({}));
+                if let Some(obj) = target.as_object_mut() {
+                    let existing = obj
+                        .get("query_params")
+                        .and_then(Value::as_object)
+                        .cloned()
+                        .unwrap_or_default();
+                    let mut merged = parsed;
+                    for (k, v) in existing {
+                        merged.insert(k, v);
+                    }
+                    obj.insert("query_params".to_string(), Value::Object(merged));
+                }
+            }
+        }
 
         match sub_path.as_str() {
             "/" | "" => self.handle_swml_request(method, &request_data, headers),
@@ -2222,6 +2899,28 @@ impl AgentBase {
         path: &str,
         raw_body: &str,
     ) -> bool {
+        let url_base = self.resolve_signature_base(headers);
+        let full_url = format!("{}{path}", url_base.trim_end_matches('/'));
+
+        // Prefer the stronger SHA-256 signature when the platform sends it;
+        // fall back to the SHA-1 header (older platform builds, cXML Scheme B).
+        let sig256 = headers
+            .iter()
+            .find(|(k, _)| k.eq_ignore_ascii_case("x-signalwire-sha256-signature"))
+            .map(|(_, v)| v.as_str())
+            .filter(|s| !s.is_empty());
+        if let Some(sig256) = sig256
+            && crate::security::webhook::validate_webhook_signature_sha256(
+                signing_key,
+                sig256,
+                &full_url,
+                raw_body,
+            )
+            .unwrap_or(false)
+        {
+            return true;
+        }
+
         // Header lookup is case-insensitive in practice — try both.
         let signature = headers
             .get("X-SignalWire-Signature")
@@ -2232,11 +2931,6 @@ impl AgentBase {
             Some(s) => s.as_str(),
             None => return false,
         };
-
-        let url_base = self.resolve_signature_base(headers);
-        // Strip a trailing slash on the base so we don't double-up.
-        let base = url_base.trim_end_matches('/');
-        let full_url = format!("{base}{path}");
 
         crate::security::webhook::validate_webhook_signature(
             signing_key,
@@ -2305,7 +2999,7 @@ impl AgentBase {
         request_data: &Option<Value>,
         headers: &HashMap<String, String>,
     ) -> (u16, HashMap<String, String>, String) {
-        if self.dynamic_config_callback.is_some() {
+        if !self.dynamic_config_callback.is_empty() {
             let mut clone = self.clone_for_request();
             let query_params = request_data
                 .as_ref()
@@ -2314,7 +3008,9 @@ impl AgentBase {
                 .cloned()
                 .unwrap_or_default();
 
-            if let Some(ref cb) = self.dynamic_config_callback {
+            // Every registered callback, in registration order, against the
+            // one per-request clone.
+            for cb in &self.dynamic_config_callback {
                 cb(&query_params, request_data, headers, &mut clone);
             }
 
@@ -2341,33 +3037,17 @@ impl AgentBase {
             return json_response(400, &json!({"error": "Missing function name"}));
         }
 
-        // Validate the per-tool security token when one was supplied. The
-        // reference reads `__token` (falling back to the legacy `token`) off the
-        // query string and, on a mismatch, refuses to execute a SECURE function —
-        // returning a spoken refusal rather than an HTTP error
-        // (`agent_base.py:1414-1444`). An INSECURE function is dispatched even with
-        // a bad token, exactly as the reference does.
-        if let Some(token) = swaig_request_token(data) {
-            let call_id = data
-                .get("call_id")
-                .and_then(Value::as_str)
-                .or_else(|| data.get("call").and_then(|c| c.get("call_id"))?.as_str());
-            if let Some(call_id) = call_id
-                && self.has_function(function_name)
-                && !self.validate_tool_token(function_name, &token, call_id)
-                && self
-                    .get_function(function_name)
-                    .is_some_and(|tool| tool.secure)
-            {
-                return json_response(
-                    200,
-                    &FunctionResult::with_response(
-                        "I'm sorry, the security token for this function is invalid \
-                         or expired. I cannot execute this action.",
-                    )
-                    .to_value(),
-                );
-            }
+        // Enforce `secure` through the transport-agnostic core, so this path
+        // and every serverless path reach the identical decision. The token
+        // rides the query string (`__token`, legacy `token`); the call_id rides
+        // the POST body (flat `call_id`, or nested `call.call_id`).
+        let token = swaig_request_token(data);
+        let call_id = data
+            .get("call_id")
+            .and_then(Value::as_str)
+            .or_else(|| data.get("call").and_then(|c| c.get("call_id"))?.as_str());
+        if let Some(refusal) = self.swaig_validate_token(function_name, token.as_deref(), call_id) {
+            return json_response(200, &refusal.to_value());
         }
 
         let args = data["argument"]["parsed"]
@@ -2379,7 +3059,7 @@ impl AgentBase {
 
         let raw_data = data.as_object().cloned().unwrap_or_default();
 
-        match self.on_function_call(function_name, &args, &raw_data) {
+        match self.on_function_call(function_name, &args, Some(&raw_data)) {
             Some(result) => json_response(200, &result.to_value()),
             None => json_response(
                 404,
@@ -2427,11 +3107,20 @@ impl AgentBase {
                         if let Value::Object(map) = &mut func_def {
                             map.insert("web_hook_url".to_string(), json!(wh_url));
                         }
-                    } else {
-                        // LOCAL webhook. A `secure` tool carries a per-tool
-                        // `__token` — the WIRE manifestation of `secure` the
-                        // platform validates on the callback (agent_base.py:1040 +
-                        // 1097). An insecure tool carries none.
+                    } else if tool.secure || !self.swaig_query_params.is_empty() {
+                        // LOCAL webhook, emitted ONLY when there is something to
+                        // carry: a per-tool `__token` (the WIRE manifestation of
+                        // `secure` the platform validates on the callback) or the
+                        // agent's SWAIG query params. Mirrors the reference's
+                        // `elif token or agent_to_use._swaig_query_params:`
+                        // (agent_base.py:1087).
+                        //
+                        // An INSECURE tool with no query params gets NO
+                        // `web_hook_url` key AT ALL — not an empty string, not a
+                        // tokenless URL. It falls back to the shared
+                        // `SWAIG.defaults.web_hook_url`. Emitting a per-tool
+                        // callback here would publish an UNAUTHENTICATED,
+                        // function-specific endpoint.
                         let mut url = self.build_swaig_webhook_url(headers);
                         if tool.secure {
                             let token = self.create_tool_token(name, &call_id);
@@ -2450,6 +3139,23 @@ impl AgentBase {
 
         if !functions.is_empty() {
             swaig.insert("functions".to_string(), Value::Array(functions));
+            // The SHARED fallback callback, emitted WHENEVER functions exist
+            // (reference agent_base.py:1109-1113). This is what an INSECURE tool
+            // — which correctly carries no per-tool `web_hook_url` — actually
+            // dispatches to; without it such a tool would render with NO
+            // reachable callback at all.
+            //
+            // Composed like the reference (agent_base.py:972-979): the local
+            // `/swaig` URL carrying the agent's SWAIG query params, replaced
+            // wholesale by the `set_web_hook_url` override when one is set.
+            let default_webhook_url = self
+                .web_hook_url_override
+                .clone()
+                .unwrap_or_else(|| self.build_swaig_webhook_url(headers));
+            swaig.insert(
+                "defaults".to_string(),
+                json!({"web_hook_url": default_webhook_url}),
+            );
         }
 
         if !self.native_functions.is_empty() {
@@ -2467,6 +3173,15 @@ impl AgentBase {
     }
 
     fn build_swaig_webhook_url(&self, headers: &HashMap<String, String>) -> String {
+        self.build_webhook_url("swaig", headers)
+    }
+
+    /// Build the auth-embedded webhook URL for `endpoint`, the port's
+    /// `_build_webhook_url(endpoint, query_params)`
+    /// (`core/swml_service.py:1615`). The `swaig` query params are appended for
+    /// every endpoint, matching the wire contract — it passes the same
+    /// `_swaig_query_params` copy to the `swaig` and `debug_events` calls alike.
+    fn build_webhook_url(&self, endpoint: &str, headers: &HashMap<String, String>) -> String {
         let proxy_base = self.resolve_proxy_base(headers);
         let route_segment = if self.service.route() == "/" {
             String::new()
@@ -2482,9 +3197,9 @@ impl AgentBase {
                 let proto_end = proxy_base.find("://").unwrap() + 3;
                 let proto = &proxy_base[..proto_end];
                 let rest = &proxy_base[proto_end..];
-                format!("{proto}{user}:{pass}@{rest}{route_segment}/swaig")
+                format!("{proto}{user}:{pass}@{rest}{route_segment}/{endpoint}")
             } else {
-                format!("http://{user}:{pass}@{proxy_base}{route_segment}/swaig")
+                format!("http://{user}:{pass}@{proxy_base}{route_segment}/{endpoint}")
             };
 
         if !self.swaig_query_params.is_empty() {
@@ -2558,8 +3273,7 @@ impl AgentBase {
     /// Start a blocking HTTP server on the configured host:port.
     ///
     /// Serves HTTPS instead when `SWML_SSL_ENABLED` is set together with
-    /// `SWML_SSL_CERT_PATH` / `SWML_SSL_KEY_PATH` (mirrors Python's
-    /// `SecurityConfig` / uvicorn `ssl_*` contract).
+    /// `SWML_SSL_CERT_PATH` / `SWML_SSL_KEY_PATH`.
     ///
     /// # Panics
     ///
@@ -2597,7 +3311,10 @@ impl AgentBase {
         let (server, _is_https) = crate::server::tls::bind_server(&addr)
             .unwrap_or_else(|e| panic!("Failed to bind {addr}: {e}"));
 
-        for mut request in server.incoming_requests() {
+        // Each request is handled on a worker thread (bounded), so a slow
+        // handler does not hold up every other call; SWML_SYNC_HANDLERS_INLINE
+        // restores one-at-a-time handling on this thread.
+        crate::core::sync_handlers::serve_requests(server.incoming_requests(), |mut request| {
             let method = request.method().as_str().to_string();
             let path = request.url().to_string();
 
@@ -2612,8 +3329,29 @@ impl AgentBase {
             let mut body_buf = String::new();
             let _ = request.as_reader().read_to_string(&mut body_buf);
 
+            // A mounted router may stream its body: forward it unbuffered.
+            if let Some((status, resp_headers, reader)) =
+                self.dispatch_mounts(&method, &path, &req_headers, &body_buf)
+            {
+                let headers: Vec<tiny_http::Header> = resp_headers
+                    .iter()
+                    .filter_map(|(k, v)| {
+                        tiny_http::Header::from_bytes(k.as_bytes(), v.as_bytes()).ok()
+                    })
+                    .collect();
+                let response = tiny_http::Response::new(
+                    tiny_http::StatusCode(status),
+                    headers,
+                    reader,
+                    None,
+                    None,
+                );
+                let _ = request.respond(response);
+                return;
+            }
+
             let (status, resp_headers, resp_body) =
-                self.handle_request(&method, &path, &req_headers, &body_buf);
+                self.handle_request(&method, &path, &req_headers, Some(&body_buf));
 
             let mut response =
                 tiny_http::Response::from_string(&resp_body).with_status_code(status);
@@ -2623,7 +3361,7 @@ impl AgentBase {
                 }
             }
             let _ = request.respond(response);
-        }
+        });
     }
 }
 
@@ -2634,6 +3372,59 @@ impl AgentBase {
 /// `query_params["__token"]`, falling back to the legacy unprefixed `token`
 /// (`agent_base.py:1414`); the HTTP adapter surfaces the parsed query string on
 /// the request body under `query_params`.
+/// Parse a raw `a=b&c=d` query string into a JSON object of string values.
+///
+/// A leading `?` is tolerated so a full `?a=b` fragment parses the same as
+/// `a=b`. Percent-escapes are decoded and `+` is read as a space, matching how
+/// the platform encodes a minted `__token` into the webhook URL. A repeated key
+/// keeps the FIRST value, and a valueless key maps to the empty string.
+fn parse_query_string(raw: &str) -> Map<String, Value> {
+    let mut out = Map::new();
+    for pair in raw.trim_start_matches('?').split('&') {
+        if pair.is_empty() {
+            continue;
+        }
+        let (k, v) = pair.split_once('=').unwrap_or((pair, ""));
+        let key = percent_decode(k);
+        if key.is_empty() || out.contains_key(&key) {
+            continue;
+        }
+        out.insert(key, Value::String(percent_decode(v)));
+    }
+    out
+}
+
+/// Decode `%XX` escapes and `+`-as-space in one query-string component.
+/// An invalid escape is left verbatim rather than dropped.
+fn percent_decode(s: &str) -> String {
+    let bytes = s.as_bytes();
+    let mut out: Vec<u8> = Vec::with_capacity(bytes.len());
+    let mut i = 0;
+    while i < bytes.len() {
+        match bytes[i] {
+            b'+' => {
+                out.push(b' ');
+                i += 1;
+            }
+            b'%' if i + 2 < bytes.len() => {
+                let hex = &s[i + 1..i + 3];
+                if let Ok(byte) = u8::from_str_radix(hex, 16) {
+                    out.push(byte);
+                    i += 3;
+                } else {
+                    out.push(bytes[i]);
+                    i += 1;
+                }
+            }
+            b => {
+                out.push(b);
+                i += 1;
+            }
+        }
+    }
+    String::from_utf8_lossy(&out).into_owned()
+}
+
 fn swaig_request_token(data: &Value) -> Option<String> {
     let params = data.get("query_params")?.as_object()?;
     params
@@ -2752,8 +3543,14 @@ mod tests {
 
         let mut pom = agent.pom().unwrap();
         // Mutate the returned PromptObjectModel; agent state must be unaffected.
-        pom.add_section_with(Some("Injected".to_string()), "ib")
-            .unwrap();
+        pom.add_section_with(
+            Some("Injected".to_string()),
+            Some("ib".into()),
+            None,
+            None,
+            None,
+        )
+        .unwrap();
         pom.sections[0].title = Some("Hijacked".to_string());
 
         let fresh = agent.pom().unwrap();
@@ -2859,7 +3656,7 @@ mod tests {
         let mut args = Map::new();
         args.insert("name".to_string(), json!("Alice"));
         let raw = Map::new();
-        let result = agent.on_function_call("greet", &args, &raw).unwrap();
+        let result = agent.on_function_call("greet", &args, Some(&raw)).unwrap();
         assert_eq!(result.to_value()["response"], "Hello, Alice!");
     }
 
@@ -2868,7 +3665,11 @@ mod tests {
         let agent = AgentBase::new(default_options());
         let args = Map::new();
         let raw = Map::new();
-        assert!(agent.on_function_call("nonexistent", &args, &raw).is_none());
+        assert!(
+            agent
+                .on_function_call("nonexistent", &args, Some(&raw))
+                .is_none()
+        );
     }
 
     #[test]
@@ -3186,7 +3987,7 @@ mod tests {
     fn test_add_pronunciation() {
         // Wire keys: replace, with; `ignore_case` (bool) omitted when false.
         let mut agent = AgentBase::new(default_options());
-        agent.add_pronunciation("SignalWire", "signal wire", false);
+        agent.add_pronunciation("SignalWire", "signal wire", None);
         assert_eq!(agent.pronunciations[0]["replace"], "SignalWire");
         assert_eq!(agent.pronunciations[0]["with"], "signal wire");
         assert!(agent.pronunciations[0].get("ignore_case").is_none());
@@ -3199,7 +4000,7 @@ mod tests {
         // ignore_case=true emits the bool wire key `ignore_case: true`
         // (matches signalwire-agents schema.json + Python add_pronunciation).
         let mut agent = AgentBase::new(default_options());
-        agent.add_pronunciation("AI", "A.I.", true);
+        agent.add_pronunciation("AI", "A.I.", Some(true));
         assert_eq!(agent.pronunciations[0]["ignore_case"], json!(true));
         assert!(agent.pronunciations[0].get("ignore").is_none());
     }
@@ -3207,7 +4008,7 @@ mod tests {
     #[test]
     fn test_set_pronunciations() {
         let mut agent = AgentBase::new(default_options());
-        agent.add_pronunciation("a", "b", false);
+        agent.add_pronunciation("a", "b", None);
         agent.set_pronunciations(vec![]);
         assert!(agent.pronunciations.is_empty());
     }
@@ -3343,8 +4144,8 @@ mod tests {
     #[test]
     fn test_enable_debug_events() {
         let mut agent = AgentBase::new(default_options());
-        agent.enable_debug_events("all");
-        assert_eq!(agent.debug_events_level, Some("all".to_string()));
+        agent.enable_debug_events(Some(3));
+        assert_eq!(agent.debug_events_level, Some(3));
     }
 
     #[test]
@@ -3485,7 +4286,7 @@ mod tests {
         assert!(!agent.has_skill("weather"));
         assert!(agent.list_skills().is_empty());
 
-        agent.add_skill("weather", json!({}));
+        agent.add_skill("weather", None);
         assert!(agent.has_skill("weather"));
         assert_eq!(agent.list_skills(), vec!["weather"]);
 
@@ -3496,8 +4297,8 @@ mod tests {
     #[test]
     fn test_add_skill_idempotent() {
         let mut agent = AgentBase::new(default_options());
-        agent.add_skill("s1", json!({}));
-        agent.add_skill("s1", json!({}));
+        agent.add_skill("s1", None);
+        agent.add_skill("s1", None);
         assert_eq!(agent.list_skills().len(), 1);
     }
 
@@ -3512,7 +4313,7 @@ mod tests {
         // the bare string: same bookkeeping entry AND the same SWAIG functions
         // get registered (real behaviour, not just the name list).
         let mut enum_agent = AgentBase::new(default_options());
-        enum_agent.add_skill(SkillName::Datetime.as_str(), json!({}));
+        enum_agent.add_skill(SkillName::Datetime.as_str(), None);
         assert!(enum_agent.has_skill("datetime")); // string lookup
         assert!(enum_agent.has_skill(SkillName::Datetime.as_str())); // enum lookup — same skill
         assert!(enum_agent.has_tool("get_current_time"));
@@ -3520,7 +4321,7 @@ mod tests {
 
         // Parity: the bare string still works identically (Python uses str).
         let mut string_agent = AgentBase::new(default_options());
-        string_agent.add_skill("datetime", json!({}));
+        string_agent.add_skill("datetime", None);
 
         // Both paths produce the same loaded-skill set and the same tool set.
         assert_eq!(enum_agent.list_skills(), string_agent.list_skills());
@@ -3700,7 +4501,7 @@ mod tests {
     #[test]
     fn test_build_ai_verb_pronunciations() {
         let mut agent = AgentBase::new(default_options());
-        agent.add_pronunciation("AI", "A.I.", false);
+        agent.add_pronunciation("AI", "A.I.", None);
         let ai = agent.build_ai_verb(&HashMap::new());
         assert_eq!(ai["pronounce"][0]["replace"], "AI");
     }
@@ -3710,11 +4511,69 @@ mod tests {
         let mut agent = AgentBase::new(default_options());
         agent.set_param("temperature", json!(0.7));
         agent.add_internal_filler("one moment");
-        agent.enable_debug_events("all");
+        agent.enable_debug_events(Some(3));
         let ai = agent.build_ai_verb(&HashMap::new());
         assert_eq!(ai["params"]["temperature"], 0.7);
         assert_eq!(ai["params"]["internal_fillers"][0], "one moment");
-        assert_eq!(ai["params"]["debug_events"], "all");
+        // The reference emits `params.debug_webhook_level` as an INT
+        // (`core/agent_base.py:1259`); `debug_events` is the webhook PATH
+        // segment and must never appear as a params key.
+        assert_eq!(ai["params"]["debug_webhook_level"], 3);
+        assert!(ai["params"].get("debug_events").is_none());
+    }
+
+    #[test]
+    fn test_enable_debug_events_defaults_to_tier_one() {
+        let mut agent = AgentBase::new(default_options());
+        agent.enable_debug_events(None);
+        let ai = agent.build_ai_verb(&HashMap::new());
+        // The reference's `level: int = 1` default.
+        assert_eq!(ai["params"]["debug_webhook_level"], 1);
+    }
+
+    /// WIRE CONTRACT: enabling debug events emits BOTH params — the reference
+    /// sets `params["debug_webhook_url"] = _build_webhook_url("debug_events",
+    /// …)` alongside `params["debug_webhook_level"]`
+    /// (`core/agent_base.py:1254-1261`). Emitting only the level leaves the
+    /// platform with nowhere to deliver the events.
+    #[test]
+    fn test_debug_events_emit_both_url_and_level() {
+        let mut agent = AgentBase::new(default_options());
+        agent.enable_debug_events(Some(2));
+        let ai = agent.build_ai_verb(&HashMap::new());
+
+        assert_eq!(ai["params"]["debug_webhook_level"], 2);
+        let url = ai["params"]["debug_webhook_url"]
+            .as_str()
+            .expect("debug_webhook_url must be emitted alongside the level");
+        // The `debug_events` ENDPOINT segment (not `swaig`), and the same
+        // auth-embedded shape every webhook URL carries.
+        assert!(
+            url.ends_with("/debug_events"),
+            "debug_webhook_url must address the debug_events endpoint, got {url}"
+        );
+        assert!(
+            url.contains('@'),
+            "debug_webhook_url must embed basic-auth credentials, got {url}"
+        );
+    }
+
+    /// The debug webhook URL carries the same `swaig` query params the
+    /// reference passes into its `_build_webhook_url("debug_events", …)` call.
+    #[test]
+    fn test_debug_webhook_url_carries_swaig_query_params() {
+        let mut agent = AgentBase::new(default_options());
+        let mut qp = HashMap::new();
+        qp.insert("tenant".to_string(), "acme".to_string());
+        agent.add_swaig_query_params(qp);
+        agent.enable_debug_events(Some(1));
+        let ai = agent.build_ai_verb(&HashMap::new());
+
+        let url = ai["params"]["debug_webhook_url"].as_str().unwrap();
+        assert!(
+            url.contains("/debug_events?tenant=acme"),
+            "query params must ride along on the debug webhook URL, got {url}"
+        );
     }
 
     #[test]
@@ -3729,12 +4588,15 @@ mod tests {
     fn test_build_ai_verb_swaig_functions() {
         let mut agent = AgentBase::new(default_options());
         agent.manual_set_proxy_url("https://proxy.example.com");
+        // SECURE (the define_tool default) — only a tool with a token (or SWAIG
+        // query params) gets its own per-tool web_hook_url; see
+        // test_render_emits_token_only_for_secure_tools for the insecure side.
         agent.define_tool(
             "lookup",
             "Look up info",
             json!({}),
             Box::new(|_args, _raw| FunctionResult::with_response("result")),
-            false,
+            true,
         );
         let ai = agent.build_ai_verb(&HashMap::new());
         let funcs = ai["SWAIG"]["functions"].as_array().unwrap();
@@ -3841,7 +4703,7 @@ mod tests {
         let clone = agent.clone_for_request();
         let args = Map::new();
         let raw = Map::new();
-        let result = clone.on_function_call("func1", &args, &raw).unwrap();
+        let result = clone.on_function_call("func1", &args, Some(&raw)).unwrap();
         assert_eq!(result.to_value()["response"], "ok");
     }
 
@@ -3850,7 +4712,7 @@ mod tests {
     #[test]
     fn test_handle_request_health() {
         let agent = AgentBase::new(default_options());
-        let (status, _, body) = agent.handle_request("GET", "/health", &HashMap::new(), "");
+        let (status, _, body) = agent.handle_request("GET", "/health", &HashMap::new(), None);
         assert_eq!(status, 200);
         let parsed: Value = serde_json::from_str(&body).unwrap();
         assert_eq!(parsed["status"], "healthy");
@@ -3859,14 +4721,14 @@ mod tests {
     #[test]
     fn test_handle_request_ready() {
         let agent = AgentBase::new(default_options());
-        let (status, _, _) = agent.handle_request("GET", "/ready", &HashMap::new(), "");
+        let (status, _, _) = agent.handle_request("GET", "/ready", &HashMap::new(), None);
         assert_eq!(status, 200);
     }
 
     #[test]
     fn test_handle_request_auth_required() {
         let agent = AgentBase::new(default_options());
-        let (status, _, _) = agent.handle_request("POST", "/", &HashMap::new(), "");
+        let (status, _, _) = agent.handle_request("POST", "/", &HashMap::new(), None);
         assert_eq!(status, 401);
     }
 
@@ -3874,7 +4736,7 @@ mod tests {
     fn test_handle_request_swml() {
         let mut agent = AgentBase::new(default_options());
         agent.set_prompt_text("Bot");
-        let (status, _, body) = agent.handle_request("POST", "/", &authed_headers(), "");
+        let (status, _, body) = agent.handle_request("POST", "/", &authed_headers(), None);
         assert_eq!(status, 200);
         let parsed: Value = serde_json::from_str(&body).unwrap();
         assert_eq!(parsed["version"], "1.0.0");
@@ -3896,7 +4758,7 @@ mod tests {
             "argument": {"parsed": [{}]}
         });
         let (status, _, resp_body) =
-            agent.handle_request("POST", "/swaig", &authed_headers(), &body.to_string());
+            agent.handle_request("POST", "/swaig", &authed_headers(), Some(&body.to_string()));
         assert_eq!(status, 200);
         let parsed: Value = serde_json::from_str(&resp_body).unwrap();
         assert_eq!(parsed["response"], "Hello!");
@@ -3907,14 +4769,14 @@ mod tests {
         let agent = AgentBase::new(default_options());
         let body = json!({"function": "nonexistent", "argument": {"parsed": [{}]}});
         let (status, _, _) =
-            agent.handle_request("POST", "/swaig", &authed_headers(), &body.to_string());
+            agent.handle_request("POST", "/swaig", &authed_headers(), Some(&body.to_string()));
         assert_eq!(status, 404);
     }
 
     #[test]
     fn test_handle_request_swaig_no_body() {
         let agent = AgentBase::new(default_options());
-        let (status, _, _) = agent.handle_request("POST", "/swaig", &authed_headers(), "");
+        let (status, _, _) = agent.handle_request("POST", "/swaig", &authed_headers(), None);
         assert_eq!(status, 400);
     }
 
@@ -3923,7 +4785,7 @@ mod tests {
         let agent = AgentBase::new(default_options());
         let body = json!({"argument": {}});
         let (status, _, _) =
-            agent.handle_request("POST", "/swaig", &authed_headers(), &body.to_string());
+            agent.handle_request("POST", "/swaig", &authed_headers(), Some(&body.to_string()));
         assert_eq!(status, 400);
     }
 
@@ -3931,8 +4793,12 @@ mod tests {
     fn test_handle_request_post_prompt() {
         let agent = AgentBase::new(default_options());
         let body = json!({"summary": "Call went well"});
-        let (status, _, resp_body) =
-            agent.handle_request("POST", "/post_prompt", &authed_headers(), &body.to_string());
+        let (status, _, resp_body) = agent.handle_request(
+            "POST",
+            "/post_prompt",
+            &authed_headers(),
+            Some(&body.to_string()),
+        );
         assert_eq!(status, 200);
         let parsed: Value = serde_json::from_str(&resp_body).unwrap();
         assert_eq!(parsed["status"], "ok");
@@ -3941,7 +4807,7 @@ mod tests {
     #[test]
     fn test_handle_request_not_found() {
         let agent = AgentBase::new(default_options());
-        let (status, _, _) = agent.handle_request("GET", "/unknown", &authed_headers(), "");
+        let (status, _, _) = agent.handle_request("GET", "/unknown", &authed_headers(), None);
         assert_eq!(status, 404);
     }
 
@@ -3956,7 +4822,7 @@ mod tests {
             .add_hint("hint1")
             .add_hints(vec!["hint2", "hint3"])
             .set_param("temperature", json!(0.7))
-            .enable_debug_events("all")
+            .enable_debug_events(Some(3))
             .add_pre_answer_verb("play", json!({"url": "ring.mp3"}))
             .add_post_answer_verb("sleep", json!(1000));
 
@@ -4017,7 +4883,7 @@ mod tests {
             clone.set_prompt_text("Dynamic prompt");
         }));
 
-        let (status, _, body) = agent.handle_request("POST", "/", &authed_headers(), "{}");
+        let (status, _, body) = agent.handle_request("POST", "/", &authed_headers(), Some("{}"));
         assert_eq!(status, 200);
         let parsed: Value = serde_json::from_str(&body).unwrap();
         // The AI verb should have the dynamically modified prompt
@@ -4050,8 +4916,12 @@ mod tests {
         }));
 
         let body = json!({"summary": "Great call"});
-        let (status, _, _) =
-            agent.handle_request("POST", "/post_prompt", &authed_headers(), &body.to_string());
+        let (status, _, _) = agent.handle_request(
+            "POST",
+            "/post_prompt",
+            &authed_headers(),
+            Some(&body.to_string()),
+        );
         assert_eq!(status, 200);
 
         let guard = captured.lock().unwrap();
@@ -4126,15 +4996,20 @@ mod tests {
     // does not. This is the wire property the cross-port SECURE-DEFAULT gate
     // (porting-sdk `diff_port_secure_default.py`) compares.
 
-    /// The `web_hook_url` the render emitted for `tool_name`, if any.
-    fn rendered_webhook_url(doc: &Value, tool_name: &str) -> Option<String> {
+    /// The rendered `SWAIG.functions[]` entry for `tool_name`, if any.
+    fn rendered_entry<'a>(doc: &'a Value, tool_name: &str) -> Option<&'a Value> {
         doc["sections"]["main"]
             .as_array()?
             .iter()
             .find_map(|sec| sec.get("ai"))?["SWAIG"]["functions"]
             .as_array()?
             .iter()
-            .find(|f| f["function"].as_str() == Some(tool_name))?["web_hook_url"]
+            .find(|f| f["function"].as_str() == Some(tool_name))
+    }
+
+    /// The `web_hook_url` the render emitted for `tool_name`, if any.
+    fn rendered_webhook_url(doc: &Value, tool_name: &str) -> Option<String> {
+        rendered_entry(doc, tool_name)?["web_hook_url"]
             .as_str()
             .map(str::to_string)
     }
@@ -4170,11 +5045,101 @@ mod tests {
             "a secure tool's rendered webhook must carry the per-tool __token, got {secure_url}"
         );
 
-        let insecure_url = rendered_webhook_url(&doc, "insecure_tool")
-            .expect("insecure tool must render a web_hook_url");
+        // The reference emits NO web_hook_url KEY AT ALL for an insecure tool
+        // with no token and no SWAIG query params (agent_base.py:1084-1099: the
+        // `elif token or _swaig_query_params` has no else). A per-tool callback
+        // here would be an UNAUTHENTICATED function-specific endpoint; the
+        // insecure tool falls back to the shared SWAIG defaults instead.
         assert!(
-            !insecure_url.contains("__token="),
-            "an insecure tool must carry NO __token, got {insecure_url}"
+            rendered_entry(&doc, "insecure_tool")
+                .expect("insecure tool must still render a function entry")
+                .get("web_hook_url")
+                .is_none(),
+            "an insecure tool must have NO web_hook_url key at all, got {:?}",
+            rendered_webhook_url(&doc, "insecure_tool")
+        );
+    }
+
+    /// The shared `ai.SWAIG.defaults` block the render emitted, if any.
+    fn rendered_swaig_defaults(doc: &Value) -> Option<&Value> {
+        let ai = doc["sections"]["main"]
+            .as_array()?
+            .iter()
+            .find_map(|sec| sec.get("ai"))?;
+        ai["SWAIG"].get("defaults")
+    }
+
+    #[test]
+    fn test_render_emits_shared_swaig_defaults_webhook() {
+        // The reference adds `SWAIG.defaults.web_hook_url` WHENEVER functions
+        // exist (agent_base.py:1109-1113). This is the endpoint an INSECURE tool
+        // — which correctly has no per-tool web_hook_url — actually dispatches
+        // to. Without it, dropping the per-tool key would leave an insecure tool
+        // with NO reachable callback at all, which the SECURE-DEFAULT gate
+        // cannot see (it inspects only the functions[] entries).
+        let a = agent_with_secure_and_insecure_tools();
+        let doc = a.render_swml(&HashMap::new());
+
+        let defaults =
+            rendered_swaig_defaults(&doc).expect("functions exist, so SWAIG.defaults must be too");
+        let url = defaults["web_hook_url"]
+            .as_str()
+            .expect("SWAIG.defaults.web_hook_url must be a string");
+        assert!(
+            url.contains("/swaig"),
+            "the shared fallback must point at the agent's /swaig endpoint, got {url}"
+        );
+        // The SHARED endpoint is not per-tool, so it carries no per-tool token.
+        assert!(
+            !url.contains("__token="),
+            "the shared defaults endpoint is not per-tool and carries no __token, got {url}"
+        );
+    }
+
+    #[test]
+    fn test_swaig_defaults_honors_web_hook_url_override() {
+        // agent_base.py:975-979 — `set_web_hook_url` replaces the composed
+        // default wholesale.
+        let mut a = agent_with_secure_and_insecure_tools();
+        a.set_web_hook_url("https://override.example.com/swaig");
+        let doc = a.render_swml(&HashMap::new());
+
+        assert_eq!(
+            rendered_swaig_defaults(&doc).expect("SWAIG.defaults")["web_hook_url"],
+            "https://override.example.com/swaig"
+        );
+    }
+
+    #[test]
+    fn test_no_swaig_defaults_when_no_functions() {
+        // The reference emits `defaults` only INSIDE `if functions:`.
+        let mut a = AgentBase::new(default_options());
+        a.set_prompt_text("no tools");
+        let doc = a.render_swml(&HashMap::new());
+        assert!(
+            rendered_swaig_defaults(&doc).is_none(),
+            "no functions means no SWAIG.defaults block"
+        );
+    }
+
+    #[test]
+    fn test_insecure_tool_gets_webhook_when_swaig_query_params_exist() {
+        // The reference's guard is `token OR _swaig_query_params` — with query
+        // params configured, even an insecure tool gets a local URL (carrying the
+        // params, and still no __token).
+        let mut a = agent_with_secure_and_insecure_tools();
+        a.add_swaig_query_params(HashMap::from([("tenant".to_string(), "acme".to_string())]));
+        let doc = a.render_swml(&HashMap::new());
+
+        let url = rendered_webhook_url(&doc, "insecure_tool")
+            .expect("query params must produce a local web_hook_url even when insecure");
+        assert!(
+            url.contains("tenant=acme"),
+            "the SWAIG query params must ride on the URL, got {url}"
+        );
+        assert!(
+            !url.contains("__token="),
+            "an insecure tool must carry NO __token, got {url}"
         );
     }
 
@@ -4238,7 +5203,7 @@ mod tests {
             "POST",
             "/swaig",
             &authed_headers(),
-            &swaig_body("secure_tool", Some("garbage_token")),
+            Some(&swaig_body("secure_tool", Some("garbage_token"))),
         );
         assert_eq!(status, 200, "the reference refuses in-band, not via HTTP");
         assert!(
@@ -4255,7 +5220,7 @@ mod tests {
             "POST",
             "/swaig",
             &authed_headers(),
-            &swaig_body("secure_tool", Some(&token)),
+            Some(&swaig_body("secure_tool", Some(&token))),
         );
         assert_eq!(status, 200);
         assert!(
@@ -4276,7 +5241,7 @@ mod tests {
             "POST",
             "/swaig",
             &authed_headers(),
-            &swaig_body("insecure_tool", Some("garbage_token")),
+            Some(&swaig_body("insecure_tool", Some("garbage_token"))),
         );
         assert_eq!(status, 200);
         assert!(
@@ -4299,7 +5264,7 @@ mod tests {
             "query_params": {"__token": token},
         });
         let (status, _, out) =
-            a.handle_request("POST", "/swaig", &authed_headers(), &body.to_string());
+            a.handle_request("POST", "/swaig", &authed_headers(), Some(&body.to_string()));
         assert_eq!(status, 200);
         assert!(
             !out.contains("security token for this function is invalid"),
@@ -4309,20 +5274,321 @@ mod tests {
     }
 
     #[test]
-    fn test_swaig_dispatch_without_token_still_works() {
-        // No token supplied → no validation performed (the reference gates the
-        // whole check on `if token:`).
+    fn test_swaig_dispatch_refuses_absent_token_on_secure_function() {
+        // An ABSENT token is refused exactly like a forged one. Omitting the
+        // credential must never be weaker than presenting a wrong one, or
+        // `secure` would be a flag that permits anonymous calls.
         let a = agent_with_secure_and_insecure_tools();
         let (status, _, body) = a.handle_request(
             "POST",
             "/swaig",
             &authed_headers(),
-            &swaig_body("secure_tool", None),
+            Some(&swaig_body("secure_tool", None)),
+        );
+        assert_eq!(status, 200, "the refusal is in-band, not an HTTP error");
+        assert!(
+            body.contains("security token for this function is invalid"),
+            "a secure tool must fail CLOSED with no token, got {body}"
+        );
+    }
+
+    #[test]
+    fn test_swaig_dispatch_runs_insecure_function_without_token() {
+        // The counterweight to the test above: an insecure tool runs ungated.
+        // A fix that refuses everything is not a fix.
+        let a = agent_with_secure_and_insecure_tools();
+        let (status, _, body) = a.handle_request(
+            "POST",
+            "/swaig",
+            &authed_headers(),
+            Some(&swaig_body("insecure_tool", None)),
         );
         assert_eq!(status, 200);
         assert!(
             body.contains("ok"),
+            "an insecure tool dispatches with no token at all, got {body}"
+        );
+    }
+
+    #[test]
+    fn test_swaig_dispatch_refuses_when_call_id_absent() {
+        // A token can only be checked against a call_id; with none there is
+        // nothing to check it against, so it counts as unvalidated rather than
+        // as a bypass.
+        let a = agent_with_secure_and_insecure_tools();
+        let token = a.create_tool_token("secure_tool", "call_dispatch");
+        let body = json!({
+            "function": "secure_tool",
+            "argument": {"parsed": [{}]},
+            "query_params": {"__token": token},
+        });
+        let (status, _, out) =
+            a.handle_request("POST", "/swaig", &authed_headers(), Some(&body.to_string()));
+        assert_eq!(status, 200);
+        assert!(
+            out.contains("security token for this function is invalid"),
+            "a missing call_id must not be a bypass, got {out}"
+        );
+    }
+
+    #[test]
+    fn test_swaig_dispatch_runs_insecure_function_without_call_id() {
+        let a = agent_with_secure_and_insecure_tools();
+        let body = json!({
+            "function": "insecure_tool",
+            "argument": {"parsed": [{}]},
+        });
+        let (status, _, out) =
+            a.handle_request("POST", "/swaig", &authed_headers(), Some(&body.to_string()));
+        assert_eq!(status, 200);
+        assert!(
+            out.contains("ok"),
+            "an insecure tool runs with no call_id and no token, got {out}"
+        );
+    }
+
+    // ── The credential rides the request's own query string ──────────────
+    //
+    // The built-in server hands `handle_request` `tiny_http`'s `request.url()`,
+    // which retains `?a=b`. Before this was split off, `/swaig?__token=…`
+    // missed the route entirely (404) and the query was never parsed, so the
+    // token could not arrive over the real HTTP transport at all.
+
+    #[test]
+    fn test_swaig_route_matches_when_path_carries_a_query_string() {
+        let a = agent_with_secure_and_insecure_tools();
+        let (status, _, body) = a.handle_request(
+            "POST",
+            "/swaig?foo=bar",
+            &authed_headers(),
+            Some(&swaig_body("insecure_tool", None)),
+        );
+        assert_eq!(status, 200, "a query string must not break routing: {body}");
+        assert!(
+            body.contains("ok"),
             "expected the handler's response: {body}"
         );
+    }
+
+    #[test]
+    fn test_swaig_token_read_from_the_request_query_string() {
+        let a = agent_with_secure_and_insecure_tools();
+        let token = a.create_tool_token("secure_tool", "call_dispatch");
+        let path = format!("/swaig?__token={token}");
+        let (status, _, body) = a.handle_request(
+            "POST",
+            &path,
+            &authed_headers(),
+            Some(&swaig_body("secure_tool", None)),
+        );
+        assert_eq!(status, 200);
+        assert!(
+            !body.contains("security token for this function is invalid"),
+            "a valid token on the query string must dispatch, got {body}"
+        );
+        assert!(
+            body.contains("ok"),
+            "expected the handler's response: {body}"
+        );
+    }
+
+    #[test]
+    fn test_swaig_forged_token_on_the_query_string_is_refused() {
+        let a = agent_with_secure_and_insecure_tools();
+        let (status, _, body) = a.handle_request(
+            "POST",
+            "/swaig?__token=garbage_token",
+            &authed_headers(),
+            Some(&swaig_body("secure_tool", None)),
+        );
+        assert_eq!(status, 200);
+        assert!(
+            body.contains("security token for this function is invalid"),
+            "a forged query-string token must be refused, got {body}"
+        );
+    }
+
+    #[test]
+    fn test_query_string_parsing_decodes_escapes_and_keeps_body_precedence() {
+        let parsed = parse_query_string("?a=1&b=hello+world&c=%2Ffoo&d&a=2");
+        assert_eq!(parsed.get("a").and_then(Value::as_str), Some("1"));
+        assert_eq!(parsed.get("b").and_then(Value::as_str), Some("hello world"));
+        assert_eq!(parsed.get("c").and_then(Value::as_str), Some("/foo"));
+        assert_eq!(parsed.get("d").and_then(Value::as_str), Some(""));
+
+        // A body-supplied query_params entry wins over the transport's, so the
+        // existing dispatch shape keeps working unchanged.
+        let a = agent_with_secure_and_insecure_tools();
+        let token = a.create_tool_token("secure_tool", "call_dispatch");
+        let (status, _, body) = a.handle_request(
+            "POST",
+            "/swaig?__token=garbage_token",
+            &authed_headers(),
+            Some(&swaig_body("secure_tool", Some(&token))),
+        );
+        assert_eq!(status, 200);
+        assert!(
+            body.contains("ok"),
+            "the body's query_params must take precedence, got {body}"
+        );
+    }
+
+    // ── add_per_call_config / on_call_end ────────────────────────────────
+    // Ported from signalwire-python tests/unit/core/test_agent_consolidation.py.
+
+    fn swml_prompt_after_request(agent: &AgentBase) -> Value {
+        let (status, _, body) = agent.handle_request("POST", "/", &authed_headers(), Some("{}"));
+        assert_eq!(status, 200);
+        let parsed: Value = serde_json::from_str(&body).unwrap();
+        parsed["sections"]["main"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|v| v.get("ai").is_some())
+            .unwrap()["ai"]["prompt"]["text"]
+            .clone()
+    }
+
+    #[test]
+    fn test_added_per_call_configs_all_run_in_registration_order() {
+        let mut agent = AgentBase::new(default_options());
+        agent.set_prompt_text("base");
+        agent.add_per_call_config(Box::new(|_q, _b, _h, clone| {
+            clone.set_prompt_text("first");
+        }));
+        agent.add_per_call_config(Box::new(|_q, _b, _h, clone| {
+            let seen = clone.prompt_text.clone();
+            clone.set_prompt_text(&format!("{seen}+second"));
+        }));
+        assert_eq!(swml_prompt_after_request(&agent), "first+second");
+        assert_eq!(agent.prompt_text, "base");
+    }
+
+    #[test]
+    fn test_set_dynamic_config_still_replaces_and_add_composes() {
+        let mut agent = AgentBase::new(default_options());
+        agent.set_prompt_text("base");
+        agent.set_dynamic_config_callback(Box::new(|_q, _b, _h, c| {
+            c.set_prompt_text("one");
+        }));
+        agent.set_dynamic_config_callback(Box::new(|_q, _b, _h, c| {
+            c.set_prompt_text("two");
+        }));
+        assert_eq!(swml_prompt_after_request(&agent), "two");
+        agent.add_per_call_config(Box::new(|_q, _b, _h, c| {
+            let seen = c.prompt_text.clone();
+            c.set_prompt_text(&format!("{seen}+added"));
+        }));
+        assert_eq!(swml_prompt_after_request(&agent), "two+added");
+    }
+
+    fn fire_hangup_hook(agent: &AgentBase, payload: &Value) {
+        let mut body = json!({"function": "hangup_hook", "argument": {"parsed": [{}]}});
+        for (k, v) in payload.as_object().unwrap() {
+            body[k] = v.clone();
+        }
+        let (status, _, _) =
+            agent.handle_request("POST", "/swaig", &authed_headers(), Some(&body.to_string()));
+        assert_eq!(status, 200);
+    }
+
+    #[test]
+    fn test_on_call_end_enables_payload_and_defines_reserved_hook() {
+        let mut agent = AgentBase::new(default_options());
+        assert!(agent.params.get("swaig_post_conversation").is_none());
+        agent.on_call_end(Box::new(|_log, _raw| {}));
+        assert_eq!(agent.params["swaig_post_conversation"], json!(true));
+        assert!(agent.list_tool_names().contains(&"hangup_hook".to_string()));
+    }
+
+    #[test]
+    fn test_on_call_end_handlers_receive_the_log_in_order() {
+        use std::sync::{Arc, Mutex};
+        let seen = Arc::new(Mutex::new(Vec::<String>::new()));
+        let mut agent = AgentBase::new(default_options());
+        let s1 = Arc::clone(&seen);
+        agent.on_call_end(Box::new(move |log, _raw| {
+            s1.lock().unwrap().push(format!("one:{}", log.len()));
+        }));
+        let s2 = Arc::clone(&seen);
+        agent.on_call_end(Box::new(move |_log, raw| {
+            s2.lock()
+                .unwrap()
+                .push(format!("two:{}", raw["call_id"].as_str().unwrap_or("")));
+        }));
+        fire_hangup_hook(
+            &agent,
+            &json!({"call_log": [{"role": "user"}], "call_id": "c-1"}),
+        );
+        assert_eq!(*seen.lock().unwrap(), vec!["one:1", "two:c-1"]);
+    }
+
+    #[test]
+    fn test_on_call_end_accepts_raw_call_log_and_isolates_failures() {
+        use std::sync::{Arc, Mutex};
+        let seen = Arc::new(Mutex::new(Vec::<usize>::new()));
+        let mut agent = AgentBase::new(default_options());
+        agent.on_call_end(Box::new(|_log, _raw| panic!("boom")));
+        let s = Arc::clone(&seen);
+        agent.on_call_end(Box::new(move |log, _raw| s.lock().unwrap().push(log.len())));
+        fire_hangup_hook(
+            &agent,
+            &json!({"raw_call_log": [{"role": "user"}, {"role": "assistant"}]}),
+        );
+        assert_eq!(*seen.lock().unwrap(), vec![2]);
+    }
+
+    #[test]
+    fn test_on_call_end_does_not_override_an_explicit_false() {
+        let mut agent = AgentBase::new(default_options());
+        agent.set_param("swaig_post_conversation", json!(false));
+        agent.on_call_end(Box::new(|_log, _raw| {}));
+        assert_eq!(agent.params["swaig_post_conversation"], json!(false));
+    }
+
+    // ── mount ────────────────────────────────────────────────────────────
+
+    fn ok_router(path: &'static str) -> MountHandler {
+        Box::new(move |method, rest, _h, _b| {
+            (method == "POST" && rest == path).then(|| {
+                let body: Box<dyn std::io::Read + Send> =
+                    Box::new(std::io::Cursor::new(r#"{"ok":true}"#.as_bytes().to_vec()));
+                (200, HashMap::new(), body)
+            })
+        })
+    }
+
+    #[test]
+    fn test_mounted_route_is_reachable_and_agent_routes_survive() {
+        let mut agent = AgentBase::new(default_options());
+        let route = agent.service.route().trim_end_matches('/').to_string();
+        agent.mount(ok_router("/handoff"), Some(&format!("{route}/chat")), None);
+        let (status, _, body) = agent.handle_request(
+            "POST",
+            &format!("{route}/chat/handoff"),
+            &HashMap::new(),
+            None,
+        );
+        assert_eq!(status, 200);
+        assert_eq!(body, r#"{"ok":true}"#);
+        // The bare agent route is not swallowed (401 = alive, demanding auth).
+        let (status, _, _) = agent.handle_request("POST", &route, &HashMap::new(), Some("{}"));
+        assert_ne!(status, 204);
+        assert_ne!(status, 200);
+        // Health survives.
+        let (status, _, _) = agent.handle_request("GET", "/health", &HashMap::new(), None);
+        assert_eq!(status, 200);
+    }
+
+    #[test]
+    fn test_several_mounts_all_stay_reachable() {
+        let mut agent = AgentBase::new(default_options());
+        agent
+            .mount(ok_router("/one"), Some("/myagent/a"), None)
+            .mount(ok_router("/two"), Some("/myagent/b"), Some("b"));
+        for p in ["/myagent/a/one", "/myagent/b/two"] {
+            let (status, _, _) = agent.handle_request("POST", p, &HashMap::new(), None);
+            assert_eq!(status, 200, "{p}");
+        }
     }
 }

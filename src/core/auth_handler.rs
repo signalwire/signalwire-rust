@@ -1,6 +1,6 @@
 //! Unified authentication handler.
 //!
-//! Port of Python `signalwire.core.auth_handler.AuthHandler`. Supports Basic
+//! Supports Basic
 //! Auth, Bearer tokens, and API keys across SignalWire services. Python wires
 //! this into FastAPI (`get_fastapi_dependency`) and Flask (`flask_decorator`);
 //! the Rust port has no baked-in web framework, so those two entry points are
@@ -20,6 +20,95 @@ use crate::core::security_config::SecurityConfig;
 /// `secrets.compare_digest`.
 fn compare_digest(a: &str, b: &str) -> bool {
     a.as_bytes().ct_eq(b.as_bytes()).into()
+}
+
+/// The username/password pair carried by an HTTP `Authorization: Basic` header,
+/// as handed to [`AuthHandler::verify_basic_auth`].
+///
+/// The reference declares this parameter as FastAPI's `HTTPBasicCredentials`
+/// (`auth_handler.py:98`) and reads `credentials.username` / `credentials.password`
+/// off it (`:105`, `:108`). The FIELDS are the contract; which web framework's
+/// class carries them is idiom. Rust has no baked-in web framework, so the port
+/// declares the carrier itself — a plain struct with the same two fields.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BasicCredentials {
+    username: String,
+    password: String,
+}
+
+impl BasicCredentials {
+    /// Build a credential pair from a decoded username and password.
+    #[must_use]
+    pub fn new(username: &str, password: &str) -> Self {
+        BasicCredentials {
+            username: username.to_string(),
+            password: password.to_string(),
+        }
+    }
+
+    /// The username presented by the client.
+    #[must_use]
+    pub fn username(&self) -> &str {
+        &self.username
+    }
+
+    /// The password presented by the client.
+    #[must_use]
+    pub fn password(&self) -> &str {
+        &self.password
+    }
+}
+
+/// The scheme/credentials pair carried by an HTTP `Authorization` header, as
+/// handed to [`AuthHandler::verify_bearer_token`].
+///
+/// The reference declares this parameter as FastAPI's
+/// `HTTPAuthorizationCredentials` (`auth_handler.py:113`) and reads
+/// `credentials.credentials` off it (`:119`). FastAPI's `HTTPBearer` splits the
+/// raw header on its FIRST space: everything before it is `scheme` (`"Bearer"`),
+/// everything after is `credentials` (the token). [`parse_header`] reproduces
+/// that split, so `scheme` is genuinely populated rather than discarded.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BearerCredentials {
+    scheme: String,
+    credentials: String,
+}
+
+impl BearerCredentials {
+    /// Build an authorization pair from an already-split scheme and token.
+    #[must_use]
+    pub fn new(scheme: &str, credentials: &str) -> Self {
+        BearerCredentials {
+            scheme: scheme.to_string(),
+            credentials: credentials.to_string(),
+        }
+    }
+
+    /// Split a raw `Authorization` header value into its scheme and credentials
+    /// on the FIRST space, matching FastAPI's `HTTPBearer` (`scheme, _, param =
+    /// authorization.partition(" ")`). Returns `None` when the header carries no
+    /// space, i.e. no scheme — which FastAPI also rejects.
+    ///
+    /// Splitting on the first space (rather than stripping a fixed `"Bearer "`
+    /// prefix) is what keeps `scheme` populated: a fixed-offset strip discards
+    /// the scheme, leaving the field permanently empty.
+    #[must_use]
+    pub fn parse_header(authorization: &str) -> Option<Self> {
+        let (scheme, credentials) = authorization.split_once(' ')?;
+        Some(BearerCredentials::new(scheme, credentials))
+    }
+
+    /// The authorization scheme presented by the client (e.g. `"Bearer"`).
+    #[must_use]
+    pub fn scheme(&self) -> &str {
+        &self.scheme
+    }
+
+    /// The credentials presented by the client (the token itself).
+    #[must_use]
+    pub fn credentials(&self) -> &str {
+        &self.credentials
+    }
 }
 
 /// Unified authentication handler supporting Basic / Bearer / API-key auth.
@@ -77,18 +166,22 @@ impl AuthHandler {
         self
     }
 
-    /// Verify Basic-auth credentials (timing-safe).
+    /// Verify Basic-auth credentials (timing-safe). Mirrors the reference's
+    /// `verify_basic_auth(credentials)`, which reads `credentials.username` and
+    /// `credentials.password` and compares each with `secrets.compare_digest`.
     #[must_use]
-    pub fn verify_basic_auth(&self, username: &str, password: &str) -> bool {
-        compare_digest(username, &self.basic_user) && compare_digest(password, &self.basic_password)
+    pub fn verify_basic_auth(&self, credentials: &BasicCredentials) -> bool {
+        compare_digest(credentials.username(), &self.basic_user)
+            && compare_digest(credentials.password(), &self.basic_password)
     }
 
     /// Verify a Bearer token (timing-safe). Returns false if Bearer auth is not
-    /// configured.
+    /// configured. Matches the `verify_bearer_token(credentials)`,
+    /// which compares `credentials.credentials` against the configured token.
     #[must_use]
-    pub fn verify_bearer_token(&self, token: &str) -> bool {
+    pub fn verify_bearer_token(&self, credentials: &BearerCredentials) -> bool {
         match &self.bearer_token {
-            Some(expected) => compare_digest(token, expected),
+            Some(expected) => compare_digest(credentials.credentials(), expected),
             None => false,
         }
     }
@@ -107,10 +200,13 @@ impl AuthHandler {
     /// guard closure that inspects a request's headers and reports whether the
     /// request is authenticated by any enabled method. `optional` makes an
     /// un-credentialed request pass (matching FastAPI's optional dependency).
+    /// `optional` is `Option<bool>` because the argument is optional
+    /// (`optional: bool = False`); `None` takes `false`.
     pub fn get_fastapi_dependency(
         &self,
-        optional: bool,
+        optional: Option<bool>,
     ) -> impl Fn(&HashMap<String, String>) -> bool + '_ {
+        let optional = optional.unwrap_or(false);
         move |headers| {
             if self.authenticate_headers(headers) {
                 return true;
@@ -166,17 +262,24 @@ impl AuthHandler {
                 .or_else(|| headers.get(&name.to_lowercase()))
         };
 
-        // Bearer.
-        if let Some(auth) = get("Authorization") {
-            if let Some(token) = auth.strip_prefix("Bearer ")
-                && self.verify_bearer_token(token)
-            {
+        // Split the header on its FIRST space so the scheme is CARRIED rather
+        // than discarded, then match the scheme case-insensitively — exactly
+        // what FastAPI's HTTPBearer / HTTPBasic do
+        // (`get_authorization_scheme_param` partitions on " ", then each
+        // compares `scheme.lower()`). A fixed-prefix strip is wrong twice over:
+        // it leaves the scheme field permanently empty, and it rejects the
+        // lowercase spelling that RFC 7235 allows.
+        if let Some(auth) = get("Authorization")
+            && let Some(creds) = BearerCredentials::parse_header(auth)
+        {
+            // Bearer.
+            if creds.scheme().eq_ignore_ascii_case("Bearer") && self.verify_bearer_token(&creds) {
                 return true;
             }
             // Basic.
-            if let Some(b64) = auth.strip_prefix("Basic ")
-                && let Some((u, p)) = decode_basic(b64)
-                && self.verify_basic_auth(&u, &p)
+            if creds.scheme().eq_ignore_ascii_case("Basic")
+                && let Some((u, p)) = decode_basic(creds.credentials())
+                && self.verify_basic_auth(&BasicCredentials::new(&u, &p))
             {
                 return true;
             }
@@ -223,22 +326,94 @@ mod tests {
     #[test]
     fn test_verify_basic_auth() {
         let h = handler();
-        assert!(h.verify_basic_auth("admin", "secret"));
-        assert!(!h.verify_basic_auth("admin", "wrong"));
-        assert!(!h.verify_basic_auth("bad", "secret"));
+        assert!(h.verify_basic_auth(&BasicCredentials::new("admin", "secret")));
+        assert!(!h.verify_basic_auth(&BasicCredentials::new("admin", "wrong")));
+        assert!(!h.verify_basic_auth(&BasicCredentials::new("bad", "secret")));
+    }
+
+    #[test]
+    fn test_basic_credentials_fields() {
+        let c = BasicCredentials::new("admin", "secret");
+        assert_eq!(c.username(), "admin");
+        assert_eq!(c.password(), "secret");
     }
 
     #[test]
     fn test_bearer_disabled_by_default() {
         let h = handler();
-        assert!(!h.verify_bearer_token("anything"));
+        assert!(!h.verify_bearer_token(&BearerCredentials::new("Bearer", "anything")));
     }
 
     #[test]
     fn test_verify_bearer_token() {
         let h = handler().with_bearer_token("tok-123");
-        assert!(h.verify_bearer_token("tok-123"));
-        assert!(!h.verify_bearer_token("tok-999"));
+        assert!(h.verify_bearer_token(&BearerCredentials::new("Bearer", "tok-123")));
+        assert!(!h.verify_bearer_token(&BearerCredentials::new("Bearer", "tok-999")));
+    }
+
+    /// The scheme must be POPULATED from the header, not discarded. A
+    /// fixed-offset `strip_prefix("Bearer ")` leaves it permanently empty; the
+    /// first-space split (FastAPI `HTTPBearer` semantics) carries it.
+    #[test]
+    fn test_bearer_credentials_parse_header_populates_scheme() {
+        let c = BearerCredentials::parse_header("Bearer tok-123").unwrap();
+        assert_eq!(c.scheme(), "Bearer");
+        assert_eq!(c.credentials(), "tok-123");
+
+        // A non-Bearer scheme is carried verbatim rather than swallowed.
+        let d = BearerCredentials::parse_header("Digest abc").unwrap();
+        assert_eq!(d.scheme(), "Digest");
+        assert_eq!(d.credentials(), "abc");
+
+        // Only the FIRST space splits — a token containing spaces is preserved.
+        let e = BearerCredentials::parse_header("Bearer a b c").unwrap();
+        assert_eq!(e.scheme(), "Bearer");
+        assert_eq!(e.credentials(), "a b c");
+
+        // No space at all → no scheme → rejected, as FastAPI also rejects it.
+        assert!(BearerCredentials::parse_header("Bearertok").is_none());
+    }
+
+    /// The auth scheme is case-insensitive per RFC 7235, and FastAPI's
+    /// `HTTPBearer` compares `scheme.lower() != "bearer"`. The previous
+    /// fixed-prefix `strip_prefix("Bearer ")` was case-SENSITIVE and silently
+    /// rejected a valid lowercase `authorization: bearer <tok>`.
+    #[test]
+    fn test_bearer_scheme_is_case_insensitive() {
+        let h = handler().with_bearer_token("tok");
+        let guard = h.flask_decorator();
+        for raw in ["Bearer tok", "bearer tok", "BEARER tok", "BeArEr tok"] {
+            let mut headers = HashMap::new();
+            headers.insert("Authorization".to_string(), raw.to_string());
+            assert!(guard(&headers), "scheme spelling {raw:?} must authenticate");
+        }
+    }
+
+    /// The Basic scheme is case-insensitive for the same reason
+    /// (FastAPI's `HTTPBasic` compares `scheme.lower() != "basic"`).
+    #[test]
+    fn test_basic_scheme_is_case_insensitive() {
+        let h = handler();
+        let guard = h.flask_decorator();
+        let creds = STANDARD.encode(b"admin:secret");
+        for scheme in ["Basic", "basic", "BASIC"] {
+            let mut headers = HashMap::new();
+            headers.insert("Authorization".to_string(), format!("{scheme} {creds}"));
+            assert!(
+                guard(&headers),
+                "scheme spelling {scheme:?} must authenticate"
+            );
+        }
+    }
+
+    /// A correct token under the WRONG scheme must not authenticate.
+    #[test]
+    fn test_wrong_scheme_rejected() {
+        let h = handler().with_bearer_token("tok");
+        let guard = h.flask_decorator();
+        let mut headers = HashMap::new();
+        headers.insert("Authorization".to_string(), "Digest tok".to_string());
+        assert!(!guard(&headers));
     }
 
     #[test]
@@ -308,10 +483,10 @@ mod tests {
     #[test]
     fn test_fastapi_dependency_optional_allows_no_credentials() {
         let h = handler();
-        let dep = h.get_fastapi_dependency(true);
+        let dep = h.get_fastapi_dependency(Some(true));
         let empty = HashMap::new();
         assert!(dep(&empty)); // optional + no credential → allow
-        let required = h.get_fastapi_dependency(false);
+        let required = h.get_fastapi_dependency(None);
         assert!(!required(&empty)); // required + no credential → deny
     }
 }

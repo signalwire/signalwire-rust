@@ -176,34 +176,26 @@ impl<'a> ReadResource<'a> {
     ) -> Result<Value, SignalWireRestError> {
         self.base
             .client()
-            .get_with_options(self.base.base_path(), params, request_options)
+            .get_with_options(self.base.base_path(), Some(params), request_options)
     }
 
     /// Iterate every item across all pages of this resource's list endpoint.
     ///
     /// Returns a lazy [`PaginatedIterator`] that follows the response's
     /// `links.next` cursor and yields each item under the `"data"` key. Mirrors
-    /// the Python reference's `ReadResource.paginate(**params)`; see
+    /// the `ReadResource.paginate(*, request_options=None,
+    /// **params)`; see
     /// [`CrudResource::paginate`](super::CrudResource::paginate) for the full
     /// contract.
+    ///
+    /// `request_options` is a per-request [`RequestOptions`] override (plan 4.2)
+    /// forwarded to every page GET; `None` is the omit-it call, matching the
+    /// reference's default. Options are never serialized.
     #[must_use]
-    pub fn paginate(&self, params: &HashMap<String, String>) -> PaginatedIterator<'a> {
-        PaginatedIterator::new(
-            self.base.client(),
-            self.base.base_path(),
-            params.clone(),
-            "data",
-            None,
-        )
-    }
-
-    /// `paginate` with a per-request [`RequestOptions`] override (plan 4.2)
-    /// forwarded to every page GET. Options are never serialized.
-    #[must_use]
-    pub fn paginate_with_options(
+    pub fn paginate(
         &self,
-        params: &HashMap<String, String>,
         request_options: Option<RequestOptions>,
+        params: &HashMap<String, String>,
     ) -> PaginatedIterator<'a> {
         PaginatedIterator::new(
             self.base.client(),
@@ -233,11 +225,9 @@ impl<'a> ReadResource<'a> {
         id: &str,
         request_options: Option<&RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.base.client().get_with_options(
-            &self.base.path(&[id]),
-            &HashMap::new(),
-            request_options,
-        )
+        self.base
+            .client()
+            .get_with_options(&self.base.path(&[id]), None, request_options)
     }
 }
 
@@ -407,10 +397,33 @@ impl<'a> FabricResource<'a> {
     ) -> Result<Value, SignalWireRestError> {
         self.base.client().get_with_options(
             &self.base.path(&[id, "addresses"]),
-            params,
+            Some(params),
             request_options,
         )
     }
+}
+
+/// A random (version 4) UUID — the value a generated request fills in for a
+/// server-required id the caller omitted (the RELAY `control_id` idiom).
+pub(crate) fn autofill_uuid4() -> String {
+    use rand::RngExt;
+    let mut data = [0u8; 16];
+    rand::rng().fill(&mut data);
+    data[6] = (data[6] & 0x0f) | 0x40;
+    data[8] = (data[8] & 0x3f) | 0x80;
+    let hex: String = data.iter().fold(String::with_capacity(32), |mut acc, b| {
+        use std::fmt::Write as _;
+        let _ = write!(acc, "{b:02x}");
+        acc
+    });
+    format!(
+        "{}-{}-{}-{}-{}",
+        &hex[0..8],
+        &hex[8..12],
+        &hex[12..16],
+        &hex[16..20],
+        &hex[20..32]
+    )
 }
 
 #[cfg(test)]

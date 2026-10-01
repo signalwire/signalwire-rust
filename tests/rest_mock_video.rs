@@ -329,7 +329,7 @@ fn test_video_streams_update_uses_put_with_kwargs() {
         .streams()
         .update(
             "stream-2",
-            video_gen::VideoStreamsUpdateRequest::new("rtmp://example.com/new"),
+            video_gen::VideoStreamsUpdateRequest::new().url("rtmp://example.com/new"),
             None,
         )
         .expect("streams.update");

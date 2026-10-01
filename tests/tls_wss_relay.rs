@@ -43,8 +43,15 @@ fn tls_relay_client_wss_connect_and_auth() {
     };
 
     // Point the real RELAY client at the wss:// endpoint and trust the test CA.
-    // SAFETY: integration test is single-threaded (`--test-threads=1`) and
-    // holds the cross-binary lock, so no other thread reads these env vars.
+    // SAFETY: this binary declares exactly ONE `#[test]`, so no sibling thread can
+    // observe or clobber the process env while it runs, and `RelayTlsLock` (held
+    // above) serializes it against other BINARIES for the shared TLS mock-relay.
+    // Note the process env is per-process, so that flock is not what protects these
+    // vars — the single-test-per-binary property is. It is NOT `--test-threads=1`:
+    // the TEST gate runs `cargo test --tests` fully parallel (only the REST-COVERAGE
+    // and RELAY-mock gates pass that flag). If a SECOND test is ever added here it
+    // must take a file-local `ENV_LOCK` first, the way
+    // `tests/tls_no_silent_downgrade.rs` and `src/server/tls.rs` do.
     unsafe {
         std::env::set_var("SIGNALWIRE_RELAY_SCHEME", "wss");
         std::env::set_var(

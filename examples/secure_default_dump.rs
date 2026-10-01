@@ -5,38 +5,39 @@
 //! program for the cross-port behavioral differ
 //! (porting-sdk `scripts/diff_port_secure_default.py`).
 //!
-//! The differ drives the python reference through `secure_default_corpus` to
-//! build the golden per-fixture classification, then runs THIS program (which
-//! embeds the same two fixtures) and structurally compares our classification.
+//! Defines a default (secure) tool + an explicit `secure = false` tool on ONE
+//! agent, renders the SWML, and emits per fixture the RENDERED WIRE PAYLOAD for
+//! the differ to classify:
 //!
-//! The A1 contract: a tool registered WITHOUT an explicit opt-out is SECURE, and
-//! the WIRE manifestation of `secure` is the per-tool `__token` the rendered
-//! SWAIG webhook carries (python `agent_base.py:1040` mints it whenever
-//! `func.secure` and a `call_id` is in play, and `agent_base.py:958` GENERATES a
-//! `call_id` when the caller supplied none — so a secure tool ALWAYS renders with
-//! a `__token`). A tool registered `secure = false` carries NO `__token`.
+//! ```text
+//!   {"<fixture id>": {"secure_default_true": bool, "rendered": {<functions[] entry>}}}
+//! ```
+//!
+//! * `secure_default_true` — the SDK-recorded secure flag for that tool.
+//! * `rendered` — that tool's own `SWAIG.functions[]` entry, VERBATIM, with every
+//!   token VALUE replaced by the corpus placeholder `<TOKEN>` (the values are
+//!   HMACs and vary per run; the KEY PATH is the whole contract and is preserved
+//!   exactly). A tool with NO entry — or an entry with no `web_hook_url` — emits
+//!   exactly that; the absence IS the signal.
+//!
+//! This program deliberately makes NO judgement about whether the render is
+//! correct. The previous version emitted a self-computed `wire_reflects_secure`
+//! boolean, which made the gate vacuous: the differ never saw the wire, so it
+//! could not see WHICH key a port had classified on, nor that an INSECURE tool
+//! was being handed its own unauthenticated per-tool callback. The differ now
+//! sees the keys and decides.
 //!
 //! ## How Rust expresses the "default" case
 //!
-//! Rust has no default parameter values, so `Service::define_tool` takes
+//! Rust has no default parameter values, so `AgentBase::define_tool` takes
 //! `secure: bool` positionally and the fixture cannot literally OMIT it. The
 //! default the SDK documents (and that every reference program gets) is
 //! `secure = true`, so the default-case fixture passes `true`. The load-bearing
-//! half of the classification is `wire_reflects_secure`, which is measured off
-//! the ACTUALLY RENDERED document: it is only true when the render really minted
-//! a `__token` for the secure tool and really withheld one from the insecure
-//! tool. That half cannot be satisfied by construction.
+//! half of the comparison is the RENDERED payload, which cannot be satisfied by
+//! construction.
 //!
-//! Per fixture this dump builds a fresh `AgentBase`, defines the tool, renders
-//! the SWML, and reduces to the deterministic pair:
-//!   `secure_default_true`  — the tool's declared secure state.
-//!   `wire_reflects_secure` — a `__token` is present on the rendered webhook IFF
-//!                            the tool is secure.
-//! The token VALUE (an HMAC) is nondeterministic and is NOT compared — only its
-//! PRESENCE folds into the boolean.
-//!
-//! Protocol: stdout = ONE JSON object mapping fixture id -> classification. Only
-//! stdout carries JSON; all logging goes to stderr.
+//! Protocol: stdout = ONE JSON object mapping fixture id -> payload. Only stdout
+//! carries JSON; all logging goes to stderr.
 //!
 //! Run from the repo root: `cargo run --quiet --example secure_default_dump`.
 
@@ -50,11 +51,12 @@ use signalwire::{AgentBase, AgentOptions};
 const DEFAULT_TOOL: &str = "sd_default_secure";
 /// Mirrors `secure_default_corpus.CORPUS[1].tool_name`.
 const INSECURE_TOOL: &str = "sd_explicit_insecure";
+/// Mirrors `secure_default_corpus.TOKEN_PLACEHOLDER`.
+const TOKEN_PLACEHOLDER: &str = "<TOKEN>";
 
-/// Locate the rendered `ai.SWAIG.functions` entry named `tool_name` and report
-/// whether its `web_hook_url` carries the reserved `__token` query parameter (the
-/// wire reflection of `secure`). Mirrors the oracle's `_webhook_has_token`.
-fn webhook_has_token(doc: &Value, tool_name: &str) -> bool {
+/// The rendered `ai.SWAIG.functions[]` entry named `tool_name`, if the render
+/// emitted one.
+fn rendered_entry<'a>(doc: &'a Value, tool_name: &str) -> Option<&'a Value> {
     doc.get("sections")
         .and_then(|s| s.get("main"))
         .and_then(Value::as_array)
@@ -66,52 +68,99 @@ fn webhook_has_token(doc: &Value, tool_name: &str) -> bool {
             fns.iter()
                 .find(|f| f.get("function").and_then(Value::as_str) == Some(tool_name))
         })
-        .and_then(|f| f.get("web_hook_url"))
-        .and_then(Value::as_str)
-        .is_some_and(|url| url.contains("__token="))
 }
 
-/// Build a fresh agent, define one tool with the given secure state, render the
-/// SWML, and reduce to the `{secure_default_true, wire_reflects_secure}` pair.
-fn classify(tool_name: &str, secure: bool) -> Value {
+/// Replace the VALUE of every token-suffixed query parameter in a URL with the
+/// placeholder, preserving every key and the rest of the URL exactly.
+fn redact_url_tokens(url: &str) -> String {
+    let Some(q) = url.find('?') else {
+        return url.to_string();
+    };
+    let (base, query) = url.split_at(q + 1);
+    let redacted: Vec<String> = query
+        .split('&')
+        .map(|pair| match pair.split_once('=') {
+            Some((k, _)) if k.to_lowercase().ends_with("token") => {
+                format!("{k}={TOKEN_PLACEHOLDER}")
+            }
+            _ => pair.to_string(),
+        })
+        .collect();
+    format!("{base}{}", redacted.join("&"))
+}
+
+/// Normalize one rendered entry: replace every nondeterministic token VALUE (an
+/// HMAC) with the placeholder while preserving every KEY and key path exactly —
+/// both a token-suffixed field and a token-suffixed query parameter on a URL
+/// value. Mirrors `diff_port_secure_default.redact_entry`, so the differ's
+/// re-application of it is a no-op.
+fn redact(entry: Option<&Value>) -> Value {
+    let Some(Value::Object(obj)) = entry else {
+        return json!({});
+    };
+    let mut out = Map::new();
+    for (k, v) in obj {
+        match v.as_str() {
+            Some(_) if k.to_lowercase().ends_with("token") => {
+                out.insert(k.clone(), json!(TOKEN_PLACEHOLDER));
+            }
+            Some(s) if s.contains("://") || s.starts_with('/') => {
+                out.insert(k.clone(), json!(redact_url_tokens(s)));
+            }
+            _ => {
+                out.insert(k.clone(), v.clone());
+            }
+        }
+    }
+    Value::Object(out)
+}
+
+/// Emit one fixture: the SDK-recorded secure flag plus the redacted rendered
+/// entry. NO classification — the differ does that.
+fn emit(doc: &Value, tool_name: &str, secure_default_true: bool) -> Value {
+    json!({
+        "secure_default_true": secure_default_true,
+        "rendered": redact(rendered_entry(doc, tool_name)),
+    })
+}
+
+fn main() {
     let mut agent = AgentBase::new(
         AgentOptions::new("secure-default-fixture")
             .route("/sd")
             .basic_auth("u", "p"),
     );
     agent.set_prompt_text("secure default fixture");
+
+    // A1 (a) — the DEFAULT case: secure. Its rendered entry must carry its own
+    // web_hook_url with a `__token` query param.
     agent.define_tool(
-        tool_name,
+        DEFAULT_TOOL,
         "secure-default fixture tool",
         json!({}),
         Box::new(|_args, _raw| FunctionResult::with_response("ok")),
-        secure,
+        true,
+    );
+    // A1 (b) — explicit `secure = false`: NO per-tool web_hook_url at all; it
+    // falls back to the shared `SWAIG.defaults.web_hook_url`.
+    agent.define_tool(
+        INSECURE_TOOL,
+        "secure-default fixture tool",
+        json!({}),
+        Box::new(|_args, _raw| FunctionResult::with_response("ok")),
+        false,
     );
 
     let doc = agent.render_swml(&HashMap::new());
-    let token_present = webhook_has_token(&doc, tool_name);
 
-    json!({
-        "secure_default_true": secure,
-        "wire_reflects_secure": token_present == secure,
-    })
-}
-
-fn main() {
     let mut out = Map::new();
-
-    // A1 (a) — a tool registered without an explicit opt-out is SECURE: its
-    // rendered webhook must carry a `__token`. Reds a port that never mints one.
     out.insert(
         "define_tool_default_is_secure".to_string(),
-        classify(DEFAULT_TOOL, true),
+        emit(&doc, DEFAULT_TOOL, true),
     );
-
-    // A1 (b) — a tool registered `secure = false` is INSECURE: NO `__token`.
-    // Reds a port that blindly tokenizes every tool regardless of `secure`.
     out.insert(
         "define_tool_explicit_insecure".to_string(),
-        classify(INSECURE_TOOL, false),
+        emit(&doc, INSECURE_TOOL, false),
     );
 
     println!("{}", Value::Object(out));

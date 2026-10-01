@@ -75,10 +75,10 @@ impl<'a> VoiceLogs<'a> {
     #[must_use]
     pub fn paginate(
         &self,
-        params: &HashMap<String, String>,
         request_options: Option<RequestOptions>,
+        params: &HashMap<String, String>,
     ) -> PaginatedIterator<'a> {
-        self.base.paginate_with_options(params, request_options)
+        self.base.paginate(request_options, params)
     }
 
     /// `GET /logs/{id}/events` (generated operation method; query params).
@@ -93,7 +93,7 @@ impl<'a> VoiceLogs<'a> {
     ) -> Result<Value, SignalWireRestError> {
         self.client().get_with_options(
             &self.path(&[id, "events"]),
-            params,
+            Some(params),
             request_options.as_ref(),
         )
     }

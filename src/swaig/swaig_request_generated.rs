@@ -5,14 +5,9 @@
 // Read-side wire types (open shapes) — method-less serde structs / closed-set
 // enums. Regenerate with: python3 scripts/generate_swaig_payloads.py
 //
-// Two narrow lint allows, both grounded in the generated wire shape:
-//   * non_camel_case_types — a few wire schema keys carry dotted names
-//     (``Types.StatusCodes.StatusCode400``); the type identifier folds the dots
-//     to underscores (``Types_StatusCodes_StatusCode400``) and must stay verbatim
-//     so it matches the wire schema key, which the naming lint would rewrite.
-//   * clippy::doc_markdown — the generated doc comments echo raw wire schema key
-//     names in prose; backticking every one mechanically is not meaningful here.
-#![allow(non_camel_case_types, clippy::doc_markdown)]
+// A wire schema key with a dotted name (``Types.StatusCodes.StatusCode400``)
+// folds to an underscored type identifier that must stay verbatim to match the
+// key; only those items carry an item-level `non_camel_case_types` allow.
 
 use serde::{Deserialize, Serialize};
 
@@ -36,6 +31,10 @@ pub struct SwaigArgument {
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct SwaigRequest {
+    #[serde(rename = "SWMLCall", default, skip_serializing_if = "Option::is_none")]
+    pub swml_call: Option<serde_json::Value>,
+    #[serde(rename = "SWMLVars", default, skip_serializing_if = "Option::is_none")]
+    pub swml_vars: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub ai_session_id: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]

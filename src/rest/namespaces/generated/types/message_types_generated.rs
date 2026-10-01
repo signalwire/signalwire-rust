@@ -5,18 +5,13 @@
 // Read-side wire types (open shapes) — method-less serde structs / closed-set
 // enums. Regenerate with: python3 scripts/generate_rest.py
 //
-// Two narrow lint allows, both grounded in the generated wire shape:
-//   * non_camel_case_types — a few wire schema keys carry dotted names
-//     (``Types.StatusCodes.StatusCode400``); the type identifier folds the dots
-//     to underscores (``Types_StatusCodes_StatusCode400``) and must stay verbatim
-//     so it matches the wire schema key, which the naming lint would rewrite.
-//   * clippy::doc_markdown — the generated doc comments echo raw wire schema key
-//     names in prose; backticking every one mechanically is not meaningful here.
-#![allow(non_camel_case_types, clippy::doc_markdown)]
+// A wire schema key with a dotted name (``Types.StatusCodes.StatusCode400``)
+// folds to an underscored type identifier that must stay verbatim to match the
+// key; only those items carry an item-level `non_camel_case_types` allow.
 
 use serde::{Deserialize, Serialize};
 
-/// `ChargeDetail` — generated read-side wire type ('message' REST API, schema 'ChargeDetail').
+/// `ChargeDetail` — generated read-side wire type (`message` REST API, schema `ChargeDetail`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -28,7 +23,7 @@ pub struct ChargeDetail {
     pub charge: Option<f64>,
 }
 
-/// `LogListResponse` — generated read-side wire type ('message' REST API, schema 'LogListResponse').
+/// `LogListResponse` — generated read-side wire type (`message` REST API, schema `LogListResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -40,7 +35,7 @@ pub struct LogListResponse {
     pub data: Option<serde_json::Value>,
 }
 
-/// `LogPaginationResponse` — generated read-side wire type ('message' REST API, schema 'LogPaginationResponse').
+/// `LogPaginationResponse` — generated read-side wire type (`message` REST API, schema `LogPaginationResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -56,7 +51,7 @@ pub struct LogPaginationResponse {
     pub prev: Option<String>,
 }
 
-/// `LogRetrieveResponse` — generated read-side wire type ('message' REST API, schema 'LogRetrieveResponse').
+/// `LogRetrieveResponse` — generated read-side wire type (`message` REST API, schema `LogRetrieveResponse`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -88,9 +83,13 @@ pub struct LogRetrieveResponse {
     pub charge_details: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub created_at: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub error_code: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub error_message: Option<serde_json::Value>,
 }
 
-/// `MessageLog` — generated read-side wire type ('message' REST API, schema 'MessageLog').
+/// `MessageLog` — generated read-side wire type (`message` REST API, schema `MessageLog`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -122,9 +121,13 @@ pub struct MessageLog {
     pub charge_details: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub created_at: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub error_code: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub error_message: Option<serde_json::Value>,
 }
 
-/// `MessageLogShowStatusCode422` — generated read-side wire type ('message' REST API, schema 'MessageLogShowStatusCode422').
+/// `MessageLogShowStatusCode422` — generated read-side wire type (`message` REST API, schema `MessageLogShowStatusCode422`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -134,7 +137,7 @@ pub struct MessageLogShowStatusCode422 {
     pub errors: Option<serde_json::Value>,
 }
 
-/// `MessageLogsListStatusCode422` — generated read-side wire type ('message' REST API, schema 'MessageLogsListStatusCode422').
+/// `MessageLogsListStatusCode422` — generated read-side wire type (`message` REST API, schema `MessageLogsListStatusCode422`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
@@ -144,11 +147,12 @@ pub struct MessageLogsListStatusCode422 {
     pub errors: Option<serde_json::Value>,
 }
 
-/// `Types_StatusCodes_RestApiErrorItem` — generated read-side wire type ('message' REST API, schema 'Types.StatusCodes.RestApiErrorItem').
+/// `Types_StatusCodes_RestApiErrorItem` — generated read-side wire type (`message` REST API, schema `Types.StatusCodes.RestApiErrorItem`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[allow(non_camel_case_types)]
 pub struct Types_StatusCodes_RestApiErrorItem {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub r#type: Option<String>,
@@ -162,42 +166,242 @@ pub struct Types_StatusCodes_RestApiErrorItem {
     pub url: Option<String>,
 }
 
-/// `Types_StatusCodes_StatusCode400` — generated read-side wire type ('message' REST API, schema 'Types.StatusCodes.StatusCode400').
+/// `Types_StatusCodes_StatusCode400` — generated read-side wire type (`message` REST API, schema `Types.StatusCodes.StatusCode400`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[allow(non_camel_case_types)]
 pub struct Types_StatusCodes_StatusCode400 {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub error: Option<serde_json::Value>,
 }
 
-/// `Types_StatusCodes_StatusCode401` — generated read-side wire type ('message' REST API, schema 'Types.StatusCodes.StatusCode401').
+/// `Types_StatusCodes_StatusCode401` — generated read-side wire type (`message` REST API, schema `Types.StatusCodes.StatusCode401`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[allow(non_camel_case_types)]
 pub struct Types_StatusCodes_StatusCode401 {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub error: Option<serde_json::Value>,
 }
 
-/// `Types_StatusCodes_StatusCode404` — generated read-side wire type ('message' REST API, schema 'Types.StatusCodes.StatusCode404').
+/// `Types_StatusCodes_StatusCode404` — generated read-side wire type (`message` REST API, schema `Types.StatusCodes.StatusCode404`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[allow(non_camel_case_types)]
 pub struct Types_StatusCodes_StatusCode404 {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub error: Option<serde_json::Value>,
 }
 
-/// `Types_StatusCodes_StatusCode500` — generated read-side wire type ('message' REST API, schema 'Types.StatusCodes.StatusCode500').
+/// `Types_StatusCodes_StatusCode500` — generated read-side wire type (`message` REST API, schema `Types.StatusCodes.StatusCode500`).
 ///
 /// Method-less serde DTO: each field maps a snake wire key (via
 /// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[allow(non_camel_case_types)]
 pub struct Types_StatusCodes_StatusCode500 {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub error: Option<serde_json::Value>,
+}
+
+/// `WhatsappBusiness` — generated read-side wire type (`message` REST API, schema `WhatsappBusiness`).
+///
+/// Method-less serde DTO: each field maps a snake wire key (via
+/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct WhatsappBusiness {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub whatsapp_business_id: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub business_name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub business_portfolio_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub waba_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub created_at: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub updated_at: Option<String>,
+}
+
+/// `WhatsappBusinessListResponse` — generated read-side wire type (`message` REST API, schema `WhatsappBusinessListResponse`).
+///
+/// Method-less serde DTO: each field maps a snake wire key (via
+/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct WhatsappBusinessListResponse {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub data: Option<serde_json::Value>,
+}
+
+/// `WhatsappNumber` — generated read-side wire type (`message` REST API, schema `WhatsappNumber`).
+///
+/// Method-less serde DTO: each field maps a snake wire key (via
+/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct WhatsappNumber {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub id: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub business_phone_number_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub phone_number: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub calling_handler_resource_id: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub messaging_handler_resource_id: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub business_name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub waba_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub whatsapp_business_id: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub voice_enabled: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub voice_capable: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub created_at: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub updated_at: Option<String>,
+}
+
+/// `WhatsappNumberListResponse` — generated read-side wire type (`message` REST API, schema `WhatsappNumberListResponse`).
+///
+/// Method-less serde DTO: each field maps a snake wire key (via
+/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct WhatsappNumberListResponse {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub data: Option<serde_json::Value>,
+}
+
+/// `WhatsappTemplate` — generated read-side wire type (`message` REST API, schema `WhatsappTemplate`).
+///
+/// Method-less serde DTO: each field maps a snake wire key (via
+/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct WhatsappTemplate {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub id: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub category: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub components: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub language: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub parameter_format: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub template_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub template_status: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub whatsapp_business_id: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub created_at: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub updated_at: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub discarded_at: Option<String>,
+}
+
+/// `WhatsappTemplateListResponse` — generated read-side wire type (`message` REST API, schema `WhatsappTemplateListResponse`).
+///
+/// Method-less serde DTO: each field maps a snake wire key (via
+/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct WhatsappTemplateListResponse {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub data: Option<serde_json::Value>,
+}
+
+/// `CreateWhatsappTemplateRequest` — generated read-side wire type (`message` REST API, schema `CreateWhatsappTemplateRequest`).
+///
+/// Method-less serde DTO: each field maps a snake wire key (via
+/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct CreateWhatsappTemplateRequest {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub whatsapp_business_id: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub language: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub category: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub parameter_format: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub components: Option<serde_json::Value>,
+}
+
+/// `UpdateWhatsappTemplateRequest` — generated read-side wire type (`message` REST API, schema `UpdateWhatsappTemplateRequest`).
+///
+/// Method-less serde DTO: each field maps a snake wire key (via
+/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct UpdateWhatsappTemplateRequest {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub category: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub components: Option<serde_json::Value>,
+}
+
+/// `WhatsappTemplateDeleteResponse` — generated read-side wire type (`message` REST API, schema `WhatsappTemplateDeleteResponse`).
+///
+/// Method-less serde DTO: each field maps a snake wire key (via
+/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct WhatsappTemplateDeleteResponse {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub success: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub errors: Option<serde_json::Value>,
+}
+
+/// `WhatsappStatusCode422` — generated read-side wire type (`message` REST API, schema `WhatsappStatusCode422`).
+///
+/// Method-less serde DTO: each field maps a snake wire key (via
+/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct WhatsappStatusCode422 {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub errors: Option<serde_json::Value>,
+}
+
+/// `WhatsappTemplateErrorItem` — generated read-side wire type (`message` REST API, schema `WhatsappTemplateErrorItem`).
+///
+/// Method-less serde DTO: each field maps a snake wire key (via
+/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct WhatsappTemplateErrorItem {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub detail: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub status: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub title: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub code: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub subcode: Option<String>,
+}
+
+/// `WhatsappTemplateStatusCode422` — generated read-side wire type (`message` REST API, schema `WhatsappTemplateStatusCode422`).
+///
+/// Method-less serde DTO: each field maps a snake wire key (via
+/// `#[serde(rename)]`) to its owned Rust type; unset fields are omitted.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct WhatsappTemplateStatusCode422 {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub errors: Option<serde_json::Value>,
 }

@@ -130,4 +130,4 @@ println!("Token: {}", token["token"]);
 | `subscribers()` | list, create, get, update, delete, list_addresses, list_sip_endpoints, create_sip_endpoint, get_sip_endpoint, update_sip_endpoint, delete_sip_endpoint |
 | `addresses()` | list, get (read-only top-level fabric addresses) |
 | `resources()` | list, get, delete, list_addresses, assign_domain_application, assign_phone_route |
-| `tokens()` | create_subscriber_token, refresh_subscriber_token, create_invite_token, create_guest_token, create_embed_token |
+| `tokens()` | create_subscriber_token, refresh_subscriber_token, create_guest_token, create_embed_token |

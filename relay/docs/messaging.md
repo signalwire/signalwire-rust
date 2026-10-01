@@ -124,9 +124,9 @@ let mut result = FunctionResult::with_response("Confirmation sent.");
 let _ = result.send_sms(
     "+15559876543",
     "+15551234567",
-    "Your appointment is confirmed.",
-    vec![],  // media
-    vec![],  // tags
-    "",      // region
+    Some("Your appointment is confirmed."),
+    None, // media
+    None, // tags
+    None, // region
 );
 ```

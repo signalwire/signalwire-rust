@@ -126,7 +126,7 @@ impl RelayError {
     }
 
     /// The server's (or the client-side condition's) error message, undecorated
-    /// — mirroring the reference's `RelayError.message`, which holds the raw
+    /// — matching the `RelayError.message`, which holds the raw
     /// server text and leaves the `"RELAY error {code}: {message}"` decoration
     /// to `Display` (`client.py:1331-1333`).
     ///

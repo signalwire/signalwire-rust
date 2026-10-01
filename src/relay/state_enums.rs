@@ -29,7 +29,7 @@
 //! - parses infallibly via [`from_str`](CallState::from_str) /
 //!   `FromStr` (an unknown string becomes `Other`, not an error).
 //!
-//! Grounded in the Python reference `relay/constants.py`
+//! Grounded in the wire contract `relay/constants.py`
 //! (`CALL_STATE_*` / `MESSAGE_STATE_*` / `MESSAGE_TERMINAL_STATES`) and the
 //! port's own [`constants`](super::constants) (`DIAL_STATE_*`). The typed
 //! accessors (`Call::call_state` / `Message::message_state`) are exposed
@@ -43,7 +43,7 @@ use super::constants;
 
 /// Call lifecycle state, as carried by `calling.call.state` events.
 ///
-/// Mirrors Python `relay/constants.py` `CALL_STATE_*`
+/// Matches `relay/constants.py` `CALL_STATE_*`
 /// (`created` → `ringing` → `answered` → `ending` → `ended`). The terminal
 /// state is `ended` (see [`is_terminal`](CallState::is_terminal)), matching
 /// [`constants::is_call_terminal`].
@@ -91,8 +91,11 @@ impl CallState {
     /// Infallible: an unrecognised value becomes [`Other`](CallState::Other)
     /// (server states can grow). Provided as an inherent method for
     /// ergonomics alongside the [`FromStr`] impl.
-    // `FromStr` is implemented below; this inherent `from_str` is the deliberate
-    // infallible companion (an unknown wire value becomes `Other`, never an error).
+    ///
+    /// `clippy::should_implement_trait` is suppressed deliberately: the
+    /// [`FromStr`] impl exists below and delegates here, and this inherent
+    /// method is the infallible companion that returns a [`CallState`]
+    /// directly rather than a `Result`.
     #[allow(clippy::should_implement_trait)]
     pub fn from_str(s: &str) -> CallState {
         match s {
@@ -166,8 +169,11 @@ impl DialState {
 
     /// Parse a wire string into a [`DialState`] (infallible; unknown →
     /// [`Other`](DialState::Other)).
-    // `FromStr` is implemented below; this inherent `from_str` is the deliberate
-    // infallible companion (an unknown wire value becomes `Other`, never an error).
+    ///
+    /// `clippy::should_implement_trait` is suppressed deliberately: the
+    /// [`FromStr`] impl exists below and delegates here, and this inherent
+    /// method is the infallible companion that returns a [`DialState`]
+    /// directly rather than a `Result`.
     #[allow(clippy::should_implement_trait)]
     pub fn from_str(s: &str) -> DialState {
         match s {
@@ -205,7 +211,7 @@ impl FromStr for DialState {
 
 /// Message delivery state, as carried by `messaging.state` events.
 ///
-/// Mirrors Python `relay/constants.py` `MESSAGE_STATE_*`. The terminal set
+/// Matches `relay/constants.py` `MESSAGE_STATE_*`. The terminal set
 /// is `delivered` / `undelivered` / `failed`
 /// (`MESSAGE_TERMINAL_STATES`; see [`is_terminal`](MessageState::is_terminal)),
 /// matching [`constants::is_message_terminal`]. Distinct from both
@@ -254,8 +260,11 @@ impl MessageState {
 
     /// Parse a wire string into a [`MessageState`] (infallible; unknown →
     /// [`Other`](MessageState::Other)).
-    // `FromStr` is implemented below; this inherent `from_str` is the deliberate
-    // infallible companion (an unknown wire value becomes `Other`, never an error).
+    ///
+    /// `clippy::should_implement_trait` is suppressed deliberately: the
+    /// [`FromStr`] impl exists below and delegates here, and this inherent
+    /// method is the infallible companion that returns a [`MessageState`]
+    /// directly rather than a `Result`.
     #[allow(clippy::should_implement_trait)]
     pub fn from_str(s: &str) -> MessageState {
         match s {

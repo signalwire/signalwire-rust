@@ -51,12 +51,16 @@ use signalwire::rest::http_client::{HttpClient, StubTransport};
 
 use signalwire::rest::namespaces::generated::calling_resources_generated as cg;
 use signalwire::rest::namespaces::generated::chat_resources_generated as chat_gen;
+use signalwire::rest::namespaces::generated::client_tree_generated::{
+    GeneratedResourceTree, SpaceNamespace,
+};
 use signalwire::rest::namespaces::generated::datasphere_resources_generated as datasphere_gen;
 use signalwire::rest::namespaces::generated::fabric_resources_generated as fabric_gen;
 use signalwire::rest::namespaces::generated::messages_resources_generated as messages_gen;
 use signalwire::rest::namespaces::generated::project_resources_generated as project_gen;
 use signalwire::rest::namespaces::generated::pubsub_resources_generated as pubsub_gen;
 use signalwire::rest::namespaces::generated::relay_rest_resources_generated as relay_gen;
+use signalwire::rest::namespaces::generated::space_resources_generated as space_gen;
 use signalwire::rest::namespaces::generated::video_resources_generated as video_gen;
 
 const SENTINEL: &str = "__ID__";
@@ -69,6 +73,10 @@ struct PlanEntry {
     chain: Vec<String>,
     member: String,
     args: Vec<String>,
+    /// Which credential the call goes out under: `"project"` (the project
+    /// token) or `"pat"` (the Personal Access Token — the Space Administration
+    /// API). The test generator builds the matching mock client.
+    client: &'static str,
 }
 
 /// The recorder wraps the client + stub and pairs each authored call with the
@@ -76,6 +84,10 @@ struct PlanEntry {
 struct Recorder {
     client: RestClient,
     stub: std::sync::Arc<StubTransport>,
+    /// The Personal Access Token client + its recording stub (the `space`
+    /// container is wired to it).
+    pat_http: HttpClient,
+    pat_stub: std::sync::Arc<StubTransport>,
     plan: Vec<PlanEntry>,
     errors: Vec<String>,
 }
@@ -85,12 +97,31 @@ impl Recorder {
         let (http, stub) = HttpClient::with_stub("proj", "tok", "https://example.signalwire.com");
         let client = RestClient::with_http("proj", "tok", "example.signalwire.com", http)
             .expect("RestClient::with_http");
+        let (pat_http, pat_stub) =
+            HttpClient::with_stub("", "pat_x", "https://example.signalwire.com");
         Recorder {
             client,
             stub,
+            pat_http,
+            pat_stub,
             plan: Vec::new(),
             errors: Vec::new(),
         }
+    }
+
+    /// Record one authored call on the Space Administration container (the
+    /// Personal Access Token client). Same contract as [`record`](Self::record).
+    fn record_pat<F: FnOnce(&SpaceNamespace<'_>)>(
+        &mut self,
+        chain: &[&str],
+        member: &str,
+        args: &[&str],
+        f: F,
+    ) {
+        let before = self.pat_stub.requests.lock().expect("stub lock").len();
+        f(&GeneratedResourceTree::new(self.client.http(), &self.pat_http).space());
+        let added: Vec<_> = self.pat_stub.requests.lock().expect("stub lock")[before..].to_vec();
+        self.push(chain, member, args, &added, "pat");
     }
 
     /// Record one authored call. `chain`/`member`/`args` describe the literal
@@ -106,8 +137,19 @@ impl Recorder {
     ) {
         let before = self.stub.requests.lock().expect("stub lock").len();
         f(&self.client);
-        let reqs = self.stub.requests.lock().expect("stub lock");
-        let added = &reqs[before..];
+        let added: Vec<_> = self.stub.requests.lock().expect("stub lock")[before..].to_vec();
+        self.push(chain, member, args, &added, "project");
+    }
+
+    /// Pair an authored call with the wire request(s) it dispatched.
+    fn push(
+        &mut self,
+        chain: &[&str],
+        member: &str,
+        args: &[&str],
+        added: &[(String, String, Option<String>)],
+        client: &'static str,
+    ) {
         let via = format!("{}.{member}", chain.join("."));
         if added.len() != 1 {
             self.errors.push(format!(
@@ -133,6 +175,7 @@ impl Recorder {
                 .map(|s| (*s).to_string())
                 .chain(std::iter::once("None".to_string()))
                 .collect(),
+            client,
         });
     }
 }
@@ -145,7 +188,7 @@ fn templatize(url: &str) -> String {
         |rest| format!("/{}", rest.split('?').next().unwrap_or(rest)),
     );
     path.split('/')
-        .map(|seg| if seg == SENTINEL { "{id}" } else { seg })
+        .map(|seg| seg.replace(SENTINEL, "{id}"))
         .collect::<Vec<_>>()
         .join("/")
 }
@@ -164,6 +207,7 @@ fn main() {
                 "chain": e.chain,
                 "member": e.member,
                 "args": e.args,
+                "client": e.client,
             })
         })
         .collect();
@@ -220,24 +264,13 @@ fn enumerate(rec: &mut Recorder) {
     );
     rec.record(
         &["fabric", "tokens"],
-        "create_invite_token",
-        &["fabric_gen::FabricTokensCreateInviteTokenRequest::new(\"x\")"],
-        |c| {
-            let _ = c.fabric().tokens().create_invite_token(
-                fabric_gen::FabricTokensCreateInviteTokenRequest::new("x"),
-                None,
-            );
-        },
-    );
-    rec.record(
-        &["fabric", "tokens"],
         "create_guest_token",
-        &["fabric_gen::FabricTokensCreateGuestTokenRequest::new(serde_json::json!({}))"],
+        &["fabric_gen::FabricTokensCreateGuestTokenRequest::new()"],
         |c| {
-            let _ = c.fabric().tokens().create_guest_token(
-                fabric_gen::FabricTokensCreateGuestTokenRequest::new(json!({})),
-                None,
-            );
+            let _ = c
+                .fabric()
+                .tokens()
+                .create_guest_token(fabric_gen::FabricTokensCreateGuestTokenRequest::new(), None);
         },
     );
     rec.record(
@@ -532,11 +565,9 @@ fn enumerate(rec: &mut Recorder) {
     rec.record(
         &["calling"],
         "dial",
-        &["cg::CallingDialRequest::new(\"x\", \"y\")"],
+        &["cg::CallingDialRequest::new(\"x\")"],
         |c| {
-            let _ = c
-                .calling()
-                .dial(cg::CallingDialRequest::new("x", "y"), None);
+            let _ = c.calling().dial(cg::CallingDialRequest::new("x"), None);
         },
     );
     rec.record(
@@ -581,7 +612,7 @@ fn enumerate(rec: &mut Recorder) {
     rec.record(
         &["calling"],
         "play",
-        &[A_ID, "cg::CallingPlayRequest::new(serde_json::json!({}))"],
+        &[A_ID, "cg::CallingPlayRequest::new(json!({}))"],
         |c| {
             let _ = c
                 .calling()
@@ -706,7 +737,7 @@ fn enumerate(rec: &mut Recorder) {
     rec.record(
         &["calling"],
         "detect",
-        &[A_ID, "cg::CallingDetectRequest::new(serde_json::json!({}))"],
+        &[A_ID, "cg::CallingDetectRequest::new(json!({}))"],
         |c| {
             let _ = c
                 .calling()
@@ -726,10 +757,7 @@ fn enumerate(rec: &mut Recorder) {
     rec.record(
         &["calling"],
         "tap",
-        &[
-            A_ID,
-            "cg::CallingTapRequest::new(serde_json::json!({}), serde_json::json!({}))",
-        ],
+        &[A_ID, "cg::CallingTapRequest::new(json!({}), json!({}))"],
         |c| {
             let _ = c
                 .calling()
@@ -839,11 +867,11 @@ fn enumerate(rec: &mut Recorder) {
     rec.record(
         &["calling"],
         "ai_stop",
-        &[A_ID, "cg::CallingAiStopRequest::new(\"x\")"],
+        &[A_ID, "cg::CallingAiStopRequest::new()"],
         |c| {
             let _ = c
                 .calling()
-                .ai_stop(id, cg::CallingAiStopRequest::new("x"), None);
+                .ai_stop(id, cg::CallingAiStopRequest::new(), None);
         },
     );
     rec.record(
@@ -1144,13 +1172,12 @@ fn enumerate(rec: &mut Recorder) {
     rec.record(
         &["video", "streams"],
         "update",
-        &[A_ID, "video_gen::VideoStreamsUpdateRequest::new(\"x\")"],
+        &[A_ID, "video_gen::VideoStreamsUpdateRequest::new()"],
         |c| {
-            let _ = c.video().streams().update(
-                id,
-                video_gen::VideoStreamsUpdateRequest::new("x"),
-                None,
-            );
+            let _ =
+                c.video()
+                    .streams()
+                    .update(id, video_gen::VideoStreamsUpdateRequest::new(), None);
         },
     );
     rec.record(&["video", "streams"], "delete", &[A_ID], |c| {
@@ -1334,12 +1361,12 @@ fn enumerate(rec: &mut Recorder) {
         "create_order",
         &[
             A_ID,
-            "relay_gen::RegistryCampaignsCreateOrderRequest::new()",
+            "relay_gen::RegistryCampaignsCreateOrderRequest::new(json!({}))",
         ],
         |c| {
             let _ = c.registry().campaigns().create_order(
                 id,
-                relay_gen::RegistryCampaignsCreateOrderRequest::new(),
+                relay_gen::RegistryCampaignsCreateOrderRequest::new(json!({})),
                 None,
             );
         },
@@ -1419,11 +1446,11 @@ fn enumerate(rec: &mut Recorder) {
     rec.record(
         &["messages"],
         "update",
-        &[A_ID, "messages_gen::MessagesUpdateRequest::new(\"x\")"],
+        &[A_ID, "messages_gen::MessagesUpdateRequest::new()"],
         |c| {
             let _ = c
                 .messages()
-                .update(id, messages_gen::MessagesUpdateRequest::new("x"), None);
+                .update(id, messages_gen::MessagesUpdateRequest::new(), None);
         },
     );
 
@@ -1534,14 +1561,11 @@ fn enumerate(rec: &mut Recorder) {
     rec.record(
         &["short_codes"],
         "update",
-        &[
-            A_ID,
-            "relay_gen::ShortCodesUpdateRequest::new(\"x\", \"y\")",
-        ],
+        &[A_ID, "relay_gen::ShortCodesUpdateRequest::new()"],
         |c| {
-            let _ =
-                c.short_codes()
-                    .update(id, relay_gen::ShortCodesUpdateRequest::new("x", "y"), None);
+            let _ = c
+                .short_codes()
+                .update(id, relay_gen::ShortCodesUpdateRequest::new(), None);
         },
     );
     rec.record(
@@ -1552,6 +1576,388 @@ fn enumerate(rec: &mut Recorder) {
             let _ = c
                 .imported_numbers()
                 .create(relay_gen::ImportedNumbersCreateRequest::new("x", "y"), None);
+        },
+    );
+
+    // --- additions: per-kind fabric addresses, whatsapp, e911/CNAM, downloads ---
+    rec.record(
+        &["fabric", "resources"],
+        "assign_sip_endpoint",
+        &[
+            A_ID,
+            "fabric_gen::GenericResourcesAssignSipEndpointRequest::new(\"x\")",
+        ],
+        |c| {
+            let _ = c.fabric().resources().assign_sip_endpoint(
+                id,
+                fabric_gen::GenericResourcesAssignSipEndpointRequest::new("x"),
+                None,
+            );
+        },
+    );
+    rec.record(
+        &["fabric", "resources"],
+        "assign_whatsapp_number",
+        &[
+            A_ID,
+            "fabric_gen::GenericResourcesAssignWhatsappNumberRequest::new(\"x\", \"y\")",
+        ],
+        |c| {
+            let _ = c.fabric().resources().assign_whatsapp_number(
+                id,
+                fabric_gen::GenericResourcesAssignWhatsappNumberRequest::new("x", "y"),
+                None,
+            );
+        },
+    );
+    rec.record(&["fabric", "ai_agents"], "list_voices", &[A_HM], |c| {
+        let _ = c.fabric().ai_agents().list_voices(hm, None);
+    });
+    rec.record(
+        &["fabric", "ai_agents"],
+        "list_conversation_logs",
+        &[A_ID, A_HM],
+        |c| {
+            let _ = c.fabric().ai_agents().list_conversation_logs(id, hm, None);
+        },
+    );
+    rec.record(&["fabric", "addresses"], "delete", &[A_ID], |c| {
+        let _ = c.fabric().addresses().delete(id, None);
+    });
+    rec.record(&["fabric", "sip_addresses"], "list", &[A_HM], |c| {
+        let _ = c.fabric().sip_addresses().list(hm, None);
+    });
+    rec.record(&["fabric", "sip_addresses"], "create", &[A_BODY], |c| {
+        let _ = c.fabric().sip_addresses().create(p, None);
+    });
+    rec.record(&["fabric", "sip_addresses"], "get", &[A_ID], |c| {
+        let _ = c.fabric().sip_addresses().get(id, None);
+    });
+    rec.record(
+        &["fabric", "sip_addresses"],
+        "update",
+        &[A_ID, A_BODY],
+        |c| {
+            let _ = c.fabric().sip_addresses().update(id, p, None);
+        },
+    );
+    rec.record(&["fabric", "sip_addresses"], "delete", &[A_ID], |c| {
+        let _ = c.fabric().sip_addresses().delete(id, None);
+    });
+    rec.record(&["fabric", "alias_addresses"], "list", &[A_HM], |c| {
+        let _ = c.fabric().alias_addresses().list(hm, None);
+    });
+    rec.record(&["fabric", "alias_addresses"], "create", &[A_BODY], |c| {
+        let _ = c.fabric().alias_addresses().create(p, None);
+    });
+    rec.record(&["fabric", "alias_addresses"], "get", &[A_ID], |c| {
+        let _ = c.fabric().alias_addresses().get(id, None);
+    });
+    rec.record(
+        &["fabric", "alias_addresses"],
+        "update",
+        &[A_ID, A_BODY],
+        |c| {
+            let _ = c.fabric().alias_addresses().update(id, p, None);
+        },
+    );
+    rec.record(&["fabric", "alias_addresses"], "delete", &[A_ID], |c| {
+        let _ = c.fabric().alias_addresses().delete(id, None);
+    });
+    rec.record(
+        &["fabric", "phone_number_addresses"],
+        "list",
+        &[A_HM],
+        |c| {
+            let _ = c.fabric().phone_number_addresses().list(hm, None);
+        },
+    );
+    rec.record(
+        &["fabric", "phone_number_addresses"],
+        "create",
+        &[A_BODY],
+        |c| {
+            let _ = c.fabric().phone_number_addresses().create(p, None);
+        },
+    );
+    rec.record(&["fabric", "phone_number_addresses"], "get", &[A_ID], |c| {
+        let _ = c.fabric().phone_number_addresses().get(id, None);
+    });
+    rec.record(
+        &["fabric", "phone_number_addresses"],
+        "update",
+        &[A_ID, A_BODY],
+        |c| {
+            let _ = c.fabric().phone_number_addresses().update(id, p, None);
+        },
+    );
+    rec.record(
+        &["fabric", "phone_number_addresses"],
+        "delete",
+        &[A_ID],
+        |c| {
+            let _ = c.fabric().phone_number_addresses().delete(id, None);
+        },
+    );
+    rec.record(
+        &["addresses"],
+        "update",
+        &[A_ID, "relay_gen::AddressesUpdateRequest::new()"],
+        |c| {
+            let _ = c
+                .addresses()
+                .update(id, relay_gen::AddressesUpdateRequest::new(), None);
+        },
+    );
+    rec.record(&["recordings"], "download", &[A_ID, A_HM], |c| {
+        let _ = c.recordings().download(id, hm, None);
+    });
+    rec.record(
+        &["phone_numbers"],
+        "assign_e911_address",
+        &[
+            A_ID,
+            "relay_gen::PhoneNumbersAssignE911AddressRequest::new(\"x\")",
+        ],
+        |c| {
+            let _ = c.phone_numbers().assign_e911_address(
+                id,
+                relay_gen::PhoneNumbersAssignE911AddressRequest::new("x"),
+                None,
+            );
+        },
+    );
+    rec.record(&["phone_numbers"], "remove_e911_address", &[A_ID], |c| {
+        let _ = c.phone_numbers().remove_e911_address(id, None);
+    });
+    rec.record(&["phone_numbers"], "get_cnam", &[A_ID, A_HM], |c| {
+        let _ = c.phone_numbers().get_cnam(id, hm, None);
+    });
+    rec.record(
+        &["phone_numbers"],
+        "request_cnam",
+        &[
+            A_ID,
+            "relay_gen::PhoneNumbersRequestCnamRequest::new(\"x\")",
+        ],
+        |c| {
+            let _ = c.phone_numbers().request_cnam(
+                id,
+                relay_gen::PhoneNumbersRequestCnamRequest::new("x"),
+                None,
+            );
+        },
+    );
+    rec.record(&["phone_numbers"], "clear_cnam", &[A_ID], |c| {
+        let _ = c.phone_numbers().clear_cnam(id, None);
+    });
+    rec.record(
+        &["registry", "brands"],
+        "update",
+        &[A_ID, "relay_gen::RegistryBrandsUpdateRequest::new()"],
+        |c| {
+            let _ = c.registry().brands().update(
+                id,
+                relay_gen::RegistryBrandsUpdateRequest::new(),
+                None,
+            );
+        },
+    );
+    rec.record(
+        &["video", "room_recordings"],
+        "download",
+        &[A_ID, A_HM],
+        |c| {
+            let _ = c.video().room_recordings().download(id, hm, None);
+        },
+    );
+    rec.record(&["whatsapp", "businesses"], "list", &[A_HM], |c| {
+        let _ = c.whatsapp().businesses().list(hm, None);
+    });
+    rec.record(&["whatsapp", "numbers"], "list", &[A_HM], |c| {
+        let _ = c.whatsapp().numbers().list(hm, None);
+    });
+    rec.record(&["whatsapp", "numbers"], "get", &[A_ID], |c| {
+        let _ = c.whatsapp().numbers().get(id, None);
+    });
+    rec.record(&["whatsapp", "templates"], "list", &[A_HM], |c| {
+        let _ = c.whatsapp().templates().list(hm, None);
+    });
+    rec.record(&["whatsapp", "templates"], "create", &[A_BODY], |c| {
+        let _ = c.whatsapp().templates().create(p, None);
+    });
+    rec.record(&["whatsapp", "templates"], "get", &[A_ID], |c| {
+        let _ = c.whatsapp().templates().get(id, None);
+    });
+    rec.record(&["whatsapp", "templates"], "update", &[A_ID, A_BODY], |c| {
+        let _ = c.whatsapp().templates().update(id, p, None);
+    });
+    rec.record(&["whatsapp", "templates"], "delete", &[A_ID], |c| {
+        let _ = c.whatsapp().templates().delete(id, None);
+    });
+
+    // --- space (Space Administration API; Personal Access Token client) ---
+    rec.record_pat(&["space_admin", "settings"], "get", &[A_HM], |sp| {
+        let _ = sp.settings().get(hm, None);
+    });
+    rec.record_pat(
+        &["space_admin", "settings"],
+        "update",
+        &["space_gen::SpaceSettingsUpdateRequest::new()"],
+        |sp| {
+            let _ = sp
+                .settings()
+                .update(space_gen::SpaceSettingsUpdateRequest::new(), None);
+        },
+    );
+    rec.record_pat(
+        &["space_admin", "geographic_permissions"],
+        "get",
+        &[A_HM],
+        |sp| {
+            let _ = sp.geographic_permissions().get(hm, None);
+        },
+    );
+    rec.record_pat(
+        &["space_admin", "geographic_permissions"],
+        "update",
+        &["space_gen::SpaceGeographicPermissionsUpdateRequest::new(serde_json::json!([]))"],
+        |sp| {
+            let _ = sp.geographic_permissions().update(
+                space_gen::SpaceGeographicPermissionsUpdateRequest::new(serde_json::json!([])),
+                None,
+            );
+        },
+    );
+    rec.record_pat(&["space_admin", "billing_profile"], "get", &[A_HM], |sp| {
+        let _ = sp.billing_profile().get(hm, None);
+    });
+    rec.record_pat(&["space_admin", "billing_profile"], "update", &["space_gen::SpaceBillingProfileUpdateRequest::new(\"x\", \"x\", \"x\", \"x\", \"x\", \"x\", \"x\", serde_json::json!(\"x\"), \"x\")"], |sp| {
+        let _ = sp.billing_profile().update(space_gen::SpaceBillingProfileUpdateRequest::new("x", "x", "x", "x", "x", "x", "x", serde_json::json!("x"), "x"), None);
+    });
+    rec.record_pat(
+        &["space_admin", "billing_statements"],
+        "list",
+        &[A_HM],
+        |sp| {
+            let _ = sp.billing_statements().list(hm, None);
+        },
+    );
+    rec.record_pat(
+        &["space_admin", "billing_statements"],
+        "get",
+        &[A_HM],
+        |sp| {
+            let _ = sp.billing_statements().get(hm, None);
+        },
+    );
+    rec.record_pat(
+        &["space_admin", "billing_statements"],
+        "get_csv",
+        &[A_HM],
+        |sp| {
+            let _ = sp.billing_statements().get_csv(hm, None);
+        },
+    );
+    rec.record_pat(
+        &["space_admin", "billing_statements"],
+        "get_pdf",
+        &[A_HM],
+        |sp| {
+            let _ = sp.billing_statements().get_pdf(hm, None);
+        },
+    );
+    rec.record_pat(&["space_admin", "usage"], "get", &[A_HM], |sp| {
+        let _ = sp.usage().get(hm, None);
+    });
+    rec.record_pat(&["space_admin", "payment_history"], "list", &[A_HM], |sp| {
+        let _ = sp.payment_history().list(hm, None);
+    });
+    rec.record_pat(&["space_admin", "members"], "list", &[A_HM], |sp| {
+        let _ = sp.members().list(hm, None);
+    });
+    rec.record_pat(&["space_admin", "members"], "create", &[A_BODY], |sp| {
+        let _ = sp.members().create(p, None);
+    });
+    rec.record_pat(&["space_admin", "members"], "get", &[A_ID], |sp| {
+        let _ = sp.members().get(id, None);
+    });
+    rec.record_pat(
+        &["space_admin", "members"],
+        "update",
+        &[A_ID, A_BODY],
+        |sp| {
+            let _ = sp.members().update(id, p, None);
+        },
+    );
+    rec.record_pat(&["space_admin", "members"], "delete", &[A_ID], |sp| {
+        let _ = sp.members().delete(id, None);
+    });
+    rec.record_pat(
+        &["space_admin", "members"],
+        "list_projects",
+        &[A_ID, A_HM],
+        |sp| {
+            let _ = sp.members().list_projects(id, hm, None);
+        },
+    );
+    rec.record_pat(
+        &["space_admin", "members"],
+        "enable_project",
+        &[A_ID, A_ID],
+        |sp| {
+            let _ = sp.members().enable_project(id, id, None);
+        },
+    );
+    rec.record_pat(
+        &["space_admin", "members"],
+        "disable_project",
+        &[A_ID, A_ID],
+        |sp| {
+            let _ = sp.members().disable_project(id, id, None);
+        },
+    );
+    rec.record_pat(&["space_admin", "balance"], "get", &[A_HM], |sp| {
+        let _ = sp.balance().get(hm, None);
+    });
+    rec.record_pat(
+        &["space_admin", "balance"],
+        "create_top_up",
+        &["space_gen::SpaceBalanceCreateTopUpRequest::new(\"x\", 0, \"x\")"],
+        |sp| {
+            let _ = sp.balance().create_top_up(
+                space_gen::SpaceBalanceCreateTopUpRequest::new("x", 0, "x"),
+                None,
+            );
+        },
+    );
+    rec.record_pat(
+        &["space_admin", "low_balance_setting"],
+        "get",
+        &[A_HM],
+        |sp| {
+            let _ = sp.low_balance_setting().get(hm, None);
+        },
+    );
+    rec.record_pat(
+        &["space_admin", "low_balance_setting"],
+        "update",
+        &["space_gen::SpaceLowBalanceSettingUpdateRequest::new()"],
+        |sp| {
+            let _ = sp
+                .low_balance_setting()
+                .update(space_gen::SpaceLowBalanceSettingUpdateRequest::new(), None);
+        },
+    );
+    rec.record_pat(&["space_admin", "payment_methods"], "list", &[A_HM], |sp| {
+        let _ = sp.payment_methods().list(hm, None);
+    });
+    rec.record_pat(
+        &["space_admin", "payment_methods"],
+        "delete",
+        &[A_ID],
+        |sp| {
+            let _ = sp.payment_methods().delete(id, None);
         },
     );
 }

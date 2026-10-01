@@ -52,14 +52,14 @@ fn main() {
     let mut weather = DataMap::new("get_weather");
     weather
         .description("Get the current weather for a city")
-        .parameter("city", "string", "City name", true, vec![])
+        .parameter("city", "string", "City name", Some(true), None)
         .webhook(
             "GET",
             "https://api.weatherapi.com/v1/current.json",
-            json!({}),
-            "",
-            false,
-            vec![],
+            None,
+            None,
+            None,
+            None,
         )
         .params(json!({"key": "demo", "q": "${args.city}"}))
         .output(
@@ -75,7 +75,7 @@ fn main() {
     let mut commands = DataMap::new("process_command");
     commands
         .description("Process a user command")
-        .parameter("command", "string", "Command to process", true, vec![])
+        .parameter("command", "string", "Command to process", Some(true), None)
         .expression(
             "${args.command}",
             r"^start",

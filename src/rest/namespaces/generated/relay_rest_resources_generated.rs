@@ -29,6 +29,8 @@ pub struct AddressesCreateRequest {
     postal_code: String,
     address_type: Option<String>,
     address_number: Option<String>,
+    emergency_enabled: Option<bool>,
+    auto_correct_address: Option<bool>,
     extras: Map<String, Value>,
 }
 
@@ -71,6 +73,18 @@ impl AddressesCreateRequest {
         self.address_number = Some(value.into());
         self
     }
+    /// Set the optional `emergency_enabled` field.
+    #[must_use]
+    pub fn emergency_enabled(mut self, value: bool) -> Self {
+        self.emergency_enabled = Some(value);
+        self
+    }
+    /// Set the optional `auto_correct_address` field.
+    #[must_use]
+    pub fn auto_correct_address(mut self, value: bool) -> Self {
+        self.auto_correct_address = Some(value);
+        self
+    }
     /// Add a forward-compat field the spec does not yet name.
     #[must_use]
     pub fn extra(mut self, key: impl Into<String>, value: impl Into<Value>) -> Self {
@@ -95,6 +109,173 @@ impl AddressesCreateRequest {
         }
         if let Some(v) = self.address_number {
             obj.insert("address_number".to_string(), Value::from(v));
+        }
+        if let Some(v) = self.emergency_enabled {
+            obj.insert("emergency_enabled".to_string(), Value::from(v));
+        }
+        if let Some(v) = self.auto_correct_address {
+            obj.insert("auto_correct_address".to_string(), Value::from(v));
+        }
+        for (k, v) in self.extras {
+            obj.insert(k, v);
+        }
+        Value::Object(obj)
+    }
+}
+
+/// Named request parameters for the generated method (Rust options-builder
+/// idiom — required fields in `new`, optionals via setters, `extras` open door).
+#[derive(Debug, Clone, Default)]
+pub struct AddressesUpdateRequest {
+    label: Option<String>,
+    country: Option<String>,
+    first_name: Option<String>,
+    last_name: Option<String>,
+    street_number: Option<String>,
+    street_name: Option<String>,
+    address_type: Option<String>,
+    address_number: Option<String>,
+    city: Option<String>,
+    state: Option<String>,
+    postal_code: Option<String>,
+    emergency_enabled: Option<bool>,
+    auto_correct_address: Option<bool>,
+    extras: Map<String, Value>,
+}
+
+impl AddressesUpdateRequest {
+    /// Construct the request with its required fields.
+    pub fn new() -> Self {
+        AddressesUpdateRequest {
+            ..Default::default()
+        }
+    }
+    /// Set the optional `label` field.
+    #[must_use]
+    pub fn label(mut self, value: impl Into<String>) -> Self {
+        self.label = Some(value.into());
+        self
+    }
+    /// Set the optional `country` field.
+    #[must_use]
+    pub fn country(mut self, value: impl Into<String>) -> Self {
+        self.country = Some(value.into());
+        self
+    }
+    /// Set the optional `first_name` field.
+    #[must_use]
+    pub fn first_name(mut self, value: impl Into<String>) -> Self {
+        self.first_name = Some(value.into());
+        self
+    }
+    /// Set the optional `last_name` field.
+    #[must_use]
+    pub fn last_name(mut self, value: impl Into<String>) -> Self {
+        self.last_name = Some(value.into());
+        self
+    }
+    /// Set the optional `street_number` field.
+    #[must_use]
+    pub fn street_number(mut self, value: impl Into<String>) -> Self {
+        self.street_number = Some(value.into());
+        self
+    }
+    /// Set the optional `street_name` field.
+    #[must_use]
+    pub fn street_name(mut self, value: impl Into<String>) -> Self {
+        self.street_name = Some(value.into());
+        self
+    }
+    /// Set the optional `address_type` field.
+    #[must_use]
+    pub fn address_type(mut self, value: impl Into<String>) -> Self {
+        self.address_type = Some(value.into());
+        self
+    }
+    /// Set the optional `address_number` field.
+    #[must_use]
+    pub fn address_number(mut self, value: impl Into<String>) -> Self {
+        self.address_number = Some(value.into());
+        self
+    }
+    /// Set the optional `city` field.
+    #[must_use]
+    pub fn city(mut self, value: impl Into<String>) -> Self {
+        self.city = Some(value.into());
+        self
+    }
+    /// Set the optional `state` field.
+    #[must_use]
+    pub fn state(mut self, value: impl Into<String>) -> Self {
+        self.state = Some(value.into());
+        self
+    }
+    /// Set the optional `postal_code` field.
+    #[must_use]
+    pub fn postal_code(mut self, value: impl Into<String>) -> Self {
+        self.postal_code = Some(value.into());
+        self
+    }
+    /// Set the optional `emergency_enabled` field.
+    #[must_use]
+    pub fn emergency_enabled(mut self, value: bool) -> Self {
+        self.emergency_enabled = Some(value);
+        self
+    }
+    /// Set the optional `auto_correct_address` field.
+    #[must_use]
+    pub fn auto_correct_address(mut self, value: bool) -> Self {
+        self.auto_correct_address = Some(value);
+        self
+    }
+    /// Add a forward-compat field the spec does not yet name.
+    #[must_use]
+    pub fn extra(mut self, key: impl Into<String>, value: impl Into<Value>) -> Self {
+        self.extras.insert(key.into(), value.into());
+        self
+    }
+    /// Assemble the `body` JSON object (unset optionals omitted).
+    #[must_use]
+    pub fn build(self) -> Value {
+        let mut obj = Map::new();
+        if let Some(v) = self.label {
+            obj.insert("label".to_string(), Value::from(v));
+        }
+        if let Some(v) = self.country {
+            obj.insert("country".to_string(), Value::from(v));
+        }
+        if let Some(v) = self.first_name {
+            obj.insert("first_name".to_string(), Value::from(v));
+        }
+        if let Some(v) = self.last_name {
+            obj.insert("last_name".to_string(), Value::from(v));
+        }
+        if let Some(v) = self.street_number {
+            obj.insert("street_number".to_string(), Value::from(v));
+        }
+        if let Some(v) = self.street_name {
+            obj.insert("street_name".to_string(), Value::from(v));
+        }
+        if let Some(v) = self.address_type {
+            obj.insert("address_type".to_string(), Value::from(v));
+        }
+        if let Some(v) = self.address_number {
+            obj.insert("address_number".to_string(), Value::from(v));
+        }
+        if let Some(v) = self.city {
+            obj.insert("city".to_string(), Value::from(v));
+        }
+        if let Some(v) = self.state {
+            obj.insert("state".to_string(), Value::from(v));
+        }
+        if let Some(v) = self.postal_code {
+            obj.insert("postal_code".to_string(), Value::from(v));
+        }
+        if let Some(v) = self.emergency_enabled {
+            obj.insert("emergency_enabled".to_string(), Value::from(v));
+        }
+        if let Some(v) = self.auto_correct_address {
+            obj.insert("auto_correct_address".to_string(), Value::from(v));
         }
         for (k, v) in self.extras {
             obj.insert(k, v);
@@ -409,6 +590,77 @@ impl NumberGroupsAddMembershipRequest {
     }
 }
 
+/// Named request parameters for the generated method (Rust options-builder
+/// idiom — required fields in `new`, optionals via setters, `extras` open door).
+#[derive(Debug, Clone, Default)]
+pub struct PhoneNumbersAssignE911AddressRequest {
+    e911_address_id: String,
+    extras: Map<String, Value>,
+}
+
+impl PhoneNumbersAssignE911AddressRequest {
+    /// Construct the request with its required fields.
+    pub fn new(e911_address_id: impl Into<String>) -> Self {
+        PhoneNumbersAssignE911AddressRequest {
+            e911_address_id: e911_address_id.into(),
+            ..Default::default()
+        }
+    }
+    /// Add a forward-compat field the spec does not yet name.
+    #[must_use]
+    pub fn extra(mut self, key: impl Into<String>, value: impl Into<Value>) -> Self {
+        self.extras.insert(key.into(), value.into());
+        self
+    }
+    /// Assemble the `body` JSON object (unset optionals omitted).
+    #[must_use]
+    pub fn build(self) -> Value {
+        let mut obj = Map::new();
+        obj.insert(
+            "e911_address_id".to_string(),
+            Value::from(self.e911_address_id),
+        );
+        for (k, v) in self.extras {
+            obj.insert(k, v);
+        }
+        Value::Object(obj)
+    }
+}
+
+/// Named request parameters for the generated method (Rust options-builder
+/// idiom — required fields in `new`, optionals via setters, `extras` open door).
+#[derive(Debug, Clone, Default)]
+pub struct PhoneNumbersRequestCnamRequest {
+    name: String,
+    extras: Map<String, Value>,
+}
+
+impl PhoneNumbersRequestCnamRequest {
+    /// Construct the request with its required fields.
+    pub fn new(name: impl Into<String>) -> Self {
+        PhoneNumbersRequestCnamRequest {
+            name: name.into(),
+            ..Default::default()
+        }
+    }
+    /// Add a forward-compat field the spec does not yet name.
+    #[must_use]
+    pub fn extra(mut self, key: impl Into<String>, value: impl Into<Value>) -> Self {
+        self.extras.insert(key.into(), value.into());
+        self
+    }
+    /// Assemble the `body` JSON object (unset optionals omitted).
+    #[must_use]
+    pub fn build(self) -> Value {
+        let mut obj = Map::new();
+        obj.insert("name".to_string(), Value::from(self.name));
+        for (k, v) in self.extras {
+            obj.insert(k, v);
+        }
+        Value::Object(obj)
+    }
+}
+
 /// Named request parameters for a generated `set_*` wrapper (binds args to
 /// update-request fields + a fixed `call_handler`; Rust options-builder idiom).
 #[derive(Debug, Clone, Default)]
@@ -678,24 +930,180 @@ impl PhoneNumbersSetSwmlWebhookRequest {
 /// Named request parameters for the generated method (Rust options-builder
 /// idiom — required fields in `new`, optionals via setters, `extras` open door).
 #[derive(Debug, Clone, Default)]
+pub struct RegistryBrandsUpdateRequest {
+    name: Option<String>,
+    company_name: Option<String>,
+    contact_email: Option<String>,
+    contact_phone: Option<String>,
+    ein_issuing_country: Option<String>,
+    legal_entity_type: Option<String>,
+    ein: Option<String>,
+    company_vertical: Option<String>,
+    company_website: Option<String>,
+    company_address: Option<String>,
+    csp_brand_reference: Option<String>,
+    status_callback_url: Option<String>,
+    signalwire_contact_emails: Option<serde_json::Value>,
+    extras: Map<String, Value>,
+}
+
+impl RegistryBrandsUpdateRequest {
+    /// Construct the request with its required fields.
+    pub fn new() -> Self {
+        RegistryBrandsUpdateRequest {
+            ..Default::default()
+        }
+    }
+    /// Set the optional `name` field.
+    #[must_use]
+    pub fn name(mut self, value: impl Into<String>) -> Self {
+        self.name = Some(value.into());
+        self
+    }
+    /// Set the optional `company_name` field.
+    #[must_use]
+    pub fn company_name(mut self, value: impl Into<String>) -> Self {
+        self.company_name = Some(value.into());
+        self
+    }
+    /// Set the optional `contact_email` field.
+    #[must_use]
+    pub fn contact_email(mut self, value: impl Into<String>) -> Self {
+        self.contact_email = Some(value.into());
+        self
+    }
+    /// Set the optional `contact_phone` field.
+    #[must_use]
+    pub fn contact_phone(mut self, value: impl Into<String>) -> Self {
+        self.contact_phone = Some(value.into());
+        self
+    }
+    /// Set the optional `ein_issuing_country` field.
+    #[must_use]
+    pub fn ein_issuing_country(mut self, value: impl Into<String>) -> Self {
+        self.ein_issuing_country = Some(value.into());
+        self
+    }
+    /// Set the optional `legal_entity_type` field.
+    #[must_use]
+    pub fn legal_entity_type(mut self, value: impl Into<String>) -> Self {
+        self.legal_entity_type = Some(value.into());
+        self
+    }
+    /// Set the optional `ein` field.
+    #[must_use]
+    pub fn ein(mut self, value: impl Into<String>) -> Self {
+        self.ein = Some(value.into());
+        self
+    }
+    /// Set the optional `company_vertical` field.
+    #[must_use]
+    pub fn company_vertical(mut self, value: impl Into<String>) -> Self {
+        self.company_vertical = Some(value.into());
+        self
+    }
+    /// Set the optional `company_website` field.
+    #[must_use]
+    pub fn company_website(mut self, value: impl Into<String>) -> Self {
+        self.company_website = Some(value.into());
+        self
+    }
+    /// Set the optional `company_address` field.
+    #[must_use]
+    pub fn company_address(mut self, value: impl Into<String>) -> Self {
+        self.company_address = Some(value.into());
+        self
+    }
+    /// Set the optional `csp_brand_reference` field.
+    #[must_use]
+    pub fn csp_brand_reference(mut self, value: impl Into<String>) -> Self {
+        self.csp_brand_reference = Some(value.into());
+        self
+    }
+    /// Set the optional `status_callback_url` field.
+    #[must_use]
+    pub fn status_callback_url(mut self, value: impl Into<String>) -> Self {
+        self.status_callback_url = Some(value.into());
+        self
+    }
+    /// Set the optional `signalwire_contact_emails` field.
+    #[must_use]
+    pub fn signalwire_contact_emails(mut self, value: serde_json::Value) -> Self {
+        self.signalwire_contact_emails = Some(value);
+        self
+    }
+    /// Add a forward-compat field the spec does not yet name.
+    #[must_use]
+    pub fn extra(mut self, key: impl Into<String>, value: impl Into<Value>) -> Self {
+        self.extras.insert(key.into(), value.into());
+        self
+    }
+    /// Assemble the `body` JSON object (unset optionals omitted).
+    #[must_use]
+    pub fn build(self) -> Value {
+        let mut obj = Map::new();
+        if let Some(v) = self.name {
+            obj.insert("name".to_string(), Value::from(v));
+        }
+        if let Some(v) = self.company_name {
+            obj.insert("company_name".to_string(), Value::from(v));
+        }
+        if let Some(v) = self.contact_email {
+            obj.insert("contact_email".to_string(), Value::from(v));
+        }
+        if let Some(v) = self.contact_phone {
+            obj.insert("contact_phone".to_string(), Value::from(v));
+        }
+        if let Some(v) = self.ein_issuing_country {
+            obj.insert("ein_issuing_country".to_string(), Value::from(v));
+        }
+        if let Some(v) = self.legal_entity_type {
+            obj.insert("legal_entity_type".to_string(), Value::from(v));
+        }
+        if let Some(v) = self.ein {
+            obj.insert("ein".to_string(), Value::from(v));
+        }
+        if let Some(v) = self.company_vertical {
+            obj.insert("company_vertical".to_string(), Value::from(v));
+        }
+        if let Some(v) = self.company_website {
+            obj.insert("company_website".to_string(), Value::from(v));
+        }
+        if let Some(v) = self.company_address {
+            obj.insert("company_address".to_string(), Value::from(v));
+        }
+        if let Some(v) = self.csp_brand_reference {
+            obj.insert("csp_brand_reference".to_string(), Value::from(v));
+        }
+        if let Some(v) = self.status_callback_url {
+            obj.insert("status_callback_url".to_string(), Value::from(v));
+        }
+        if let Some(v) = self.signalwire_contact_emails {
+            obj.insert("signalwire_contact_emails".to_string(), v);
+        }
+        for (k, v) in self.extras {
+            obj.insert(k, v);
+        }
+        Value::Object(obj)
+    }
+}
+
+/// Named request parameters for the generated method (Rust options-builder
+/// idiom — required fields in `new`, optionals via setters, `extras` open door).
+#[derive(Debug, Clone, Default)]
 pub struct RegistryCampaignsCreateOrderRequest {
-    phone_numbers: Option<serde_json::Value>,
+    phone_numbers: serde_json::Value,
     status_callback_url: Option<String>,
     extras: Map<String, Value>,
 }
 
 impl RegistryCampaignsCreateOrderRequest {
     /// Construct the request with its required fields.
-    pub fn new() -> Self {
+    pub fn new(phone_numbers: serde_json::Value) -> Self {
         RegistryCampaignsCreateOrderRequest {
+            phone_numbers,
             ..Default::default()
         }
-    }
-    /// Set the optional `phone_numbers` field.
-    #[must_use]
-    pub fn phone_numbers(mut self, value: serde_json::Value) -> Self {
-        self.phone_numbers = Some(value);
-        self
     }
     /// Set the optional `status_callback_url` field.
     #[must_use]
@@ -713,9 +1121,7 @@ impl RegistryCampaignsCreateOrderRequest {
     #[must_use]
     pub fn build(self) -> Value {
         let mut obj = Map::new();
-        if let Some(v) = self.phone_numbers {
-            obj.insert("phone_numbers".to_string(), v);
-        }
+        obj.insert("phone_numbers".to_string(), self.phone_numbers);
         if let Some(v) = self.status_callback_url {
             obj.insert("status_callback_url".to_string(), Value::from(v));
         }
@@ -731,6 +1137,8 @@ impl RegistryCampaignsCreateOrderRequest {
 #[derive(Debug, Clone, Default)]
 pub struct RegistryCampaignsUpdateRequest {
     name: Option<String>,
+    status_callback_url: Option<String>,
+    signalwire_contact_emails: Option<serde_json::Value>,
     extras: Map<String, Value>,
 }
 
@@ -747,6 +1155,18 @@ impl RegistryCampaignsUpdateRequest {
         self.name = Some(value.into());
         self
     }
+    /// Set the optional `status_callback_url` field.
+    #[must_use]
+    pub fn status_callback_url(mut self, value: impl Into<String>) -> Self {
+        self.status_callback_url = Some(value.into());
+        self
+    }
+    /// Set the optional `signalwire_contact_emails` field.
+    #[must_use]
+    pub fn signalwire_contact_emails(mut self, value: serde_json::Value) -> Self {
+        self.signalwire_contact_emails = Some(value);
+        self
+    }
     /// Add a forward-compat field the spec does not yet name.
     #[must_use]
     pub fn extra(mut self, key: impl Into<String>, value: impl Into<Value>) -> Self {
@@ -760,6 +1180,12 @@ impl RegistryCampaignsUpdateRequest {
         if let Some(v) = self.name {
             obj.insert("name".to_string(), Value::from(v));
         }
+        if let Some(v) = self.status_callback_url {
+            obj.insert("status_callback_url".to_string(), Value::from(v));
+        }
+        if let Some(v) = self.signalwire_contact_emails {
+            obj.insert("signalwire_contact_emails".to_string(), v);
+        }
         for (k, v) in self.extras {
             obj.insert(k, v);
         }
@@ -771,8 +1197,8 @@ impl RegistryCampaignsUpdateRequest {
 /// idiom — required fields in `new`, optionals via setters, `extras` open door).
 #[derive(Debug, Clone, Default)]
 pub struct ShortCodesUpdateRequest {
-    name: String,
-    message_handler: String,
+    name: Option<String>,
+    message_handler: Option<String>,
     message_request_url: Option<String>,
     message_request_method: Option<String>,
     message_fallback_url: Option<String>,
@@ -784,12 +1210,22 @@ pub struct ShortCodesUpdateRequest {
 
 impl ShortCodesUpdateRequest {
     /// Construct the request with its required fields.
-    pub fn new(name: impl Into<String>, message_handler: impl Into<String>) -> Self {
+    pub fn new() -> Self {
         ShortCodesUpdateRequest {
-            name: name.into(),
-            message_handler: message_handler.into(),
             ..Default::default()
         }
+    }
+    /// Set the optional `name` field.
+    #[must_use]
+    pub fn name(mut self, value: impl Into<String>) -> Self {
+        self.name = Some(value.into());
+        self
+    }
+    /// Set the optional `message_handler` field.
+    #[must_use]
+    pub fn message_handler(mut self, value: impl Into<String>) -> Self {
+        self.message_handler = Some(value.into());
+        self
     }
     /// Set the optional `message_request_url` field.
     #[must_use]
@@ -837,11 +1273,12 @@ impl ShortCodesUpdateRequest {
     #[must_use]
     pub fn build(self) -> Value {
         let mut obj = Map::new();
-        obj.insert("name".to_string(), Value::from(self.name));
-        obj.insert(
-            "message_handler".to_string(),
-            Value::from(self.message_handler),
-        );
+        if let Some(v) = self.name {
+            obj.insert("name".to_string(), Value::from(v));
+        }
+        if let Some(v) = self.message_handler {
+            obj.insert("message_handler".to_string(), Value::from(v));
+        }
         if let Some(v) = self.message_request_url {
             obj.insert("message_request_url".to_string(), Value::from(v));
         }
@@ -876,6 +1313,7 @@ pub struct SipProfileUpdateRequest {
     default_ciphers: Option<serde_json::Value>,
     default_encryption: Option<String>,
     default_send_as: Option<String>,
+    default_outbound_policy: Option<String>,
     extras: Map<String, Value>,
 }
 
@@ -916,6 +1354,12 @@ impl SipProfileUpdateRequest {
         self.default_send_as = Some(value.into());
         self
     }
+    /// Set the optional `default_outbound_policy` field.
+    #[must_use]
+    pub fn default_outbound_policy(mut self, value: impl Into<String>) -> Self {
+        self.default_outbound_policy = Some(value.into());
+        self
+    }
     /// Add a forward-compat field the spec does not yet name.
     #[must_use]
     pub fn extra(mut self, key: impl Into<String>, value: impl Into<Value>) -> Self {
@@ -940,6 +1384,9 @@ impl SipProfileUpdateRequest {
         }
         if let Some(v) = self.default_send_as {
             obj.insert("default_send_as".to_string(), Value::from(v));
+        }
+        if let Some(v) = self.default_outbound_policy {
+            obj.insert("default_outbound_policy".to_string(), Value::from(v));
         }
         for (k, v) in self.extras {
             obj.insert(k, v);
@@ -1025,7 +1472,7 @@ impl<'a> Addresses<'a> {
         request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
         self.client()
-            .get_with_options(self.base_path(), params, request_options.as_ref())
+            .get_with_options(self.base_path(), Some(params), request_options.as_ref())
     }
 
     /// `POST /addresses` (generated operation method).
@@ -1040,7 +1487,8 @@ impl<'a> Addresses<'a> {
     ) -> Result<Value, SignalWireRestError> {
         self.client().post_with_options(
             self.base_path(),
-            &request.build(),
+            Some(&request.build()),
+            None,
             request_options.as_ref(),
         )
     }
@@ -1056,7 +1504,25 @@ impl<'a> Addresses<'a> {
         request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
         self.client()
-            .get_with_options(&self.path(&[id]), params, request_options.as_ref())
+            .get_with_options(&self.path(&[id]), Some(params), request_options.as_ref())
+    }
+
+    /// `PUT /addresses/{id}` (generated operation method).
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] on transport failure, a non-2xx
+    /// status, or an unparseable response body.
+    pub fn update(
+        &self,
+        id: &str,
+        request: AddressesUpdateRequest,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.client().put_with_options(
+            &self.path(&[id]),
+            Some(&request.build()),
+            request_options.as_ref(),
+        )
     }
 
     /// `DELETE /addresses/{id}` (generated operation method).
@@ -1111,7 +1577,8 @@ impl<'a> ImportedNumbers<'a> {
     ) -> Result<Value, SignalWireRestError> {
         self.client().post_with_options(
             self.base_path(),
-            &request.build(),
+            Some(&request.build()),
+            None,
             request_options.as_ref(),
         )
     }
@@ -1159,7 +1626,7 @@ impl<'a> Lookup<'a> {
     ) -> Result<Value, SignalWireRestError> {
         self.client().get_with_options(
             &self.path(&["phone_number", e164]),
-            params,
+            Some(params),
             request_options.as_ref(),
         )
     }
@@ -1207,7 +1674,8 @@ impl<'a> Mfa<'a> {
     ) -> Result<Value, SignalWireRestError> {
         self.client().post_with_options(
             &self.path(&["sms"]),
-            &request.build(),
+            Some(&request.build()),
+            None,
             request_options.as_ref(),
         )
     }
@@ -1224,7 +1692,8 @@ impl<'a> Mfa<'a> {
     ) -> Result<Value, SignalWireRestError> {
         self.client().post_with_options(
             &self.path(&["call"]),
-            &request.build(),
+            Some(&request.build()),
+            None,
             request_options.as_ref(),
         )
     }
@@ -1242,7 +1711,8 @@ impl<'a> Mfa<'a> {
     ) -> Result<Value, SignalWireRestError> {
         self.client().post_with_options(
             &self.path(&[request_id, "verify"]),
-            &request.build(),
+            Some(&request.build()),
+            None,
             request_options.as_ref(),
         )
     }
@@ -1354,7 +1824,7 @@ impl<'a> NumberGroups<'a> {
     ) -> Result<Value, SignalWireRestError> {
         self.client().get_with_options(
             &self.path(&[group_id, "number_group_memberships"]),
-            params,
+            Some(params),
             request_options.as_ref(),
         )
     }
@@ -1372,7 +1842,8 @@ impl<'a> NumberGroups<'a> {
     ) -> Result<Value, SignalWireRestError> {
         self.client().post_with_options(
             &self.path(&[group_id, "number_group_memberships"]),
-            &request.build(),
+            Some(&request.build()),
+            None,
             request_options.as_ref(),
         )
     }
@@ -1389,7 +1860,7 @@ impl<'a> NumberGroups<'a> {
     ) -> Result<Value, SignalWireRestError> {
         self.client().get_with_options(
             &format!("/api/relay/rest/number_group_memberships/{id}"),
-            params,
+            Some(params),
             request_options.as_ref(),
         )
     }
@@ -1513,8 +1984,92 @@ impl<'a> PhoneNumbers<'a> {
         params: &HashMap<String, String>,
         request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
+        self.client().get_with_options(
+            &self.path(&["search"]),
+            Some(params),
+            request_options.as_ref(),
+        )
+    }
+
+    /// `POST /phone_numbers/{id}/e911_address` (generated operation method).
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] on transport failure, a non-2xx
+    /// status, or an unparseable response body.
+    pub fn assign_e911_address(
+        &self,
+        id: &str,
+        request: PhoneNumbersAssignE911AddressRequest,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.client().post_with_options(
+            &self.path(&[id, "e911_address"]),
+            Some(&request.build()),
+            None,
+            request_options.as_ref(),
+        )
+    }
+
+    /// `DELETE /phone_numbers/{id}/e911_address` (generated operation method).
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] on transport failure, a non-2xx status.
+    pub fn remove_e911_address(
+        &self,
+        id: &str,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
         self.client()
-            .get_with_options(&self.path(&["search"]), params, request_options.as_ref())
+            .delete_with_options(&self.path(&[id, "e911_address"]), request_options.as_ref())
+    }
+
+    /// `GET /phone_numbers/{id}/cnam` (generated operation method; query params).
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] on transport failure, a non-2xx status.
+    pub fn get_cnam(
+        &self,
+        id: &str,
+        params: &HashMap<String, String>,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.client().get_with_options(
+            &self.path(&[id, "cnam"]),
+            Some(params),
+            request_options.as_ref(),
+        )
+    }
+
+    /// `POST /phone_numbers/{id}/cnam` (generated operation method).
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] on transport failure, a non-2xx
+    /// status, or an unparseable response body.
+    pub fn request_cnam(
+        &self,
+        id: &str,
+        request: PhoneNumbersRequestCnamRequest,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.client().post_with_options(
+            &self.path(&[id, "cnam"]),
+            Some(&request.build()),
+            None,
+            request_options.as_ref(),
+        )
+    }
+
+    /// `DELETE /phone_numbers/{id}/cnam` (generated operation method).
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] on transport failure, a non-2xx status.
+    pub fn clear_cnam(
+        &self,
+        id: &str,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.client()
+            .delete_with_options(&self.path(&[id, "cnam"]), request_options.as_ref())
     }
 
     /// `set_set_swml_webhook` — update wrapper binding a fixed `call_handler` (§7).
@@ -1715,7 +2270,7 @@ impl<'a> Queues<'a> {
     ) -> Result<Value, SignalWireRestError> {
         self.client().get_with_options(
             &self.path(&[queue_id, "members"]),
-            params,
+            Some(params),
             request_options.as_ref(),
         )
     }
@@ -1732,7 +2287,7 @@ impl<'a> Queues<'a> {
     ) -> Result<Value, SignalWireRestError> {
         self.client().get_with_options(
             &self.path(&[queue_id, "members", "next"]),
-            params,
+            Some(params),
             request_options.as_ref(),
         )
     }
@@ -1750,7 +2305,7 @@ impl<'a> Queues<'a> {
     ) -> Result<Value, SignalWireRestError> {
         self.client().get_with_options(
             &self.path(&[queue_id, "members", id]),
-            params,
+            Some(params),
             request_options.as_ref(),
         )
     }
@@ -1796,7 +2351,7 @@ impl<'a> Recordings<'a> {
         request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
         self.client()
-            .get_with_options(self.base_path(), params, request_options.as_ref())
+            .get_with_options(self.base_path(), Some(params), request_options.as_ref())
     }
 
     /// `GET /recordings/{id}` (generated operation method; query params).
@@ -1810,7 +2365,7 @@ impl<'a> Recordings<'a> {
         request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
         self.client()
-            .get_with_options(&self.path(&[id]), params, request_options.as_ref())
+            .get_with_options(&self.path(&[id]), Some(params), request_options.as_ref())
     }
 
     /// `DELETE /recordings/{id}` (generated operation method).
@@ -1824,6 +2379,25 @@ impl<'a> Recordings<'a> {
     ) -> Result<Value, SignalWireRestError> {
         self.client()
             .delete_with_options(&self.path(&[id]), request_options.as_ref())
+    }
+
+    /// `GET /recordings/{id}.mp3` (generated operation method) — returns the URL this
+    /// endpoint redirects to (the `Location` of its redirect), without
+    /// following it or downloading anything; fetch it with any HTTP client.
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] on transport failure or an error status.
+    pub fn download(
+        &self,
+        id: &str,
+        params: &HashMap<String, String>,
+        request_options: Option<RequestOptions>,
+    ) -> Result<String, SignalWireRestError> {
+        self.client().get_redirect_location_with_options(
+            &self.path(&[format!("{id}.mp3").as_str()]),
+            Some(params),
+            request_options.as_ref(),
+        )
     }
 }
 
@@ -1867,7 +2441,7 @@ impl<'a> RegistryBrands<'a> {
         request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
         self.client()
-            .get_with_options(self.base_path(), params, request_options.as_ref())
+            .get_with_options(self.base_path(), Some(params), request_options.as_ref())
     }
 
     /// `POST /registry/beta/brands` (generated operation method; union body).
@@ -1880,8 +2454,12 @@ impl<'a> RegistryBrands<'a> {
         body: &Value,
         request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.client()
-            .post_with_options(self.base_path(), body, request_options.as_ref())
+        self.client().post_with_options(
+            self.base_path(),
+            Some(body),
+            None,
+            request_options.as_ref(),
+        )
     }
 
     /// `GET /registry/beta/brands/{id}` (generated operation method; query params).
@@ -1895,7 +2473,25 @@ impl<'a> RegistryBrands<'a> {
         request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
         self.client()
-            .get_with_options(&self.path(&[id]), params, request_options.as_ref())
+            .get_with_options(&self.path(&[id]), Some(params), request_options.as_ref())
+    }
+
+    /// `PUT /registry/beta/brands/{id}` (generated operation method).
+    ///
+    /// # Errors
+    /// Returns [`SignalWireRestError`] on transport failure, a non-2xx
+    /// status, or an unparseable response body.
+    pub fn update(
+        &self,
+        id: &str,
+        request: RegistryBrandsUpdateRequest,
+        request_options: Option<RequestOptions>,
+    ) -> Result<Value, SignalWireRestError> {
+        self.client().put_with_options(
+            &self.path(&[id]),
+            Some(&request.build()),
+            request_options.as_ref(),
+        )
     }
 
     /// `GET /registry/beta/brands/{id}/campaigns` (generated operation method; query params).
@@ -1910,7 +2506,7 @@ impl<'a> RegistryBrands<'a> {
     ) -> Result<Value, SignalWireRestError> {
         self.client().get_with_options(
             &self.path(&[id, "campaigns"]),
-            params,
+            Some(params),
             request_options.as_ref(),
         )
     }
@@ -1928,7 +2524,8 @@ impl<'a> RegistryBrands<'a> {
     ) -> Result<Value, SignalWireRestError> {
         self.client().post_with_options(
             &self.path(&[id, "campaigns"]),
-            body,
+            Some(body),
+            None,
             request_options.as_ref(),
         )
     }
@@ -1975,7 +2572,7 @@ impl<'a> RegistryCampaigns<'a> {
         request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
         self.client()
-            .get_with_options(&self.path(&[id]), params, request_options.as_ref())
+            .get_with_options(&self.path(&[id]), Some(params), request_options.as_ref())
     }
 
     /// `PUT /registry/beta/campaigns/{id}` (generated operation method).
@@ -1991,7 +2588,7 @@ impl<'a> RegistryCampaigns<'a> {
     ) -> Result<Value, SignalWireRestError> {
         self.client().put_with_options(
             &self.path(&[id]),
-            &request.build(),
+            Some(&request.build()),
             request_options.as_ref(),
         )
     }
@@ -2008,7 +2605,7 @@ impl<'a> RegistryCampaigns<'a> {
     ) -> Result<Value, SignalWireRestError> {
         self.client().get_with_options(
             &self.path(&[id, "numbers"]),
-            params,
+            Some(params),
             request_options.as_ref(),
         )
     }
@@ -2025,7 +2622,7 @@ impl<'a> RegistryCampaigns<'a> {
     ) -> Result<Value, SignalWireRestError> {
         self.client().get_with_options(
             &self.path(&[id, "orders"]),
-            params,
+            Some(params),
             request_options.as_ref(),
         )
     }
@@ -2043,7 +2640,8 @@ impl<'a> RegistryCampaigns<'a> {
     ) -> Result<Value, SignalWireRestError> {
         self.client().post_with_options(
             &self.path(&[id, "orders"]),
-            &request.build(),
+            Some(&request.build()),
+            None,
             request_options.as_ref(),
         )
     }
@@ -2134,7 +2732,7 @@ impl<'a> RegistryOrders<'a> {
         request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
         self.client()
-            .get_with_options(&self.path(&[id]), params, request_options.as_ref())
+            .get_with_options(&self.path(&[id]), Some(params), request_options.as_ref())
     }
 }
 
@@ -2178,7 +2776,7 @@ impl<'a> ShortCodes<'a> {
         request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
         self.client()
-            .get_with_options(self.base_path(), params, request_options.as_ref())
+            .get_with_options(self.base_path(), Some(params), request_options.as_ref())
     }
 
     /// `GET /short_codes/{id}` (generated operation method; query params).
@@ -2192,7 +2790,7 @@ impl<'a> ShortCodes<'a> {
         request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
         self.client()
-            .get_with_options(&self.path(&[id]), params, request_options.as_ref())
+            .get_with_options(&self.path(&[id]), Some(params), request_options.as_ref())
     }
 
     /// `PUT /short_codes/{id}` (generated operation method).
@@ -2208,7 +2806,7 @@ impl<'a> ShortCodes<'a> {
     ) -> Result<Value, SignalWireRestError> {
         self.client().put_with_options(
             &self.path(&[id]),
-            &request.build(),
+            Some(&request.build()),
             request_options.as_ref(),
         )
     }
@@ -2250,7 +2848,7 @@ impl<'a> SipProfile<'a> {
         request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
         self.client()
-            .get_with_options(self.base_path(), params, request_options.as_ref())
+            .get_with_options(self.base_path(), Some(params), request_options.as_ref())
     }
 
     /// `PUT /sip_profile` (generated operation method).
@@ -2263,8 +2861,11 @@ impl<'a> SipProfile<'a> {
         request: SipProfileUpdateRequest,
         request_options: Option<RequestOptions>,
     ) -> Result<Value, SignalWireRestError> {
-        self.client()
-            .put_with_options(self.base_path(), &request.build(), request_options.as_ref())
+        self.client().put_with_options(
+            self.base_path(),
+            Some(&request.build()),
+            request_options.as_ref(),
+        )
     }
 }
 
@@ -2373,7 +2974,8 @@ impl<'a> VerifiedCallers<'a> {
     ) -> Result<Value, SignalWireRestError> {
         self.client().post_with_options(
             &self.path(&[id, "verification"]),
-            &Value::Object(Map::new()),
+            Some(&Value::Object(Map::new())),
+            None,
             request_options.as_ref(),
         )
     }
@@ -2391,7 +2993,7 @@ impl<'a> VerifiedCallers<'a> {
     ) -> Result<Value, SignalWireRestError> {
         self.client().put_with_options(
             &self.path(&[id, "verification"]),
-            &request.build(),
+            Some(&request.build()),
             request_options.as_ref(),
         )
     }
